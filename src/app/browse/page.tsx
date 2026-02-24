@@ -95,7 +95,7 @@ export default function BrowsePage() {
                     onClick={() => setOccasionFilter(f)}
                     className={`text-[10px] tracking-[0.14em] uppercase px-4 py-2 border transition-colors duration-200 capitalize ${
                       occasionFilter === f
-                        ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--foreground)]/5"
+                        ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                         : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
                     }`}
                   >
@@ -108,7 +108,7 @@ export default function BrowsePage() {
                     onClick={() => setCategoryFilter(f)}
                     className={`text-[10px] tracking-[0.14em] uppercase px-4 py-2 border transition-colors duration-200 capitalize ${
                       categoryFilter === f
-                        ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--foreground)]/5"
+                        ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                         : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
                     }`}
                   >

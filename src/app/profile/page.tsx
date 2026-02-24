@@ -70,7 +70,7 @@ export default function ProfilePage() {
                   <p
                     className={`text-xs ${
                       bodyType === bt.id
-                        ? "text-[var(--background)]/60"
+                        ? "text-[var(--fg-on-dark-60)]"
                         : "text-[var(--foreground-muted)]"
                     }`}
                   >

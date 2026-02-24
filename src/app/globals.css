@@ -1,22 +1,11 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-muted: var(--foreground-muted);
-  --color-subtle: var(--foreground-subtle);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-}
-
 :root {
-  /* System font stacks — premium aesthetic without Google Fonts */
+  /* System font stacks */
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
-}
 
-:root {
+  /* Light mode colors */
   --background: #FAFAF8;
   --surface: #FFFFFF;
   --foreground: #0A0A0A;
@@ -24,6 +13,15 @@
   --foreground-subtle: #A8A8A8;
   --border: #E8E6E0;
   --border-strong: #C0BEB8;
+
+  /* Pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars) */
+  --bg-overlay-90: rgba(250, 250, 248, 0.90);
+  --bg-overlay-95: rgba(250, 250, 248, 0.95);
+  --fg-overlay-05: rgba(10, 10, 10, 0.05);
+  --fg-overlay-08: rgba(10, 10, 10, 0.08);
+  --fg-on-dark-60: rgba(250, 250, 248, 0.60);
+  --fg-on-dark-70: rgba(250, 250, 248, 0.70);
+  --fg-on-dark-80: rgba(250, 250, 248, 0.80);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,9 +30,18 @@
     --surface: #141414;
     --foreground: #F0EEE8;
     --foreground-muted: #888884;
-    --foreground-subtle: #4A4A46;
+    --foreground-subtle: #6E6E6A;
     --border: #222220;
-    --border-strong: #333330;
+    --border-strong: #3A3A38;
+
+    /* Dark mode semi-transparent variants */
+    --bg-overlay-90: rgba(10, 10, 10, 0.90);
+    --bg-overlay-95: rgba(10, 10, 10, 0.95);
+    --fg-overlay-05: rgba(240, 238, 232, 0.05);
+    --fg-overlay-08: rgba(240, 238, 232, 0.08);
+    --fg-on-dark-60: rgba(10, 10, 10, 0.60);
+    --fg-on-dark-70: rgba(10, 10, 10, 0.70);
+    --fg-on-dark-80: rgba(10, 10, 10, 0.80);
   }
 }
 

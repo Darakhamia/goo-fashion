@@ -50,7 +50,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               />
               {outfit.isAIGenerated && (
                 <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--background)]/90 backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
+                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
                     AI Generated
                   </span>
                 </div>

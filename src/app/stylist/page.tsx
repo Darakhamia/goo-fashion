@@ -323,7 +323,7 @@ export default function StylistPage() {
                         <p
                           className={`text-xs mt-0.5 ${
                             active
-                              ? "text-[var(--background)]/70"
+                              ? "text-[var(--fg-on-dark-70)]"
                               : "text-[var(--foreground-muted)]"
                           }`}
                         >

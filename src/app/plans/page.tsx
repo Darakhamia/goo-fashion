@@ -97,7 +97,7 @@ export default function PlansPage() {
                 <p
                   className={`text-[10px] tracking-[0.2em] uppercase font-medium mb-2 ${
                     plan.highlighted
-                      ? "text-[var(--background)]/60"
+                      ? "text-[var(--fg-on-dark-60)]"
                       : "text-[var(--foreground-subtle)]"
                   }`}
                 >
@@ -114,7 +114,7 @@ export default function PlansPage() {
                       <span
                         className={`text-sm mb-2 ${
                           plan.highlighted
-                            ? "text-[var(--background)]/60"
+                            ? "text-[var(--fg-on-dark-60)]"
                             : "text-[var(--foreground-muted)]"
                         }`}
                       >
@@ -126,7 +126,7 @@ export default function PlansPage() {
                     <p
                       className={`text-xs mt-1 ${
                         plan.highlighted
-                          ? "text-[var(--background)]/60"
+                          ? "text-[var(--fg-on-dark-60)]"
                           : "text-[var(--foreground-muted)]"
                       }`}
                     >
@@ -140,7 +140,7 @@ export default function PlansPage() {
                   <p
                     className={`text-[10px] tracking-[0.14em] uppercase mb-1.5 ${
                       plan.highlighted
-                        ? "text-[var(--background)]/60"
+                        ? "text-[var(--fg-on-dark-60)]"
                         : "text-[var(--foreground-subtle)]"
                     }`}
                   >
@@ -179,7 +179,7 @@ export default function PlansPage() {
                       <span
                         className={`text-xs leading-relaxed ${
                           plan.highlighted
-                            ? "text-[var(--background)]/80"
+                            ? "text-[var(--fg-on-dark-80)]"
                             : "text-[var(--foreground-muted)]"
                         }`}
                       >

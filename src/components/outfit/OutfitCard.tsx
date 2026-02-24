@@ -31,18 +31,18 @@ export default function OutfitCard({ outfit, size = "default" }: OutfitCardProps
         {/* AI Badge */}
         {outfit.isAIGenerated && (
           <div className="absolute top-3 left-3 z-10">
-            <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--background)]/90 backdrop-blur-sm text-[var(--foreground)] px-2.5 py-1.5 block">
+            <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2.5 py-1.5 block">
               AI
             </span>
           </div>
         )}
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-[var(--foreground)]/0 group-hover:bg-[var(--foreground)]/8 transition-colors duration-500 z-10" />
+        <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
 
         {/* Hover Label */}
         <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-          <span className="text-[10px] tracking-[0.18em] uppercase font-medium bg-[var(--background)]/95 backdrop-blur-sm text-[var(--foreground)] px-4 py-2">
+          <span className="text-[10px] tracking-[0.18em] uppercase font-medium bg-[var(--bg-overlay-95)] backdrop-blur-sm text-[var(--foreground)] px-4 py-2">
             View Outfit
           </span>
         </div>

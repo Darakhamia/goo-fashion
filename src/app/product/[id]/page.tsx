@@ -54,7 +54,7 @@ export default async function ProductDetailPage({ params }: Props) {
               />
               {product.isNew && (
                 <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--background)]/90 backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
+                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
                     New
                   </span>
                 </div>
@@ -180,7 +180,7 @@ export default async function ProductDetailPage({ params }: Props) {
                       >
                         <div className="flex items-center gap-3">
                           {i === 0 && (
-                            <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--foreground)]/8 px-2 py-1">
+                            <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] px-2 py-1">
                               Best
                             </span>
                           )}
