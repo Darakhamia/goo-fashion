@@ -1,0 +1,56 @@
+import { Plan } from "@/lib/types";
+
+export const plans: Plan[] = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    currency: "USD",
+    billingCycle: "monthly",
+    aiOutfitsPerMonth: 3,
+    highlighted: false,
+    features: [
+      "3 AI outfit generations per month",
+      "Browse full product catalogue",
+      "Basic price comparison",
+      "Save up to 10 items",
+      "Single occasion profile",
+    ],
+  },
+  {
+    id: "plus",
+    name: "Plus",
+    price: 18,
+    currency: "USD",
+    billingCycle: "monthly",
+    aiOutfitsPerMonth: "unlimited",
+    highlighted: true,
+    features: [
+      "Unlimited AI outfit generations",
+      "Full wardrobe builder",
+      "Multi-occasion profiles",
+      "Advanced price tracking",
+      "New arrivals alerts",
+      "Unlimited saves",
+      "Outfit history & archive",
+    ],
+  },
+  {
+    id: "ultra",
+    name: "Ultra",
+    price: 42,
+    currency: "USD",
+    billingCycle: "monthly",
+    aiOutfitsPerMonth: "unlimited",
+    highlighted: false,
+    features: [
+      "Everything in Plus",
+      "Weekly AI-curated edit, personal to you",
+      "Trend forecasting & seasonal reports",
+      "Early access to new brands",
+      "Priority customer support",
+      "Exclusive editorial content",
+      "Style DNA analysis",
+    ],
+  },
+];
