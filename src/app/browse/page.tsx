@@ -158,7 +158,7 @@ export default function BrowsePage() {
         {/* Grid */}
         {view === "outfits" ? (
           filteredOutfits.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-px bg-[var(--border)]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-px bg-[var(--border)]">
               {filteredOutfits.map((outfit) => (
                 <div key={outfit.id} className="bg-[var(--background)] p-3">
                   <OutfitCard outfit={outfit} />
@@ -172,7 +172,7 @@ export default function BrowsePage() {
             </div>
           )
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-px bg-[var(--border)]">
             {filteredProducts.map((product) => (
               <div key={product.id} className="bg-[var(--background)] p-3">
                 <ProductCard product={product} />

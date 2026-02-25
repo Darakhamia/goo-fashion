@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navigation from "@/components/layout/Navigation";
-import Footer from "@/components/layout/Footer";
 import { LikesProvider } from "@/lib/context/likes-context";
+import { AuthProvider } from "@/lib/context/auth-context";
+import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 
 export const metadata: Metadata = {
   title: "GOO — AI Stylist",
@@ -23,11 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <LikesProvider>
-          <Navigation />
-          <main>{children}</main>
-          <Footer />
-        </LikesProvider>
+        <AuthProvider>
+          <LikesProvider>
+            <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+          </LikesProvider>
+        </AuthProvider>
       </body>
     </html>
   );

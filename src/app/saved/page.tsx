@@ -74,7 +74,7 @@ export default function SavedPage() {
             </div>
           )
         ) : savedProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-px bg-[var(--border)]">
             {savedProducts.map((product) => (
               <div key={product.id} className="bg-[var(--background)] p-3">
                 <ProductCard product={product} />
