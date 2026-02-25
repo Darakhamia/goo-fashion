@@ -45,7 +45,14 @@ export type StyleKeyword =
   | "classic"
   | "avant-garde"
   | "romantic"
-  | "utilitarian";
+  | "utilitarian"
+  | "bohemian"
+  | "preppy"
+  | "sporty"
+  | "dark"
+  | "maximalist"
+  | "coastal"
+  | "academic";
 
 export interface Retailer {
   name: string;
