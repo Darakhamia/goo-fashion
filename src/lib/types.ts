@@ -12,7 +12,8 @@ export type Brand =
   | "Arket"
   | "Massimo Dutti"
   | "Zara"
-  | "& Other Stories";
+  | "& Other Stories"
+  | "Nike";
 
 export type Category =
   | "outerwear"
