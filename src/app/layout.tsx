@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LikesProvider } from "@/lib/context/likes-context";
 import { AuthProvider } from "@/lib/context/auth-context";
+import { ThemeProvider } from "@/lib/context/theme-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 
 export const metadata: Metadata = {
@@ -21,13 +22,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="dark">
+      <head>
+        {/* Inline script prevents flash of wrong theme on load */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('goo-theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="antialiased">
-        <AuthProvider>
-          <LikesProvider>
-            <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
-          </LikesProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <LikesProvider>
+              <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+            </LikesProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

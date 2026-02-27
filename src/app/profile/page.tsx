@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTheme } from "@/lib/context/theme-context";
 
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
 
@@ -17,6 +18,7 @@ const bodyTypes: { id: BodyType; label: string; description: string }[] = [
 export default function ProfilePage() {
   const [bodyType, setBodyType] = useState<BodyType | null>(null);
   const [saved, setSaved] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="pt-16 min-h-screen">
@@ -127,6 +129,44 @@ export default function ProfilePage() {
                   <p className="text-xs text-[var(--foreground-muted)] mt-0.5">{b.range}</p>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Appearance */}
+          <div className="mb-12">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
+              Appearance
+            </p>
+            <div className="flex items-center justify-between p-5 border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors duration-200">
+              <div>
+                <p className="text-sm font-medium text-[var(--foreground)]">
+                  {theme === "dark" ? "Dark mode" : "Light mode"}
+                </p>
+                <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+                  {theme === "dark"
+                    ? "Easy on the eyes, GOO's default"
+                    : "Optimised for bright environments"}
+                </p>
+              </div>
+
+              {/* Toggle switch */}
+              <button
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                className={`relative w-11 h-6 rounded-full transition-colors duration-300 shrink-0 ${
+                  theme === "dark"
+                    ? "bg-[var(--foreground)]"
+                    : "bg-[var(--border-strong)]"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-300 ${
+                    theme === "dark"
+                      ? "left-6 bg-[var(--background)]"
+                      : "left-1 bg-[var(--background)]"
+                  }`}
+                />
+              </button>
             </div>
           </div>
 
