@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useLikes } from "@/lib/context/likes-context";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 const navLinks = [
   { href: "/stylist", label: "Stylist" },
@@ -93,22 +94,26 @@ export default function Navigation() {
             )}
           </Link>
 
-          {/* Profile */}
-          <Link
-            href="/profile"
-            aria-label="Profile"
-            className={`transition-colors duration-200 ${iconColor}`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-              <path
-                d="M2.5 14C2.5 11.515 5.01 9.5 8 9.5C10.99 9.5 13.5 11.515 13.5 14"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </Link>
+          {/* Profile — Clerk */}
+          <SignedIn>
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-6 h-6",
+                  userButtonTrigger: `transition-opacity hover:opacity-70 ${iconColor}`,
+                },
+              }}
+            />
+          </SignedIn>
+          <SignedOut>
+            <Link
+              href="/login"
+              className={`text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${linkMuted}`}
+            >
+              Sign in
+            </Link>
+          </SignedOut>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -169,21 +174,21 @@ export default function Navigation() {
                   </span>
                 )}
               </Link>
-              <Link
-                href="/profile"
-                onClick={() => setMenuOpen(false)}
-                className="text-[var(--foreground-muted)]"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path
-                    d="M2.5 14C2.5 11.515 5.01 9.5 8 9.5C10.99 9.5 13.5 11.515 13.5 14"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </Link>
+              <SignedIn>
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{ elements: { avatarBox: "w-6 h-6" } }}
+                />
+              </SignedIn>
+              <SignedOut>
+                <Link
+                  href="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
+                >
+                  Sign in
+                </Link>
+              </SignedOut>
             </div>
           </div>
         </div>
