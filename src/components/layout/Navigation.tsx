@@ -96,6 +96,16 @@ export default function Navigation() {
 
           {/* Profile — Clerk */}
           <SignedIn>
+            <Link
+              href="/profile"
+              aria-label="Style profile"
+              className={`transition-colors duration-200 ${pathname === "/profile" ? linkActive : iconColor}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </Link>
             <UserButton
               afterSignOutUrl="/"
               appearance={{
@@ -152,6 +162,19 @@ export default function Navigation() {
                 {link.label}
               </Link>
             ))}
+            <SignedIn>
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                className={`text-sm tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+                  pathname === "/profile"
+                    ? "text-[var(--foreground)]"
+                    : "text-[var(--foreground-muted)]"
+                }`}
+              >
+                Profile
+              </Link>
+            </SignedIn>
             <div className="flex items-center gap-5 pt-2">
               <Link
                 href="/saved"

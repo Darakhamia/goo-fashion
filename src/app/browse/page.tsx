@@ -462,12 +462,21 @@ export default function BrowsePage() {
 
         {/* ── Sidebar + Grid layout ── */}
         <div className="flex">
-          {/* Desktop sidebar */}
-          {sidebarOpen && (
-            <aside className="hidden md:block w-56 lg:w-64 shrink-0 border-r border-[var(--border)] sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-y-auto">
+          {/* Desktop sidebar — CSS width transition for smooth open/close */}
+          <aside
+            className={`hidden md:flex flex-col shrink-0 border-r border-[var(--border)] sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-hidden transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-56 lg:w-64 opacity-100" : "w-0 opacity-0 border-r-0"
+            }`}
+          >
+            <div
+              className={`overflow-y-auto flex-1 transition-opacity duration-200 ${
+                sidebarOpen ? "opacity-100 delay-100" : "opacity-0"
+              }`}
+              style={{ minWidth: "14rem" }}
+            >
               <div className="px-6 pt-6 pb-8">{renderFilters()}</div>
-            </aside>
-          )}
+            </div>
+          </aside>
 
           {/* Main content */}
           <main className="flex-1 min-w-0 px-6 md:px-8 lg:px-10">
@@ -477,38 +486,43 @@ export default function BrowsePage() {
                 {/* Desktop filter toggle */}
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="hidden md:flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
+                  className={`hidden md:flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium transition-all duration-200 border px-3 py-1.5 ${
+                    sidebarOpen
+                      ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                  style={sidebarOpen ? { color: "var(--background)" } : {}}
                 >
-                  <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
-                    <path
-                      d="M1 1.5H14M1 5.5H10M1 9.5H6"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
+                  <svg
+                    width="13" height="10" viewBox="0 0 13 10" fill="none"
+                    className="transition-transform duration-300"
+                    style={{ transform: sidebarOpen ? "scaleX(-1)" : "scaleX(1)" }}
+                  >
+                    <path d="M1 1.5H12M1 5H9M1 8.5H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <span>{sidebarOpen ? "Hide" : "Filters"}</span>
-                  {activeFiltersCount > 0 && !sidebarOpen && (
-                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                  <span>{sidebarOpen ? "Hide filters" : "Filters"}</span>
+                  {activeFiltersCount > 0 && (
+                    <span
+                      className={`w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center transition-colors duration-200 ${
+                        sidebarOpen
+                          ? "bg-[var(--background)] text-[var(--foreground)]"
+                          : "bg-[var(--foreground)] text-[var(--background)]"
+                      }`}
+                    >
                       {activeFiltersCount}
                     </span>
                   )}
                 </button>
 
-                {/* Mobile refine button */}
+                {/* Mobile filter button */}
                 <button
                   onClick={() => setMobileSidebarOpen(true)}
-                  className="md:hidden flex items-center gap-1.5 text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
+                  className="md:hidden flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
                 >
-                  <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
-                    <path
-                      d="M1 1.5H14M3 5.5H12M5 9.5H10"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
+                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <span>Refine</span>
+                  <span>Filters</span>
                   {activeFiltersCount > 0 && (
                     <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
                       {activeFiltersCount}
@@ -629,11 +643,11 @@ export default function BrowsePage() {
             <div className="mt-6 pb-16">
               {view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)]">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)] stagger-children">
                     {filteredOutfits.map((outfit) => (
                       <div
                         key={outfit.id}
-                        className="bg-[var(--background)] p-4"
+                        className="bg-[var(--background)] p-4 animate-fade-up"
                       >
                         <OutfitCard outfit={outfit} />
                       </div>
@@ -643,11 +657,11 @@ export default function BrowsePage() {
                   <EmptyState onClear={clearAll} noun="outfits" />
                 )
               ) : filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)] stagger-children">
                   {filteredProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="bg-[var(--background)] p-4"
+                      className="bg-[var(--background)] p-4 animate-fade-up"
                     >
                       <ProductCard product={product} />
                     </div>
@@ -665,10 +679,10 @@ export default function BrowsePage() {
       {mobileSidebarOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden animate-overlay-in"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <div className="fixed top-0 right-0 bottom-0 w-80 max-w-[90vw] bg-[var(--background)] z-50 flex flex-col md:hidden animate-fade-in">
+          <div className="fixed top-0 right-0 bottom-0 w-80 max-w-[90vw] bg-[var(--background)] z-50 flex flex-col md:hidden animate-slide-in-right shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground)]">
                 Filters
