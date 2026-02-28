@@ -21,6 +21,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
 
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [imgVisible, setImgVisible] = useState(true);
 
   // Resolve which images to display
   const displayImages = useMemo(() => {
@@ -31,8 +32,34 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
     return imgs.length ? imgs : [product.imageUrl].filter(Boolean);
   }, [selectedColor, product]);
 
-  // Reset to first image on color change
-  useEffect(() => { setActiveIdx(0); }, [selectedColor]);
+  // Fade-transition to a given index
+  const goTo = (newIdx: number) => {
+    setImgVisible(false);
+    setTimeout(() => {
+      setActiveIdx(newIdx);
+      setImgVisible(true);
+    }, 260);
+  };
+
+  // Reset to first image (with fade) when color changes
+  useEffect(() => {
+    setImgVisible(false);
+    const t = setTimeout(() => { setActiveIdx(0); setImgVisible(true); }, 260);
+    return () => clearTimeout(t);
+  }, [selectedColor]);
+
+  // Auto-advance every 2 s
+  useEffect(() => {
+    if (displayImages.length <= 1) return;
+    const iv = setInterval(() => {
+      setImgVisible(false);
+      setTimeout(() => {
+        setActiveIdx((prev) => (prev + 1) % displayImages.length);
+        setImgVisible(true);
+      }, 260);
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [selectedColor, displayImages.length]);
 
   const mainImage = displayImages[activeIdx] || product.imageUrl || "";
 
@@ -59,10 +86,10 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
             {mainImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                key={mainImage}
                 src={mainImage}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-opacity duration-[260ms] ease-in-out"
+                style={{ opacity: imgVisible ? 1 : 0 }}
               />
             ) : (
               <div className="w-full h-full bg-[var(--surface)]" />
@@ -74,6 +101,15 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
                 </span>
               </div>
             )}
+            {/* Auto-advance progress bar */}
+            {displayImages.length > 1 && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20">
+                <div
+                  key={activeIdx}
+                  className="h-full w-full bg-white/60 animate-img-progress"
+                />
+              </div>
+            )}
           </div>
 
           {/* Thumbnail strip — only when there are multiple images */}
@@ -82,7 +118,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
-                  onClick={() => setActiveIdx(i)}
+                  onClick={() => goTo(i)}
                   className={`flex-1 aspect-square overflow-hidden transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-1 ring-inset ring-[var(--foreground)]" : "opacity-50 hover:opacity-80"
                   }`}

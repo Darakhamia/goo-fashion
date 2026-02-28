@@ -222,6 +222,17 @@ body {
   animation: overlayIn 0.25s ease forwards;
 }
 
+/* Image slideshow progress bar */
+@keyframes imgProgress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.animate-img-progress {
+  animation: imgProgress 1.85s linear forwards;
+  transform-origin: left center;
+}
+
 /* Noise texture overlay for hero */
 .noise-overlay::before {
   content: '';
