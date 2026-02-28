@@ -130,17 +130,21 @@ export async function POST(req: Request) {
     if (validFiles.length > 0) {
       try {
         const prompt = buildReferencePrompt(pieces);
-        // gpt-image-1 accepts an array of reference images via images.edit
+        // gpt-image-1 accepts an array of reference images via images.edit.
+        // input_fidelity: 'high' makes it closely match the reference product photos.
+        // size is omitted — let the model default to its native resolution.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const imageArg = (validFiles.length === 1 ? validFiles[0] : validFiles) as any;
         const response = await openai.images.edit({
           model: "gpt-image-1",
           image: imageArg,
           prompt,
-          size: "1024x1024",
+          input_fidelity: "high",
+          n: 1,
         });
 
         const imgData = response.data?.[0];
+        console.log("[gpt-image-1] response keys:", Object.keys(imgData ?? {}));
         if (imgData?.b64_json) {
           return NextResponse.json({
             imageUrl: `data:image/png;base64,${imgData.b64_json}`,
@@ -155,10 +159,11 @@ export async function POST(req: Request) {
             model: "gpt-image-1",
           });
         }
+        console.warn("[gpt-image-1] no image data in response, falling back");
       } catch (err) {
         // Log the reason and fall through to DALL-E 3
         console.error(
-          "gpt-image-1 failed, falling back to DALL-E 3:",
+          "[gpt-image-1] failed, falling back to DALL-E 3:",
           err instanceof Error ? err.message : err
         );
       }
