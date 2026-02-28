@@ -127,9 +127,10 @@ export default function BuilderPage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // ── DALL-E generation state ───────────────────────────────────────────────
+  // ── Generation state ──────────────────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedModel, setGeneratedModel] = useState<string>("ai");
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -273,6 +274,7 @@ export default function BuilderPage() {
         material: p!.material,
         colors: p!.colors,
         styleKeywords: p!.styleKeywords,
+        imageUrl: p!.imageUrl,
       }));
 
     try {
@@ -286,6 +288,7 @@ export default function BuilderPage() {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
+        setGeneratedModel(json.model ?? "ai");
         setShowModal(true);
       }
     } catch {
@@ -647,7 +650,7 @@ export default function BuilderPage() {
                   AI Generated Look
                 </p>
                 <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  Created with DALL·E 3 · {selectedCount} pieces
+                  Created with {generatedModel === "gpt-image-1" ? "GPT Image 1" : "DALL·E 3"} · {selectedCount} pieces
                 </p>
               </div>
               <div className="flex items-center gap-3">
