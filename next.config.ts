@@ -2,22 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Allow images from any HTTPS domain so admins can paste any product image URL
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "static.nike.com",
-      },
-      {
-        protocol: "https",
-        hostname: "secure-images.nike.com",
-      },
-      {
-        protocol: "https",
-        hostname: "images.nike.com",
+        hostname: "**",
       },
     ],
   },

@@ -73,6 +73,8 @@ export interface Product {
   imageUrl: string;
   images: string[];
   colors: string[];
+  /** Per-color image arrays. Key = color name, value = image URL list */
+  colorImages?: Record<string, string[]>;
   sizes: string[];
   material: string;
   retailers: Retailer[];

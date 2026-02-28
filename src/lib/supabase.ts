@@ -15,6 +15,7 @@ export type DbProduct = {
   image_url: string;
   images: string[];
   colors: string[];
+  color_images: Record<string, string[]> | null;
   sizes: string[];
   material: string;
   retailers: object[];

@@ -12,6 +12,7 @@ create table if not exists public.products (
   image_url     text        not null default '',
   images        text[]      not null default '{}',
   colors        text[]      not null default '{}',
+  color_images  jsonb                default null,
   sizes         text[]      not null default '{}',
   material      text        not null default '',
   retailers     jsonb       not null default '[]',

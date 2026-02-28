@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import { outfits } from "@/lib/data/outfits";
-import { fetchNikeProducts } from "@/lib/services/nikeApi";
 import type { Category, Occasion, Product } from "@/lib/types";
 
 type View = "outfits" | "pieces";
@@ -141,34 +140,11 @@ export default function BrowsePage() {
       .catch(() => {});
   }, []);
 
-  // Nike live products
-  const [nikeProducts, setNikeProducts] = useState<Product[]>([]);
-  const [nikeLoading, setNikeLoading] = useState(false);
-  const [nikeError, setNikeError] = useState<string | null>(null);
-  const [nikeSearchQuery, setNikeSearchQuery] = useState("");
-
-  const products = useMemo(
-    () => [...catalogProducts, ...nikeProducts],
-    [catalogProducts, nikeProducts]
-  );
+  const products = catalogProducts;
   const BRANDS = useMemo(
     () => [...new Set(products.map((p) => p.brand))].sort() as string[],
     [products]
   );
-
-  const loadNike = async (q?: string) => {
-    setNikeLoading(true);
-    setNikeError(null);
-    try {
-      const results = await fetchNikeProducts(q);
-      setNikeProducts(results);
-    } catch (err) {
-      setNikeError(err instanceof Error ? err.message : "Failed to load Nike products");
-      setNikeProducts([]);
-    } finally {
-      setNikeLoading(false);
-    }
-  };
 
   /* Filters */
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
@@ -602,50 +578,6 @@ export default function BrowsePage() {
               </div>
             )}
 
-            {/* Nike live search bar — pieces view only */}
-            {view === "pieces" && (
-              <div className="mt-5 flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2 border border-[var(--border)] px-3 py-2 flex-1 min-w-[220px] max-w-xs">
-                  {/* Nike swoosh placeholder */}
-                  <span className="text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] shrink-0">
-                    Nike
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Search Nike (e.g. Air Max, Dunk…)"
-                    value={nikeSearchQuery}
-                    onChange={(e) => setNikeSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") loadNike(nikeSearchQuery || undefined);
-                    }}
-                    className="flex-1 bg-transparent outline-none text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
-                  />
-                </div>
-                <button
-                  onClick={() => loadNike(nikeSearchQuery || undefined)}
-                  disabled={nikeLoading}
-                  className="text-[9px] tracking-[0.14em] uppercase font-medium px-4 py-2.5 bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40"
-                >
-                  {nikeLoading ? "Loading…" : "Load"}
-                </button>
-                {nikeProducts.length > 0 && (
-                  <button
-                    onClick={() => setNikeProducts([])}
-                    className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
-                  >
-                    Clear Nike
-                  </button>
-                )}
-                {nikeError && (
-                  <span className="text-[10px] text-red-500">{nikeError}</span>
-                )}
-                {nikeProducts.length > 0 && !nikeLoading && (
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">
-                    {nikeProducts.length} Nike products loaded
-                  </span>
-                )}
-              </div>
-            )}
 
             {/* Product / Outfit grid */}
             <div className="mt-6 pb-16">

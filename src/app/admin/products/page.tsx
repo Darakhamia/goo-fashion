@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import type { Product, Brand, Category, StyleKeyword } from "@/lib/types";
+import type { Product, Category, StyleKeyword, Retailer } from "@/lib/types";
 
-const BRANDS: Brand[] = [
-  "Acne Studios", "Balenciaga", "Fear of God", "Toteme", "Lemaire",
-  "The Row", "Jil Sander", "Maison Margiela", "A.P.C.", "Cos",
-  "Arket", "Massimo Dutti", "Zara", "& Other Stories", "Nike",
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const SUGGESTED_BRANDS = [
+  "Acne Studios", "Arket", "& Other Stories", "A.P.C.", "Balenciaga",
+  "Bottega Veneta", "Burberry", "Cos", "Fear of God", "Gucci",
+  "Jacquemus", "Jil Sander", "Lemaire", "Louis Vuitton", "Maison Margiela",
+  "Massimo Dutti", "Miu Miu", "Nike", "Prada", "Sandro", "The Row",
+  "Toteme", "Valentino", "Zara",
 ];
 
 const CATEGORIES: Category[] = [
@@ -19,41 +22,63 @@ const STYLE_KEYWORDS: StyleKeyword[] = [
   "utilitarian", "bohemian", "preppy", "sporty", "dark", "maximalist", "coastal", "academic",
 ];
 
+const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface RetailerForm {
+  name: string;
+  url: string;
+  price: string;
+  availability: "in stock" | "low stock" | "sold out";
+  isOfficial: boolean;
+}
+
 interface ProductFormState {
   name: string;
-  brand: Brand;
+  brand: string;
   category: Category;
   description: string;
   priceMin: string;
   priceMax: string;
-  imageUrl: string;
-  colors: string;
+  images: string[];
+  colorsRaw: string;
+  colorImages: Record<string, string[]>;
   sizes: string;
   material: string;
   styleKeywords: StyleKeyword[];
+  retailers: RetailerForm[];
   isNew: boolean;
 }
 
 const defaultForm: ProductFormState = {
   name: "",
-  brand: "Toteme",
+  brand: "",
   category: "outerwear",
   description: "",
   priceMin: "",
   priceMax: "",
-  imageUrl: "",
-  colors: "",
+  images: [""],
+  colorsRaw: "",
+  colorImages: {},
   sizes: "",
   material: "",
   styleKeywords: ["minimal"],
+  retailers: [],
   isNew: false,
 };
 
-const inputClass =
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const inputCls =
   "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
-const selectClass =
+const selectCls =
   "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
-const labelClass = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+const labelCls =
+  "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+const sectionCls = "border-t border-[var(--border)] pt-4 mt-1";
+
+// ── CSV Parser ─────────────────────────────────────────────────────────────────
 
 type ImportTab = "csv" | "json";
 
@@ -63,40 +88,251 @@ function parseCSV(text: string): Partial<Product>[] {
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""));
   return lines.slice(1).map((line) => {
     const values: string[] = [];
-    let current = "";
-    let inQuotes = false;
+    let cur = "";
+    let inQ = false;
     for (const ch of line) {
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if (ch === "," && !inQuotes) { values.push(current.trim()); current = ""; continue; }
-      current += ch;
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (ch === "," && !inQ) { values.push(cur.trim()); cur = ""; continue; }
+      cur += ch;
     }
-    values.push(current.trim());
-
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = values[i] ?? ""; });
-
+    values.push(cur.trim());
+    const o: Record<string, string> = {};
+    headers.forEach((h, i) => { o[h] = values[i] ?? ""; });
     return {
-      name: obj.name,
-      brand: (obj.brand as Brand) || "Zara",
-      category: (obj.category as Category) || "tops",
-      description: obj.description || "",
-      imageUrl: obj.imageurl || obj.image_url || obj.image || "",
-      colors: obj.colors ? obj.colors.split("|").map((s) => s.trim()) : [],
-      sizes: obj.sizes ? obj.sizes.split("|").map((s) => s.trim()) : [],
-      material: obj.material || "",
-      priceMin: parseFloat(obj.pricemin || obj.price_min || obj.price || "0") || 0,
-      priceMax: parseFloat(obj.pricemax || obj.price_max || obj.price || "0") || 0,
-      styleKeywords: ((obj.stylekeywords || obj.style_keywords)
-        ? (obj.stylekeywords || obj.style_keywords).split("|").map((s) => s.trim() as StyleKeyword)
-        : ["minimal" as StyleKeyword]),
-      isNew: obj.isnew === "true" || obj.is_new === "true",
+      name: o.name,
+      brand: o.brand as Product["brand"] || "Zara" as Product["brand"],
+      category: (o.category as Category) || "tops",
+      description: o.description || "",
+      imageUrl: o.imageurl || o.image_url || o.image || "",
+      images: o.imageurl ? [o.imageurl] : [],
+      colors: o.colors ? o.colors.split("|").map((s) => s.trim()) : [],
+      sizes: o.sizes ? o.sizes.split("|").map((s) => s.trim()) : [],
+      material: o.material || "",
+      priceMin: parseFloat(o.pricemin || o.price_min || o.price || "0") || 0,
+      priceMax: parseFloat(o.pricemax || o.price_max || o.price || "0") || 0,
+      styleKeywords: ((o.stylekeywords || o.style_keywords)
+        ? (o.stylekeywords || o.style_keywords).split("|").map((s) => s.trim() as StyleKeyword)
+        : ["minimal" as StyleKeyword]) as StyleKeyword[],
+      isNew: o.isnew === "true" || o.is_new === "true",
       isSaved: false,
       currency: "USD",
-      images: obj.imageurl ? [obj.imageurl] : [],
       retailers: [],
     };
   }).filter((p) => !!p.name);
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function deriveColors(raw: string): string[] {
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function ImageList({
+  images,
+  onChange,
+}: {
+  images: string[];
+  onChange: (imgs: string[]) => void;
+}) {
+  const addRow = () => onChange([...images, ""]);
+  const removeRow = (i: number) => onChange(images.filter((_, idx) => idx !== i));
+  const setVal = (i: number, v: string) =>
+    onChange(images.map((img, idx) => (idx === i ? v : img)));
+
+  return (
+    <div className="flex flex-col gap-2">
+      {images.map((url, i) => (
+        <div key={i} className="flex gap-2 items-start">
+          <div className="flex-1 flex flex-col gap-1">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setVal(i, e.target.value)}
+              placeholder="https://…"
+              className={inputCls}
+            />
+            {url && (
+              <div className="relative w-12 h-16 border border-[var(--border)] overflow-hidden shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt="preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                />
+              </div>
+            )}
+          </div>
+          {i === 0 && (
+            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-2.5 shrink-0">Main</span>
+          )}
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={() => removeRow(i)}
+              className="mt-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addRow}
+        className="self-start text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5 mt-1"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+        Add image
+      </button>
+    </div>
+  );
+}
+
+function ColorImageSection({
+  colorsRaw,
+  colorImages,
+  onChange,
+}: {
+  colorsRaw: string;
+  colorImages: Record<string, string[]>;
+  onChange: (ci: Record<string, string[]>) => void;
+}) {
+  const colors = deriveColors(colorsRaw);
+  if (colors.length === 0) return null;
+
+  const setColorImgs = (color: string, imgs: string[]) =>
+    onChange({ ...colorImages, [color]: imgs });
+
+  return (
+    <div className="flex flex-col gap-4 mt-3">
+      {colors.map((color) => {
+        const imgs = colorImages[color] ?? [""];
+        return (
+          <div key={color}>
+            <p className={`${labelCls} mb-2`}>
+              <span className="inline-block w-2 h-2 rounded-full bg-[var(--foreground)] mr-1.5 align-middle" />
+              {color}
+            </p>
+            <ImageList
+              images={imgs}
+              onChange={(next) => setColorImgs(color, next)}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RetailerList({
+  retailers,
+  onChange,
+}: {
+  retailers: RetailerForm[];
+  onChange: (r: RetailerForm[]) => void;
+}) {
+  const add = () =>
+    onChange([...retailers, { name: "", url: "", price: "", availability: "in stock", isOfficial: false }]);
+  const remove = (i: number) => onChange(retailers.filter((_, idx) => idx !== i));
+  const set = (i: number, patch: Partial<RetailerForm>) =>
+    onChange(retailers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  return (
+    <div className="flex flex-col gap-3">
+      {retailers.map((r, i) => (
+        <div key={i} className="border border-[var(--border)] p-3 flex flex-col gap-2 relative">
+          <button
+            type="button"
+            onClick={() => remove(i)}
+            className="absolute top-2 right-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </button>
+          <div className="grid grid-cols-2 gap-2 pr-5">
+            <div>
+              <label className={labelCls}>Store name</label>
+              <input
+                type="text"
+                value={r.name}
+                onChange={(e) => set(i, { name: e.target.value })}
+                placeholder="Zara Official"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Price ($)</label>
+              <input
+                type="number"
+                value={r.price}
+                onChange={(e) => set(i, { price: e.target.value })}
+                placeholder="99"
+                min="0"
+                className={inputCls}
+              />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Store URL</label>
+            <input
+              type="url"
+              value={r.url}
+              onChange={(e) => set(i, { url: e.target.value })}
+              placeholder="https://zara.com/product/…"
+              className={inputCls}
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className={labelCls}>Availability</label>
+              <select
+                value={r.availability}
+                onChange={(e) => set(i, { availability: e.target.value as RetailerForm["availability"] })}
+                className={selectCls}
+              >
+                {AVAILABILITY_OPTIONS.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <input
+                type="checkbox"
+                id={`official-${i}`}
+                checked={r.isOfficial}
+                onChange={(e) => set(i, { isOfficial: e.target.checked })}
+                className="w-3.5 h-3.5 accent-[var(--foreground)]"
+              />
+              <label htmlFor={`official-${i}`} className="text-xs text-[var(--foreground-muted)] cursor-pointer">
+                Official store
+              </label>
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="self-start text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+        Add retailer
+      </button>
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -132,7 +368,6 @@ export default function AdminProductsPage() {
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
 
-      // Check DB status via seed endpoint (returns 501 if not configured)
       const testRes = await fetch("/api/products/seed", { method: "POST" });
       if (testRes.status === 501) {
         setDbConfigured(false);
@@ -161,6 +396,8 @@ export default function AdminProductsPage() {
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // ── Modal ──────────────────────────────────────────────────────────────────
+
   const openAddModal = () => {
     setEditingProduct(null);
     setForm(defaultForm);
@@ -169,6 +406,8 @@ export default function AdminProductsPage() {
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
+    // Merge color images: ensure every known color has at least an empty entry
+    const ci: Record<string, string[]> = { ...(product.colorImages ?? {}) };
     setForm({
       name: product.name,
       brand: product.brand,
@@ -176,11 +415,19 @@ export default function AdminProductsPage() {
       description: product.description ?? "",
       priceMin: String(product.priceMin),
       priceMax: String(product.priceMax),
-      imageUrl: product.imageUrl ?? "",
-      colors: product.colors?.join(", ") ?? "",
+      images: product.images?.length ? product.images : [product.imageUrl ?? ""],
+      colorsRaw: product.colors?.join(", ") ?? "",
+      colorImages: ci,
       sizes: product.sizes?.join(", ") ?? "",
       material: product.material ?? "",
       styleKeywords: (product.styleKeywords as StyleKeyword[]) ?? ["minimal"],
+      retailers: (product.retailers ?? []).map((r) => ({
+        name: r.name,
+        url: r.url,
+        price: String(r.price),
+        availability: r.availability,
+        isOfficial: r.isOfficial,
+      })),
       isNew: product.isNew,
     });
     setShowModal(true);
@@ -195,30 +442,44 @@ export default function AdminProductsPage() {
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
+
+    const validImages = form.images.filter((u) => u.trim());
+    const colors = deriveColors(form.colorsRaw);
+    const cleanColorImages: Record<string, string[]> = {};
+    colors.forEach((c) => {
+      const imgs = (form.colorImages[c] ?? []).filter((u) => u.trim());
+      if (imgs.length) cleanColorImages[c] = imgs;
+    });
+
     const payload: Partial<Product> = {
       name: form.name.trim(),
-      brand: form.brand,
+      brand: form.brand as Product["brand"],
       category: form.category,
       description: form.description.trim(),
       priceMin: parseFloat(form.priceMin) || 0,
       priceMax: parseFloat(form.priceMax) || parseFloat(form.priceMin) || 0,
-      imageUrl: form.imageUrl.trim() ||
-        "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90",
-      images: form.imageUrl.trim() ? [form.imageUrl.trim()] : [],
-      colors: form.colors.split(",").map((s) => s.trim()).filter(Boolean),
+      imageUrl: validImages[0] || "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90",
+      images: validImages.length ? validImages : ["https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90"],
+      colors,
+      colorImages: Object.keys(cleanColorImages).length ? cleanColorImages : undefined,
       sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
       material: form.material.trim(),
       styleKeywords: form.styleKeywords,
+      retailers: form.retailers.map((r) => ({
+        name: r.name,
+        url: r.url,
+        price: parseFloat(r.price) || 0,
+        currency: "USD",
+        availability: r.availability,
+        isOfficial: r.isOfficial,
+      })) as Retailer[],
       isNew: form.isNew,
       isSaved: false,
       currency: "USD",
-      retailers: [],
     };
 
     if (dbConfigured) {
-      const url = editingProduct
-        ? `/api/products/${editingProduct.id}`
-        : "/api/products";
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products";
       const method = editingProduct ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
@@ -266,7 +527,8 @@ export default function AdminProductsPage() {
     showToast("Deleted.");
   };
 
-  // ── Import ────────────────────────────────────────────────────────
+  // ── Import ─────────────────────────────────────────────────────────────────
+
   const parseImport = () => {
     setImportError("");
     try {
@@ -287,10 +549,7 @@ export default function AdminProductsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImportText(ev.target?.result as string);
-      setImportPreview([]);
-    };
+    reader.onload = (ev) => { setImportText(ev.target?.result as string); setImportPreview([]); };
     reader.readAsText(file);
   };
 
@@ -311,7 +570,7 @@ export default function AdminProductsPage() {
       const newProds: Product[] = importPreview.map((p, i) => ({
         id: `import-${Date.now()}-${i}`,
         name: p.name ?? "",
-        brand: (p.brand as Brand) ?? "Zara",
+        brand: (p.brand as Product["brand"]) ?? "Zara" as Product["brand"],
         category: (p.category as Category) ?? "tops",
         description: p.description ?? "",
         imageUrl: p.imageUrl ?? "",
@@ -355,6 +614,8 @@ export default function AdminProductsPage() {
     }));
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="max-w-6xl">
       {/* DB status banner */}
@@ -383,8 +644,8 @@ export default function AdminProductsPage() {
           <button
             onClick={handleSeed}
             disabled={seeding || !dbConfigured}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title={dbConfigured ? "Seed default catalog" : "Requires Supabase"}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {seeding ? "Seeding…" : "Seed catalog"}
           </button>
@@ -416,7 +677,7 @@ export default function AdminProductsPage() {
           placeholder="Search by name, brand or category…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className={`${inputClass} max-w-sm`}
+          className={`${inputCls} max-w-sm`}
         />
       </div>
 
@@ -440,15 +701,18 @@ export default function AdminProductsPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">No products found.</td>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                    No products found.
+                  </td>
                 </tr>
               ) : (
                 filtered.map((product) => (
                   <tr key={product.id} className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
                     <td className="px-4 py-3">
-                      <div className="relative w-10 h-[52px] overflow-hidden flex-shrink-0">
+                      <div className="relative w-10 h-[52px] overflow-hidden">
                         {product.imageUrl ? (
-                          <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="40px" />
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-[var(--surface)]" />
                         )}
@@ -470,7 +734,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       {product.isNew ? (
-                        <span className="text-[9px] tracking-[0.14em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5 leading-none">New</span>
+                        <span className="text-[9px] tracking-[0.14em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5">New</span>
                       ) : (
                         <span className="text-[var(--foreground-subtle)]">—</span>
                       )}
@@ -500,8 +764,12 @@ export default function AdminProductsPage() {
       {/* ── Add / Edit Modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="border border-[var(--border)] p-8 max-w-xl w-full mx-4 max-h-[92vh] overflow-y-auto" style={{ background: "var(--background)" }}>
-            <div className="flex items-center justify-between mb-7">
+          <div
+            className="border border-[var(--border)] p-6 md:p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
+            style={{ background: "var(--background)" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                 {editingProduct ? "Edit Product" : "Add Product"}
               </h2>
@@ -512,74 +780,156 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
+              {/* ── Basic info ── */}
               <div>
-                <label className={labelClass}>Name *</label>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Product name" className={inputClass} />
+                <label className={labelCls}>Name *</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Product name"
+                  className={inputCls}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Brand</label>
-                  <select value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value as Brand }))} className={selectClass}>
-                    {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-                  </select>
+                  <label className={labelCls}>Brand</label>
+                  <input
+                    type="text"
+                    list="brand-suggestions"
+                    value={form.brand}
+                    onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                    placeholder="Type or pick brand…"
+                    className={inputCls}
+                  />
+                  <datalist id="brand-suggestions">
+                    {SUGGESTED_BRANDS.map((b) => <option key={b} value={b} />)}
+                  </datalist>
                 </div>
                 <div>
-                  <label className={labelClass}>Category</label>
-                  <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category }))} className={selectClass}>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                  <label className={labelCls}>Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category }))}
+                    className={selectCls}
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className={labelClass}>Description</label>
-                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputClass} resize-none`} />
+                <label className={labelCls}>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Short product description…"
+                  rows={3}
+                  className={`${inputCls} resize-none`}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClass}>Price Min ($)</label>
-                  <input type="number" value={form.priceMin} onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))} placeholder="0" min="0" className={inputClass} />
+                  <label className={labelCls}>Price Min ($)</label>
+                  <input
+                    type="number"
+                    value={form.priceMin}
+                    onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
+                    placeholder="0"
+                    min="0"
+                    className={inputCls}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>Price Max ($)</label>
-                  <input type="number" value={form.priceMax} onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))} placeholder="0" min="0" className={inputClass} />
+                  <label className={labelCls}>Price Max ($)</label>
+                  <input
+                    type="number"
+                    value={form.priceMax}
+                    onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
+                    placeholder="0"
+                    min="0"
+                    className={inputCls}
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className={labelClass}>Image URL</label>
-                <input type="url" value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" className={inputClass} />
-                {form.imageUrl && (
-                  <div className="mt-2 relative w-16 h-20 border border-[var(--border)] overflow-hidden">
-                    <Image src={form.imageUrl} alt="preview" fill className="object-cover" sizes="64px" />
+              {/* ── Images ── */}
+              <div className={sectionCls}>
+                <label className={`${labelCls} mb-3`}>
+                  Product Images <span className="normal-case text-[var(--foreground-subtle)]">(first = main)</span>
+                </label>
+                <ImageList
+                  images={form.images}
+                  onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
+                />
+              </div>
+
+              {/* ── Colors + Sizes ── */}
+              <div className={sectionCls}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                    <input
+                      type="text"
+                      value={form.colorsRaw}
+                      onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
+                      placeholder="Black, White, Camel"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Sizes <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                    <input
+                      type="text"
+                      value={form.sizes}
+                      onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
+                      placeholder="XS, S, M, L, XL"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+
+                {/* Color-specific images */}
+                {deriveColors(form.colorsRaw).length > 0 && (
+                  <div className="mt-4">
+                    <label className={`${labelCls} mb-1`}>
+                      Images per color <span className="normal-case text-[var(--foreground-subtle)]">(optional)</span>
+                    </label>
+                    <ColorImageSection
+                      colorsRaw={form.colorsRaw}
+                      colorImages={form.colorImages}
+                      onChange={(ci) => setForm((f) => ({ ...f, colorImages: ci }))}
+                    />
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelClass}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                  <input type="text" value={form.colors} onChange={(e) => setForm((f) => ({ ...f, colors: e.target.value }))} placeholder="Black, White, Camel" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Sizes <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                  <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={inputClass} />
-                </div>
+              {/* ── Material ── */}
+              <div>
+                <label className={labelCls}>Material</label>
+                <input
+                  type="text"
+                  value={form.material}
+                  onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
+                  placeholder="100% Wool"
+                  className={inputCls}
+                />
               </div>
 
-              <div>
-                <label className={labelClass}>Material</label>
-                <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputClass} />
-              </div>
-
-              <div>
-                <label className={labelClass}>Style Keywords</label>
+              {/* ── Style Keywords ── */}
+              <div className={sectionCls}>
+                <label className={labelCls}>Style Keywords</label>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {STYLE_KEYWORDS.map((kw) => (
-                    <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
+                    <button
+                      key={kw}
+                      type="button"
+                      onClick={() => toggleKeyword(kw)}
                       className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
                         form.styleKeywords.includes(kw)
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
@@ -592,19 +942,43 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              {/* ── Retailers ── */}
+              <div className={sectionCls}>
+                <label className={`${labelCls} mb-3`}>Where to buy</label>
+                <RetailerList
+                  retailers={form.retailers}
+                  onChange={(r) => setForm((f) => ({ ...f, retailers: r }))}
+                />
+              </div>
+
+              {/* ── Is New ── */}
               <div className="flex items-center gap-3">
-                <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
-                <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">Mark as new arrival</label>
+                <input
+                  type="checkbox"
+                  id="isNew"
+                  checked={form.isNew}
+                  onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))}
+                  className="w-3.5 h-3.5 accent-[var(--foreground)]"
+                />
+                <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                  Mark as new arrival
+                </label>
               </div>
             </div>
 
+            {/* Actions */}
             <div className="flex gap-3 mt-7">
-              <button onClick={handleSave} disabled={!form.name.trim() || saving}
+              <button
+                onClick={handleSave}
+                disabled={!form.name.trim() || saving}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
               </button>
-              <button onClick={closeModal} className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+              <button
+                onClick={closeModal}
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              >
                 Cancel
               </button>
             </div>
@@ -615,10 +989,14 @@ export default function AdminProductsPage() {
       {/* ── Import Modal ── */}
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="border border-[var(--border)] p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto" style={{ background: "var(--background)" }}>
+          <div
+            className="border border-[var(--border)] p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
+            style={{ background: "var(--background)" }}
+          >
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">Import Products</h2>
-              <button onClick={() => { setShowImport(false); setImportText(""); setImportPreview([]); setImportError(""); }}
+              <button
+                onClick={() => { setShowImport(false); setImportText(""); setImportPreview([]); setImportError(""); }}
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -629,8 +1007,14 @@ export default function AdminProductsPage() {
 
             <div className="flex border-b border-[var(--border)] mb-5">
               {(["csv", "json"] as ImportTab[]).map((tab) => (
-                <button key={tab} onClick={() => { setImportTab(tab); setImportPreview([]); setImportError(""); }}
-                  className={`px-4 py-2 text-xs tracking-[0.12em] uppercase border-b-2 transition-colors ${importTab === tab ? "border-[var(--foreground)] text-[var(--foreground)]" : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                <button
+                  key={tab}
+                  onClick={() => { setImportTab(tab); setImportPreview([]); setImportError(""); }}
+                  className={`px-4 py-2 text-xs tracking-[0.12em] uppercase border-b-2 transition-colors ${
+                    importTab === tab
+                      ? "border-[var(--foreground)] text-[var(--foreground)]"
+                      : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  }`}
                 >
                   {tab.toUpperCase()}
                 </button>
@@ -640,17 +1024,23 @@ export default function AdminProductsPage() {
             {importTab === "csv" && (
               <div className="mb-4">
                 <p className="text-xs text-[var(--foreground-muted)] mb-3">
-                  Columns: <code className="font-mono text-[10px]">name, brand, category, priceMin, priceMax, imageUrl, isNew, colors (pipe |), sizes (pipe |), description, material, styleKeywords (pipe |)</code>
+                  Columns: <code className="font-mono text-[10px]">name, brand, category, priceMin, priceMax, imageUrl, isNew, colors (|), sizes (|), description, material, styleKeywords (|)</code>
                 </p>
                 <div className="mb-3">
                   <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleFileUpload} className="hidden" />
-                  <button onClick={() => csvInputRef.current?.click()} className="border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                  <button
+                    onClick={() => csvInputRef.current?.click()}
+                    className="border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                  >
                     Upload CSV file
                   </button>
                 </div>
-                <textarea value={importText} onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
+                <textarea
+                  value={importText}
+                  onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
                   placeholder={"name,brand,category,priceMin,priceMax,imageUrl,isNew\nCool Jacket,Zara,outerwear,79,99,https://...,true"}
-                  rows={8} className={`${inputClass} font-mono text-xs resize-none`}
+                  rows={8}
+                  className={`${inputCls} font-mono text-xs resize-none`}
                 />
               </div>
             )}
@@ -658,9 +1048,12 @@ export default function AdminProductsPage() {
             {importTab === "json" && (
               <div className="mb-4">
                 <p className="text-xs text-[var(--foreground-muted)] mb-3">Paste a JSON array of product objects.</p>
-                <textarea value={importText} onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
-                  placeholder={'[\n  {\n    "name": "Cool Jacket",\n    "brand": "Zara",\n    "category": "outerwear",\n    "priceMin": 79,\n    "priceMax": 99\n  }\n]'}
-                  rows={10} className={`${inputClass} font-mono text-xs resize-none`}
+                <textarea
+                  value={importText}
+                  onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
+                  placeholder={'[\n  { "name": "Cool Jacket", "brand": "Zara", "category": "outerwear", "priceMin": 79, "priceMax": 99 }\n]'}
+                  rows={10}
+                  className={`${inputCls} font-mono text-xs resize-none`}
                 />
               </div>
             )}
@@ -682,10 +1075,15 @@ export default function AdminProductsPage() {
             )}
 
             <div className="flex gap-3">
-              <button onClick={parseImport} className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+              <button
+                onClick={parseImport}
+                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              >
                 Preview
               </button>
-              <button onClick={handleImport} disabled={!importPreview.length || importing}
+              <button
+                onClick={handleImport}
+                disabled={!importPreview.length || importing}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {importing ? "Importing…" : `Import ${importPreview.length ? importPreview.length + " " : ""}Products`}
@@ -697,11 +1095,13 @@ export default function AdminProductsPage() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[100] px-5 py-3 text-sm border ${
-          toast.type === "ok"
-            ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
-            : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300"
-        }`}>
+        <div
+          className={`fixed bottom-6 right-6 z-[100] px-5 py-3 text-sm border ${
+            toast.type === "ok"
+              ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
+              : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300"
+          }`}
+        >
           {toast.msg}
         </div>
       )}
