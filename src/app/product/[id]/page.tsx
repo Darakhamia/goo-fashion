@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { getProductById, getAllProducts } from "@/lib/data/db";
 import ProductCard from "@/components/product/ProductCard";
+import ProductGallery from "@/components/product/ProductGallery";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -43,46 +43,15 @@ export default async function ProductDetailPage({ params }: Props) {
 
         {/* Main */}
         <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--border)]">
-          {/* Left: Images */}
+          {/* Left: Gallery (interactive: thumbnails + color switching) */}
           <div className="bg-[var(--background)]">
-            {/* Primary image */}
-            <div className="relative aspect-[3/4] overflow-hidden">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-              {product.isNew && (
-                <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
-                    New
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnail strip if multiple images */}
-            {product.images.length > 1 && (
-              <div className="flex gap-px mt-px">
-                {product.images.map((img, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 relative aspect-square overflow-hidden cursor-pointer"
-                  >
-                    <Image
-                      src={img}
-                      alt={`${product.name} view ${i + 1}`}
-                      fill
-                      className="object-cover hover:opacity-80 transition-opacity duration-200"
-                      sizes="100px"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <ProductGallery
+              images={product.images?.length ? product.images : [product.imageUrl]}
+              colors={product.colors ?? []}
+              colorImages={product.colorImages}
+              productName={product.name}
+              isNew={product.isNew}
+            />
           </div>
 
           {/* Right: Product Info */}
@@ -120,23 +89,6 @@ export default async function ProductDetailPage({ params }: Props) {
                 Material
               </p>
               <p className="text-sm text-[var(--foreground-muted)]">{product.material}</p>
-            </div>
-
-            {/* Colors */}
-            <div className="mb-8">
-              <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
-                Available in
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] px-3 py-1.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors duration-200"
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Sizes */}
