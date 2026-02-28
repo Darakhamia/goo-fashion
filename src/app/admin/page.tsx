@@ -92,7 +92,7 @@ const recentProducts = products.slice(-6).reverse();
 
 export default function AdminDashboardPage() {
   return (
-    <div className="max-w-6xl">
+    <div>
       {/* Page title */}
       <div className="mb-8">
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">

@@ -679,7 +679,7 @@ export default function AdminProductsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-6xl">
+    <div>
       {/* DB status banner */}
       {dbConfigured === false && (
         <div className="mb-4 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
