@@ -127,6 +127,12 @@ export default function BuilderPage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // ── DALL-E generation state ───────────────────────────────────────────────
+  const [generating, setGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
   // Load fresh products from API (static data shown instantly as fallback)
   useEffect(() => {
     fetch("/api/products")
@@ -248,6 +254,45 @@ export default function BuilderPage() {
       localStorage.setItem("goo-saved-outfits", JSON.stringify([outfit, ...existing].slice(0, 50)));
     } catch {}
     setSaved(true);
+  };
+
+  // ── DALL-E generation ─────────────────────────────────────────────────────
+
+  const generateOutfit = async () => {
+    setGenerating(true);
+    setGenerateError(null);
+    setGeneratedImage(null);
+
+    const pieces = Object.entries(selection)
+      .filter(([, p]) => p != null)
+      .map(([slot, p]) => ({
+        slot,
+        name: p!.name,
+        brand: p!.brand,
+        category: p!.category,
+        material: p!.material,
+        colors: p!.colors,
+        styleKeywords: p!.styleKeywords,
+      }));
+
+    try {
+      const res = await fetch("/api/generate-outfit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieces }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setGenerateError(json.error ?? "Generation failed. Try again.");
+      } else {
+        setGeneratedImage(json.imageUrl);
+        setShowModal(true);
+      }
+    } catch {
+      setGenerateError("Network error. Check your connection.");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -536,22 +581,127 @@ export default function BuilderPage() {
               )}
             </div>
 
-            {/* Save button */}
+            {/* Buttons */}
             {selectedCount >= 2 && (
-              <button
-                onClick={saveOutfit}
-                className={`text-xs tracking-[0.14em] uppercase font-medium px-5 py-2.5 transition-all duration-200 ${
-                  saved
-                    ? "border border-[var(--border)] text-[var(--foreground-muted)]"
-                    : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
-                }`}
-              >
-                {saved ? "Saved ✓" : "Save outfit"}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Generate with DALL-E */}
+                <button
+                  onClick={generateOutfit}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 text-xs tracking-[0.14em] uppercase font-medium border border-[var(--foreground)] text-[var(--foreground)] px-4 py-2.5 hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generating ? (
+                    <>
+                      <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                      </svg>
+                      Generate
+                    </>
+                  )}
+                </button>
+
+                {/* Save */}
+                <button
+                  onClick={saveOutfit}
+                  className={`text-xs tracking-[0.14em] uppercase font-medium px-4 py-2.5 transition-all duration-200 ${
+                    saved
+                      ? "border border-[var(--border)] text-[var(--foreground-muted)]"
+                      : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
+                  }`}
+                >
+                  {saved ? "Saved ✓" : "Save"}
+                </button>
+              </div>
+            )}
+
+            {/* Error message */}
+            {generateError && (
+              <p className="text-[10px] text-red-500 absolute bottom-16 right-4">
+                {generateError}
+              </p>
             )}
           </div>
         </main>
       </div>
+
+      {/* ── Generated image modal ── */}
+      {showModal && generatedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]">
+              <div>
+                <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                  AI Generated Look
+                </p>
+                <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                  Created with DALL·E 3 · {selectedCount} pieces
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Download */}
+                <a
+                  href={generatedImage}
+                  download="goo-outfit.png"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1V8M3 6L6 9L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M1 10H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  Download
+                </a>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Image */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={generatedImage}
+              alt="AI generated outfit"
+              className="w-full aspect-square object-cover"
+            />
+
+            {/* Regenerate */}
+            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between">
+              <p className="text-[9px] text-[var(--foreground-subtle)] max-w-xs leading-relaxed">
+                AI-generated image based on selected pieces. May not reflect exact products.
+              </p>
+              <button
+                onClick={() => { setShowModal(false); generateOutfit(); }}
+                className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
