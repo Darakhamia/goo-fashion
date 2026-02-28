@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getProductById, products } from "@/lib/data/products";
+import { getProductById, getAllProducts } from "@/lib/data/db";
 import ProductCard from "@/components/product/ProductCard";
 
 interface Props {
@@ -10,15 +10,18 @@ interface Props {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params;
-  const product = getProductById(id);
+  const product = await getProductById(id);
 
   if (!product) notFound();
 
-  const relatedProducts = products
+  const allProducts = await getAllProducts();
+  const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.category === product.category)
     .slice(0, 4);
 
-  const lowestPrice = Math.min(...product.retailers.map((r) => r.price));
+  const lowestPrice = product.retailers.length
+    ? Math.min(...product.retailers.map((r) => r.price))
+    : product.priceMin;
 
   return (
     <div className="pt-16 min-h-screen">

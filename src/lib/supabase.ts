@@ -1,0 +1,28 @@
+import { createClient } from "@supabase/supabase-js";
+
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export const supabase = url && key ? createClient(url, key) : null;
+export const isSupabaseConfigured = !!(url && key);
+
+export type DbProduct = {
+  id: string;
+  name: string;
+  brand: string;
+  category: string;
+  description: string;
+  image_url: string;
+  images: string[];
+  colors: string[];
+  sizes: string[];
+  material: string;
+  retailers: object[];
+  price_min: number;
+  price_max: number;
+  currency: string;
+  is_new: boolean;
+  is_saved: boolean;
+  style_keywords: string[];
+  created_at: string;
+};

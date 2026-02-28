@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import { outfits } from "@/lib/data/outfits";
-import { products as staticProducts } from "@/lib/data/products";
 import { fetchNikeProducts } from "@/lib/services/nikeApi";
 import type { Category, Occasion, Product } from "@/lib/types";
 
@@ -133,6 +132,15 @@ export default function BrowsePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Catalog products (from API / Supabase or static fallback)
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setCatalogProducts(d); })
+      .catch(() => {});
+  }, []);
+
   // Nike live products
   const [nikeProducts, setNikeProducts] = useState<Product[]>([]);
   const [nikeLoading, setNikeLoading] = useState(false);
@@ -140,8 +148,8 @@ export default function BrowsePage() {
   const [nikeSearchQuery, setNikeSearchQuery] = useState("");
 
   const products = useMemo(
-    () => [...staticProducts, ...nikeProducts],
-    [nikeProducts]
+    () => [...catalogProducts, ...nikeProducts],
+    [catalogProducts, nikeProducts]
   );
   const BRANDS = useMemo(
     () => [...new Set(products.map((p) => p.brand))].sort() as string[],
