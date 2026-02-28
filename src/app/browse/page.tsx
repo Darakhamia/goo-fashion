@@ -128,8 +128,7 @@ export default function BrowsePage() {
   const [view, setView] = useState<View>("outfits");
   const [searchQuery, setSearchQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Catalog products (from API / Supabase or static fallback)
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
@@ -444,64 +443,17 @@ export default function BrowsePage() {
           </div>
         </div>
 
-        {/* ── Sidebar + Grid layout ── */}
-        <div className="flex">
-          {/* Desktop sidebar — CSS width transition for smooth open/close */}
-          <aside
-            className={`hidden md:flex flex-col shrink-0 border-r border-[var(--border)] sticky top-16 self-start max-h-[calc(100vh-4rem)] overflow-hidden transition-all duration-300 ease-in-out ${
-              sidebarOpen ? "w-56 lg:w-64 opacity-100" : "w-0 opacity-0 border-r-0"
-            }`}
-          >
-            <div
-              className={`overflow-y-auto flex-1 transition-opacity duration-200 ${
-                sidebarOpen ? "opacity-100 delay-100" : "opacity-0"
-              }`}
-              style={{ minWidth: "14rem" }}
-            >
-              <div className="px-6 pt-6 pb-8">{renderFilters()}</div>
-            </div>
-          </aside>
-
+        {/* ── Grid layout (always full-width) ── */}
+        <div>
           {/* Main content */}
-          <main className="flex-1 min-w-0 px-6 md:px-8 lg:px-10">
+          <main className="min-w-0 px-6 md:px-8 lg:px-10">
             {/* Top toolbar */}
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
               <div className="flex items-center gap-4">
-                {/* Desktop filter toggle */}
+                {/* Filter toggle — unified for all screen sizes */}
                 <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className={`hidden md:flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium transition-all duration-200 border px-3 py-1.5 ${
-                    sidebarOpen
-                      ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                  style={sidebarOpen ? { color: "var(--background)" } : {}}
-                >
-                  <svg
-                    width="13" height="10" viewBox="0 0 13 10" fill="none"
-                    className="transition-transform duration-300"
-                    style={{ transform: sidebarOpen ? "scaleX(-1)" : "scaleX(1)" }}
-                  >
-                    <path d="M1 1.5H12M1 5H9M1 8.5H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span>{sidebarOpen ? "Hide filters" : "Filters"}</span>
-                  {activeFiltersCount > 0 && (
-                    <span
-                      className={`w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center transition-colors duration-200 ${
-                        sidebarOpen
-                          ? "bg-[var(--background)] text-[var(--foreground)]"
-                          : "bg-[var(--foreground)] text-[var(--background)]"
-                      }`}
-                    >
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Mobile filter button */}
-                <button
-                  onClick={() => setMobileSidebarOpen(true)}
-                  className="md:hidden flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
+                  onClick={() => setFiltersOpen(true)}
+                  className="flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
                     <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -615,46 +567,48 @@ export default function BrowsePage() {
         </div>
       </div>
 
-      {/* ── Mobile filter drawer ── */}
-      {mobileSidebarOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden animate-overlay-in"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="fixed top-0 right-0 bottom-0 w-80 max-w-[90vw] bg-[var(--background)] z-50 flex flex-col md:hidden animate-slide-in-right shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-              <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground)]">
-                Filters
-              </span>
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M4 4L12 12M12 4L4 12"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 pt-4">
-              {renderFilters()}
-            </div>
-            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="w-full text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] py-3.5 hover:opacity-80 transition-opacity duration-200"
-              >
-                View {count} results
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* ── Filter overlay panel (all screen sizes) ── */}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300 ${
+          filtersOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setFiltersOpen(false)}
+      />
+      {/* Slide-in panel from the left */}
+      <div
+        className={`fixed top-16 left-0 bottom-0 z-50 w-72 flex flex-col bg-[var(--background)] border-r border-[var(--border)] shadow-2xl transition-transform duration-300 ease-in-out ${
+          filtersOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
+          <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground)]">
+            Filters
+          </span>
+          <button
+            onClick={() => setFiltersOpen(false)}
+            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 -mr-1"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        {/* Scrollable filter content */}
+        <div className="flex-1 overflow-y-auto px-6 pt-5 pb-4">
+          {renderFilters()}
+        </div>
+        {/* Footer CTA */}
+        <div className="px-6 py-4 border-t border-[var(--border)] shrink-0">
+          <button
+            onClick={() => setFiltersOpen(false)}
+            className="w-full text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] py-3.5 hover:opacity-80 transition-opacity duration-200"
+          >
+            View {count} result{count !== 1 ? "s" : ""}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
