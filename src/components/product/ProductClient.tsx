@@ -12,7 +12,14 @@ interface Props {
 }
 
 export default function ProductClient({ product, relatedProducts, lowestPrice }: Props) {
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  // Auto-select the first color that has dedicated images, so the gallery is
+  // populated on first render without requiring the user to click a swatch.
+  const defaultColor = useMemo(() => {
+    if (!product.colorImages) return null;
+    return product.colors.find((c) => (product.colorImages![c]?.length ?? 0) > 0) ?? null;
+  }, [product]);
+
+  const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
 
   // Resolve which images to display
