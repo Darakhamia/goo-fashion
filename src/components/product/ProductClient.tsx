@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import ProductCard from "./ProductCard";
@@ -22,6 +22,8 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Resolve which images to display
   const displayImages = useMemo(() => {
@@ -32,25 +34,32 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
     return imgs.length ? imgs : [product.imageUrl].filter(Boolean);
   }, [selectedColor, product]);
 
-  // Fade-transition to a given index
-  const goTo = (newIdx: number) => {
+  // Fade-transition to a given index; manual=true pauses auto-advance for 8s
+  const goTo = (newIdx: number, manual = false) => {
     setImgVisible(false);
     setTimeout(() => {
       setActiveIdx(newIdx);
       setImgVisible(true);
     }, 260);
+    if (manual) {
+      setPaused(true);
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = setTimeout(() => setPaused(false), 8000);
+    }
   };
 
-  // Reset to first image (with fade) when color changes
+  // Reset to first image (with fade) when color changes; also resume auto-advance
   useEffect(() => {
+    setPaused(false);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
     setImgVisible(false);
     const t = setTimeout(() => { setActiveIdx(0); setImgVisible(true); }, 260);
     return () => clearTimeout(t);
   }, [selectedColor]);
 
-  // Auto-advance every 2 s
+  // Auto-advance every 2 s (skipped when paused)
   useEffect(() => {
-    if (displayImages.length <= 1) return;
+    if (displayImages.length <= 1 || paused) return;
     const iv = setInterval(() => {
       setImgVisible(false);
       setTimeout(() => {
@@ -59,7 +68,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
       }, 260);
     }, 2000);
     return () => clearInterval(iv);
-  }, [selectedColor, displayImages.length]);
+  }, [selectedColor, displayImages.length, paused]);
 
   const mainImage = displayImages[activeIdx] || product.imageUrl || "";
 
@@ -101,13 +110,24 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
                 </span>
               </div>
             )}
-            {/* Auto-advance progress bar */}
-            {displayImages.length > 1 && (
+            {/* Auto-advance progress bar (hidden when paused) */}
+            {displayImages.length > 1 && !paused && (
               <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20">
                 <div
                   key={activeIdx}
                   className="h-full w-full bg-white/60 animate-img-progress"
                 />
+              </div>
+            )}
+            {/* Pause indicator */}
+            {paused && displayImages.length > 1 && (
+              <div className="absolute bottom-3 right-3">
+                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1">
+                  <span className="flex gap-[3px]">
+                    <span className="w-[2px] h-2.5 bg-white/80 block" />
+                    <span className="w-[2px] h-2.5 bg-white/80 block" />
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -118,7 +138,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
-                  onClick={() => goTo(i)}
+                  onClick={() => goTo(i, true)}
                   className={`flex-1 aspect-square overflow-hidden transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-1 ring-inset ring-[var(--foreground)]" : "opacity-50 hover:opacity-80"
                   }`}

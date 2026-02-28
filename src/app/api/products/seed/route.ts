@@ -4,6 +4,14 @@ import { productToDb, dbToProduct } from "@/lib/data/db";
 import { products as staticProducts } from "@/lib/data/products";
 import type { DbProduct } from "@/lib/supabase";
 
+// GET /api/products/seed — check if Supabase is configured (no data change)
+export async function GET() {
+  if (!isSupabaseConfigured || !supabase) {
+    return NextResponse.json({ configured: false }, { status: 501 });
+  }
+  return NextResponse.json({ configured: true });
+}
+
 // POST /api/products/seed
 // Imports the default static catalog into Supabase (skips duplicates by name).
 export async function POST() {

@@ -54,6 +54,15 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/admin/brands",
+    label: "Brands",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 4H14M2 8H10M2 12H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 const darkVars: React.CSSProperties = {
@@ -71,6 +80,7 @@ const pageTitles: Record<string, string> = {
   "/admin/products": "Products",
   "/admin/outfits": "Outfits",
   "/admin/users": "Users",
+  "/admin/brands": "Brands",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

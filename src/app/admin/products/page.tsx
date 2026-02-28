@@ -370,22 +370,13 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
+      // Check if Supabase is configured (GET = read-only, no auto-seeding)
+      const configRes = await fetch("/api/products/seed");
+      setDbConfigured(configRes.status !== 501);
+
       const res = await fetch("/api/products");
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
-
-      const testRes = await fetch("/api/products/seed", { method: "POST" });
-      if (testRes.status === 501) {
-        setDbConfigured(false);
-      } else {
-        setDbConfigured(true);
-        const testJson = await testRes.json();
-        if (testJson.inserted?.length) {
-          const res2 = await fetch("/api/products");
-          const d2 = await res2.json();
-          setProducts(Array.isArray(d2) ? d2 : []);
-        }
-      }
     } catch {
       setProducts([]);
     } finally {
