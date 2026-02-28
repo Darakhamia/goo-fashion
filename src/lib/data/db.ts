@@ -30,7 +30,7 @@ export function dbToProduct(row: DbProduct): Product {
 }
 
 export function productToDb(p: Partial<Product>) {
-  return {
+  const base = {
     name: p.name ?? "",
     brand: p.brand ?? "",
     category: p.category ?? "",
@@ -38,7 +38,6 @@ export function productToDb(p: Partial<Product>) {
     image_url: p.imageUrl ?? "",
     images: p.images ?? [],
     colors: p.colors ?? [],
-    color_images: p.colorImages ?? null,
     sizes: p.sizes ?? [],
     material: p.material ?? "",
     retailers: p.retailers ?? [],
@@ -49,6 +48,12 @@ export function productToDb(p: Partial<Product>) {
     is_saved: p.isSaved ?? false,
     style_keywords: p.styleKeywords ?? [],
   };
+  // Only include color_images if there's actual data,
+  // so saves work even if the column hasn't been added yet.
+  if (p.colorImages && Object.keys(p.colorImages).length > 0) {
+    return { ...base, color_images: p.colorImages };
+  }
+  return base;
 }
 
 export async function getAllProducts(): Promise<Product[]> {
