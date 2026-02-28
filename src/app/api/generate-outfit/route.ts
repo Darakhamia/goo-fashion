@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import OpenAI, { toFile } from "openai";
 
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+// Client can pass their own key via x-openai-key header (stored in localStorage)
+function getOpenAI(req: Request): OpenAI | null {
+  const headerKey = req.headers.get("x-openai-key")?.trim();
+  const apiKey = headerKey || process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({ apiKey });
+}
 
 interface SlotProduct {
   slot: string;
@@ -100,9 +104,10 @@ async function fetchImageFile(
 }
 
 export async function POST(req: Request) {
+  const openai = getOpenAI(req);
   if (!openai) {
     return NextResponse.json(
-      { error: "OPENAI_API_KEY is not configured." },
+      { error: "OpenAI API key not configured. Add it in Admin → Settings." },
       { status: 501 }
     );
   }

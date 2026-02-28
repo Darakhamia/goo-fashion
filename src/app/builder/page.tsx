@@ -278,9 +278,13 @@ export default function BuilderPage() {
       }));
 
     try {
+      const userKey = localStorage.getItem("goo-openai-key") ?? "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey) headers["x-openai-key"] = userKey;
+
       const res = await fetch("/api/generate-outfit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ pieces }),
       });
       const json = await res.json();
