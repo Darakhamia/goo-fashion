@@ -127,6 +127,13 @@ function ActiveChip({
 export default function BrowsePage() {
   const [view, setView] = useState<View>("outfits");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Restore tab from URL on mount (survives browser back navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get("view");
+    if (v === "pieces" || v === "outfits") setView(v);
+  }, []);
   const [sort, setSort] = useState<SortOption>("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -429,6 +436,10 @@ export default function BrowsePage() {
                     setSelectedOccasions([]);
                     setAiOnly(false);
                     setSelectedPriceIdx(null);
+                    // Persist tab in URL so browser back restores it
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("view", v);
+                    window.history.replaceState({}, "", url.toString());
                   }
                 }}
                 className={`px-6 py-3.5 text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 border-b-2 -mb-px ${
