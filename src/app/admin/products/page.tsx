@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Product, Category, StyleKeyword, Retailer } from "@/lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -356,6 +356,12 @@ export default function AdminProductsPage() {
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
+  const [filterCategory, setFilterCategory] = useState<Category | "">("");
+  const [filterNew, setFilterNew] = useState<boolean | null>(null);
+  const [sortKey, setSortKey] = useState<"name" | "brand" | "category" | "priceMin" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -389,12 +395,27 @@ export default function AdminProductsPage() {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  const filtered = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    let list = products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    if (filterCategory) list = list.filter((p) => p.category === filterCategory);
+    if (filterNew !== null) list = list.filter((p) => p.isNew === filterNew);
+    if (sortKey) {
+      list = [...list].sort((a, b) => {
+        const va = (sortKey === "priceMin" ? a.priceMin : a[sortKey as "name" | "brand" | "category"]) ?? "";
+        const vb = (sortKey === "priceMin" ? b.priceMin : b[sortKey as "name" | "brand" | "category"]) ?? "";
+        const cmp = typeof va === "number"
+          ? (va as number) - (vb as number)
+          : String(va).toLowerCase().localeCompare(String(vb).toLowerCase());
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return list;
+  }, [products, searchQuery, filterCategory, filterNew, sortKey, sortDir]);
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -614,6 +635,47 @@ export default function AdminProductsPage() {
     }));
   };
 
+  // ── Sort / select helpers ───────────────────────────────────────────────────
+
+  const toggleSort = (key: "name" | "brand" | "category" | "priceMin") => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const allSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? new Set() : new Set(filtered.map((p) => p.id)));
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.size) return;
+    const count = selectedIds.size;
+    if (!confirm(`Delete ${count} selected product${count > 1 ? "s" : ""}?`)) return;
+    const ids = [...selectedIds];
+    if (dbConfigured) {
+      await Promise.all(ids.map((id) => fetch(`/api/products/${id}`, { method: "DELETE" })));
+    }
+    setProducts((prev) => prev.filter((p) => !ids.includes(p.id)));
+    setSelectedIds(new Set());
+    showToast(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
+  };
+
+  // Sort arrow helper
+  const SortIcon = ({ col }: { col: "name" | "brand" | "category" | "priceMin" }) => (
+    <span className="inline-flex flex-col ml-1 gap-[1px] opacity-50 group-hover:opacity-100">
+      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-b-[4px] ${sortKey === col && sortDir === "asc" ? "border-b-[var(--foreground)] opacity-100" : "border-b-[var(--foreground-muted)]"}`} />
+      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-t-[4px] ${sortKey === col && sortDir === "desc" ? "border-t-[var(--foreground)] opacity-100" : "border-t-[var(--foreground-muted)]"}`} />
+    </span>
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -670,8 +732,8 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-5">
+      {/* Search + Filters */}
+      <div className="mb-5 flex flex-col gap-3">
         <input
           type="search"
           placeholder="Search by name, brand or category…"
@@ -679,7 +741,76 @@ export default function AdminProductsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className={`${inputCls} max-w-sm`}
         />
+
+        {/* Filter chips */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Filter:</span>
+
+          {/* Category chips */}
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory((prev) => (prev === cat ? "" : cat))}
+              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
+                filterCategory === cat
+                  ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+
+          {/* Divider */}
+          <span className="w-px h-4 bg-[var(--border)]" />
+
+          {/* New chip */}
+          <button
+            onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
+            className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
+              filterNew === true
+                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            New only
+          </button>
+
+          {/* Clear filters */}
+          {(filterCategory || filterNew !== null || sortKey) && (
+            <button
+              onClick={() => { setFilterCategory(""); setFilterNew(null); setSortKey(null); }}
+              className="ml-1 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] px-4 py-2.5 bg-[var(--surface)]">
+          <span className="text-xs text-[var(--foreground)]">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Delete {selectedIds.size}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors ml-auto"
+          >
+            Deselect all
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
@@ -689,25 +820,65 @@ export default function AdminProductsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--border)]">
+                {/* Checkbox */}
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                    title="Select all"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-16">Image</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">Category</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Price</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                  <button onClick={() => toggleSort("name")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
+                    Name <SortIcon col="name" />
+                  </button>
+                </th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">
+                  <button onClick={() => toggleSort("brand")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
+                    Brand <SortIcon col="brand" />
+                  </button>
+                </th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
+                  <button onClick={() => toggleSort("category")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
+                    Category <SortIcon col="category" />
+                  </button>
+                </th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                  <button onClick={() => toggleSort("priceMin")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
+                    Price <SortIcon col="priceMin" />
+                  </button>
+                </th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
                 <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                     No products found.
                   </td>
                 </tr>
               ) : (
                 filtered.map((product) => (
-                  <tr key={product.id} className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
+                  <tr
+                    key={product.id}
+                    className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
+                      selectedIds.has(product.id) ? "bg-[var(--surface)]" : "hover:bg-[var(--surface)]"
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleSelect(product.id)}
+                        className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="relative w-10 h-[52px] overflow-hidden">
                         {product.imageUrl ? (
@@ -718,21 +889,21 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">{product.name}</span>
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-2 py-3 hidden md:table-cell">
                       <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
                     </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
+                    <td className="px-2 py-3 hidden lg:table-cell">
                       <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{product.category}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">
                         ${product.priceMin}{product.priceMax !== product.priceMin ? `–$${product.priceMax}` : ""}
                       </span>
                     </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
+                    <td className="px-2 py-3 hidden sm:table-cell">
                       {product.isNew ? (
                         <span className="text-[9px] tracking-[0.14em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5">New</span>
                       ) : (
