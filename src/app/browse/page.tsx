@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import { outfits } from "@/lib/data/outfits";
+import { products as staticProducts } from "@/lib/data/products";
 import type { Category, Occasion, Product } from "@/lib/types";
 
 type View = "outfits" | "pieces";
@@ -137,8 +138,9 @@ export default function BrowsePage() {
   const [sort, setSort] = useState<SortOption>("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Catalog products (from API / Supabase or static fallback)
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  // Catalog products — initialized with static data so pieces tab never shows empty
+  // while the API call is in flight (fixes blank state on browser back navigation)
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(staticProducts);
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
