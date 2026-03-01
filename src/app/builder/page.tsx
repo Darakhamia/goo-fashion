@@ -624,6 +624,14 @@ export default function BuilderPage() {
                 >
                   {saved ? "Saved ✓" : "Save"}
                 </button>
+                {saved && (
+                  <Link
+                    href="/saved?tab=looks"
+                    className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    View →
+                  </Link>
+                )}
               </div>
             )}
 

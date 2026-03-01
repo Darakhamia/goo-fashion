@@ -12,22 +12,26 @@ const DEFAULT_BRANDS = [
 
 export async function GET() {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
+    const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
+    res.headers.set("X-Brands-Table-Missing", "true");
+    return res;
   }
   const { data, error } = await supabase
     .from("brands")
     .select("name")
     .order("name", { ascending: true });
   if (error) {
-    // Table may not exist yet — return defaults
-    return NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
+    // Table doesn't exist yet — return defaults and signal to client
+    const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
+    res.headers.set("X-Brands-Table-Missing", "true");
+    return res;
   }
   return NextResponse.json(data);
 }
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ error: "Database not configured." }, { status: 501 });
+    return NextResponse.json({ error: "Database not configured.", code: "NO_DB" }, { status: 501 });
   }
   const { name } = await req.json();
   if (!name?.trim()) {
@@ -38,6 +42,12 @@ export async function POST(req: Request) {
     .insert({ name: name.trim() })
     .select("name")
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    // Postgres undefined_table (42P01) or schema-cache miss
+    if (error.code === "42P01" || error.message?.includes("does not exist")) {
+      return NextResponse.json({ error: "Brands table not found.", code: "TABLE_MISSING" }, { status: 503 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data, { status: 201 });
 }

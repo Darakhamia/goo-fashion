@@ -41,3 +41,30 @@ create policy "Public read access"
 create index if not exists products_category_idx on public.products (category);
 create index if not exists products_brand_idx    on public.products (brand);
 create index if not exists products_created_at_idx on public.products (created_at desc);
+
+-- ============================================================
+-- Brands table (used by admin Brand Manager)
+-- ============================================================
+
+create table if not exists public.brands (
+  id   serial primary key,
+  name text   unique not null
+);
+
+alter table public.brands enable row level security;
+
+-- Allow anyone to read brands
+create policy "Public read access"
+  on public.brands
+  for select
+  using (true);
+
+-- Pre-populate with default brands (safe to run multiple times)
+insert into public.brands (name) values
+  ('Acne Studios'), ('Arket'), ('& Other Stories'), ('A.P.C.'),
+  ('Balenciaga'), ('Bottega Veneta'), ('Burberry'), ('Cos'),
+  ('Fear of God'), ('Gucci'), ('Jacquemus'), ('Jil Sander'),
+  ('Lemaire'), ('Louis Vuitton'), ('Maison Margiela'), ('Massimo Dutti'),
+  ('Miu Miu'), ('Nike'), ('Prada'), ('Sandro'), ('The Row'),
+  ('Toteme'), ('Valentino'), ('Zara')
+on conflict (name) do nothing;
