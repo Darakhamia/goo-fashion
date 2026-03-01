@@ -3,11 +3,12 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { outfits } from "@/lib/data/outfits";
-import { products } from "@/lib/data/products";
+import { getAllProducts } from "@/lib/data/db";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const allProducts = await getAllProducts();
   const featuredOutfits = outfits.slice(0, 6);
-  const featuredProducts = products.slice(0, 4);
+  const featuredProducts = allProducts.slice(0, 4);
 
   return (
     <>
@@ -168,29 +169,31 @@ export default function HomePage() {
       </section>
 
       {/* ─── INDIVIDUAL PIECES ─── */}
-      <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32">
-        <SectionLabel
-          label="Pieces"
-          heading="Selected for you"
-          subheading="Individual items from premium brands, price-compared across stores."
-          action={
-            <Link
-              href="/browse?view=pieces"
-              className="text-[11px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 link-underline"
-            >
-              View all
-            </Link>
-          }
-        />
+      {featuredProducts.length > 0 && (
+        <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32">
+          <SectionLabel
+            label="Pieces"
+            heading="Selected for you"
+            subheading="Individual items from premium brands, price-compared across stores."
+            action={
+              <Link
+                href="/browse?view=pieces"
+                className="text-[11px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 link-underline"
+              >
+                View all
+              </Link>
+            }
+          />
 
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
-          {featuredProducts.map((product) => (
-            <div key={product.id} className="bg-[var(--background)] p-4">
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
-      </section>
+          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
+            {featuredProducts.map((product) => (
+              <div key={product.id} className="bg-[var(--background)] p-4">
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ─── BRAND MARQUEE ─── */}
       <section className="mt-24 md:mt-32 border-t border-b border-[var(--border)] py-4 overflow-hidden">

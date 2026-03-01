@@ -22,8 +22,12 @@ create table if not exists public.products (
   is_new        boolean     not null default false,
   is_saved      boolean     not null default false,
   style_keywords text[]     not null default '{}',
+  gender        text                 default null,
   created_at    timestamptz not null default now()
 );
+
+-- Migration: add gender column if upgrading an existing table
+-- alter table public.products add column if not exists gender text default null;
 
 -- Enable Row Level Security
 alter table public.products enable row level security;

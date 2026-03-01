@@ -4,8 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import { outfits } from "@/lib/data/outfits";
-import { products as staticProducts } from "@/lib/data/products";
-import type { Category, Occasion, Product } from "@/lib/types";
+import type { Category, Gender, Occasion, Product } from "@/lib/types";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -16,6 +15,7 @@ const CATEGORIES: Category[] = [
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
 ];
+const GENDERS: Gender[] = ["women", "men", "unisex"];
 const PRICE_RANGES = [
   { label: "Under $200", min: 0, max: 200 },
   { label: "$200 – $500", min: 200, max: 500 },
@@ -138,14 +138,14 @@ export default function BrowsePage() {
   const [sort, setSort] = useState<SortOption>("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Catalog products — initialized with static data so pieces tab never shows empty
-  // while the API call is in flight (fixes blank state on browser back navigation)
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>(staticProducts);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setCatalogProducts(d); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingProducts(false));
   }, []);
 
   const products = catalogProducts;
@@ -158,6 +158,7 @@ export default function BrowsePage() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
   const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>([]);
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [selectedPriceIdx, setSelectedPriceIdx] = useState<number | null>(null);
   const [aiOnly, setAiOnly] = useState(false);
 
@@ -165,6 +166,7 @@ export default function BrowsePage() {
   const [openSections, setOpenSections] = useState({
     brand: true,
     category: true,
+    gender: true,
     occasion: true,
     price: false,
   });
@@ -187,6 +189,7 @@ export default function BrowsePage() {
     selectedBrands.length +
     selectedCategories.length +
     selectedOccasions.length +
+    (selectedGender !== null ? 1 : 0) +
     (selectedPriceIdx !== null ? 1 : 0) +
     (aiOnly ? 1 : 0);
 
@@ -194,6 +197,7 @@ export default function BrowsePage() {
     setSelectedBrands([]);
     setSelectedCategories([]);
     setSelectedOccasions([]);
+    setSelectedGender(null);
     setSelectedPriceIdx(null);
     setAiOnly(false);
     setSearchQuery("");
@@ -208,6 +212,13 @@ export default function BrowsePage() {
         (p) =>
           !selectedCategories.length ||
           selectedCategories.includes(p.category as Category)
+      )
+      .filter(
+        (p) =>
+          !selectedGender ||
+          !p.gender ||
+          p.gender === selectedGender ||
+          p.gender === "unisex"
       )
       .filter(
         (p) =>
@@ -229,7 +240,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [selectedBrands, selectedCategories, selectedPriceIdx, searchQuery, sort]);
+  }, [selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, searchQuery, sort]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -343,6 +354,23 @@ export default function BrowsePage() {
                   checked={selectedCategories.includes(cat)}
                   onToggle={() => toggleCategory(cat)}
                   label={cat}
+                />
+              ))}
+            </div>
+          </AccordionSection>
+
+          <AccordionSection
+            title="Gender"
+            open={openSections.gender}
+            onToggle={() => toggleSection("gender")}
+          >
+            <div className="flex flex-col">
+              {GENDERS.map((g) => (
+                <FilterCheckbox
+                  key={g}
+                  checked={selectedGender === g}
+                  onToggle={() => setSelectedGender(selectedGender === g ? null : g)}
+                  label={g}
                 />
               ))}
             </div>
@@ -531,6 +559,12 @@ export default function BrowsePage() {
                     onRemove={() => toggleOccasion(occ)}
                   />
                 ))}
+                {selectedGender && (
+                  <ActiveChip
+                    label={selectedGender}
+                    onRemove={() => setSelectedGender(null)}
+                  />
+                )}
                 {selectedPriceIdx !== null && (
                   <ActiveChip
                     label={PRICE_RANGES[selectedPriceIdx].label}
@@ -546,7 +580,19 @@ export default function BrowsePage() {
 
             {/* Product / Outfit grid */}
             <div className="mt-6 pb-16">
-              {view === "outfits" ? (
+              {view === "pieces" && loadingProducts ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)]">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="bg-[var(--background)] p-4">
+                      <div className="animate-pulse">
+                        <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
+                        <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
+                        <div className="bg-[var(--surface)] h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)] stagger-children">
                     {filteredOutfits.map((outfit) => (

@@ -25,5 +25,6 @@ export type DbProduct = {
   is_new: boolean;
   is_saved: boolean;
   style_keywords: string[];
+  gender?: string;
   created_at: string;
 };

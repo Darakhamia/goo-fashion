@@ -26,6 +26,7 @@ export function dbToProduct(row: DbProduct): Product {
     isNew: row.is_new ?? false,
     isSaved: row.is_saved ?? false,
     styleKeywords: (row.style_keywords ?? []) as Product["styleKeywords"],
+    gender: (row.gender ?? undefined) as Product["gender"],
   };
 }
 
@@ -48,31 +49,33 @@ export function productToDb(p: Partial<Product>) {
     is_saved: p.isSaved ?? false,
     style_keywords: p.styleKeywords ?? [],
   };
+  const extras: Record<string, unknown> = {};
   // Only include color_images if there's actual data,
   // so saves work even if the column hasn't been added yet.
   if (p.colorImages && Object.keys(p.colorImages).length > 0) {
-    return { ...base, color_images: p.colorImages };
+    extras.color_images = p.colorImages;
   }
-  return base;
+  if (p.gender) {
+    extras.gender = p.gender;
+  }
+  return { ...base, ...extras };
 }
 
 export async function getAllProducts(): Promise<Product[]> {
-  if (!isSupabaseConfigured || !supabase) return staticProducts;
+  if (!isSupabaseConfigured || !supabase) return [];
   const { data, error } = await supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[db] getAllProducts:", error.message);
-    return staticProducts;
+    return [];
   }
   return (data as DbProduct[]).map(dbToProduct);
 }
 
 export async function getProductById(id: string): Promise<Product | undefined> {
-  if (!isSupabaseConfigured || !supabase) {
-    return staticProducts.find((p) => p.id === id);
-  }
+  if (!isSupabaseConfigured || !supabase) return undefined;
   const { data, error } = await supabase
     .from("products")
     .select("*")
@@ -83,9 +86,7 @@ export async function getProductById(id: string): Promise<Product | undefined> {
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    return staticProducts.filter((p) => p.category === category);
-  }
+  if (!isSupabaseConfigured || !supabase) return [];
   const { data, error } = await supabase
     .from("products")
     .select("*")

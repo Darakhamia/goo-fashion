@@ -1,3 +1,5 @@
+export type Gender = "women" | "men" | "unisex";
+
 export type Brand =
   | "Acne Studios"
   | "Balenciaga"
@@ -84,6 +86,7 @@ export interface Product {
   isNew: boolean;
   isSaved: boolean;
   styleKeywords: StyleKeyword[];
+  gender?: Gender;
 }
 
 export interface OutfitItem {

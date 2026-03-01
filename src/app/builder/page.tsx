@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { Product, StyleKeyword } from "@/lib/types";
-import { products as staticProducts } from "@/lib/data/products";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -121,7 +120,7 @@ function EmptySlot({ slot, isActive }: { slot: typeof SLOTS[number]; isActive: b
 export default function BuilderPage() {
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
-  const [products, setProducts] = useState<Product[]>(staticProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [aiMatch, setAiMatch] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -134,11 +133,10 @@ export default function BuilderPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Load fresh products from API (static data shown instantly as fallback)
   useEffect(() => {
     fetch("/api/products")
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d) && d.length > 0) setProducts(d); })
+      .then(d => { if (Array.isArray(d)) setProducts(d); })
       .catch(() => {});
   }, []);
 

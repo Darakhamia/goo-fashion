@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { Product, Category, StyleKeyword, Retailer } from "@/lib/types";
+import type { Product, Category, StyleKeyword, Retailer, Gender } from "@/lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +38,7 @@ interface ProductFormState {
   name: string;
   brand: string;
   category: Category;
+  gender: Gender | "";
   description: string;
   priceMin: string;
   priceMax: string;
@@ -55,6 +56,7 @@ const defaultForm: ProductFormState = {
   name: "",
   brand: "",
   category: "outerwear",
+  gender: "",
   description: "",
   priceMin: "",
   priceMax: "",
@@ -424,6 +426,7 @@ export default function AdminProductsPage() {
       name: product.name,
       brand: product.brand,
       category: product.category,
+      gender: (product.gender ?? "") as Gender | "",
       description: product.description ?? "",
       priceMin: String(product.priceMin),
       priceMax: String(product.priceMax),
@@ -467,6 +470,7 @@ export default function AdminProductsPage() {
       name: form.name.trim(),
       brand: form.brand as Product["brand"],
       category: form.category,
+      gender: form.gender ? (form.gender as Gender) : undefined,
       description: form.description.trim(),
       priceMin: parseFloat(form.priceMin) || 0,
       priceMax: parseFloat(form.priceMax) || parseFloat(form.priceMin) || 0,
@@ -927,7 +931,7 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] p-6 md:p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] p-6 md:p-8 max-w-4xl w-full mx-4 max-h-[92vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
@@ -942,151 +946,187 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-5">
-              {/* ── Basic info ── */}
-              <div>
-                <label className={labelCls}>Name *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Product name"
-                  className={inputCls}
-                />
-              </div>
+            <div className="flex flex-col gap-6">
+              {/* ── Two-column layout: left = info, right = images + variants ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:gap-8">
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Brand</label>
-                  <input
-                    type="text"
-                    list="brand-suggestions"
-                    value={form.brand}
-                    onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                    placeholder="Type or pick brand…"
-                    className={inputCls}
-                  />
-                  <datalist id="brand-suggestions">
-                    {SUGGESTED_BRANDS.map((b) => <option key={b} value={b} />)}
-                  </datalist>
-                </div>
-                <div>
-                  <label className={labelCls}>Category</label>
-                  <select
-                    value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category }))}
-                    className={selectCls}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelCls}>Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Short product description…"
-                  rows={3}
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Price Min ($)</label>
-                  <input
-                    type="number"
-                    value={form.priceMin}
-                    onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
-                    placeholder="0"
-                    min="0"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Price Max ($)</label>
-                  <input
-                    type="number"
-                    value={form.priceMax}
-                    onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
-                    placeholder="0"
-                    min="0"
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              {/* ── Images ── */}
-              <div className={sectionCls}>
-                <label className={`${labelCls} mb-3`}>
-                  Product Images <span className="normal-case text-[var(--foreground-subtle)]">(first = main)</span>
-                </label>
-                <ImageList
-                  images={form.images}
-                  onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
-                />
-              </div>
-
-              {/* ── Colors + Sizes ── */}
-              <div className={sectionCls}>
-                <div className="grid grid-cols-2 gap-3">
+                {/* Left column */}
+                <div className="flex flex-col gap-4">
                   <div>
-                    <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                    <label className={labelCls}>Name *</label>
                     <input
                       type="text"
-                      value={form.colorsRaw}
-                      onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
-                      placeholder="Black, White, Camel"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="Product name"
                       className={inputCls}
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Brand</label>
+                      <input
+                        type="text"
+                        list="brand-suggestions"
+                        value={form.brand}
+                        onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                        placeholder="Type or pick brand…"
+                        className={inputCls}
+                      />
+                      <datalist id="brand-suggestions">
+                        {SUGGESTED_BRANDS.map((b) => <option key={b} value={b} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Category</label>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category }))}
+                        className={selectCls}
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Gender</label>
+                      <select
+                        value={form.gender}
+                        onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))}
+                        className={selectCls}
+                      >
+                        <option value="">Unspecified</option>
+                        <option value="women">Women</option>
+                        <option value="men">Men</option>
+                        <option value="unisex">Unisex</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Material</label>
+                      <input
+                        type="text"
+                        value={form.material}
+                        onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
+                        placeholder="100% Wool"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className={labelCls}>Sizes <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                    <input
-                      type="text"
-                      value={form.sizes}
-                      onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
-                      placeholder="XS, S, M, L, XL"
-                      className={inputCls}
+                    <label className={labelCls}>Description</label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="Short product description…"
+                      rows={3}
+                      className={`${inputCls} resize-none`}
                     />
                   </div>
-                </div>
 
-                {/* Color-specific images */}
-                {deriveColors(form.colorsRaw).length > 0 && (
-                  <div className="mt-4">
-                    <label className={`${labelCls} mb-1`}>
-                      Images per color <span className="normal-case text-[var(--foreground-subtle)]">(optional)</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Price Min ($)</label>
+                      <input
+                        type="number"
+                        value={form.priceMin}
+                        onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
+                        placeholder="0"
+                        min="0"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Price Max ($)</label>
+                      <input
+                        type="number"
+                        value={form.priceMax}
+                        onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
+                        placeholder="0"
+                        min="0"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="checkbox"
+                      id="isNew"
+                      checked={form.isNew}
+                      onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))}
+                      className="w-3.5 h-3.5 accent-[var(--foreground)]"
+                    />
+                    <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                      Mark as new arrival
                     </label>
-                    <ColorImageSection
-                      colorsRaw={form.colorsRaw}
-                      colorImages={form.colorImages}
-                      onChange={(ci) => setForm((f) => ({ ...f, colorImages: ci }))}
+                  </div>
+                </div>
+
+                {/* Right column */}
+                <div className="flex flex-col gap-5">
+                  {/* Images */}
+                  <div>
+                    <label className={`${labelCls} mb-3`}>
+                      Images <span className="normal-case text-[var(--foreground-subtle)]">(first = main)</span>
+                    </label>
+                    <ImageList
+                      images={form.images}
+                      onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
                     />
                   </div>
-                )}
+
+                  {/* Colors + Sizes */}
+                  <div className="border-t border-[var(--border)] pt-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                        <input
+                          type="text"
+                          value={form.colorsRaw}
+                          onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
+                          placeholder="Black, White, Camel"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Sizes <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                        <input
+                          type="text"
+                          value={form.sizes}
+                          onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
+                          placeholder="XS, S, M, L, XL"
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Color-specific images */}
+                    {deriveColors(form.colorsRaw).length > 0 && (
+                      <div className="mt-4">
+                        <label className={`${labelCls} mb-1`}>
+                          Images per color <span className="normal-case text-[var(--foreground-subtle)]">(optional)</span>
+                        </label>
+                        <ColorImageSection
+                          colorsRaw={form.colorsRaw}
+                          colorImages={form.colorImages}
+                          onChange={(ci) => setForm((f) => ({ ...f, colorImages: ci }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* ── Material ── */}
-              <div>
-                <label className={labelCls}>Material</label>
-                <input
-                  type="text"
-                  value={form.material}
-                  onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
-                  placeholder="100% Wool"
-                  className={inputCls}
-                />
-              </div>
-
-              {/* ── Style Keywords ── */}
-              <div className={sectionCls}>
+              {/* ── Full-width: Style Keywords ── */}
+              <div className="border-t border-[var(--border)] pt-5">
                 <label className={labelCls}>Style Keywords</label>
-                <div className="flex flex-wrap gap-1.5 mt-1">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {STYLE_KEYWORDS.map((kw) => (
                     <button
                       key={kw}
@@ -1104,27 +1144,13 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              {/* ── Retailers ── */}
-              <div className={sectionCls}>
+              {/* ── Full-width: Retailers ── */}
+              <div className="border-t border-[var(--border)] pt-5">
                 <label className={`${labelCls} mb-3`}>Where to buy</label>
                 <RetailerList
                   retailers={form.retailers}
                   onChange={(r) => setForm((f) => ({ ...f, retailers: r }))}
                 />
-              </div>
-
-              {/* ── Is New ── */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="isNew"
-                  checked={form.isNew}
-                  onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))}
-                  className="w-3.5 h-3.5 accent-[var(--foreground)]"
-                />
-                <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                  Mark as new arrival
-                </label>
               </div>
             </div>
 
