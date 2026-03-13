@@ -218,6 +218,17 @@ body {
   to { opacity: 1; }
 }
 
+/* Product card slideshow — slide right→left */
+@keyframes cardSlideInFromRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes cardSlideOutToLeft {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
 .animate-overlay-in {
   animation: overlayIn 0.25s ease forwards;
 }
