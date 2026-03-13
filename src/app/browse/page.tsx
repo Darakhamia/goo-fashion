@@ -240,7 +240,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, searchQuery, sort]);
+  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, searchQuery, sort]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
