@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { Product } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 
-const SLIDE_MS = 500;     // duration of the slide animation
-const INTERVAL_MS = 5000; // time each image is shown before switching
+const SLIDE_MS   = 500;   // animation duration
+const INTERVAL_MS = 5000; // time each image is shown
 
 interface ProductCardProps {
   product: Product;
@@ -18,62 +18,76 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   const { isProductLiked, toggleProductLike } = useLikes();
   const liked = isProductLiked(product.id);
 
-  const allImages = product.images?.length ? product.images : [product.imageUrl];
+  const allImages = useMemo(
+    () => (product.images?.length ? product.images : [product.imageUrl]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [product.id]          // stable per product — avoids new array ref every render
+  );
   const hasMultiple = allImages.length > 1;
 
-  // activeIdx  — image currently in the "resting" layer
-  // outgoingIdx — image being animated out (null when not transitioning)
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [isHovered,   setIsHovered]   = useState(false);
+  const [activeIdx,   setActiveIdx]   = useState(0);
   const [outgoingIdx, setOutgoingIdx] = useState<number | null>(null);
 
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const activeIdxRef = useRef(0);   // stable ref so closures always see the latest index
-  const animatingRef = useRef(false);
+  // All mutable "timer" state in a single ref — never causes re-renders
+  const t = useRef({
+    activeIdx: 0,
+    animating: false,
+    interval:  null as ReturnType<typeof setInterval>  | null,
+    timeout:   null as ReturnType<typeof setTimeout>   | null,
+  });
 
-  const slideTo = (next: number) => {
-    if (animatingRef.current) return;
-    animatingRef.current = true;
-    setOutgoingIdx(activeIdxRef.current);
-    setActiveIdx(next);
-    activeIdxRef.current = next;
-    setTimeout(() => {
+  // ── Slideshow lifecycle ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isHovered || !hasMultiple) return;
+
+    const state = t.current; // stable object — safe to use in cleanup
+
+    const doSlide = () => {
+      if (state.animating) return;
+      state.animating = true;
+
+      const prev = state.activeIdx;
+      const next = (prev + 1) % allImages.length;
+
+      setOutgoingIdx(prev);
+      setActiveIdx(next);
+      state.activeIdx = next;
+
+      state.timeout = setTimeout(() => {
+        setOutgoingIdx(null);
+        state.animating = false;
+        state.timeout = null;
+      }, SLIDE_MS);
+    };
+
+    // Advance immediately on hover, then every INTERVAL_MS
+    doSlide();
+    state.interval = setInterval(doSlide, INTERVAL_MS);
+
+    // ── Cleanup: runs when isHovered→false OR component unmounts ───────────
+    return () => {
+      if (state.interval) { clearInterval(state.interval);  state.interval  = null; }
+      if (state.timeout)  { clearTimeout(state.timeout);    state.timeout   = null; }
+      state.animating  = false;
+      state.activeIdx  = 0;
+      // Immediately snap back to main image — no animation needed
       setOutgoingIdx(null);
-      animatingRef.current = false;
-    }, SLIDE_MS);
-  };
-
-  const handleMouseEnter = () => {
-    if (!hasMultiple) return;
-    // Immediately show second image
-    slideTo((activeIdxRef.current + 1) % allImages.length);
-    // Then keep cycling
-    intervalRef.current = setInterval(() => {
-      slideTo((activeIdxRef.current + 1) % allImages.length);
-    }, INTERVAL_MS);
-  };
-
-  const handleMouseLeave = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    // Reset to main image
-    if (activeIdxRef.current !== 0) {
-      slideTo(0);
-    }
-  };
+      setActiveIdx(0);
+    };
+  }, [isHovered, hasMultiple, allImages]); // allImages is memoized → stable ref
 
   return (
     <div
       className="group relative block"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Link href={`/product/${product.id}`} className="block">
-        {/* Image container */}
+        {/* ── Image container ── */}
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
-          {/* Base layer — always visible, shows active image without animation */}
+          {/* Base layer — always visible, no animation */}
           <div className="absolute inset-0">
             <Image
               src={allImages[activeIdx]}
@@ -84,13 +98,15 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             />
           </div>
 
-          {/* Animation layers — only present during a transition */}
+          {/* Animation layers — only mounted during a transition */}
           {outgoingIdx !== null && (
             <>
-              {/* Outgoing: slides out to the left */}
+              {/* Outgoing: current image slides out to the left */}
               <div
                 className="absolute inset-0 z-[1]"
-                style={{ animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
+                style={{
+                  animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards`,
+                }}
               >
                 <Image
                   src={allImages[outgoingIdx]}
@@ -100,10 +116,13 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
-              {/* Incoming: slides in from the right */}
+
+              {/* Incoming: next image slides in from the right */}
               <div
                 className="absolute inset-0 z-[2]"
-                style={{ animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
+                style={{
+                  animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards`,
+                }}
               >
                 <Image
                   src={allImages[activeIdx]}
@@ -116,7 +135,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             </>
           )}
 
-          {/* Dot indicators (only when multiple images) */}
+          {/* Dot indicators */}
           {hasMultiple && (
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {allImages.map((_, i) => (
