@@ -84,3 +84,8 @@ insert into public.brands (name) values
   ('Miu Miu'), ('Nike'), ('Prada'), ('Sandro'), ('The Row'),
   ('Toteme'), ('Valentino'), ('Zara')
 on conflict (name) do nothing;
+
+alter table public.products
+  add column if not exists variant_group_id text    default null,
+  add column if not exists color_hex        text    default null,
+  add column if not exists is_group_primary boolean default false;
