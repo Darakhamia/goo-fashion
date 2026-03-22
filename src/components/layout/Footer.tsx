@@ -77,6 +77,9 @@ export default function Footer() {
             <span className="text-xs text-[var(--foreground-subtle)]">
               Prices shown include all applicable taxes.
             </span>
+            <span className="text-xs text-[var(--foreground-subtle)] opacity-40">
+              v{new Date().toISOString().slice(0, 10)}
+            </span>
 
             {/* Theme toggle */}
             <button
