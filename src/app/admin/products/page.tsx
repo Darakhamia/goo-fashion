@@ -351,6 +351,7 @@ export default function AdminProductsPage() {
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
   const [grouping, setGrouping] = useState(false);
   const [variantSearch, setVariantSearch] = useState("");
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -538,7 +539,11 @@ export default function AdminProductsPage() {
         });
         if (!groupRes.ok) {
           const err = await groupRes.json();
-          showToast(err.error || "Saved but variant linking failed", "err");
+          if (err.needsMigration) {
+            setShowMigrationModal(true);
+          } else {
+            showToast(err.error || "Saved but variant linking failed", "err");
+          }
         } else {
           showToast("Product saved and variants linked.");
         }
@@ -714,8 +719,13 @@ export default function AdminProductsPage() {
     });
     if (!res.ok) {
       const err = await res.json();
-      showToast(err.error || "Failed to group products", "err");
       setGrouping(false);
+      if (err.needsMigration) {
+        setGroupModal({ open: false, entries: [] });
+        setShowMigrationModal(true);
+      } else {
+        showToast(err.error || "Failed to group products", "err");
+      }
       return;
     }
     showToast(`${entries.length} products grouped as variants.`);
@@ -771,8 +781,14 @@ export default function AdminProductsPage() {
         </div>
       )}
       {dbConfigured === true && (
-        <div className="mb-4 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-400">
-          Supabase connected — all changes are persisted to database.
+        <div className="mb-4 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center justify-between gap-4">
+          <span>Supabase connected — all changes are persisted to database.</span>
+          <button
+            onClick={() => setShowMigrationModal(true)}
+            className="shrink-0 underline opacity-70 hover:opacity-100 transition-opacity"
+          >
+            View variant migration SQL
+          </button>
         </div>
       )}
 
@@ -1655,6 +1671,55 @@ export default function AdminProductsPage() {
                 {importing ? "Importing…" : `Import ${importPreview.length ? importPreview.length + " " : ""}Products`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Migration Required Modal ── */}
+      {showMigrationModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+          <div
+            className="border border-amber-400 p-6 md:p-8 max-w-lg w-full mx-4"
+            style={{ background: "var(--background)" }}
+          >
+            <div className="flex items-start gap-3 mb-5">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-0.5 text-amber-500">
+                <path d="M10 2L1 17h18L10 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                <path d="M10 8v4M10 14.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+              <div>
+                <h2 className="font-display text-lg font-light text-[var(--foreground)]">
+                  Database migration required
+                </h2>
+                <p className="text-xs text-[var(--foreground-muted)] mt-1">
+                  The color-variant columns don&apos;t exist in your Supabase table yet. Run the following SQL in your{" "}
+                  <strong>Supabase SQL Editor</strong> and then try again.
+                </p>
+              </div>
+            </div>
+
+            <pre className="bg-[var(--surface)] border border-[var(--border)] p-4 text-[11px] font-mono text-[var(--foreground)] overflow-x-auto whitespace-pre leading-relaxed mb-5 select-all">
+{`alter table public.products
+  add column if not exists variant_group_id text    default null,
+  add column if not exists color_hex        text    default null,
+  add column if not exists is_group_primary boolean default false;
+
+-- Optional index for faster lookups
+create index if not exists products_variant_group_idx
+  on public.products (variant_group_id)
+  where variant_group_id is not null;`}
+            </pre>
+
+            <p className="text-[11px] text-[var(--foreground-muted)] mb-5">
+              Go to <strong>supabase.com → your project → SQL Editor</strong>, paste the SQL above, and click <em>Run</em>. Then come back and try grouping the variants again.
+            </p>
+
+            <button
+              onClick={() => setShowMigrationModal(false)}
+              className="w-full bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80"
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}

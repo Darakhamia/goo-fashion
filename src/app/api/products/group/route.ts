@@ -1,32 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-/**
- * POST /api/products/group
- *
- * Groups a set of existing products as color variants of each other.
- * All products share a single variantGroupId; the primary is flagged.
- *
- * Body:
- * {
- *   ids: string[];                         // product IDs to group
- *   primaryId: string;                     // which one is the catalog representative
- *   colorHexMap: Record<string, string>;   // productId → hex color
- *   groupId?: string;                      // if omitted, a new UUID is generated
- * }
- *
- * DELETE /api/products/group
- *
- * Unlinks all products in a group (sets variant_group_id to null).
- * Body: { groupId: string }
- */
+const MIGRATION_COLUMNS = ["variant_group_id", "color_hex", "is_group_primary"];
+
+function isMissingColumnError(msg: string) {
+  return MIGRATION_COLUMNS.some((col) => msg.includes(col)) &&
+    (msg.includes("Could not find") || msg.includes("column") || msg.includes("schema cache"));
+}
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json(
-      { error: "Database not configured." },
-      { status: 501 }
-    );
+    return NextResponse.json({ error: "Database not configured." }, { status: 501 });
   }
 
   const body = await req.json();
@@ -41,10 +25,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ids and primaryId are required." }, { status: 400 });
   }
 
-  // Use supplied groupId or generate a new one
   const groupId = existingGroupId || crypto.randomUUID();
 
-  // Update each product individually
   const updates = ids.map((id) =>
     supabase!
       .from("products")
@@ -58,10 +40,22 @@ export async function POST(req: Request) {
 
   const results = await Promise.all(updates);
   const failed = results.filter((r) => r.error);
+
   if (failed.length) {
-    console.error("[group] partial failure:", failed.map((r) => r.error?.message));
+    const errorMessages = failed.map((r) => r.error?.message ?? "unknown");
+    console.error("[group] partial failure:", errorMessages);
+
+    // Detect missing migration columns
+    const needsMigration = errorMessages.some(isMissingColumnError);
+    if (needsMigration) {
+      return NextResponse.json(
+        { error: "MIGRATION_REQUIRED", needsMigration: true },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Some products could not be updated.", details: failed.map((r) => r.error?.message) },
+      { error: "Some products could not be updated.", details: errorMessages },
       { status: 500 }
     );
   }
@@ -87,6 +81,10 @@ export async function DELETE(req: Request) {
     .eq("variant_group_id", groupId);
 
   if (error) {
+    const needsMigration = isMissingColumnError(error.message);
+    if (needsMigration) {
+      return NextResponse.json({ error: "MIGRATION_REQUIRED", needsMigration: true }, { status: 500 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
