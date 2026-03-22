@@ -66,6 +66,21 @@ export interface Retailer {
   isOfficial: boolean;
 }
 
+/**
+ * Lightweight swatch used in the catalog card when a product has color variants.
+ * Each swatch represents one product linked via variantGroupId.
+ */
+export interface ProductSwatch {
+  id: string;
+  colorName: string;  // display label (usually colors[0] or product name)
+  colorHex: string;   // hex for the circle, e.g. "#1a1a2e"
+  priceMin: number;
+  priceMax: number;
+  imageUrl: string;
+  images: string[];
+  sizes: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -87,6 +102,14 @@ export interface Product {
   isSaved: boolean;
   styleKeywords: StyleKeyword[];
   gender?: Gender;
+  /** Links this product to others as color variants of the same model */
+  variantGroupId?: string;
+  /** HEX color code used for the swatch circle in the catalog (e.g. "#1a1a2e") */
+  colorHex?: string;
+  /** True = this product is shown as the representative card in the catalog */
+  isGroupPrimary?: boolean;
+  /** Populated by the API for primary products: swatches of all linked variants */
+  variants?: ProductSwatch[];
 }
 
 export interface OutfitItem {

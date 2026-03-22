@@ -3,11 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState, useEffect, useMemo } from "react";
-import { Product } from "@/lib/types";
+import { Product, ProductSwatch } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 
-const SLIDE_MS   = 500;   // animation duration
-const INTERVAL_MS = 5000; // time each image is shown
+const SLIDE_MS    = 500;
+const INTERVAL_MS = 5000;
 
 interface ProductCardProps {
   product: Product;
@@ -18,18 +18,37 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   const { isProductLiked, toggleProductLike } = useLikes();
   const liked = isProductLiked(product.id);
 
-  const allImages = useMemo(
-    () => (product.images?.length ? product.images : [product.imageUrl]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [product.id]          // stable per product — avoids new array ref every render
-  );
+  // ── Active variant (null = show the base product) ──────────────────────────
+  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(null);
+
+  // Derived display values — switch between base product and the selected swatch
+  const displayImages = useMemo(() => {
+    if (activeVariant) {
+      return activeVariant.images?.length ? activeVariant.images : [activeVariant.imageUrl];
+    }
+    return product.images?.length ? product.images : [product.imageUrl];
+  }, [activeVariant, product]);
+
+  const displayPriceMin = activeVariant ? activeVariant.priceMin : product.priceMin;
+  const displayPriceMax = activeVariant ? activeVariant.priceMax : product.priceMax;
+  const displaySizes    = activeVariant ? activeVariant.sizes    : product.sizes;
+  const linkHref        = `/product/${activeVariant ? activeVariant.id : product.id}`;
+
+  // ── Slideshow state ─────────────────────────────────────────────────────────
+  const allImages  = displayImages;
   const hasMultiple = allImages.length > 1;
 
   const [isHovered,   setIsHovered]   = useState(false);
   const [activeIdx,   setActiveIdx]   = useState(0);
   const [outgoingIdx, setOutgoingIdx] = useState<number | null>(null);
 
-  // All mutable "timer" state in a single ref — never causes re-renders
+  // Reset slideshow index when variant (and thus images) changes
+  useEffect(() => {
+    setActiveIdx(0);
+    setOutgoingIdx(null);
+  }, [activeVariant]);
+
+  // All mutable timer state in one ref
   const t = useRef({
     activeIdx: 0,
     animating: false,
@@ -37,11 +56,10 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     timeout:   null as ReturnType<typeof setTimeout>   | null,
   });
 
-  // ── Slideshow lifecycle ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isHovered || !hasMultiple) return;
 
-    const state = t.current; // stable object — safe to use in cleanup
+    const state = t.current;
 
     const doSlide = () => {
       if (state.animating) return;
@@ -57,25 +75,50 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       state.timeout = setTimeout(() => {
         setOutgoingIdx(null);
         state.animating = false;
-        state.timeout = null;
+        state.timeout   = null;
       }, SLIDE_MS);
     };
 
-    // Advance immediately on hover, then every INTERVAL_MS
     doSlide();
     state.interval = setInterval(doSlide, INTERVAL_MS);
 
-    // ── Cleanup: runs when isHovered→false OR component unmounts ───────────
     return () => {
       if (state.interval) { clearInterval(state.interval);  state.interval  = null; }
       if (state.timeout)  { clearTimeout(state.timeout);    state.timeout   = null; }
-      state.animating  = false;
-      state.activeIdx  = 0;
-      // Immediately snap back to main image — no animation needed
+      state.animating = false;
+      state.activeIdx = 0;
       setOutgoingIdx(null);
       setActiveIdx(0);
     };
-  }, [isHovered, hasMultiple, allImages]); // allImages is memoized → stable ref
+  }, [isHovered, hasMultiple, allImages.length]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (t.current.interval) clearInterval(t.current.interval);
+      if (t.current.timeout)  clearTimeout(t.current.timeout);
+    };
+  }, []);
+
+  // ── Colour swatches ─────────────────────────────────────────────────────────
+  const swatches = product.variants;          // undefined when not a grouped product
+  const hasSwatches = !!swatches?.length;
+
+  // The swatch that represents the base product itself
+  const baseSwatch: ProductSwatch | null = hasSwatches
+    ? {
+        id:        product.id,
+        colorName: product.colors?.[0] || product.name,
+        colorHex:  product.colorHex ?? "#888888",
+        priceMin:  product.priceMin,
+        priceMax:  product.priceMax,
+        imageUrl:  product.imageUrl,
+        images:    product.images ?? [],
+        sizes:     product.sizes  ?? [],
+      }
+    : null;
+
+  const activeSwatchId = activeVariant?.id ?? product.id;
 
   return (
     <div
@@ -83,11 +126,11 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link href={`/product/${product.id}`} className="block">
-        {/* ── Image container ── */}
+      <Link href={linkHref} className="block">
+        {/* ── Image container ─────────────────────────────────────────── */}
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
-          {/* Base layer — always visible, no animation */}
+          {/* Base layer */}
           <div className="absolute inset-0">
             <Image
               src={allImages[activeIdx]}
@@ -98,15 +141,12 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             />
           </div>
 
-          {/* Animation layers — only mounted during a transition */}
+          {/* Transition layers */}
           {outgoingIdx !== null && (
             <>
-              {/* Outgoing: current image slides out to the left */}
               <div
                 className="absolute inset-0 z-[1]"
-                style={{
-                  animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards`,
-                }}
+                style={{ animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <Image
                   src={allImages[outgoingIdx]}
@@ -116,13 +156,9 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
-
-              {/* Incoming: next image slides in from the right */}
               <div
                 className="absolute inset-0 z-[2]"
-                style={{
-                  animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards`,
-                }}
+                style={{ animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <Image
                   src={allImages[activeIdx]}
@@ -135,7 +171,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             </>
           )}
 
-          {/* Dot indicators */}
+          {/* Slideshow dots */}
           {hasMultiple && (
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {allImages.map((_, i) => (
@@ -149,7 +185,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             </div>
           )}
 
-          {/* New Badge */}
+          {/* New badge */}
           {product.isNew && (
             <div className="absolute top-2 left-2 z-10">
               <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block">
@@ -158,7 +194,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             </div>
           )}
 
-          {/* Retailers count overlay */}
+          {/* Retailer count */}
           {product.retailers.length > 1 && (
             <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
               <div className="bg-[var(--bg-overlay-95)] backdrop-blur-sm px-3 py-2">
@@ -171,7 +207,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </div>
       </Link>
 
-      {/* Like Button */}
+      {/* ── Like button ─────────────────────────────────────────────────── */}
       <button
         onClick={() => toggleProductLike(product.id)}
         aria-label={liked ? "Unlike item" : "Like item"}
@@ -188,8 +224,8 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </svg>
       </button>
 
-      {/* Info */}
-      <Link href={`/product/${product.id}`} className="block mt-3 space-y-0.5">
+      {/* ── Info block ──────────────────────────────────────────────────── */}
+      <Link href={linkHref} className="block mt-3 space-y-0.5">
         {showBrand && (
           <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
             {product.brand}
@@ -199,11 +235,76 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
           {product.name}
         </h3>
         <p className="text-xs text-[var(--foreground-muted)]">
-          {product.priceMin === product.priceMax
-            ? `$${product.priceMin.toLocaleString()}`
-            : `From $${product.priceMin.toLocaleString()}`}
+          {displayPriceMin === displayPriceMax
+            ? `$${displayPriceMin.toLocaleString()}`
+            : `From $${displayPriceMin.toLocaleString()}`}
         </p>
       </Link>
+
+      {/* ── Available sizes (in-stock preview) ──────────────────────────── */}
+      {displaySizes.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {displaySizes.slice(0, 5).map((size) => (
+            <span
+              key={size}
+              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5"
+            >
+              {size}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Colour swatch palette ────────────────────────────────────────── */}
+      {hasSwatches && baseSwatch && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {/* Swatch for the base/primary product */}
+          <SwatchButton
+            swatch={baseSwatch}
+            active={activeSwatchId === product.id}
+            onSelect={() => setActiveVariant(null)}
+          />
+          {/* Swatches for the other variants */}
+          {swatches!
+            .filter((s) => s.id !== product.id)
+            .map((swatch) => (
+              <SwatchButton
+                key={swatch.id}
+                swatch={swatch}
+                active={activeSwatchId === swatch.id}
+                onSelect={() => setActiveVariant(swatch)}
+              />
+            ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SwatchButton({
+  swatch,
+  active,
+  onSelect,
+}: {
+  swatch: ProductSwatch;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={swatch.colorName}
+      aria-label={`Switch to ${swatch.colorName}`}
+      onClick={(e) => {
+        e.preventDefault();
+        onSelect();
+      }}
+      className={`w-4 h-4 rounded-full border-2 transition-all duration-150 shrink-0 ${
+        active
+          ? "border-[var(--foreground)] scale-110 shadow-sm"
+          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:scale-105"
+      }`}
+      style={{ backgroundColor: swatch.colorHex }}
+    />
   );
 }

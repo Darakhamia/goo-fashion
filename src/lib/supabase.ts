@@ -27,4 +27,8 @@ export type DbProduct = {
   style_keywords: string[];
   gender?: string;
   created_at: string;
+  // Color-variant linking
+  variant_group_id?: string | null;
+  color_hex?: string | null;
+  is_group_primary?: boolean | null;
 };

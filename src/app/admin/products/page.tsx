@@ -50,6 +50,7 @@ interface ProductFormState {
   styleKeywords: StyleKeyword[];
   retailers: RetailerForm[];
   isNew: boolean;
+  colorHex: string;
 }
 
 const defaultForm: ProductFormState = {
@@ -68,7 +69,22 @@ const defaultForm: ProductFormState = {
   styleKeywords: ["minimal"],
   retailers: [],
   isNew: false,
+  colorHex: "#888888",
 };
+
+// ── Group-variants types ────────────────────────────────────────────────────
+
+interface GroupEntry {
+  id: string;
+  colorHex: string;
+  isPrimary: boolean;
+}
+
+interface GroupModalState {
+  open: boolean;
+  entries: GroupEntry[];      // products currently being configured
+  existingGroupId?: string;   // set when editing an existing group
+}
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -364,6 +380,10 @@ export default function AdminProductsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // ── Group variants modal ───────────────────────────────────────────────────
+  const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
+  const [grouping, setGrouping] = useState(false);
+
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -444,6 +464,7 @@ export default function AdminProductsPage() {
         isOfficial: r.isOfficial,
       })),
       isNew: product.isNew,
+      colorHex: product.colorHex ?? "#888888",
     });
     setShowModal(true);
   };
@@ -492,6 +513,7 @@ export default function AdminProductsPage() {
       isNew: form.isNew,
       isSaved: false,
       currency: "USD",
+      colorHex: form.colorHex || undefined,
     };
 
     if (dbConfigured) {
@@ -650,6 +672,64 @@ export default function AdminProductsPage() {
   const toggleSelectAll = () =>
     setSelectedIds(allSelected ? new Set() : new Set(filtered.map((p) => p.id)));
 
+  const openGroupModal = () => {
+    const selected = filtered.filter((p) => selectedIds.has(p.id));
+    if (selected.length < 2) return;
+    // Detect if all selected are already in the same group
+    const groupIds = [...new Set(selected.map((p) => p.variantGroupId).filter(Boolean))];
+    const existingGroupId = groupIds.length === 1 ? (groupIds[0] as string) : undefined;
+    setGroupModal({
+      open: true,
+      existingGroupId,
+      entries: selected.map((p, i) => ({
+        id: p.id,
+        colorHex: p.colorHex ?? "#888888",
+        isPrimary: existingGroupId ? !!p.isGroupPrimary : i === 0,
+      })),
+    });
+  };
+
+  const handleGroupSave = async () => {
+    const { entries, existingGroupId } = groupModal;
+    const primaryEntry = entries.find((e) => e.isPrimary) ?? entries[0];
+    setGrouping(true);
+    const colorHexMap: Record<string, string> = {};
+    entries.forEach((e) => { colorHexMap[e.id] = e.colorHex; });
+    const res = await fetch("/api/products/group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: entries.map((e) => e.id),
+        primaryId: primaryEntry.id,
+        colorHexMap,
+        groupId: existingGroupId,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      showToast(err.error || "Failed to group products", "err");
+      setGrouping(false);
+      return;
+    }
+    showToast(`${entries.length} products grouped as variants.`);
+    setGroupModal({ open: false, entries: [] });
+    setSelectedIds(new Set());
+    setGrouping(false);
+    await fetchProducts();
+  };
+
+  const handleUngroup = async (groupId: string) => {
+    if (!confirm("Unlink all variants in this group?")) return;
+    const res = await fetch("/api/products/group", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId }),
+    });
+    if (!res.ok) { showToast("Failed to unlink", "err"); return; }
+    showToast("Variants unlinked.");
+    await fetchProducts();
+  };
+
   const handleBulkDelete = async () => {
     if (!selectedIds.size) return;
     const count = selectedIds.size;
@@ -789,6 +869,19 @@ export default function AdminProductsPage() {
           <span className="text-xs text-[var(--foreground)]">
             {selectedIds.size} selected
           </span>
+          {selectedIds.size >= 2 && (
+            <button
+              onClick={openGroupModal}
+              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
+                <circle cx="9" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M5 6h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              Group variants
+            </button>
+          )}
           <button
             onClick={handleBulkDelete}
             className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
@@ -885,7 +978,26 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-2 py-3">
-                      <span className="text-sm text-[var(--foreground)]">{product.name}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm text-[var(--foreground)]">{product.name}</span>
+                        {product.variantGroupId && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[8px] tracking-[0.12em] uppercase border px-1.5 py-0.5 leading-none"
+                            style={{
+                              borderColor: product.colorHex ?? "var(--border)",
+                              color: product.colorHex ?? "var(--foreground-muted)",
+                            }}
+                          >
+                            {product.isGroupPrimary ? "Primary" : "Variant"}
+                            {product.colorHex && (
+                              <span
+                                className="inline-block w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: product.colorHex }}
+                              />
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-2 py-3 hidden md:table-cell">
                       <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
@@ -907,6 +1019,18 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        {product.variantGroupId && dbConfigured && (
+                          <button
+                            onClick={() => handleUngroup(product.variantGroupId!)}
+                            title="Unlink from variant group"
+                            className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors p-1"
+                            aria-label="Unlink variants"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                              <path d="M5 4H3a3 3 0 000 6h2M9 4h2a3 3 0 010 6H9M2 7h10M5 2l2 2-2 2M9 2l-2 2 2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        )}
                         <button onClick={() => openEditModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Edit">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -1066,6 +1190,33 @@ export default function AdminProductsPage() {
                       Mark as new arrival
                     </label>
                   </div>
+
+                  {/* Swatch color */}
+                  <div>
+                    <label className={labelCls}>
+                      Swatch color{" "}
+                      <span className="normal-case text-[var(--foreground-subtle)]">
+                        (HEX — shown in palette when grouped with other variants)
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="color"
+                        value={form.colorHex}
+                        onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))}
+                        className="w-9 h-9 border border-[var(--border)] cursor-pointer bg-transparent p-0.5"
+                        title="Pick swatch color"
+                      />
+                      <input
+                        type="text"
+                        value={form.colorHex}
+                        onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))}
+                        placeholder="#888888"
+                        maxLength={7}
+                        className={`${inputCls} font-mono max-w-[120px]`}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right column */}
@@ -1165,6 +1316,137 @@ export default function AdminProductsPage() {
               </button>
               <button
                 onClick={closeModal}
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Group Variants Modal ── */}
+      {groupModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            className="border border-[var(--border)] p-6 md:p-8 max-w-lg w-full mx-4 max-h-[92vh] overflow-y-auto"
+            style={{ background: "var(--background)" }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                  {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
+                </h2>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                  Set a swatch color for each product and choose which is the catalog representative.
+                </p>
+              </div>
+              <button
+                onClick={() => setGroupModal({ open: false, entries: [] })}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {groupModal.entries.map((entry) => {
+                const p = products.find((x) => x.id === entry.id);
+                if (!p) return null;
+                return (
+                  <div
+                    key={entry.id}
+                    className={`border p-3 flex items-center gap-3 transition-colors ${
+                      entry.isPrimary ? "border-[var(--foreground)]" : "border-[var(--border)]"
+                    }`}
+                  >
+                    {/* Thumb */}
+                    {p.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.imageUrl} alt={p.name} className="w-10 h-[52px] object-cover shrink-0" />
+                    )}
+
+                    {/* Name + swatch */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
+                      <p className="text-[10px] text-[var(--foreground-muted)] truncate">{p.brand} · ${p.priceMin}</p>
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="color"
+                          value={entry.colorHex}
+                          onChange={(e) =>
+                            setGroupModal((prev) => ({
+                              ...prev,
+                              entries: prev.entries.map((en) =>
+                                en.id === entry.id ? { ...en, colorHex: e.target.value } : en
+                              ),
+                            }))
+                          }
+                          className="w-7 h-7 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
+                          title="Swatch color"
+                        />
+                        <input
+                          type="text"
+                          value={entry.colorHex}
+                          onChange={(e) =>
+                            setGroupModal((prev) => ({
+                              ...prev,
+                              entries: prev.entries.map((en) =>
+                                en.id === entry.id ? { ...en, colorHex: e.target.value } : en
+                              ),
+                            }))
+                          }
+                          maxLength={7}
+                          placeholder="#888888"
+                          className={`${inputCls} font-mono max-w-[100px] py-1`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Primary toggle */}
+                    <div className="shrink-0 text-center">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGroupModal((prev) => ({
+                            ...prev,
+                            entries: prev.entries.map((en) => ({
+                              ...en,
+                              isPrimary: en.id === entry.id,
+                            })),
+                          }))
+                        }
+                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border transition-colors ${
+                          entry.isPrimary
+                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {entry.isPrimary ? "Primary" : "Set primary"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
+              The <strong>primary</strong> product is shown in the catalog. Others are accessible via the colour palette on the card.
+            </p>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleGroupSave}
+                disabled={grouping || !dbConfigured}
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
+              </button>
+              <button
+                onClick={() => setGroupModal({ open: false, entries: [] })}
                 className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               >
                 Cancel

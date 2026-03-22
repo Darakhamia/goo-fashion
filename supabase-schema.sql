@@ -29,6 +29,18 @@ create table if not exists public.products (
 -- Migration: add gender column if upgrading an existing table
 -- alter table public.products add column if not exists gender text default null;
 
+-- ============================================================
+-- Migration: Color variant linking (run in Supabase SQL Editor)
+-- ============================================================
+-- alter table public.products add column if not exists variant_group_id text default null;
+-- alter table public.products add column if not exists color_hex         text default null;
+-- alter table public.products add column if not exists is_group_primary  boolean default false;
+--
+-- -- Index for fast group lookups
+-- create index if not exists products_variant_group_idx on public.products (variant_group_id)
+--   where variant_group_id is not null;
+-- ============================================================
+
 -- Enable Row Level Security
 alter table public.products enable row level security;
 
