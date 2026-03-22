@@ -44,13 +44,15 @@ interface ProductFormState {
   priceMax: string;
   images: string[];
   colorsRaw: string;
-  colorImages: Record<string, string[]>;
   sizes: string;
   material: string;
   styleKeywords: StyleKeyword[];
   retailers: RetailerForm[];
   isNew: boolean;
-  colorHex: string;
+  /** HEX swatch color for this product (used when it's part of a variant group) */
+  variantColorHex: string;
+  /** IDs of other products linked to this one as color variants */
+  linkedProductIds: string[];
 }
 
 const defaultForm: ProductFormState = {
@@ -63,13 +65,13 @@ const defaultForm: ProductFormState = {
   priceMax: "",
   images: [""],
   colorsRaw: "",
-  colorImages: {},
   sizes: "",
   material: "",
   styleKeywords: ["minimal"],
   retailers: [],
   isNew: false,
-  colorHex: "#888888",
+  variantColorHex: "#888888",
+  linkedProductIds: [],
 };
 
 // ── Group-variants types ────────────────────────────────────────────────────
@@ -213,41 +215,6 @@ function ImageList({
   );
 }
 
-function ColorImageSection({
-  colorsRaw,
-  colorImages,
-  onChange,
-}: {
-  colorsRaw: string;
-  colorImages: Record<string, string[]>;
-  onChange: (ci: Record<string, string[]>) => void;
-}) {
-  const colors = deriveColors(colorsRaw);
-  if (colors.length === 0) return null;
-
-  const setColorImgs = (color: string, imgs: string[]) =>
-    onChange({ ...colorImages, [color]: imgs });
-
-  return (
-    <div className="flex flex-col gap-4 mt-3">
-      {colors.map((color) => {
-        const imgs = colorImages[color] ?? [""];
-        return (
-          <div key={color}>
-            <p className={`${labelCls} mb-2`}>
-              <span className="inline-block w-2 h-2 rounded-full bg-[var(--foreground)] mr-1.5 align-middle" />
-              {color}
-            </p>
-            <ImageList
-              images={imgs}
-              onChange={(next) => setColorImgs(color, next)}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function RetailerList({
   retailers,
@@ -383,6 +350,7 @@ export default function AdminProductsPage() {
   // ── Group variants modal ───────────────────────────────────────────────────
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
   const [grouping, setGrouping] = useState(false);
+  const [variantSearch, setVariantSearch] = useState("");
 
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
@@ -396,7 +364,8 @@ export default function AdminProductsPage() {
       const configRes = await fetch("/api/products/seed");
       setDbConfigured(configRes.status !== 501);
 
-      const res = await fetch("/api/products");
+      // raw=true returns all products including non-primary variants
+      const res = await fetch("/api/products?raw=true");
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
     } catch {
@@ -440,8 +409,12 @@ export default function AdminProductsPage() {
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
-    // Merge color images: ensure every known color has at least an empty entry
-    const ci: Record<string, string[]> = { ...(product.colorImages ?? {}) };
+    // Find other members of the same variant group
+    const linkedIds = product.variantGroupId
+      ? products
+          .filter((p) => p.variantGroupId === product.variantGroupId && p.id !== product.id)
+          .map((p) => p.id)
+      : [];
     setForm({
       name: product.name,
       brand: product.brand,
@@ -452,7 +425,6 @@ export default function AdminProductsPage() {
       priceMax: String(product.priceMax),
       images: product.images?.length ? product.images : [product.imageUrl ?? ""],
       colorsRaw: product.colors?.join(", ") ?? "",
-      colorImages: ci,
       sizes: product.sizes?.join(", ") ?? "",
       material: product.material ?? "",
       styleKeywords: (product.styleKeywords as StyleKeyword[]) ?? ["minimal"],
@@ -464,8 +436,10 @@ export default function AdminProductsPage() {
         isOfficial: r.isOfficial,
       })),
       isNew: product.isNew,
-      colorHex: product.colorHex ?? "#888888",
+      variantColorHex: product.colorHex ?? "#888888",
+      linkedProductIds: linkedIds,
     });
+    setVariantSearch("");
     setShowModal(true);
   };
 
@@ -473,6 +447,7 @@ export default function AdminProductsPage() {
     setShowModal(false);
     setEditingProduct(null);
     setForm(defaultForm);
+    setVariantSearch("");
   };
 
   const handleSave = async () => {
@@ -481,12 +456,10 @@ export default function AdminProductsPage() {
 
     const validImages = form.images.filter((u) => u.trim());
     const colors = deriveColors(form.colorsRaw);
-    const cleanColorImages: Record<string, string[]> = {};
-    colors.forEach((c) => {
-      const imgs = (form.colorImages[c] ?? []).filter((u) => u.trim());
-      if (imgs.length) cleanColorImages[c] = imgs;
-    });
 
+    // NOTE: colorHex, variantGroupId, isGroupPrimary are NOT sent here.
+    // They are set exclusively via /api/products/group after the product is saved.
+    // This avoids errors when the migration columns haven't been added yet.
     const payload: Partial<Product> = {
       name: form.name.trim(),
       brand: form.brand as Product["brand"],
@@ -498,7 +471,6 @@ export default function AdminProductsPage() {
       imageUrl: validImages[0] || "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90",
       images: validImages.length ? validImages : ["https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90"],
       colors,
-      colorImages: Object.keys(cleanColorImages).length ? cleanColorImages : undefined,
       sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
       material: form.material.trim(),
       styleKeywords: form.styleKeywords,
@@ -513,8 +485,9 @@ export default function AdminProductsPage() {
       isNew: form.isNew,
       isSaved: false,
       currency: "USD",
-      colorHex: form.colorHex || undefined,
     };
+
+    let savedId: string | null = null;
 
     if (dbConfigured) {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products";
@@ -531,12 +504,46 @@ export default function AdminProductsPage() {
         return;
       }
       const saved = await res.json();
+      savedId = saved.id;
       if (editingProduct) {
         setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? saved : p)));
       } else {
         setProducts((prev) => [saved, ...prev]);
       }
       showToast(editingProduct ? "Product updated." : "Product added.");
+
+      // ── Link color variants if requested ─────────────────────────────────
+      if (savedId && form.linkedProductIds.length > 0) {
+        const allIds = [savedId, ...form.linkedProductIds];
+        const colorHexMap: Record<string, string> = { [savedId]: form.variantColorHex };
+        form.linkedProductIds.forEach((id) => {
+          const p = products.find((x) => x.id === id);
+          colorHexMap[id] = p?.colorHex ?? "#888888";
+        });
+        // Reuse an existing group if all linked products share one
+        const existingGroups = new Set(
+          form.linkedProductIds
+            .map((id) => products.find((x) => x.id === id)?.variantGroupId)
+            .filter(Boolean)
+        );
+        const groupRes = await fetch("/api/products/group", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ids: allIds,
+            primaryId: savedId,
+            colorHexMap,
+            groupId: existingGroups.size === 1 ? [...existingGroups][0] : undefined,
+          }),
+        });
+        if (!groupRes.ok) {
+          const err = await groupRes.json();
+          showToast(err.error || "Saved but variant linking failed", "err");
+        } else {
+          showToast("Product saved and variants linked.");
+        }
+        await fetchProducts();
+      }
     } else {
       if (editingProduct) {
         setProducts((prev) =>
@@ -1191,32 +1198,6 @@ export default function AdminProductsPage() {
                     </label>
                   </div>
 
-                  {/* Swatch color */}
-                  <div>
-                    <label className={labelCls}>
-                      Swatch color{" "}
-                      <span className="normal-case text-[var(--foreground-subtle)]">
-                        (HEX — shown in palette when grouped with other variants)
-                      </span>
-                    </label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="color"
-                        value={form.colorHex}
-                        onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))}
-                        className="w-9 h-9 border border-[var(--border)] cursor-pointer bg-transparent p-0.5"
-                        title="Pick swatch color"
-                      />
-                      <input
-                        type="text"
-                        value={form.colorHex}
-                        onChange={(e) => setForm((f) => ({ ...f, colorHex: e.target.value }))}
-                        placeholder="#888888"
-                        maxLength={7}
-                        className={`${inputCls} font-mono max-w-[120px]`}
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 {/* Right column */}
@@ -1257,19 +1238,134 @@ export default function AdminProductsPage() {
                       </div>
                     </div>
 
-                    {/* Color-specific images */}
-                    {deriveColors(form.colorsRaw).length > 0 && (
-                      <div className="mt-4">
-                        <label className={`${labelCls} mb-1`}>
-                          Images per color <span className="normal-case text-[var(--foreground-subtle)]">(optional)</span>
-                        </label>
-                        <ColorImageSection
-                          colorsRaw={form.colorsRaw}
-                          colorImages={form.colorImages}
-                          onChange={(ci) => setForm((f) => ({ ...f, colorImages: ci }))}
+                    {/* ── Color variant linking (replaces "Images per color") ── */}
+                    <div className="mt-4 border-t border-[var(--border)] pt-4">
+                      <label className={`${labelCls} mb-1`}>
+                        Color variants{" "}
+                        <span className="normal-case text-[var(--foreground-subtle)]">
+                          (link other products that are the same model in a different color)
+                        </span>
+                      </label>
+
+                      {/* Swatch color for THIS product */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <input
+                          type="color"
+                          value={form.variantColorHex}
+                          onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
+                          className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
+                          title="Swatch color for this product"
                         />
+                        <input
+                          type="text"
+                          value={form.variantColorHex}
+                          onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
+                          placeholder="#888888"
+                          maxLength={7}
+                          className={`${inputCls} font-mono max-w-[110px] py-1.5`}
+                        />
+                        <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
                       </div>
-                    )}
+
+                      {/* Linked products list */}
+                      {form.linkedProductIds.length > 0 && (
+                        <div className="flex flex-col gap-1.5 mb-2">
+                          {form.linkedProductIds.map((lid) => {
+                            const lp = products.find((x) => x.id === lid);
+                            if (!lp) return null;
+                            return (
+                              <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
+                                {lp.imageUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />
+                                )}
+                                <div
+                                  className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
+                                  style={{ backgroundColor: lp.colorHex ?? "#888888" }}
+                                />
+                                <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
+                                <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      linkedProductIds: f.linkedProductIds.filter((x) => x !== lid),
+                                    }))
+                                  }
+                                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1"
+                                  aria-label="Remove"
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                    <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                                  </svg>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Search to add a product */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={variantSearch}
+                          onChange={(e) => setVariantSearch(e.target.value)}
+                          placeholder="Search product to link…"
+                          className={`${inputCls} py-1.5`}
+                        />
+                        {variantSearch.trim().length >= 1 && (() => {
+                          const q = variantSearch.toLowerCase();
+                          const matches = products.filter(
+                            (p) =>
+                              p.id !== (editingProduct?.id ?? "") &&
+                              !form.linkedProductIds.includes(p.id) &&
+                              (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))
+                          ).slice(0, 6);
+                          if (matches.length === 0) return null;
+                          return (
+                            <div
+                              className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto"
+                              style={{ background: "var(--background)" }}
+                            >
+                              {matches.map((mp) => (
+                                <button
+                                  key={mp.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((f) => ({
+                                      ...f,
+                                      linkedProductIds: [...f.linkedProductIds, mp.id],
+                                    }));
+                                    setVariantSearch("");
+                                  }}
+                                  className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0"
+                                >
+                                  {mp.imageUrl && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />
+                                  )}
+                                  {mp.colorHex && (
+                                    <span
+                                      className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
+                                      style={{ backgroundColor: mp.colorHex }}
+                                    />
+                                  )}
+                                  <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
+                                  <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      {form.linkedProductIds.length > 0 && (
+                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+                          This product will be set as the <strong>primary</strong> (catalog representative) for the group.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

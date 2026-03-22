@@ -4,8 +4,11 @@ import { getAllProducts } from "@/lib/data/db";
 import { productToDb, dbToProduct } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 
-export async function GET() {
-  const products = await getAllProducts();
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  // raw=true → skip variant grouping (used by admin panel to show all products)
+  const raw = searchParams.get("raw") === "true";
+  const products = await getAllProducts(raw);
   return NextResponse.json(products);
 }
 

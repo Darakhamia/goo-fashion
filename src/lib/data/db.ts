@@ -89,7 +89,7 @@ function toSwatch(p: Product): ProductSwatch {
  * – Non-primary products in a group are removed from the top-level list.
  * – Products without a group are returned unchanged.
  */
-export async function getAllProducts(): Promise<Product[]> {
+export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
   if (!isSupabaseConfigured || !supabase) return staticProducts;
 
   const { data, error } = await supabase
@@ -103,7 +103,7 @@ export async function getAllProducts(): Promise<Product[]> {
   }
 
   const all = (data as DbProduct[]).map(dbToProduct);
-  return groupVariants(all);
+  return skipGrouping ? all : groupVariants(all);
 }
 
 /**
