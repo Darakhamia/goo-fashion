@@ -317,6 +317,139 @@ function RetailerList({
   );
 }
 
+// ── Migration modal ────────────────────────────────────────────────────────────
+
+const MIGRATION_SQL = `alter table public.products
+  add column if not exists variant_group_id text    default null,
+  add column if not exists color_hex        text    default null,
+  add column if not exists is_group_primary boolean default false;
+
+create index if not exists products_variant_group_idx
+  on public.products (variant_group_id)
+  where variant_group_id is not null;`;
+
+function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrated: () => void }) {
+  const [verifying, setVerifying] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<"ok" | "fail" | null>(null);
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setVerifyResult(null);
+    const res = await fetch("/api/products/group");
+    const data = await res.json();
+    setVerifying(false);
+    if (data.migrated) {
+      setVerifyResult("ok");
+      setTimeout(onMigrated, 1200);
+    } else {
+      setVerifyResult("fail");
+    }
+  };
+
+  const handleAutoMigrate = async () => {
+    setMigrating(true);
+    const res = await fetch("/api/products/group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "migrate" }),
+    });
+    const data = await res.json();
+    setMigrating(false);
+    if (data.migrated) {
+      setVerifyResult("ok");
+      setTimeout(onMigrated, 1200);
+    } else {
+      setVerifyResult("fail");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+      <div
+        className="border border-amber-400 p-6 md:p-8 max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+        style={{ background: "var(--background)" }}
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 mb-5">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-0.5 text-amber-500">
+            <path d="M10 2L1 17h18L10 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+            <path d="M10 8v4M10 14.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          <div>
+            <h2 className="font-display text-lg font-light text-[var(--foreground)]">
+              Database migration required
+            </h2>
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              Three new columns must be added to the <code className="font-mono">products</code> table before variant grouping can work.
+            </p>
+          </div>
+        </div>
+
+        {/* Option 1: Auto */}
+        <div className="border border-[var(--border)] p-4 mb-4">
+          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 1 — Try automatically</p>
+          <p className="text-xs text-[var(--foreground-muted)] mb-3">
+            Works if your Supabase project has the <code className="font-mono text-[11px]">run_sql</code> RPC function enabled.
+          </p>
+          <button
+            onClick={handleAutoMigrate}
+            disabled={migrating || verifyResult === "ok"}
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {migrating ? "Running migration…" : "Run migration automatically"}
+          </button>
+        </div>
+
+        {/* Option 2: Manual */}
+        <div className="border border-[var(--border)] p-4 mb-4">
+          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 2 — Run SQL manually</p>
+          <p className="text-xs text-[var(--foreground-muted)] mb-2">
+            Go to <strong>supabase.com → your project → SQL Editor</strong>, paste and run:
+          </p>
+          <pre
+            className="bg-[var(--surface)] border border-[var(--border)] p-3 text-[11px] font-mono text-[var(--foreground)] overflow-x-auto whitespace-pre leading-relaxed select-all cursor-text"
+          >
+            {MIGRATION_SQL}
+          </pre>
+          <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+            After running the SQL, click <strong>Verify</strong> below to confirm it worked.
+          </p>
+        </div>
+
+        {/* Verify result */}
+        {verifyResult === "ok" && (
+          <div className="border border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-300 mb-4">
+            Migration verified! Closing…
+          </div>
+        )}
+        {verifyResult === "fail" && (
+          <div className="border border-red-400 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-xs text-red-700 dark:text-red-400 mb-4">
+            Columns still not found. Run the SQL in Supabase SQL Editor, then wait a few seconds and verify again.
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={handleVerify}
+            disabled={verifying || verifyResult === "ok"}
+            className="flex-1 border border-[var(--foreground)] text-[var(--foreground)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {verifying ? "Checking…" : "Verify migration"}
+          </button>
+          <button
+            onClick={onClose}
+            className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
@@ -1677,51 +1810,10 @@ export default function AdminProductsPage() {
 
       {/* ── Migration Required Modal ── */}
       {showMigrationModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
-          <div
-            className="border border-amber-400 p-6 md:p-8 max-w-lg w-full mx-4"
-            style={{ background: "var(--background)" }}
-          >
-            <div className="flex items-start gap-3 mb-5">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-0.5 text-amber-500">
-                <path d="M10 2L1 17h18L10 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                <path d="M10 8v4M10 14.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-              <div>
-                <h2 className="font-display text-lg font-light text-[var(--foreground)]">
-                  Database migration required
-                </h2>
-                <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                  The color-variant columns don&apos;t exist in your Supabase table yet. Run the following SQL in your{" "}
-                  <strong>Supabase SQL Editor</strong> and then try again.
-                </p>
-              </div>
-            </div>
-
-            <pre className="bg-[var(--surface)] border border-[var(--border)] p-4 text-[11px] font-mono text-[var(--foreground)] overflow-x-auto whitespace-pre leading-relaxed mb-5 select-all">
-{`alter table public.products
-  add column if not exists variant_group_id text    default null,
-  add column if not exists color_hex        text    default null,
-  add column if not exists is_group_primary boolean default false;
-
--- Optional index for faster lookups
-create index if not exists products_variant_group_idx
-  on public.products (variant_group_id)
-  where variant_group_id is not null;`}
-            </pre>
-
-            <p className="text-[11px] text-[var(--foreground-muted)] mb-5">
-              Go to <strong>supabase.com → your project → SQL Editor</strong>, paste the SQL above, and click <em>Run</em>. Then come back and try grouping the variants again.
-            </p>
-
-            <button
-              onClick={() => setShowMigrationModal(false)}
-              className="w-full bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
+        <MigrationModal
+          onClose={() => setShowMigrationModal(false)}
+          onMigrated={() => { setShowMigrationModal(false); showToast("Migration applied! Try grouping again."); fetchProducts(); }}
+        />
       )}
 
       {/* Toast */}
