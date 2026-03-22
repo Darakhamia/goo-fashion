@@ -89,3 +89,7 @@ alter table public.products
   add column if not exists variant_group_id text    default null,
   add column if not exists color_hex        text    default null,
   add column if not exists is_group_primary boolean default false;
+
+create index if not exists products_variant_group_idx
+  on public.products (variant_group_id)
+  where variant_group_id is not null;
