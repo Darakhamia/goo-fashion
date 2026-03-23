@@ -134,13 +134,25 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
 
           {/* Base layer */}
           <div className="absolute inset-0">
-            <Image
-              src={allImages[activeIdx]}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            />
+            <div className="absolute inset-0 overflow-hidden">
+              <Image
+                src={allImages[activeIdx]}
+                alt=""
+                fill
+                aria-hidden
+                className="object-cover scale-125 blur-2xl brightness-75 saturate-150"
+                sizes="10vw"
+              />
+            </div>
+            <div className="absolute inset-0 z-[1]">
+              <Image
+                src={allImages[activeIdx]}
+                alt={product.name}
+                fill
+                className="object-contain"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              />
+            </div>
           </div>
 
           {/* Transition layers */}
@@ -150,25 +162,23 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
                 className="absolute inset-0 z-[1]"
                 style={{ animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
-                <Image
-                  src={allImages[outgoingIdx]}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
+                <div className="absolute inset-0 overflow-hidden">
+                  <Image src={allImages[outgoingIdx]} alt="" fill aria-hidden className="object-cover scale-125 blur-2xl brightness-75 saturate-150" sizes="10vw" />
+                </div>
+                <div className="absolute inset-0 z-[1]">
+                  <Image src={allImages[outgoingIdx]} alt={product.name} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" />
+                </div>
               </div>
               <div
                 className="absolute inset-0 z-[2]"
                 style={{ animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
-                <Image
-                  src={allImages[activeIdx]}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
+                <div className="absolute inset-0 overflow-hidden">
+                  <Image src={allImages[activeIdx]} alt="" fill aria-hidden className="object-cover scale-125 blur-2xl brightness-75 saturate-150" sizes="10vw" />
+                </div>
+                <div className="absolute inset-0 z-[1]">
+                  <Image src={allImages[activeIdx]} alt={product.name} fill className="object-contain" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" />
+                </div>
               </div>
             </>
           )}
