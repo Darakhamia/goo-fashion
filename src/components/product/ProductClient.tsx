@@ -71,26 +71,13 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
           {/* Main image */}
           <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
             {mainImage ? (
-              <div
-                className="absolute inset-0 transition-opacity duration-[260ms] ease-in-out"
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mainImage}
+                alt={product.name}
+                className="w-full h-full object-cover transition-opacity duration-[260ms] ease-in-out"
                 style={{ opacity: imgVisible ? 1 : 0 }}
-              >
-                {/* Blurred background fill */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mainImage}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl brightness-75 saturate-150"
-                />
-                {/* Contained foreground image */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="absolute inset-0 w-full h-full object-contain z-[1]"
-                />
-              </div>
+              />
             ) : (
               <div className="w-full h-full bg-[var(--surface)]" />
             )}
