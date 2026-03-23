@@ -299,7 +299,7 @@ function SwatchButton({
         e.preventDefault();
         onSelect();
       }}
-      className={`w-4 h-4 rounded-full border-2 transition-all duration-150 shrink-0 ${
+      className={`w-4 h-4 border-2 transition-all duration-150 shrink-0 ${
         active
           ? "border-[var(--foreground)] scale-110 shadow-sm"
           : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:scale-105"

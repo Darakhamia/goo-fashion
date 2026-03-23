@@ -157,7 +157,20 @@ export async function getProductById(id: string): Promise<Product | undefined> {
     .eq("id", id)
     .single();
   if (error || !data) return undefined;
-  return dbToProduct(data as DbProduct);
+  const product = dbToProduct(data as DbProduct);
+
+  // If part of a variant group, fetch all siblings and attach as swatches
+  if (product.variantGroupId) {
+    const { data: siblings } = await supabase
+      .from("products")
+      .select("*")
+      .eq("variant_group_id", product.variantGroupId);
+    if (siblings && siblings.length > 0) {
+      product.variants = (siblings as DbProduct[]).map(dbToProduct).map(toSwatch);
+    }
+  }
+
+  return product;
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {

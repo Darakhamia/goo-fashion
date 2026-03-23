@@ -459,6 +459,7 @@ export default function AdminProductsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [form, setForm] = useState<ProductFormState>(defaultForm);
   const [saving, setSaving] = useState(false);
 
@@ -537,11 +538,13 @@ export default function AdminProductsPage() {
 
   const openAddModal = () => {
     setEditingProduct(null);
+    setIsDuplicating(false);
     setForm(defaultForm);
     setShowModal(true);
   };
 
   const openEditModal = (product: Product) => {
+    setIsDuplicating(false);
     setEditingProduct(product);
     // Find other members of the same variant group
     const linkedIds = product.variantGroupId
@@ -577,9 +580,41 @@ export default function AdminProductsPage() {
     setShowModal(true);
   };
 
+  const openDuplicateModal = (product: Product) => {
+    setEditingProduct(null);
+    setIsDuplicating(true);
+    setForm({
+      name: `${product.name} (Copy)`,
+      brand: product.brand,
+      category: product.category,
+      gender: (product.gender ?? "") as Gender | "",
+      description: product.description ?? "",
+      priceMin: String(product.priceMin),
+      priceMax: String(product.priceMax),
+      images: product.images?.length ? product.images : [product.imageUrl ?? ""],
+      colorsRaw: product.colors?.join(", ") ?? "",
+      sizes: product.sizes?.join(", ") ?? "",
+      material: product.material ?? "",
+      styleKeywords: (product.styleKeywords as StyleKeyword[]) ?? ["minimal"],
+      retailers: (product.retailers ?? []).map((r) => ({
+        name: r.name,
+        url: r.url,
+        price: String(r.price),
+        availability: r.availability,
+        isOfficial: r.isOfficial,
+      })),
+      isNew: product.isNew,
+      variantColorHex: product.colorHex ?? "#888888",
+      linkedProductIds: [],
+    });
+    setVariantSearch("");
+    setShowModal(true);
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    setIsDuplicating(false);
     setForm(defaultForm);
     setVariantSearch("");
   };
@@ -1192,6 +1227,12 @@ export default function AdminProductsPage() {
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                           </svg>
                         </button>
+                        <button onClick={() => openDuplicateModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Duplicate" title="Duplicate product">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <rect x="1.5" y="4.5" width="7" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
+                            <path d="M5 4.5V3a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                          </svg>
+                        </button>
                         <button onClick={() => handleDelete(product.id)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Delete">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -1217,7 +1258,7 @@ export default function AdminProductsPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingProduct ? "Edit Product" : "Add Product"}
+                {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
               </h2>
               <button onClick={closeModal} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
