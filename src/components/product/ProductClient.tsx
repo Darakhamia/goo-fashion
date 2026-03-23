@@ -180,8 +180,8 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
             </div>
           )}
 
-          {/* Colors — right panel, controls the gallery */}
-          {product.colors.length > 0 && (
+          {/* Colors — only shown when there are no variant swatches */}
+          {product.colors.length > 0 && !(product.variants && product.variants.length > 1) && (
             <div className="mb-8">
               <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
                 Available in

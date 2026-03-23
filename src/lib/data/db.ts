@@ -70,6 +70,7 @@ export function productToDb(p: Partial<Product>) {
 function toSwatch(p: Product): ProductSwatch {
   return {
     id:         p.id,
+    name:       p.name,
     colorName:  p.colors?.[0] || p.name,
     colorHex:   p.colorHex ?? "#888888",
     priceMin:   p.priceMin,
