@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import type { Product, ProductSwatch } from "@/lib/types";
+import type { Product } from "@/lib/types";
 import ProductCard from "./ProductCard";
 
 interface Props {
@@ -149,37 +149,6 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
             </div>
           )}
 
-          {/* Variant color swatches — navigate to sibling product pages */}
-          {product.variants && product.variants.length > 1 && (
-            <div className="mb-6">
-              <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
-                Color
-                <span className="ml-2 normal-case text-[var(--foreground)]">
-                  — {product.variants.find((v: ProductSwatch) => v.id === product.id)?.colorName ?? product.colors?.[0]}
-                </span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((swatch: ProductSwatch) => {
-                  const isCurrent = swatch.id === product.id;
-                  return (
-                    <Link
-                      key={swatch.id}
-                      href={`/product/${swatch.id}`}
-                      title={swatch.colorName}
-                      aria-label={`View in ${swatch.colorName}`}
-                      className={`w-7 h-7 border-2 transition-colors duration-150 shrink-0 inline-block ${
-                        isCurrent
-                          ? "border-[var(--foreground)] scale-110 shadow-sm"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                      }`}
-                      style={{ backgroundColor: swatch.colorHex }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Colors — right panel, controls the gallery */}
           {product.colors.length > 0 && (
             <div className="mb-8">
@@ -195,7 +164,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
                   return (
                     <button
                       key={color}
-                      onClick={() => setSelectedColor(color)}
+                      onClick={() => setSelectedColor((prev) => prev === color ? null : color)}
                       className={`relative text-xs border px-3 py-1.5 transition-colors duration-200 ${
                         selectedColor === color
                           ? "border-[var(--foreground)] text-[var(--foreground)]"
