@@ -29,6 +29,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     return product.images?.length ? product.images : [product.imageUrl];
   }, [activeVariant, product]);
 
+  const displayName     = activeVariant ? activeVariant.name     : product.name;
   const displayPriceMin = activeVariant ? activeVariant.priceMin : product.priceMin;
   const displayPriceMax = activeVariant ? activeVariant.priceMax : product.priceMax;
   const displaySizes    = activeVariant ? activeVariant.sizes    : product.sizes;
@@ -108,6 +109,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   const baseSwatch: ProductSwatch | null = hasSwatches
     ? {
         id:        product.id,
+        name:      product.name,
         colorName: product.colors?.[0] || product.name,
         colorHex:  product.colorHex ?? "#888888",
         priceMin:  product.priceMin,
@@ -232,7 +234,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
           </p>
         )}
         <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
-          {product.name}
+          {displayName}
         </h3>
         <p className="text-xs text-[var(--foreground-muted)]">
           {displayPriceMin === displayPriceMax

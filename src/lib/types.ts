@@ -72,6 +72,7 @@ export interface Retailer {
  */
 export interface ProductSwatch {
   id: string;
+  name: string;       // product name for this variant
   colorName: string;  // display label (usually colors[0] or product name)
   colorHex: string;   // hex for the circle, e.g. "#1a1a2e"
   priceMin: number;
