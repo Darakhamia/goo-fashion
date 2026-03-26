@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState, useEffect, useMemo } from "react";
-import { Product, ProductSwatch } from "@/lib/types";
+import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 
 const SLIDE_MS    = 500;
@@ -133,12 +133,11 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
           {/* Base layer */}
-          <div className="absolute inset-0">
-            <Image
+          <div className="absolute inset-0 overflow-hidden">
+            <CroppedImage
               src={allImages[activeIdx]}
               alt={product.name}
-              fill
-              className="object-cover"
+              cropData={activeVariant ? undefined : product.cropData}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             />
           </div>
@@ -147,26 +146,24 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
           {outgoingIdx !== null && (
             <>
               <div
-                className="absolute inset-0 z-[1]"
+                className="absolute inset-0 z-[1] overflow-hidden"
                 style={{ animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
-                <Image
+                <CroppedImage
                   src={allImages[outgoingIdx]}
                   alt={product.name}
-                  fill
-                  className="object-cover"
+                  cropData={activeVariant ? undefined : product.cropData}
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
               <div
-                className="absolute inset-0 z-[2]"
+                className="absolute inset-0 z-[2] overflow-hidden"
                 style={{ animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
-                <Image
+                <CroppedImage
                   src={allImages[activeIdx]}
                   alt={product.name}
-                  fill
-                  className="object-cover"
+                  cropData={activeVariant ? undefined : product.cropData}
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
@@ -279,6 +276,54 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── CSS-based crop display (no server-side resize needed) ───────────────────
+function CroppedImage({
+  src,
+  alt,
+  cropData,
+  sizes,
+}: {
+  src: string;
+  alt: string;
+  cropData?: CropData;
+  sizes?: string;
+}) {
+  if (!cropData) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-cover"
+        sizes={sizes}
+      />
+    );
+  }
+  // Expand the inner container so only the crop window is visible
+  return (
+    <div
+      style={{
+        position: "absolute",
+        width: `${(1 / cropData.width) * 100}%`,
+        height: `${(1 / cropData.height) * 100}%`,
+        left: `${(-cropData.x / cropData.width) * 100}%`,
+        top: `${(-cropData.y / cropData.height) * 100}%`,
+      }}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-cover"
+        sizes={sizes}
+        style={{
+          objectPosition: `${cropData.focalX * 100}% ${cropData.focalY * 100}%`,
+        }}
+      />
     </div>
   );
 }

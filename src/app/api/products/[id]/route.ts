@@ -27,6 +27,22 @@ export async function PUT(
   return NextResponse.json(dbToProduct(data as DbProduct));
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isSupabaseConfigured || !supabase) return noDb();
+  const { id } = await params;
+  const body = await req.json();
+  // Only update crop_data; all other fields stay unchanged
+  const { error } = await supabase
+    .from("products")
+    .update({ crop_data: body.cropData ?? null })
+    .eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }

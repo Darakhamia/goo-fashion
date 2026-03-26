@@ -82,6 +82,17 @@ export interface ProductSwatch {
   sizes: string[];
 }
 
+export interface CropData {
+  /** Координаты и размер рамки в долях от оригинала (0–1) */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Точка фокуса внутри рамки (0–1), по умолчанию 0.5 / 0.5 */
+  focalX: number;
+  focalY: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -111,6 +122,8 @@ export interface Product {
   isGroupPrimary?: boolean;
   /** Populated by the API for primary products: swatches of all linked variants */
   variants?: ProductSwatch[];
+  /** Manual crop/focal-point data set by admin */
+  cropData?: CropData;
 }
 
 export interface OutfitItem {

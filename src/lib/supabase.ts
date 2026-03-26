@@ -31,4 +31,6 @@ export type DbProduct = {
   variant_group_id?: string | null;
   color_hex?: string | null;
   is_group_primary?: boolean | null;
+  // Manual crop data
+  crop_data?: { x: number; y: number; width: number; height: number; focalX: number; focalY: number } | null;
 };

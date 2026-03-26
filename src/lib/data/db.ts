@@ -30,6 +30,7 @@ export function dbToProduct(row: DbProduct): Product {
     variantGroupId: row.variant_group_id ?? undefined,
     colorHex: row.color_hex ?? undefined,
     isGroupPrimary: row.is_group_primary ?? undefined,
+    cropData: row.crop_data ?? undefined,
   };
 }
 
@@ -60,6 +61,7 @@ export function productToDb(p: Partial<Product>) {
   if (p.variantGroupId !== undefined) extras.variant_group_id = p.variantGroupId ?? null;
   if (p.colorHex !== undefined)       extras.color_hex = p.colorHex ?? null;
   if (p.isGroupPrimary !== undefined) extras.is_group_primary = p.isGroupPrimary ?? false;
+  if (p.cropData !== undefined)       extras.crop_data = p.cropData ?? null;
   return { ...base, ...extras };
 }
 

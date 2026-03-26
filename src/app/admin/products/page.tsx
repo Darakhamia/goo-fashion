@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { Product, Category, StyleKeyword, Retailer, Gender } from "@/lib/types";
+import type { Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
+import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -322,7 +323,8 @@ function RetailerList({
 const MIGRATION_SQL = `alter table public.products
   add column if not exists variant_group_id text    default null,
   add column if not exists color_hex        text    default null,
-  add column if not exists is_group_primary boolean default false;
+  add column if not exists is_group_primary boolean default false,
+  add column if not exists crop_data        jsonb   default null;
 
 create index if not exists products_variant_group_idx
   on public.products (variant_group_id)
@@ -480,6 +482,47 @@ export default function AdminProductsPage() {
   const [sortKey, setSortKey] = useState<"name" | "brand" | "category" | "priceMin" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ── Crop editor ────────────────────────────────────────────────────────────
+  const [cropProduct, setCropProduct] = useState<Product | null>(null);
+  const [cropSaving, setCropSaving] = useState(false);
+
+  const handleCropSave = async (cropData: CropData) => {
+    if (!cropProduct) return;
+    setCropSaving(true);
+    if (dbConfigured) {
+      const res = await fetch(`/api/products/${cropProduct.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cropData }),
+      });
+      if (!res.ok) {
+        showToast("Не удалось сохранить кадрирование", "err");
+        setCropSaving(false);
+        return;
+      }
+    }
+    setProducts((prev) =>
+      prev.map((p) => (p.id === cropProduct.id ? { ...p, cropData } : p))
+    );
+    showToast("Кадрирование сохранено.");
+    setCropSaving(false);
+    setCropProduct(null);
+  };
+
+  const handleCropClear = async (product: Product) => {
+    if (!dbConfigured) return;
+    const res = await fetch(`/api/products/${product.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cropData: null }),
+    });
+    if (!res.ok) { showToast("Ошибка сброса", "err"); return; }
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, cropData: undefined } : p))
+    );
+    showToast("Кадрирование сброшено.");
+  };
 
   // ── Group variants modal ───────────────────────────────────────────────────
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
@@ -1222,6 +1265,23 @@ export default function AdminProductsPage() {
                             </svg>
                           </button>
                         )}
+                        {/* Crop button */}
+                        <button
+                          onClick={() => setCropProduct(product)}
+                          title={product.cropData ? "Изменить кадрирование" : "Настроить кадрирование"}
+                          className={`transition-colors p-1 ${
+                            product.cropData
+                              ? "text-[var(--foreground)] opacity-90"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                          }`}
+                          aria-label="Crop image"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 1v9a1 1 0 001 1h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                            <path d="M1 3h9a1 1 0 011 1v9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                            {product.cropData && <circle cx="7" cy="7" r="1.5" fill="currentColor"/>}
+                          </svg>
+                        </button>
                         <button onClick={() => openEditModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Edit">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -1607,6 +1667,54 @@ export default function AdminProductsPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Crop Editor Modal ── */}
+      {cropProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div
+            className="border border-[var(--border)] p-6 md:p-8 max-w-xl w-full mx-4 max-h-[95vh] overflow-y-auto"
+            style={{ background: "var(--background)" }}
+          >
+            {/* Заголовок с кнопкой сброса */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">Кадрирование изображения</h2>
+              <div className="flex items-center gap-3">
+                {cropProduct.cropData && dbConfigured && (
+                  <button
+                    onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
+                    className="text-[10px] tracking-[0.1em] uppercase text-red-500 hover:text-red-700 underline transition-colors"
+                  >
+                    Удалить кадрирование
+                  </button>
+                )}
+                <button
+                  onClick={() => setCropProduct(null)}
+                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {!dbConfigured && (
+              <div className="mb-4 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                Supabase не подключён — кадрирование сохранится только в памяти до перезагрузки.
+              </div>
+            )}
+
+            <ImageCropEditor
+              imageUrl={cropProduct.imageUrl}
+              productName={cropProduct.name}
+              initialCrop={cropProduct.cropData}
+              onSave={handleCropSave}
+              onCancel={() => setCropProduct(null)}
+              saving={cropSaving}
+            />
           </div>
         </div>
       )}
