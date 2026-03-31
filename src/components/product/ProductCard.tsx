@@ -80,12 +80,12 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       }, SLIDE_MS);
     };
 
-    // Wait 4 s before the first slide
+    // Wait 3 s before the first slide
     let startDelay: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       startDelay = null;
       doSlide();
       state.interval = setInterval(doSlide, INTERVAL_MS);
-    }, 4000);
+    }, 3000);
 
     return () => {
       if (startDelay)      { clearTimeout(startDelay);      startDelay      = null; }
@@ -138,7 +138,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
           {/* Base layer */}
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="card-zoom-layer absolute inset-0 overflow-hidden">
             <CroppedImage
               src={allImages[activeIdx]}
               alt={product.name}
