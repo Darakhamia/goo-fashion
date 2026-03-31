@@ -80,12 +80,12 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       }, SLIDE_MS);
     };
 
-    // Wait 4 s before the first slide
+    // Wait 3 s before the first slide
     let startDelay: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       startDelay = null;
       doSlide();
       state.interval = setInterval(doSlide, INTERVAL_MS);
-    }, 4000);
+    }, 3000);
 
     return () => {
       if (startDelay)      { clearTimeout(startDelay);      startDelay      = null; }
