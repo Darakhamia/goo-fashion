@@ -138,7 +138,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
           {/* Base layer */}
-          <div className="absolute inset-0 overflow-hidden">
+          <div className="card-zoom-layer absolute inset-0 overflow-hidden">
             <CroppedImage
               src={allImages[activeIdx]}
               alt={product.name}
