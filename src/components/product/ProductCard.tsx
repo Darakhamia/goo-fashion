@@ -80,12 +80,17 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       }, SLIDE_MS);
     };
 
-    doSlide();
-    state.interval = setInterval(doSlide, INTERVAL_MS);
+    // Wait 4 s before the first slide
+    let startDelay: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      startDelay = null;
+      doSlide();
+      state.interval = setInterval(doSlide, INTERVAL_MS);
+    }, 4000);
 
     return () => {
-      if (state.interval) { clearInterval(state.interval);  state.interval  = null; }
-      if (state.timeout)  { clearTimeout(state.timeout);    state.timeout   = null; }
+      if (startDelay)      { clearTimeout(startDelay);      startDelay      = null; }
+      if (state.interval)  { clearInterval(state.interval); state.interval  = null; }
+      if (state.timeout)   { clearTimeout(state.timeout);   state.timeout   = null; }
       state.animating = false;
       state.activeIdx = 0;
       setOutgoingIdx(null);
