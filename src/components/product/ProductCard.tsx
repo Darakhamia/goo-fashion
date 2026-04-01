@@ -174,7 +174,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
           {outgoingIdx !== null && (
             <>
               <div
-                className="absolute inset-0 z-[1] overflow-hidden"
+                className="card-zoom-layer absolute inset-0 z-[1] overflow-hidden"
                 style={{ animation: `${slideReverse ? "cardSlideOutToRight" : "cardSlideOutToLeft"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <CroppedImage
@@ -185,7 +185,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
                 />
               </div>
               <div
-                className="absolute inset-0 z-[2] overflow-hidden"
+                className="card-zoom-layer absolute inset-0 z-[2] overflow-hidden"
                 style={{ animation: `${slideReverse ? "cardSlideInFromLeft" : "cardSlideInFromRight"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <CroppedImage
