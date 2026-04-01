@@ -48,6 +48,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   useEffect(() => {
     setActiveIdx(0);
     setOutgoingIdx(null);
+    t.current.activeIdx = 0;
   }, [activeVariant]);
 
   // All mutable timer state in one ref
@@ -62,6 +63,12 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     if (!isHovered || !hasMultiple) return;
 
     const state = t.current;
+
+    // Reset any stale animation state left by an interrupted return animation
+    // (e.g. user re-hovered before the 500 ms return-slide finished)
+    state.animating = false;
+    setOutgoingIdx(null);
+    setSlideReverse(false);
 
     const doSlide = () => {
       if (state.animating) return;
