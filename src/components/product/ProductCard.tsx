@@ -42,6 +42,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   const [isHovered,   setIsHovered]   = useState(false);
   const [activeIdx,   setActiveIdx]   = useState(0);
   const [outgoingIdx, setOutgoingIdx] = useState<number | null>(null);
+  const [slideReverse, setSlideReverse] = useState(false);
 
   // Reset slideshow index when variant (and thus images) changes
   useEffect(() => {
@@ -92,11 +93,33 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       if (state.interval)  { clearInterval(state.interval); state.interval  = null; }
       if (state.timeout)   { clearTimeout(state.timeout);   state.timeout   = null; }
       state.animating = false;
-      state.activeIdx = 0;
       setOutgoingIdx(null);
-      setActiveIdx(0);
+      // activeIdx reset is handled by the smooth-return effect below
     };
   }, [isHovered, hasMultiple, allImages.length]);
+
+  // Smoothly return to first image when cursor leaves
+  useEffect(() => {
+    if (isHovered) return;
+
+    const state = t.current;
+    const currentIdx = state.activeIdx;
+    if (currentIdx === 0) return;
+
+    state.animating = true;
+    setSlideReverse(true);
+    setOutgoingIdx(currentIdx);
+    setActiveIdx(0);
+    state.activeIdx = 0;
+
+    const timeout = setTimeout(() => {
+      setOutgoingIdx(null);
+      setSlideReverse(false);
+      state.animating = false;
+    }, SLIDE_MS);
+
+    return () => clearTimeout(timeout);
+  }, [isHovered]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -152,7 +175,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             <>
               <div
                 className="absolute inset-0 z-[1] overflow-hidden"
-                style={{ animation: `cardSlideOutToLeft ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
+                style={{ animation: `${slideReverse ? "cardSlideOutToRight" : "cardSlideOutToLeft"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <CroppedImage
                   src={allImages[outgoingIdx]}
@@ -163,7 +186,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
               </div>
               <div
                 className="absolute inset-0 z-[2] overflow-hidden"
-                style={{ animation: `cardSlideInFromRight ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
+                style={{ animation: `${slideReverse ? "cardSlideInFromLeft" : "cardSlideInFromRight"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
               >
                 <CroppedImage
                   src={allImages[activeIdx]}
