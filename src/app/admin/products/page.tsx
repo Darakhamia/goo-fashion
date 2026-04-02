@@ -1660,7 +1660,7 @@ export default function AdminProductsPage() {
                     (shown in browse sidebar — select all base colors this item belongs to)
                   </span>
                 </label>
-                <div className="flex flex-wrap gap-3 mt-3">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
                   {colorGroups.map((cg) => {
                     const active = form.colorGroupIds.includes(cg.id);
                     return (
@@ -1675,15 +1675,29 @@ export default function AdminProductsPage() {
                               : [...f.colorGroupIds, cg.id],
                           }))
                         }
-                        className={`flex items-center gap-2 px-3 py-1.5 border text-xs transition-colors ${
-                          active
-                            ? "border-[var(--foreground)] text-[var(--foreground)]"
-                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"
-                        }`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "5px 10px",
+                          fontSize: "11px",
+                          border: `1px solid ${active ? "var(--foreground)" : "var(--border-strong)"}`,
+                          background: active ? "var(--surface)" : "transparent",
+                          color: "var(--foreground)",
+                          cursor: "pointer",
+                          transition: "border-color 0.15s",
+                          letterSpacing: "0.04em",
+                        }}
                       >
                         <span
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: cg.hexCode }}
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            background: cg.hexCode,
+                            flexShrink: 0,
+                            border: "1px solid rgba(255,255,255,0.25)",
+                          }}
                         />
                         {cg.name}
                       </button>
