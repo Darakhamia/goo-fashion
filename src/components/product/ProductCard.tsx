@@ -170,7 +170,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
           {/* Base layer */}
           <div className="card-zoom-layer absolute inset-0 overflow-hidden">
             <CroppedImage
-              src={allImages[activeIdx]}
+              src={allImages[outgoingIdx !== null ? outgoingIdx : activeIdx]}
               alt={product.name}
               cropData={activeVariant ? undefined : product.cropData}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
