@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
+import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -54,6 +54,8 @@ interface ProductFormState {
   variantColorHex: string;
   /** IDs of other products linked to this one as color variants */
   linkedProductIds: string[];
+  /** Base color group IDs for filter (from color_groups table) */
+  colorGroupIds: number[];
 }
 
 const defaultForm: ProductFormState = {
@@ -73,6 +75,7 @@ const defaultForm: ProductFormState = {
   isNew: false,
   variantColorHex: "#888888",
   linkedProductIds: [],
+  colorGroupIds: [],
 };
 
 // ── Group-variants types ────────────────────────────────────────────────────
@@ -458,6 +461,7 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
+  const [colorGroups, setColorGroups] = useState<ColorGroup[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -553,7 +557,13 @@ export default function AdminProductsPage() {
     }
   };
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => {
+    fetchProducts();
+    fetch("/api/color-groups")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     let list = products.filter(
@@ -618,6 +628,7 @@ export default function AdminProductsPage() {
       isNew: product.isNew,
       variantColorHex: product.colorHex ?? "#888888",
       linkedProductIds: linkedIds,
+      colorGroupIds: product.colorGroupIds ?? [],
     });
     setVariantSearch("");
     setShowModal(true);
@@ -649,6 +660,7 @@ export default function AdminProductsPage() {
       isNew: product.isNew,
       variantColorHex: product.colorHex ?? "#888888",
       linkedProductIds: [],
+      colorGroupIds: product.colorGroupIds ?? [],
     });
     setVariantSearch("");
     setShowModal(true);
@@ -697,6 +709,7 @@ export default function AdminProductsPage() {
       isNew: form.isNew,
       isSaved: false,
       currency: "USD",
+      colorGroupIds: form.colorGroupIds,
     };
 
     let savedId: string | null = null;
@@ -1619,6 +1632,48 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Full-width: Color Groups (filter mapping) ── */}
+              {colorGroups.length > 0 && (
+                <div className="border-t border-[var(--border)] pt-5">
+                  <label className={labelCls}>
+                    Color Filter Groups{" "}
+                    <span className="normal-case text-[var(--foreground-subtle)]">
+                      (shown in browse sidebar; select all base colors this item belongs to)
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    {colorGroups.map((cg) => {
+                      const active = form.colorGroupIds.includes(cg.id);
+                      return (
+                        <button
+                          key={cg.id}
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              colorGroupIds: active
+                                ? f.colorGroupIds.filter((id) => id !== cg.id)
+                                : [...f.colorGroupIds, cg.id],
+                            }))
+                          }
+                          className={`flex items-center gap-2 px-3 py-1.5 border text-xs transition-colors ${
+                            active
+                              ? "border-[var(--foreground)] text-[var(--foreground)]"
+                              : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: cg.hexCode }}
+                          />
+                          {cg.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* ── Full-width: Style Keywords ── */}
               <div className="border-t border-[var(--border)] pt-5">

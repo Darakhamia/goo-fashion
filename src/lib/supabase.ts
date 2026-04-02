@@ -1,4 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
+import type { ColorGroup } from "@/lib/types";
+
+export type DbColorGroup = {
+  id: number;
+  name: string;
+  hex_code: string;
+  sort_order: number;
+};
+
+export function dbToColorGroup(row: DbColorGroup): ColorGroup {
+  return {
+    id: row.id,
+    name: row.name,
+    hexCode: row.hex_code,
+    sortOrder: row.sort_order,
+  };
+}
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -33,4 +50,6 @@ export type DbProduct = {
   is_group_primary?: boolean | null;
   // Manual crop data
   crop_data?: { x: number; y: number; width: number; height: number; focalX: number; focalY: number } | null;
+  // Base color group IDs for color filter (references color_groups.id)
+  color_group_ids?: number[] | null;
 };
