@@ -23,6 +23,23 @@ const PRICE_RANGES = [
   { label: "Over $1,000", min: 1000, max: Infinity },
 ];
 
+const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
+  { id: 1,  name: "Black",  hexCode: "#1a1a1a", sortOrder: 1 },
+  { id: 2,  name: "White",  hexCode: "#f5f5f5", sortOrder: 2 },
+  { id: 3,  name: "Grey",   hexCode: "#808080", sortOrder: 3 },
+  { id: 4,  name: "Beige",  hexCode: "#c8ad8f", sortOrder: 4 },
+  { id: 5,  name: "Brown",  hexCode: "#7a4f35", sortOrder: 5 },
+  { id: 6,  name: "Navy",   hexCode: "#1a2d5a", sortOrder: 6 },
+  { id: 7,  name: "Blue",   hexCode: "#2563ad", sortOrder: 7 },
+  { id: 8,  name: "Green",  hexCode: "#2d6a3f", sortOrder: 8 },
+  { id: 9,  name: "Red",    hexCode: "#c0392b", sortOrder: 9 },
+  { id: 10, name: "Pink",   hexCode: "#d4607a", sortOrder: 10 },
+  { id: 11, name: "Orange", hexCode: "#d4621a", sortOrder: 11 },
+  { id: 12, name: "Yellow", hexCode: "#c9a227", sortOrder: 12 },
+  { id: 13, name: "Purple", hexCode: "#6b3fa0", sortOrder: 13 },
+  { id: 14, name: "Multi",  hexCode: "#e0e0e0", sortOrder: 14 },
+];
+
 /* ── Reusable filter UI atoms ── */
 
 function AccordionSection({
@@ -140,7 +157,7 @@ export default function BrowsePage() {
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [colorGroups, setColorGroups] = useState<ColorGroup[]>([]);
+  const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
 
   useEffect(() => {
     fetch("/api/products")
@@ -397,45 +414,43 @@ export default function BrowsePage() {
             </div>
           </AccordionSection>
 
-          {colorGroups.length > 0 && (
-            <AccordionSection
-              title="Color"
-              open={openSections.color}
-              onToggle={() => toggleSection("color")}
-            >
-              <div className="flex flex-wrap gap-3 pt-1">
-                {colorGroups.map((cg) => {
-                  const active = selectedColorGroupIds.includes(cg.id);
-                  return (
-                    <button
-                      key={cg.id}
-                      onClick={() => toggleColorGroup(cg.id)}
-                      className="flex flex-col items-center gap-1.5 group"
-                      title={cg.name}
+          <AccordionSection
+            title="Color"
+            open={openSections.color}
+            onToggle={() => toggleSection("color")}
+          >
+            <div className="flex flex-wrap gap-3 pt-1">
+              {colorGroups.map((cg) => {
+                const active = selectedColorGroupIds.includes(cg.id);
+                return (
+                  <button
+                    key={cg.id}
+                    onClick={() => toggleColorGroup(cg.id)}
+                    className="flex flex-col items-center gap-1.5 group"
+                    title={cg.name}
+                  >
+                    <span
+                      className={`w-6 h-6 rounded-full transition-all duration-150 ${
+                        active
+                          ? "ring-2 ring-offset-2 ring-[var(--foreground)] scale-110"
+                          : "ring-1 ring-[var(--border)] group-hover:ring-[var(--foreground-muted)]"
+                      }`}
+                      style={{ backgroundColor: cg.hexCode }}
+                    />
+                    <span
+                      className={`text-[9px] tracking-[0.06em] capitalize transition-colors duration-150 ${
+                        active
+                          ? "text-[var(--foreground)] font-medium"
+                          : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
+                      }`}
                     >
-                      <span
-                        className={`w-6 h-6 rounded-full transition-all duration-150 ${
-                          active
-                            ? "ring-2 ring-offset-2 ring-[var(--foreground)] scale-110"
-                            : "ring-1 ring-[var(--border)] group-hover:ring-[var(--foreground-muted)]"
-                        }`}
-                        style={{ backgroundColor: cg.hexCode }}
-                      />
-                      <span
-                        className={`text-[9px] tracking-[0.06em] capitalize transition-colors duration-150 ${
-                          active
-                            ? "text-[var(--foreground)] font-medium"
-                            : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
-                        }`}
-                      >
-                        {cg.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </AccordionSection>
-          )}
+                      {cg.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </AccordionSection>
         </>
       )}
 

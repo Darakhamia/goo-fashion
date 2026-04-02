@@ -25,6 +25,25 @@ const STYLE_KEYWORDS: StyleKeyword[] = [
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
 
+// Static fallback color groups — shown even before Supabase is configured.
+// IDs match the seed data in supabase-schema.sql (sort_order order).
+const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
+  { id: 1,  name: "Black",  hexCode: "#1a1a1a", sortOrder: 1 },
+  { id: 2,  name: "White",  hexCode: "#f5f5f5", sortOrder: 2 },
+  { id: 3,  name: "Grey",   hexCode: "#808080", sortOrder: 3 },
+  { id: 4,  name: "Beige",  hexCode: "#c8ad8f", sortOrder: 4 },
+  { id: 5,  name: "Brown",  hexCode: "#7a4f35", sortOrder: 5 },
+  { id: 6,  name: "Navy",   hexCode: "#1a2d5a", sortOrder: 6 },
+  { id: 7,  name: "Blue",   hexCode: "#2563ad", sortOrder: 7 },
+  { id: 8,  name: "Green",  hexCode: "#2d6a3f", sortOrder: 8 },
+  { id: 9,  name: "Red",    hexCode: "#c0392b", sortOrder: 9 },
+  { id: 10, name: "Pink",   hexCode: "#d4607a", sortOrder: 10 },
+  { id: 11, name: "Orange", hexCode: "#d4621a", sortOrder: 11 },
+  { id: 12, name: "Yellow", hexCode: "#c9a227", sortOrder: 12 },
+  { id: 13, name: "Purple", hexCode: "#6b3fa0", sortOrder: 13 },
+  { id: 14, name: "Multi",  hexCode: "#e0e0e0", sortOrder: 14 },
+];
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface RetailerForm {
@@ -461,7 +480,7 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
-  const [colorGroups, setColorGroups] = useState<ColorGroup[]>([]);
+  const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1634,46 +1653,44 @@ export default function AdminProductsPage() {
               </div>
 
               {/* ── Full-width: Color Groups (filter mapping) ── */}
-              {colorGroups.length > 0 && (
-                <div className="border-t border-[var(--border)] pt-5">
-                  <label className={labelCls}>
-                    Color Filter Groups{" "}
-                    <span className="normal-case text-[var(--foreground-subtle)]">
-                      (shown in browse sidebar; select all base colors this item belongs to)
-                    </span>
-                  </label>
-                  <div className="flex flex-wrap gap-3 mt-3">
-                    {colorGroups.map((cg) => {
-                      const active = form.colorGroupIds.includes(cg.id);
-                      return (
-                        <button
-                          key={cg.id}
-                          type="button"
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              colorGroupIds: active
-                                ? f.colorGroupIds.filter((id) => id !== cg.id)
-                                : [...f.colorGroupIds, cg.id],
-                            }))
-                          }
-                          className={`flex items-center gap-2 px-3 py-1.5 border text-xs transition-colors ${
-                            active
-                              ? "border-[var(--foreground)] text-[var(--foreground)]"
-                              : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"
-                          }`}
-                        >
-                          <span
-                            className="w-3 h-3 rounded-full shrink-0"
-                            style={{ backgroundColor: cg.hexCode }}
-                          />
-                          {cg.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="border-t border-[var(--border)] pt-5">
+                <label className={labelCls}>
+                  Color Filter Groups{" "}
+                  <span className="normal-case text-[var(--foreground-subtle)]">
+                    (shown in browse sidebar — select all base colors this item belongs to)
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-3 mt-3">
+                  {colorGroups.map((cg) => {
+                    const active = form.colorGroupIds.includes(cg.id);
+                    return (
+                      <button
+                        key={cg.id}
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            colorGroupIds: active
+                              ? f.colorGroupIds.filter((id) => id !== cg.id)
+                              : [...f.colorGroupIds, cg.id],
+                          }))
+                        }
+                        className={`flex items-center gap-2 px-3 py-1.5 border text-xs transition-colors ${
+                          active
+                            ? "border-[var(--foreground)] text-[var(--foreground)]"
+                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: cg.hexCode }}
+                        />
+                        {cg.name}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
               {/* ── Full-width: Style Keywords ── */}
               <div className="border-t border-[var(--border)] pt-5">
