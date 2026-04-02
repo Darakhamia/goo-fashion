@@ -1660,7 +1660,7 @@ export default function AdminProductsPage() {
                     (shown in browse sidebar — select all base colors this item belongs to)
                   </span>
                 </label>
-                <div className="flex flex-wrap gap-3 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {colorGroups.map((cg) => {
                     const active = form.colorGroupIds.includes(cg.id);
                     return (
@@ -1675,14 +1675,15 @@ export default function AdminProductsPage() {
                               : [...f.colorGroupIds, cg.id],
                           }))
                         }
-                        className={`flex items-center gap-2 px-3 py-1.5 border text-xs transition-colors ${
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs transition-all border ${
                           active
-                            ? "border-[var(--foreground)] text-[var(--foreground)]"
-                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"
+                            ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
+                            : "border-[var(--border-strong)] text-[var(--foreground)] hover:border-[var(--foreground)]"
                         }`}
+                        style={active ? { boxShadow: `0 0 0 1px ${cg.hexCode}40` } : undefined}
                       >
                         <span
-                          className="w-3 h-3 rounded-full shrink-0"
+                          className="w-3.5 h-3.5 rounded-full shrink-0 border border-white/20"
                           style={{ backgroundColor: cg.hexCode }}
                         />
                         {cg.name}
