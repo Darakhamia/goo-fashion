@@ -93,3 +93,55 @@ alter table public.products
 create index if not exists products_variant_group_idx
   on public.products (variant_group_id)
   where variant_group_id is not null;
+
+-- ============================================================
+-- Color Groups (Base Color Mapping for filter sidebar)
+-- ============================================================
+
+create table if not exists public.color_groups (
+  id         serial      primary key,
+  name       text        not null,        -- "Черный", "Белый", "Красный"
+  hex_code   text        not null,        -- "#000000" — used for swatch circle in filter UI
+  sort_order int         not null default 0
+);
+
+alter table public.color_groups enable row level security;
+
+create policy "Public read access"
+  on public.color_groups
+  for select
+  using (true);
+
+-- Pre-populate with standard base colors
+insert into public.color_groups (name, hex_code, sort_order) values
+  ('Black',  '#1a1a1a', 1),
+  ('White',  '#f5f5f5', 2),
+  ('Grey',   '#808080', 3),
+  ('Beige',  '#c8ad8f', 4),
+  ('Brown',  '#7a4f35', 5),
+  ('Navy',   '#1a2d5a', 6),
+  ('Blue',   '#2563ad', 7),
+  ('Green',  '#2d6a3f', 8),
+  ('Red',    '#c0392b', 9),
+  ('Pink',   '#d4607a', 10),
+  ('Orange', '#d4621a', 11),
+  ('Yellow', '#c9a227', 12),
+  ('Purple', '#6b3fa0', 13),
+  ('Multi',  '#e0e0e0', 14)
+on conflict do nothing;
+
+-- ============================================================
+-- Migration: add color_group_ids array to products
+-- Stores IDs from color_groups; supports multi-color items
+-- ============================================================
+-- alter table public.products
+--   add column if not exists color_group_ids int[] not null default '{}';
+--
+-- create index if not exists products_color_group_ids_idx
+--   on public.products using gin (color_group_ids);
+
+alter table public.products
+  add column if not exists color_group_ids int[] not null default '{}';
+
+create index if not exists products_color_group_ids_idx
+  on public.products using gin (color_group_ids);

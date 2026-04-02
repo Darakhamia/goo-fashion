@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import { outfits } from "@/lib/data/outfits";
-import type { Category, Gender, Occasion, Product } from "@/lib/types";
+import type { Category, ColorGroup, Gender, Occasion, Product } from "@/lib/types";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -140,12 +140,21 @@ export default function BrowsePage() {
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [colorGroups, setColorGroups] = useState<ColorGroup[]>([]);
+
   useEffect(() => {
     fetch("/api/products")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setCatalogProducts(d); })
       .catch(() => {})
       .finally(() => setLoadingProducts(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/color-groups")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
+      .catch(() => {});
   }, []);
 
   const products = catalogProducts;
@@ -160,6 +169,7 @@ export default function BrowsePage() {
   const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [selectedPriceIdx, setSelectedPriceIdx] = useState<number | null>(null);
+  const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
 
   /* Accordion state */
@@ -167,6 +177,7 @@ export default function BrowsePage() {
     brand: true,
     category: true,
     gender: true,
+    color: true,
     occasion: true,
     price: false,
   });
@@ -185,10 +196,14 @@ export default function BrowsePage() {
       p.includes(o) ? p.filter((x) => x !== o) : [...p, o]
     );
 
+  const toggleColorGroup = (id: number) =>
+    setSelectedColorGroupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
   const activeFiltersCount =
     selectedBrands.length +
     selectedCategories.length +
     selectedOccasions.length +
+    selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
     (selectedPriceIdx !== null ? 1 : 0) +
     (aiOnly ? 1 : 0);
@@ -199,6 +214,7 @@ export default function BrowsePage() {
     setSelectedOccasions([]);
     setSelectedGender(null);
     setSelectedPriceIdx(null);
+    setSelectedColorGroupIds([]);
     setAiOnly(false);
     setSearchQuery("");
   };
@@ -228,6 +244,11 @@ export default function BrowsePage() {
       )
       .filter(
         (p) =>
+          !selectedColorGroupIds.length ||
+          (p.colorGroupIds ?? []).some((id) => selectedColorGroupIds.includes(id))
+      )
+      .filter(
+        (p) =>
           !q ||
           p.name.toLowerCase().includes(q) ||
           p.brand.toLowerCase().includes(q) ||
@@ -240,7 +261,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, searchQuery, sort]);
+  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, selectedColorGroupIds, searchQuery, sort]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -375,6 +396,46 @@ export default function BrowsePage() {
               ))}
             </div>
           </AccordionSection>
+
+          {colorGroups.length > 0 && (
+            <AccordionSection
+              title="Color"
+              open={openSections.color}
+              onToggle={() => toggleSection("color")}
+            >
+              <div className="flex flex-wrap gap-3 pt-1">
+                {colorGroups.map((cg) => {
+                  const active = selectedColorGroupIds.includes(cg.id);
+                  return (
+                    <button
+                      key={cg.id}
+                      onClick={() => toggleColorGroup(cg.id)}
+                      className="flex flex-col items-center gap-1.5 group"
+                      title={cg.name}
+                    >
+                      <span
+                        className={`w-6 h-6 rounded-full transition-all duration-150 ${
+                          active
+                            ? "ring-2 ring-offset-2 ring-[var(--foreground)] scale-110"
+                            : "ring-1 ring-[var(--border)] group-hover:ring-[var(--foreground-muted)]"
+                        }`}
+                        style={{ backgroundColor: cg.hexCode }}
+                      />
+                      <span
+                        className={`text-[9px] tracking-[0.06em] capitalize transition-colors duration-150 ${
+                          active
+                            ? "text-[var(--foreground)] font-medium"
+                            : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
+                        }`}
+                      >
+                        {cg.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </AccordionSection>
+          )}
         </>
       )}
 
@@ -464,6 +525,7 @@ export default function BrowsePage() {
                     setSelectedBrands([]);
                     setSelectedCategories([]);
                     setSelectedOccasions([]);
+                    setSelectedColorGroupIds([]);
                     setAiOnly(false);
                     setSelectedPriceIdx(null);
                     // Persist tab in URL so browser back restores it
@@ -571,6 +633,26 @@ export default function BrowsePage() {
                     onRemove={() => setSelectedPriceIdx(null)}
                   />
                 )}
+                {selectedColorGroupIds.map((id) => {
+                  const cg = colorGroups.find((g) => g.id === id);
+                  if (!cg) return null;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => toggleColorGroup(id)}
+                      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: cg.hexCode }}
+                      />
+                      {cg.name}
+                      <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
+                        <path d="M1 1L6 6M6 1L1 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  );
+                })}
                 {aiOnly && (
                   <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
                 )}

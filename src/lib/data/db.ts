@@ -2,8 +2,8 @@
  * Server-side data access layer.
  * Uses Supabase when configured, falls back to static data.
  */
-import type { Product, ProductSwatch } from "@/lib/types";
-import { supabase, isSupabaseConfigured, type DbProduct } from "@/lib/supabase";
+import type { ColorGroup, Product, ProductSwatch } from "@/lib/types";
+import { supabase, isSupabaseConfigured, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
 import { products as staticProducts } from "./products";
 
 export function dbToProduct(row: DbProduct): Product {
@@ -31,6 +31,7 @@ export function dbToProduct(row: DbProduct): Product {
     colorHex: row.color_hex ?? undefined,
     isGroupPrimary: row.is_group_primary ?? undefined,
     cropData: row.crop_data ?? undefined,
+    colorGroupIds: row.color_group_ids?.length ? row.color_group_ids : undefined,
   };
 }
 
@@ -62,7 +63,25 @@ export function productToDb(p: Partial<Product>) {
   if (p.colorHex !== undefined)       extras.color_hex = p.colorHex ?? null;
   if (p.isGroupPrimary !== undefined) extras.is_group_primary = p.isGroupPrimary ?? false;
   if (p.cropData !== undefined)       extras.crop_data = p.cropData ?? null;
+  if (p.colorGroupIds !== undefined)  extras.color_group_ids = p.colorGroupIds ?? [];
   return { ...base, ...extras };
+}
+
+/**
+ * Fetches all base color groups from Supabase (used in the filter sidebar).
+ * Returns an empty array if Supabase is not configured.
+ */
+export async function getAllColorGroups(): Promise<ColorGroup[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("color_groups")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) {
+    console.error("[db] getAllColorGroups:", error.message);
+    return [];
+  }
+  return (data as DbColorGroup[]).map(dbToColorGroup);
 }
 
 /**

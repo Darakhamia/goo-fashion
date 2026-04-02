@@ -1,5 +1,16 @@
 export type Gender = "women" | "men" | "unisex";
 
+/**
+ * Base color group used in the filter sidebar.
+ * Maps specific shades (e.g. "Marsala", "Charcoal") to a parent color family.
+ */
+export interface ColorGroup {
+  id: number;
+  name: string;      // "Black", "Red", "Beige" …
+  hexCode: string;   // Used for the swatch circle in the filter UI
+  sortOrder: number;
+}
+
 export type Brand =
   | "Acne Studios"
   | "Balenciaga"
@@ -124,6 +135,11 @@ export interface Product {
   variants?: ProductSwatch[];
   /** Manual crop/focal-point data set by admin */
   cropData?: CropData;
+  /**
+   * IDs of color_groups this product belongs to (supports multi-color items).
+   * Stored as int[] on the DB row; used for server- and client-side filtering.
+   */
+  colorGroupIds?: number[];
 }
 
 export interface OutfitItem {
@@ -180,4 +196,6 @@ export interface FilterState {
   brands?: Brand[];
   styleKeywords?: StyleKeyword[];
   sortBy?: "relevance" | "price-asc" | "price-desc" | "newest";
+  /** Base color group IDs selected in the color filter */
+  colorGroupIds?: number[];
 }
