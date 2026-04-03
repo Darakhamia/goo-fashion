@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import type { Product, StyleKeyword } from "@/lib/types";
+import type { Product, ProductSwatch, StyleKeyword } from "@/lib/types";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -47,54 +47,91 @@ function ProductRow({
   product,
   selected,
   matchScore,
+  activeVariantId,
   onSelect,
+  onSelectVariant,
 }: {
   product: Product;
   selected: boolean;
   matchScore: number;
+  activeVariantId?: string;
   onSelect: () => void;
+  onSelectVariant: (swatch: ProductSwatch) => void;
 }) {
+  const variants = product.variants ?? [];
+  const currentVariant = variants.find(v => v.id === activeVariantId);
+  const displayImage = currentVariant?.imageUrl ?? product.imageUrl;
+
   return (
-    <button
-      onClick={onSelect}
-      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors duration-150 group ${
-        selected ? "bg-[var(--foreground)]" : "hover:bg-[var(--surface)]"
-      }`}
-    >
-      {/* Thumbnail */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={product.imageUrl}
-        alt={product.name}
-        className="w-9 h-9 shrink-0 object-cover"
-      />
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className={`text-[11px] font-medium leading-tight truncate ${
-          selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
-        }`}>
-          {product.name}
-        </p>
-        <p className={`text-[10px] mt-0.5 truncate ${
-          selected ? "text-[var(--background)]/60" : "text-[var(--foreground-muted)]"
-        }`}>
-          {product.brand}
-        </p>
-      </div>
-      {/* Price + match */}
-      <div className="shrink-0 text-right">
-        <p className={`text-[11px] font-medium ${
-          selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
-        }`}>
-          ${product.priceMin.toLocaleString()}
-        </p>
-        {!selected && matchScore > 0 && (
-          <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5">
-            {"✦".repeat(Math.min(matchScore, 3))}
+    <div className={`transition-colors duration-150 ${selected ? "bg-[var(--foreground)]" : "hover:bg-[var(--surface)]"}`}>
+      <button
+        onClick={onSelect}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
+      >
+        {/* Thumbnail */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={displayImage}
+          alt={product.name}
+          className="w-9 h-9 shrink-0 object-cover"
+        />
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-[11px] font-medium leading-tight truncate ${
+            selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
+          }`}>
+            {product.name}
           </p>
-        )}
-      </div>
-    </button>
+          <p className={`text-[10px] mt-0.5 truncate ${
+            selected ? "text-[var(--background)]/60" : "text-[var(--foreground-muted)]"
+          }`}>
+            {product.brand}
+          </p>
+        </div>
+        {/* Price + match */}
+        <div className="shrink-0 text-right">
+          <p className={`text-[11px] font-medium ${
+            selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
+          }`}>
+            ${product.priceMin.toLocaleString()}
+          </p>
+          {!selected && matchScore > 0 && (
+            <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5">
+              {"✦".repeat(Math.min(matchScore, 3))}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {/* Color variant swatches — shown when selected and has variants */}
+      {selected && variants.length > 1 && (
+        <div className="px-3 pb-2.5 flex items-center gap-1.5">
+          {variants.map(swatch => {
+            const isActive = (activeVariantId ?? product.id) === swatch.id;
+            return (
+              <button
+                key={swatch.id}
+                onClick={() => onSelectVariant(swatch)}
+                title={swatch.colorName}
+                className={`w-4 h-4 rounded-full shrink-0 transition-all duration-150 ${
+                  isActive
+                    ? "ring-2 ring-offset-1 ring-[var(--background)] scale-110"
+                    : "opacity-70 hover:opacity-100"
+                }`}
+                style={{
+                  backgroundColor: swatch.colorHex === "#multicolor"
+                    ? undefined
+                    : swatch.colorHex,
+                  background: swatch.colorHex === "#multicolor"
+                    ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                    : swatch.colorHex,
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -120,6 +157,8 @@ function EmptySlot({ slot, isActive }: { slot: typeof SLOTS[number]; isActive: b
 export default function BuilderPage() {
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
+  // Stores the active variant swatch ID per slot (overrides the primary's image in the canvas)
+  const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [aiMatch, setAiMatch] = useState(false);
@@ -208,11 +247,21 @@ export default function BuilderPage() {
   const selectProduct = (product: Product) => {
     setSelection(prev => {
       const next = { ...prev };
-      if (next[activeSlot]?.id === product.id) delete next[activeSlot];
-      else next[activeSlot] = product;
+      if (next[activeSlot]?.id === product.id) {
+        delete next[activeSlot];
+        setVariantOverrides(vo => { const n = { ...vo }; delete n[activeSlot]; return n; });
+      } else {
+        next[activeSlot] = product;
+        setVariantOverrides(vo => { const n = { ...vo }; delete n[activeSlot]; return n; });
+      }
       updateURL(next);
       return next;
     });
+    setSaved(false);
+  };
+
+  const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
+    setVariantOverrides(prev => ({ ...prev, [slotId]: swatch.id }));
     setSaved(false);
   };
 
@@ -224,10 +273,12 @@ export default function BuilderPage() {
       updateURL(next);
       return next;
     });
+    setVariantOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
   };
 
   const clearAll = () => {
     setSelection({});
+    setVariantOverrides({});
     updateURL({});
     setSaved(false);
   };
@@ -439,7 +490,7 @@ export default function BuilderPage() {
               <div className="flex items-center gap-2 w-full min-w-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={selection[activeSlot]!.imageUrl}
+                  src={selection[activeSlot]!.variants?.find(v => v.id === variantOverrides[activeSlot])?.imageUrl ?? selection[activeSlot]!.imageUrl}
                   alt=""
                   className="w-6 h-6 object-cover shrink-0"
                 />
@@ -478,7 +529,9 @@ export default function BuilderPage() {
                     product={product}
                     selected={selection[activeSlot]?.id === product.id}
                     matchScore={slotScores[product.id] ?? 0}
+                    activeVariantId={variantOverrides[activeSlot]}
                     onSelect={() => selectProduct(product)}
+                    onSelectVariant={(swatch) => selectVariant(activeSlot, swatch)}
                   />
                 ))}
               </div>
@@ -494,6 +547,9 @@ export default function BuilderPage() {
             {SLOTS.map(slot => {
               const picked = selection[slot.id];
               const isActive = activeSlot === slot.id;
+              const variantId = variantOverrides[slot.id];
+              const activeVariant = picked?.variants?.find(v => v.id === variantId);
+              const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
               return (
                 <button
                   key={slot.id}
@@ -506,7 +562,7 @@ export default function BuilderPage() {
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={picked.imageUrl}
+                        src={displayImage}
                         alt={picked.name}
                         className="w-full h-full object-cover"
                       />
@@ -540,6 +596,31 @@ export default function BuilderPage() {
                               Remove
                             </button>
                           </div>
+                          {/* Color variant swatches in canvas hover card */}
+                          {(picked.variants?.length ?? 0) > 1 && (
+                            <div className="flex items-center gap-1.5 mt-2" onClick={e => e.stopPropagation()}>
+                              {picked.variants!.map(swatch => {
+                                const isSwatchActive = (variantId ?? picked.id) === swatch.id;
+                                return (
+                                  <button
+                                    key={swatch.id}
+                                    title={swatch.colorName}
+                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, swatch); }}
+                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${
+                                      isSwatchActive
+                                        ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
+                                        : "opacity-60 hover:opacity-100"
+                                    }`}
+                                    style={{
+                                      background: swatch.colorHex === "#multicolor"
+                                        ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                        : swatch.colorHex,
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
 
