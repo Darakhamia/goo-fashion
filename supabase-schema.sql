@@ -114,20 +114,19 @@ create policy "Public read access"
 
 -- Pre-populate with standard base colors
 insert into public.color_groups (name, hex_code, sort_order) values
-  ('Black',  '#1a1a1a', 1),
-  ('White',  '#f5f5f5', 2),
-  ('Grey',   '#808080', 3),
-  ('Beige',  '#c8ad8f', 4),
-  ('Brown',  '#7a4f35', 5),
-  ('Navy',   '#1a2d5a', 6),
-  ('Blue',   '#2563ad', 7),
-  ('Green',  '#2d6a3f', 8),
-  ('Red',    '#c0392b', 9),
-  ('Pink',   '#d4607a', 10),
-  ('Orange', '#d4621a', 11),
-  ('Yellow', '#c9a227', 12),
-  ('Purple', '#6b3fa0', 13),
-  ('Multi',  '#e0e0e0', 14)
+  ('White',      '#ffffff',      1),
+  ('Multicolor', '#multicolor',  2),
+  ('Brown',      '#7a4f35',      3),
+  ('Pink',       '#e8698a',      4),
+  ('Yellow',     '#f5c518',      5),
+  ('Orange',     '#e87722',      6),
+  ('Grey',       '#808080',      7),
+  ('Black',      '#111111',      8),
+  ('Green',      '#2d6a3f',      9),
+  ('Red',        '#c0392b',      10),
+  ('Violet',     '#7b3fa0',      11),
+  ('Blue',       '#1a47a0',      12),
+  ('Beige',      '#d4c5a9',      13)
 on conflict do nothing;
 
 -- ============================================================
