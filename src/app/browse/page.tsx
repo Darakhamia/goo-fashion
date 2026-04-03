@@ -721,6 +721,9 @@ export default function BrowsePage() {
                         <OutfitCard outfit={outfit} />
                       </div>
                     ))}
+                    {[0, 1, 2].map((i) => (
+                      <div key={`filler-${i}`} className="bg-[var(--background)]" />
+                    ))}
                   </div>
                 ) : (
                   <EmptyState onClear={clearAll} noun="outfits" />
@@ -734,6 +737,9 @@ export default function BrowsePage() {
                     >
                       <ProductCard product={product} />
                     </div>
+                  ))}
+                  {[0, 1, 2].map((i) => (
+                    <div key={`filler-${i}`} className="bg-[var(--background)]" />
                   ))}
                 </div>
               ) : (
