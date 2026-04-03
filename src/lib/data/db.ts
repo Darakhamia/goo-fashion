@@ -67,19 +67,35 @@ export function productToDb(p: Partial<Product>) {
   return { ...base, ...extras };
 }
 
+const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
+  { id: 1,  name: "White",      hexCode: "#ffffff",     sortOrder: 1 },
+  { id: 2,  name: "Multicolor", hexCode: "#multicolor", sortOrder: 2 },
+  { id: 3,  name: "Brown",      hexCode: "#7a4f35",     sortOrder: 3 },
+  { id: 4,  name: "Pink",       hexCode: "#e8698a",     sortOrder: 4 },
+  { id: 5,  name: "Yellow",     hexCode: "#f5c518",     sortOrder: 5 },
+  { id: 6,  name: "Orange",     hexCode: "#e87722",     sortOrder: 6 },
+  { id: 7,  name: "Grey",       hexCode: "#808080",     sortOrder: 7 },
+  { id: 8,  name: "Black",      hexCode: "#111111",     sortOrder: 8 },
+  { id: 9,  name: "Green",      hexCode: "#2d6a3f",     sortOrder: 9 },
+  { id: 10, name: "Red",        hexCode: "#c0392b",     sortOrder: 10 },
+  { id: 11, name: "Violet",     hexCode: "#7b3fa0",     sortOrder: 11 },
+  { id: 12, name: "Blue",       hexCode: "#1a47a0",     sortOrder: 12 },
+  { id: 13, name: "Beige",      hexCode: "#d4c5a9",     sortOrder: 13 },
+];
+
 /**
  * Fetches all base color groups from Supabase (used in the filter sidebar).
- * Returns an empty array if Supabase is not configured.
+ * Falls back to DEFAULT_COLOR_GROUPS if Supabase is not configured.
  */
 export async function getAllColorGroups(): Promise<ColorGroup[]> {
-  if (!isSupabaseConfigured || !supabase) return [];
+  if (!isSupabaseConfigured || !supabase) return DEFAULT_COLOR_GROUPS;
   const { data, error } = await supabase
     .from("color_groups")
     .select("*")
     .order("sort_order", { ascending: true });
   if (error) {
     console.error("[db] getAllColorGroups:", error.message);
-    return [];
+    return DEFAULT_COLOR_GROUPS;
   }
   return (data as DbColorGroup[]).map(dbToColorGroup);
 }
