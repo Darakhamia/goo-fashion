@@ -168,7 +168,15 @@ export function groupVariants(all: Product[]): Product[] {
     // Find primary; fall back to first member if none explicitly marked
     const primary = members.find((m) => m.isGroupPrimary) ?? members[0];
     const swatches = members.map(toSwatch);
-    grouped.push({ ...primary, variants: swatches });
+    // Merge colorGroupIds from all variants so any member's color shows in filters
+    const mergedColorGroupIds = [
+      ...new Set(members.flatMap((m) => m.colorGroupIds ?? [])),
+    ];
+    grouped.push({
+      ...primary,
+      variants: swatches,
+      colorGroupIds: mergedColorGroupIds.length ? mergedColorGroupIds : primary.colorGroupIds,
+    });
   }
 
   // Preserve original ordering: ungrouped products stay in their positions
