@@ -418,22 +418,36 @@ export default function BrowsePage() {
             open={openSections.color}
             onToggle={() => toggleSection("color")}
           >
-            <div className="flex flex-wrap gap-3 pt-1">
+            <div className="flex flex-col">
               {colorGroups.map((cg) => {
                 const active = selectedColorGroupIds.includes(cg.id);
                 return (
                   <button
                     key={cg.id}
                     onClick={() => toggleColorGroup(cg.id)}
-                    className="flex flex-col items-center gap-1.5 group"
-                    title={cg.name}
+                    className="flex items-center gap-2.5 w-full py-[5px] group text-left"
                   >
-                    <span
-                      className={`w-6 h-6 rounded-full transition-all duration-150 ${
+                    <div
+                      className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-all duration-150 ${
                         active
-                          ? "ring-2 ring-offset-2 ring-[var(--foreground)] scale-110"
-                          : "ring-1 ring-[var(--border)] group-hover:ring-[var(--foreground-muted)]"
+                          ? "border-[var(--foreground)] bg-[var(--foreground)]"
+                          : "border-[var(--border-strong)] group-hover:border-[var(--foreground)]"
                       }`}
+                    >
+                      {active && (
+                        <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
+                          <path
+                            d="M1 2.5L2.5 4L6 1"
+                            stroke="var(--background)"
+                            strokeWidth="1.3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span
+                      className="w-3.5 h-3.5 shrink-0 border border-[rgba(0,0,0,0.15)]"
                       style={
                         cg.hexCode === "#multicolor"
                           ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
@@ -441,10 +455,10 @@ export default function BrowsePage() {
                       }
                     />
                     <span
-                      className={`text-[9px] tracking-[0.06em] capitalize transition-colors duration-150 ${
+                      className={`text-xs uppercase tracking-[0.08em] transition-colors duration-200 ${
                         active
                           ? "text-[var(--foreground)] font-medium"
-                          : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
+                          : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)]"
                       }`}
                     >
                       {cg.name}

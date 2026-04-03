@@ -1659,7 +1659,7 @@ export default function AdminProductsPage() {
                     (shown in browse sidebar — select all base colors this item belongs to)
                   </span>
                 </label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "12px" }}>
                   {colorGroups.map((cg) => {
                     const active = form.colorGroupIds.includes(cg.id);
                     return (
@@ -1677,27 +1677,54 @@ export default function AdminProductsPage() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "6px",
-                          padding: "5px 10px",
+                          gap: "10px",
+                          padding: "5px 0",
                           fontSize: "11px",
-                          border: `1px solid ${active ? "var(--foreground)" : "var(--border-strong)"}`,
-                          background: active ? "var(--surface)" : "transparent",
+                          background: "transparent",
+                          border: "none",
                           color: "var(--foreground)",
                           cursor: "pointer",
-                          transition: "border-color 0.15s",
-                          letterSpacing: "0.04em",
+                          textAlign: "left",
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
                         }}
                       >
+                        {/* Checkbox */}
                         <span
                           style={{
-                            width: "12px",
-                            height: "12px",
-                            borderRadius: "50%",
+                            width: "14px",
+                            height: "14px",
+                            border: `1px solid ${active ? "var(--foreground)" : "var(--border-strong)"}`,
+                            background: active ? "var(--foreground)" : "transparent",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {active && (
+                            <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
+                              <path
+                                d="M1 2.5L2.5 4L6 1"
+                                stroke="var(--background)"
+                                strokeWidth="1.3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        {/* Color swatch */}
+                        <span
+                          style={{
+                            width: "14px",
+                            height: "14px",
                             background: cg.hexCode === "#multicolor"
                               ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
                               : cg.hexCode,
                             flexShrink: 0,
-                            border: "1px solid rgba(255,255,255,0.25)",
+                            border: "1px solid rgba(0,0,0,0.15)",
                           }}
                         />
                         {cg.name}
