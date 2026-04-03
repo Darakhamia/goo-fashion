@@ -24,20 +24,19 @@ const PRICE_RANGES = [
 ];
 
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
-  { id: 1,  name: "Black",  hexCode: "#1a1a1a", sortOrder: 1 },
-  { id: 2,  name: "White",  hexCode: "#f5f5f5", sortOrder: 2 },
-  { id: 3,  name: "Grey",   hexCode: "#808080", sortOrder: 3 },
-  { id: 4,  name: "Beige",  hexCode: "#c8ad8f", sortOrder: 4 },
-  { id: 5,  name: "Brown",  hexCode: "#7a4f35", sortOrder: 5 },
-  { id: 6,  name: "Navy",   hexCode: "#1a2d5a", sortOrder: 6 },
-  { id: 7,  name: "Blue",   hexCode: "#2563ad", sortOrder: 7 },
-  { id: 8,  name: "Green",  hexCode: "#2d6a3f", sortOrder: 8 },
-  { id: 9,  name: "Red",    hexCode: "#c0392b", sortOrder: 9 },
-  { id: 10, name: "Pink",   hexCode: "#d4607a", sortOrder: 10 },
-  { id: 11, name: "Orange", hexCode: "#d4621a", sortOrder: 11 },
-  { id: 12, name: "Yellow", hexCode: "#c9a227", sortOrder: 12 },
-  { id: 13, name: "Purple", hexCode: "#6b3fa0", sortOrder: 13 },
-  { id: 14, name: "Multi",  hexCode: "#e0e0e0", sortOrder: 14 },
+  { id: 1,  name: "White",      hexCode: "#ffffff", sortOrder: 1 },
+  { id: 2,  name: "Multicolor", hexCode: "#multicolor", sortOrder: 2 },
+  { id: 3,  name: "Brown",      hexCode: "#7a4f35", sortOrder: 3 },
+  { id: 4,  name: "Pink",       hexCode: "#e8698a", sortOrder: 4 },
+  { id: 5,  name: "Yellow",     hexCode: "#f5c518", sortOrder: 5 },
+  { id: 6,  name: "Orange",     hexCode: "#e87722", sortOrder: 6 },
+  { id: 7,  name: "Grey",       hexCode: "#808080", sortOrder: 7 },
+  { id: 8,  name: "Black",      hexCode: "#111111", sortOrder: 8 },
+  { id: 9,  name: "Green",      hexCode: "#2d6a3f", sortOrder: 9 },
+  { id: 10, name: "Red",        hexCode: "#c0392b", sortOrder: 10 },
+  { id: 11, name: "Violet",     hexCode: "#7b3fa0", sortOrder: 11 },
+  { id: 12, name: "Blue",       hexCode: "#1a47a0", sortOrder: 12 },
+  { id: 13, name: "Beige",      hexCode: "#d4c5a9", sortOrder: 13 },
 ];
 
 /* ── Reusable filter UI atoms ── */
@@ -435,7 +434,11 @@ export default function BrowsePage() {
                           ? "ring-2 ring-offset-2 ring-[var(--foreground)] scale-110"
                           : "ring-1 ring-[var(--border)] group-hover:ring-[var(--foreground-muted)]"
                       }`}
-                      style={{ backgroundColor: cg.hexCode }}
+                      style={
+                        cg.hexCode === "#multicolor"
+                          ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
+                          : { backgroundColor: cg.hexCode }
+                      }
                     />
                     <span
                       className={`text-[9px] tracking-[0.06em] capitalize transition-colors duration-150 ${
@@ -659,7 +662,11 @@ export default function BrowsePage() {
                     >
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: cg.hexCode }}
+                        style={
+                          cg.hexCode === "#multicolor"
+                            ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
+                            : { backgroundColor: cg.hexCode }
+                        }
                       />
                       {cg.name}
                       <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
