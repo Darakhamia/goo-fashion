@@ -699,9 +699,9 @@ export default function BrowsePage() {
             {/* Product / Outfit grid */}
             <div className="mt-6 pb-16">
               {view === "pieces" && loadingProducts ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-t border-l border-[var(--border)]">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="bg-[var(--background)] p-4">
+                    <div key={i} className="border-r border-b border-[var(--border)] p-4">
                       <div className="animate-pulse">
                         <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
                         <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
@@ -712,34 +712,28 @@ export default function BrowsePage() {
                 </div>
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)] stagger-children">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-t border-l border-[var(--border)] stagger-children">
                     {filteredOutfits.map((outfit) => (
                       <div
                         key={outfit.id}
-                        className="bg-[var(--background)] p-4 animate-fade-up"
+                        className="border-r border-b border-[var(--border)] p-4 animate-fade-up"
                       >
                         <OutfitCard outfit={outfit} />
                       </div>
-                    ))}
-                    {[0, 1, 2].map((i) => (
-                      <div key={`filler-${i}`} className="bg-[var(--background)]" />
                     ))}
                   </div>
                 ) : (
                   <EmptyState onClear={clearAll} noun="outfits" />
                 )
               ) : filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-[var(--border)] stagger-children">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-t border-l border-[var(--border)] stagger-children">
                   {filteredProducts.map((product) => (
                     <div
                       key={product.id}
-                      className="bg-[var(--background)] p-4 animate-fade-up"
+                      className="border-r border-b border-[var(--border)] p-4 animate-fade-up"
                     >
                       <ProductCard product={product} />
                     </div>
-                  ))}
-                  {[0, 1, 2].map((i) => (
-                    <div key={`filler-${i}`} className="bg-[var(--background)]" />
                   ))}
                 </div>
               ) : (
