@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import { useLikes } from "@/lib/context/likes-context";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -162,8 +163,11 @@ export default function BuilderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [aiMatch, setAiMatch] = useState(false);
+  const [likedOnly, setLikedOnly] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const { likedProducts } = useLikes();
 
   // ── Generation state ──────────────────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
@@ -229,12 +233,16 @@ export default function BuilderPage() {
       scores[p.id] = p.styleKeywords.filter(k => styleKeywords.includes(k)).length;
     });
 
+    if (likedOnly) {
+      list = list.filter(p => likedProducts.includes(p.id));
+    }
+
     if (aiMatch && styleKeywords.length > 0) {
       list = [...list].sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0));
     }
 
     return { slotProducts: list, slotScores: scores };
-  }, [activeSlot, products, search, aiMatch, styleKeywords]);
+  }, [activeSlot, products, search, aiMatch, styleKeywords, likedOnly, likedProducts]);
 
   const totalPrice = useMemo(() =>
     Object.values(selection).reduce((sum, p) => sum + (p?.priceMin ?? 0), 0),
@@ -441,7 +449,7 @@ export default function BuilderPage() {
             })}
           </div>
 
-          {/* Search + AI match toggle */}
+          {/* Search + filters */}
           <div className="px-2.5 py-2 border-b border-[var(--border)] shrink-0 flex items-center gap-1.5">
             <div className="relative flex-1">
               <input
@@ -469,6 +477,17 @@ export default function BuilderPage() {
                 </span>
               )}
             </div>
+            <button
+              onClick={() => setLikedOnly(v => !v)}
+              title="Show liked items only"
+              className={`shrink-0 px-2 py-1.5 text-[8px] tracking-[0.1em] uppercase font-medium border transition-colors ${
+                likedOnly
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              ♥
+            </button>
             {selectedCount > 0 && (
               <button
                 onClick={() => setAiMatch(v => !v)}
@@ -518,7 +537,7 @@ export default function BuilderPage() {
             {slotProducts.length === 0 ? (
               <div className="py-10 px-4 text-center">
                 <p className="text-xs text-[var(--foreground-muted)]">
-                  {search ? "No items match." : "No items in this category."}
+                  {likedOnly ? "No liked items in this category." : search ? "No items match." : "No items in this category."}
                 </p>
               </div>
             ) : (
