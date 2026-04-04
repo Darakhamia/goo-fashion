@@ -106,6 +106,7 @@ export default function SavedPage() {
   const [view, setView] = useState<View>("outfits");
   const { likedOutfits, likedProducts } = useLikes();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
+  const [allProducts, setAllProducts] = useState(staticProducts);
 
   // Load builder-saved outfits from localStorage + respect ?tab= param
   useEffect(() => {
@@ -117,6 +118,14 @@ export default function SavedPage() {
     if (params.get("tab") === "looks") setView("looks");
   }, []);
 
+  // Fetch full product list from API (includes Supabase products with UUID IDs)
+  useEffect(() => {
+    fetch("/api/products?raw=true")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setAllProducts(d); })
+      .catch(() => {});
+  }, []);
+
   const deleteLook = (id: string) => {
     setMyLooks((prev) => {
       const next = prev.filter((l) => l.id !== id);
@@ -126,7 +135,7 @@ export default function SavedPage() {
   };
 
   const savedOutfits = outfits.filter((o) => likedOutfits.includes(o.id));
-  const savedProducts = staticProducts.filter((p) => likedProducts.includes(p.id));
+  const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
   const tabs: { id: View; label: string; count: number }[] = [
     { id: "outfits", label: "Outfits", count: likedOutfits.length },
