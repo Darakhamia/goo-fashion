@@ -480,13 +480,15 @@ export default function BuilderPage() {
             <button
               onClick={() => setLikedOnly(v => !v)}
               title="Show liked items only"
-              className={`shrink-0 px-2 py-1.5 text-[8px] tracking-[0.1em] uppercase font-medium border transition-colors ${
+              className={`shrink-0 flex items-center justify-center w-7 h-7 border transition-colors ${
                 likedOnly
                   ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
               }`}
             >
-              ♥
+              <svg width="12" height="12" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+              </svg>
             </button>
             {selectedCount > 0 && (
               <button
