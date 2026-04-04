@@ -14,7 +14,7 @@ type View = "outfits" | "pieces" | "looks";
 interface SavedLook {
   id: string;
   savedAt: string;
-  pieces: { slot: string; productId: string }[];
+  pieces: { slot: string; productId: string; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
 }
@@ -26,13 +26,14 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   const pieces = SLOT_ORDER.map((slot) => {
     const piece = look.pieces.find((p) => p.slot === slot);
     const product = piece ? staticProducts.find((p) => p.id === piece.productId) : null;
-    return { slot, product };
+    const imageUrl = piece?.imageUrl ?? product?.imageUrl ?? null;
+    const name = piece?.name ?? product?.name ?? slot;
+    return { slot, imageUrl, name };
   });
 
   const builderUrl =
     "/builder?" +
     look.pieces
-      .filter((p) => staticProducts.some((pr) => pr.id === p.productId))
       .map((p) => `${p.slot}=${p.productId}`)
       .join("&");
 
@@ -46,13 +47,13 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
       {/* 2×2 thumbnail grid */}
       <Link href={builderUrl} className="block">
         <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
-          {pieces.map(({ slot, product }) => (
+          {pieces.map(({ slot, imageUrl, name }) => (
             <div key={slot} className="overflow-hidden bg-[var(--surface)]">
-              {product ? (
+              {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={product.imageUrl}
-                  alt={product.name}
+                  src={imageUrl}
+                  alt={name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
@@ -221,9 +222,11 @@ export default function SavedPage() {
         {/* ── My Looks (builder-created) ── */}
         {view === "looks" && (
           myLooks.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-px bg-[var(--border)]">
+            <div className="flex flex-wrap">
               {myLooks.map((look) => (
-                <LookCard key={look.id} look={look} onDelete={() => deleteLook(look.id)} />
+                <div key={look.id} className="w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 border-r border-b border-[var(--border)]">
+                  <LookCard look={look} onDelete={() => deleteLook(look.id)} />
+                </div>
               ))}
             </div>
           ) : (
