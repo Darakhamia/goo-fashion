@@ -295,7 +295,7 @@ export default function BuilderPage() {
     const outfit = {
       id: `outfit-${Date.now()}`,
       savedAt: new Date().toISOString(),
-      pieces: Object.entries(selection).map(([slot, p]) => ({ slot, productId: p!.id })),
+      pieces: Object.entries(selection).map(([slot, p]) => ({ slot, productId: p!.id, imageUrl: p!.imageUrl, name: p!.name })),
       totalPrice,
       styleKeywords,
     };
