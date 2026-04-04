@@ -175,9 +175,9 @@ export default function SavedPage() {
         {/* ── Outfits (liked) ── */}
         {view === "outfits" && (
           savedOutfits.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-px bg-[var(--border)]">
+            <div className="flex flex-wrap">
               {savedOutfits.map((outfit) => (
-                <div key={outfit.id} className="bg-[var(--background)] p-3">
+                <div key={outfit.id} className="w-1/2 md:w-1/4 lg:w-1/5 border-r border-b border-[var(--border)] bg-[var(--background)] p-3">
                   <OutfitCard outfit={outfit} />
                 </div>
               ))}
@@ -203,9 +203,9 @@ export default function SavedPage() {
         {/* ── Pieces (liked) ── */}
         {view === "pieces" && (
           savedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-px bg-[var(--border)]">
+            <div className="flex flex-wrap">
               {savedProducts.map((product) => (
-                <div key={product.id} className="bg-[var(--background)] p-3">
+                <div key={product.id} className="w-1/2 md:w-1/4 lg:w-1/5 border-r border-b border-[var(--border)] bg-[var(--background)] p-3">
                   <ProductCard product={product} />
                 </div>
               ))}
