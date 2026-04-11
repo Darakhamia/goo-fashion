@@ -14,7 +14,7 @@ type View = "outfits" | "pieces" | "looks";
 interface SavedLook {
   id: string;
   savedAt: string;
-  pieces: { slot: string; productId: string; imageUrl?: string; name?: string }[];
+  pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
 }
@@ -34,7 +34,11 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   const builderUrl =
     "/builder?" +
     look.pieces
-      .map((p) => `${p.slot}=${p.productId}`)
+      .flatMap((p) => {
+        const params = [`${p.slot}=${p.productId}`];
+        if (p.variantId) params.push(`${p.slot}_variant=${p.variantId}`);
+        return params;
+      })
       .join("&");
 
   const date = new Date(look.savedAt).toLocaleDateString("en-GB", {

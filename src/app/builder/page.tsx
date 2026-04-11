@@ -191,11 +191,18 @@ export default function BuilderPage() {
   [selection]);
 
   // Sync selection to URL params so outfit can be shared / restored on back
-  const updateURL = useCallback((sel: Partial<Record<SlotId, Product>>) => {
+  const updateURL = useCallback((sel: Partial<Record<SlotId, Product>>, variants?: Partial<Record<SlotId, string>>) => {
     const url = new URL(window.location.href);
     SLOTS.forEach(({ id }) => {
-      if (sel[id]) url.searchParams.set(id, sel[id]!.id);
-      else url.searchParams.delete(id);
+      if (sel[id]) {
+        url.searchParams.set(id, sel[id]!.id);
+        const vid = variants?.[id];
+        if (vid) url.searchParams.set(`${id}_variant`, vid);
+        else url.searchParams.delete(`${id}_variant`);
+      } else {
+        url.searchParams.delete(id);
+        url.searchParams.delete(`${id}_variant`);
+      }
     });
     window.history.replaceState({}, "", url.toString());
   }, []);
@@ -204,15 +211,24 @@ export default function BuilderPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const restored: Partial<Record<SlotId, Product>> = {};
+    const restoredVariants: Partial<Record<SlotId, string>> = {};
     let found = false;
     for (const { id } of SLOTS) {
       const pid = params.get(id);
       if (pid) {
         const p = products.find(x => x.id === pid);
-        if (p) { restored[id] = p; found = true; }
+        if (p) {
+          restored[id] = p;
+          found = true;
+          const vid = params.get(`${id}_variant`);
+          if (vid) restoredVariants[id] = vid;
+        }
       }
     }
-    if (found) setSelection(restored);
+    if (found) {
+      setSelection(restored);
+      if (Object.keys(restoredVariants).length > 0) setVariantOverrides(restoredVariants);
+    }
   }, [products]);
 
   // Products for current slot with search filter + AI match scoring
@@ -269,7 +285,11 @@ export default function BuilderPage() {
   };
 
   const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
-    setVariantOverrides(prev => ({ ...prev, [slotId]: swatch.id }));
+    setVariantOverrides(prev => {
+      const next = { ...prev, [slotId]: swatch.id };
+      updateURL(selection, next);
+      return next;
+    });
     setSaved(false);
   };
 
@@ -307,7 +327,7 @@ export default function BuilderPage() {
         const variantId = variantOverrides[slot as SlotId];
         const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
         const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
-        return { slot, productId: p!.id, imageUrl, name: p!.name };
+        return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
       }),
       totalPrice,
       styleKeywords,
