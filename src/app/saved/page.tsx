@@ -35,7 +35,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   });
 
   const builderUrl =
-    "/builder?" +
+    "/builder?editId=" + look.id + "&" +
     look.pieces
       .flatMap((p) => {
         const params = [`${p.slot}=${p.productId}`];

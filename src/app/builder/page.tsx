@@ -321,21 +321,26 @@ export default function BuilderPage() {
   };
 
   const saveOutfit = () => {
-    const outfit = {
-      id: `outfit-${Date.now()}`,
-      savedAt: new Date().toISOString(),
-      pieces: Object.entries(selection).map(([slot, p]) => {
-        const variantId = variantOverrides[slot as SlotId];
-        const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
-        const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
-        return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
-      }),
-      totalPrice,
-      styleKeywords,
-    };
+    const editId = new URLSearchParams(window.location.search).get("editId");
+    const pieces = Object.entries(selection).map(([slot, p]) => {
+      const variantId = variantOverrides[slot as SlotId];
+      const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
+      const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
+      return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
+    });
     try {
-      const existing: unknown[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
-      localStorage.setItem("goo-saved-outfits", JSON.stringify([outfit, ...existing].slice(0, 50)));
+      const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      let updated;
+      if (editId && existing.some((o) => o.id === editId)) {
+        // Update existing look in-place, preserve original savedAt
+        updated = existing.map((o) =>
+          o.id === editId ? { ...o, pieces, totalPrice, styleKeywords } : o
+        );
+      } else {
+        const outfit = { id: `outfit-${Date.now()}`, savedAt: new Date().toISOString(), pieces, totalPrice, styleKeywords };
+        updated = [outfit, ...existing].slice(0, 50);
+      }
+      localStorage.setItem("goo-saved-outfits", JSON.stringify(updated));
     } catch {}
     setSaved(true);
   };
