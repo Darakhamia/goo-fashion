@@ -303,7 +303,12 @@ export default function BuilderPage() {
     const outfit = {
       id: `outfit-${Date.now()}`,
       savedAt: new Date().toISOString(),
-      pieces: Object.entries(selection).map(([slot, p]) => ({ slot, productId: p!.id, imageUrl: p!.imageUrl, name: p!.name })),
+      pieces: Object.entries(selection).map(([slot, p]) => {
+        const variantId = variantOverrides[slot as SlotId];
+        const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
+        const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
+        return { slot, productId: p!.id, imageUrl, name: p!.name };
+      }),
       totalPrice,
       styleKeywords,
     };
