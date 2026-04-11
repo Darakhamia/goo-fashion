@@ -172,7 +172,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
                           ? "border-[var(--foreground)] scale-110 shadow-sm"
                           : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
                       }`}
-                      style={{ backgroundColor: swatch.colorHex }}
+                      style={{ backgroundColor: swatch.colorHex, boxShadow: "inset 0 0 0 1.5px rgba(128,128,128,0.4)" }}
                     />
                   );
                 })}

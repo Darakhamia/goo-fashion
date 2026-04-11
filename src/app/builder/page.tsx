@@ -126,6 +126,7 @@ function ProductRow({
                   background: swatch.colorHex === "#multicolor"
                     ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
                     : swatch.colorHex,
+                  boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
                 }}
               />
             );
@@ -661,6 +662,7 @@ export default function BuilderPage() {
                                       background: swatch.colorHex === "#multicolor"
                                         ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
                                         : swatch.colorHex,
+                                      boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
                                     }}
                                   />
                                 );
