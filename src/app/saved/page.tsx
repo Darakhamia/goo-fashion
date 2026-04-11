@@ -23,12 +23,15 @@ const SLOT_ORDER = ["top", "bottom", "shoes", "accessories"];
 
 // ── Builder outfit card ───────────────────────────────────────────────────────
 function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+
   const pieces = SLOT_ORDER.map((slot) => {
     const piece = look.pieces.find((p) => p.slot === slot);
     const product = piece ? staticProducts.find((p) => p.id === piece.productId) : null;
     const imageUrl = piece?.imageUrl ?? product?.imageUrl ?? null;
     const name = piece?.name ?? product?.name ?? slot;
-    return { slot, imageUrl, name };
+    const productId = piece?.productId ?? null;
+    return { slot, imageUrl, name, productId };
   });
 
   const builderUrl =
@@ -47,61 +50,144 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   });
 
   return (
-    <div className="bg-[var(--background)] flex flex-col group">
-      {/* 2×2 thumbnail grid */}
-      <Link href={builderUrl} className="block">
-        <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
-          {pieces.map(({ slot, imageUrl, name }) => (
-            <div key={slot} className="overflow-hidden bg-[var(--surface)]">
-              {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageUrl}
-                  alt={name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-[var(--border-strong)] text-xs">—</span>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </Link>
+    <>
+      <div className="bg-[var(--background)] flex flex-col group">
+        {/* 2×2 thumbnail grid — opens preview modal */}
+        <button onClick={() => setOpen(true)} className="block w-full text-left">
+          <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
+            {pieces.map(({ slot, imageUrl, name }) => (
+              <div key={slot} className="overflow-hidden bg-[var(--surface)]">
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt={name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-[var(--border-strong)] text-xs">—</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </button>
 
-      {/* Footer */}
-      <div className="p-3 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium text-[var(--foreground)]">
-            ${look.totalPrice.toLocaleString()}
-          </p>
-          {look.styleKeywords.length > 0 && (
-            <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 truncate">
-              {look.styleKeywords.slice(0, 3).join(" · ")}
+        {/* Footer */}
+        <div className="p-3 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-[var(--foreground)]">
+              ${look.totalPrice.toLocaleString()}
             </p>
-          )}
-          <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">{date}</p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href={builderUrl}
-            className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-          >
-            Open →
-          </Link>
-          <button
-            onClick={onDelete}
-            title="Remove"
-            className="text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-          >
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-              <path d="M1 1L8 8M8 1L1 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </button>
+            {look.styleKeywords.length > 0 && (
+              <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 truncate">
+                {look.styleKeywords.slice(0, 3).join(" · ")}
+              </p>
+            )}
+            <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">{date}</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setOpen(true)}
+              className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Open →
+            </button>
+            <Link
+              href={builderUrl}
+              className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={onDelete}
+              title="Remove"
+              className="text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <path d="M1 1L8 8M8 1L1 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* ── Look preview modal ── */}
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-[var(--background)] w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <div>
+                <p className="text-[13px] font-medium text-[var(--foreground)]">
+                  ${look.totalPrice.toLocaleString()}
+                </p>
+                {look.styleKeywords.length > 0 && (
+                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                    {look.styleKeywords.slice(0, 3).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <Link
+                  href={builderUrl}
+                  onClick={() => setOpen(false)}
+                  className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  Edit in builder →
+                </Link>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M1 1L10 10M10 1L1 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 2×2 grid with product links */}
+            <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
+              {pieces.map(({ slot, imageUrl, name, productId }) => (
+                <Link
+                  key={slot}
+                  href={productId ? `/product/${productId}` : "#"}
+                  onClick={() => setOpen(false)}
+                  className="group/item bg-[var(--surface)] block relative overflow-hidden"
+                >
+                  <div className="aspect-square overflow-hidden">
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={imageUrl}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[var(--border-strong)] text-xs">—</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-3 py-2 translate-y-full group-hover/item:translate-y-0 transition-transform duration-200">
+                    <p className="text-[10px] text-white truncate">{name}</p>
+                    <p className="text-[9px] text-white/60 tracking-[0.08em] uppercase mt-0.5">View →</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
