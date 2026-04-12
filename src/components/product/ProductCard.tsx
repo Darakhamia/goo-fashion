@@ -60,12 +60,39 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   });
 
   useEffect(() => {
-    if (!isHovered || !hasMultiple) return;
-
     const state = t.current;
 
-    // Reset any stale animation state left by an interrupted return animation
-    // (e.g. user re-hovered before the 500 ms return-slide finished)
+    if (!isHovered) {
+      // Stop any running auto-advance timers
+      if (state.interval) { clearInterval(state.interval); state.interval = null; }
+      if (state.timeout)  { clearTimeout(state.timeout);   state.timeout  = null; }
+      state.animating = false;
+
+      // Smoothly return to first image if not already there
+      const currentIdx = state.activeIdx;
+      if (currentIdx === 0) {
+        setOutgoingIdx(null);
+        return;
+      }
+
+      state.animating = true;
+      setSlideReverse(true);
+      setOutgoingIdx(currentIdx);
+      setActiveIdx(0);
+      state.activeIdx = 0;
+
+      const returnTimeout = setTimeout(() => {
+        setOutgoingIdx(null);
+        setSlideReverse(false);
+        state.animating = false;
+      }, SLIDE_MS);
+
+      return () => clearTimeout(returnTimeout);
+    }
+
+    if (!hasMultiple) return;
+
+    // Reset any stale animation state (e.g. interrupted return animation)
     state.animating = false;
     setOutgoingIdx(null);
     setSlideReverse(false);
@@ -96,37 +123,12 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     }, 3000);
 
     return () => {
-      if (startDelay)      { clearTimeout(startDelay);      startDelay      = null; }
-      if (state.interval)  { clearInterval(state.interval); state.interval  = null; }
-      if (state.timeout)   { clearTimeout(state.timeout);   state.timeout   = null; }
+      if (startDelay)     { clearTimeout(startDelay);      startDelay      = null; }
+      if (state.interval) { clearInterval(state.interval); state.interval  = null; }
+      if (state.timeout)  { clearTimeout(state.timeout);   state.timeout   = null; }
       state.animating = false;
-      setOutgoingIdx(null);
-      // activeIdx reset is handled by the smooth-return effect below
     };
-  }, [isHovered, hasMultiple, allImages.length]);
-
-  // Smoothly return to first image when cursor leaves
-  useEffect(() => {
-    if (isHovered) return;
-
-    const state = t.current;
-    const currentIdx = state.activeIdx;
-    if (currentIdx === 0) return;
-
-    state.animating = true;
-    setSlideReverse(true);
-    setOutgoingIdx(currentIdx);
-    setActiveIdx(0);
-    state.activeIdx = 0;
-
-    const timeout = setTimeout(() => {
-      setOutgoingIdx(null);
-      setSlideReverse(false);
-      state.animating = false;
-    }, SLIDE_MS);
-
-    return () => clearTimeout(timeout);
-  }, [isHovered]);
+  }, [isHovered, hasMultiple, allImages]);
 
   // Cleanup on unmount
   useEffect(() => {
