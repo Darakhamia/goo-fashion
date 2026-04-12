@@ -39,80 +39,48 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   const allImages  = displayImages;
   const hasMultiple = allImages.length > 1;
 
-  const [isHovered,   setIsHovered]   = useState(false);
-  const [activeIdx,   setActiveIdx]   = useState(0);
-  const [outgoingIdx, setOutgoingIdx] = useState<number | null>(null);
-  const [slideReverse, setSlideReverse] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
 
-  // Reset slideshow index when variant (and thus images) changes
-  useEffect(() => {
-    setActiveIdx(0);
-    setOutgoingIdx(null);
-    t.current.activeIdx = 0;
-  }, [activeVariant]);
-
-  // All mutable timer state in one ref
+  // All mutable timer state in one ref (no animating/timeout needed with CSS transitions)
   const t = useRef({
     activeIdx: 0,
-    animating: false,
-    interval:  null as ReturnType<typeof setInterval>  | null,
-    timeout:   null as ReturnType<typeof setTimeout>   | null,
+    direction: 1 as 1 | -1,   // ping-pong direction
+    interval:  null as ReturnType<typeof setInterval> | null,
   });
+
+  // Reset when the displayed images change (variant switch)
+  useEffect(() => {
+    setActiveIdx(0);
+    t.current.activeIdx = 0;
+    t.current.direction = 1;
+  }, [activeVariant]);
 
   useEffect(() => {
     const state = t.current;
 
     if (!isHovered) {
-      // Stop any running auto-advance timers
       if (state.interval) { clearInterval(state.interval); state.interval = null; }
-      if (state.timeout)  { clearTimeout(state.timeout);   state.timeout  = null; }
-      state.animating = false;
-
-      // Smoothly return to first image if not already there
-      const currentIdx = state.activeIdx;
-      if (currentIdx === 0) {
-        setOutgoingIdx(null);
-        return;
-      }
-
-      state.animating = true;
-      setSlideReverse(true);
-      setOutgoingIdx(currentIdx);
+      // CSS transition on the strip handles the smooth return to image 0
       setActiveIdx(0);
       state.activeIdx = 0;
-
-      const returnTimeout = setTimeout(() => {
-        setOutgoingIdx(null);
-        setSlideReverse(false);
-        state.animating = false;
-      }, SLIDE_MS);
-
-      return () => clearTimeout(returnTimeout);
+      state.direction = 1;
+      return;
     }
 
     if (!hasMultiple) return;
 
-    // Reset any stale animation state (e.g. interrupted return animation)
-    state.animating = false;
-    setOutgoingIdx(null);
-    setSlideReverse(false);
+    setActiveIdx(0);
+    state.activeIdx = 0;
+    state.direction = 1;
 
     const doSlide = () => {
-      if (state.animating) return;
-      state.animating = true;
-
-      const prev = state.activeIdx;
-      const next = (prev + 1) % allImages.length;
-
-      setOutgoingIdx(prev);
-      setActiveIdx(next);
+      let next = state.activeIdx + state.direction;
+      // Ping-pong: reverse at the ends instead of wrapping
+      if (next >= allImages.length) { state.direction = -1; next = state.activeIdx + state.direction; }
+      else if (next < 0)            { state.direction =  1; next = state.activeIdx + state.direction; }
       state.activeIdx = next;
-
-      state.timeout = setTimeout(() => {
-        setOutgoingIdx(null);
-        state.animating = false;
-        state.timeout   = null;
-      }, SLIDE_MS);
+      setActiveIdx(next);
     };
 
     // Wait 3 s before the first slide
@@ -125,8 +93,6 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     return () => {
       if (startDelay)     { clearTimeout(startDelay);      startDelay      = null; }
       if (state.interval) { clearInterval(state.interval); state.interval  = null; }
-      if (state.timeout)  { clearTimeout(state.timeout);   state.timeout   = null; }
-      state.animating = false;
     };
   }, [isHovered, hasMultiple, allImages]);
 
@@ -134,7 +100,6 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   useEffect(() => {
     return () => {
       if (t.current.interval) clearInterval(t.current.interval);
-      if (t.current.timeout)  clearTimeout(t.current.timeout);
     };
   }, []);
 
@@ -169,43 +134,30 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         {/* ── Image container ─────────────────────────────────────────── */}
         <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
 
-          {/* Base layer */}
-          <div className="card-zoom-layer absolute inset-0 overflow-hidden">
-            <CroppedImage
-              src={allImages[outgoingIdx !== null ? outgoingIdx : activeIdx]}
-              alt={product.name}
-              cropData={activeVariant ? undefined : product.cropData}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            />
+          {/* Image strip — all frames in a flex row, CSS transition slides to active frame */}
+          <div
+            className="absolute inset-0 flex"
+            style={{
+              width: `${allImages.length * 100}%`,
+              transform: `translateX(-${(activeIdx * 100) / allImages.length}%)`,
+              transition: `transform ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1)`,
+            }}
+          >
+            {allImages.map((src, i) => (
+              <div
+                key={i}
+                className="card-zoom-layer relative overflow-hidden"
+                style={{ width: `${100 / allImages.length}%`, flexShrink: 0 }}
+              >
+                <CroppedImage
+                  src={src}
+                  alt={product.name}
+                  cropData={activeVariant ? undefined : product.cropData}
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                />
+              </div>
+            ))}
           </div>
-
-          {/* Transition layers */}
-          {outgoingIdx !== null && (
-            <>
-              <div
-                className="card-zoom-layer absolute inset-0 z-[1] overflow-hidden"
-                style={{ animation: `${slideReverse ? "cardSlideOutToRight" : "cardSlideOutToLeft"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
-              >
-                <CroppedImage
-                  src={allImages[outgoingIdx]}
-                  alt={product.name}
-                  cropData={activeVariant ? undefined : product.cropData}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
-              </div>
-              <div
-                className="card-zoom-layer absolute inset-0 z-[2] overflow-hidden"
-                style={{ animation: `${slideReverse ? "cardSlideInFromLeft" : "cardSlideInFromRight"} ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1) forwards` }}
-              >
-                <CroppedImage
-                  src={allImages[activeIdx]}
-                  alt={product.name}
-                  cropData={activeVariant ? undefined : product.cropData}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
-              </div>
-            </>
-          )}
 
           {/* Slideshow dots */}
           {hasMultiple && (
