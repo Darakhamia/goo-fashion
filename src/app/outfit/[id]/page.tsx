@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
+import OutfitCollage from "@/components/outfit/OutfitCollage";
 import { getOutfitById, outfits } from "@/lib/data/outfits";
 
 interface Props {
@@ -40,11 +41,8 @@ export default async function OutfitDetailPage({ params }: Props) {
           {/* Left: Editorial Image */}
           <div className="bg-[var(--background)]">
             <div className="relative aspect-[3/4] overflow-hidden">
-              <Image
-                src={outfit.imageUrl}
-                alt={outfit.name}
-                fill
-                className="object-cover"
+              <OutfitCollage
+                outfit={outfit}
                 priority
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
