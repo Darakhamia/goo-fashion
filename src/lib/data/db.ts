@@ -2,9 +2,10 @@
  * Server-side data access layer.
  * Uses Supabase when configured, falls back to static data.
  */
-import type { ColorGroup, Product, ProductSwatch } from "@/lib/types";
-import { supabase, isSupabaseConfigured, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
+import type { ColorGroup, Outfit, OutfitItem, Product, ProductSwatch } from "@/lib/types";
+import { supabase, isSupabaseConfigured, type DbOutfit, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
 import { products as staticProducts } from "./products";
+import { outfits as staticOutfits } from "./outfits";
 
 export function dbToProduct(row: DbProduct): Product {
   return {
@@ -228,4 +229,168 @@ export async function getProductsByCategory(category: string): Promise<Product[]
     .order("created_at", { ascending: false });
   if (error) return [];
   return groupVariants((data as DbProduct[]).map(dbToProduct));
+}
+
+// ============================================================
+// Outfit CRUD
+// ============================================================
+
+/**
+ * Converts a DB outfit row (with product_id references) to a full Outfit object
+ * by looking up products from the provided map.
+ */
+function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
+  const items: OutfitItem[] = [];
+  for (const item of row.items ?? []) {
+    const product = productMap.get(item.product_id);
+    if (product) {
+      items.push({ product, role: item.role });
+    }
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? "",
+    occasion: row.occasion as Outfit["occasion"],
+    imageUrl: row.image_url ?? "",
+    items,
+    totalPriceMin: row.total_price_min,
+    totalPriceMax: row.total_price_max,
+    currency: row.currency ?? "USD",
+    styleKeywords: (row.style_keywords ?? []) as Outfit["styleKeywords"],
+    isAIGenerated: row.is_ai_generated ?? false,
+    isSaved: row.is_saved ?? false,
+    season: (row.season ?? "all") as Outfit["season"],
+  };
+}
+
+export function outfitToDb(o: Partial<Outfit> & { items?: { productId: string; role: string }[] }) {
+  return {
+    name: o.name ?? "",
+    description: o.description ?? "",
+    occasion: o.occasion ?? "casual",
+    image_url: o.imageUrl ?? "",
+    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role })),
+    total_price_min: o.totalPriceMin ?? 0,
+    total_price_max: o.totalPriceMax ?? o.totalPriceMin ?? 0,
+    currency: o.currency ?? "USD",
+    style_keywords: o.styleKeywords ?? [],
+    is_ai_generated: o.isAIGenerated ?? false,
+    is_saved: o.isSaved ?? false,
+    season: o.season ?? "all",
+  };
+}
+
+export async function getAllOutfits(): Promise<Outfit[]> {
+  if (!isSupabaseConfigured || !supabase) return staticOutfits;
+
+  const { data, error } = await supabase
+    .from("outfits")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[db] getAllOutfits:", error.message);
+    return staticOutfits;
+  }
+
+  const rows = data as DbOutfit[];
+  if (rows.length === 0) return staticOutfits;
+
+  // Collect all product IDs referenced across all outfits
+  const productIds = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id)))];
+
+  let productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const { data: prodData } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    if (prodData) {
+      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+        productMap.set(p.id, p);
+      }
+    }
+  }
+
+  return rows.map((r) => dbToOutfit(r, productMap));
+}
+
+export async function createOutfit(
+  data: ReturnType<typeof outfitToDb>
+): Promise<Outfit | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  const { data: row, error } = await supabase
+    .from("outfits")
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[db] createOutfit:", error.message);
+    return null;
+  }
+
+  // Hydrate returned row
+  const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
+  let productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const { data: prodData } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    if (prodData) {
+      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+        productMap.set(p.id, p);
+      }
+    }
+  }
+
+  return dbToOutfit(row as DbOutfit, productMap);
+}
+
+export async function updateOutfit(
+  id: string,
+  data: ReturnType<typeof outfitToDb>
+): Promise<Outfit | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  const { data: row, error } = await supabase
+    .from("outfits")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[db] updateOutfit:", error.message);
+    return null;
+  }
+
+  const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
+  let productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const { data: prodData } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    if (prodData) {
+      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+        productMap.set(p.id, p);
+      }
+    }
+  }
+
+  return dbToOutfit(row as DbOutfit, productMap);
+}
+
+export async function deleteOutfit(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return false;
+  const { error } = await supabase.from("outfits").delete().eq("id", id);
+  if (error) {
+    console.error("[db] deleteOutfit:", error.message);
+    return false;
+  }
+  return true;
 }

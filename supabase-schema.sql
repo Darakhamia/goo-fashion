@@ -144,3 +144,35 @@ alter table public.products
 
 create index if not exists products_color_group_ids_idx
   on public.products using gin (color_group_ids);
+
+-- ============================================================
+-- Outfits table
+-- items stored as JSONB: [{ "product_id": "...", "role": "hero|secondary|accent" }]
+-- ============================================================
+
+create table if not exists public.outfits (
+  id              text        primary key default gen_random_uuid()::text,
+  name            text        not null default '',
+  description     text        not null default '',
+  occasion        text        not null default 'casual',
+  image_url       text        not null default '',
+  items           jsonb       not null default '[]',
+  total_price_min numeric     not null default 0,
+  total_price_max numeric     not null default 0,
+  currency        text        not null default 'USD',
+  style_keywords  text[]      not null default '{}',
+  is_ai_generated boolean     not null default false,
+  is_saved        boolean     not null default false,
+  season          text        not null default 'all',
+  created_at      timestamptz not null default now()
+);
+
+alter table public.outfits enable row level security;
+
+create policy "Public read access"
+  on public.outfits
+  for select
+  using (true);
+
+create index if not exists outfits_occasion_idx  on public.outfits (occasion);
+create index if not exists outfits_created_at_idx on public.outfits (created_at desc);
