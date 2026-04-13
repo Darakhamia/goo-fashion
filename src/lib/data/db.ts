@@ -264,7 +264,22 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
   };
 }
 
-export function outfitToDb(o: Partial<Outfit> & { items?: { productId: string; role: string }[] }) {
+export interface OutfitApiBody {
+  name?: string;
+  description?: string;
+  occasion?: string;
+  imageUrl?: string;
+  items?: { productId: string; role: string }[];
+  totalPriceMin?: number;
+  totalPriceMax?: number;
+  currency?: string;
+  styleKeywords?: string[];
+  isAIGenerated?: boolean;
+  isSaved?: boolean;
+  season?: string;
+}
+
+export function outfitToDb(o: OutfitApiBody) {
   return {
     name: o.name ?? "",
     description: o.description ?? "",
