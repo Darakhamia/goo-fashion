@@ -23,6 +23,28 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const supabase = url && key ? createClient(url, key) : null;
 export const isSupabaseConfigured = !!(url && key);
 
+export type DbOutfitItem = {
+  product_id: string;
+  role: "hero" | "secondary" | "accent";
+};
+
+export type DbOutfit = {
+  id: string;
+  name: string;
+  description: string;
+  occasion: string;
+  image_url: string;
+  items: DbOutfitItem[];
+  total_price_min: number;
+  total_price_max: number;
+  currency: string;
+  style_keywords: string[];
+  is_ai_generated: boolean;
+  is_saved: boolean;
+  season: string;
+  created_at: string;
+};
+
 export type DbProduct = {
   id: string;
   name: string;
