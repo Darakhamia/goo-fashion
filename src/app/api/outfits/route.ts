@@ -19,10 +19,13 @@ export async function POST(req: Request) {
 
   // body.items = [{ productId, role }]
   const row = outfitToDb(body);
-  const outfit = await createOutfit(row);
+  const { outfit, error } = await createOutfit(row);
 
   if (!outfit) {
-    return NextResponse.json({ error: "Failed to create outfit." }, { status: 500 });
+    const msg = error ?? "Failed to create outfit.";
+    // Table missing → let client save locally
+    const status = msg.includes("does not exist") ? 501 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 
   return NextResponse.json(outfit, { status: 201 });
