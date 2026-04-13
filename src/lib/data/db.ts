@@ -333,8 +333,8 @@ export async function getAllOutfits(): Promise<Outfit[]> {
 
 export async function createOutfit(
   data: ReturnType<typeof outfitToDb>
-): Promise<Outfit | null> {
-  if (!isSupabaseConfigured || !supabase) return null;
+): Promise<{ outfit: Outfit | null; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { outfit: null, error: "Database not configured." };
 
   const { data: row, error } = await supabase
     .from("outfits")
@@ -344,7 +344,7 @@ export async function createOutfit(
 
   if (error) {
     console.error("[db] createOutfit:", error.message);
-    return null;
+    return { outfit: null, error: error.message };
   }
 
   // Hydrate returned row
@@ -362,7 +362,7 @@ export async function createOutfit(
     }
   }
 
-  return dbToOutfit(row as DbOutfit, productMap);
+  return { outfit: dbToOutfit(row as DbOutfit, productMap), error: null };
 }
 
 export async function updateOutfit(
