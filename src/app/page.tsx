@@ -72,9 +72,9 @@ export default async function HomePage() {
         />
 
         {/* Outfit Grid */}
-        <div className={`mt-10 grid grid-cols-1 gap-px bg-[var(--border)] ${featuredOutfits.length > 1 ? "md:grid-cols-3" : ""}`}>
+        <div className={`mt-10 grid grid-cols-1 md:grid-cols-3 gap-px ${featuredOutfits.length > 1 ? "bg-[var(--border)]" : "bg-[var(--background)]"}`}>
           {featuredOutfits[0] && (
-            <div className={featuredOutfits.length > 1 ? "md:col-span-1 bg-[var(--background)]" : "bg-[var(--background)]"}>
+            <div className="md:col-span-1 bg-[var(--background)]">
               <div className="p-4">
                 <OutfitCard outfit={featuredOutfits[0]} size="large" />
               </div>
