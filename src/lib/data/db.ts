@@ -400,6 +400,40 @@ export async function updateOutfit(
   return dbToOutfit(row as DbOutfit, productMap);
 }
 
+export async function getOutfitById(id: string): Promise<Outfit | undefined> {
+  if (!isSupabaseConfigured || !supabase) {
+    return staticOutfits.find((o) => o.id === id);
+  }
+
+  const { data, error } = await supabase
+    .from("outfits")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    // Fall back to static data
+    return staticOutfits.find((o) => o.id === id);
+  }
+
+  const row = data as DbOutfit;
+  const productIds = (row.items ?? []).map((i) => i.product_id);
+  let productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const { data: prodData } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    if (prodData) {
+      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+        productMap.set(p.id, p);
+      }
+    }
+  }
+
+  return dbToOutfit(row, productMap);
+}
+
 export async function deleteOutfit(id: string): Promise<boolean> {
   if (!isSupabaseConfigured || !supabase) return false;
   const { error } = await supabase.from("outfits").delete().eq("id", id);
