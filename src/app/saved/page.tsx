@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLikes } from "@/lib/context/likes-context";
-import { outfits } from "@/lib/data/outfits";
 import { products as staticProducts } from "@/lib/data/products";
+import type { Outfit } from "@/lib/types";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 
@@ -196,6 +196,7 @@ export default function SavedPage() {
   const [view, setView] = useState<View>("outfits");
   const { likedOutfits, likedProducts } = useLikes();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
+  const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
 
   // Load builder-saved outfits from localStorage + respect ?tab= param
@@ -206,6 +207,14 @@ export default function SavedPage() {
     } catch {}
     const params = new URLSearchParams(window.location.search);
     if (params.get("tab") === "looks") setView("looks");
+  }, []);
+
+  // Fetch outfits from API (includes DB outfits)
+  useEffect(() => {
+    fetch("/api/outfits")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setAllOutfits(d); })
+      .catch(() => {});
   }, []);
 
   // Fetch full product list from API (includes Supabase products with UUID IDs)
@@ -224,7 +233,7 @@ export default function SavedPage() {
     });
   };
 
-  const savedOutfits = outfits.filter((o) => likedOutfits.includes(o.id));
+  const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
   const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
   const tabs: { id: View; label: string; count: number }[] = [
