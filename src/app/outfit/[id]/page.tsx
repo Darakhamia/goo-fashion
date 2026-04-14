@@ -4,7 +4,7 @@ import Image from "next/image";
 import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
-import { getOutfitById, outfits } from "@/lib/data/outfits";
+import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,11 +12,11 @@ interface Props {
 
 export default async function OutfitDetailPage({ params }: Props) {
   const { id } = await params;
-  const outfit = getOutfitById(id);
+  const [outfit, allOutfits] = await Promise.all([getOutfitById(id), getAllOutfits()]);
 
   if (!outfit) notFound();
 
-  const relatedOutfits = outfits
+  const relatedOutfits = allOutfits
     .filter((o) => o.id !== outfit.id && o.occasion === outfit.occasion)
     .slice(0, 3);
 
@@ -41,11 +41,22 @@ export default async function OutfitDetailPage({ params }: Props) {
           {/* Left: Editorial Image */}
           <div className="bg-[var(--background)]">
             <div className="relative aspect-[3/4] overflow-hidden">
-              <OutfitCollage
-                outfit={outfit}
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
+              {outfit.imageUrl ? (
+                <Image
+                  src={outfit.imageUrl}
+                  alt={outfit.name}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              ) : (
+                <OutfitCollage
+                  outfit={outfit}
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              )}
               {outfit.isAIGenerated && (
                 <div className="absolute top-4 left-4">
                   <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">

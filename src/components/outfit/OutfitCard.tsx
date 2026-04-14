@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import OutfitCollage from "./OutfitCollage";
@@ -20,10 +21,22 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       <Link href={`/outfit/${outfit.id}`} className="block">
         {/* Image */}
         <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
-          <OutfitCollage
-            outfit={outfit}
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-          />
+          {outfit.imageUrl ? (
+            <div className="absolute inset-0">
+              <Image
+                src={outfit.imageUrl}
+                alt={outfit.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              />
+            </div>
+          ) : (
+            <OutfitCollage
+              outfit={outfit}
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            />
+          )}
 
           {/* AI Badge */}
           {outfit.isAIGenerated && (
