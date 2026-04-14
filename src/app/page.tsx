@@ -72,21 +72,25 @@ export default async function HomePage() {
         />
 
         {/* Outfit Grid */}
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
-          <div className="md:col-span-1 bg-[var(--background)]">
-            <div className="p-4">
-              <OutfitCard outfit={featuredOutfits[0]} size="large" />
+        <div className={`mt-10 grid grid-cols-1 gap-px bg-[var(--border)] ${featuredOutfits.length > 1 ? "md:grid-cols-3" : ""}`}>
+          {featuredOutfits[0] && (
+            <div className={featuredOutfits.length > 1 ? "md:col-span-1 bg-[var(--background)]" : "bg-[var(--background)]"}>
+              <div className="p-4">
+                <OutfitCard outfit={featuredOutfits[0]} size="large" />
+              </div>
             </div>
-          </div>
-          <div className="md:col-span-2 bg-[var(--border)]">
-            <div className="grid grid-cols-2 gap-px">
-              {featuredOutfits.slice(1, 5).map((outfit) => (
-                <div key={outfit.id} className="bg-[var(--background)] p-4">
-                  <OutfitCard outfit={outfit} />
-                </div>
-              ))}
+          )}
+          {featuredOutfits.slice(1, 5).length > 0 && (
+            <div className="md:col-span-2 bg-[var(--border)]">
+              <div className="grid grid-cols-2 gap-px">
+                {featuredOutfits.slice(1, 5).map((outfit) => (
+                  <div key={outfit.id} className="bg-[var(--background)] p-4">
+                    <OutfitCard outfit={outfit} />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {featuredOutfits[5] && (
