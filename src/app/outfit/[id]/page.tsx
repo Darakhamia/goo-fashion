@@ -4,6 +4,7 @@ import Image from "next/image";
 import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
+import OutfitActions from "@/components/outfit/OutfitActions";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 
 interface Props {
@@ -118,14 +119,7 @@ export default async function OutfitDetailPage({ params }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-12">
-              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200">
-                Save Outfit
-              </button>
-              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 hover:border-[var(--border-strong)] transition-colors duration-200">
-                Share
-              </button>
-            </div>
+            <OutfitActions outfitId={outfit.id} />
 
             {/* Items in outfit */}
             <div>
