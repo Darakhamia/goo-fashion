@@ -2,12 +2,11 @@ import Link from "next/link";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
-import { outfits } from "@/lib/data/outfits";
-import { getAllProducts } from "@/lib/data/db";
+import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 
 export default async function HomePage() {
-  const allProducts = await getAllProducts();
-  const featuredOutfits = outfits.slice(0, 6);
+  const [allProducts, allOutfits] = await Promise.all([getAllProducts(), getAllOutfits()]);
+  const featuredOutfits = allOutfits.slice(0, 6);
   const featuredProducts = allProducts.slice(0, 4);
 
   return (
