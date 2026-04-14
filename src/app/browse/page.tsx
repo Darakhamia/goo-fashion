@@ -3,8 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
-import { outfits } from "@/lib/data/outfits";
-import type { Category, ColorGroup, Gender, Occasion, Product } from "@/lib/types";
+import type { Category, ColorGroup, Gender, Occasion, Outfit, Product } from "@/lib/types";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -156,6 +155,8 @@ export default function BrowsePage() {
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [catalogOutfits, setCatalogOutfits] = useState<Outfit[]>([]);
+  const [loadingOutfits, setLoadingOutfits] = useState(true);
   const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
 
   useEffect(() => {
@@ -164,6 +165,14 @@ export default function BrowsePage() {
       .then((d) => { if (Array.isArray(d)) setCatalogProducts(d); })
       .catch(() => {})
       .finally(() => setLoadingProducts(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/outfits")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setCatalogOutfits(d); })
+      .catch(() => {})
+      .finally(() => setLoadingOutfits(false));
   }, []);
 
   useEffect(() => {
@@ -281,7 +290,7 @@ export default function BrowsePage() {
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    let r = outfits
+    let r = catalogOutfits
       .filter(
         (o) =>
           !selectedOccasions.length ||
@@ -307,7 +316,7 @@ export default function BrowsePage() {
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort]);
+  }, [catalogOutfits, selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort]);
 
   const count =
     view === "outfits" ? filteredOutfits.length : filteredProducts.length;
@@ -698,7 +707,19 @@ export default function BrowsePage() {
 
             {/* Product / Outfit grid */}
             <div className="mt-6 pb-16">
-              {view === "pieces" && loadingProducts ? (
+              {view === "outfits" && loadingOutfits ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-t border-l border-[var(--border)]">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="border-r border-b border-[var(--border)] p-4">
+                      <div className="animate-pulse">
+                        <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
+                        <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
+                        <div className="bg-[var(--surface)] h-3 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : view === "pieces" && loadingProducts ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-t border-l border-[var(--border)]">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="border-r border-b border-[var(--border)] p-4">
