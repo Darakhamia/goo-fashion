@@ -610,7 +610,7 @@ export default function BrowsePage() {
               <div className="flex items-center gap-3">
                 {/* Filter toggle — unified for all screen sizes */}
                 <button
-                  onClick={() => setFiltersOpen(true)}
+                  onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
                   className="flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
@@ -626,7 +626,7 @@ export default function BrowsePage() {
 
                 {/* AI Stylist trigger */}
                 <button
-                  onClick={() => setStylistOpen(true)}
+                  onClick={() => { setFiltersOpen(false); setStylistOpen(true); }}
                   className={`flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border transition-all duration-200 px-3 py-1.5 ${
                     stylistOpen
                       ? "border-[var(--foreground)] text-[var(--foreground)]"

@@ -182,6 +182,16 @@ export function StylistDrawer({
         }),
       });
 
+      if (res.status === 429) {
+        setChatMessages(prev => [...prev, {
+          id: `msg-${Date.now()}-ai`,
+          role: "assistant",
+          text: "You're sending messages too fast — wait a moment and try again.",
+          isError: true,
+        }]);
+        return;
+      }
+
       if (res.status === 501) {
         setChatMessages(prev => [...prev, {
           id: `msg-${Date.now()}-ai`,
