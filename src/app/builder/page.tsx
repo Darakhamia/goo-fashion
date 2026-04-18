@@ -616,26 +616,16 @@ export default function BuilderPage() {
           <main className="flex flex-col min-h-0 overflow-hidden bg-[var(--surface)]">
 
             {/* Canvas top bar */}
-            <div className="h-9 shrink-0 flex items-center justify-between px-5 border-b border-[var(--border)]">
+            <div className="h-9 shrink-0 flex items-center px-5 border-b border-[var(--border)]">
               <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)]">
                 {selectedCount > 0 ? `Look ${lookNumber}` : "Look —"}
               </p>
-              <div className="flex items-center gap-px">
-                {(["○", "◐", "●"] as const).map((icon, i) => (
-                  <button
-                    key={i}
-                    className="w-6 h-6 flex items-center justify-center text-[12px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                  >
-                    {icon}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Silhouette zone — centered fashion plate */}
-            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-6 px-4">
+            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-8 px-6">
               {/* Container: 240px main figure + 20px gap + 60px accessories = 320px */}
-              <div className="relative h-full max-h-[560px]" style={{ width: 320 }}>
+              <div className="relative h-full max-h-[460px]" style={{ width: 320 }}>
 
                 {/* Main stacked figure: outerwear → top → bottom → shoes */}
                 <div className="absolute inset-y-0 left-0 flex flex-col" style={{ width: 240 }}>
@@ -1272,6 +1262,24 @@ export default function BuilderPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Generate — icon-only on mobile, visible with ≥1 piece */}
+              {selectedCount >= 1 && (
+                <button
+                  onClick={generateOutfit}
+                  disabled={generating}
+                  className="w-9 h-9 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  aria-label="Generate outfit image"
+                >
+                  {generating ? (
+                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              )}
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
@@ -1469,8 +1477,8 @@ export default function BuilderPage() {
         {/* Right: actions */}
         <div className="flex items-center gap-2.5">
 
-          {/* Generate — only shown with ≥2 pieces */}
-          {selectedCount >= 2 && (
+          {/* Generate — shown with ≥1 piece selected */}
+          {selectedCount >= 1 && (
             <button
               onClick={generateOutfit}
               disabled={generating}

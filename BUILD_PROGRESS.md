@@ -17,6 +17,7 @@ _Last updated: 2026-04-18_
 | Phase 3e | Builder AI Stylist drawer (chat UI) | ✅ Complete |
 | Phase 3f | Builder mobile layout + QA polish | ✅ Complete |
 | Phase 4 | QA and polish | ✅ Complete (folded into 3f) |
+| Follow-up Phase A | Canvas balance, decorative cleanup, Generate threshold | ✅ Complete |
 
 ---
 
@@ -422,3 +423,34 @@ Key constraints:
 - activeSlot still drives canvas ring highlight and right panel context
 - ProductRow component can be removed once the 2-col grid replaces it
 ```
+
+---
+
+## Follow-up Phase A — Canvas Balance + Decorative Cleanup + Generate Threshold ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — 4 targeted changes, no logic rework.
+
+**1. Canvas top bar — removed decorative circle controls**
+Removed the `○ ◐ ●` button row from the canvas top bar. These had no `onClick` handlers and gave users no feedback when tapped. The canvas top bar is now a single left-aligned "Look —" / "Look 007" mono label. The `justify-between` flex direction changed to simple `flex items-center` since there is no right-side content.
+
+**2. Silhouette canvas — reduced visual dominance**
+- `py-6 px-4` → `py-8 px-6`: increased padding around the silhouette for a more editorial framing
+- `max-h-[560px]` → `max-h-[460px]`: silhouette height reduced by 100px (~18%), making the canvas panel feel proportional rather than stretched on typical desktop heights (768–900px)
+
+These changes leave the `1fr` grid column and panel background intact — the panels remain full-bleed. The canvas area has the same footprint, but the silhouette is better framed within it.
+
+**3. Desktop footer — Generate threshold lowered**
+`selectedCount >= 2` → `selectedCount >= 1`. The Generate button now appears as soon as one piece is selected. The API already accepts 1+ pieces (validation in `/api/generate-outfit/route.ts` is `pieces.length < 1`), so the frontend was more conservative than necessary. A single-item generation produces a focused editorial shot of that item.
+
+**4. Mobile bottom bar — Generate added**
+Added an icon-only Generate button (star SVG, 36×36px square) between the total and Save button. Appears when `selectedCount >= 1`, same condition as desktop. Shows a spinning indicator while generating. Uses `aria-label="Generate outfit image"` for accessibility. The compact icon keeps the mobile bar from becoming crowded.
+
+### Visual tradeoffs
+
+- The reduced `max-h-[460px]` means on very tall viewports (1200px+ height) the silhouette won't stretch to fill the vertical space as much. This is intentional — the previous stretch created an awkward aspect ratio on the slot zones.
+- The `px-6` side padding on the silhouette zone slightly reduces effective canvas width (was `px-4`), but since the silhouette container is a fixed 320px centered within the zone, the visual padding is only background-color surface, not functional space.
+- The mobile Generate icon has no text label. Users unfamiliar with the star icon may not immediately understand it triggers AI generation. A tooltip or a text label on first use could help — tracked as a follow-up.
