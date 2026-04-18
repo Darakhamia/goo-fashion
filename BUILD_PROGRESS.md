@@ -21,6 +21,7 @@ _Last updated: 2026-04-18_
 | Follow-up Phase B | Catalog filters: price, brand, sort | ✅ Complete |
 | Follow-up Phase C1 | Builder header cleanup: remove duplication, relocate Stylist trigger | ✅ Complete |
 | Follow-up Phase C2 | Shop the Look + cart system (localStorage, cart drawer in nav) | ✅ Complete |
+| Follow-up Phase D/E Planning | AI Stylist architecture document (AI_STYLIST_ARCHITECTURE.md) | ✅ Complete |
 
 ---
 
