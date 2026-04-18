@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import type { Product } from "@/lib/types";
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -23,13 +24,27 @@ interface ChatMessage {
   isError?: true;
 }
 
-const QUICK_REPLIES = ["Warmer", "Sharper", "Under $500", "Complete my look"] as const;
-
-const WELCOME: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  text: "Hi! I'm your AI Stylist. Tell me what vibe you're going for, or pick a prompt below.",
+// Surface-specific quick reply chips
+const QUICK_REPLIES: Record<StylistDrawerProps["surface"], readonly string[]> = {
+  builder: ["Warmer", "Sharper", "Under $500", "Complete my look"],
+  product: ["What goes with this?", "How to style it?", "Similar pieces", "Build an outfit"],
+  browse:  ["Minimal looks", "What's trending?", "Under $500", "Complete an outfit"],
 };
+
+function makeWelcome(focusProduct?: Product): ChatMessage {
+  if (focusProduct) {
+    return {
+      id: "welcome",
+      role: "assistant",
+      text: `Hi! I'm your AI Stylist. I can help you style the ${focusProduct.name} by ${focusProduct.brand} — ask me what goes with it, how to wear it, or for outfit ideas.`,
+    };
+  }
+  return {
+    id: "welcome",
+    role: "assistant",
+    text: "Hi! I'm your AI Stylist. Tell me what vibe you're going for, or pick a prompt below.",
+  };
+}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -41,13 +56,27 @@ export interface StylistDrawerProps {
   /** Full product catalog in memory — used to resolve suggestedProductIds. */
   products: Product[];
   /**
+   * Controls how the drawer is positioned.
+   * "absolute" — contained within a relative-positioned parent (builder).
+   * "fixed"    — overlays the viewport below the site nav (product, browse).
+   * Defaults to "fixed".
+   */
+  position?: "fixed" | "absolute";
+  /**
    * Current outfit selection (builder only).
    * Keys are slot IDs, values are selected Products.
-   * Undefined / empty = starting fresh.
    */
   selection?: Partial<Record<string, Product>>;
-  /** Called when the user taps a suggestion card. Builder wires this to selectProduct(). */
+  /**
+   * Called when the user taps a suggestion card (builder: adds to canvas).
+   * When absent, suggestion cards link to /product/[id] instead.
+   */
   onSelectProduct?: (product: Product) => void;
+  /**
+   * Product the user is currently viewing (product page only).
+   * Seeds the AI's context so it can answer "what goes with this?".
+   */
+  focusProduct?: Product;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -57,10 +86,12 @@ export function StylistDrawer({
   onClose,
   surface,
   products,
+  position = "fixed",
   selection,
   onSelectProduct,
+  focusProduct,
 }: StylistDrawerProps) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [makeWelcome(focusProduct)]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatThreadRef = useRef<HTMLDivElement>(null);
@@ -81,15 +112,14 @@ export function StylistDrawer({
 
     try {
       // conversationHistory reads closure state (pre-setState), correctly excluding
-      // the just-queued user message. Error bubbles are excluded so they don't
-      // confuse the model on retries. Capped to last 20 entries (~10 turns).
+      // the just-queued user message. Error bubbles excluded so they don't confuse
+      // the model on retries. Capped to last 20 entries (~10 turns).
       const conversationHistory = chatMessages
         .filter(m => m.id !== "welcome" && !m.isError)
         .map(m => ({ role: m.role as "user" | "assistant", content: m.text }))
         .slice(-20);
 
-      // Serialize the current builder outfit selection into the OutfitPiece shape
-      // the API expects. Non-builder surfaces pass an empty object.
+      // Serialize builder outfit selection into the OutfitPiece shape the API expects.
       const currentOutfit: Record<string, OutfitPiece> = selection
         ? Object.fromEntries(
             Object.entries(selection)
@@ -109,10 +139,29 @@ export function StylistDrawer({
           )
         : {};
 
+      // Serialize the focus product (product page) for the API context block.
+      const focusOutfitPiece: OutfitPiece | undefined = focusProduct
+        ? {
+            slot: "focus",
+            productId: focusProduct.id,
+            name: focusProduct.name,
+            brand: focusProduct.brand,
+            priceMin: focusProduct.priceMin,
+            styleKeywords: focusProduct.styleKeywords,
+            category: focusProduct.category,
+          }
+        : undefined;
+
       const res = await fetch("/api/stylist/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userMessage: text.trim(), conversationHistory, currentOutfit, surface }),
+        body: JSON.stringify({
+          userMessage: text.trim(),
+          conversationHistory,
+          currentOutfit,
+          surface,
+          ...(focusOutfitPiece && { focusProduct: focusOutfitPiece }),
+        }),
       });
 
       if (res.status === 501) {
@@ -166,9 +215,17 @@ export function StylistDrawer({
 
   if (!isOpen) return null;
 
+  // Position classes differ between builder (absolute within a relative container)
+  // and product/browse pages (fixed to viewport, below the h-16 site nav).
+  const positionClasses = position === "absolute"
+    ? "absolute top-0 right-0 bottom-0 z-20"
+    : "fixed top-16 right-0 bottom-0 z-40";
+
+  const quickReplies = QUICK_REPLIES[surface];
+
   return (
     <div
-      className="absolute top-0 right-0 bottom-0 w-full md:w-[380px] bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col z-20 animate-slide-in-right"
+      className={`${positionClasses} w-full md:w-[380px] bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col animate-slide-in-right`}
       style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.12)" }}
     >
       {/* Drawer header */}
@@ -218,16 +275,11 @@ export function StylistDrawer({
             {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-1 w-full" style={{ scrollbarWidth: "none" }}>
                 {msg.suggestions.map(product => {
-                  // Check if this product is already in the current selection.
-                  // Works without knowing the slot structure — any slot match counts.
+                  // Selected state: true if this product is already in the builder selection.
                   const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => onSelectProduct?.(product)}
-                      className="shrink-0 flex flex-col group"
-                      style={{ width: 72 }}
-                    >
+
+                  const cardInner = (
+                    <>
                       <div className="w-[72px] aspect-[3/4] overflow-hidden bg-[var(--surface)] border border-[var(--border)] group-hover:border-[var(--foreground)] transition-colors relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -249,7 +301,29 @@ export function StylistDrawer({
                       <p className="font-mono text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
                         ${product.priceMin.toLocaleString()}
                       </p>
+                    </>
+                  );
+
+                  // Builder: tap card → add to canvas via onSelectProduct.
+                  // Other surfaces: tap card → navigate to product detail page.
+                  return onSelectProduct ? (
+                    <button
+                      key={product.id}
+                      onClick={() => onSelectProduct(product)}
+                      className="shrink-0 flex flex-col group"
+                      style={{ width: 72 }}
+                    >
+                      {cardInner}
                     </button>
+                  ) : (
+                    <Link
+                      key={product.id}
+                      href={`/product/${product.id}`}
+                      className="shrink-0 flex flex-col group"
+                      style={{ width: 72 }}
+                    >
+                      {cardInner}
+                    </Link>
                   );
                 })}
               </div>
@@ -275,7 +349,7 @@ export function StylistDrawer({
 
       {/* Quick-reply chips */}
       <div className="px-4 pb-2.5 shrink-0 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-        {QUICK_REPLIES.map(reply => (
+        {quickReplies.map(reply => (
           <button
             key={reply}
             onClick={() => sendMessage(reply)}

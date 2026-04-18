@@ -24,6 +24,8 @@ interface StylistChatRequest {
   currentOutfit?: Partial<Record<string, OutfitPiece | null>>;
   // Page surface hint
   surface?: "builder" | "browse" | "product";
+  // Product page: the item the user is currently viewing
+  focusProduct?: OutfitPiece;
 }
 
 interface StylistChatResponse {
@@ -70,6 +72,16 @@ function buildOutfitContext(outfit?: Partial<Record<string, OutfitPiece | null>>
     ...lines,
     `Style profile: ${allKeywords.join(", ")}`,
     `Total so far: $${totalPrice.toLocaleString()}`,
+  ].join("\n");
+}
+
+// ── Focus product context block ───────────────────────────────────────────────
+
+function buildFocusContext(piece: OutfitPiece): string {
+  return [
+    "The user is viewing this product and wants styling advice:",
+    `${piece.name} by ${piece.brand} · $${piece.priceMin.toLocaleString()} · ${piece.category} · ${piece.styleKeywords.join(", ")}`,
+    "Help them style it: suggest what goes with it, how to wear it, what other pieces complement it well.",
   ].join("\n");
 }
 
@@ -178,7 +190,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "userMessage is required" }, { status: 400 });
   }
 
-  const { userMessage, conversationHistory = [], currentOutfit } = body;
+  const { userMessage, conversationHistory = [], currentOutfit, focusProduct } = body;
 
   // ── Load catalog ──────────────────────────────────────────────────────────
   const products = await getAllProducts();
@@ -186,7 +198,9 @@ export async function POST(req: Request) {
   const catalogSummary = buildCatalogSummary(products, 100);
 
   // ── Build prompts ─────────────────────────────────────────────────────────
-  const outfitContext = buildOutfitContext(currentOutfit ?? undefined);
+  const outfitContext = focusProduct
+    ? buildFocusContext(focusProduct)
+    : buildOutfitContext(currentOutfit ?? undefined);
   const systemPrompt = buildSystemPrompt(catalogSummary, outfitContext);
 
   // ── Assemble message history ──────────────────────────────────────────────

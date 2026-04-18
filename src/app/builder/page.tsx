@@ -1434,6 +1434,7 @@ export default function BuilderPage() {
           onClose={() => setAiOpen(false)}
           surface="builder"
           products={products}
+          position="absolute"
           selection={selection}
           onSelectProduct={selectProduct}
         />
