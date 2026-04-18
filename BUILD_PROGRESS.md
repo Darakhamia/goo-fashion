@@ -20,6 +20,56 @@ _Last updated: 2026-04-18_
 | Follow-up Phase A | Canvas balance, decorative cleanup, Generate threshold | ✅ Complete |
 | Follow-up Phase B | Catalog filters: price, brand, sort | ✅ Complete |
 | Follow-up Phase C1 | Builder header cleanup: remove duplication, relocate Stylist trigger | ✅ Complete |
+| Follow-up Phase C2 | Shop the Look + cart system (localStorage, cart drawer in nav) | ✅ Complete |
+
+---
+
+## Follow-up Phase C2 — Shop the Look + Cart System ✅
+
+**Completed:** 2026-04-18
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/lib/context/cart-context.tsx` | **New** — CartProvider, useCart hook, localStorage persistence |
+| `src/app/layout.tsx` | Added `<CartProvider>` wrapper |
+| `src/components/layout/Navigation.tsx` | Added cart icon + count badge + cart drawer |
+| `src/app/builder/page.tsx` | Added `useCart`, `shopTheLook` action, wired both desktop + mobile Shop buttons |
+
+### Cart data structure
+
+```typescript
+interface CartItem {
+  id: string;         // product id — used as dedup key
+  name: string;
+  brand: string;
+  imageUrl: string;
+  price: number;      // product.priceMin
+  retailerUrl: string | null;  // first isOfficial retailer, or first retailer, or null
+}
+```
+
+Stored in `localStorage` under key `"goo-cart"` as a JSON array. Restored on mount via `useEffect`.
+
+### Duplicate handling
+
+`addToCart` checks `prev.some(x => x.id === item.id)` and returns `prev` unchanged if the product is already in the cart. `addManyToCart` builds a Set of existing IDs and filters out duplicates before merging. Clicking "Shop the Look" multiple times is safe.
+
+### Interaction model
+
+- **Desktop:** "Shop the Look" button in builder footer → calls `shopTheLook()` → `addManyToCart` → feedback "Added to Cart ✓" for 2 seconds
+- **Mobile:** same button in mobile bottom bar → same action → "Added ✓" feedback
+- **Cart icon** in site nav: count badge, click to open/close drawer
+- **Cart drawer**: slides in from right (same animation as AI Stylist drawer), click backdrop or × to close; lists items with thumbnail/name/brand/price/remove; shows estimated total
+- **Empty state**: cart icon has no badge, drawer shows empty state with explanatory copy
+
+### Limitations
+
+- No retailer link surfacing in the drawer yet (item links are stored but not rendered as clickable links — keeping "checkout coming soon")
+- Cart is not user-account-scoped (localStorage only; clears if user switches browsers or clears storage)
+- No quantity support — each product ID can only appear once
+- Cart drawer is not accessible from mobile nav (mobile hamburger doesn't include cart entry) — low priority since cart is always in fixed nav bar
 
 ---
 

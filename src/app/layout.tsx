@@ -1,10 +1,32 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Fraunces, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { LikesProvider } from "@/lib/context/likes-context";
 import { AuthProvider } from "@/lib/context/auth-context";
 import { ThemeProvider } from "@/lib/context/theme-context";
+import { CartProvider } from "@/lib/context/cart-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+});
+
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  variable: "--font-inter-tight",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "GOO — AI Stylist",
@@ -24,7 +46,11 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning className="dark">
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`dark ${fraunces.variable} ${interTight.variable} ${jetbrainsMono.variable}`}
+      >
         <head>
           {/* Inline script prevents flash of wrong theme on load */}
           <script
@@ -37,7 +63,9 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <LikesProvider>
-                <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+                <CartProvider>
+                  <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+                </CartProvider>
               </LikesProvider>
             </AuthProvider>
           </ThemeProvider>

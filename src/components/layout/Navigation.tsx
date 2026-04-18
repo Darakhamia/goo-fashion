@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
+import { useCart } from "@/lib/context/cart-context";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 const navLinks = [
@@ -17,11 +18,28 @@ export default function Navigation() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cartDrawerRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
+  const { cartItems, removeFromCart } = useCart();
 
   const isHero = pathname === "/";
   const showWhiteText = isHero && !scrolled;
   const totalLikes = likedOutfits.length + likedProducts.length;
+  const cartCount = cartItems.length;
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+
+  // Close cart drawer on click outside
+  useEffect(() => {
+    if (!cartOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (cartDrawerRef.current && !cartDrawerRef.current.contains(e.target as Node)) {
+        setCartOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [cartOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -72,6 +90,26 @@ export default function Navigation() {
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-6">
+          {/* Cart */}
+          <button
+            onClick={() => setCartOpen(v => !v)}
+            aria-label="Cart"
+            className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              </span>
+            )}
+          </button>
+
           {/* Saved */}
           <Link
             href="/saved"
@@ -216,6 +254,117 @@ export default function Navigation() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Cart drawer overlay */}
+      {cartOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setCartOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Drawer */}
+          <div
+            ref={cartDrawerRef}
+            className="fixed top-0 right-0 h-full w-full max-w-[360px] z-50 bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col animate-slide-in-right"
+            style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.12)" }}
+          >
+            {/* Drawer header */}
+            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+              <div>
+                <p className="text-[13px] font-medium text-[var(--foreground)]">Cart</p>
+                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-0.5">
+                  {cartCount === 0
+                    ? "Empty"
+                    : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setCartOpen(false)}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors text-xl leading-none"
+                aria-label="Close cart"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Items list */}
+            <div className="flex-1 overflow-y-auto">
+              {cartItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--border-strong)]">
+                    <path d="M2 2h4l3 15h16l3-11H8" />
+                    <circle cx="13" cy="27" r="2" />
+                    <circle cx="23" cy="27" r="2" />
+                  </svg>
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                    Your cart is empty
+                  </p>
+                  <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
+                    Build an outfit in the builder and click&nbsp;"Shop the Look" to add items here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-[var(--border)]">
+                  {cartItems.map(item => (
+                    <li key={item.id} className="flex gap-3 px-4 py-3 items-start">
+                      {/* Thumbnail */}
+                      <div className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <p className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">
+                          {item.name}
+                        </p>
+                        <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">
+                          {item.brand}
+                        </p>
+                        <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">
+                          ${item.price.toLocaleString()}
+                        </p>
+                      </div>
+                      {/* Remove */}
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="shrink-0 mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Footer */}
+            {cartItems.length > 0 && (
+              <div className="shrink-0 border-t border-[var(--border)] px-5 py-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                    Estimated total
+                  </p>
+                  <p className="font-display text-[20px] font-light text-[var(--foreground)]">
+                    ${cartTotal.toLocaleString()}
+                  </p>
+                </div>
+                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">
+                  Checkout coming soon · Links open in retailer sites
+                </p>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </header>
   );

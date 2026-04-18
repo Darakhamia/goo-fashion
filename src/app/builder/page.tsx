@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
+import { useCart } from "@/lib/context/cart-context";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -195,7 +196,10 @@ export default function BuilderPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatThreadRef = useRef<HTMLDivElement>(null);
 
+  const [shopAdded, setShopAdded] = useState(false);
+
   const { likedProducts } = useLikes();
+  const { addManyToCart } = useCart();
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -380,6 +384,24 @@ export default function BuilderPage() {
     setMaxPrice(null);
     setSelectedBrands([]);
     setSortBy("featured");
+  };
+
+  const shopTheLook = () => {
+    const pieces = Object.values(selection).filter(Boolean) as Product[];
+    if (pieces.length === 0) return;
+    addManyToCart(pieces.map(p => {
+      const officialRetailer = p.retailers.find(r => r.isOfficial) ?? p.retailers[0] ?? null;
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        imageUrl: p.imageUrl,
+        price: p.priceMin,
+        retailerUrl: officialRetailer?.url ?? null,
+      };
+    }));
+    setShopAdded(true);
+    setTimeout(() => setShopAdded(false), 2000);
   };
 
   const shareOutfit = async () => {
@@ -1506,6 +1528,7 @@ export default function BuilderPage() {
                 {saved ? "Saved ✓" : "Save"}
               </button>
               <button
+                onClick={shopTheLook}
                 disabled={selectedCount === 0}
                 className={`h-9 px-4 font-mono text-[9px] tracking-[0.16em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
                   selectedCount > 0
@@ -1513,7 +1536,11 @@ export default function BuilderPage() {
                     : "bg-[var(--border)] text-[var(--foreground-subtle)]"
                 }`}
               >
-                {selectedCount > 0 ? `Shop · $${totalPrice.toLocaleString()}` : "Shop the Look"}
+                {shopAdded
+                  ? "Added ✓"
+                  : selectedCount > 0
+                  ? `Shop · $${totalPrice.toLocaleString()}`
+                  : "Shop the Look"}
               </button>
             </div>
           </div>
@@ -1738,6 +1765,7 @@ export default function BuilderPage() {
 
           {/* Shop the Look CTA */}
           <button
+            onClick={shopTheLook}
             disabled={selectedCount === 0}
             className={`flex items-center gap-3 h-[42px] px-5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
               selectedCount > 0
@@ -1745,8 +1773,14 @@ export default function BuilderPage() {
                 : "bg-[var(--border)] text-[var(--foreground-subtle)]"
             }`}
           >
-            <span>Shop the Look</span>
-            {selectedCount > 0 && <span>${totalPrice.toLocaleString()}</span>}
+            {shopAdded ? (
+              <span>Added to Cart ✓</span>
+            ) : (
+              <>
+                <span>Shop the Look</span>
+                {selectedCount > 0 && <span>${totalPrice.toLocaleString()}</span>}
+              </>
+            )}
           </button>
         </div>
       </footer>
