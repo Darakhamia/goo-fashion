@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import type { Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -33,6 +33,15 @@ const CATALOG_CHIPS: Array<{ label: string; slotId: SlotId | null }> = [
   { label: "Bottoms",      slotId: "bottom"      },
   { label: "Shoes",        slotId: "shoes"       },
   { label: "Accessories",  slotId: "accessories" },
+];
+
+// Price filter buckets (null max = no cap)
+const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
+  { label: "All",    max: null },
+  { label: "< $200", max: 200  },
+  { label: "< $500", max: 500  },
+  { label: "< $1k",  max: 1000 },
+  { label: "< $2k",  max: 2000 },
 ];
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
@@ -172,6 +181,10 @@ export default function BuilderPage() {
   const [search, setSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState<SlotId | null>(null);
   const [likedOnly, setLikedOnly] = useState(false);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
+  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -260,6 +273,18 @@ export default function BuilderPage() {
   }, [products]);
 
   // ── Filtered product list for the right-panel catalog ────────────────────
+
+  // Brands available in the current category filter (for the brand multi-select)
+  const availableBrands = useMemo(() => {
+    const base = catalogCategory
+      ? products.filter(p => {
+          const slot = SLOTS.find(s => s.id === catalogCategory)!;
+          return slot.categories.includes(p.category);
+        })
+      : products;
+    return Array.from(new Set(base.map(p => p.brand))).sort() as Brand[];
+  }, [catalogCategory, products]);
+
   const catalogProducts = useMemo(() => {
     let list = catalogCategory
       ? products.filter(p => {
@@ -280,8 +305,24 @@ export default function BuilderPage() {
       list = list.filter(p => likedProducts.includes(p.id));
     }
 
+    if (maxPrice !== null) {
+      list = list.filter(p => p.priceMin <= maxPrice);
+    }
+
+    if (selectedBrands.length > 0) {
+      list = list.filter(p => selectedBrands.includes(p.brand as Brand));
+    }
+
+    if (sortBy === "price-asc") {
+      list = [...list].sort((a, b) => a.priceMin - b.priceMin);
+    } else if (sortBy === "price-desc") {
+      list = [...list].sort((a, b) => b.priceMin - a.priceMin);
+    }
+
     return list;
-  }, [catalogCategory, products, search, likedOnly, likedProducts]);
+  }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
+
+  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured";
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -333,6 +374,12 @@ export default function BuilderPage() {
     setVariantOverrides({});
     updateURL({});
     setSaved(false);
+  };
+
+  const clearFilters = () => {
+    setMaxPrice(null);
+    setSelectedBrands([]);
+    setSortBy("featured");
   };
 
   const shareOutfit = async () => {
@@ -896,6 +943,92 @@ export default function BuilderPage() {
               })}
             </div>
 
+            {/* Filter toggle row */}
+            <div className="px-3 pb-1.5 shrink-0 flex items-center justify-between">
+              <button
+                onClick={() => setFiltersOpen(v => !v)}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                  hasActiveFilters || filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                  <line x1="1" y1="3.5" x2="13" y2="3.5" />
+                  <line x1="3" y1="7" x2="11" y2="7" />
+                  <line x1="5" y1="10.5" x2="9" y2="10.5" />
+                </svg>
+                Filters{hasActiveFilters ? ` · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0)}` : ""}
+              </button>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={() => setSortBy(s => s === "featured" ? "price-asc" : s === "price-asc" ? "price-desc" : "featured")}
+                  className={`font-mono text-[9px] tracking-[0.08em] uppercase transition-colors ${
+                    sortBy !== "featured" ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {sortBy === "price-asc" ? "Price ↑" : sortBy === "price-desc" ? "Price ↓" : "Sort"}
+                </button>
+              </div>
+            </div>
+
+            {/* Expandable filter panel */}
+            {filtersOpen && (
+              <div className="px-3 pb-2.5 shrink-0 border-b border-[var(--border)] space-y-2.5">
+                {/* Price buckets */}
+                <div>
+                  <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Price</p>
+                  <div className="flex flex-wrap gap-1">
+                    {PRICE_BUCKETS.map(({ label, max }) => (
+                      <button
+                        key={label}
+                        onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                        className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                          maxPrice === max
+                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Brand multi-select */}
+                {availableBrands.length > 0 && (
+                  <div>
+                    <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Brand</p>
+                    <div className="flex flex-wrap gap-1 max-h-[72px] overflow-y-auto">
+                      {availableBrands.map(brand => {
+                        const isActive = selectedBrands.includes(brand);
+                        return (
+                          <button
+                            key={brand}
+                            onClick={() => setSelectedBrands(prev =>
+                              isActive ? prev.filter(b => b !== brand) : [...prev, brand]
+                            )}
+                            className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                              isActive
+                                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            {brand}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Count + liked toggle */}
             <div className="px-3 pb-2.5 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
               <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
@@ -1179,6 +1312,90 @@ export default function BuilderPage() {
               );
             })}
           </div>
+
+          {/* 4b. Mobile filter toggle row */}
+          <div className="px-3 pb-1.5 shrink-0 flex items-center justify-between">
+            <button
+              onClick={() => setFiltersOpen(v => !v)}
+              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                hasActiveFilters || filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                <line x1="1" y1="3.5" x2="13" y2="3.5" />
+                <line x1="3" y1="7" x2="11" y2="7" />
+                <line x1="5" y1="10.5" x2="9" y2="10.5" />
+              </svg>
+              Filters{hasActiveFilters ? ` · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0)}` : ""}
+            </button>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setSortBy(s => s === "featured" ? "price-asc" : s === "price-asc" ? "price-desc" : "featured")}
+                className={`font-mono text-[9px] tracking-[0.08em] uppercase transition-colors ${
+                  sortBy !== "featured" ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+                }`}
+              >
+                {sortBy === "price-asc" ? "Price ↑" : sortBy === "price-desc" ? "Price ↓" : "Sort"}
+              </button>
+            </div>
+          </div>
+
+          {/* 4c. Mobile expandable filter panel */}
+          {filtersOpen && (
+            <div className="px-3 pb-2 shrink-0 border-b border-[var(--border)] space-y-2.5">
+              <div>
+                <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Price</p>
+                <div className="flex flex-wrap gap-1">
+                  {PRICE_BUCKETS.map(({ label, max }) => (
+                    <button
+                      key={label}
+                      onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                      className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                        maxPrice === max
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {availableBrands.length > 0 && (
+                <div>
+                  <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Brand</p>
+                  <div className="flex flex-wrap gap-1 max-h-[64px] overflow-y-auto">
+                    {availableBrands.map(brand => {
+                      const isActive = selectedBrands.includes(brand);
+                      return (
+                        <button
+                          key={brand}
+                          onClick={() => setSelectedBrands(prev =>
+                            isActive ? prev.filter(b => b !== brand) : [...prev, brand]
+                          )}
+                          className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                            isActive
+                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                              : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          {brand}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 5. Count + liked toggle */}
           <div className="px-3 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">

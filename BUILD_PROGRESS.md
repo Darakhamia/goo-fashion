@@ -18,6 +18,37 @@ _Last updated: 2026-04-18_
 | Phase 3f | Builder mobile layout + QA polish | ✅ Complete |
 | Phase 4 | QA and polish | ✅ Complete (folded into 3f) |
 | Follow-up Phase A | Canvas balance, decorative cleanup, Generate threshold | ✅ Complete |
+| Follow-up Phase B | Catalog filters: price, brand, sort | ✅ Complete |
+
+---
+
+## Follow-up Phase B — Catalog Filters ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`**
+- Added `Brand` to imports from `@/lib/types`
+- Added `PRICE_BUCKETS` module-level constant (All / < $200 / < $500 / < $1k / < $2k)
+- Added 4 new state vars: `maxPrice`, `selectedBrands`, `sortBy`, `filtersOpen`
+- Added `availableBrands` memo — derives brand list from current category filter, sorted alphabetically
+- Extended `catalogProducts` memo with price cap filter, brand multi-select filter, price sort (asc/desc)
+- Added `hasActiveFilters` computed boolean — drives badge count display
+- Added `clearFilters` action — resets price/brands/sort to defaults
+- Added filter UI to **desktop right panel** (between category chips and count row):
+  - Always-visible compact row: "Filters [· N]" toggle + Sort cycle button + Clear link
+  - Expandable panel: Price bucket pills (single-select toggle) + Brand multi-select chips
+- Added same filter UI to **mobile catalog section** (between chip row and count row)
+
+### Interaction model
+- Filters toggle row is always visible; panel collapses/expands via `filtersOpen` state
+- Price bucket: clicking active bucket deselects it (toggle behavior); clicking new one replaces
+- Brand: multi-select — any number of brands can be active simultaneously
+- Sort cycles through: Featured → Price ↑ → Price ↓ → Featured
+- Active filter count shown inline: "Filters · 3"
+- Clear button resets all three filter dimensions at once
+- Filters are shared state between desktop and mobile (same state vars)
 
 ---
 
