@@ -19,6 +19,50 @@ _Last updated: 2026-04-18_
 | Phase 4 | QA and polish | ✅ Complete (folded into 3f) |
 | Follow-up Phase A | Canvas balance, decorative cleanup, Generate threshold | ✅ Complete |
 | Follow-up Phase B | Catalog filters: price, brand, sort | ✅ Complete |
+| Follow-up Phase C1 | Builder header cleanup: remove duplication, relocate Stylist trigger | ✅ Complete |
+
+---
+
+## Follow-up Phase C1 — Builder Header Cleanup ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`**
+
+**Builder sub-header (`<header>`):**
+- Removed the GOO wordmark (was a duplicate of the site nav logo)
+- Removed the Feed/Create/Saved tab row (redundant with site nav Browse/Builder/Saved)
+- Removed the Stylist pill/toggle from the header
+- Reduced header height from `h-12` to `h-10` (saves 8px, tighter with site nav)
+- Left side: replaced with minimal `"Create"` mono uppercase context label
+- Right side: Share + Clear utility buttons remain, now shown without the `hidden sm:block` restriction
+
+**Desktop right panel:**
+- Added a panel header row above the search input: `"Catalog"` label on the left, `"Stylist"` trigger button on the right with pulsing dot indicator
+- Trigger shows active state (solid dot, bright text) when drawer is open
+
+**Mobile bottom bar:**
+- Added a Stylist chat-bubble icon button (w-9 h-9 square) to the right actions group, before the Generate icon button
+- Matches the icon button visual pattern used for Generate
+
+### Header hierarchy after changes
+
+```
+Site nav (fixed, h-16, z-50)
+  GOO | Stylist · Browse · Builder · Plans | ♥ Profile Sign-in
+Builder context bar (in-flow, h-10, border-b)
+  Create                                  | Share · Clear
+3-column body
+  Left panel | Center canvas | Right panel (Catalog header + Stylist trigger)
+```
+
+### Remaining UI inconsistencies
+
+- On mobile, the site nav hamburger menu still shows all nav links — no change needed, this is correct
+- The `Link` import is still present (used in generate modal and suggestion strips)
+- Share and Clear are now always visible on desktop when selection exists (removed `hidden sm:block`) — this is intentional as the bar is less crowded
 
 ---
 

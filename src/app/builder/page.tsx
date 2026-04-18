@@ -485,71 +485,34 @@ export default function BuilderPage() {
     <div className="h-screen pt-16 flex flex-col overflow-hidden">
 
       {/* ─────────────────────────────────────────────────────────────────────
-          BUILDER HEADER — RUNWAY design
-          GOO wordmark · Feed / Create / Saved tabs · Share · Clear · Stylist pill
+          BUILDER CONTEXT BAR — utility only, no site nav duplication.
+          Context label left · Share / Clear actions right (conditional).
+          Site nav above handles all primary navigation.
       ───────────────────────────────────────────────────────────────────────── */}
-      <header className="h-12 shrink-0 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-5 md:px-7">
+      <header className="h-10 shrink-0 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-5 md:px-7">
 
-        {/* Left: wordmark + view tabs */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-display text-[22px] font-light italic text-[var(--foreground)] leading-none hover:opacity-70 transition-opacity">
-            GOO
-          </Link>
-          <nav className="hidden md:flex items-center gap-5">
-            {[
-              { label: "Feed",   href: "/browse"  },
-              { label: "Create", href: "/builder" },
-              { label: "Saved",  href: "/saved"   },
-            ].map(({ label, href }) => (
-              <Link
-                key={label}
-                href={href}
-                className={`font-mono text-[10px] tracking-[0.16em] uppercase transition-colors duration-150 ${
-                  label === "Create"
-                    ? "text-[var(--foreground)] border-b border-[var(--foreground)] pb-px"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+        {/* Left: context label */}
+        <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+          Create
+        </p>
 
-        {/* Right: utility actions + Stylist pill */}
-        <div className="flex items-center gap-4">
-          {selectedCount > 0 && (
-            <>
-              <button
-                onClick={shareOutfit}
-                className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors hidden sm:block"
-              >
-                {copied ? "Copied!" : "Share"}
-              </button>
-              <button
-                onClick={clearAll}
-                className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors hidden sm:block"
-              >
-                Clear
-              </button>
-            </>
-          )}
-
-          {/* AI Stylist toggle pill */}
-          <button
-            onClick={() => setAiOpen(v => !v)}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border font-mono text-[10px] tracking-[0.16em] uppercase transition-all duration-150 ${
-              aiOpen
-                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                : "border-[var(--border-strong)] text-[var(--foreground)] hover:border-[var(--foreground)]"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              aiOpen ? "bg-[var(--background)]" : "bg-[var(--foreground)] animate-pulse"
-            }`} />
-            Stylist
-          </button>
-        </div>
+        {/* Right: utility actions — only visible when something is selected */}
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-4">
+            <button
+              onClick={shareOutfit}
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              {copied ? "Copied!" : "Share"}
+            </button>
+            <button
+              onClick={clearAll}
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </header>
 
       {/* ─────────────────────────────────────────────────────────────────────
@@ -893,6 +856,26 @@ export default function BuilderPage() {
               Clicking a canvas zone syncs the chip filter to that category.
           ─────────────────────────────────────────────────────────────────── */}
           <aside className="hidden md:flex flex-col border-l border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden">
+
+            {/* Panel header: catalog label + stylist trigger */}
+            <div className="px-3 pt-2.5 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                Catalog
+              </p>
+              <button
+                onClick={() => setAiOpen(v => !v)}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase transition-colors duration-150 ${
+                  aiOpen
+                    ? "text-[var(--foreground)]"
+                    : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  aiOpen ? "bg-[var(--foreground)]" : "bg-[var(--foreground-subtle)] animate-pulse"
+                }`} />
+                Stylist
+              </button>
+            </div>
 
             {/* Search input */}
             <div className="px-3 pt-3 pb-2.5 shrink-0">
@@ -1479,6 +1462,20 @@ export default function BuilderPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Stylist — icon button */}
+              <button
+                onClick={() => setAiOpen(v => !v)}
+                className={`w-9 h-9 border flex items-center justify-center transition-all duration-150 shrink-0 ${
+                  aiOpen
+                    ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                }`}
+                aria-label="Open AI Stylist"
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 2h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5l-3 2V3a1 1 0 0 1 1-1z" />
+                </svg>
+              </button>
               {/* Generate — icon-only on mobile, visible with ≥1 piece */}
               {selectedCount >= 1 && (
                 <button
