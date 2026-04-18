@@ -75,7 +75,7 @@ function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
   );
 }
 
-// ── AI Stylist drawer types + helpers ────────────────────────────────────────
+// ── AI Stylist drawer types ───────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
@@ -85,91 +85,6 @@ interface ChatMessage {
 }
 
 const QUICK_REPLIES = ["Warmer", "Sharper", "Under $500", "Complete my look"] as const;
-
-// Pure function — easy to replace with a real API call later.
-// Accepts current products catalog and outfit selection; returns reply text + suggestions.
-function generateMockReply(
-  userText: string,
-  products: Product[],
-  selection: Partial<Record<SlotId, Product>>
-): { text: string; suggestions: Product[] } {
-  const lower = userText.toLowerCase();
-  const selected = Object.values(selection).filter(Boolean) as Product[];
-
-  // Returns up to n products not already in the outfit, padded from the full catalog.
-  const pick = (pool: Product[], n = 4): Product[] => {
-    const unique = pool.filter(p => !selected.find(s => s.id === p.id));
-    if (unique.length >= n) return unique.slice(0, n);
-    const fallback = products.filter(p => !selected.find(s => s.id === p.id));
-    return [...new Map([...unique, ...fallback].map(p => [p.id, p])).values()].slice(0, n);
-  };
-
-  if (lower.includes("warm") || lower.includes("cozy")) {
-    return {
-      text: "Here are some warmer, relaxed pieces — softer textures and looser shapes.",
-      suggestions: pick(products.filter(p => p.styleKeywords.some(k => ["minimal", "bohemian", "coastal", "romantic"].includes(k)))),
-    };
-  }
-
-  if (lower.includes("sharp") || lower.includes("formal") || lower.includes("smart") || lower.includes("office")) {
-    return {
-      text: "For a sharper look — structured silhouettes and cleaner lines.",
-      suggestions: pick(products.filter(p => p.styleKeywords.some(k => ["classic", "preppy", "academic", "minimal"].includes(k)))),
-    };
-  }
-
-  const budgetMatch = lower.match(/under\s*\$?(\d+)/);
-  if (budgetMatch) {
-    const budget = parseInt(budgetMatch[1], 10);
-    return {
-      text: `Here are strong options within $${budget}.`,
-      suggestions: pick(products.filter(p => p.priceMin <= budget)),
-    };
-  }
-
-  if (lower.includes("street") || lower.includes("urban") || lower.includes("hype")) {
-    return {
-      text: "Going urban — streetwear-influenced picks with an edge.",
-      suggestions: pick(products.filter(p => p.styleKeywords.some(k => ["streetwear", "sporty", "dark"].includes(k)))),
-    };
-  }
-
-  if (lower.includes("complet") || lower.includes("missing") || lower.includes("finish")) {
-    const missing = SLOTS.filter(s => !selection[s.id]);
-    if (missing.length > 0) {
-      const slot = missing[0];
-      return {
-        text: `Your look is still missing a ${slot.label.toLowerCase()}. Here are some options.`,
-        suggestions: pick(products.filter(p => slot.categories.includes(p.category))),
-      };
-    }
-    return {
-      text: "Your outfit is complete. Here are some swaps worth considering.",
-      suggestions: pick(products),
-    };
-  }
-
-  // Outfit-aware generic: match dominant style keyword
-  const styleFreq = selected.flatMap(p => p.styleKeywords).reduce<Record<string, number>>((acc, k) => {
-    acc[k] = (acc[k] ?? 0) + 1;
-    return acc;
-  }, {});
-  const topKw = Object.entries(styleFreq).sort((a, b) => b[1] - a[1])[0]?.[0];
-
-  const genericReplies = [
-    "Here are some pieces that match your current aesthetic.",
-    "These would work well alongside what you've already selected.",
-    "A few things worth adding to your look.",
-    "Based on what you've built, these complement the vibe nicely.",
-  ];
-
-  return {
-    text: genericReplies[Math.floor(Math.random() * genericReplies.length)],
-    suggestions: topKw
-      ? pick(products.filter(p => p.styleKeywords.includes(topKw as Parameters<typeof p.styleKeywords.includes>[0])))
-      : pick(products),
-  };
-}
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
@@ -444,17 +359,84 @@ export default function BuilderPage() {
   }, [chatMessages, chatLoading]);
 
   // ── Send message ──────────────────────────────────────────────────────────
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     if (!text.trim() || chatLoading) return;
     const userMsg: ChatMessage = { id: `msg-${Date.now()}`, role: "user", text: text.trim() };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
-    setTimeout(() => {
-      const reply = generateMockReply(text, products, selection);
-      setChatMessages(prev => [...prev, { id: `msg-${Date.now()}-ai`, role: "assistant", ...reply }]);
+
+    try {
+      const conversationHistory = chatMessages
+        .filter((m) => m.id !== "welcome")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.text }));
+
+      const currentOutfit = Object.fromEntries(
+        Object.entries(selection)
+          .filter(([, p]) => p != null)
+          .map(([slot, p]) => [
+            slot,
+            {
+              slot,
+              productId: p!.id,
+              name: p!.name,
+              brand: p!.brand,
+              priceMin: p!.priceMin,
+              styleKeywords: p!.styleKeywords,
+              category: p!.category,
+            },
+          ])
+      );
+
+      const res = await fetch("/api/stylist/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userMessage: text.trim(), conversationHistory, currentOutfit, surface: "builder" }),
+      });
+
+      if (res.status === 501) {
+        setChatMessages(prev => [...prev, {
+          id: `msg-${Date.now()}-ai`,
+          role: "assistant",
+          text: "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings.",
+        }]);
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Request failed: ${res.status}`);
+      }
+
+      const json = await res.json();
+      const suggestedProducts: Product[] = (json.suggestedProductIds as string[] ?? [])
+        .map((id: string) => products.find((p) => p.id === id))
+        .filter((p): p is Product => p != null);
+
+      const finalSuggestions: Product[] =
+        suggestedProducts.length > 0
+          ? suggestedProducts
+          : (json.styleKeywords as string[] ?? []).length > 0
+          ? products
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((p) => (json.styleKeywords as string[]).some((kw: string) => (p.styleKeywords as string[]).includes(kw)))
+              .slice(0, 4)
+          : [];
+
+      setChatMessages(prev => [...prev, {
+        id: `msg-${Date.now()}-ai`,
+        role: "assistant",
+        text: json.reply ?? "Here are some options that might work for your look.",
+        suggestions: finalSuggestions.length > 0 ? finalSuggestions : undefined,
+      }]);
+    } catch {
+      setChatMessages(prev => [...prev, {
+        id: `msg-${Date.now()}-ai`,
+        role: "assistant",
+        text: "Something went wrong. Please try again.",
+      }]);
+    } finally {
       setChatLoading(false);
-    }, 900 + Math.random() * 500);
+    }
   };
 
   // ── DALL-E / GPT-Image generation ─────────────────────────────────────────

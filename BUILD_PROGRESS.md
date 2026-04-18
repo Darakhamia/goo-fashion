@@ -24,6 +24,7 @@ _Last updated: 2026-04-18_
 | Follow-up Phase D/E Planning | AI Stylist architecture document (AI_STYLIST_ARCHITECTURE.md) | ✅ Complete |
 | Follow-up Phase D1 | AI Stylist key infrastructure: server helper, admin API routes, updated admin UI | ✅ Complete |
 | Follow-up Phase D2 | AI Stylist chat API route (POST /api/stylist/chat, gpt-4o-mini, catalog grounding) | ✅ Complete |
+| Follow-up Phase D3 | Wire builder AI drawer to real API (replace mock, conversationHistory, currentOutfit, error handling) | ✅ Complete |
 
 ---
 
@@ -111,6 +112,27 @@ After extraction, `validateProductIds()` filters `suggestedProductIds` against t
 | Missing userMessage | 400 | `{ error: "userMessage is required" }` |
 | OpenAI API error | 502 | `{ error: "OpenAI request failed: ..." }` |
 | Empty model output | 200 | Safe fallback reply, empty arrays |
+
+---
+
+## Follow-up Phase D3 — Wire Builder AI Drawer to Real API ✅
+
+**Completed:** 2026-04-18
+
+### Changes
+
+`src/app/builder/page.tsx`
+- Removed `generateMockReply` function and its `setTimeout`-based mock flow
+- Replaced `sendMessage` with an async function calling `POST /api/stylist/chat`
+- Sends `userMessage`, `conversationHistory` (all turns except welcome message), `currentOutfit` (current builder slot selection mapped to `OutfitPiece` shape), and `surface: "builder"`
+- Maps `suggestedProductIds` back to full `Product` objects via `products.find()`
+- Falls back to `styleKeywords`-filtered products if no IDs matched
+- 501 → inline chat message: "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings."
+- Other failures → "Something went wrong. Please try again."
+- `setChatLoading(false)` in `finally` block — always releases the loading state
+
+`src/app/api/stylist/chat/route.ts`
+- Removed `s` (dotAll) flag from fallback regex — was causing a TS compile error on the configured target
 
 ---
 

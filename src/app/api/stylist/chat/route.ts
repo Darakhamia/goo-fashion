@@ -132,7 +132,7 @@ function extractJsonBlock(text: string): { clean: string; parsed: ParsedBlock } 
   }
 
   // Fallback: try to find a raw JSON object at the end of the text
-  const rawMatch = text.match(/\{[^{}]*"suggestedProductIds"[^{}]*\}\s*$/s);
+  const rawMatch = text.match(/\{[^{}]*"suggestedProductIds"[^{}]*\}\s*$/);
   if (rawMatch) {
     const clean = text.slice(0, text.lastIndexOf(rawMatch[0])).trim();
     try {
