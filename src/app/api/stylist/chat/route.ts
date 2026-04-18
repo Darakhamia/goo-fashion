@@ -16,6 +16,17 @@ interface OutfitPiece {
   category: string;
 }
 
+interface BrowseContext {
+  view: "outfits" | "pieces";
+  searchQuery?: string;
+  categories?: string[];
+  brands?: string[];
+  occasions?: string[];
+  gender?: string;
+  priceLabel?: string;
+  visibleCount?: number;
+}
+
 interface StylistChatRequest {
   userMessage: string;
   // Full prior turns (not including userMessage) — optional for multi-turn
@@ -26,6 +37,8 @@ interface StylistChatRequest {
   surface?: "builder" | "browse" | "product";
   // Product page: the item the user is currently viewing
   focusProduct?: OutfitPiece;
+  // Browse page: active filter/search state
+  browseContext?: BrowseContext;
 }
 
 interface StylistChatResponse {
@@ -73,6 +86,38 @@ function buildOutfitContext(outfit?: Partial<Record<string, OutfitPiece | null>>
     `Style profile: ${allKeywords.join(", ")}`,
     `Total so far: $${totalPrice.toLocaleString()}`,
   ].join("\n");
+}
+
+// ── Browse context block ──────────────────────────────────────────────────────
+
+function buildBrowseContext(ctx: BrowseContext): string {
+  const lines: string[] = [
+    `The user is browsing the GOO catalog (${ctx.view} view).`,
+  ];
+
+  const filters: string[] = [];
+  if (ctx.searchQuery) filters.push(`Search: "${ctx.searchQuery}"`);
+  if (ctx.categories?.length) filters.push(`Categories: ${ctx.categories.join(", ")}`);
+  if (ctx.brands?.length) filters.push(`Brands: ${ctx.brands.join(", ")}`);
+  if (ctx.occasions?.length) filters.push(`Occasions: ${ctx.occasions.join(", ")}`);
+  if (ctx.gender) filters.push(`Gender: ${ctx.gender}`);
+  if (ctx.priceLabel) filters.push(`Price range: ${ctx.priceLabel}`);
+
+  lines.push(
+    filters.length > 0
+      ? `Active filters: ${filters.join(" · ")}`
+      : "No active filters — browsing the full catalog."
+  );
+
+  if (ctx.visibleCount !== undefined) {
+    lines.push(`Visible results: ${ctx.visibleCount} ${ctx.view}.`);
+  }
+
+  lines.push(
+    "Help the user discover what to look at, find the best options for their style or budget, or suggest pieces that complement what they are browsing."
+  );
+
+  return lines.join("\n");
 }
 
 // ── Focus product context block ───────────────────────────────────────────────
@@ -190,7 +235,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "userMessage is required" }, { status: 400 });
   }
 
-  const { userMessage, conversationHistory = [], currentOutfit, focusProduct } = body;
+  const { userMessage, conversationHistory = [], currentOutfit, focusProduct, browseContext } = body;
 
   // ── Load catalog ──────────────────────────────────────────────────────────
   const products = await getAllProducts();
@@ -200,6 +245,8 @@ export async function POST(req: Request) {
   // ── Build prompts ─────────────────────────────────────────────────────────
   const outfitContext = focusProduct
     ? buildFocusContext(focusProduct)
+    : browseContext
+    ? buildBrowseContext(browseContext)
     : buildOutfitContext(currentOutfit ?? undefined);
   const systemPrompt = buildSystemPrompt(catalogSummary, outfitContext);
 

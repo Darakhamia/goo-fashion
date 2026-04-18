@@ -27,6 +27,122 @@ _Last updated: 2026-04-18_
 | Follow-up Phase D3 | Wire builder AI drawer to real API (replace mock, conversationHistory, currentOutfit, error handling) | ✅ Complete |
 | Follow-up Phase D4 | End-to-end verification + polish: error message isolation, history cap, input maxLength, QA checklist | ✅ Complete |
 | Follow-up Phase E1 | Extract StylistDrawer as reusable component; builder re-wired identically | ✅ Complete |
+| Follow-up Phase E2 | AI Stylist on product detail page: focusProduct context, fixed drawer, Ask the Stylist trigger | ✅ Complete |
+| Follow-up Phase E3 | AI Stylist on browse page: browseContext (view/filters/search), Stylist trigger in toolbar | ✅ Complete |
+
+---
+
+## Follow-up Phase E3 — Browse Page AI Stylist Integration ✅
+
+**Completed:** 2026-04-18
+
+### Files edited
+
+| File | Change |
+|---|---|
+| `src/components/stylist/StylistDrawer.tsx` | Added exported `BrowseContext` interface + `browseContext?` prop; passes it in API request body |
+| `src/app/api/stylist/chat/route.ts` | Added `BrowseContext` interface + `buildBrowseContext()` function; routes to it when `browseContext` is present (priority: focusProduct → browseContext → currentOutfit) |
+| `src/app/browse/page.tsx` | Added `stylistOpen` state; `browseContext` memo; Stylist trigger button in toolbar; `<StylistDrawer>` mount |
+
+### New prop added to StylistDrawer
+
+```typescript
+browseContext?: BrowseContext
+```
+
+```typescript
+export interface BrowseContext {
+  view: "outfits" | "pieces";
+  searchQuery?: string;
+  categories?: string[];
+  brands?: string[];
+  occasions?: string[];
+  gender?: string;
+  priceLabel?: string;
+  visibleCount?: number;
+}
+```
+
+Only fields with active values are sent — `undefined` fields are omitted from the object. This keeps the API payload minimal.
+
+### How browse context is passed
+
+1. Browse page builds a `browseContext` memo from all active filter state (`view`, `searchQuery`, `selectedCategories`, `selectedBrands`, `selectedOccasions`, `selectedGender`, `selectedPriceIdx` → label, `count`).
+2. `browseContext` is passed as a prop to `<StylistDrawer>`.
+3. In `sendMessage`, the drawer includes `browseContext` in the API request body (spread, omitted when undefined).
+4. The API route calls `buildBrowseContext(ctx)` which produces a natural-language context block:
+   ```
+   The user is browsing the GOO catalog (pieces view).
+   Active filters: Categories: tops, bottoms · Brand: Acne Studios · Price range: Under $500
+   Visible results: 12 pieces.
+   Help the user discover what to look at...
+   ```
+5. This context block replaces the outfit/focus context in the system prompt — same injection point, surface-appropriate language.
+
+### Suggestion click behavior on browse
+
+`onSelectProduct` is not passed to the browse drawer. The existing `StylistDrawer` logic falls through to rendering suggestion cards as `<Link href="/product/[id]">` — clicking navigates to the product detail page. No extra routing code needed.
+
+### Entry point
+
+A "Stylist" button is placed in the browse toolbar, next to the existing Filters button. It follows the same visual style (mono text, border, hover states). Shows an active dot and border change when the drawer is open. The drawer uses `position="fixed"` (the default), which overlays the viewport below the `h-16` site nav at `z-40`.
+
+### Limitations before E4
+
+1. **No rate limiting** — same as builder and product pages; acceptable for internal use, required before public launch.
+2. **Browse context is a snapshot** — if the user changes filters while the drawer is open, the context in the API reflects the state at the time each message is sent (via `browseContext` prop, which always reflects current filter state from the memo). This is actually correct behavior — each message gets fresh context.
+3. **No streaming** — AI reply arrives all at once, same as other surfaces.
+4. **Chat resets on close** — conversation history lost when drawer is closed and re-opened. Same limitation as product and builder surfaces.
+5. **Filter panel and stylist drawer z-index** — filter panel uses `z-50`, stylist drawer uses `z-40`. If both are open simultaneously, the filter panel appears on top. This is acceptable (filters are more task-critical), but ideally the stylist drawer should close when the filter panel opens.
+
+### Recommended next prompt (Phase E4)
+
+```
+Read PROJECT_ANALYSIS.md, BUILD_PROGRESS.md, CLAUDE.md, and AI_STYLIST_ARCHITECTURE.md first.
+
+Now implement only Phase E4: rate limiting for POST /api/stylist/chat.
+
+Scope:
+- Add per-IP rate limiting to the stylist chat API route
+- Target: 10 requests per minute per IP (sliding window or fixed window)
+- If Upstash Redis is not configured, degrade gracefully (allow all requests — no crash)
+- Return HTTP 429 with a user-friendly message when rate limit is exceeded
+- Handle 429 in StylistDrawer client: show an inline error message "You're sending messages too fast — wait a moment and try again." (isError: true so it doesn't pollute history)
+
+Implementation options:
+A. Upstash Redis + @upstash/ratelimit package (recommended — Vercel-native, edge-compatible)
+B. In-memory Map with sliding window (simpler, does not survive deployments, fine for single-instance dev)
+
+Recommendation: implement Option A but with a graceful fallback when UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN env vars are absent, so the feature works in development without Redis.
+
+Do not:
+- do not add rate limiting to any other API routes
+- do not change the drawer UI beyond the 429 error message
+- do not add per-user throttling yet (IP-based is sufficient for now)
+
+When done: update BUILD_PROGRESS.md, summarize what changed, note any env vars required.
+```
+
+---
+
+## Follow-up Phase E2 — Product Detail Page AI Stylist Integration ✅
+
+**Completed:** 2026-04-18
+
+### Files edited
+
+| File | Change |
+|---|---|
+| `src/components/stylist/StylistDrawer.tsx` | Added `position?`, `focusProduct?` props; surface-specific quick replies; product-aware welcome; fixed/absolute positioning; conditional Link/button suggestion cards; focusProduct serialization in sendMessage |
+| `src/app/api/stylist/chat/route.ts` | Added `focusProduct?: OutfitPiece` to request type; added `buildFocusContext()`; routes to it when focusProduct present |
+| `src/components/product/ProductClient.tsx` | Added `allProducts: Product[]` prop; `stylistOpen` state; "Ask the Stylist" trigger button (below description); `<StylistDrawer surface="product" focusProduct={product}>` mount |
+| `src/app/product/[id]/page.tsx` | Passes `allProducts={allProducts}` to `<ProductClient>` |
+| `src/app/builder/page.tsx` | Added `position="absolute"` to `<StylistDrawer>` |
+
+### New props added to StylistDrawer in E2
+
+- `position?: "fixed" | "absolute"` — defaults to `"fixed"`. Builder uses `"absolute"` (contained within relative canvas wrapper); product/browse use the `"fixed"` default.
+- `focusProduct?: Product` — serialized as an `OutfitPiece` and sent to the API as `focusProduct` in the request body. Also seeds a product-aware welcome message.
 
 ---
 
