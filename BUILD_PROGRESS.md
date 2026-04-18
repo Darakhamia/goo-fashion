@@ -25,6 +25,7 @@ _Last updated: 2026-04-18_
 | Follow-up Phase D1 | AI Stylist key infrastructure: server helper, admin API routes, updated admin UI | ✅ Complete |
 | Follow-up Phase D2 | AI Stylist chat API route (POST /api/stylist/chat, gpt-4o-mini, catalog grounding) | ✅ Complete |
 | Follow-up Phase D3 | Wire builder AI drawer to real API (replace mock, conversationHistory, currentOutfit, error handling) | ✅ Complete |
+| Follow-up Phase D4 | End-to-end verification + polish: error message isolation, history cap, input maxLength, QA checklist | ✅ Complete |
 
 ---
 
@@ -112,6 +113,120 @@ After extraction, `validateProductIds()` filters `suggestedProductIds` against t
 | Missing userMessage | 400 | `{ error: "userMessage is required" }` |
 | OpenAI API error | 502 | `{ error: "OpenAI request failed: ..." }` |
 | Empty model output | 200 | Safe fallback reply, empty arrays |
+
+---
+
+## Follow-up Phase D4 — End-to-End Verification + Polish ✅
+
+**Completed:** 2026-04-18
+
+### Verification results
+
+| Goal | Status | Notes |
+|---|---|---|
+| Full builder AI flow works with real API | ✅ Verified | `sendMessage` calls `POST /api/stylist/chat`, response appears in thread |
+| `conversationHistory` shape is correct | ✅ Verified | React closure captures pre-`setChatMessages` state; user msg sent separately as `userMessage`; welcome message excluded by `id !== "welcome"` |
+| `currentOutfit` serialization | ✅ Verified | Empty `{}` → route returns "starting fresh"; partial → only filled slots included; full → all 5 slots included with slot/name/brand/price/keywords |
+| `suggestedProductIds` → Product objects | ✅ Verified | `products.find(p => p.id === id)` resolves correctly; unresolved IDs silently dropped |
+| Suggestion strip — valid suggestions | ✅ Verified | Strip renders when `msg.suggestions?.length > 0` |
+| Suggestion strip — no suggestions | ✅ Verified | `suggestions: undefined` → strip not rendered (no empty scroll area) |
+| Suggestion strip — styleKeywords fallback | ✅ Verified | When `suggestedProductIds` is empty, filters catalog by returned `styleKeywords`, slices to 4 |
+| 501 missing-key state | ✅ Verified | Inline error message added to chat; `finally` block releases `chatLoading`; message flagged `isError: true` so it doesn't pollute history on retry |
+| Loading state | ✅ Verified | Composer + quick-reply chips disabled while `chatLoading = true`; typing indicator shows; `finally` always clears `chatLoading` |
+| Error state / retry | ✅ Verified | Network/502 errors show inline message flagged `isError: true`; user can immediately retry |
+| No regressions | ✅ Verified | All builder state, canvas, catalog, filters, cart, save, generate, URL persistence unchanged |
+
+### Fixes applied (`src/app/builder/page.tsx`)
+
+**Fix 1: Error messages isolated from conversationHistory**
+Added `isError?: true` to the `ChatMessage` interface. Both error messages (501 handler and catch handler) now carry `isError: true`. `conversationHistory` now filters these out (`!m.isError`) so the AI never sees "Something went wrong. Please try again." or the 501 message as prior turns.
+
+**Fix 2: conversationHistory capped at 20 entries**
+Added `.slice(-20)` after filtering. Prevents unbounded growth of the history sent per request. 20 messages = 10 conversational turns — enough context for coherent recommendations.
+
+**Fix 3: Composer input maxLength**
+Added `maxLength={500}` to the chat input field. Prevents large paste events from creating oversized requests. The API's `max_tokens: 400` only limits the response; the input token budget was not previously capped client-side.
+
+### Manual QA checklist — AI Stylist builder flow
+
+#### Key missing (no OpenAI key configured)
+- [ ] Open builder → open AI Stylist drawer
+- [ ] Send any message (e.g. "What vibe should I go for?")
+- [ ] Expect: inline message "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings."
+- [ ] Expect: typing indicator appears briefly, then clears — drawer is not frozen
+- [ ] Send a second message immediately after — expect same behavior, not a repeated spinner
+
+#### Valid key configured
+- [ ] Set key via admin settings (`/admin/settings`)
+- [ ] Open builder, open drawer, send "Suggest a minimal look"
+- [ ] Expect: typing indicator (~1–3s), then AI reply text appears in chat thread
+- [ ] Expect: suggestion strip appears below reply if any product IDs were returned
+- [ ] Expect: clicking a suggestion card adds that product to the correct builder slot
+
+#### Partial outfit (1–3 pieces selected)
+- [ ] Select 1–2 pieces in the canvas
+- [ ] Open drawer, send "Complete my look"
+- [ ] Expect: AI reply references the pieces already in the outfit
+- [ ] Expect: suggestions fill missing slots (not duplicates of selected items)
+
+#### Full outfit (all 5 slots filled)
+- [ ] Fill all 5 slots (outerwear, top, bottom, shoes, accessories)
+- [ ] Open drawer, send "How does this look?"
+- [ ] Expect: AI reply comments on the full outfit and references multiple pieces
+- [ ] Expect: suggestion strip may show alternatives or accessories; verify no duplicate slot items suggested
+
+#### No product suggestions returned
+- [ ] Ask about something very specific not in catalog (e.g. "I need a wetsuit")
+- [ ] Expect: AI reply with redirect text only (no suggestion strip rendered)
+- [ ] Expect: no empty horizontal scroll area — the strip is absent, not empty
+
+#### Invalid or empty model output
+- [ ] Temporarily test with the API returning no `reply` field — expect fallback text "Here are some options that might work for your look."
+- [ ] Verify no console errors for undefined/null JSON fields
+- [ ] Verify `chatLoading` is always released (no stuck spinner) even if response is malformed
+
+### Remaining limitations before Phase E
+
+1. **Drawer is embedded inline** — not extracted as a reusable `StylistDrawer` component. Phase E1 must extract it to enable browse and product-page integration.
+2. **No rate limiting** — a user can fire unlimited messages. Acceptable for small-scale internal use; requires Upstash or Clerk-based throttle before public launch.
+3. **No streaming** — AI reply appears all at once after 1–3s. For perceived responsiveness at Phase E, streaming is worth evaluating.
+4. **`generate-outfit` still uses localStorage key** — separate legacy feature; not broken, but the two key-access patterns (localStorage vs Supabase) are inconsistent. Retire localStorage path in a future cleanup.
+5. **`conversationHistory` capped at 20 entries** — long conversations silently drop older context. Acceptable for v1; if users report loss of context, increase the cap or add a summary layer.
+6. **No per-user conversation persistence** — closing and reopening the drawer resets the chat thread (state lives in the page component). Persisting to localStorage or a backend session is a Phase E consideration.
+
+### Recommended next prompt (Phase E1)
+
+```
+Read PROJECT_ANALYSIS.md, BUILD_PROGRESS.md, AI_STYLIST_ARCHITECTURE.md, and CLAUDE.md first.
+
+Now implement only Phase E1: extract the AI Stylist chat drawer into a reusable component.
+
+Scope:
+- Create src/components/stylist/StylistDrawer.tsx
+- Extract all chat state (chatMessages, chatInput, chatLoading, chatThreadRef),
+  the sendMessage function, ChatMessage interface, QUICK_REPLIES, and all drawer JSX
+  from src/app/builder/page.tsx
+- The component should accept props:
+    surface: "builder" | "browse" | "product"
+    currentOutfit?: Partial<Record<string, OutfitPiece>>  (builder only)
+    onSelectProduct?: (product: Product) => void          (for suggestion strip)
+    products: Product[]                                    (for ID resolution)
+    isOpen: boolean
+    onClose: () => void
+- Keep builder/page.tsx wiring exactly as-is: pass selection as currentOutfit,
+  selectProduct as onSelectProduct, products as products, aiOpen as isOpen,
+  () => setAiOpen(false) as onClose
+- Do not wire it to browse or product pages yet — just extract and re-wire builder
+
+Do not do these yet:
+- do not add the drawer to browse or product pages yet
+- do not change the drawer UI
+- do not add streaming
+- do not add rate limiting
+
+When done: update BUILD_PROGRESS.md, summarize the extraction, and confirm
+the builder still compiles and behaves identically.
+```
 
 ---
 
