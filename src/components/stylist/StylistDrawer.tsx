@@ -113,6 +113,34 @@ export function StylistDrawer({
   const [chatLoading, setChatLoading] = useState(false);
   const chatThreadRef = useRef<HTMLDivElement>(null);
 
+  // Derived context ID: product ID on product pages, empty string elsewhere.
+  const contextId = focusProduct?.id ?? "";
+
+  // Load persisted chat history when the drawer opens.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch(`/api/stylist/chat/history?surface=${encodeURIComponent(surface)}&context_id=${encodeURIComponent(contextId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data?.messages) && data.messages.length > 0) {
+          setChatMessages([makeWelcome(focusProduct), ...data.messages]);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  // Fire-and-forget: persist non-welcome, non-error messages after each AI response.
+  const saveHistory = (messages: ChatMessage[]) => {
+    const toSave = messages.filter(m => m.id !== "welcome" && !m.isError);
+    if (toSave.length === 0) return;
+    fetch("/api/stylist/chat/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ surface, context_id: contextId, messages: toSave }),
+    }).catch(() => {});
+  };
+
   // Auto-scroll to bottom after every message or loading-state change
   useEffect(() => {
     if (chatThreadRef.current) {
@@ -223,12 +251,20 @@ export function StylistDrawer({
               .slice(0, 4)
           : [];
 
-      setChatMessages(prev => [...prev, {
+      const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
         role: "assistant",
         text: json.reply ?? "Here are some options that might work for your look.",
         suggestions: finalSuggestions.length > 0 ? finalSuggestions : undefined,
-      }]);
+      };
+      setChatMessages(prev => [...prev, aiMsg]);
+
+      // Persist: baseline (pre-send) + this user message + AI reply, minus welcome/errors.
+      saveHistory([
+        ...chatMessages.filter(m => m.id !== "welcome" && !m.isError),
+        userMsg,
+        aiMsg,
+      ]);
     } catch {
       setChatMessages(prev => [...prev, {
         id: `msg-${Date.now()}-ai`,

@@ -480,6 +480,9 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
   const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
+  // Brands fetched from /api/brands — starts with the static list as a fallback so the
+  // datalist is never empty while the request is in flight.
+  const [suggestedBrands, setSuggestedBrands] = useState<string[]>(SUGGESTED_BRANDS);
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -580,6 +583,14 @@ export default function AdminProductsPage() {
     fetch("/api/color-groups")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
+      .catch(() => {});
+    fetch("/api/brands")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0) {
+          setSuggestedBrands(d.map((b: { name: string }) => b.name).sort());
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1387,7 +1398,7 @@ export default function AdminProductsPage() {
                         className={inputCls}
                       />
                       <datalist id="brand-suggestions">
-                        {SUGGESTED_BRANDS.map((b) => <option key={b} value={b} />)}
+                        {suggestedBrands.map((b) => <option key={b} value={b} />)}
                       </datalist>
                     </div>
                     <div>
