@@ -23,6 +23,94 @@ _Last updated: 2026-04-18_
 | Follow-up Phase C2 | Shop the Look + cart system (localStorage, cart drawer in nav) | ✅ Complete |
 | Follow-up Phase D/E Planning | AI Stylist architecture document (AI_STYLIST_ARCHITECTURE.md) | ✅ Complete |
 | Follow-up Phase D1 | AI Stylist key infrastructure: server helper, admin API routes, updated admin UI | ✅ Complete |
+| Follow-up Phase D2 | AI Stylist chat API route (POST /api/stylist/chat, gpt-4o-mini, catalog grounding) | ✅ Complete |
+
+---
+
+## Follow-up Phase D2 — AI Stylist Chat API Route ✅
+
+**Completed:** 2026-04-18
+
+### File added
+
+`src/app/api/stylist/chat/route.ts`
+
+### System prompt (reproduced)
+
+```
+You are the AI Stylist for GOO, a curated luxury and contemporary fashion platform.
+Your role is to help users build outfits, discover pieces, and understand how to style them.
+
+PERSONALITY:
+- Confident but approachable. Strong taste, explain reasoning briefly.
+- Concise. Keep replies to 1–3 sentences. No filler.
+- Specific. Reference the user's actual outfit when it exists.
+- Warm but editorial.
+
+RULES:
+1. ONLY recommend products from the GOO catalog listed below.
+2. If no catalog product matches, say so and redirect.
+3. Do not repeat items already in the outfit.
+4. At the end of every reply, include a JSON block:
+   ```json
+   {"suggestedProductIds":["id1","id2"],"styleKeywords":["minimal","classic"]}
+   ```
+5. Use only IDs from the catalog. Use only the 13 defined style keywords.
+6. If no suggestions, use empty arrays.
+7. JSON block at the very end, no explanation.
+
+{outfitContext}
+
+AVAILABLE CATALOG (id | name | brand | category | price | style keywords):
+{catalogSummary}
+```
+
+### Catalog grounding
+
+1. `getAllProducts()` is called on each request — uses Supabase if configured, static data fallback
+2. Products filtered to primary/ungrouped only (`isGroupPrimary !== false`) — avoids duplicate variant entries
+3. Capped at 100 products
+4. Each line: `id | name | brand | category | $price | keywords`
+5. Token budget: ~50 chars/line × 100 = ~5k chars ≈ 1.2k tokens — well within gpt-4o-mini 128k context
+
+### JSON extraction
+
+Two-stage fallback:
+1. **Fenced block:** Match `` ```json...``` `` using regex, `JSON.parse` the content
+2. **Raw object:** Match `{..."suggestedProductIds"...}` at end of text
+3. **Fallback:** Empty arrays — never crashes
+
+After extraction, `validateProductIds()` filters `suggestedProductIds` against the live `Set<string>` of real catalog IDs. Any hallucinated IDs are silently dropped before the response is returned.
+
+### Request shape
+
+```typescript
+{
+  userMessage: string;                        // required
+  conversationHistory?: { role, content }[];  // prior turns for multi-turn
+  currentOutfit?: { [slot]: OutfitPiece };    // builder selection
+  surface?: "builder" | "browse" | "product"; // context hint (future use)
+}
+```
+
+### Response shape
+
+```typescript
+{
+  reply: string;                  // clean text, JSON block stripped
+  suggestedProductIds: string[];  // real catalog IDs only (max 6)
+  styleKeywords: string[];        // max 5
+}
+```
+
+### Error handling
+
+| Condition | HTTP | Body |
+|---|---|---|
+| No API key configured | 501 | `{ error: "AI Stylist is not configured..." }` |
+| Missing userMessage | 400 | `{ error: "userMessage is required" }` |
+| OpenAI API error | 502 | `{ error: "OpenAI request failed: ..." }` |
+| Empty model output | 200 | Safe fallback reply, empty arrays |
 
 ---
 
