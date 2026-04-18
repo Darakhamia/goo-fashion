@@ -82,6 +82,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   suggestions?: Product[];
+  isError?: true;
 }
 
 const QUICK_REPLIES = ["Warmer", "Sharper", "Under $500", "Complete my look"] as const;
@@ -368,8 +369,9 @@ export default function BuilderPage() {
 
     try {
       const conversationHistory = chatMessages
-        .filter((m) => m.id !== "welcome")
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.text }));
+        .filter((m) => m.id !== "welcome" && !m.isError)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.text }))
+        .slice(-20);
 
       const currentOutfit = Object.fromEntries(
         Object.entries(selection)
@@ -399,6 +401,7 @@ export default function BuilderPage() {
           id: `msg-${Date.now()}-ai`,
           role: "assistant",
           text: "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings.",
+          isError: true,
         }]);
         return;
       }
@@ -433,6 +436,7 @@ export default function BuilderPage() {
         id: `msg-${Date.now()}-ai`,
         role: "assistant",
         text: "Something went wrong. Please try again.",
+        isError: true,
       }]);
     } finally {
       setChatLoading(false);
@@ -1662,6 +1666,7 @@ export default function BuilderPage() {
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput); } }}
                   placeholder="Message stylist…"
+                  maxLength={500}
                   disabled={chatLoading}
                   className="flex-1 h-10 bg-transparent outline-none px-3 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
                 />
