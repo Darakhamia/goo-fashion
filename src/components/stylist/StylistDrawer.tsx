@@ -16,6 +16,17 @@ interface OutfitPiece {
   category: string;
 }
 
+export interface BrowseContext {
+  view: "outfits" | "pieces";
+  searchQuery?: string;
+  categories?: string[];
+  brands?: string[];
+  occasions?: string[];
+  gender?: string;
+  priceLabel?: string;
+  visibleCount?: number;
+}
+
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -77,6 +88,11 @@ export interface StylistDrawerProps {
    * Seeds the AI's context so it can answer "what goes with this?".
    */
   focusProduct?: Product;
+  /**
+   * Active filter/search state from the browse page (browse only).
+   * Tells the AI what the user is currently looking at.
+   */
+  browseContext?: BrowseContext;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -90,6 +106,7 @@ export function StylistDrawer({
   selection,
   onSelectProduct,
   focusProduct,
+  browseContext,
 }: StylistDrawerProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [makeWelcome(focusProduct)]);
   const [chatInput, setChatInput] = useState("");
@@ -161,8 +178,19 @@ export function StylistDrawer({
           currentOutfit,
           surface,
           ...(focusOutfitPiece && { focusProduct: focusOutfitPiece }),
+          ...(browseContext && { browseContext }),
         }),
       });
+
+      if (res.status === 429) {
+        setChatMessages(prev => [...prev, {
+          id: `msg-${Date.now()}-ai`,
+          role: "assistant",
+          text: "You're sending messages too fast — wait a moment and try again.",
+          isError: true,
+        }]);
+        return;
+      }
 
       if (res.status === 501) {
         setChatMessages(prev => [...prev, {

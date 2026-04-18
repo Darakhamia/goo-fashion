@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { Category, ColorGroup, Gender, Occasion, Outfit, Product } from "@/lib/types";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -143,6 +144,7 @@ function ActiveChip({
 export default function BrowsePage() {
   const [view, setView] = useState<View>("outfits");
   const [searchQuery, setSearchQuery] = useState("");
+  const [stylistOpen, setStylistOpen] = useState(false);
 
   // Restore tab from URL on mount (survives browser back navigation)
   useEffect(() => {
@@ -320,6 +322,18 @@ export default function BrowsePage() {
 
   const count =
     view === "outfits" ? filteredOutfits.length : filteredProducts.length;
+
+  /* Browse context passed to the AI Stylist — mirrors active filter state */
+  const browseContext = useMemo(() => ({
+    view,
+    searchQuery: searchQuery || undefined,
+    categories: selectedCategories.length ? (selectedCategories as string[]) : undefined,
+    brands: selectedBrands.length ? selectedBrands : undefined,
+    occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
+    gender: selectedGender ?? undefined,
+    priceLabel: selectedPriceIdx !== null ? PRICE_RANGES[selectedPriceIdx].label : undefined,
+    visibleCount: count,
+  }), [view, searchQuery, selectedCategories, selectedBrands, selectedOccasions, selectedGender, selectedPriceIdx, count]);
 
   /* Sidebar filter content rendered as a function to get fresh JSX in both desktop + mobile */
   const renderFilters = () => (
@@ -593,10 +607,10 @@ export default function BrowsePage() {
           <main className="min-w-0 px-6 md:px-8 lg:px-10">
             {/* Top toolbar */}
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 {/* Filter toggle — unified for all screen sizes */}
                 <button
-                  onClick={() => setFiltersOpen(true)}
+                  onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
                   className="flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
@@ -607,6 +621,24 @@ export default function BrowsePage() {
                     <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
                       {activeFiltersCount}
                     </span>
+                  )}
+                </button>
+
+                {/* AI Stylist trigger */}
+                <button
+                  onClick={() => { setFiltersOpen(false); setStylistOpen(true); }}
+                  className={`flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border transition-all duration-200 px-3 py-1.5 ${
+                    stylistOpen
+                      ? "border-[var(--foreground)] text-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <div className="w-3.5 h-3.5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-display text-[8px] italic leading-none shrink-0">
+                    G
+                  </div>
+                  <span>Stylist</span>
+                  {stylistOpen && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--foreground)] shrink-0" />
                   )}
                 </button>
 
@@ -764,6 +796,15 @@ export default function BrowsePage() {
           </main>
         </div>
       </div>
+
+      {/* ── AI Stylist drawer ── */}
+      <StylistDrawer
+        isOpen={stylistOpen}
+        onClose={() => setStylistOpen(false)}
+        surface="browse"
+        products={catalogProducts}
+        browseContext={browseContext}
+      />
 
       {/* ── Filter overlay panel (all screen sizes) ── */}
       {/* Backdrop */}
