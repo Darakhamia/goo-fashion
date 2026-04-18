@@ -22,6 +22,79 @@ _Last updated: 2026-04-18_
 | Follow-up Phase C1 | Builder header cleanup: remove duplication, relocate Stylist trigger | ✅ Complete |
 | Follow-up Phase C2 | Shop the Look + cart system (localStorage, cart drawer in nav) | ✅ Complete |
 | Follow-up Phase D/E Planning | AI Stylist architecture document (AI_STYLIST_ARCHITECTURE.md) | ✅ Complete |
+| Follow-up Phase D1 | AI Stylist key infrastructure: server helper, admin API routes, updated admin UI | ✅ Complete |
+
+---
+
+## Follow-up Phase D1 — AI Stylist Key Infrastructure ✅
+
+**Completed:** 2026-04-18
+
+### Files added / changed
+
+| File | Action |
+|---|---|
+| `src/lib/server/get-openai-key.ts` | **New** — server-side key resolution helper |
+| `src/lib/server/admin-auth.ts` | **New** — Clerk + ADMIN_USER_IDS allowlist guard |
+| `src/app/api/admin/settings/route.ts` | **New** — GET / POST / DELETE for settings key |
+| `src/app/api/admin/settings/test/route.ts` | **New** — POST to validate stored key via `openai.models.list()` |
+| `src/app/admin/settings/page.tsx` | **Rewritten** — API-backed, no localStorage |
+
+### Admin authorization
+
+Every `src/app/api/admin/settings/*` route calls `requireAdmin()` before doing anything.
+
+`requireAdmin()` in `src/lib/server/admin-auth.ts`:
+1. Calls `auth()` from `@clerk/nextjs/server` — verifies the caller is authenticated with Clerk
+2. Reads `ADMIN_USER_IDS` env var (comma-separated Clerk user IDs)
+3. Returns `{ userId }` only if the user's ID is in the list
+4. Returns `null` (→ 401) if the env var is empty, or the user's ID is not listed
+
+**Fail-safe:** If `ADMIN_USER_IDS` is not configured, all admin API requests are denied.
+
+### How the key is stored and accessed
+
+**Storage:**
+- Preferred: `OPENAI_API_KEY` environment variable (Vercel secret / `.env.local`)
+- Fallback: `settings` table in Supabase, row `{ key: "openai_api_key", value: "sk-..." }`
+
+**Read priority in `getOpenAIKey()`:**
+```
+OPENAI_API_KEY env var  →  Supabase settings table  →  null
+```
+
+**Key never leaves the server:**
+- The GET endpoint returns only `{ configured, source, maskedKey }` — not the raw value
+- The POST endpoint accepts the raw key, upserts it, returns `{ ok, maskedKey }`
+- The browser never receives a raw key at any point
+
+### Schema assumptions
+
+The `settings` table must exist in Supabase before the API routes work:
+
+```sql
+create table if not exists settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz default now()
+);
+alter table settings enable row level security;
+-- No public access policy — service_role key only
+```
+
+This SQL is also shown in the admin settings UI at `/admin/settings` for easy reference.
+
+### Admin settings UI changes
+
+- **Removed:** localStorage read/write, `goo-openai-key` key
+- **Added:** API-backed load/save/delete/test flow
+- Shows key status (configured/not configured), source (env/database), masked key
+- Environment-variable keys are shown as read-only (no save/clear buttons)
+- Database keys show: Test Key · Update · Clear
+- Test endpoint uses `openai.models.list()` (no generation cost)
+- Unauthorized users see a clear "access denied" message with setup instructions
+
+---
 
 ---
 
