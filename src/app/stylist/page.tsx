@@ -121,13 +121,13 @@ export default function StylistPage() {
           {/* Progress */}
           <div className="pt-12 md:pt-16 mb-12">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
                 Step {stepIndex + 1} of {totalSteps}
               </p>
               {stepIndex > 0 && (
                 <button
                   onClick={back}
-                  className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
+                  className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
                 >
                   ← Back
                 </button>
@@ -218,11 +218,11 @@ export default function StylistPage() {
                 <button
                   onClick={() => next("palette")}
                   disabled={form.styles.length === 0}
-                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
-                <button onClick={() => next("palette")} className="text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                <button onClick={() => next("palette")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
                   Skip
                 </button>
               </div>
@@ -268,11 +268,11 @@ export default function StylistPage() {
                 <button
                   onClick={() => next("fit")}
                   disabled={form.palette.length === 0}
-                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
-                <button onClick={() => next("fit")} className="text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                <button onClick={() => next("fit")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
                   Skip
                 </button>
               </div>
@@ -309,7 +309,7 @@ export default function StylistPage() {
                 })}
               </div>
               <div className="mt-8">
-                <button onClick={() => next("season")} className="text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                <button onClick={() => next("season")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
                   Skip
                 </button>
               </div>
@@ -346,7 +346,7 @@ export default function StylistPage() {
                 })}
               </div>
               <div className="mt-8">
-                <button onClick={() => next("budget")} className="text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                <button onClick={() => next("budget")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
                   Skip
                 </button>
               </div>
@@ -364,7 +364,7 @@ export default function StylistPage() {
               </p>
 
               <div className="border-b border-[var(--border)] pb-6 mb-8">
-                <p className="text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
+                <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Selected range
                 </p>
                 <p className="font-display text-3xl font-light text-[var(--foreground)]">
@@ -386,7 +386,7 @@ export default function StylistPage() {
                       <p className={`text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
                         {preset.label}
                       </p>
-                      <p className={`text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                      <p className={`font-mono text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
                         ${preset.min.toLocaleString()}–${preset.max.toLocaleString()}
                       </p>
                     </button>
@@ -397,7 +397,7 @@ export default function StylistPage() {
               <div className="mt-10">
                 <button
                   onClick={handleGenerate}
-                  className="w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 hover:opacity-80 transition-opacity duration-200"
+                  className="font-mono w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 hover:opacity-80 transition-opacity duration-200"
                 >
                   Generate Outfit
                 </button>
@@ -411,14 +411,14 @@ export default function StylistPage() {
           {isGenerating ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center gap-6">
               <div className="w-8 h-8 border border-[var(--foreground)] border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-[var(--foreground-muted)] tracking-[0.06em]">Building your outfit…</p>
+              <p className="font-mono text-sm text-[var(--foreground-muted)] tracking-[0.06em]">Building your outfit…</p>
             </div>
           ) : (
             <>
               <div className="pt-12 md:pt-16 mb-12">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+                    <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
                       AI Generated
                     </p>
                     <h1 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)]">
@@ -434,7 +434,7 @@ export default function StylistPage() {
                       setCurrentStep("occasion");
                       setForm({ occasion: null, styles: [], palette: [], fit: null, season: null, budgetMin: 500, budgetMax: 1500 });
                     }}
-                    className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 shrink-0 mt-1"
+                    className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 shrink-0 mt-1"
                   >
                     Regenerate
                   </button>
@@ -459,7 +459,7 @@ export default function StylistPage() {
                 </p>
                 <button
                   onClick={() => setCurrentStep("occasion")}
-                  className="text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
+                  className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200"
                 >
                   Start over
                 </button>
