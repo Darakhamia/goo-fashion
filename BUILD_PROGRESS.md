@@ -26,6 +26,119 @@ _Last updated: 2026-04-18_
 | Follow-up Phase D2 | AI Stylist chat API route (POST /api/stylist/chat, gpt-4o-mini, catalog grounding) | ✅ Complete |
 | Follow-up Phase D3 | Wire builder AI drawer to real API (replace mock, conversationHistory, currentOutfit, error handling) | ✅ Complete |
 | Follow-up Phase D4 | End-to-end verification + polish: error message isolation, history cap, input maxLength, QA checklist | ✅ Complete |
+| Follow-up Phase E1 | Extract StylistDrawer as reusable component; builder re-wired identically | ✅ Complete |
+
+---
+
+## Follow-up Phase E1 — Extract StylistDrawer as Reusable Component ✅
+
+**Completed:** 2026-04-18
+
+### Files created / edited
+
+| File | Action |
+|---|---|
+| `src/components/stylist/StylistDrawer.tsx` | **New** — full reusable drawer component |
+| `src/app/builder/page.tsx` | **Slimmed** — removed ~130 lines of embedded chat logic; added `<StylistDrawer>` usage |
+
+### New component API
+
+```typescript
+// src/components/stylist/StylistDrawer.tsx
+export interface StylistDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  surface: "builder" | "browse" | "product";  // shapes API outfit context
+  products: Product[];                          // full catalog for ID resolution
+  selection?: Partial<Record<string, Product>>; // builder outfit (optional)
+  onSelectProduct?: (product: Product) => void; // suggestion-tap handler (optional)
+}
+```
+
+**Returns `null` when `!isOpen`** — caller just mounts it unconditionally and controls `isOpen`.
+
+### What moved into the component
+
+- `ChatMessage` interface (with `isError?: true`)
+- `QUICK_REPLIES` constant
+- `WELCOME` message constant (was inline in `useState` initializer)
+- `chatMessages`, `chatInput`, `chatLoading` state
+- `chatThreadRef` ref
+- Auto-scroll `useEffect`
+- `sendMessage` async function (full API call, history building, suggestion resolution)
+- All drawer JSX (header, thread, typing indicator, quick-reply chips, composer)
+
+### What stays in `builder/page.tsx`
+
+- `aiOpen` state (controls drawer open/close)
+- Stylist trigger buttons (catalog panel header + mobile bottom bar)
+- `<StylistDrawer isOpen={aiOpen} onClose={...} surface="builder" products={products} selection={selection} onSelectProduct={selectProduct} />`
+
+### Selected-state check refactored
+
+The original drawer used `SLOTS.find(s => s.categories.includes(product.category))` to check if a suggestion card is already in the outfit — a builder-specific operation. The component now uses:
+
+```typescript
+const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
+```
+
+This is simpler, doesn't require the slot structure, and works correctly for any selection shape that future surfaces might pass.
+
+### What remains builder-specific vs reusable
+
+| Aspect | In component | Builder-specific |
+|---|---|---|
+| Chat state + API call | ✅ | — |
+| Suggestion strip | ✅ | — |
+| Quick-reply chips | ✅ | — |
+| Outfit serialization (`currentOutfit`) | ✅ internal | Built from `selection` prop |
+| Product ID resolution | ✅ via `products` prop | — |
+| Slot category routing | — | In builder's `selectProduct` |
+| Open/close state | — | `aiOpen` in builder |
+| Trigger buttons | — | In builder panels |
+
+### Notes for future Phase E steps
+
+- Phase E2 (product page) needs: `surface="product"` + a `focusProduct?: Product` prop to give the AI context about the current product. The API route already accepts arbitrary `currentOutfit` — for product pages, pass an empty outfit and include the focus product via a future `focusContext` prop or inline system message addition.
+- Phase E3 (browse page) needs: `surface="browse"` + `activeFilters?` prop. The API route would need a new context block for browse filter state.
+- Consider adding an `onSuggestionsReady?: (products: Product[]) => void` callback for surfaces that want to display suggestions outside the drawer (e.g. inline on a product page).
+- Chat state resets when the drawer is unmounted. For persistent history across route changes, lift `chatMessages` state to a context provider in a future phase.
+
+### Recommended next prompt (Phase E2)
+
+```
+Read PROJECT_ANALYSIS.md, BUILD_PROGRESS.md, AI_STYLIST_ARCHITECTURE.md, and CLAUDE.md first.
+
+Now implement only Phase E2: add the AI Stylist to the product detail page.
+
+Scope:
+- Add a "Stylist" trigger button to src/app/product/[id]/page.tsx
+- Mount <StylistDrawer> with surface="product"
+- Pass products array (fetch from /api/products or use static data)
+- No onSelectProduct needed (product page has no slot canvas)
+- The drawer should be aware of the current product for context
+  (either via a new focusProduct prop, or via a "Tell me about this product"
+  pre-populated first message)
+- Keep the product page layout otherwise unchanged
+
+Implementation options to decide:
+A. Add a `focusProduct?: Product` prop to StylistDrawer — on open, insert a
+   system-level context message (not shown in UI) that seeds the AI's context
+   with the current product's name/brand/category/styleKeywords
+B. Pre-populate the welcome message with "I'm here to help you style [Product Name]
+   by [Brand]. Ask me anything!" — simpler, no new prop needed
+
+Recommendation: Option A gives cleaner context without UI copy changes.
+Prefer Option A unless the product page component structure makes it awkward.
+
+Do not do these yet:
+- do not add the drawer to the browse page yet
+- do not add rate limiting
+- do not add streaming
+- do not redesign the product page layout
+
+When done: update BUILD_PROGRESS.md, summarize what changed.
+```
 
 ---
 
