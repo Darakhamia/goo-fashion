@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
@@ -146,6 +147,12 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlansPage() {
+  const router = useRouter();
+
+  function handleSelectPlan(planId: string) {
+    router.push(`/subscribe?plan=${planId}`);
+  }
+
   return (
     <div className="pt-16 min-h-screen">
       <div className="max-w-[1100px] mx-auto px-6 md:px-12">
@@ -226,6 +233,7 @@ export default function PlansPage() {
 
               {/* CTA */}
               <button
+                onClick={() => handleSelectPlan(plan.id)}
                 className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 text-center transition-opacity duration-200 hover:opacity-75 cursor-pointer ${
                   plan.highlighted
                     ? "bg-[var(--background)] text-[var(--foreground)]"
@@ -346,7 +354,10 @@ export default function PlansPage() {
           <p className="text-sm text-[var(--foreground-muted)] mb-8">
             Start with Basic and upgrade anytime — no friction.
           </p>
-          <button className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 cursor-pointer">
+          <button
+            onClick={() => handleSelectPlan("basic")}
+            className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+          >
             Start Basic →
           </button>
         </div>
