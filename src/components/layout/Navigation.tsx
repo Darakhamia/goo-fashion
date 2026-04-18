@@ -8,7 +8,6 @@ import { useCart } from "@/lib/context/cart-context";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 const navLinks = [
-  { href: "/stylist", label: "Stylist" },
   { href: "/browse", label: "Browse" },
   { href: "/builder", label: "Builder" },
   { href: "/plans", label: "Plans" },
