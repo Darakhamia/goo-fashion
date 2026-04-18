@@ -27,6 +27,7 @@ export default async function ProductDetailPage({ params }: Props) {
           product={product}
           relatedProducts={relatedProducts}
           lowestPrice={lowestPrice}
+          allProducts={allProducts}
         />
       </div>
     </div>

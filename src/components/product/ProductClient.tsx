@@ -4,14 +4,16 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import type { Product, ProductSwatch } from "@/lib/types";
 import ProductCard from "./ProductCard";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 
 interface Props {
   product: Product;
   relatedProducts: Product[];
   lowestPrice: number;
+  allProducts: Product[];
 }
 
-export default function ProductClient({ product, relatedProducts, lowestPrice }: Props) {
+export default function ProductClient({ product, relatedProducts, lowestPrice, allProducts }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const defaultColor = useMemo(() => {
@@ -22,6 +24,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
+  const [stylistOpen, setStylistOpen] = useState(false);
 
   // Resolve which images to display
   const displayImages = useMemo(() => {
@@ -137,6 +140,25 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
             <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
               {product.description}
             </p>
+          </div>
+
+          {/* AI Stylist trigger */}
+          <div className="mb-8">
+            <button
+              onClick={() => setStylistOpen(true)}
+              className="flex items-center gap-3 w-full border border-[var(--border-strong)] px-4 py-3 hover:border-[var(--foreground)] transition-colors duration-150 group"
+            >
+              <div className="w-6 h-6 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-display text-[11px] font-medium italic shrink-0">
+                G
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-[11px] font-medium text-[var(--foreground)]">Ask the Stylist</p>
+                <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">How to wear it, what goes with it, outfit ideas</p>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors shrink-0">
+                <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
 
           {/* Material */}
@@ -301,6 +323,14 @@ export default function ProductClient({ product, relatedProducts, lowestPrice }:
           )}
         </div>
       </div>
+
+      <StylistDrawer
+        isOpen={stylistOpen}
+        onClose={() => setStylistOpen(false)}
+        surface="product"
+        products={allProducts}
+        focusProduct={product}
+      />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

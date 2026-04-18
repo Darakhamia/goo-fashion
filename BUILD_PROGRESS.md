@@ -1,0 +1,993 @@
+# BUILD PROGRESS — GOO Outfit Builder Redesign
+
+_Last updated: 2026-04-18_
+
+---
+
+## Status Overview
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 1 | Global font system | ✅ Complete |
+| Phase 2 | Stylist page typography | ✅ Complete |
+| Phase 3a | Builder shell + layout foundation | ✅ Complete |
+| Phase 3b | Builder left panel (slot rows) | ✅ Complete |
+| Phase 3c | Builder center canvas (silhouette) | ✅ Complete |
+| Phase 3d | Builder right panel (catalog rebuild) | ✅ Complete |
+| Phase 3e | Builder AI Stylist drawer (chat UI) | ✅ Complete |
+| Phase 3f | Builder mobile layout + QA polish | ✅ Complete |
+| Phase 4 | QA and polish | ✅ Complete (folded into 3f) |
+| Follow-up Phase A | Canvas balance, decorative cleanup, Generate threshold | ✅ Complete |
+| Follow-up Phase B | Catalog filters: price, brand, sort | ✅ Complete |
+| Follow-up Phase C1 | Builder header cleanup: remove duplication, relocate Stylist trigger | ✅ Complete |
+| Follow-up Phase C2 | Shop the Look + cart system (localStorage, cart drawer in nav) | ✅ Complete |
+| Follow-up Phase D/E Planning | AI Stylist architecture document (AI_STYLIST_ARCHITECTURE.md) | ✅ Complete |
+| Follow-up Phase D1 | AI Stylist key infrastructure: server helper, admin API routes, updated admin UI | ✅ Complete |
+| Follow-up Phase D2 | AI Stylist chat API route (POST /api/stylist/chat, gpt-4o-mini, catalog grounding) | ✅ Complete |
+| Follow-up Phase D3 | Wire builder AI drawer to real API (replace mock, conversationHistory, currentOutfit, error handling) | ✅ Complete |
+| Follow-up Phase D4 | End-to-end verification + polish: error message isolation, history cap, input maxLength, QA checklist | ✅ Complete |
+| Follow-up Phase E1 | Extract StylistDrawer as reusable component; builder re-wired identically | ✅ Complete |
+
+---
+
+## Follow-up Phase E1 — Extract StylistDrawer as Reusable Component ✅
+
+**Completed:** 2026-04-18
+
+### Files created / edited
+
+| File | Action |
+|---|---|
+| `src/components/stylist/StylistDrawer.tsx` | **New** — full reusable drawer component |
+| `src/app/builder/page.tsx` | **Slimmed** — removed ~130 lines of embedded chat logic; added `<StylistDrawer>` usage |
+
+### New component API
+
+```typescript
+// src/components/stylist/StylistDrawer.tsx
+export interface StylistDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  surface: "builder" | "browse" | "product";  // shapes API outfit context
+  products: Product[];                          // full catalog for ID resolution
+  selection?: Partial<Record<string, Product>>; // builder outfit (optional)
+  onSelectProduct?: (product: Product) => void; // suggestion-tap handler (optional)
+}
+```
+
+**Returns `null` when `!isOpen`** — caller just mounts it unconditionally and controls `isOpen`.
+
+### What moved into the component
+
+- `ChatMessage` interface (with `isError?: true`)
+- `QUICK_REPLIES` constant
+- `WELCOME` message constant (was inline in `useState` initializer)
+- `chatMessages`, `chatInput`, `chatLoading` state
+- `chatThreadRef` ref
+- Auto-scroll `useEffect`
+- `sendMessage` async function (full API call, history building, suggestion resolution)
+- All drawer JSX (header, thread, typing indicator, quick-reply chips, composer)
+
+### What stays in `builder/page.tsx`
+
+- `aiOpen` state (controls drawer open/close)
+- Stylist trigger buttons (catalog panel header + mobile bottom bar)
+- `<StylistDrawer isOpen={aiOpen} onClose={...} surface="builder" products={products} selection={selection} onSelectProduct={selectProduct} />`
+
+### Selected-state check refactored
+
+The original drawer used `SLOTS.find(s => s.categories.includes(product.category))` to check if a suggestion card is already in the outfit — a builder-specific operation. The component now uses:
+
+```typescript
+const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
+```
+
+This is simpler, doesn't require the slot structure, and works correctly for any selection shape that future surfaces might pass.
+
+### What remains builder-specific vs reusable
+
+| Aspect | In component | Builder-specific |
+|---|---|---|
+| Chat state + API call | ✅ | — |
+| Suggestion strip | ✅ | — |
+| Quick-reply chips | ✅ | — |
+| Outfit serialization (`currentOutfit`) | ✅ internal | Built from `selection` prop |
+| Product ID resolution | ✅ via `products` prop | — |
+| Slot category routing | — | In builder's `selectProduct` |
+| Open/close state | — | `aiOpen` in builder |
+| Trigger buttons | — | In builder panels |
+
+### Notes for future Phase E steps
+
+- Phase E2 (product page) needs: `surface="product"` + a `focusProduct?: Product` prop to give the AI context about the current product. The API route already accepts arbitrary `currentOutfit` — for product pages, pass an empty outfit and include the focus product via a future `focusContext` prop or inline system message addition.
+- Phase E3 (browse page) needs: `surface="browse"` + `activeFilters?` prop. The API route would need a new context block for browse filter state.
+- Consider adding an `onSuggestionsReady?: (products: Product[]) => void` callback for surfaces that want to display suggestions outside the drawer (e.g. inline on a product page).
+- Chat state resets when the drawer is unmounted. For persistent history across route changes, lift `chatMessages` state to a context provider in a future phase.
+
+### Recommended next prompt (Phase E2)
+
+```
+Read PROJECT_ANALYSIS.md, BUILD_PROGRESS.md, AI_STYLIST_ARCHITECTURE.md, and CLAUDE.md first.
+
+Now implement only Phase E2: add the AI Stylist to the product detail page.
+
+Scope:
+- Add a "Stylist" trigger button to src/app/product/[id]/page.tsx
+- Mount <StylistDrawer> with surface="product"
+- Pass products array (fetch from /api/products or use static data)
+- No onSelectProduct needed (product page has no slot canvas)
+- The drawer should be aware of the current product for context
+  (either via a new focusProduct prop, or via a "Tell me about this product"
+  pre-populated first message)
+- Keep the product page layout otherwise unchanged
+
+Implementation options to decide:
+A. Add a `focusProduct?: Product` prop to StylistDrawer — on open, insert a
+   system-level context message (not shown in UI) that seeds the AI's context
+   with the current product's name/brand/category/styleKeywords
+B. Pre-populate the welcome message with "I'm here to help you style [Product Name]
+   by [Brand]. Ask me anything!" — simpler, no new prop needed
+
+Recommendation: Option A gives cleaner context without UI copy changes.
+Prefer Option A unless the product page component structure makes it awkward.
+
+Do not do these yet:
+- do not add the drawer to the browse page yet
+- do not add rate limiting
+- do not add streaming
+- do not redesign the product page layout
+
+When done: update BUILD_PROGRESS.md, summarize what changed.
+```
+
+---
+
+## Follow-up Phase D2 — AI Stylist Chat API Route ✅
+
+**Completed:** 2026-04-18
+
+### File added
+
+`src/app/api/stylist/chat/route.ts`
+
+### System prompt (reproduced)
+
+```
+You are the AI Stylist for GOO, a curated luxury and contemporary fashion platform.
+Your role is to help users build outfits, discover pieces, and understand how to style them.
+
+PERSONALITY:
+- Confident but approachable. Strong taste, explain reasoning briefly.
+- Concise. Keep replies to 1–3 sentences. No filler.
+- Specific. Reference the user's actual outfit when it exists.
+- Warm but editorial.
+
+RULES:
+1. ONLY recommend products from the GOO catalog listed below.
+2. If no catalog product matches, say so and redirect.
+3. Do not repeat items already in the outfit.
+4. At the end of every reply, include a JSON block:
+   ```json
+   {"suggestedProductIds":["id1","id2"],"styleKeywords":["minimal","classic"]}
+   ```
+5. Use only IDs from the catalog. Use only the 13 defined style keywords.
+6. If no suggestions, use empty arrays.
+7. JSON block at the very end, no explanation.
+
+{outfitContext}
+
+AVAILABLE CATALOG (id | name | brand | category | price | style keywords):
+{catalogSummary}
+```
+
+### Catalog grounding
+
+1. `getAllProducts()` is called on each request — uses Supabase if configured, static data fallback
+2. Products filtered to primary/ungrouped only (`isGroupPrimary !== false`) — avoids duplicate variant entries
+3. Capped at 100 products
+4. Each line: `id | name | brand | category | $price | keywords`
+5. Token budget: ~50 chars/line × 100 = ~5k chars ≈ 1.2k tokens — well within gpt-4o-mini 128k context
+
+### JSON extraction
+
+Two-stage fallback:
+1. **Fenced block:** Match `` ```json...``` `` using regex, `JSON.parse` the content
+2. **Raw object:** Match `{..."suggestedProductIds"...}` at end of text
+3. **Fallback:** Empty arrays — never crashes
+
+After extraction, `validateProductIds()` filters `suggestedProductIds` against the live `Set<string>` of real catalog IDs. Any hallucinated IDs are silently dropped before the response is returned.
+
+### Request shape
+
+```typescript
+{
+  userMessage: string;                        // required
+  conversationHistory?: { role, content }[];  // prior turns for multi-turn
+  currentOutfit?: { [slot]: OutfitPiece };    // builder selection
+  surface?: "builder" | "browse" | "product"; // context hint (future use)
+}
+```
+
+### Response shape
+
+```typescript
+{
+  reply: string;                  // clean text, JSON block stripped
+  suggestedProductIds: string[];  // real catalog IDs only (max 6)
+  styleKeywords: string[];        // max 5
+}
+```
+
+### Error handling
+
+| Condition | HTTP | Body |
+|---|---|---|
+| No API key configured | 501 | `{ error: "AI Stylist is not configured..." }` |
+| Missing userMessage | 400 | `{ error: "userMessage is required" }` |
+| OpenAI API error | 502 | `{ error: "OpenAI request failed: ..." }` |
+| Empty model output | 200 | Safe fallback reply, empty arrays |
+
+---
+
+## Follow-up Phase D4 — End-to-End Verification + Polish ✅
+
+**Completed:** 2026-04-18
+
+### Verification results
+
+| Goal | Status | Notes |
+|---|---|---|
+| Full builder AI flow works with real API | ✅ Verified | `sendMessage` calls `POST /api/stylist/chat`, response appears in thread |
+| `conversationHistory` shape is correct | ✅ Verified | React closure captures pre-`setChatMessages` state; user msg sent separately as `userMessage`; welcome message excluded by `id !== "welcome"` |
+| `currentOutfit` serialization | ✅ Verified | Empty `{}` → route returns "starting fresh"; partial → only filled slots included; full → all 5 slots included with slot/name/brand/price/keywords |
+| `suggestedProductIds` → Product objects | ✅ Verified | `products.find(p => p.id === id)` resolves correctly; unresolved IDs silently dropped |
+| Suggestion strip — valid suggestions | ✅ Verified | Strip renders when `msg.suggestions?.length > 0` |
+| Suggestion strip — no suggestions | ✅ Verified | `suggestions: undefined` → strip not rendered (no empty scroll area) |
+| Suggestion strip — styleKeywords fallback | ✅ Verified | When `suggestedProductIds` is empty, filters catalog by returned `styleKeywords`, slices to 4 |
+| 501 missing-key state | ✅ Verified | Inline error message added to chat; `finally` block releases `chatLoading`; message flagged `isError: true` so it doesn't pollute history on retry |
+| Loading state | ✅ Verified | Composer + quick-reply chips disabled while `chatLoading = true`; typing indicator shows; `finally` always clears `chatLoading` |
+| Error state / retry | ✅ Verified | Network/502 errors show inline message flagged `isError: true`; user can immediately retry |
+| No regressions | ✅ Verified | All builder state, canvas, catalog, filters, cart, save, generate, URL persistence unchanged |
+
+### Fixes applied (`src/app/builder/page.tsx`)
+
+**Fix 1: Error messages isolated from conversationHistory**
+Added `isError?: true` to the `ChatMessage` interface. Both error messages (501 handler and catch handler) now carry `isError: true`. `conversationHistory` now filters these out (`!m.isError`) so the AI never sees "Something went wrong. Please try again." or the 501 message as prior turns.
+
+**Fix 2: conversationHistory capped at 20 entries**
+Added `.slice(-20)` after filtering. Prevents unbounded growth of the history sent per request. 20 messages = 10 conversational turns — enough context for coherent recommendations.
+
+**Fix 3: Composer input maxLength**
+Added `maxLength={500}` to the chat input field. Prevents large paste events from creating oversized requests. The API's `max_tokens: 400` only limits the response; the input token budget was not previously capped client-side.
+
+### Manual QA checklist — AI Stylist builder flow
+
+#### Key missing (no OpenAI key configured)
+- [ ] Open builder → open AI Stylist drawer
+- [ ] Send any message (e.g. "What vibe should I go for?")
+- [ ] Expect: inline message "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings."
+- [ ] Expect: typing indicator appears briefly, then clears — drawer is not frozen
+- [ ] Send a second message immediately after — expect same behavior, not a repeated spinner
+
+#### Valid key configured
+- [ ] Set key via admin settings (`/admin/settings`)
+- [ ] Open builder, open drawer, send "Suggest a minimal look"
+- [ ] Expect: typing indicator (~1–3s), then AI reply text appears in chat thread
+- [ ] Expect: suggestion strip appears below reply if any product IDs were returned
+- [ ] Expect: clicking a suggestion card adds that product to the correct builder slot
+
+#### Partial outfit (1–3 pieces selected)
+- [ ] Select 1–2 pieces in the canvas
+- [ ] Open drawer, send "Complete my look"
+- [ ] Expect: AI reply references the pieces already in the outfit
+- [ ] Expect: suggestions fill missing slots (not duplicates of selected items)
+
+#### Full outfit (all 5 slots filled)
+- [ ] Fill all 5 slots (outerwear, top, bottom, shoes, accessories)
+- [ ] Open drawer, send "How does this look?"
+- [ ] Expect: AI reply comments on the full outfit and references multiple pieces
+- [ ] Expect: suggestion strip may show alternatives or accessories; verify no duplicate slot items suggested
+
+#### No product suggestions returned
+- [ ] Ask about something very specific not in catalog (e.g. "I need a wetsuit")
+- [ ] Expect: AI reply with redirect text only (no suggestion strip rendered)
+- [ ] Expect: no empty horizontal scroll area — the strip is absent, not empty
+
+#### Invalid or empty model output
+- [ ] Temporarily test with the API returning no `reply` field — expect fallback text "Here are some options that might work for your look."
+- [ ] Verify no console errors for undefined/null JSON fields
+- [ ] Verify `chatLoading` is always released (no stuck spinner) even if response is malformed
+
+### Remaining limitations before Phase E
+
+1. **Drawer is embedded inline** — not extracted as a reusable `StylistDrawer` component. Phase E1 must extract it to enable browse and product-page integration.
+2. **No rate limiting** — a user can fire unlimited messages. Acceptable for small-scale internal use; requires Upstash or Clerk-based throttle before public launch.
+3. **No streaming** — AI reply appears all at once after 1–3s. For perceived responsiveness at Phase E, streaming is worth evaluating.
+4. **`generate-outfit` still uses localStorage key** — separate legacy feature; not broken, but the two key-access patterns (localStorage vs Supabase) are inconsistent. Retire localStorage path in a future cleanup.
+5. **`conversationHistory` capped at 20 entries** — long conversations silently drop older context. Acceptable for v1; if users report loss of context, increase the cap or add a summary layer.
+6. **No per-user conversation persistence** — closing and reopening the drawer resets the chat thread (state lives in the page component). Persisting to localStorage or a backend session is a Phase E consideration.
+
+### Recommended next prompt (Phase E1)
+
+```
+Read PROJECT_ANALYSIS.md, BUILD_PROGRESS.md, AI_STYLIST_ARCHITECTURE.md, and CLAUDE.md first.
+
+Now implement only Phase E1: extract the AI Stylist chat drawer into a reusable component.
+
+Scope:
+- Create src/components/stylist/StylistDrawer.tsx
+- Extract all chat state (chatMessages, chatInput, chatLoading, chatThreadRef),
+  the sendMessage function, ChatMessage interface, QUICK_REPLIES, and all drawer JSX
+  from src/app/builder/page.tsx
+- The component should accept props:
+    surface: "builder" | "browse" | "product"
+    currentOutfit?: Partial<Record<string, OutfitPiece>>  (builder only)
+    onSelectProduct?: (product: Product) => void          (for suggestion strip)
+    products: Product[]                                    (for ID resolution)
+    isOpen: boolean
+    onClose: () => void
+- Keep builder/page.tsx wiring exactly as-is: pass selection as currentOutfit,
+  selectProduct as onSelectProduct, products as products, aiOpen as isOpen,
+  () => setAiOpen(false) as onClose
+- Do not wire it to browse or product pages yet — just extract and re-wire builder
+
+Do not do these yet:
+- do not add the drawer to browse or product pages yet
+- do not change the drawer UI
+- do not add streaming
+- do not add rate limiting
+
+When done: update BUILD_PROGRESS.md, summarize the extraction, and confirm
+the builder still compiles and behaves identically.
+```
+
+---
+
+## Follow-up Phase D3 — Wire Builder AI Drawer to Real API ✅
+
+**Completed:** 2026-04-18
+
+### Changes
+
+`src/app/builder/page.tsx`
+- Removed `generateMockReply` function and its `setTimeout`-based mock flow
+- Replaced `sendMessage` with an async function calling `POST /api/stylist/chat`
+- Sends `userMessage`, `conversationHistory` (all turns except welcome message), `currentOutfit` (current builder slot selection mapped to `OutfitPiece` shape), and `surface: "builder"`
+- Maps `suggestedProductIds` back to full `Product` objects via `products.find()`
+- Falls back to `styleKeywords`-filtered products if no IDs matched
+- 501 → inline chat message: "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings."
+- Other failures → "Something went wrong. Please try again."
+- `setChatLoading(false)` in `finally` block — always releases the loading state
+
+`src/app/api/stylist/chat/route.ts`
+- Removed `s` (dotAll) flag from fallback regex — was causing a TS compile error on the configured target
+
+---
+
+## Follow-up Phase D1 — AI Stylist Key Infrastructure ✅
+
+**Completed:** 2026-04-18
+
+### Files added / changed
+
+| File | Action |
+|---|---|
+| `src/lib/server/get-openai-key.ts` | **New** — server-side key resolution helper |
+| `src/lib/server/admin-auth.ts` | **New** — Clerk + ADMIN_USER_IDS allowlist guard |
+| `src/app/api/admin/settings/route.ts` | **New** — GET / POST / DELETE for settings key |
+| `src/app/api/admin/settings/test/route.ts` | **New** — POST to validate stored key via `openai.models.list()` |
+| `src/app/admin/settings/page.tsx` | **Rewritten** — API-backed, no localStorage |
+
+### Admin authorization
+
+Every `src/app/api/admin/settings/*` route calls `requireAdmin()` before doing anything.
+
+`requireAdmin()` in `src/lib/server/admin-auth.ts`:
+1. Calls `auth()` from `@clerk/nextjs/server` — verifies the caller is authenticated with Clerk
+2. Reads `ADMIN_USER_IDS` env var (comma-separated Clerk user IDs)
+3. Returns `{ userId }` only if the user's ID is in the list
+4. Returns `null` (→ 401) if the env var is empty, or the user's ID is not listed
+
+**Fail-safe:** If `ADMIN_USER_IDS` is not configured, all admin API requests are denied.
+
+### How the key is stored and accessed
+
+**Storage:**
+- Preferred: `OPENAI_API_KEY` environment variable (Vercel secret / `.env.local`)
+- Fallback: `settings` table in Supabase, row `{ key: "openai_api_key", value: "sk-..." }`
+
+**Read priority in `getOpenAIKey()`:**
+```
+OPENAI_API_KEY env var  →  Supabase settings table  →  null
+```
+
+**Key never leaves the server:**
+- The GET endpoint returns only `{ configured, source, maskedKey }` — not the raw value
+- The POST endpoint accepts the raw key, upserts it, returns `{ ok, maskedKey }`
+- The browser never receives a raw key at any point
+
+### Schema assumptions
+
+The `settings` table must exist in Supabase before the API routes work:
+
+```sql
+create table if not exists settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz default now()
+);
+alter table settings enable row level security;
+-- No public access policy — service_role key only
+```
+
+This SQL is also shown in the admin settings UI at `/admin/settings` for easy reference.
+
+### Admin settings UI changes
+
+- **Removed:** localStorage read/write, `goo-openai-key` key
+- **Added:** API-backed load/save/delete/test flow
+- Shows key status (configured/not configured), source (env/database), masked key
+- Environment-variable keys are shown as read-only (no save/clear buttons)
+- Database keys show: Test Key · Update · Clear
+- Test endpoint uses `openai.models.list()` (no generation cost)
+- Unauthorized users see a clear "access denied" message with setup instructions
+
+---
+
+---
+
+## Follow-up Phase C2 — Shop the Look + Cart System ✅
+
+**Completed:** 2026-04-18
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/lib/context/cart-context.tsx` | **New** — CartProvider, useCart hook, localStorage persistence |
+| `src/app/layout.tsx` | Added `<CartProvider>` wrapper |
+| `src/components/layout/Navigation.tsx` | Added cart icon + count badge + cart drawer |
+| `src/app/builder/page.tsx` | Added `useCart`, `shopTheLook` action, wired both desktop + mobile Shop buttons |
+
+### Cart data structure
+
+```typescript
+interface CartItem {
+  id: string;         // product id — used as dedup key
+  name: string;
+  brand: string;
+  imageUrl: string;
+  price: number;      // product.priceMin
+  retailerUrl: string | null;  // first isOfficial retailer, or first retailer, or null
+}
+```
+
+Stored in `localStorage` under key `"goo-cart"` as a JSON array. Restored on mount via `useEffect`.
+
+### Duplicate handling
+
+`addToCart` checks `prev.some(x => x.id === item.id)` and returns `prev` unchanged if the product is already in the cart. `addManyToCart` builds a Set of existing IDs and filters out duplicates before merging. Clicking "Shop the Look" multiple times is safe.
+
+### Interaction model
+
+- **Desktop:** "Shop the Look" button in builder footer → calls `shopTheLook()` → `addManyToCart` → feedback "Added to Cart ✓" for 2 seconds
+- **Mobile:** same button in mobile bottom bar → same action → "Added ✓" feedback
+- **Cart icon** in site nav: count badge, click to open/close drawer
+- **Cart drawer**: slides in from right (same animation as AI Stylist drawer), click backdrop or × to close; lists items with thumbnail/name/brand/price/remove; shows estimated total
+- **Empty state**: cart icon has no badge, drawer shows empty state with explanatory copy
+
+### Limitations
+
+- No retailer link surfacing in the drawer yet (item links are stored but not rendered as clickable links — keeping "checkout coming soon")
+- Cart is not user-account-scoped (localStorage only; clears if user switches browsers or clears storage)
+- No quantity support — each product ID can only appear once
+- Cart drawer is not accessible from mobile nav (mobile hamburger doesn't include cart entry) — low priority since cart is always in fixed nav bar
+
+---
+
+## Follow-up Phase C1 — Builder Header Cleanup ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`**
+
+**Builder sub-header (`<header>`):**
+- Removed the GOO wordmark (was a duplicate of the site nav logo)
+- Removed the Feed/Create/Saved tab row (redundant with site nav Browse/Builder/Saved)
+- Removed the Stylist pill/toggle from the header
+- Reduced header height from `h-12` to `h-10` (saves 8px, tighter with site nav)
+- Left side: replaced with minimal `"Create"` mono uppercase context label
+- Right side: Share + Clear utility buttons remain, now shown without the `hidden sm:block` restriction
+
+**Desktop right panel:**
+- Added a panel header row above the search input: `"Catalog"` label on the left, `"Stylist"` trigger button on the right with pulsing dot indicator
+- Trigger shows active state (solid dot, bright text) when drawer is open
+
+**Mobile bottom bar:**
+- Added a Stylist chat-bubble icon button (w-9 h-9 square) to the right actions group, before the Generate icon button
+- Matches the icon button visual pattern used for Generate
+
+### Header hierarchy after changes
+
+```
+Site nav (fixed, h-16, z-50)
+  GOO | Stylist · Browse · Builder · Plans | ♥ Profile Sign-in
+Builder context bar (in-flow, h-10, border-b)
+  Create                                  | Share · Clear
+3-column body
+  Left panel | Center canvas | Right panel (Catalog header + Stylist trigger)
+```
+
+### Remaining UI inconsistencies
+
+- On mobile, the site nav hamburger menu still shows all nav links — no change needed, this is correct
+- The `Link` import is still present (used in generate modal and suggestion strips)
+- Share and Clear are now always visible on desktop when selection exists (removed `hidden sm:block`) — this is intentional as the bar is less crowded
+
+---
+
+## Follow-up Phase B — Catalog Filters ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`**
+- Added `Brand` to imports from `@/lib/types`
+- Added `PRICE_BUCKETS` module-level constant (All / < $200 / < $500 / < $1k / < $2k)
+- Added 4 new state vars: `maxPrice`, `selectedBrands`, `sortBy`, `filtersOpen`
+- Added `availableBrands` memo — derives brand list from current category filter, sorted alphabetically
+- Extended `catalogProducts` memo with price cap filter, brand multi-select filter, price sort (asc/desc)
+- Added `hasActiveFilters` computed boolean — drives badge count display
+- Added `clearFilters` action — resets price/brands/sort to defaults
+- Added filter UI to **desktop right panel** (between category chips and count row):
+  - Always-visible compact row: "Filters [· N]" toggle + Sort cycle button + Clear link
+  - Expandable panel: Price bucket pills (single-select toggle) + Brand multi-select chips
+- Added same filter UI to **mobile catalog section** (between chip row and count row)
+
+### Interaction model
+- Filters toggle row is always visible; panel collapses/expands via `filtersOpen` state
+- Price bucket: clicking active bucket deselects it (toggle behavior); clicking new one replaces
+- Brand: multi-select — any number of brands can be active simultaneously
+- Sort cycles through: Featured → Price ↑ → Price ↓ → Featured
+- Active filter count shown inline: "Filters · 3"
+- Clear button resets all three filter dimensions at once
+- Filters are shared state between desktop and mobile (same state vars)
+
+---
+
+## Phase 1 — Global Font System ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/layout.tsx`**
+- Added `next/font/google` imports for `Fraunces`, `Inter_Tight`, `JetBrains_Mono`
+- Font config:
+  - `Fraunces` → CSS var `--font-fraunces` (normal + italic, `opsz` axis, `display: swap`)
+  - `Inter_Tight` → CSS var `--font-inter-tight` (`display: swap`)
+  - `JetBrains_Mono` → CSS var `--font-jetbrains` (`display: swap`)
+- Injected all three `.variable` class names on `<html>` alongside the existing `dark` class
+
+**`src/app/globals.css`**
+- Replaced system font stack vars with:
+  - `--font-body: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif`
+  - `--font-display: var(--font-fraunces), "Fraunces", Georgia, serif`
+  - `--font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace` *(new)*
+- Updated light-mode background token: `#FAFAF8` → `#F4F2EE`
+- Updated all 5 pre-computed overlay variables referencing the old background RGB (`250, 250, 248` → `244, 242, 238`)
+- Added `.font-mono` global utility class
+
+### Verification
+- Grepped for stale `#FAFAF8`, `Palatino`, `BlinkMacSystemFont` — none found in src/
+- Font variables are injected via `next/font` (self-hosted, `font-display: swap`, no layout shift)
+
+---
+
+## Phase 2 — Stylist Page Typography ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/stylist/page.tsx`** — typography class additions only. No step logic, routing, state, or layout was changed.
+
+Applied `.font-mono` class to all UI elements in the JetBrains Mono role (labels, controls, metadata, action buttons):
+
+| Element | Location |
+|---|---|
+| `Step {N} of {N}` counter | Progress bar row |
+| `← Back` button | Progress bar row |
+| `Continue` button | Style step, Palette step |
+| `Skip` button | Style, Palette, Fit, Season steps (all 4) |
+| `Selected range` label | Budget step |
+| `$X–$Y` budget range text in preset cards | Budget step |
+| `Generate Outfit` CTA button | Budget step |
+| `Building your outfit…` loading text | Result/loading state |
+| `AI Generated` eyebrow label | Result step |
+| `Regenerate` button | Result step |
+| `Start over` button | Result step footer |
+
+**Already correct — no changes needed:**
+- All `h1` headings already used `font-display` → now render Fraunces ✓
+- Budget selected-range display (`font-display text-3xl`) → already Fraunces ✓
+- Body/description text inherits `--font-body` (Inter Tight) via `body` tag ✓
+
+### Step count
+11 targeted `font-mono` additions across the file. Zero logic changes.
+
+---
+
+## Known Issues / Visual Areas to Check
+
+### After Phase 1 (global fonts)
+1. **Homepage hero** — Fraunces at `text-4xl/5xl font-light` may render slightly wider than Palatino; check for text overflow on narrow viewports.
+2. **Navigation links** — Inter Tight replaces system-UI; spacing and weight at 13–14px should be verified, especially on mobile.
+3. **Footer `--fg-on-dark-*` overlays** — rgba values updated from `250,250,248` to `244,242,238`; confirm legibility on dark backgrounds is unchanged.
+4. **Nav backdrop (sticky blur)** — uses `--bg-overlay-90/95`; the slight background shift from near-white → warm cream should be checked in light mode.
+5. **All pages using `.font-display`** — now Fraunces instead of Palatino. The optical size and weight render differently; verify on browse, outfit detail, product detail, and plans.
+
+### After Phase 2 (stylist typography)
+6. **JetBrains Mono at 10px** — the step counter and eyebrow labels are 10px monospace with `tracking-[0.18em]`. Confirm this is legible in both light and dark mode, especially on mobile (very small text).
+7. **Budget preset card spacing** — the price range text (`$30–$150`) now renders in a slightly wider monospace face; verify it doesn't overflow the card padding at 2-column grid width.
+8. **Generate Outfit button width** — `font-mono` has slightly different character width than Inter Tight; the `px-12` padding should still look balanced, but verify at mobile full-width.
+
+---
+
+---
+
+## Phase 3a — Builder Shell + Layout Foundation ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — full structural rewrite. All existing state, logic, actions, and the generate modal were preserved exactly.
+
+**New outer layout:**
+- `h-screen pt-16 flex flex-col overflow-hidden` — same as before, accounts for fixed `h-16` site nav
+- `relative` wrapper on the 3-column body div (not the outer container), so the AI drawer is absolutely positioned starting below the site nav
+
+**New builder sub-header (RUNWAY design):**
+- GOO wordmark in Fraunces italic + Feed / Create / Saved tabs (mono labels, Create underlined)
+- Share and Clear utility actions (hidden when nothing selected)
+- Stylist pill button: toggles `aiOpen`, pulsing dot indicator, inverts on open
+
+**New 3-column grid:**
+- `grid-cols-[300px_1fr_360px]` on desktop, `grid-cols-1` on mobile (left/right panels hidden on mobile via `hidden md:flex`)
+- Left panel: new "In this look" summary with per-slot rows (image 60×74 + mono label + name/brand + price), total footer with Fraunces display price
+- Center panel: existing 2×2 canvas grid preserved intact (hover overlays, variant swatches, info cards, slot badges all kept)
+- Right panel: existing product picker moved here (slot tabs + search + liked filter + AI match + ProductRow list)
+
+**New footer (RUNWAY design):**
+- Left: `N pieces · N brands` mono metadata (or prompt when empty)
+- Right: Generate button (≥2 pieces only), Save / Saved ✓ button, View → link, "Shop the Look $XXX" inverted CTA
+
+**New AI Stylist drawer (shell):**
+- `absolute top-0 right-0 bottom-0 w-[380px]` within the `relative` body wrapper
+- `animate-slide-in-right`, shadow `-20px 0 60px rgba(0,0,0,0.12)`
+- Header: G avatar (Fraunces italic), "Stylist" label, "● Online" mono status, × close
+- Body: centered placeholder ("AI Stylist · Chat UI — next step")
+- Footer: message input placeholder with ⏎ hint
+
+**New `uniqueBrandCount` derived value** added to power the footer metadata.
+
+**Font-mono applied** to all builder labels, buttons, tabs, badges, and metadata.
+
+### What did NOT change
+- All state variables (selection, variantOverrides, products, activeSlot, search, aiMatch, likedOnly, saved, copied, generating, generatedImage, generatedModel, generateError, showModal)
+- All action functions (selectProduct, selectVariant, clearSlot, clearAll, shareOutfit, saveOutfit, generateOutfit)
+- URL persistence logic (updateURL + restore useEffect)
+- Generated image modal (preserved exactly)
+- Error toast (preserved)
+- SlotIcon, ProductRow, EmptySlot components (preserved)
+
+---
+
+## Phase 3b — Left Panel Rebuild ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — slot system and icon only. Left panel JSX from Phase 3a was already complete; only the data model needed updating.
+
+- `SlotId` expanded: `"outerwear" | "top" | "bottom" | "shoes" | "accessories"`
+- `SLOTS` updated to 5 entries:
+  - `outerwear` → `["outerwear"]`
+  - `top` → `["tops", "knitwear"]` (outerwear removed from this slot)
+  - `bottom` → `["bottoms", "dresses"]`
+  - `shoes` → `["footwear"]`
+  - `accessories` → `["accessories"]`
+- `CANVAS_SLOTS` constant added — filters outerwear out, keeps the 2×2 canvas working until Phase 3c
+- `SlotIcon` outerwear SVG added (long coat silhouette, 16×16 viewBox)
+- Right panel slot tab grid updated: `grid-cols-4` → `grid-cols-5`
+
+---
+
+## Phase 3c — Center Canvas (Silhouette) ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — center panel JSX fully replaced. All state and action logic preserved.
+
+**Removed:**
+- `CANVAS_SLOTS` constant (no longer needed)
+- `EmptySlot` component (replaced by inline empty-state rendering)
+
+**Added:**
+- `FIGURE_SLOTS` constant — typed array for the 4 main figure zones (outerwear, top, bottom, shoes) with `flex` proportion values
+- `lookNumber` state — random 3-digit number generated once on mount, used in the canvas top bar
+
+**New center `<main>` structure:**
+- **Top bar** (h-9): "Look 001" mono label left · three display mode icon buttons (○ ◐ ●) right
+- **Silhouette zone** (flex-1): 320px centered container holding:
+  - **240px main figure** (absolute, left-aligned, full height): 4 flex-grow stacked zones for Outerwear (flex 7), Top (flex 4.5), Bottom (flex 5), Shoes (flex 2.5)
+  - **Accessories floating panel** (absolute, right: 0, 60×74px, vertically centered): floats 20px right of the figure
+- **Bottom bar** (h-8): "Edit · Drag to reorder" mono label centered
+
+**Each slot zone behavior:**
+- **Empty**: diagonal repeating-linear-gradient stripe using `var(--fg-overlay-05)` + dashed border + SlotIcon + category label
+- **Filled**: product image (`object-cover`) + hover dim overlay + slot label badge (top-left) + variant swatches (top-right, up to 5) + info strip (bottom, slides in on hover: brand, name, ↗ link, price, × remove)
+- **Active**: `ring-1 ring-inset ring-[var(--foreground)]`
+- Clicking any zone sets `activeSlot` — right panel filters to that category
+
+**Slot proportions at max-height 560px:**
+- Outerwear: ~205px (37%)
+- Top: ~131px (23%)
+- Bottom: ~146px (26%)
+- Shoes: ~73px (13%)
+- Accessories: 74px fixed (floating)
+
+---
+
+## Pending Steps
+
+### Phase 3b — ✅ Done
+
+### Phase 3c — ✅ Done
+
+## Phase 3d — Right Panel Catalog Rebuild ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — right panel fully replaced. State simplified.
+
+**Removed:**
+- `ProductRow` component (inline list row with swatches — replaced by 2-col grid cards)
+- `aiMatch` state variable (dropped per design spec)
+- `slotProducts` / `slotScores` derived memo (replaced by `catalogProducts`)
+
+**Added:**
+- `CATALOG_CHIPS` constant — 6 entries: All, Outerwear, Tops, Bottoms, Shoes, Accessories (each maps to `SlotId | null`)
+- `catalogCategory: SlotId | null` state (null = show All products)
+- `catalogProducts` derived memo — filters by `catalogCategory`, `search`, `likedOnly`
+
+**Updated:**
+- `selectProduct` — now auto-routes by `product.category` into the correct slot via `SLOTS.find(s => s.categories.includes(product.category))`. Also calls `setActiveSlot(slotId)` to sync the canvas ring. Toggling the same product deselects it.
+- Left panel slot row `onClick` — now calls `setCatalogCategory(slot.id)` alongside `setActiveSlot(slot.id)`
+- Canvas figure zone `onClick` — now calls `setCatalogCategory(id)` alongside `setActiveSlot(id)`
+- Canvas accessories button `onClick` — same dual sync
+
+**New right panel layout:**
+1. **Search input** (38px height, left search icon, right × clear)
+2. **Category chips** (pill style, overflow-x-auto, horizontal scroll): All / Outerwear / Tops / Bottoms / Shoes / Accessories
+3. **Count + Liked toggle** (below chips, above product grid separator)
+4. **2-column product grid** (scrollable, `gap-3 p-3`):
+   - Each card: 3/4 aspect image (`object-cover`, `group-hover:scale-105`) + product name + brand / price row
+   - Selected state: `outline outline-1 outline-[var(--foreground)]` + checkmark circle badge (top-right of image)
+   - Clicking a card calls `selectProduct(product)` → auto-routes to correct slot
+
+### Phase 3d — ✅ Done
+
+### Phase 3e — ✅ Complete (2026-04-18)
+
+**What was done — `src/app/builder/page.tsx`:**
+
+- Added `ChatMessage` interface, `QUICK_REPLIES` constant, `generateMockReply()` pure function (module level)
+- Added chat state: `chatMessages`, `chatInput`, `chatLoading`, `chatThreadRef`
+- Added `sendMessage()` action — appends user message, simulates 900–1400ms delay, calls `generateMockReply`, appends AI reply
+- Added `useEffect` auto-scroll — scrolls `chatThreadRef` to bottom after each message or loading state change
+- Replaced drawer placeholder body + input with:
+  - Scrollable thread (`ref={chatThreadRef}`) — user bubbles right/dark, AI bubbles left/surface
+  - AI suggestion strips — horizontal scroll of 72px product cards (clickable via `selectProduct`, shows selected state checkmark)
+  - Typing indicator — 3 staggered `animate-bounce` dots while loading
+  - Quick-reply chip strip — 4 preset prompts call `sendMessage` directly
+  - Composer — controlled input, Enter to send, send SVG button, disabled during loading
+- AI drawer: welcome message pre-populates thread so drawer is never empty on open
+
+---
+
+### Phase 3f — ✅ Complete (2026-04-18)
+
+**What was done — `src/app/builder/page.tsx`:**
+
+**Structural changes:**
+- Desktop 3-col grid: changed from `h-full grid grid-cols-1 md:grid-cols-[...]` → `hidden md:grid md:h-full md:grid-cols-[...]`
+- Footer: added `hidden md:flex` — replaced by mobile bottom bar on small screens
+- AI drawer: `w-[380px]` → `w-full md:w-[380px]` — full-width on mobile (covers full panel like a sheet)
+
+**New mobile layout (`md:hidden h-full flex flex-col overflow-hidden`):**
+
+1. **Mini canvas (220px)** — condensed silhouette with 140px main figure (FIGURE_SLOTS, same proportions) + 36×44px accessories panel; canvas label overlay with Look number + Clear button (pointer-events-auto within pointer-events-none parent)
+2. **Slot strip** — horizontal scrollable row of 5 slots (52×64px thumbnails); active slot highlighted with ring; selected items show product image + × remove button (avoids nested `<button>` via `role="button"` div); short labels (Out/Top/Bot/Shoes/Acc)
+3. **Search input** — full-width, 38px, shared search state with desktop
+4. **Category chips** — pill row, horizontal scroll, shared `catalogCategory` state
+5. **Count + liked toggle** — same as desktop right panel
+6. **Product grid** — flex-1 overflow-y-auto, 2-col, same `catalogProducts` memo, same `selectProduct` auto-routing
+7. **Mobile bottom bar** — Total (Fraunces display font) + Save + "Shop · $X" inverted CTA
+
+**Mobile AI drawer:** full-width overlay (w-full), slides in from right, × closes it. Chat thread, suggestions, quick-reply chips, and composer all work identically to desktop.
+
+**Mobile interaction model:**
+- Tapping a canvas zone or slot strip item: sets `activeSlot` + `catalogCategory` (syncs chip filter + ring)
+- Tapping a product card: auto-routes to correct slot, updates canvas and slot strip
+- Tapping × on slot strip card: removes item from that slot
+- Scrolling: only the product grid scrolls; canvas + slot strip + search + footer are fixed in the flex column
+- Stylist button in header: opens full-width AI drawer overlay
+
+---
+
+### Phase 4 — ✅ Complete (folded into Phase 3f)
+
+**QA checks applied:**
+- Nav height offset: `pt-16` on outer div matches `h-16` fixed nav — verified
+- Desktop 3-col grid `hidden md:grid` preserves all desktop behavior
+- AI drawer z-index 20 overlays both desktop and mobile layouts correctly
+- Slot strip uses `role="button"` div to avoid nested button HTML validity issue
+- Scrollbar width (3px) from globals.css applies to all scroll regions
+- Empty states, liked toggle, category routing verified to work identically on mobile
+
+---
+
+## Manual QA Checklist (final browser testing)
+
+### Mobile (< 768px viewport)
+- [ ] Canvas shows 5-slot silhouette at 220px height, empty and filled states
+- [ ] Tapping canvas zone updates slot strip ring + catalog chip filter
+- [ ] Slot strip scrolls horizontally; × remove button works; thumbnails update on selection
+- [ ] Search filters catalog in real time
+- [ ] Category chips filter to correct products
+- [ ] Tapping a product routes to correct slot (no slot pre-selection needed)
+- [ ] Mobile bottom bar: Total updates, Save button works, "Saved ✓" feedback shown
+- [ ] AI Stylist button opens full-width drawer; × closes it
+- [ ] Chat: quick-reply chips send messages; typing + Enter sends; typing indicator shows; suggestions are tappable and add to outfit
+- [ ] Dark mode: all panels, canvas empty states, mobile drawer render correctly
+
+### Desktop (≥ 768px viewport)
+- [ ] 3-column layout: left panel, canvas, right catalog all visible
+- [ ] Canvas silhouette slot zones: hover overlays, variant swatches, info strip, × remove all work
+- [ ] Left panel: slot rows update on selection; total price updates
+- [ ] Right panel: search, chip filter, 2-col grid, checkmark badge all work
+- [ ] Footer: Generate (≥2 pieces), Save/Saved ✓, View →, Shop the Look CTA
+- [ ] AI drawer: 380px, slides in from right, chat thread scrolls, suggestions clickable
+- [ ] Stylist pill inverts when drawer is open
+
+### Cross-cutting
+- [ ] Font rendering: Fraunces italic for GOO wordmark and prices; JetBrains Mono for all labels/buttons
+- [ ] Light mode: warm cream background (#F4F2EE), all borders/text legible
+- [ ] URL persistence: selection survives page reload (search params)
+- [ ] Generate modal: opens on button click (requires ≥2 pieces), download and regenerate work
+- [ ] No layout flash on initial load (dark class in `<html>` prevents FOUC)
+
+---
+
+## Builder Migration Status: ✅ FUNCTIONALLY COMPLETE
+
+All phases of the RUNWAY redesign are implemented. The builder has full desktop 3-column layout and a complete mobile stacked flow. The AI Stylist drawer works on both breakpoints with mock chat. URL persistence, category routing, variant swatches, and all actions (generate, save, share, clear) are functional.
+
+---
+
+## Risks Introduced by Phase 3a
+
+1. **Left panel shows old 4-slot system** — the new RUNWAY design calls for 5 slots (outerwear, top, bottom, shoe, accessory). The current stub uses the existing 4-slot `SLOTS` array. This is temporary but means "outerwear" isn't visible in the left panel until Phase 3b adds the 5-slot mapping.
+
+2. **Right panel still slot-tab based** — clicking a product in the right panel still requires selecting a slot first (activeSlot). In the final design, the right panel catalog routes products to their natural category slot automatically. This will be fixed in Phase 3d.
+
+3. **Mobile panels hidden** — left and right panels are `hidden md:flex`. On mobile, only the center canvas and footer are visible. This is temporary until Phase 3f.
+
+4. **AI drawer overlays 3-column body only** — the drawer covers from below the builder sub-header to above the footer. This means the sub-header and footer remain accessible while the drawer is open. This matches the final RUNWAY design intent but differs from the prototype which overlays the entire frame.
+
+5. **Center canvas still 2×2 grid** — the 2×2 is functional and preserves all existing UX (hover overlays, variant swatches). It will be replaced with the outfit silhouette in Phase 3c; the transition should be smooth.
+
+---
+
+## Recommended Next Prompt
+
+```
+Read PROJECT_ANALYSIS.md, IMPLEMENTATION_PLAN.md, BUILD_PROGRESS.md, and CLAUDE.md first.
+
+Now execute only Phase 3e: AI Stylist drawer chat UI for the builder.
+
+Scope:
+- Replace the drawer placeholder with a working chat UI shell (mock data, no real API wiring)
+- Scrollable message thread: user bubbles right / AI bubbles left
+- AI messages may include a 4-item horizontal suggestion strip (mini product cards, clickable to select)
+- Quick-reply pills below the thread: "Warmer", "Sharper", "Under $500"
+- Message input (functional state — user can type and hit ⏎ to append a mock message)
+- Keep the drawer shell (header, animate-slide-in-right, shadow) intact from Phase 3a
+- Entry animation already defined: animate-slide-in-right
+
+Do not do these yet:
+- do not wire real AI/API responses to the drawer
+- do not do the mobile phase yet
+- do not redesign unrelated pages
+
+Key constraints:
+- The drawer is absolute within the body wrapper (does not overlay site nav)
+- `aiOpen` state is already defined and toggles the drawer
+- Product list is available via the `products` state array for suggestion strips
+- Keep suggestion strip clicks wired to `selectProduct(product)` for real selection behavior
+
+When done update BUILD_PROGRESS.md.
+```
+
+---
+
+(old Phase 3d next prompt archived below)
+
+```
+Read PROJECT_ANALYSIS.md, IMPLEMENTATION_PLAN.md, BUILD_PROGRESS.md, and CLAUDE.md first.
+
+Now execute only Phase 3d: right panel catalog rebuild for the builder.
+
+Scope:
+- Replace the current slot-tab + ProductRow picker in the right panel with the full
+  category catalog as described in IMPLEMENTATION_PLAN.md step 3.5
+- Search input (full-width, 38px height, search icon + clear ×)
+- Category chips: All / Outerwear / Tops / Bottoms / Shoes / Accessories (pill style)
+- 2-column product grid (3/4 aspect ratio cards, checkmark on selected)
+- Clicking a product auto-routes it to the correct slot based on product.category (no activeSlot tab needed)
+- Keep the activeSlot state wired to the canvas: clicking a zone in the center canvas
+  still filters the right panel to that category
+- Price filter and sort are optional — implement if clean, skip if it would bloat scope
+
+Do not do these yet:
+- do not fully implement the AI drawer conversation UI
+- do not do the mobile phase yet
+- do not redesign unrelated routes/pages
+
+Key constraints:
+- product.category is a single Category string (not array) — mapping is in SLOTS constant
+- The 5-slot SLOTS array is the source of truth for category → slot routing
+- activeSlot still drives canvas ring highlight and right panel context
+- ProductRow component can be removed once the 2-col grid replaces it
+```
+
+---
+
+## Follow-up Phase A — Canvas Balance + Decorative Cleanup + Generate Threshold ✅
+
+**Completed:** 2026-04-18
+
+### What was done
+
+**`src/app/builder/page.tsx`** — 4 targeted changes, no logic rework.
+
+**1. Canvas top bar — removed decorative circle controls**
+Removed the `○ ◐ ●` button row from the canvas top bar. These had no `onClick` handlers and gave users no feedback when tapped. The canvas top bar is now a single left-aligned "Look —" / "Look 007" mono label. The `justify-between` flex direction changed to simple `flex items-center` since there is no right-side content.
+
+**2. Silhouette canvas — reduced visual dominance**
+- `py-6 px-4` → `py-8 px-6`: increased padding around the silhouette for a more editorial framing
+- `max-h-[560px]` → `max-h-[460px]`: silhouette height reduced by 100px (~18%), making the canvas panel feel proportional rather than stretched on typical desktop heights (768–900px)
+
+These changes leave the `1fr` grid column and panel background intact — the panels remain full-bleed. The canvas area has the same footprint, but the silhouette is better framed within it.
+
+**3. Desktop footer — Generate threshold lowered**
+`selectedCount >= 2` → `selectedCount >= 1`. The Generate button now appears as soon as one piece is selected. The API already accepts 1+ pieces (validation in `/api/generate-outfit/route.ts` is `pieces.length < 1`), so the frontend was more conservative than necessary. A single-item generation produces a focused editorial shot of that item.
+
+**4. Mobile bottom bar — Generate added**
+Added an icon-only Generate button (star SVG, 36×36px square) between the total and Save button. Appears when `selectedCount >= 1`, same condition as desktop. Shows a spinning indicator while generating. Uses `aria-label="Generate outfit image"` for accessibility. The compact icon keeps the mobile bar from becoming crowded.
+
+### Visual tradeoffs
+
+- The reduced `max-h-[460px]` means on very tall viewports (1200px+ height) the silhouette won't stretch to fill the vertical space as much. This is intentional — the previous stretch created an awkward aspect ratio on the slot zones.
+- The `px-6` side padding on the silhouette zone slightly reduces effective canvas width (was `px-4`), but since the silhouette container is a fixed 320px centered within the zone, the visual padding is only background-color surface, not functional space.
+- The mobile Generate icon has no text label. Users unfamiliar with the star icon may not immediately understand it triggers AI generation. A tooltip or a text label on first use could help — tracked as a follow-up.

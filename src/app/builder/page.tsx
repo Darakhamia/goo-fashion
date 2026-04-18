@@ -2,25 +2,59 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import type { Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
+import { useCart } from "@/lib/context/cart-context";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
-type SlotId = "top" | "bottom" | "shoes" | "accessories";
+type SlotId = "outerwear" | "top" | "bottom" | "shoes" | "accessories";
 
 const SLOTS = [
-  { id: "top"         as SlotId, label: "Top",         categories: ["tops", "knitwear", "outerwear"] },
+  { id: "outerwear"   as SlotId, label: "Outerwear",   categories: ["outerwear"] },
+  { id: "top"         as SlotId, label: "Top",         categories: ["tops", "knitwear"] },
   { id: "bottom"      as SlotId, label: "Bottom",      categories: ["bottoms", "dresses"] },
   { id: "shoes"       as SlotId, label: "Shoes",       categories: ["footwear"] },
   { id: "accessories" as SlotId, label: "Acc",         categories: ["accessories"] },
 ];
 
-// ── Icons ────────────────────────────────────────────────────────────────────
+// Vertical figure zones for the silhouette canvas (accessories float separately)
+const FIGURE_SLOTS: Array<{ id: SlotId; label: string; flex: number }> = [
+  { id: "outerwear", label: "Outerwear", flex: 7   },
+  { id: "top",       label: "Top",       flex: 4.5 },
+  { id: "bottom",    label: "Bottom",    flex: 5   },
+  { id: "shoes",     label: "Shoes",     flex: 2.5 },
+];
+
+// Category filter chips for the right-panel catalog
+const CATALOG_CHIPS: Array<{ label: string; slotId: SlotId | null }> = [
+  { label: "All",          slotId: null          },
+  { label: "Outerwear",    slotId: "outerwear"   },
+  { label: "Tops",         slotId: "top"         },
+  { label: "Bottoms",      slotId: "bottom"      },
+  { label: "Shoes",        slotId: "shoes"       },
+  { label: "Accessories",  slotId: "accessories" },
+];
+
+// Price filter buckets (null max = no cap)
+const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
+  { label: "All",    max: null },
+  { label: "< $200", max: 200  },
+  { label: "< $500", max: 500  },
+  { label: "< $1k",  max: 1000 },
+  { label: "< $2k",  max: 2000 },
+];
+
+// ── Inline SVG icons ──────────────────────────────────────────────────────────
 
 function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      {id === "outerwear" && (
+        <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+      )}
       {id === "top" && (
         <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
@@ -42,141 +76,38 @@ function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
   );
 }
 
-// ── Product row in the picker panel ─────────────────────────────────────────
-
-function ProductRow({
-  product,
-  selected,
-  matchScore,
-  activeVariantId,
-  onSelect,
-  onSelectVariant,
-}: {
-  product: Product;
-  selected: boolean;
-  matchScore: number;
-  activeVariantId?: string;
-  onSelect: () => void;
-  onSelectVariant: (swatch: ProductSwatch) => void;
-}) {
-  const variants = product.variants ?? [];
-  const currentVariant = variants.find(v => v.id === activeVariantId);
-  const displayImage = currentVariant?.imageUrl ?? product.imageUrl;
-
-  return (
-    <div className={`transition-colors duration-150 ${selected ? "bg-[var(--foreground)]" : "hover:bg-[var(--surface)]"}`}>
-      <button
-        onClick={onSelect}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
-      >
-        {/* Thumbnail */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={displayImage}
-          alt={product.name}
-          className="w-9 h-9 shrink-0 object-cover"
-        />
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className={`text-[11px] font-medium leading-tight truncate ${
-            selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
-          }`}>
-            {product.name}
-          </p>
-          <p className={`text-[10px] mt-0.5 truncate ${
-            selected ? "text-[var(--background)]/60" : "text-[var(--foreground-muted)]"
-          }`}>
-            {product.brand}
-          </p>
-        </div>
-        {/* Price + match */}
-        <div className="shrink-0 text-right">
-          <p className={`text-[11px] font-medium ${
-            selected ? "text-[var(--background)]" : "text-[var(--foreground)]"
-          }`}>
-            ${product.priceMin.toLocaleString()}
-          </p>
-          {!selected && matchScore > 0 && (
-            <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5">
-              {"✦".repeat(Math.min(matchScore, 3))}
-            </p>
-          )}
-        </div>
-      </button>
-
-      {/* Color variant swatches — shown when selected and has variants */}
-      {selected && variants.length > 1 && (
-        <div className="px-3 pb-2.5 flex items-center gap-1.5">
-          {variants.map(swatch => {
-            const isActive = (activeVariantId ?? product.id) === swatch.id;
-            return (
-              <button
-                key={swatch.id}
-                onClick={() => onSelectVariant(swatch)}
-                title={swatch.colorName}
-                className={`w-4 h-4 rounded-full shrink-0 transition-all duration-150 ${
-                  isActive
-                    ? "ring-2 ring-offset-1 ring-[var(--background)] scale-110"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-                style={{
-                  backgroundColor: swatch.colorHex === "#multicolor"
-                    ? undefined
-                    : swatch.colorHex,
-                  background: swatch.colorHex === "#multicolor"
-                    ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                    : swatch.colorHex,
-                  boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
-                }}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Empty slot placeholder ───────────────────────────────────────────────────
-
-function EmptySlot({ slot, isActive }: { slot: typeof SLOTS[number]; isActive: boolean }) {
-  return (
-    <div className={`w-full h-full flex flex-col items-center justify-center gap-2 transition-opacity ${
-      isActive ? "opacity-100" : "opacity-40"
-    }`}>
-      <div className="text-[var(--foreground-subtle)]">
-        <SlotIcon id={slot.id} size={22} />
-      </div>
-      <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] font-medium">
-        {slot.label}
-      </p>
-    </div>
-  );
-}
-
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function BuilderPage() {
+  // ── State ────────────────────────────────────────────────────────────────
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
-  // Stores the active variant swatch ID per slot (overrides the primary's image in the canvas)
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [aiMatch, setAiMatch] = useState(false);
+  const [catalogCategory, setCatalogCategory] = useState<SlotId | null>(null);
   const [likedOnly, setLikedOnly] = useState(false);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
+  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  const [shopAdded, setShopAdded] = useState(false);
 
   const { likedProducts } = useLikes();
+  const { addManyToCart } = useCart();
 
-  // ── Generation state ──────────────────────────────────────────────────────
+  // Generation state
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedModel, setGeneratedModel] = useState<string>("ai");
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/products")
       .then(r => r.json())
@@ -184,14 +115,26 @@ export default function BuilderPage() {
       .catch(() => {});
   }, []);
 
-  // Style keywords derived from currently selected pieces
+  // ── Derived values ────────────────────────────────────────────────────────
   const styleKeywords = useMemo<StyleKeyword[]>(() =>
     Array.from(new Set(
       Object.values(selection).filter(Boolean).flatMap(p => p!.styleKeywords)
     )) as StyleKeyword[],
   [selection]);
 
-  // Sync selection to URL params so outfit can be shared / restored on back
+  const totalPrice = useMemo(() =>
+    Object.values(selection).reduce((sum, p) => sum + (p?.priceMin ?? 0), 0),
+  [selection]);
+
+  const selectedCount = Object.values(selection).filter(Boolean).length;
+
+  const uniqueBrandCount = useMemo(() =>
+    new Set(Object.values(selection).filter(Boolean).map(p => p!.brand)).size,
+  [selection]);
+
+  const [lookNumber] = useState(() => String(Math.floor(Math.random() * 999) + 1).padStart(3, "0"));
+
+  // ── URL persistence ───────────────────────────────────────────────────────
   const updateURL = useCallback((sel: Partial<Record<SlotId, Product>>, variants?: Partial<Record<SlotId, string>>) => {
     const url = new URL(window.location.href);
     SLOTS.forEach(({ id }) => {
@@ -232,10 +175,26 @@ export default function BuilderPage() {
     }
   }, [products]);
 
-  // Products for current slot with search filter + AI match scoring
-  const { slotProducts, slotScores } = useMemo(() => {
-    const slot = SLOTS.find(s => s.id === activeSlot)!;
-    let list = products.filter(p => slot.categories.includes(p.category));
+  // ── Filtered product list for the right-panel catalog ────────────────────
+
+  // Brands available in the current category filter (for the brand multi-select)
+  const availableBrands = useMemo(() => {
+    const base = catalogCategory
+      ? products.filter(p => {
+          const slot = SLOTS.find(s => s.id === catalogCategory)!;
+          return slot.categories.includes(p.category);
+        })
+      : products;
+    return Array.from(new Set(base.map(p => p.brand))).sort() as Brand[];
+  }, [catalogCategory, products]);
+
+  const catalogProducts = useMemo(() => {
+    let list = catalogCategory
+      ? products.filter(p => {
+          const slot = SLOTS.find(s => s.id === catalogCategory)!;
+          return slot.categories.includes(p.category);
+        })
+      : products;
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -245,44 +204,52 @@ export default function BuilderPage() {
       );
     }
 
-    const scores: Record<string, number> = {};
-    list.forEach(p => {
-      scores[p.id] = p.styleKeywords.filter(k => styleKeywords.includes(k)).length;
-    });
-
     if (likedOnly) {
       list = list.filter(p => likedProducts.includes(p.id));
     }
 
-    if (aiMatch && styleKeywords.length > 0) {
-      list = [...list].sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0));
+    if (maxPrice !== null) {
+      list = list.filter(p => p.priceMin <= maxPrice);
     }
 
-    return { slotProducts: list, slotScores: scores };
-  }, [activeSlot, products, search, aiMatch, styleKeywords, likedOnly, likedProducts]);
+    if (selectedBrands.length > 0) {
+      list = list.filter(p => selectedBrands.includes(p.brand as Brand));
+    }
 
-  const totalPrice = useMemo(() =>
-    Object.values(selection).reduce((sum, p) => sum + (p?.priceMin ?? 0), 0),
-  [selection]);
+    if (sortBy === "price-asc") {
+      list = [...list].sort((a, b) => a.priceMin - b.priceMin);
+    } else if (sortBy === "price-desc") {
+      list = [...list].sort((a, b) => b.priceMin - a.priceMin);
+    }
 
-  const selectedCount = Object.values(selection).filter(Boolean).length;
+    return list;
+  }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
+
+  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured";
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
+  // Auto-routes product into the correct slot based on its category.
+  // Replaces any existing selection in that slot (toggle off if already selected).
   const selectProduct = (product: Product) => {
+    const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
+    if (!targetSlot) return;
+    const slotId = targetSlot.id;
+
     setSelection(prev => {
       const next = { ...prev };
-      if (next[activeSlot]?.id === product.id) {
-        delete next[activeSlot];
-        setVariantOverrides(vo => { const n = { ...vo }; delete n[activeSlot]; return n; });
+      if (next[slotId]?.id === product.id) {
+        delete next[slotId];
+        setVariantOverrides(vo => { const n = { ...vo }; delete n[slotId]; return n; });
       } else {
-        next[activeSlot] = product;
-        setVariantOverrides(vo => { const n = { ...vo }; delete n[activeSlot]; return n; });
+        next[slotId] = product;
+        setVariantOverrides(vo => { const n = { ...vo }; delete n[slotId]; return n; });
       }
       updateURL(next);
       return next;
     });
     setSaved(false);
+    setActiveSlot(slotId);
   };
 
   const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
@@ -312,6 +279,30 @@ export default function BuilderPage() {
     setSaved(false);
   };
 
+  const clearFilters = () => {
+    setMaxPrice(null);
+    setSelectedBrands([]);
+    setSortBy("featured");
+  };
+
+  const shopTheLook = () => {
+    const pieces = Object.values(selection).filter(Boolean) as Product[];
+    if (pieces.length === 0) return;
+    addManyToCart(pieces.map(p => {
+      const officialRetailer = p.retailers.find(r => r.isOfficial) ?? p.retailers[0] ?? null;
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        imageUrl: p.imageUrl,
+        price: p.priceMin,
+        retailerUrl: officialRetailer?.url ?? null,
+      };
+    }));
+    setShopAdded(true);
+    setTimeout(() => setShopAdded(false), 2000);
+  };
+
   const shareOutfit = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -332,7 +323,6 @@ export default function BuilderPage() {
       const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
       let updated;
       if (editId && existing.some((o) => o.id === editId)) {
-        // Update existing look in-place, preserve original savedAt
         updated = existing.map((o) =>
           o.id === editId ? { ...o, pieces, totalPrice, styleKeywords } : o
         );
@@ -345,8 +335,7 @@ export default function BuilderPage() {
     setSaved(true);
   };
 
-  // ── DALL-E generation ─────────────────────────────────────────────────────
-
+  // ── DALL-E / GPT-Image generation ─────────────────────────────────────────
   const generateOutfit = async () => {
     setGenerating(true);
     setGenerateError(null);
@@ -395,389 +384,1153 @@ export default function BuilderPage() {
   return (
     <div className="h-screen pt-16 flex flex-col overflow-hidden">
 
-      {/* ── Header bar ── */}
-      <div className="h-11 shrink-0 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-2 md:gap-3">
-          <Link
-            href="/browse"
-            className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M7 1.5L3 5L7 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Browse
-          </Link>
-          <span className="text-[var(--border-strong)] text-xs">·</span>
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-            Builder
-          </p>
-          {selectedCount > 0 && (
-            <span className="text-[10px] text-[var(--foreground-muted)] animate-fade-in">
-              — {selectedCount}/{SLOTS.length}
-            </span>
-          )}
-        </div>
+      {/* ─────────────────────────────────────────────────────────────────────
+          BUILDER CONTEXT BAR — utility only, no site nav duplication.
+          Context label left · Share / Clear actions right (conditional).
+          Site nav above handles all primary navigation.
+      ───────────────────────────────────────────────────────────────────────── */}
+      <header className="h-10 shrink-0 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-5 md:px-7">
 
-        <div className="flex items-center gap-3 md:gap-4">
-          {selectedCount > 0 && (
-            <>
-              <button
-                onClick={shareOutfit}
-                className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                  <circle cx="10" cy="2" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <circle cx="10" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <circle cx="2" cy="6" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <path d="M8.5 2.8L3.5 5.3M3.5 6.7L8.5 9.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                </svg>
-                {copied ? "Copied!" : "Share"}
-              </button>
-              <button
-                onClick={clearAll}
-                className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                Clear
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+        {/* Left: context label */}
+        <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+          Create
+        </p>
 
-      {/* ── Main two-panel layout ── */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ─── LEFT: Product picker ─── */}
-        <aside className="w-[240px] md:w-[280px] lg:w-[300px] shrink-0 border-r border-[var(--border)] bg-[var(--background)] flex flex-col overflow-hidden">
-
-          {/* Slot tabs */}
-          <div className="grid grid-cols-4 border-b border-[var(--border)] shrink-0">
-            {SLOTS.map(slot => {
-              const isActive = activeSlot === slot.id;
-              const hasPick = !!selection[slot.id];
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => setActiveSlot(slot.id)}
-                  title={slot.label}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 py-3 transition-colors duration-150 ${
-                    isActive
-                      ? "bg-[var(--foreground)] text-[var(--background)]"
-                      : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
-                  }`}
-                >
-                  <SlotIcon id={slot.id} size={14} />
-                  <span className="text-[8px] tracking-[0.08em] uppercase font-medium leading-none">
-                    {slot.label}
-                  </span>
-                  {hasPick && (
-                    <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
-                      isActive ? "bg-[var(--background)]" : "bg-[var(--foreground)]"
-                    }`} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search + filters */}
-          <div className="px-2.5 py-2 border-b border-[var(--border)] shrink-0 flex items-center gap-1.5">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search…"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none pl-2.5 pr-7 py-1.5 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-              />
-              {search ? (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
-                >
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                    <path d="M1 1L8 8M8 1L1 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              ) : (
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M9 9L11.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                </span>
-              )}
-            </div>
+        {/* Right: utility actions — only visible when something is selected */}
+        {selectedCount > 0 && (
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => setLikedOnly(v => !v)}
-              title="Show liked items only"
-              className={`shrink-0 flex items-center justify-center w-7 h-7 border transition-colors ${
-                likedOnly
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
+              onClick={shareOutfit}
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-              </svg>
+              {copied ? "Copied!" : "Share"}
             </button>
-            {selectedCount > 0 && (
+            <button
+              onClick={clearAll}
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </header>
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          3-COLUMN BODY
+          relative wrapper bounds the AI drawer overlay
+      ───────────────────────────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div className="hidden md:grid md:h-full md:grid-cols-[300px_1fr_360px]">
+
+          {/* ── LEFT PANEL: In this look ───────────────────────────────────
+              Shows the current selection grouped by slot.
+              Full slot-row rebuild deferred to next step.
+          ─────────────────────────────────────────────────────────────────── */}
+          <aside className="hidden md:flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden">
+
+            {/* Panel header */}
+            <div className="px-6 pt-5 pb-3 shrink-0">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-1">
+                In this look
+              </p>
+              <p className="font-display text-[22px] font-light text-[var(--foreground)]">
+                {selectedCount > 0
+                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}`
+                  : "Empty"}
+              </p>
+            </div>
+
+            {/* Slot rows */}
+            <div className="flex-1 overflow-y-auto border-t border-[var(--border)]">
+              {SLOTS.map(slot => {
+                const picked = selection[slot.id];
+                const variantId = variantOverrides[slot.id];
+                const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+
+                return (
+                  <button
+                    key={slot.id}
+                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                    className={`w-full grid grid-cols-[60px_1fr_auto] gap-3 px-5 py-3 items-center border-b border-[var(--border)] min-h-[80px] text-left transition-colors duration-150 hover:bg-[var(--surface)] ${
+                      activeSlot === slot.id ? "bg-[var(--surface)]" : ""
+                    }`}
+                  >
+                    {/* Thumbnail / slot icon */}
+                    <div className="w-[60px] h-[74px] bg-[var(--surface)] shrink-0 overflow-hidden flex items-center justify-center">
+                      {displayImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={displayImage}
+                          alt={picked!.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-[var(--foreground-subtle)] opacity-50">
+                          <SlotIcon id={slot.id} size={18} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="min-w-0">
+                      <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-0.5">
+                        {slot.label}
+                      </p>
+                      {picked ? (
+                        <>
+                          <p className="text-[12px] leading-snug text-[var(--foreground)] truncate">{picked.name}</p>
+                          <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5 truncate">{picked.brand}</p>
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-[var(--foreground-subtle)]">—</p>
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="shrink-0 text-right">
+                      {picked && (
+                        <p className="text-[11px] text-[var(--foreground)]">
+                          ${picked.priceMin.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Total price footer */}
+            <div className={`border-t px-5 py-4 shrink-0 flex items-baseline justify-between transition-colors ${
+              selectedCount > 0 ? "border-[var(--border-strong)]" : "border-[var(--border)]"
+            }`}>
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">
+                Total
+              </p>
+              <p className={`font-display font-light transition-all ${
+                selectedCount > 0
+                  ? "text-[22px] text-[var(--foreground)]"
+                  : "text-[18px] text-[var(--foreground-subtle)]"
+              }`}>
+                {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+              </p>
+            </div>
+          </aside>
+
+          {/* ── CENTER PANEL: Outfit canvas — RUNWAY silhouette ───────────────
+              Vertical fashion-plate: Outerwear → Top → Bottom → Shoes stacked,
+              Accessories as a small floating panel to the right.
+              Empty zones: diagonal stripe + dashed border + icon + label.
+              Filled zones: product image + hover overlay (dim, info, swatches).
+          ─────────────────────────────────────────────────────────────────── */}
+          <main className="flex flex-col min-h-0 overflow-hidden bg-[var(--surface)]">
+
+            {/* Canvas top bar */}
+            <div className="h-9 shrink-0 flex items-center px-5 border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)]">
+                {selectedCount > 0 ? `Look ${lookNumber}` : "Look —"}
+              </p>
+            </div>
+
+            {/* Silhouette zone — centered fashion plate */}
+            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-8 px-6">
+              {/* Container: 240px main figure + 20px gap + 60px accessories = 320px */}
+              <div className="relative h-full max-h-[460px]" style={{ width: 320 }}>
+
+                {/* Main stacked figure: outerwear → top → bottom → shoes */}
+                <div className="absolute inset-y-0 left-0 flex flex-col" style={{ width: 240 }}>
+                  {FIGURE_SLOTS.map(({ id, label, flex }) => {
+                    const picked = selection[id];
+                    const variantId = variantOverrides[id];
+                    const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                    const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                    const isActive = activeSlot === id;
+
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
+                        style={{ flex }}
+                        className={`group relative w-full overflow-hidden transition-all duration-200 border-b border-[var(--border)] last:border-b-0 ${
+                          isActive ? "ring-1 ring-inset ring-[var(--foreground)] z-10" : ""
+                        }`}
+                      >
+                        {/* Empty: diagonal stripe */}
+                        {!picked && (
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)",
+                            }}
+                          />
+                        )}
+                        {/* Empty: dashed border */}
+                        {!picked && (
+                          <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
+                        )}
+
+                        {/* Filled: product image */}
+                        {displayImage && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={displayImage}
+                            alt={picked!.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        )}
+                        {/* Filled: hover dim */}
+                        {picked && (
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors duration-200" />
+                        )}
+
+                        {/* Empty: icon + label */}
+                        {!picked && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+                            <div className="text-[var(--foreground-subtle)] opacity-30">
+                              <SlotIcon id={id} size={14} />
+                            </div>
+                            <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] opacity-40">
+                              {label}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Filled: slot label badge top-left */}
+                        {picked && (
+                          <div className="absolute top-2 left-2 pointer-events-none">
+                            <span className="font-mono text-[7px] tracking-[0.12em] uppercase font-medium bg-[var(--background)]/80 backdrop-blur-sm text-[var(--foreground)] px-1.5 py-0.5">
+                              {label}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Filled: variant swatches top-right on hover */}
+                        {picked && (picked.variants?.length ?? 0) > 1 && (
+                          <div
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 pointer-events-none group-hover:pointer-events-auto"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {picked.variants!.slice(0, 5).map(swatch => {
+                              const isSwatchActive = (variantId ?? picked.id) === swatch.id;
+                              return (
+                                <button
+                                  key={swatch.id}
+                                  title={swatch.colorName}
+                                  onClick={e => { e.stopPropagation(); selectVariant(id, swatch); }}
+                                  className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
+                                    isSwatchActive
+                                      ? "ring-1 ring-offset-1 ring-[var(--background)] scale-110"
+                                      : "opacity-70 hover:opacity-100"
+                                  }`}
+                                  style={{
+                                    background: swatch.colorHex === "#multicolor"
+                                      ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                      : swatch.colorHex,
+                                    boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Filled: info strip bottom on hover */}
+                        {picked && (
+                          <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 translate-y-px group-hover:translate-y-0 transition-all duration-200 px-2 pb-2">
+                            <div className="bg-[var(--background)]/90 backdrop-blur-sm px-2.5 py-1.5 flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] truncate leading-none mb-0.5">
+                                  {picked.brand}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] text-[var(--foreground)] truncate leading-tight">
+                                    {picked.name}
+                                  </p>
+                                  <Link
+                                    href={`/product/${picked.id}`}
+                                    onClick={e => e.stopPropagation()}
+                                    className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] shrink-0 hover:text-[var(--foreground)] transition-colors"
+                                  >
+                                    ↗
+                                  </Link>
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-2">
+                                <span className="font-mono text-[10px] text-[var(--foreground)]">
+                                  ${picked.priceMin.toLocaleString()}
+                                </span>
+                                <button
+                                  onClick={e => clearSlot(id, e)}
+                                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors text-base leading-none"
+                                  aria-label={`Remove ${label}`}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Accessories: small floating panel — right column, vertically centered */}
+                {(() => {
+                  const id: SlotId = "accessories";
+                  const picked = selection[id];
+                  const variantId = variantOverrides[id];
+                  const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                  const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                  const isActive = activeSlot === id;
+                  return (
+                    <button
+                      onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
+                      className={`group absolute right-0 overflow-hidden transition-all duration-200 ${
+                        isActive ? "ring-1 ring-[var(--foreground)]" : ""
+                      }`}
+                      style={{ top: "50%", transform: "translateY(-50%)", width: 60, height: 74 }}
+                    >
+                      {/* Empty: stripe + dashed border */}
+                      {!picked && (
+                        <>
+                          <div
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)",
+                            }}
+                          />
+                          <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+                            <div className="text-[var(--foreground-subtle)] opacity-30">
+                              <SlotIcon id={id} size={10} />
+                            </div>
+                            <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] opacity-40">
+                              Acc
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Filled: product image */}
+                      {displayImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                      )}
+                      {/* Filled: hover dim + remove */}
+                      {picked && (
+                        <>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200" />
+                          <button
+                            onClick={e => clearSlot(id, e)}
+                            className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--background)]/85 text-[var(--foreground)] text-xs font-medium"
+                            aria-label="Remove accessory"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 pb-1 pointer-events-none">
+                            <p className="font-mono text-[7px] tracking-[0.08em] uppercase text-center text-white opacity-0 group-hover:opacity-70 transition-opacity">
+                              Acc
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Canvas bottom bar */}
+            <div className="h-8 shrink-0 flex items-center justify-center border-t border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                Edit · Drag to reorder
+              </p>
+            </div>
+
+          </main>
+
+          {/* ── RIGHT PANEL: Category catalog — RUNWAY design ──────────────
+              Search → category chips → 2-column product grid.
+              Products auto-route to the correct slot via category mapping.
+              Clicking a canvas zone syncs the chip filter to that category.
+          ─────────────────────────────────────────────────────────────────── */}
+          <aside className="hidden md:flex flex-col border-l border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden">
+
+            {/* Panel header: catalog label + stylist trigger */}
+            <div className="px-3 pt-2.5 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                Catalog
+              </p>
               <button
-                onClick={() => setAiMatch(v => !v)}
-                title="Sort by style compatibility"
-                className={`shrink-0 px-2 py-1.5 text-[8px] tracking-[0.1em] uppercase font-medium border transition-colors ${
-                  aiMatch
-                    ? "border-[var(--foreground)] text-[var(--foreground)]"
-                    : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                onClick={() => setAiOpen(v => !v)}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase transition-colors duration-150 ${
+                  aiOpen
+                    ? "text-[var(--foreground)]"
+                    : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
                 }`}
               >
-                ✦ Match
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  aiOpen ? "bg-[var(--foreground)]" : "bg-[var(--foreground-subtle)] animate-pulse"
+                }`} />
+                Stylist
               </button>
-            )}
-          </div>
-
-          {/* Active slot context — selected piece or item count */}
-          <div className="px-3 py-2 border-b border-[var(--border)] shrink-0 min-h-[2.75rem] flex items-center">
-            {selection[activeSlot] ? (
-              <div className="flex items-center gap-2 w-full min-w-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selection[activeSlot]!.variants?.find(v => v.id === variantOverrides[activeSlot])?.imageUrl ?? selection[activeSlot]!.imageUrl}
-                  alt=""
-                  className="w-6 h-6 object-cover shrink-0"
-                />
-                <p className="text-[10px] text-[var(--foreground)] truncate font-medium flex-1 min-w-0">
-                  {selection[activeSlot]!.name}
-                </p>
-                <button
-                  onClick={() => clearSlot(activeSlot)}
-                  className="shrink-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                    <path d="M1 1L8 8M8 1L1 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <p className="text-[10px] text-[var(--foreground-subtle)]">
-                {slotProducts.length} items
-              </p>
-            )}
-          </div>
-
-          {/* Scrollable product list */}
-          <div className="flex-1 overflow-y-auto">
-            {slotProducts.length === 0 ? (
-              <div className="py-10 px-4 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  {likedOnly ? "No liked items in this category." : search ? "No items match." : "No items in this category."}
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[var(--border)]">
-                {slotProducts.map(product => (
-                  <ProductRow
-                    key={product.id}
-                    product={product}
-                    selected={selection[activeSlot]?.id === product.id}
-                    matchScore={slotScores[product.id] ?? 0}
-                    activeVariantId={variantOverrides[activeSlot]}
-                    onSelect={() => selectProduct(product)}
-                    onSelectVariant={(swatch) => selectVariant(activeSlot, swatch)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* ─── RIGHT: Outfit canvas ─── */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--surface)]">
-
-          {/* 2 × 2 grid — fills all available height, no scroll needed */}
-          <div className="flex-1 overflow-hidden grid grid-cols-2 grid-rows-2 gap-px bg-[var(--border)]">
-            {SLOTS.map(slot => {
-              const picked = selection[slot.id];
-              const isActive = activeSlot === slot.id;
-              const variantId = variantOverrides[slot.id];
-              const activeVariant = picked?.variants?.find(v => v.id === variantId);
-              const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => setActiveSlot(slot.id)}
-                  className={`group relative block overflow-hidden bg-[var(--background)] transition-all duration-200 ${
-                    isActive ? "ring-2 ring-inset ring-[var(--foreground)] z-10" : ""
-                  }`}
-                >
-                  {picked ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={displayImage}
-                        alt={picked.name}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Hover overlay */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors duration-300" />
-
-                      {/* Info card — slides up on hover */}
-                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 translate-y-1 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-250">
-                        <div className="bg-[var(--background)]/92 backdrop-blur-sm px-3 py-2.5">
-                          <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-0.5">
-                            {picked.brand}
-                          </p>
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-[11px] text-[var(--foreground)] truncate flex-1">{picked.name}</p>
-                            <Link
-                              href={`/product/${picked.id}`}
-                              onClick={e => e.stopPropagation()}
-                              className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground)] shrink-0 hover:opacity-50 transition-opacity"
-                            >
-                              View →
-                            </Link>
-                          </div>
-                          <div className="flex items-center justify-between mt-1.5">
-                            <p className="text-[11px] font-medium text-[var(--foreground)]">
-                              ${picked.priceMin.toLocaleString()}
-                            </p>
-                            <button
-                              onClick={e => clearSlot(slot.id, e)}
-                              className="text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          {/* Color variant swatches in canvas hover card */}
-                          {(picked.variants?.length ?? 0) > 1 && (
-                            <div className="flex items-center gap-1.5 mt-2" onClick={e => e.stopPropagation()}>
-                              {picked.variants!.map(swatch => {
-                                const isSwatchActive = (variantId ?? picked.id) === swatch.id;
-                                return (
-                                  <button
-                                    key={swatch.id}
-                                    title={swatch.colorName}
-                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, swatch); }}
-                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${
-                                      isSwatchActive
-                                        ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
-                                        : "opacity-60 hover:opacity-100"
-                                    }`}
-                                    style={{
-                                      background: swatch.colorHex === "#multicolor"
-                                        ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                        : swatch.colorHex,
-                                      boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Slot badge */}
-                      <div className="absolute top-2.5 left-2.5">
-                        <span className="text-[7px] tracking-[0.14em] uppercase font-medium bg-white/85 backdrop-blur-sm text-black px-1.5 py-0.5">
-                          {slot.label}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <EmptySlot slot={slot} isActive={isActive} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ── Action bar ── */}
-          <div className="h-14 shrink-0 border-t border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-4 md:px-6">
-
-            {/* Price + style tags */}
-            <div className="flex items-center gap-4 min-w-0">
-              {selectedCount > 0 ? (
-                <p className="font-display text-xl font-light text-[var(--foreground)] whitespace-nowrap">
-                  ${totalPrice.toLocaleString()}
-                  <span className="text-[10px] font-sans text-[var(--foreground-muted)] ml-1.5 font-normal">total</span>
-                </p>
-              ) : (
-                <p className="text-xs text-[var(--foreground-muted)]">Select pieces to start</p>
-              )}
-
-              {styleKeywords.length > 0 && (
-                <div className="hidden lg:flex items-center gap-1.5 flex-wrap overflow-hidden max-h-6">
-                  {styleKeywords.slice(0, 3).map(kw => (
-                    <span
-                      key={kw}
-                      className="text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] px-2 py-0.5 whitespace-nowrap"
-                    >
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* Buttons */}
-            {selectedCount >= 2 && (
-              <div className="flex items-center gap-2">
-                {/* Generate with DALL-E */}
-                <button
-                  onClick={generateOutfit}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 text-xs tracking-[0.14em] uppercase font-medium border border-[var(--foreground)] text-[var(--foreground)] px-4 py-2.5 hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {generating ? (
-                    <>
-                      <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                      Generating…
-                    </>
-                  ) : (
-                    <>
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                      Generate
-                    </>
-                  )}
-                </button>
+            {/* Search input */}
+            <div className="px-3 pt-3 pb-2.5 shrink-0">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search products…"
+                  className="w-full h-[38px] bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-9 pr-8 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                </span>
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
 
-                {/* Save */}
+            {/* Category chips */}
+            <div className="px-3 pb-2.5 shrink-0 flex gap-1.5 overflow-x-auto">
+              {CATALOG_CHIPS.map(({ label, slotId }) => {
+                const isActive = catalogCategory === slotId;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setCatalogCategory(slotId)}
+                    className={`shrink-0 px-3 py-1 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase font-medium border transition-all duration-150 ${
+                      isActive
+                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filter toggle row */}
+            <div className="px-3 pb-1.5 shrink-0 flex items-center justify-between">
+              <button
+                onClick={() => setFiltersOpen(v => !v)}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                  hasActiveFilters || filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                  <line x1="1" y1="3.5" x2="13" y2="3.5" />
+                  <line x1="3" y1="7" x2="11" y2="7" />
+                  <line x1="5" y1="10.5" x2="9" y2="10.5" />
+                </svg>
+                Filters{hasActiveFilters ? ` · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0)}` : ""}
+              </button>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
                 <button
-                  onClick={saveOutfit}
-                  className={`text-xs tracking-[0.14em] uppercase font-medium px-4 py-2.5 transition-all duration-200 ${
-                    saved
-                      ? "border border-[var(--border)] text-[var(--foreground-muted)]"
-                      : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
+                  onClick={() => setSortBy(s => s === "featured" ? "price-asc" : s === "price-asc" ? "price-desc" : "featured")}
+                  className={`font-mono text-[9px] tracking-[0.08em] uppercase transition-colors ${
+                    sortBy !== "featured" ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  {saved ? "Saved ✓" : "Save"}
+                  {sortBy === "price-asc" ? "Price ↑" : sortBy === "price-desc" ? "Price ↓" : "Sort"}
                 </button>
-                {saved && (
-                  <Link
-                    href="/saved?tab=looks"
-                    className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                  >
-                    View →
-                  </Link>
+              </div>
+            </div>
+
+            {/* Expandable filter panel */}
+            {filtersOpen && (
+              <div className="px-3 pb-2.5 shrink-0 border-b border-[var(--border)] space-y-2.5">
+                {/* Price buckets */}
+                <div>
+                  <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Price</p>
+                  <div className="flex flex-wrap gap-1">
+                    {PRICE_BUCKETS.map(({ label, max }) => (
+                      <button
+                        key={label}
+                        onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                        className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                          maxPrice === max
+                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Brand multi-select */}
+                {availableBrands.length > 0 && (
+                  <div>
+                    <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Brand</p>
+                    <div className="flex flex-wrap gap-1 max-h-[72px] overflow-y-auto">
+                      {availableBrands.map(brand => {
+                        const isActive = selectedBrands.includes(brand);
+                        return (
+                          <button
+                            key={brand}
+                            onClick={() => setSelectedBrands(prev =>
+                              isActive ? prev.filter(b => b !== brand) : [...prev, brand]
+                            )}
+                            className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                              isActive
+                                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            {brand}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Error message */}
-            {generateError && (
-              <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
-                {generateError}
+            {/* Count + liked toggle */}
+            <div className="px-3 pb-2.5 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
+                {catalogProducts.length} {catalogProducts.length === 1 ? "item" : "items"}
               </p>
+              <button
+                onClick={() => setLikedOnly(v => !v)}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                  likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                </svg>
+                Liked
+              </button>
+            </div>
+
+            {/* 2-column product grid */}
+            <div className="flex-1 overflow-y-auto">
+              {catalogProducts.length === 0 ? (
+                <div className="py-12 px-4 text-center">
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                    {likedOnly ? "No liked items" : search ? "No results" : "No products"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 p-3">
+                  {catalogProducts.map(product => {
+                    const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
+                    const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
+                    const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
+                    const activeVariant = product.variants?.find(v => v.id === variantId);
+                    const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
+
+                    return (
+                      <button
+                        key={product.id}
+                        onClick={() => selectProduct(product)}
+                        className={`group relative flex flex-col text-left transition-all duration-150 ${
+                          isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
+                        }`}
+                      >
+                        {/* Image — 3/4 aspect ratio */}
+                        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={displayImage}
+                            alt={product.name}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {/* Dim overlay on hover */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+                          {/* Selected checkmark badge */}
+                          {isSelected && (
+                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* Product info */}
+                        <div className="pt-1.5 pb-1 px-0.5">
+                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">
+                            {product.name}
+                          </p>
+                          <div className="flex items-center justify-between mt-0.5 gap-1">
+                            <p className="text-[10px] text-[var(--foreground-muted)] truncate">
+                              {product.brand}
+                            </p>
+                            <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">
+                              ${product.priceMin.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+
+        {/* ── MOBILE LAYOUT ─────────────────────────────────────────────────
+            Visible below md breakpoint only. Stacked single-column layout:
+            mini-canvas → slot strip → search+chips → product grid → bottom bar.
+        ───────────────────────────────────────────────────────────────────── */}
+        <div className="md:hidden h-full flex flex-col overflow-hidden">
+
+          {/* 1. Mini silhouette canvas */}
+          <div className="h-[220px] shrink-0 bg-[var(--surface)] border-b border-[var(--border)] relative overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative h-full" style={{ width: 180 }}>
+
+                {/* Main stacked figure */}
+                <div className="absolute inset-y-0 left-0 flex flex-col" style={{ width: 140 }}>
+                  {FIGURE_SLOTS.map(({ id, label, flex }) => {
+                    const picked = selection[id];
+                    const variantId = variantOverrides[id];
+                    const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                    const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
+                        style={{ flex }}
+                        className={`relative overflow-hidden border-b border-[var(--border)] last:border-b-0 transition-all ${
+                          activeSlot === id ? "ring-1 ring-inset ring-[var(--foreground)] z-10" : ""
+                        }`}
+                      >
+                        {!picked && (
+                          <>
+                            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
+                            <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+                              <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={11} /></div>
+                              <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] opacity-40">{label}</p>
+                            </div>
+                          </>
+                        )}
+                        {displayImage && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Accessories — floating mini panel */}
+                {(() => {
+                  const id: SlotId = "accessories";
+                  const picked = selection[id];
+                  const displayImage = picked?.imageUrl;
+                  return (
+                    <button
+                      onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
+                      className={`absolute right-0 overflow-hidden border transition-all ${
+                        activeSlot === id ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]" : "border-[var(--border)]"
+                      }`}
+                      style={{ top: "50%", transform: "translateY(-50%)", width: 36, height: 44 }}
+                    >
+                      {!picked && (
+                        <>
+                          <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
+                          <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={9} /></div>
+                          </div>
+                        </>
+                      )}
+                      {displayImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Canvas label overlay */}
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 h-8 pointer-events-none">
+              <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                {selectedCount > 0 ? `Look ${lookNumber}` : "Look —"}
+              </p>
+              {selectedCount > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors pointer-events-auto"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Slot strip — horizontal scrollable thumbnails */}
+          <div
+            className="shrink-0 flex gap-2 px-3 py-2.5 border-b border-[var(--border)] overflow-x-auto"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {SLOTS.map(slot => {
+              const picked = selection[slot.id];
+              const variantId = variantOverrides[slot.id];
+              const activeVariant = picked?.variants?.find(v => v.id === variantId);
+              const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+              const isActive = activeSlot === slot.id;
+              return (
+                <div
+                  key={slot.id}
+                  className={`shrink-0 flex flex-col items-center gap-1 transition-opacity ${isActive ? "opacity-100" : "opacity-60"}`}
+                >
+                  {/* Thumbnail tap area */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                    onKeyDown={e => e.key === "Enter" && (setActiveSlot(slot.id), setCatalogCategory(slot.id))}
+                    className={`relative overflow-hidden bg-[var(--surface)] transition-all cursor-pointer ${
+                      isActive ? "ring-1 ring-[var(--foreground)]" : "border border-[var(--border)]"
+                    }`}
+                    style={{ width: 52, height: 64 }}
+                  >
+                    {displayImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-[var(--foreground-subtle)] opacity-35"><SlotIcon id={slot.id} size={11} /></div>
+                        </div>
+                      </>
+                    )}
+                    {picked && (
+                      <button
+                        onClick={e => clearSlot(slot.id, e)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center bg-[var(--background)]/85 text-[var(--foreground)] text-xs leading-none font-medium"
+                        aria-label={`Remove ${slot.label}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
+                    {slot.label.length > 5 ? slot.label.slice(0, 3) : slot.label}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 3. Search */}
+          <div className="px-3 pt-2.5 pb-1.5 shrink-0">
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search products…"
+                className="w-full h-[38px] bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-9 pr-8 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                  <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              </span>
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 4. Category chips */}
+          <div className="px-3 pb-2 shrink-0 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {CATALOG_CHIPS.map(({ label, slotId }) => {
+              const isActive = catalogCategory === slotId;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setCatalogCategory(slotId)}
+                  className={`shrink-0 px-3 py-1 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase font-medium border transition-all duration-150 ${
+                    isActive
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 4b. Mobile filter toggle row */}
+          <div className="px-3 pb-1.5 shrink-0 flex items-center justify-between">
+            <button
+              onClick={() => setFiltersOpen(v => !v)}
+              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                hasActiveFilters || filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                <line x1="1" y1="3.5" x2="13" y2="3.5" />
+                <line x1="3" y1="7" x2="11" y2="7" />
+                <line x1="5" y1="10.5" x2="9" y2="10.5" />
+              </svg>
+              Filters{hasActiveFilters ? ` · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0)}` : ""}
+            </button>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setSortBy(s => s === "featured" ? "price-asc" : s === "price-asc" ? "price-desc" : "featured")}
+                className={`font-mono text-[9px] tracking-[0.08em] uppercase transition-colors ${
+                  sortBy !== "featured" ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+                }`}
+              >
+                {sortBy === "price-asc" ? "Price ↑" : sortBy === "price-desc" ? "Price ↓" : "Sort"}
+              </button>
+            </div>
+          </div>
+
+          {/* 4c. Mobile expandable filter panel */}
+          {filtersOpen && (
+            <div className="px-3 pb-2 shrink-0 border-b border-[var(--border)] space-y-2.5">
+              <div>
+                <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Price</p>
+                <div className="flex flex-wrap gap-1">
+                  {PRICE_BUCKETS.map(({ label, max }) => (
+                    <button
+                      key={label}
+                      onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                      className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                        maxPrice === max
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {availableBrands.length > 0 && (
+                <div>
+                  <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Brand</p>
+                  <div className="flex flex-wrap gap-1 max-h-[64px] overflow-y-auto">
+                    {availableBrands.map(brand => {
+                      const isActive = selectedBrands.includes(brand);
+                      return (
+                        <button
+                          key={brand}
+                          onClick={() => setSelectedBrands(prev =>
+                            isActive ? prev.filter(b => b !== brand) : [...prev, brand]
+                          )}
+                          className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
+                            isActive
+                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                              : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          {brand}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. Count + liked toggle */}
+          <div className="px-3 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
+            <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
+              {catalogProducts.length} {catalogProducts.length === 1 ? "item" : "items"}
+            </p>
+            <button
+              onClick={() => setLikedOnly(v => !v)}
+              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
+                likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+              </svg>
+              Liked
+            </button>
+          </div>
+
+          {/* 6. Product grid — scrollable */}
+          <div className="flex-1 overflow-y-auto">
+            {catalogProducts.length === 0 ? (
+              <div className="py-10 px-4 text-center">
+                <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                  {likedOnly ? "No liked items" : search ? "No results" : "No products"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 p-3">
+                {catalogProducts.map(product => {
+                  const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
+                  const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
+                  const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
+                  const activeVariant = product.variants?.find(v => v.id === variantId);
+                  const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => selectProduct(product)}
+                      className={`group relative flex flex-col text-left transition-all duration-150 ${
+                        isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
+                      }`}
+                    >
+                      <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={displayImage}
+                          alt={product.name}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                              <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-1.5 pb-1 px-0.5">
+                        <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                        <div className="flex items-center justify-between mt-0.5 gap-1">
+                          <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
-        </main>
+
+          {/* 7. Mobile bottom bar */}
+          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] px-4 py-2.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
+              <p className={`font-display font-light leading-none mt-0.5 transition-all ${
+                selectedCount > 0 ? "text-[20px] text-[var(--foreground)]" : "text-[16px] text-[var(--foreground-subtle)]"
+              }`}>
+                {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Stylist — icon button */}
+              <button
+                onClick={() => setAiOpen(v => !v)}
+                className={`w-9 h-9 border flex items-center justify-center transition-all duration-150 shrink-0 ${
+                  aiOpen
+                    ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                }`}
+                aria-label="Open AI Stylist"
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 2h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5l-3 2V3a1 1 0 0 1 1-1z" />
+                </svg>
+              </button>
+              {/* Generate — icon-only on mobile, visible with ≥1 piece */}
+              {selectedCount >= 1 && (
+                <button
+                  onClick={generateOutfit}
+                  disabled={generating}
+                  className="w-9 h-9 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  aria-label="Generate outfit image"
+                >
+                  {generating ? (
+                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={saveOutfit}
+                disabled={selectedCount === 0}
+                className={`font-mono text-[9px] tracking-[0.14em] uppercase px-3 h-9 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+                  saved
+                    ? "border-[var(--border)] text-[var(--foreground-muted)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                }`}
+              >
+                {saved ? "Saved ✓" : "Save"}
+              </button>
+              <button
+                onClick={shopTheLook}
+                disabled={selectedCount === 0}
+                className={`h-9 px-4 font-mono text-[9px] tracking-[0.16em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
+                  selectedCount > 0
+                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : "bg-[var(--border)] text-[var(--foreground-subtle)]"
+                }`}
+              >
+                {shopAdded
+                  ? "Added ✓"
+                  : selectedCount > 0
+                  ? `Shop · $${totalPrice.toLocaleString()}`
+                  : "Shop the Look"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── AI Stylist Drawer ──────────────────────────────────────────────
+            Extracted to StylistDrawer component.
+            Position: absolute within the body wrapper (does not overlay site nav).
+            Full-width on mobile, 380px on desktop.
+        ───────────────────────────────────────────────────────────────────── */}
+        <StylistDrawer
+          isOpen={aiOpen}
+          onClose={() => setAiOpen(false)}
+          surface="builder"
+          products={products}
+          position="absolute"
+          selection={selection}
+          onSelectProduct={selectProduct}
+        />
       </div>
 
-      {/* ── Generated image modal ── */}
+      {/* ─────────────────────────────────────────────────────────────────────
+          BUILDER FOOTER — RUNWAY design
+          Left: piece/brand count  ·  Right: Generate · Save · Shop the Look CTA
+      ───────────────────────────────────────────────────────────────────────── */}
+      <footer className="h-[52px] shrink-0 border-t border-[var(--border)] bg-[var(--background)] hidden md:flex items-center justify-between px-5 md:px-7">
+
+        {/* Left: contextual count */}
+        <p className="font-mono text-[11px] text-[var(--foreground-muted)]">
+          {selectedCount > 0
+            ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} · ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
+            : "Add pieces to build your look"}
+        </p>
+
+        {/* Right: actions */}
+        <div className="flex items-center gap-2.5">
+
+          {/* Generate — shown with ≥1 piece selected */}
+          {selectedCount >= 1 && (
+            <button
+              onClick={generateOutfit}
+              disabled={generating}
+              className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-3 h-8 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              {generating ? (
+                <>
+                  <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                      stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                  </svg>
+                  Generate
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Save */}
+          <button
+            onClick={saveOutfit}
+            disabled={selectedCount === 0}
+            className={`font-mono text-[10px] tracking-[0.14em] uppercase px-3 h-8 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+              saved
+                ? "border-[var(--border)] text-[var(--foreground-muted)]"
+                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            {saved ? "Saved ✓" : "Save"}
+          </button>
+          {saved && (
+            <Link
+              href="/saved?tab=looks"
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              View →
+            </Link>
+          )}
+
+          {/* Shop the Look CTA */}
+          <button
+            onClick={shopTheLook}
+            disabled={selectedCount === 0}
+            className={`flex items-center gap-3 h-[42px] px-5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
+              selectedCount > 0
+                ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
+                : "bg-[var(--border)] text-[var(--foreground-subtle)]"
+            }`}
+          >
+            {shopAdded ? (
+              <span>Added to Cart ✓</span>
+            ) : (
+              <>
+                <span>Shop the Look</span>
+                {selectedCount > 0 && <span>${totalPrice.toLocaleString()}</span>}
+              </>
+            )}
+          </button>
+        </div>
+      </footer>
+
+      {/* ── Generate error toast ──────────────────────────────────────────────── */}
+      {generateError && (
+        <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
+          {generateError}
+        </p>
+      )}
+
+      {/* ── Generated image modal (preserved exactly) ──────────────────────── */}
       {showModal && generatedImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
@@ -787,24 +1540,22 @@ export default function BuilderPage() {
             className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]">
               <div>
-                <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
                   AI Generated Look
                 </p>
-                <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
                   Created with {generatedModel === "gpt-image-1" ? "GPT Image 1" : "DALL·E 3"} · {selectedCount} pieces
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {/* Download */}
                 <a
                   href={generatedImage}
                   download="goo-outfit.png"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                     <path d="M6 1V8M3 6L6 9L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -823,7 +1574,6 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={generatedImage}
@@ -831,14 +1581,13 @@ export default function BuilderPage() {
               className="w-full aspect-square object-cover"
             />
 
-            {/* Regenerate */}
             <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between">
-              <p className="text-[9px] text-[var(--foreground-subtle)] max-w-xs leading-relaxed">
+              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] max-w-xs leading-relaxed">
                 AI-generated image based on selected pieces. May not reflect exact products.
               </p>
               <button
                 onClick={() => { setShowModal(false); generateOutfit(); }}
-                className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+                className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
               >
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                   <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />

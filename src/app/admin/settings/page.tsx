@@ -2,77 +2,136 @@
 
 import { useState, useEffect } from "react";
 
-const KEY_STORAGE = "goo-openai-key";
+interface KeyStatus {
+  configured: boolean;
+  source: "env" | "database" | null;
+  maskedKey?: string;
+}
 
 export default function SettingsPage() {
-  const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<KeyStatus | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  const [inputKey, setInputKey] = useState("");
+  const [showInput, setShowInput] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveOk, setSaveOk] = useState(false);
+
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"ok" | "fail" | null>(null);
   const [testError, setTestError] = useState("");
 
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState("");
+
+  // ── Load key status on mount ──────────────────────────────────────────────
   useEffect(() => {
-    const stored = localStorage.getItem(KEY_STORAGE);
-    if (stored) setApiKey(stored);
+    loadStatus();
   }, []);
 
-  const saveKey = () => {
-    localStorage.setItem(KEY_STORAGE, apiKey.trim());
-    setSaved(true);
-    setTestResult(null);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  async function loadStatus() {
+    setLoadError("");
+    try {
+      const res = await fetch("/api/admin/settings?key=openai_api_key");
+      if (res.status === 401) { setUnauthorized(true); return; }
+      if (!res.ok) { setLoadError("Failed to load settings."); return; }
+      const data: KeyStatus = await res.json();
+      setStatus(data);
+    } catch {
+      setLoadError("Network error loading settings.");
+    }
+  }
 
-  const clearKey = () => {
-    localStorage.removeItem(KEY_STORAGE);
-    setApiKey("");
+  // ── Save new key ──────────────────────────────────────────────────────────
+  async function saveKey() {
+    const value = inputKey.trim();
+    if (!value) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveOk(false);
     setTestResult(null);
-  };
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "openai_api_key", value }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setSaveError(json.error ?? "Save failed."); return; }
+      setStatus({ configured: true, source: "database", maskedKey: json.maskedKey });
+      setInputKey("");
+      setShowInput(false);
+      setSaveOk(true);
+      setTimeout(() => setSaveOk(false), 3000);
+    } catch {
+      setSaveError("Network error. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
-  const testKey = async () => {
-    const key = apiKey.trim();
-    if (!key) return;
+  // ── Test key ──────────────────────────────────────────────────────────────
+  async function testKey() {
     setTesting(true);
     setTestResult(null);
     setTestError("");
     try {
-      const res = await fetch("/api/generate-outfit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-openai-key": key,
-        },
-        body: JSON.stringify({
-          pieces: [
-            {
-              slot: "top",
-              name: "Test item",
-              brand: "Test",
-              category: "tops",
-              styleKeywords: ["minimal"],
-            },
-          ],
-        }),
-      });
+      const res = await fetch("/api/admin/settings/test", { method: "POST" });
       const json = await res.json();
-      if (res.ok && json.imageUrl) {
-        setTestResult("ok");
-      } else {
-        setTestResult("fail");
-        setTestError(json.error ?? "Unknown error");
-      }
+      setTestResult(json.ok ? "ok" : "fail");
+      if (!json.ok) setTestError(json.error ?? "Validation failed");
     } catch {
       setTestResult("fail");
       setTestError("Network error");
     } finally {
       setTesting(false);
     }
-  };
+  }
 
-  const maskedKey = apiKey
-    ? apiKey.slice(0, 8) + "•".repeat(Math.min(24, apiKey.length - 12)) + apiKey.slice(-4)
-    : "";
+  // ── Clear key ─────────────────────────────────────────────────────────────
+  async function clearKey() {
+    if (!confirm("Remove the stored API key? This will disable the AI Stylist for all users.")) return;
+    setClearing(true);
+    setClearError("");
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/admin/settings?key=openai_api_key", { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json();
+        setClearError(json.error ?? "Clear failed.");
+        return;
+      }
+      setStatus({ configured: false, source: null });
+      setShowInput(false);
+    } catch {
+      setClearError("Network error. Try again.");
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (unauthorized) {
+    return (
+      <div className="max-w-lg">
+        <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
+          Settings
+        </h1>
+        <div className="mt-6 border border-[var(--border)] px-5 py-4">
+          <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
+            Access denied. Your account is not in the admin allowlist.
+          </p>
+          <p className="text-[11px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
+            Add your Clerk user ID to the <code className="font-mono text-[10px]">ADMIN_USER_IDS</code> environment variable to gain access.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg">
@@ -85,16 +144,14 @@ export default function SettingsPage() {
 
       {/* ── OpenAI section ── */}
       <div className="border border-[var(--border)] bg-[var(--background)]">
+
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            {/* OpenAI logo‑like icon */}
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
                 d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5C3.5 5.37 3.56 5.73 3.67 6.06C2.57 6.38 1.75 7.39 1.75 8.58C1.75 9.8 2.61 10.83 3.76 11.09C3.97 12.04 4.81 12.75 5.83 12.75C6.27 12.75 6.68 12.62 7 12.4C7.32 12.62 7.73 12.75 8.17 12.75C9.19 12.75 10.03 12.04 10.24 11.09C11.39 10.83 12.25 9.8 12.25 8.58C12.25 7.39 11.43 6.38 10.33 6.06C10.44 5.73 10.5 5.37 10.5 5C10.5 3.07 8.93 1.5 7 1.5Z"
-                stroke="currentColor"
-                strokeWidth="1.1"
-                strokeLinejoin="round"
+                stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"
               />
             </svg>
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
@@ -102,55 +159,133 @@ export default function SettingsPage() {
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Used by the AI Stylist to generate outfit images in the Builder.
-            Get your key at{" "}
-            <span className="text-[var(--foreground)]">platform.openai.com/api-keys</span>
+            Shared key used by the AI Stylist for all users. Key is stored server-side and never exposed to the browser.
           </p>
         </div>
 
-        {/* Input */}
+        {/* Status body */}
         <div className="px-5 py-4">
-          <label className="block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            API Key
-          </label>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
-                placeholder="sk-proj-..."
-                spellCheck={false}
-                autoComplete="off"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 pr-9 text-[12px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-              />
-              {/* show/hide toggle */}
+
+          {/* Loading */}
+          {status === null && !loadError && (
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin text-[var(--foreground-subtle)]" />
+              <p className="text-[11px] text-[var(--foreground-subtle)]">Loading…</p>
+            </div>
+          )}
+
+          {/* Load error */}
+          {loadError && (
+            <p className="text-[11px] text-red-500">{loadError}</p>
+          )}
+
+          {/* Not configured */}
+          {status && !status.configured && !showInput && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2 h-2 rounded-full bg-[var(--border-strong)]" />
+                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+                  Not configured
+                </p>
+              </div>
+              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed mb-3">
+                The AI Stylist is currently disabled. Add an OpenAI API key to enable it for all users.
+              </p>
               <button
-                type="button"
-                onClick={() => setShowKey((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                onClick={() => setShowInput(true)}
+                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
               >
-                {showKey ? (
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
-                    <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                ) : (
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
-                    <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                  </svg>
-                )}
+                Add API Key
               </button>
             </div>
-          </div>
+          )}
 
-          {/* Masked preview when saved */}
-          {!showKey && apiKey && (
-            <p className="text-[10px] text-[var(--foreground-subtle)] mt-1.5 font-mono">
-              {maskedKey}
-            </p>
+          {/* Configured — env source */}
+          {status?.configured && status.source === "env" && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
+                  Configured
+                </p>
+              </div>
+              {status.maskedKey && (
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+              )}
+              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
+                Key is set via the <code className="font-mono text-[10px]">OPENAI_API_KEY</code> environment variable.
+                To change it, update the environment variable and redeploy.
+              </p>
+            </div>
+          )}
+
+          {/* Configured — database source */}
+          {status?.configured && status.source === "database" && !showInput && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
+                  Configured
+                </p>
+              </div>
+              {status.maskedKey && (
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+              )}
+              <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
+                Stored in database. Raw key is never returned to the browser.
+              </p>
+              {saveOk && (
+                <p className="text-[11px] text-green-600 mb-3">Key saved successfully.</p>
+              )}
+            </div>
+          )}
+
+          {/* Input form — add or update */}
+          {(showInput || (status && !status.configured)) && status !== null && status.source !== "env" && (
+            <div className={status?.configured ? "mt-0" : ""}>
+              {status?.configured && (
+                <p className="text-[11px] text-[var(--foreground-muted)] mb-3">
+                  Enter a new key to replace the current one.
+                </p>
+              )}
+              <label className="block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+                {status?.configured ? "New API Key" : "API Key"}
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showRaw ? "text" : "password"}
+                    value={inputKey}
+                    onChange={(e) => { setInputKey(e.target.value); setSaveError(""); }}
+                    placeholder="sk-proj-..."
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 pr-9 text-[12px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRaw((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    {showRaw ? (
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                        <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
+                        <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                        <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
+                        <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              {saveError && (
+                <p className="text-[11px] text-red-500 mt-2">{saveError}</p>
+              )}
+            </div>
           )}
 
           {/* Test result */}
@@ -159,55 +294,104 @@ export default function SettingsPage() {
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                 <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Key works — generation successful
+              Key is valid — OpenAI API responded successfully
             </div>
           )}
           {testResult === "fail" && (
-            <div className="mt-3 flex items-start gap-2 text-[11px] text-red-600">
+            <div className="mt-3 flex items-start gap-2 text-[11px] text-red-500">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0">
                 <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <span>{testError || "Key invalid or no quota"}</span>
             </div>
           )}
-        </div>
 
-        {/* Actions */}
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2">
-          <button
-            onClick={saveKey}
-            disabled={!apiKey.trim()}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {saved ? "Saved ✓" : "Save"}
-          </button>
-
-          <button
-            onClick={testKey}
-            disabled={!apiKey.trim() || testing}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            {testing && (
-              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-            )}
-            {testing ? "Testing…" : "Test Key"}
-          </button>
-
-          {apiKey && (
-            <button
-              onClick={clearKey}
-              className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-            >
-              Clear
-            </button>
+          {/* Clear error */}
+          {clearError && (
+            <p className="text-[11px] text-red-500 mt-3">{clearError}</p>
           )}
         </div>
+
+        {/* Action footer */}
+        {status !== null && (
+          <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2 flex-wrap">
+
+            {/* Save button — only shown in input mode */}
+            {showInput && status.source !== "env" && (
+              <button
+                onClick={saveKey}
+                disabled={!inputKey.trim() || saving}
+                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                {saving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+                {saving ? "Saving…" : "Save Key"}
+              </button>
+            )}
+
+            {/* Cancel — only shown in update mode (key already configured) */}
+            {showInput && status.configured && (
+              <button
+                onClick={() => { setShowInput(false); setInputKey(""); setSaveError(""); }}
+                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+
+            {/* Test key */}
+            {status.configured && !showInput && (
+              <>
+                <button
+                  onClick={testKey}
+                  disabled={testing}
+                  className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {testing && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+                  {testing ? "Testing…" : "Test Key"}
+                </button>
+
+                {/* Update key — only for database-stored keys */}
+                {status.source === "database" && (
+                  <button
+                    onClick={() => { setShowInput(true); setTestResult(null); }}
+                    className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    Update
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Clear — only for database-stored keys */}
+            {status.configured && status.source === "database" && !showInput && (
+              <button
+                onClick={clearKey}
+                disabled={clearing}
+                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {clearing ? "Clearing…" : "Clear"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      <p className="text-[10px] text-[var(--foreground-subtle)] mt-4 leading-relaxed">
-        The key is saved locally in your browser (localStorage) and sent with each generation request.
-        It is not stored on the server.
-      </p>
+      {/* Schema note */}
+      <div className="mt-4 border border-[var(--border)] px-4 py-3">
+        <p className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5">
+          Required Supabase schema
+        </p>
+        <pre className="font-mono text-[10px] text-[var(--foreground-muted)] whitespace-pre-wrap leading-relaxed">{`create table if not exists settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz default now()
+);
+alter table settings enable row level security;`}</pre>
+        <p className="text-[10px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
+          No public access policy — the server reads this table using the service-role key only.
+          Run this SQL once in the Supabase SQL editor.
+        </p>
+      </div>
     </div>
   );
 }
