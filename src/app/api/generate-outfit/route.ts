@@ -93,11 +93,34 @@ export async function POST(req: Request) {
       },
     });
 
-    const imageUrl =
-      typeof output === "string" ? output : (output as string[])?.[0];
+    // Replicate v1 SDK returns a FileOutput (or array) with .url() method.
+    // Older models return string or string[]. Handle all shapes.
+    const extractUrl = (item: unknown): string | undefined => {
+      if (!item) return undefined;
+      if (typeof item === "string") return item;
+      const maybe = item as { url?: unknown };
+      if (typeof maybe.url === "function") {
+        const v = (maybe.url as () => unknown)();
+        if (typeof v === "string") return v;
+        if (v && typeof (v as { toString?: () => string }).toString === "function") {
+          return (v as { toString: () => string }).toString();
+        }
+      }
+      if (typeof maybe.url === "string") return maybe.url;
+      return undefined;
+    };
+
+    const imageUrl = Array.isArray(output)
+      ? extractUrl(output[0])
+      : extractUrl(output);
+
     if (!imageUrl) {
+      console.error("[nano-banana-2] unexpected output shape:", output);
       return NextResponse.json(
-        { error: "No image returned from Replicate." },
+        {
+          error: "No image returned from Replicate.",
+          debug: { outputType: typeof output, isArray: Array.isArray(output), keys: output && typeof output === "object" ? Object.keys(output as object) : null },
+        },
         { status: 500 }
       );
     }
