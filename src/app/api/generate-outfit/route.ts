@@ -53,7 +53,7 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
 }
 
 export async function POST(req: Request) {
-  const apiToken = process.env.REPLICATE_API_TOKEN;
+  const apiToken = process.env.REPLICATE_API_TOKEN?.trim();
   if (!apiToken) {
     return NextResponse.json(
       {
@@ -105,6 +105,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ imageUrl, prompt, model: "nano-banana-2", style });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // Surface a token diagnostic so we can tell if the env var is actually reaching runtime
+    const tokenHint = `${apiToken.slice(0, 5)}…(len ${apiToken.length})`;
+    return NextResponse.json(
+      { error: msg, tokenHint },
+      { status: 500 }
+    );
   }
 }
