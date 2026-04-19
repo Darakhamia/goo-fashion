@@ -87,12 +87,12 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
               </svg>
             )}
           </div>
-          <p className="text-[10px] text-[var(--foreground-muted)]">
+          <p className="font-mono text-[10px] text-[var(--foreground-muted)]">
             {outfit.items.length} pieces
             <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
             ${outfit.totalPriceMin.toLocaleString()}–${outfit.totalPriceMax.toLocaleString()}
           </p>
-          <p className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
+          <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
             {outfit.occasion}
           </p>
         </Link>
