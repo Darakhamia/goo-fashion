@@ -103,9 +103,10 @@ export default function BuilderPage() {
   // Generation state
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [generatedModel, setGeneratedModel] = useState<string>("ai");
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showStylePicker, setShowStylePicker] = useState(false);
+  const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay">("mannequin");
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -335,8 +336,9 @@ export default function BuilderPage() {
     setSaved(true);
   };
 
-  // ── DALL-E / GPT-Image generation ─────────────────────────────────────────
-  const generateOutfit = async () => {
+  // ── Nano Banana 2 generation via Replicate ────────────────────────────────
+  const generateOutfit = async (style: "mannequin" | "flatlay") => {
+    setActiveStyle(style);
     setGenerating(true);
     setGenerateError(null);
     setGeneratedImage(null);
@@ -355,21 +357,16 @@ export default function BuilderPage() {
       }));
 
     try {
-      const userKey = localStorage.getItem("goo-openai-key") ?? "";
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userKey) headers["x-openai-key"] = userKey;
-
       const res = await fetch("/api/generate-outfit", {
         method: "POST",
-        headers,
-        body: JSON.stringify({ pieces }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieces, style }),
       });
       const json = await res.json();
       if (!res.ok) {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
-        setGeneratedModel(json.model ?? "ai");
         setShowModal(true);
       }
     } catch {
@@ -1379,7 +1376,7 @@ export default function BuilderPage() {
               {/* Generate — icon-only on mobile, visible with ≥1 piece */}
               {selectedCount >= 1 && (
                 <button
-                  onClick={generateOutfit}
+                  onClick={() => setShowStylePicker(true)}
                   disabled={generating}
                   className="w-9 h-9 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   aria-label="Generate outfit image"
@@ -1459,7 +1456,7 @@ export default function BuilderPage() {
           {/* Generate — shown with ≥1 piece selected */}
           {selectedCount >= 1 && (
             <button
-              onClick={generateOutfit}
+              onClick={() => setShowStylePicker(true)}
               disabled={generating}
               className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-3 h-8 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
@@ -1523,6 +1520,79 @@ export default function BuilderPage() {
         </div>
       </footer>
 
+      {/* ── Style picker modal ───────────────────────────────────────────────── */}
+      {showStylePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowStylePicker(false)}
+        >
+          <div
+            className="bg-[var(--background)] shadow-2xl w-full max-w-sm mx-4 animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                Choose style
+              </p>
+              <button
+                onClick={() => setShowStylePicker(false)}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+                  <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 grid grid-cols-2 gap-3">
+              {/* Mannequin — dark */}
+              <button
+                onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
+                className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+              >
+                {/* Preview icon: dark square with figure silhouette */}
+                <div className="w-full aspect-square bg-[#111] flex items-center justify-center">
+                  <svg width="32" height="48" viewBox="0 0 32 56" fill="none">
+                    <ellipse cx="16" cy="6" rx="5" ry="5" fill="#555" />
+                    <rect x="10" y="13" width="12" height="22" rx="2" fill="#555" />
+                    <rect x="4" y="13" width="6" height="16" rx="2" fill="#444" />
+                    <rect x="22" y="13" width="6" height="16" rx="2" fill="#444" />
+                    <rect x="10" y="36" width="5" height="18" rx="2" fill="#555" />
+                    <rect x="17" y="36" width="5" height="18" rx="2" fill="#555" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Mannequin</p>
+                  <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">Black background</p>
+                </div>
+              </button>
+
+              {/* Flat lay — white */}
+              <button
+                onClick={() => { setShowStylePicker(false); generateOutfit("flatlay"); }}
+                className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+              >
+                {/* Preview icon: white square with folded items */}
+                <div className="w-full aspect-square bg-[#F8F7F4] border border-[var(--border)] flex items-center justify-center">
+                  <svg width="48" height="36" viewBox="0 0 56 40" fill="none">
+                    <rect x="4" y="4" width="20" height="14" rx="2" fill="#ccc" />
+                    <rect x="32" y="4" width="20" height="14" rx="2" fill="#bbb" />
+                    <rect x="4" y="24" width="20" height="12" rx="2" fill="#ddd" />
+                    <rect x="32" y="24" width="20" height="12" rx="2" fill="#c8c8c8" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Flat lay</p>
+                  <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">White studio</p>
+                </div>
+              </button>
+            </div>
+            <p className="px-5 pb-4 font-mono text-[8px] text-[var(--foreground-subtle)] text-center">
+              Product images sent as references · 1K resolution · Nano Banana 2
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Generate error toast ──────────────────────────────────────────────── */}
       {generateError && (
         <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
@@ -1546,7 +1616,7 @@ export default function BuilderPage() {
                   AI Generated Look
                 </p>
                 <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  Created with {generatedModel === "gpt-image-1" ? "GPT Image 1" : "DALL·E 3"} · {selectedCount} pieces
+                  Nano Banana 2 · {activeStyle === "mannequin" ? "Mannequin" : "Flat lay"} · {selectedCount} pieces
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1586,7 +1656,7 @@ export default function BuilderPage() {
                 AI-generated image based on selected pieces. May not reflect exact products.
               </p>
               <button
-                onClick={() => { setShowModal(false); generateOutfit(); }}
+                onClick={() => { setShowModal(false); setShowStylePicker(true); }}
                 className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
               >
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
