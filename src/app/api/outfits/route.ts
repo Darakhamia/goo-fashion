@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getAllOutfits, createOutfit, outfitToDb } from "@/lib/data/db";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 export async function GET() {
   const outfits = await getAllOutfits();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       { error: "Database not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY." },

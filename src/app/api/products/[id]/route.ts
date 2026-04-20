@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 const noDb = () =>
   NextResponse.json(
@@ -13,6 +14,8 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) return noDb();
   const { id } = await params;
   const body = await req.json();
@@ -31,6 +34,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) return noDb();
   const { id } = await params;
   const body = await req.json();
@@ -47,6 +52,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) return noDb();
   const { id } = await params;
   const { error } = await supabase.from("products").delete().eq("id", id);
