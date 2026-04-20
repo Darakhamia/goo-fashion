@@ -10,6 +10,7 @@ interface SlotProduct {
   category: string;
   material?: string;
   colors?: string[];
+  colorName?: string;
   styleKeywords?: string[];
   imageUrl?: string;
 }
@@ -96,8 +97,10 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
 
   const itemsList = pieces
     .map((p) => {
-      const color = p.colors?.length ? `${p.colors[0]} ` : "";
-      return `${color}${p.name} by ${p.brand}`;
+      // Prefer the selected variant color name over the primary colors list
+      const color = p.colorName ?? (p.colors?.length ? p.colors[0] : "");
+      const colorStr = color ? `${color} ` : "";
+      return `${colorStr}${p.name} by ${p.brand}`;
     })
     .join(", ");
 

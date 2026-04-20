@@ -107,6 +107,9 @@ export default function BuilderPage() {
   const [showModal, setShowModal] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay">("mannequin");
+  // Tracks the localStorage id of the look we've already persisted in this session,
+  // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
+  const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -312,27 +315,58 @@ export default function BuilderPage() {
     } catch {}
   };
 
-  const saveOutfit = () => {
-    const editId = new URLSearchParams(window.location.search).get("editId");
-    const pieces = Object.entries(selection).map(([slot, p]) => {
-      const variantId = variantOverrides[slot as SlotId];
-      const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
-      const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
-      return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
-    });
+  // Shared persistence helper — used by Save button and post-generation auto-save.
+  // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
+  // Otherwise creates a new look and remembers its id so future calls reuse it.
+  const persistLook = (extra: { generatedImage?: string; generatedStyle?: string } = {}) => {
+    const urlEditId = new URLSearchParams(window.location.search).get("editId");
+    const targetId = urlEditId || persistedLookId;
+    const pieces = Object.entries(selection)
+      .filter(([, p]) => p != null)
+      .map(([slot, p]) => {
+        const variantId = variantOverrides[slot as SlotId];
+        const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
+        const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
+        return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
+      });
     try {
       const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
       let updated;
-      if (editId && existing.some((o) => o.id === editId)) {
+      let savedId: string;
+      if (targetId && existing.some((o) => o.id === targetId)) {
+        savedId = targetId;
         updated = existing.map((o) =>
-          o.id === editId ? { ...o, pieces, totalPrice, styleKeywords } : o
+          o.id === targetId
+            ? {
+                ...o,
+                pieces,
+                totalPrice,
+                styleKeywords,
+                ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage }),
+                ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
+              }
+            : o
         );
       } else {
-        const outfit = { id: `outfit-${Date.now()}`, savedAt: new Date().toISOString(), pieces, totalPrice, styleKeywords };
+        savedId = `outfit-${Date.now()}`;
+        const outfit = {
+          id: savedId,
+          savedAt: new Date().toISOString(),
+          pieces,
+          totalPrice,
+          styleKeywords,
+          ...(extra.generatedImage && { generatedImage: extra.generatedImage }),
+          ...(extra.generatedStyle && { generatedStyle: extra.generatedStyle }),
+        };
         updated = [outfit, ...existing].slice(0, 50);
       }
       localStorage.setItem("goo-saved-outfits", JSON.stringify(updated));
+      setPersistedLookId(savedId);
     } catch {}
+  };
+
+  const saveOutfit = () => {
+    persistLook();
     setSaved(true);
   };
 
@@ -345,16 +379,22 @@ export default function BuilderPage() {
 
     const pieces = Object.entries(selection)
       .filter(([, p]) => p != null)
-      .map(([slot, p]) => ({
-        slot,
-        name: p!.name,
-        brand: p!.brand,
-        category: p!.category,
-        material: p!.material,
-        colors: p!.colors,
-        styleKeywords: p!.styleKeywords,
-        imageUrl: p!.imageUrl,
-      }));
+      .map(([slot, p]) => {
+        // Respect the active color variant so the generation sees the right image and color name
+        const variantId = variantOverrides[slot as SlotId];
+        const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
+        return {
+          slot,
+          name: p!.name,
+          brand: p!.brand,
+          category: p!.category,
+          material: p!.material,
+          colors: p!.colors,
+          colorName: activeVariant?.colorName ?? undefined,
+          styleKeywords: p!.styleKeywords,
+          imageUrl: activeVariant?.imageUrl ?? p!.imageUrl,
+        };
+      });
 
     try {
       const res = await fetch("/api/generate-outfit", {
@@ -368,6 +408,9 @@ export default function BuilderPage() {
       } else {
         setGeneratedImage(json.imageUrl);
         setShowModal(true);
+        // Auto-save the look with its generated image so it's not lost when the modal closes
+        persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
+        setSaved(true);
       }
     } catch {
       setGenerateError("Network error. Check your connection.");
@@ -601,10 +644,10 @@ export default function BuilderPage() {
                           </div>
                         )}
 
-                        {/* Filled: variant swatches top-right on hover */}
+                        {/* Filled: variant swatches top-right — always visible when a variant exists */}
                         {picked && (picked.variants?.length ?? 0) > 1 && (
                           <div
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 pointer-events-none group-hover:pointer-events-auto"
+                            className="absolute top-2 right-2 flex items-center gap-1.5 px-1.5 py-1 rounded-full bg-[var(--background)]/80 backdrop-blur-sm"
                             onClick={e => e.stopPropagation()}
                           >
                             {picked.variants!.slice(0, 5).map(swatch => {
@@ -614,10 +657,10 @@ export default function BuilderPage() {
                                   key={swatch.id}
                                   title={swatch.colorName}
                                   onClick={e => { e.stopPropagation(); selectVariant(id, swatch); }}
-                                  className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
+                                  className={`w-4 h-4 rounded-full shrink-0 transition-all duration-150 ${
                                     isSwatchActive
-                                      ? "ring-1 ring-offset-1 ring-[var(--background)] scale-110"
-                                      : "opacity-70 hover:opacity-100"
+                                      ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
+                                      : "opacity-80 hover:opacity-100 hover:scale-110"
                                   }`}
                                   style={{
                                     background: swatch.colorHex === "#multicolor"
@@ -943,12 +986,21 @@ export default function BuilderPage() {
                     const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
                     const activeVariant = product.variants?.find(v => v.id === variantId);
                     const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
+                    const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
-                      <button
+                      <div
                         key={product.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => selectProduct(product)}
-                        className={`group relative flex flex-col text-left transition-all duration-150 ${
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectProduct(product);
+                          }
+                        }}
+                        className={`group relative flex flex-col text-left cursor-pointer transition-all duration-150 ${
                           isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
                         }`}
                       >
@@ -984,8 +1036,41 @@ export default function BuilderPage() {
                               ${product.priceMin.toLocaleString()}
                             </p>
                           </div>
+                          {/* Color swatches — click to add with that variant active */}
+                          {hasVariants && (
+                            <div
+                              className="flex items-center gap-1.5 mt-1.5"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {product.variants!.slice(0, 6).map(swatch => {
+                                const isSwatchActive = isSelected && (variantId ?? product.id) === swatch.id;
+                                return (
+                                  <button
+                                    key={swatch.id}
+                                    title={swatch.colorName}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      selectProduct(product);
+                                      if (targetSlot) selectVariant(targetSlot.id, swatch);
+                                    }}
+                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${
+                                      isSwatchActive
+                                        ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
+                                        : "opacity-80 hover:opacity-100 hover:scale-110"
+                                    }`}
+                                    style={{
+                                      background: swatch.colorHex === "#multicolor"
+                                        ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                        : swatch.colorHex,
+                                      boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
