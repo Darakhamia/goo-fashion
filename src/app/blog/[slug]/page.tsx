@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/data/db";
+import { renderBlogBody } from "@/lib/blog-render";
 
 export const revalidate = 300;
 
@@ -134,7 +135,7 @@ export default async function BlogPostPage({ params }: Props) {
         {post.body ? (
           <div
             className="blog-prose text-[var(--foreground)] text-base leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: post.body }}
+            dangerouslySetInnerHTML={{ __html: renderBlogBody(post.body) }}
           />
         ) : (
           <p className="text-sm text-[var(--foreground-muted)] italic">
