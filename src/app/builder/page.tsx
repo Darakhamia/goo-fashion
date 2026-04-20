@@ -19,12 +19,14 @@ const SLOTS = [
   { id: "accessories" as SlotId, label: "Acc",         categories: ["accessories"] },
 ];
 
-// Vertical figure zones for the silhouette canvas (accessories float separately)
+// Vertical figure zones for the silhouette canvas (accessories float separately).
+// Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
+// enough to show the full pair without cramping — tuned against the catalog set.
 const FIGURE_SLOTS: Array<{ id: SlotId; label: string; flex: number }> = [
-  { id: "outerwear", label: "Outerwear", flex: 7   },
+  { id: "outerwear", label: "Outerwear", flex: 5   },
   { id: "top",       label: "Top",       flex: 4.5 },
   { id: "bottom",    label: "Bottom",    flex: 5   },
-  { id: "shoes",     label: "Shoes",     flex: 2.5 },
+  { id: "shoes",     label: "Shoes",     flex: 3.5 },
 ];
 
 // Category filter chips for the right-panel catalog
@@ -574,11 +576,11 @@ export default function BuilderPage() {
 
             {/* Silhouette zone — centered fashion plate */}
             <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-8 px-6">
-              {/* Container: 240px main figure + 20px gap + 60px accessories = 320px */}
-              <div className="relative h-full max-h-[460px]" style={{ width: 320 }}>
+              {/* Container: 280px main figure + 16px gap + 72px accessories = 368px */}
+              <div className="relative h-full max-h-[540px]" style={{ width: 368 }}>
 
                 {/* Main stacked figure: outerwear → top → bottom → shoes */}
-                <div className="absolute inset-y-0 left-0 flex flex-col" style={{ width: 240 }}>
+                <div className="absolute inset-y-0 left-0 flex flex-col bg-[var(--background)] shadow-[0_0_0_1px_var(--border)]" style={{ width: 280 }}>
                   {FIGURE_SLOTS.map(({ id, label, flex }) => {
                     const picked = selection[id];
                     const variantId = variantOverrides[id];
@@ -609,13 +611,16 @@ export default function BuilderPage() {
                           <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
                         )}
 
-                        {/* Filled: product image */}
+                        {/* Filled: product image — shoes use object-contain (wide product shots),
+                            everything else uses object-cover for the silhouette effect. */}
                         {displayImage && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={displayImage}
                             alt={picked!.name}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className={`absolute inset-0 w-full h-full ${
+                              id === "shoes" ? "object-contain p-2" : "object-cover"
+                            }`}
                           />
                         )}
                         {/* Filled: hover dim */}
@@ -726,10 +731,10 @@ export default function BuilderPage() {
                   return (
                     <button
                       onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
-                      className={`group absolute right-0 overflow-hidden transition-all duration-200 ${
+                      className={`group absolute right-0 overflow-hidden bg-[var(--background)] shadow-[0_0_0_1px_var(--border)] transition-all duration-200 ${
                         isActive ? "ring-1 ring-[var(--foreground)]" : ""
                       }`}
-                      style={{ top: "50%", transform: "translateY(-50%)", width: 60, height: 74 }}
+                      style={{ top: "50%", transform: "translateY(-50%)", width: 72, height: 88 }}
                     >
                       {/* Empty: stripe + dashed border */}
                       {!picked && (
@@ -752,10 +757,10 @@ export default function BuilderPage() {
                         </>
                       )}
 
-                      {/* Filled: product image */}
+                      {/* Filled: product image — accessories usually centered/transparent */}
                       {displayImage && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1.5" />
                       )}
                       {/* Filled: hover dim + remove */}
                       {picked && (
@@ -1118,7 +1123,13 @@ export default function BuilderPage() {
                         )}
                         {displayImage && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                          <img
+                            src={displayImage}
+                            alt={picked!.name}
+                            className={`absolute inset-0 w-full h-full ${
+                              id === "shoes" ? "object-contain p-1.5" : "object-cover"
+                            }`}
+                          />
                         )}
                       </button>
                     );
@@ -1149,7 +1160,7 @@ export default function BuilderPage() {
                       )}
                       {displayImage && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1" />
                       )}
                     </button>
                   );

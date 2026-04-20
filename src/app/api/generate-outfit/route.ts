@@ -93,37 +93,50 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
   const keywords = Array.from(
     new Set(pieces.flatMap((p) => p.styleKeywords ?? []))
   ).slice(0, 4);
-  const styleStr = keywords.length ? `${keywords.join(", ")} aesthetic.` : "";
+  const styleStr = keywords.length ? `Overall mood: ${keywords.join(", ")}.` : "";
 
+  // Numbered list so "reference image 1", "reference image 2"… maps 1:1 to image_input order.
   const itemsList = pieces
-    .map((p) => {
-      // Prefer the selected variant color name over the primary colors list
+    .map((p, i) => {
       const color = p.colorName ?? (p.colors?.length ? p.colors[0] : "");
       const colorStr = color ? `${color} ` : "";
-      return `${colorStr}${p.name} by ${p.brand}`;
+      const material = p.material ? `, ${p.material}` : "";
+      return `(${i + 1}) ${p.slot}: ${colorStr}${p.name} by ${p.brand}${material}`;
     })
-    .join(", ");
+    .join("; ");
+
+  // Reinforce fidelity — nano-banana-2 tends to drift without explicit instructions.
+  const fidelity = [
+    "CRITICAL: Reproduce every garment EXACTLY as shown in the reference images in the same numbered order.",
+    "Match the silhouette, cut, fabric texture, pattern, print, color, stitching, hardware, and any logos or text from each reference.",
+    "Do not invent, substitute, restyle, or add items that are not in the references. Do not change colors.",
+  ].join(" ");
 
   if (style === "mannequin") {
+    // Invisible / ghost-mannequin technique — the clothes are the subject, the form is neutral
+    // and distinct from the backdrop so the garments read clearly instead of blending into black.
     return [
-      "Fashion editorial photography.",
-      `A complete outfit on a sleek black mannequin against a deep black studio background: ${itemsList}.`,
+      "High-end fashion editorial photograph.",
+      `A complete, styled outfit worn on a matte charcoal-grey dress form (ghost mannequin style) centered against a seamless deep-black studio backdrop.`,
+      `The outfit consists of: ${itemsList}.`,
+      "Garments must be worn in the correct positions (outerwear over top, bottom below, shoes at the feet, accessories on the figure).",
+      fidelity,
       styleStr,
-      "Use the reference product images to accurately reproduce the exact garments.",
-      "Dramatic directional studio lighting, luxury fashion editorial quality.",
-      "Full body shot, high resolution, photorealistic.",
+      "Dramatic directional rim lighting separates the figure from the backdrop; the clothing is fully visible, crisp, and well-lit with realistic fabric texture and natural shadows.",
+      "Full-body front view, centered composition, no crop, square 1:1 frame, photorealistic, sharp focus, luxury fashion editorial quality.",
     ]
       .filter(Boolean)
       .join(" ");
   }
 
   return [
-    "Professional flat lay fashion photography.",
-    `These items arranged artfully on a pure white background photographed from directly above: ${itemsList}.`,
+    "Professional flat-lay fashion photography.",
+    `The following items arranged neatly, not overlapping, on a pure white seamless background, photographed straight down from directly overhead: ${itemsList}.`,
+    "Each garment is laid flat and fully visible; shoes sit side by side; accessories placed beside the outfit.",
+    fidelity,
     styleStr,
-    "Use the reference product images to accurately reproduce the exact garments.",
-    "Clean even studio lighting, soft shadows, luxury fashion magazine quality.",
-    "Top-down overhead view, high resolution, photorealistic.",
+    "Clean even diffused studio lighting, soft natural shadows, true-to-life colors, luxury fashion magazine quality.",
+    "Top-down overhead view, square 1:1 frame, high resolution, photorealistic, sharp focus.",
   ]
     .filter(Boolean)
     .join(" ");
