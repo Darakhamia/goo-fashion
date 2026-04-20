@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { requirePlan } from "@/lib/server/require-plan";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { uploadGeneratedImage } from "@/lib/storage";
 
 type Style = "mannequin" | "flatlay";
 
@@ -246,8 +248,31 @@ export async function POST(req: Request) {
       );
     }
 
+    // ── Persist to Supabase Storage so the URL doesn't expire after 1 h ──────
+    // Fallback: if Supabase is not configured or the upload fails, return the
+    // temporary Replicate URL unchanged so the feature still works.
+    let persistedUrl = imageUrl;
+    if (isSupabaseConfigured) {
+      try {
+        const imgResult = await fetchBuffer(imageUrl, {
+          "User-Agent": "goo-fashion/1.0",
+          Accept: "image/*",
+        });
+        if (imgResult) {
+          persistedUrl = await uploadGeneratedImage(
+            imgResult.buf,
+            gate.userId,
+            "jpg",
+            imgResult.contentType.startsWith("image/") ? imgResult.contentType : "image/jpeg"
+          );
+        }
+      } catch (uploadErr) {
+        console.warn("[generate-outfit] storage upload failed, using Replicate URL:", uploadErr);
+      }
+    }
+
     return NextResponse.json({
-      imageUrl,
+      imageUrl: persistedUrl,
       prompt,
       model: "nano-banana-2",
       style,
