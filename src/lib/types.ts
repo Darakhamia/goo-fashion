@@ -188,6 +188,25 @@ export interface Plan {
   highlighted: boolean;
 }
 
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  category: string;
+  coverImageUrl: string;
+  readTime: string;
+  authorName: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImage?: string;
+  isPublished: boolean;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FilterState {
   category?: Category;
   occasion?: Occasion;

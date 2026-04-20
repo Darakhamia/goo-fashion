@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllProducts, getAllOutfits } from "@/lib/data/db";
+import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
 
 // Rebuild the sitemap every hour so new products/outfits surface without a full redeploy.
 export const revalidate = 3600;
@@ -18,9 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/subscribe`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
   ];
 
-  const [products, outfits] = await Promise.all([
+  const [products, outfits, blogPosts] = await Promise.all([
     getAllProducts().catch(() => []),
     getAllOutfits().catch(() => []),
+    getAllBlogPosts({ publishedOnly: true }).catch(() => []),
   ]);
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
@@ -37,5 +38,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...productRoutes, ...outfitRoutes];
+  const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({
+    url: `${SITE_URL}/blog/${p.slug}`,
+    lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...productRoutes, ...outfitRoutes, ...blogRoutes];
 }

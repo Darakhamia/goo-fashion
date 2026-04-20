@@ -45,6 +45,25 @@ export type DbOutfit = {
   created_at: string;
 };
 
+export type DbBlogPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  category: string;
+  cover_image_url: string;
+  read_time: string;
+  author_name: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  og_image: string | null;
+  is_published: boolean;
+  published_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DbProduct = {
   id: string;
   name: string;
