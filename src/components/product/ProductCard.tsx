@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRef, useState, useEffect, useMemo } from "react";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
+import { useAuth } from "@/lib/context/auth-context";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -16,7 +17,16 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, showBrand = true }: ProductCardProps) {
   const { isProductLiked, toggleProductLike } = useLikes();
+  const { isLoggedIn, login } = useAuth();
   const liked = isProductLiked(product.id);
+
+  const handleLike = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
+    toggleProductLike(product.id);
+  };
 
   // ── Active variant (null = show the base product) ──────────────────────────
   const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(null);
@@ -197,8 +207,8 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
 
       {/* ── Like button ─────────────────────────────────────────────────── */}
       <button
-        onClick={() => toggleProductLike(product.id)}
-        aria-label={liked ? "Unlike item" : "Like item"}
+        onClick={handleLike}
+        aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
         className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
+import { useAuth } from "@/lib/context/auth-context";
 import OutfitCollage from "./OutfitCollage";
 
 interface OutfitCardProps {
@@ -14,7 +15,16 @@ interface OutfitCardProps {
 
 export default function OutfitCard({ outfit, size = "default", compact = false }: OutfitCardProps) {
   const { isOutfitLiked, toggleOutfitLike } = useLikes();
+  const { isLoggedIn, login } = useAuth();
   const liked = isOutfitLiked(outfit.id);
+
+  const handleLike = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
+    toggleOutfitLike(outfit.id);
+  };
 
   return (
     <div className="group relative block">
@@ -61,8 +71,8 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Like Button */}
       <button
-        onClick={() => toggleOutfitLike(outfit.id)}
-        aria-label={liked ? "Unlike outfit" : "Like outfit"}
+        onClick={handleLike}
+        aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
         className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">

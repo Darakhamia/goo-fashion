@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import Replicate from "replicate";
 
 type Style = "mannequin" | "flatlay";
@@ -144,6 +145,14 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
 }
 
 export async function POST(req: Request) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Sign in to generate outfits." },
+      { status: 401 }
+    );
+  }
+
   const apiToken = process.env.REPLICATE_API_TOKEN?.trim();
   if (!apiToken) {
     return NextResponse.json(
