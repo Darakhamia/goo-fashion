@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { updateBlogPost, deleteBlogPost, blogPostToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
@@ -24,6 +25,10 @@ export async function PUT(
     return NextResponse.json({ error: msg }, { status });
   }
 
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${post.slug}`);
+  revalidatePath("/sitemap.xml");
+
   return NextResponse.json(post);
 }
 
@@ -43,6 +48,9 @@ export async function DELETE(
   if (!ok) {
     return NextResponse.json({ error: "Failed to delete blog post." }, { status: 500 });
   }
+
+  revalidatePath("/blog");
+  revalidatePath("/sitemap.xml");
 
   return NextResponse.json({ success: true });
 }

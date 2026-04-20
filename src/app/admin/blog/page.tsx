@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { BlogPost } from "@/lib/types";
+import { estimateReadTime } from "@/lib/blog-render";
 
 interface BlogFormState {
   slug: string;
@@ -25,9 +26,9 @@ const defaultForm: BlogFormState = {
   title: "",
   excerpt: "",
   body: "",
-  category: "Style Guide",
+  category: "",
   coverImageUrl: "",
-  readTime: "5 min",
+  readTime: "1 min",
   authorName: "GOO",
   metaTitle: "",
   metaDescription: "",
@@ -48,8 +49,6 @@ const COMMON_CATEGORIES = [
 
 const inputCls =
   "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
-const selectCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
@@ -85,7 +84,11 @@ export default function AdminBlogPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const [autoSlug, setAutoSlug] = useState(true);
+  const [autoReadTime, setAutoReadTime] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSeo, setShowSeo] = useState(false);
 
   useEffect(() => {
     fetch("/api/blog?all=true")
@@ -99,6 +102,9 @@ export default function AdminBlogPage() {
     setEditingId(null);
     setForm(defaultForm);
     setAutoSlug(true);
+    setAutoReadTime(true);
+    setShowAdvanced(false);
+    setShowSeo(false);
     setSaveError("");
     setShowModal(true);
   };
@@ -123,6 +129,9 @@ export default function AdminBlogPage() {
         : "",
     });
     setAutoSlug(false);
+    setAutoReadTime(false);
+    setShowAdvanced(false);
+    setShowSeo(false);
     setSaveError("");
     setShowModal(true);
   };
@@ -140,16 +149,31 @@ export default function AdminBlogPage() {
     }));
   };
 
+  const handleBodyChange = (v: string) => {
+    setForm((f) => ({
+      ...f,
+      body: v,
+      readTime: autoReadTime ? estimateReadTime(v) : f.readTime,
+    }));
+  };
+
   const handleSave = async () => {
-    if (!form.title.trim() || !form.slug.trim()) {
-      setSaveError("Title and slug are required.");
+    if (!form.title.trim()) {
+      setSaveError("Title is required.");
       return;
     }
+    const finalSlug = form.slug.trim() || slugify(form.title);
+    if (!finalSlug) {
+      setSaveError("Could not generate a URL slug — edit it manually.");
+      return;
+    }
+
     setSaving(true);
     setSaveError("");
 
     const body = {
       ...form,
+      slug: finalSlug,
       publishedAt: form.publishedAt
         ? new Date(form.publishedAt).toISOString()
         : undefined,
@@ -203,6 +227,8 @@ export default function AdminBlogPage() {
       p.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const previewSlug = form.slug.trim() || slugify(form.title) || "your-post-slug";
 
   return (
     <div>
@@ -318,9 +344,13 @@ export default function AdminBlogPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5">
-                      {post.category}
-                    </span>
+                    {post.category ? (
+                      <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5">
+                        {post.category}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span
@@ -399,17 +429,23 @@ export default function AdminBlogPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
           <div
-            className="border border-[var(--border)] w-full max-w-4xl flex flex-col"
+            className="border border-[var(--border)] w-full max-w-3xl flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingId ? "Edit Post" : "New Post"}
-              </h2>
+              <div>
+                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                  {editingId ? "Edit Post" : "New Post"}
+                </h2>
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono">
+                  /blog/{previewSlug}
+                </p>
+              </div>
               <button
                 onClick={closeModal}
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path
@@ -423,103 +459,21 @@ export default function AdminBlogPage() {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto" style={{ maxHeight: "75vh" }}>
-              {/* Title + slug row */}
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-3">
-                <div>
-                  <label className={labelCls}>Title *</label>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Post title"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>
-                    Slug * <span className="text-[var(--foreground-subtle)] normal-case">
-                      {autoSlug ? "(auto)" : "(manual)"}
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.slug}
-                    onChange={(e) => {
-                      setAutoSlug(false);
-                      setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
-                    }}
-                    placeholder="post-slug"
-                    className={inputCls}
-                  />
-                </div>
+            <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "75vh" }}>
+              {/* Title */}
+              <div>
+                <label className={labelCls}>Title *</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Post title"
+                  className={`${inputCls} text-base`}
+                  autoFocus
+                />
               </div>
 
-              {/* Category + read time + published toggle */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className={labelCls}>Category</label>
-                  <input
-                    list="blog-categories"
-                    type="text"
-                    value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className={inputCls}
-                  />
-                  <datalist id="blog-categories">
-                    {COMMON_CATEGORIES.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className={labelCls}>Read time</label>
-                  <input
-                    type="text"
-                    value={form.readTime}
-                    onChange={(e) => setForm((f) => ({ ...f, readTime: e.target.value }))}
-                    placeholder="5 min"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Status</label>
-                  <select
-                    value={form.isPublished ? "published" : "draft"}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, isPublished: e.target.value === "published" }))
-                    }
-                    className={selectCls}
-                  >
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Author + publishedAt */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Author</label>
-                  <input
-                    type="text"
-                    value={form.authorName}
-                    onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Publish date (optional override)</label>
-                  <input
-                    type="datetime-local"
-                    value={form.publishedAt}
-                    onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-
-              {/* Cover image */}
+              {/* Cover image + preview */}
               <div>
                 <label className={labelCls}>Cover image URL</label>
                 <input
@@ -529,15 +483,30 @@ export default function AdminBlogPage() {
                   placeholder="https://..."
                   className={inputCls}
                 />
+                {form.coverImageUrl && (
+                  <div className="mt-2 relative w-full max-w-xs aspect-[4/3] overflow-hidden border border-[var(--border)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={form.coverImageUrl}
+                      alt="Cover preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Excerpt */}
               <div>
-                <label className={labelCls}>Excerpt *</label>
+                <label className={labelCls}>
+                  Excerpt
+                  <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                    (short summary)
+                  </span>
+                </label>
                 <textarea
                   value={form.excerpt}
                   onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
-                  placeholder="Short summary shown in the list and in search results."
+                  placeholder="One or two sentences describing the post."
                   rows={2}
                   className={`${inputCls} resize-y`}
                 />
@@ -546,62 +515,209 @@ export default function AdminBlogPage() {
               {/* Body */}
               <div>
                 <label className={labelCls}>
-                  Body (HTML)
+                  Article body
                   <span className="text-[var(--foreground-subtle)] normal-case ml-2">
-                    — use &lt;h2&gt;, &lt;p&gt;, &lt;a&gt;, &lt;ul&gt;, &lt;strong&gt;, &lt;em&gt;, etc.
+                    — plain text works. HTML is supported too.
                   </span>
                 </label>
                 <textarea
                   value={form.body}
-                  onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-                  placeholder="<p>Write your article here...</p>"
-                  rows={16}
-                  className={`${inputCls} resize-y font-mono text-xs`}
+                  onChange={(e) => handleBodyChange(e.target.value)}
+                  placeholder={
+                    "Write your article here.\n\nLeave a blank line between paragraphs.\n\nFor headings or links, use HTML: <h2>Heading</h2> or <a href=\"...\">link</a>."
+                  }
+                  rows={14}
+                  className={`${inputCls} resize-y text-sm leading-relaxed`}
                 />
+                {form.body && (
+                  <p className="mt-1.5 text-[10px] text-[var(--foreground-subtle)]">
+                    ≈ {estimateReadTime(form.body)} read
+                  </p>
+                )}
               </div>
 
-              {/* SEO section */}
-              <div className="pt-4 border-t border-[var(--border)]">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--foreground-muted)] mb-3">
-                  SEO (optional overrides)
-                </p>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className={labelCls}>Meta title</label>
-                    <input
-                      type="text"
-                      value={form.metaTitle}
-                      onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))}
-                      placeholder={`${form.title || "Post title"} — GOO Journal`}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Meta description</label>
-                    <textarea
-                      value={form.metaDescription}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, metaDescription: e.target.value }))
-                      }
-                      placeholder="Defaults to excerpt. Keep under 160 characters for search engines."
-                      rows={2}
-                      className={`${inputCls} resize-y`}
-                    />
-                    <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">
-                      {(form.metaDescription || form.excerpt).length} / 160
-                    </p>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Open Graph image URL</label>
-                    <input
-                      type="url"
-                      value={form.ogImage}
-                      onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))}
-                      placeholder="Defaults to cover image."
-                      className={inputCls}
-                    />
-                  </div>
+              {/* Publish toggle */}
+              <div className="flex items-center gap-3 py-1">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
+                  className={`relative inline-flex h-6 w-11 items-center transition-colors ${
+                    form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border)]"
+                  }`}
+                  aria-pressed={form.isPublished}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform bg-[var(--background)] transition-transform ${
+                      form.isPublished ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <div>
+                  <p className="text-sm text-[var(--foreground)]">
+                    {form.isPublished ? "Published" : "Draft"}
+                  </p>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">
+                    {form.isPublished
+                      ? "Visible to everyone on /blog."
+                      : "Hidden from the public site."}
+                  </p>
                 </div>
+              </div>
+
+              {/* ── Advanced section ───────────────────────────────────── */}
+              <div className="border-t border-[var(--border)] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  className="flex items-center gap-2 text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    className={`transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+                  >
+                    <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Advanced options
+                </button>
+                {showAdvanced && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <label className={labelCls}>
+                        Slug
+                        <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                          {autoSlug ? "(auto from title)" : "(manual)"}
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.slug}
+                        onChange={(e) => {
+                          setAutoSlug(false);
+                          setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
+                        }}
+                        placeholder="post-slug"
+                        className={`${inputCls} font-mono`}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Category</label>
+                      <input
+                        list="blog-categories"
+                        type="text"
+                        value={form.category}
+                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                        placeholder="e.g. Style Guide"
+                        className={inputCls}
+                      />
+                      <datalist id="blog-categories">
+                        {COMMON_CATEGORIES.map((c) => (
+                          <option key={c} value={c} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className={labelCls}>
+                        Read time
+                        <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                          {autoReadTime ? "(auto)" : "(manual)"}
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.readTime}
+                        onChange={(e) => {
+                          setAutoReadTime(false);
+                          setForm((f) => ({ ...f, readTime: e.target.value }));
+                        }}
+                        placeholder="5 min"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Author</label>
+                      <input
+                        type="text"
+                        value={form.authorName}
+                        onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Publish date override</label>
+                      <input
+                        type="datetime-local"
+                        value={form.publishedAt}
+                        onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── SEO section ────────────────────────────────────────── */}
+              <div className="border-t border-[var(--border)] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSeo((v) => !v)}
+                  className="flex items-center gap-2 text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="none"
+                    className={`transition-transform ${showSeo ? "rotate-90" : ""}`}
+                  >
+                    <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  SEO overrides
+                  <span className="text-[var(--foreground-subtle)] normal-case font-sans tracking-normal ml-1">
+                    (optional)
+                  </span>
+                </button>
+                {showSeo && (
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div>
+                      <label className={labelCls}>Meta title</label>
+                      <input
+                        type="text"
+                        value={form.metaTitle}
+                        onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))}
+                        placeholder={`${form.title || "Post title"} — GOO Journal`}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Meta description</label>
+                      <textarea
+                        value={form.metaDescription}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, metaDescription: e.target.value }))
+                        }
+                        placeholder="Defaults to excerpt. Keep under 160 characters."
+                        rows={2}
+                        className={`${inputCls} resize-y`}
+                      />
+                      <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">
+                        {(form.metaDescription || form.excerpt).length} / 160
+                      </p>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Open Graph image URL</label>
+                      <input
+                        type="url"
+                        value={form.ogImage}
+                        onChange={(e) => setForm((f) => ({ ...f, ogImage: e.target.value }))}
+                        placeholder="Defaults to cover image."
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {saveError && (
@@ -613,10 +729,16 @@ export default function AdminBlogPage() {
             <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
               <button
                 onClick={handleSave}
-                disabled={!form.title.trim() || !form.slug.trim() || saving}
+                disabled={!form.title.trim() || saving}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {saving ? "Saving..." : editingId ? "Save Changes" : "Create Post"}
+                {saving
+                  ? "Saving..."
+                  : editingId
+                  ? "Save changes"
+                  : form.isPublished
+                  ? "Publish post"
+                  : "Save draft"}
               </button>
               <button
                 onClick={closeModal}

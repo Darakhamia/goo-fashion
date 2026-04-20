@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { createBlogPost, getAllBlogPosts, blogPostToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
@@ -34,6 +35,10 @@ export async function POST(req: Request) {
     const status = msg.includes("duplicate") || msg.includes("unique") ? 409 : 500;
     return NextResponse.json({ error: msg }, { status });
   }
+
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${post.slug}`);
+  revalidatePath("/sitemap.xml");
 
   return NextResponse.json(post, { status: 201 });
 }
