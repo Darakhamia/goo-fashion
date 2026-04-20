@@ -130,13 +130,14 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
   }
 
   return [
-    "Professional flat-lay fashion photography.",
-    `The following items arranged neatly, not overlapping, on a pure white seamless background, photographed straight down from directly overhead: ${itemsList}.`,
-    "Each garment is laid flat and fully visible; shoes sit side by side; accessories placed beside the outfit.",
+    "Editorial flat-lay fashion photography, styled like a magazine spread.",
+    `Compose the following items into a single outfit laid out as if worn by an invisible person — top piece near the top of the frame, bottoms directly below it aligned to the same center line, shoes at the bottom placed where the feet would be, outerwear (if any) layered slightly overlapping the top, accessories tucked tastefully alongside the torso or waist. Items: ${itemsList}.`,
+    "Soft, deliberate overlaps between adjacent pieces (e.g. waistband of the bottom partially tucked under the hem of the top; one shoelace resting on a trouser cuff) — NOT a grid, NOT four separate quadrants, NOT items isolated in corners.",
+    "Pure white seamless paper background, photographed straight down from directly overhead, everything flat on the surface.",
     fidelity,
     styleStr,
-    "Clean even diffused studio lighting, soft natural shadows, true-to-life colors, luxury fashion magazine quality.",
-    "Top-down overhead view, square 1:1 frame, high resolution, photorealistic, sharp focus.",
+    "Clean even diffused studio lighting, soft natural drop shadows under each piece, true-to-life colors, luxury fashion magazine quality.",
+    "Top-down overhead view, tight centered composition filling the frame, square 1:1, high resolution, photorealistic, sharp focus.",
   ]
     .filter(Boolean)
     .join(" ");
