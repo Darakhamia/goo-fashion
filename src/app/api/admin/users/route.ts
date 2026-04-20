@@ -13,7 +13,7 @@ export interface AdminUserRow {
   lastActiveAt: number | null;
   banned: boolean;
   locked: boolean;
-  plan: "free" | "plus" | "ultra" | string;
+  plan: "free" | "basic" | "pro" | "premium" | string;
   isAdmin: boolean;
 }
 

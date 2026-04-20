@@ -2,12 +2,13 @@
 
 import { createContext, useContext } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
+import { coercePlan, type PlanId } from "@/lib/plans";
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  plan: "free" | "plus" | "ultra";
+  plan: PlanId;
   isAdmin: boolean;
   avatar?: string;
   joinedAt: string;
@@ -43,8 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clerkUser.emailAddresses[0]?.emailAddress.split("@")[0] ||
             "User",
           email: clerkUser.emailAddresses[0]?.emailAddress || "",
-          // Plan stored in publicMetadata; defaults to "free"
-          plan: ((clerkUser.publicMetadata as { plan?: string }).plan as AuthUser["plan"]) ?? "free",
+          // Plan stored in publicMetadata; defaults to "free" for unsubscribed users.
+          plan: coercePlan((clerkUser.publicMetadata as { plan?: unknown }).plan),
           isAdmin: (clerkUser.publicMetadata as { isAdmin?: boolean }).isAdmin === true,
           avatar: clerkUser.imageUrl || undefined,
           joinedAt: clerkUser.createdAt

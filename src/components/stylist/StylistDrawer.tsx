@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
+import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 
 // ── Internal types ────────────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ export function StylistDrawer({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [makeWelcome(focusProduct)]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const chatThreadRef = useRef<HTMLDivElement>(null);
 
   // Derived context ID: product ID on product pages, empty string elsewhere.
@@ -210,6 +212,14 @@ export function StylistDrawer({
         }),
       });
 
+      const upgrade = await parseUpgradePrompt(res);
+      if (upgrade) {
+        setUpgradePrompt(upgrade);
+        // Remove the just-queued user message so the chat doesn't end on an orphan prompt.
+        setChatMessages(prev => prev.filter(m => m.id !== userMsg.id));
+        return;
+      }
+
       if (res.status === 429) {
         setChatMessages(prev => [...prev, {
           id: `msg-${Date.now()}-ai`,
@@ -288,6 +298,8 @@ export function StylistDrawer({
   const quickReplies = QUICK_REPLIES[surface];
 
   return (
+    <>
+    <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
     <div
       className={`${positionClasses} w-full md:w-[380px] bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col animate-slide-in-right`}
       style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.12)" }}
@@ -456,5 +468,6 @@ export function StylistDrawer({
         </p>
       </div>
     </div>
+    </>
   );
 }

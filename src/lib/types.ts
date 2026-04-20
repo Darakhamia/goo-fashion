@@ -174,11 +174,11 @@ export interface UserProfile {
   occasions: Occasion[];
   savedOutfits: string[];
   savedProducts: string[];
-  plan: "free" | "plus" | "ultra";
+  plan: "free" | "basic" | "pro" | "premium";
 }
 
 export interface Plan {
-  id: "free" | "plus" | "ultra";
+  id: "free" | "basic" | "pro" | "premium";
   name: string;
   price: number;
   currency: string;
