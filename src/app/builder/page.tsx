@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
+import { useAuth } from "@/lib/context/auth-context";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ export default function BuilderPage() {
 
   const { likedProducts } = useLikes();
   const { addManyToCart } = useCart();
+  const { isLoggedIn, login } = useAuth();
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -368,8 +370,20 @@ export default function BuilderPage() {
   };
 
   const saveOutfit = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
     persistLook();
     setSaved(true);
+  };
+
+  const openStylePicker = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
+    setShowStylePicker(true);
   };
 
   // ── Nano Banana 2 generation via Replicate ────────────────────────────────
@@ -1472,7 +1486,7 @@ export default function BuilderPage() {
               {/* Generate — icon-only on mobile, visible with ≥1 piece */}
               {selectedCount >= 1 && (
                 <button
-                  onClick={() => setShowStylePicker(true)}
+                  onClick={openStylePicker}
                   disabled={generating}
                   className="w-9 h-9 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   aria-label="Generate outfit image"
@@ -1552,7 +1566,7 @@ export default function BuilderPage() {
           {/* Generate — shown with ≥1 piece selected */}
           {selectedCount >= 1 && (
             <button
-              onClick={() => setShowStylePicker(true)}
+              onClick={openStylePicker}
               disabled={generating}
               className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-3 h-8 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
@@ -1752,7 +1766,7 @@ export default function BuilderPage() {
                 AI-generated image based on selected pieces. May not reflect exact products.
               </p>
               <button
-                onClick={() => { setShowModal(false); setShowStylePicker(true); }}
+                onClick={() => { setShowModal(false); openStylePicker(); }}
                 className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
               >
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
