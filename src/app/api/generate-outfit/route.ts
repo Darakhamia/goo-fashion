@@ -113,31 +113,36 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
   ].join(" ");
 
   if (style === "mannequin") {
-    // Invisible / ghost-mannequin technique — the clothes are the subject, the form is neutral
-    // and distinct from the backdrop so the garments read clearly instead of blending into black.
+    // Reference: Balenciaga-style ecommerce lookbook — full-body matte black male mannequin
+    // (faceless sleek head) on a white seamless floor/backdrop, natural grounding shadow under
+    // the feet, subtle window-light gradient on the wall.
     return [
-      "High-end fashion editorial photograph.",
-      `A complete, styled outfit worn on a matte charcoal-grey dress form (ghost mannequin style) centered against a seamless deep-black studio backdrop.`,
-      `The outfit consists of: ${itemsList}.`,
-      "Garments must be worn in the correct positions (outerwear over top, bottom below, shoes at the feet, accessories on the figure).",
+      "Full-body luxury ecommerce lookbook photograph.",
+      `A faceless matte black (sleek dark skin-finish) male mannequin standing in a natural relaxed pose on a seamless off-white studio floor that curves into a soft white backdrop wall. The mannequin is wearing, head to toe: ${itemsList}.`,
+      "Layer the garments correctly on the figure: any outerwear is worn over the top (unzipped or open if it's a bomber/jacket, showing the top underneath), the bottom is worn on the legs, shoes on the feet, cap/hat on the head, bags worn crossbody or on the shoulder, never floating beside the figure.",
       fidelity,
       styleStr,
-      "Dramatic directional rim lighting separates the figure from the backdrop; the clothing is fully visible, crisp, and well-lit with realistic fabric texture and natural shadows.",
-      "Full-body front view, centered composition, no crop, square 1:1 frame, photorealistic, sharp focus, luxury fashion editorial quality.",
+      "Soft diffused natural daylight from the upper left creating a subtle gradient on the backdrop and a realistic contact shadow on the floor beneath the feet.",
+      "Centered full-body front view, entire figure visible from cap to shoes with breathing room above and below, no cropping of limbs or shoes.",
+      "Square 1:1 frame, photorealistic, sharp focus, clean minimal luxury fashion house aesthetic.",
     ]
       .filter(Boolean)
       .join(" ");
   }
 
+  // Reference: Balenciaga/editorial flat-lay — outfit composed as a person-shaped silhouette on a
+  // clean cream-white paper, items can be folded (jeans stacked, tee folded to the side next to
+  // the pants) for visual rhythm, soft directional shadows, cap above where the head would be,
+  // bag hung alongside the torso, shoes at foot position.
   return [
-    "Editorial flat-lay fashion photography, styled like a magazine spread.",
-    `Compose the following items into a single outfit laid out as if worn by an invisible person — top piece near the top of the frame, bottoms directly below it aligned to the same center line, shoes at the bottom placed where the feet would be, outerwear (if any) layered slightly overlapping the top, accessories tucked tastefully alongside the torso or waist. Items: ${itemsList}.`,
-    "Soft, deliberate overlaps between adjacent pieces (e.g. waistband of the bottom partially tucked under the hem of the top; one shoelace resting on a trouser cuff) — NOT a grid, NOT four separate quadrants, NOT items isolated in corners.",
-    "Pure white seamless paper background, photographed straight down from directly overhead, everything flat on the surface.",
+    "Editorial flat-lay fashion photograph, Balenciaga lookbook style.",
+    `Compose these items into the shape of a person wearing the outfit, laid out on a clean off-white seamless paper surface viewed straight down from directly above: ${itemsList}.`,
+    "Positioning rules: a cap/hat sits at the top of the frame where the head would be; the top is centered below it; any outerwear overlaps the top as if worn over it (jacket slightly open showing the top underneath); the bottom sits directly below the top along the same center line (long pants can be laid out full-length or folded in half and placed next to the top for visual variety, as in editorial lookbooks); shoes are placed at the bottom where the feet would be, pointing down; bags hang alongside the torso/waist by their strap; small accessories rest next to the hand position.",
+    "Items may have gentle, deliberate overlaps (e.g. jacket hem over the top, shoe heel over the trouser cuff) — absolutely NOT a grid, NOT four separate quadrants, NOT items isolated in corners.",
     fidelity,
     styleStr,
-    "Clean even diffused studio lighting, soft natural drop shadows under each piece, true-to-life colors, luxury fashion magazine quality.",
-    "Top-down overhead view, tight centered composition filling the frame, square 1:1, high resolution, photorealistic, sharp focus.",
+    "Soft directional daylight from the upper left, realistic contact drop shadows under each piece, true-to-life colors, luxury fashion magazine quality, tight centered composition filling the frame with minimal negative space.",
+    "Top-down overhead view, square 1:1 frame, high resolution, photorealistic, sharp focus.",
   ]
     .filter(Boolean)
     .join(" ");
