@@ -17,6 +17,8 @@ interface SavedLook {
   pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
+  generatedImage?: string;
+  generatedStyle?: "mannequin" | "flatlay";
 }
 
 const SLOT_ORDER = ["top", "bottom", "shoes", "accessories"];
@@ -52,26 +54,40 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   return (
     <>
       <div className="bg-[var(--background)] flex flex-col group">
-        {/* 2×2 thumbnail grid — opens preview modal */}
+        {/* Thumbnail — AI-generated hero image when available, otherwise 2×2 piece grid */}
         <button onClick={() => setOpen(true)} className="block w-full text-left">
-          <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
-            {pieces.map(({ slot, imageUrl, name }) => (
-              <div key={slot} className="overflow-hidden bg-[var(--surface)]">
-                {imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageUrl}
-                    alt={name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-[var(--border-strong)] text-xs">—</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {look.generatedImage ? (
+            <div className="relative aspect-square overflow-hidden bg-[var(--surface)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={look.generatedImage}
+                alt="AI generated outfit"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              <span className="absolute top-2 left-2 font-mono text-[8px] tracking-[0.14em] uppercase bg-[var(--background)]/80 backdrop-blur-sm text-[var(--foreground)] px-1.5 py-0.5">
+                AI · {look.generatedStyle === "flatlay" ? "Flat lay" : "Mannequin"}
+              </span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
+              {pieces.map(({ slot, imageUrl, name }) => (
+                <div key={slot} className="overflow-hidden bg-[var(--surface)]">
+                  {imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl}
+                      alt={name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-[var(--border-strong)] text-xs">—</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </button>
 
         {/* Footer */}
@@ -153,6 +169,24 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 </button>
               </div>
             </div>
+
+            {/* AI hero image — shown above the piece grid when present */}
+            {look.generatedImage && (
+              <div className="relative aspect-square overflow-hidden bg-[var(--surface)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={look.generatedImage} alt="AI generated outfit" className="w-full h-full object-cover" />
+                <a
+                  href={look.generatedImage}
+                  download="goo-outfit.jpg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-3 right-3 font-mono text-[9px] tracking-[0.12em] uppercase bg-[var(--background)]/85 backdrop-blur-sm text-[var(--foreground)] px-2 py-1 hover:bg-[var(--background)] transition-colors"
+                >
+                  Download
+                </a>
+              </div>
+            )}
 
             {/* 2×2 grid with product links */}
             <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
