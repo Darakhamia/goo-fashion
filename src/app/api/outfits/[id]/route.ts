@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { updateOutfit, deleteOutfit, outfitToDb } from "@/lib/data/db";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       { error: "Database not configured." },
@@ -29,6 +32,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       { error: "Database not configured." },

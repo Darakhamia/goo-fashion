@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 const MIGRATION_COLUMNS = ["variant_group_id", "color_hex", "is_group_primary"];
 
@@ -34,6 +35,8 @@ export async function GET() {
  *   { ids, primaryId, colorHexMap, groupId? } → link products as color variants
  */
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured." }, { status: 501 });
   }
@@ -113,6 +116,8 @@ export async function POST(req: Request) {
 
 /** DELETE — unlink all products in a variant group */
 export async function DELETE(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured." }, { status: 501 });
   }

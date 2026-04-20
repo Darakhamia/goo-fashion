@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured, dbToColorGroup, type DbColorGroup } from "@/lib/supabase";
 import { getAllColorGroups } from "@/lib/data/db";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 export async function GET() {
   const groups = await getAllColorGroups();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json(
       { error: "Database not configured." },

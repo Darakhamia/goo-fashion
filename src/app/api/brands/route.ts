@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/server/admin-auth";
 
 // Default list used when Supabase is not configured
 const DEFAULT_BRANDS = [
@@ -30,6 +31,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured.", code: "NO_DB" }, { status: 501 });
   }
