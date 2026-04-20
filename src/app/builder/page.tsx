@@ -7,6 +7,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ export default function BuilderPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay">("mannequin");
@@ -418,6 +420,13 @@ export default function BuilderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pieces, style }),
       });
+
+      const upgrade = await parseUpgradePrompt(res);
+      if (upgrade) {
+        setUpgradePrompt(upgrade);
+        return;
+      }
+
       const json = await res.json();
       if (!res.ok) {
         setGenerateError(json.error ?? "Generation failed. Try again.");
@@ -1709,6 +1718,9 @@ export default function BuilderPage() {
           {generateError}
         </p>
       )}
+
+      {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
+      <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
 
       {/* ── Generated image modal (preserved exactly) ──────────────────────── */}
       {showModal && generatedImage && (

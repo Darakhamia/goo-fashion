@@ -26,12 +26,13 @@ interface UserDetail extends UserRow {
   publicMetadata: Record<string, unknown>;
 }
 
-const PLAN_OPTIONS = ["free", "plus", "ultra"] as const;
+const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
 
 const planBadge: Record<string, string> = {
-  free:  "border border-[var(--border)] text-[var(--foreground-muted)]",
-  plus:  "bg-amber-400/15 text-amber-600 border border-amber-400/30",
-  ultra: "bg-[var(--foreground)] text-[var(--background)]",
+  free:    "border border-[var(--border)] text-[var(--foreground-muted)]",
+  basic:   "border border-[var(--border-strong)] text-[var(--foreground)]",
+  pro:     "bg-amber-400/15 text-amber-600 border border-amber-400/30",
+  premium: "bg-[var(--foreground)] text-[var(--background)]",
 };
 
 function initials(first: string | null, last: string | null, email: string | null) {
@@ -100,10 +101,11 @@ export default function AdminUsersPage() {
 
   const stats = useMemo(() => ({
     total,
-    ultra:  users.filter((u) => u.plan === "ultra").length,
-    plus:   users.filter((u) => u.plan === "plus").length,
-    free:   users.filter((u) => u.plan === "free").length,
-    banned: users.filter((u) => u.banned).length,
+    premium: users.filter((u) => u.plan === "premium").length,
+    pro:     users.filter((u) => u.plan === "pro").length,
+    basic:   users.filter((u) => u.plan === "basic").length,
+    free:    users.filter((u) => u.plan === "free").length,
+    banned:  users.filter((u) => u.banned).length,
   }), [users, total]);
 
   const handleDelete = async (id: string, label: string) => {
@@ -142,11 +144,12 @@ export default function AdminUsersPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {[
-          { label: "Total",  value: stats.total,  note: "registered" },
-          { label: "Ultra",  value: stats.ultra,  note: "subscribers" },
-          { label: "Plus",   value: stats.plus,   note: "subscribers" },
-          { label: "Free",   value: stats.free,   note: "accounts" },
-          { label: "Banned", value: stats.banned, note: "suspended" },
+          { label: "Total",   value: stats.total,   note: "registered" },
+          { label: "Premium", value: stats.premium, note: "subscribers" },
+          { label: "Pro",     value: stats.pro,     note: "subscribers" },
+          { label: "Basic",   value: stats.basic,   note: "subscribers" },
+          { label: "Free",    value: stats.free,    note: "accounts" },
+          { label: "Banned",  value: stats.banned,  note: "suspended" },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--background)] border border-[var(--border)] p-5">
             <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{s.label}</p>

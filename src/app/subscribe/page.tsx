@@ -1,50 +1,37 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { PAID_PLAN_IDS, PLANS, type PlanId } from "@/lib/plans";
 
-// ── Plan definitions (mirrored from /plans) ───────────────────────────────────
+// ── Plan presentation — marketing copy, kept separate from the feature gate map ─
 
-const PLANS = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: 10,
-    features: [
-      "50 image generations / mo",
-      "~300 AI messages / mo",
-      "Outfit builder",
-      "Basic AI stylist",
-      "Standard speed",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 25,
-    features: [
-      "180 image generations / mo",
-      "~1,000 AI messages / mo",
-      "Priority generation",
-      "Better AI stylist",
-      "Save outfits",
-      "Higher image quality",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 45,
-    features: [
-      "450 image generations / mo",
-      "~3,000 AI messages / mo",
-      "Very fast generation",
-      "Near-unlimited AI usage",
-      "Stylist memory",
-      "Exclusive styles",
-    ],
-  },
-];
+const PLAN_COPY: Record<"basic" | "pro" | "premium", string[]> = {
+  basic: [
+    "50 image generations / mo",
+    "~300 AI messages / mo",
+    "Outfit builder",
+    "Basic AI stylist",
+    "Standard speed",
+  ],
+  pro: [
+    "180 image generations / mo",
+    "~1,000 AI messages / mo",
+    "Priority generation",
+    "Better AI stylist",
+    "Save outfits",
+    "Higher image quality",
+  ],
+  premium: [
+    "450 image generations / mo",
+    "~3,000 AI messages / mo",
+    "Very fast generation",
+    "Near-unlimited AI usage",
+    "Stylist memory",
+    "Exclusive styles",
+  ],
+};
 
 // ── Check icon ────────────────────────────────────────────────────────────────
 
@@ -61,10 +48,94 @@ function Check() {
 function SubscribeInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
 
-  const planId = searchParams.get("plan") ?? "basic";
-  const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
+  const rawPlanId = searchParams.get("plan");
+  const planId: Exclude<PlanId, "free"> = PAID_PLAN_IDS.includes(rawPlanId as PlanId)
+    ? (rawPlanId as Exclude<PlanId, "free">)
+    : "basic";
+  const plan = PLANS[planId];
+  const features = PLAN_COPY[planId];
 
+  const currentPlan = (user?.publicMetadata as { plan?: string })?.plan ?? "free";
+  const alreadyOnPlan = currentPlan === planId;
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!isSignedIn) {
+      // Clerk redirect flow — comes back here after sign-in.
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(`/subscribe?plan=${planId}`)}`);
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/demo-upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Upgrade failed. Try again.");
+        return;
+      }
+      // Reload the Clerk session so publicMetadata.plan is fresh everywhere.
+      await user?.reload();
+      setSuccess(true);
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Success state ────────────────────────────────────────────────────────
+  if (success) {
+    return (
+      <div className="pt-16 min-h-screen">
+        <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24 text-center">
+          <div className="w-14 h-14 mx-auto mb-8 border border-[var(--foreground)] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12.5L10 17.5L19 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
+            You are in
+          </p>
+          <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] leading-[1.05] mb-5">
+            Welcome to {plan.name}
+          </h1>
+          <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed mb-10">
+            Your account has been upgraded. AI Stylist and image generation are unlocked.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => router.push("/builder")}
+              className="bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 hover:opacity-80 transition-opacity"
+            >
+              Open builder
+            </button>
+            <button
+              onClick={() => router.push("/profile")}
+              className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 hover:bg-[var(--surface)] transition-colors"
+            >
+              Go to profile
+            </button>
+          </div>
+          <p className="mt-10 text-[10px] text-[var(--foreground-subtle)] leading-relaxed">
+            Demo mode — no card was charged. Billing will be wired up in a future release.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main state ───────────────────────────────────────────────────────────
   return (
     <div className="pt-16 min-h-screen">
       <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24">
@@ -106,7 +177,7 @@ function SubscribeInner() {
             What&apos;s included
           </p>
           <ul className="space-y-3">
-            {plan.features.map((f) => (
+            {features.map((f) => (
               <li key={f} className="flex items-start gap-3">
                 <Check />
                 <span className="text-sm text-[var(--foreground-muted)] leading-relaxed">{f}</span>
@@ -115,17 +186,32 @@ function SubscribeInner() {
           </ul>
         </div>
 
+        {/* Error toast */}
+        {error && (
+          <p className="mb-4 text-xs text-red-500 border border-red-300 px-3 py-2">
+            {error}
+          </p>
+        )}
+
         {/* CTA */}
         <button
-          disabled
-          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 opacity-40 cursor-not-allowed"
+          onClick={handleSubscribe}
+          disabled={submitting || !isLoaded || alreadyOnPlan}
+          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Continue to payment
+          {alreadyOnPlan
+            ? `You are on ${plan.name}`
+            : submitting
+            ? "Activating..."
+            : !isSignedIn
+            ? "Sign in to continue"
+            : `Activate ${plan.name} (demo)`}
         </button>
 
-        {/* Placeholder notice */}
+        {/* Demo notice */}
         <p className="mt-4 text-center text-xs text-[var(--foreground-subtle)] leading-relaxed">
-          Payment is not yet available. This page is a placeholder — billing will be wired up in a future release.
+          Demo checkout — no card required, no charges made. Your Clerk account is
+          upgraded instantly so you can try the gated features.
         </p>
 
       </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { checkRateLimit } from "@/lib/server/rate-limit";
+import { requirePlan } from "@/lib/server/require-plan";
 import { getAllProducts } from "@/lib/data/db";
 import type { Product } from "@/lib/types";
 
@@ -235,6 +236,11 @@ function validateProductIds(ids: string[], catalogIds: Set<string>): string[] {
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  // ── Plan gate ─────────────────────────────────────────────────────────────
+  // Runs before rate-limit so free users don't burn their IP quota on 402s.
+  const gate = await requirePlan("aiStylist");
+  if (!gate.ok) return gate.response;
+
   // ── Rate limiting ─────────────────────────────────────────────────────────
   const { allowed, retryAfterSeconds } = await checkRateLimit(req);
   if (!allowed) {

@@ -225,8 +225,9 @@ export default function AdminDashboardPage() {
                   <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
                 </div>
                 <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${
-                  u.plan === "ultra" ? "bg-[var(--foreground)] text-[var(--background)]"
-                  : u.plan === "plus" ? "bg-amber-400/15 text-amber-600 border border-amber-400/30"
+                  u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--background)]"
+                  : u.plan === "pro" ? "bg-amber-400/15 text-amber-600 border border-amber-400/30"
+                  : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
                   : "border border-[var(--border)] text-[var(--foreground-muted)]"
                 }`}>
                   {u.plan}
