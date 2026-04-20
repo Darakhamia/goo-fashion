@@ -43,6 +43,16 @@ const navItems = [
     ),
   },
   {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 13V3M2 13H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M5 10L8 7L10 9L13 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/users",
     label: "Users",
     icon: (
@@ -89,6 +99,7 @@ const pageTitles: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/products": "Products",
   "/admin/outfits": "Outfits",
+  "/admin/analytics": "Analytics",
   "/admin/users": "Users",
   "/admin/brands": "Brands",
   "/admin/settings": "Settings",

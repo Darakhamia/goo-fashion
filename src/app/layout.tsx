@@ -7,6 +7,7 @@ import { AuthProvider } from "@/lib/context/auth-context";
 import { ThemeProvider } from "@/lib/context/theme-context";
 import { CartProvider } from "@/lib/context/cart-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
+import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default function RootLayout({
               <LikesProvider>
                 <CartProvider>
                   <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+                  <AnalyticsTracker />
                 </CartProvider>
               </LikesProvider>
             </AuthProvider>

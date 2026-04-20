@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { track } from "@/lib/analytics/track";
 
 interface OutfitActionsProps {
   outfitId: string;
@@ -14,6 +15,10 @@ export default function OutfitActions({ outfitId }: OutfitActionsProps) {
   const [copied, setCopied] = useState(false);
 
   const liked = isOutfitLiked(outfitId);
+
+  useEffect(() => {
+    track("outfit_view", { targetId: outfitId });
+  }, [outfitId]);
 
   const handleLike = () => {
     if (!isLoggedIn) {

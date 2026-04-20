@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Product, ProductSwatch } from "@/lib/types";
 import ProductCard from "./ProductCard";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { track } from "@/lib/analytics/track";
 
 interface Props {
   product: Product;
@@ -25,6 +26,10 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
   const [stylistOpen, setStylistOpen] = useState(false);
+
+  useEffect(() => {
+    track("product_view", { targetId: product.id });
+  }, [product.id]);
 
   // Resolve which images to display
   const displayImages = useMemo(() => {
