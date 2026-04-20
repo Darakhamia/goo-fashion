@@ -2,10 +2,11 @@
  * Server-side data access layer.
  * Uses Supabase when configured, falls back to static data.
  */
-import type { ColorGroup, Outfit, OutfitItem, Product, ProductSwatch } from "@/lib/types";
-import { supabase, isSupabaseConfigured, type DbOutfit, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
+import type { BlogPost, ColorGroup, Outfit, OutfitItem, Product, ProductSwatch } from "@/lib/types";
+import { supabase, isSupabaseConfigured, type DbBlogPost, type DbOutfit, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
 import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
+import { blogPosts as staticBlogPosts } from "./blog";
 
 export function dbToProduct(row: DbProduct): Product {
   return {
@@ -439,6 +440,133 @@ export async function deleteOutfit(id: string): Promise<boolean> {
   const { error } = await supabase.from("outfits").delete().eq("id", id);
   if (error) {
     console.error("[db] deleteOutfit:", error.message);
+    return false;
+  }
+  return true;
+}
+
+// ─── Blog posts ─────────────────────────────────────────────────────────────
+
+export function dbToBlogPost(row: DbBlogPost): BlogPost {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt ?? "",
+    body: row.body ?? "",
+    category: row.category ?? "General",
+    coverImageUrl: row.cover_image_url ?? "",
+    readTime: row.read_time ?? "5 min",
+    authorName: row.author_name ?? "GOO",
+    metaTitle: row.meta_title ?? undefined,
+    metaDescription: row.meta_description ?? undefined,
+    ogImage: row.og_image ?? undefined,
+    isPublished: row.is_published ?? true,
+    publishedAt: row.published_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function blogPostToDb(p: Partial<BlogPost>) {
+  const row: Record<string, unknown> = {
+    slug: p.slug ?? "",
+    title: p.title ?? "",
+    excerpt: p.excerpt ?? "",
+    body: p.body ?? "",
+    category: p.category ?? "General",
+    cover_image_url: p.coverImageUrl ?? "",
+    read_time: p.readTime ?? "5 min",
+    author_name: p.authorName ?? "GOO",
+    meta_title: p.metaTitle ?? null,
+    meta_description: p.metaDescription ?? null,
+    og_image: p.ogImage ?? null,
+    is_published: p.isPublished ?? true,
+  };
+  if (p.publishedAt) row.published_at = p.publishedAt;
+  return row;
+}
+
+export async function getAllBlogPosts(opts: { publishedOnly?: boolean } = {}): Promise<BlogPost[]> {
+  const { publishedOnly = false } = opts;
+  if (!isSupabaseConfigured || !supabase) {
+    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
+  }
+
+  let query = supabase.from("blog_posts").select("*").order("published_at", { ascending: false });
+  if (publishedOnly) query = query.eq("is_published", true);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[db] getAllBlogPosts:", error.message);
+    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
+  }
+
+  const rows = (data ?? []) as DbBlogPost[];
+  if (rows.length === 0) {
+    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
+  }
+  return rows.map(dbToBlogPost);
+}
+
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+  if (!isSupabaseConfigured || !supabase) {
+    return staticBlogPosts.find((p) => p.slug === slug);
+  }
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error || !data) {
+    return staticBlogPosts.find((p) => p.slug === slug);
+  }
+  return dbToBlogPost(data as DbBlogPost);
+}
+
+export async function createBlogPost(
+  data: ReturnType<typeof blogPostToDb>
+): Promise<{ post: BlogPost | null; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { post: null, error: "Database not configured." };
+  }
+  const { data: row, error } = await supabase
+    .from("blog_posts")
+    .insert(data)
+    .select()
+    .single();
+  if (error) {
+    console.error("[db] createBlogPost:", error.message);
+    return { post: null, error: error.message };
+  }
+  return { post: dbToBlogPost(row as DbBlogPost), error: null };
+}
+
+export async function updateBlogPost(
+  id: string,
+  data: ReturnType<typeof blogPostToDb>
+): Promise<{ post: BlogPost | null; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { post: null, error: "Database not configured." };
+  }
+  const { data: row, error } = await supabase
+    .from("blog_posts")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("[db] updateBlogPost:", error.message);
+    return { post: null, error: error.message };
+  }
+  return { post: dbToBlogPost(row as DbBlogPost), error: null };
+}
+
+export async function deleteBlogPost(id: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return false;
+  const { error } = await supabase.from("blog_posts").delete().eq("id", id);
+  if (error) {
+    console.error("[db] deleteBlogPost:", error.message);
     return false;
   }
   return true;

@@ -1,76 +1,54 @@
 import Link from "next/link";
-import SectionLabel from "@/components/ui/SectionLabel";
+import type { Metadata } from "next";
+import { getAllBlogPosts } from "@/lib/data/db";
 
-const posts = [
-  {
-    slug: "how-ai-builds-your-outfit",
-    category: "AI Stylist",
-    date: "March 18, 2026",
-    title: "How AI builds your perfect outfit from scratch",
-    excerpt:
-      "Behind the scenes of GOO's styling engine — how it weighs color theory, proportions, and occasion context to assemble looks that feel personal.",
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
-    readTime: "5 min",
-  },
-  {
-    slug: "capsule-wardrobe-2026",
-    category: "Style Guide",
-    date: "March 12, 2026",
-    title: "The 12-piece capsule wardrobe for 2026",
-    excerpt:
-      "Fewer pieces, more combinations. We broke down the essentials that work across seasons — and the brands that do them best at every price point.",
-    image:
-      "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=800&q=80",
-    readTime: "7 min",
-  },
-  {
-    slug: "price-comparison-guide",
-    category: "Smart Shopping",
-    date: "March 5, 2026",
-    title: "Same piece, 11 retailers: what we found",
-    excerpt:
-      "We tracked a single Toteme shirt across 11 platforms for 30 days. Price swings reached 40%. Here's when to buy — and when to wait.",
-    image:
-      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80",
-    readTime: "4 min",
-  },
-  {
-    slug: "color-theory-getting-dressed",
-    category: "Style Guide",
-    date: "Feb 27, 2026",
-    title: "Color theory for getting dressed, not for design school",
-    excerpt:
-      "Forget the color wheel. These are the rules that actually matter when you're standing in front of your wardrobe at 8am.",
-    image:
-      "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&q=80",
-    readTime: "6 min",
-  },
-  {
-    slug: "brands-worth-paying-for",
-    category: "Brands",
-    date: "Feb 19, 2026",
-    title: "5 brands worth paying full price for",
-    excerpt:
-      "Most fashion is overpriced. These five are underpriced relative to what they deliver — and we'll explain exactly why, piece by piece.",
-    image:
-      "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=80",
-    readTime: "8 min",
-  },
-  {
-    slug: "dressing-for-body-type",
-    category: "AI Stylist",
-    date: "Feb 10, 2026",
-    title: "Dressing for your body: what the data actually shows",
-    excerpt:
-      "GOO analyzed 120,000 outfit ratings to find which proportions consistently score highest — and which common rules are myths.",
-    image:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80",
-    readTime: "6 min",
-  },
-];
+export const revalidate = 300;
 
-export default function BlogPage() {
+export const metadata: Metadata = {
+  title: "Journal — GOO",
+  description:
+    "Style essays, shopping guides, and insights from the GOO stylist team. Updated weekly.",
+  openGraph: {
+    title: "Journal — GOO",
+    description:
+      "Style essays, shopping guides, and insights from the GOO stylist team.",
+    type: "website",
+  },
+};
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+export default async function BlogPage() {
+  const posts = await getAllBlogPosts({ publishedOnly: true });
+
+  if (posts.length === 0) {
+    return (
+      <div className="pt-16 min-h-screen">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-12 pt-16 md:pt-24">
+          <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
+            Journal
+          </p>
+          <h1 className="font-display text-5xl md:text-7xl font-light text-[var(--foreground)] leading-[0.95] tracking-tight">
+            Style, explained.
+          </h1>
+          <p className="mt-8 text-sm text-[var(--foreground-muted)]">
+            New posts coming soon.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [featured, ...rest] = posts;
 
   return (
@@ -92,8 +70,9 @@ export default function BlogPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--border)]">
             <div className="bg-[var(--background)] overflow-hidden">
               <div className="aspect-[4/3] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={featured.image}
+                  src={featured.coverImageUrl}
                   alt={featured.title}
                   className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700"
                 />
@@ -118,7 +97,7 @@ export default function BlogPage() {
               </div>
               <div className="mt-8 flex items-center justify-between">
                 <span className="text-xs text-[var(--foreground-subtle)]">
-                  {featured.date}
+                  {formatDate(featured.publishedAt)}
                 </span>
                 <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] transition-colors duration-200">
                   Read →
@@ -129,43 +108,46 @@ export default function BlogPage() {
         </Link>
 
         {/* Post grid */}
-        <div className="mt-px grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
-          {rest.map((post) => (
-            <Link
-              key={post.slug}
-              href={`/blog/${post.slug}`}
-              className="group bg-[var(--background)] flex flex-col"
-            >
-              <div className="overflow-hidden aspect-[3/2]">
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
-                    {post.category}
-                  </span>
-                  <span className="w-px h-3 bg-[var(--border-strong)]" />
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">
-                    {post.readTime} read
-                  </span>
+        {rest.length > 0 && (
+          <div className="mt-px grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
+            {rest.map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="group bg-[var(--background)] flex flex-col"
+              >
+                <div className="overflow-hidden aspect-[3/2]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={post.coverImageUrl}
+                    alt={post.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                  />
                 </div>
-                <h3 className="font-display text-lg font-light text-[var(--foreground)] leading-snug mb-3 group-hover:opacity-70 transition-opacity duration-200">
-                  {post.title}
-                </h3>
-                <p className="text-xs text-[var(--foreground-muted)] leading-relaxed flex-1">
-                  {post.excerpt}
-                </p>
-                <p className="mt-4 text-[10px] text-[var(--foreground-subtle)]">
-                  {post.date}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="p-6 flex flex-col flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
+                      {post.category}
+                    </span>
+                    <span className="w-px h-3 bg-[var(--border-strong)]" />
+                    <span className="text-[10px] text-[var(--foreground-subtle)]">
+                      {post.readTime} read
+                    </span>
+                  </div>
+                  <h3 className="font-display text-lg font-light text-[var(--foreground)] leading-snug mb-3 group-hover:opacity-70 transition-opacity duration-200">
+                    {post.title}
+                  </h3>
+                  <p className="text-xs text-[var(--foreground-muted)] leading-relaxed flex-1">
+                    {post.excerpt}
+                  </p>
+                  <p className="mt-4 text-[10px] text-[var(--foreground-subtle)]">
+                    {formatDate(post.publishedAt)}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Newsletter strip */}
         <div className="mt-px bg-[var(--border)]">
