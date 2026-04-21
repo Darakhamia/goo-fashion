@@ -3,9 +3,31 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+const DEFAULT_HERO =
+  "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
+async function getHeroImageUrl(): Promise<string> {
+  if (!isSupabaseConfigured || !supabase) return DEFAULT_HERO;
+  try {
+    const { data } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "hero_image_url")
+      .maybeSingle();
+    return (data as { value: string } | null)?.value ?? DEFAULT_HERO;
+  } catch {
+    return DEFAULT_HERO;
+  }
+}
 
 export default async function HomePage() {
-  const [allProducts, allOutfits] = await Promise.all([getAllProducts(), getAllOutfits()]);
+  const [allProducts, allOutfits, heroImageUrl] = await Promise.all([
+    getAllProducts(),
+    getAllOutfits(),
+    getHeroImageUrl(),
+  ]);
   const featuredOutfits = allOutfits.slice(0, 6);
   const featuredProducts = allProducts.slice(0, 4);
 
@@ -17,7 +39,7 @@ export default async function HomePage() {
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage:
-              "url(https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)",
+              `url(${heroImageUrl})`,
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/90 via-[#0A0A0A]/30 to-transparent" />
