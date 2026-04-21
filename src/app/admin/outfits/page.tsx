@@ -74,6 +74,8 @@ export default function AdminOutfitsPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   // Load outfits on mount
   useEffect(() => {
@@ -102,6 +104,7 @@ export default function AdminOutfitsPage() {
     setForm(defaultForm);
     setSelectedItems([]);
     setSaveError("");
+    setUploadError("");
     setProductSearch("");
     setProductCategory("all");
     setShowModal(true);
@@ -121,6 +124,7 @@ export default function AdminOutfitsPage() {
     });
     setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role })));
     setSaveError("");
+    setUploadError("");
     setProductSearch("");
     setProductCategory("all");
     setShowModal(true);
@@ -130,6 +134,26 @@ export default function AdminOutfitsPage() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    setUploadError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) {
+        setUploadError(json.error ?? "Upload failed");
+      } else {
+        setForm((f) => ({ ...f, imageUrl: json.url }));
+      }
+    } catch {
+      setUploadError("Network error during upload");
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Price auto-calculated from selected items
@@ -693,14 +717,69 @@ export default function AdminOutfitsPage() {
                     </div>
                   </div>
 
-                  {/* Image URL */}
+                  {/* Cover image upload */}
                   <div>
-                    <label className={labelCls}>Cover image URL (optional)</label>
+                    <label className={labelCls}>Cover image</label>
+
+                    {/* Preview */}
+                    {form.imageUrl ? (
+                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden bg-[var(--surface)]">
+                        <Image
+                          src={form.imageUrl}
+                          alt="Cover preview"
+                          fill
+                          className="object-cover"
+                          sizes="400px"
+                          unoptimized={form.imageUrl.startsWith("blob:")}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                          className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={`block cursor-pointer border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleImageUpload(f);
+                            e.target.value = "";
+                          }}
+                        />
+                        <div className="flex flex-col items-center gap-1.5">
+                          {uploading ? (
+                            <span className="text-xs text-[var(--foreground-muted)]">Uploading…</span>
+                          ) : (
+                            <>
+                              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--foreground-subtle)]">
+                                <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                              </svg>
+                              <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
+                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP · max 10 MB</span>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    )}
+
+                    {uploadError && (
+                      <p className="text-[10px] text-red-500 mb-1.5">{uploadError}</p>
+                    )}
+
+                    {/* Manual URL fallback */}
                     <input
                       type="url"
                       value={form.imageUrl}
                       onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                      placeholder="https://..."
+                      placeholder="Or paste image URL…"
                       className={inputCls}
                     />
                   </div>

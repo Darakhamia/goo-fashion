@@ -51,6 +51,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
 
   // Reset to first image (with fade) when color changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImgVisible(false);
     const t = setTimeout(() => { setActiveIdx(0); setImgVisible(true); }, 260);
     return () => clearTimeout(t);

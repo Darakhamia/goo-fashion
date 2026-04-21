@@ -316,7 +316,7 @@ export async function getAllOutfits(): Promise<Outfit[]> {
   // Collect all product IDs referenced across all outfits
   const productIds = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id)))];
 
-  let productMap = new Map<string, Product>();
+  const productMap = new Map<string, Product>();
   if (productIds.length > 0) {
     const { data: prodData } = await supabase
       .from("products")
@@ -350,7 +350,7 @@ export async function createOutfit(
 
   // Hydrate returned row
   const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
-  let productMap = new Map<string, Product>();
+  const productMap = new Map<string, Product>();
   if (productIds.length > 0) {
     const { data: prodData } = await supabase
       .from("products")
@@ -385,7 +385,7 @@ export async function updateOutfit(
   }
 
   const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
-  let productMap = new Map<string, Product>();
+  const productMap = new Map<string, Product>();
   if (productIds.length > 0) {
     const { data: prodData } = await supabase
       .from("products")
@@ -419,7 +419,7 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
 
   const row = data as DbOutfit;
   const productIds = (row.items ?? []).map((i) => i.product_id);
-  let productMap = new Map<string, Product>();
+  const productMap = new Map<string, Product>();
   if (productIds.length > 0) {
     const { data: prodData } = await supabase
       .from("products")

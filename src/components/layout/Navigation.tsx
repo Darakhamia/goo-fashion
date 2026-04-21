@@ -303,7 +303,7 @@ export default function Navigation() {
                     Your cart is empty
                   </p>
                   <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-                    Build an outfit in the builder and click&nbsp;"Shop the Look" to add items here.
+                    Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.
                   </p>
                 </div>
               ) : (

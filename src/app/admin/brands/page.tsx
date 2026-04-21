@@ -148,7 +148,7 @@ export default function AdminBrandsPage() {
       {/* DB not configured */}
       {dbConfigured === false && (
         <div className="mb-6 border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-amber-600">
-          Supabase is not configured — changes are in-memory only and won't persist between reloads.
+          Supabase is not configured — changes are in-memory only and won&apos;t persist between reloads.
         </div>
       )}
 

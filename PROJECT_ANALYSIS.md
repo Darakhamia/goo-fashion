@@ -1,6 +1,6 @@
 # PROJECT ANALYSIS — GOO Fashion
 
-_Last updated: 2026-04-19. Purpose: a dense, factual snapshot of the codebase so a fresh Claude session can skip re-exploration. Keep this file updated when structure changes._
+_Updated 2026-04-21. Reflects current codebase state._
 
 ---
 
@@ -23,137 +23,178 @@ _Last updated: 2026-04-19. Purpose: a dense, factual snapshot of the codebase so
 
 ```
 src/
-├── app/
-│   ├── layout.tsx                  # ClerkProvider → ThemeProvider → AuthProvider → CartProvider → LikesProvider → ConditionalSiteLayout
-│   ├── page.tsx                    # Homepage (hero + featured)
-│   ├── globals.css                 # ALL css vars, fonts, utilities — single source of truth
-│   ├── admin/                      # Admin dashboard (brands, products, outfits, users, settings)
-│   ├── api/                        # see §4
-│   ├── blog/                       # Static blog landing (hard-coded posts)
-│   ├── browse/                     # Browse outfits+products (searchable grid)
-│   ├── builder/page.tsx            # Outfit builder — 3-col layout + stylist drawer
-│   ├── login/[[...sign-in]]/       # Clerk <SignIn/> catch-all
-│   ├── register/[[...sign-up]]/    # Clerk <SignUp/> catch-all
-│   ├── outfit/[id]/                # Outfit detail
-│   ├── plans/                      # Pricing (Basic/Pro/Ultra)
-│   ├── product/[id]/               # Product detail (images, colors, retailers)
-│   ├── profile/                    # User profile (Clerk-protected)
-│   ├── saved/                      # Saved outfits (likes context)
-│   ├── stylist/page.tsx            # 6-step wizard → filters static outfits
-│   └── subscribe/                  # Upgrade/checkout flow
+├── app/                              # Next.js App Router
+│   ├── layout.tsx                    # Root layout (Clerk, ThemeProvider, LikesProvider, CartProvider)
+│   ├── globals.css                   # All CSS variables, animations, utility classes
+│   ├── page.tsx                      # Homepage
+│   ├── browse/page.tsx               # Browse outfits/products
+│   ├── saved/page.tsx                # Saved looks & likes
+│   ├── blog/page.tsx                 # Blog listing
+│   ├── outfit/[id]/page.tsx          # Single outfit detail
+│   ├── product/[id]/page.tsx         # Single product detail
+│   ├── profile/page.tsx              # User profile (Clerk-protected)
+│   ├── plans/page.tsx                # 3-tier pricing + comparison table
+│   ├── subscribe/page.tsx            # Subscribe placeholder (plan via URL param)
+│   ├── stylist/page.tsx              # AI stylist chat page
+│   ├── builder/page.tsx              # Outfit builder (3-column RUNWAY layout)
+│   ├── login/[[...sign-in]]/page.tsx
+│   ├── register/[[...sign-up]]/page.tsx
+│   ├── admin/                        # Admin CRUD (protected)
+│   │   ├── layout.tsx
+│   │   ├── page.tsx                  # Dashboard
+│   │   ├── brands/page.tsx
+│   │   ├── outfits/page.tsx
+│   │   ├── products/page.tsx
+│   │   ├── settings/page.tsx
+│   │   └── users/page.tsx
+│   └── api/
+│       ├── admin/settings/route.ts
+│       ├── admin/settings/test/route.ts
+│       ├── brands/route.ts
+│       ├── brands/[name]/route.ts
+│       ├── color-groups/route.ts
+│       ├── generate-outfit/route.ts  # DALL-E 3 / GPT-Image 1
+│       ├── nike/route.ts
+│       ├── outfits/route.ts
+│       ├── outfits/[id]/route.ts
+│       ├── products/route.ts
+│       ├── products/[id]/route.ts
+│       ├── products/bulk/route.ts
+│       ├── products/group/route.ts
+│       ├── products/seed/route.ts
+│       ├── upload/route.ts           # Supabase Storage image upload
+│       ├── stylist/chat/route.ts     # AI stylist chat with plan limits
+│       ├── stylist/chat/history/route.ts
+│       └── stylist/chat/sessions/route.ts
 ├── components/
 │   ├── admin/ImageCropEditor.tsx   # Admin product image crop tool
 │   ├── layout/
-│   │   ├── ConditionalSiteLayout.tsx  # Hides nav/footer on /admin, /login, /register
+│   │   ├── ConditionalSiteLayout.tsx # Nav+Footer wrapper, skips /admin /login /register
 │   │   ├── Navigation.tsx
 │   │   └── Footer.tsx
-│   ├── outfit/                     # OutfitCard, OutfitCollage, OutfitActions
-│   ├── product/                    # ProductCard, ProductGallery, ProductClient
-│   ├── stylist/StylistDrawer.tsx   # AI chat drawer — embeddable on builder/browse/product
-│   └── ui/                         # Generic UI (SectionLabel, etc.)
+│   ├── admin/
+│   │   └── ImageCropEditor.tsx
+│   ├── outfit/
+│   │   ├── OutfitCard.tsx
+│   │   ├── OutfitCollage.tsx
+│   │   └── OutfitActions.tsx
+│   ├── product/
+│   │   ├── ProductCard.tsx
+│   │   ├── ProductGallery.tsx
+│   │   └── ProductClient.tsx
+│   ├── stylist/
+│   │   └── StylistDrawer.tsx         # AI stylist slide-in drawer with history + plan limits
+│   └── ui/
+│       └── SectionLabel.tsx
 ├── lib/
 │   ├── context/
-│   │   ├── auth-context.tsx        # Clerk user → { id, name, email, plan, isAdmin }
-│   │   ├── cart-context.tsx        # Shopping cart state
-│   │   ├── likes-context.tsx       # Saved outfits/products state
-│   │   └── theme-context.tsx       # Dark/light toggle
+│   │   ├── auth-context.tsx
+│   │   ├── cart-context.tsx
+│   │   ├── likes-context.tsx
+│   │   └── theme-context.tsx
 │   ├── data/
-│   │   ├── db.ts                   # Server-side Supabase queries + app↔db type converters; falls back to static data if SUPABASE_URL missing
-│   │   ├── outfits.ts              # Static outfit catalog
-│   │   ├── plans.ts                # Plan definitions (Basic $10 / Pro $25 / Ultra $49)
-│   │   └── products.ts             # Static product catalog (~50 items)
+│   │   ├── db.ts                     # Supabase client queries + static fallback
+│   │   ├── outfits.ts
+│   │   ├── plans.ts                  # Plan definitions (Free/Plus/Ultra)
+│   │   └── products.ts
 │   ├── server/
-│   │   ├── admin-auth.ts           # requireAdmin() — checks Clerk userId ∈ ADMIN_USER_IDS
-│   │   ├── get-openai-key.ts       # Resolves OPENAI_API_KEY from env or Supabase settings
-│   │   └── rate-limit.ts           # Upstash sliding-window limiter (10 req/min/IP); fails open
-│   ├── services/nikeApi.ts         # Nike RapidAPI fetcher+transformer
-│   ├── supabase.ts                 # Client singleton
-│   └── types.ts                    # Shared TS types
-public/                             # Static assets
-scripts/                            # Utility scripts
-supabase-schema.sql                 # DB schema (see §6)
-supabase-migration-color-groups.sql # Color groups migration
+│   │   ├── admin-auth.ts
+│   │   ├── get-openai-key.ts         # Resolves per-user or global OpenAI key
+│   │   └── rate-limit.ts             # Upstash sliding-window limiter; fails open
+│   ├── services/
+│   │   └── nikeApi.ts
+│   ├── supabase.ts
+│   └── types.ts
+public/                               # Static assets
+scripts/
+supabase-schema.sql
+supabase-migration-color-groups.sql
+supabase/migrations/003_stylist_usage.sql  # Daily usage tracking per user
 ```
 
 ---
 
 ## 3. Pages (routes)
 
-| Route | Purpose |
-|---|---|
-| `/` | Homepage — hero, featured outfits & products |
-| `/admin` | Admin hub (brands, products, outfits, users, settings) — gated by `ADMIN_USER_IDS` |
-| `/blog` | Static blog landing with hard-coded posts |
-| `/browse` | Browse all outfits/products with search+filter |
-| `/builder` | Outfit builder (3-column layout: slots left · silhouette center · catalog right); embeds `StylistDrawer`; calls `/api/generate-outfit` for AI images |
-| `/login` | Clerk `<SignIn>` |
-| `/register` | Clerk `<SignUp>` |
-| `/outfit/[id]` | Outfit detail (items list, total price, keywords) |
-| `/plans` | Pricing tiers |
-| `/product/[id]` | Product detail (gallery, colors, retailers, price range) |
-| `/profile` | User profile — plan info, saved outfits, member since |
-| `/saved` | User's saved outfits (from likes context) |
-| `/stylist` | 6-step wizard (occasion → style → palette → fit → season → budget) → filter static outfits, show 4 `OutfitCard`s |
-| `/subscribe` | Subscription upgrade/checkout |
+| Route | File | Notes |
+|---|---|---|
+| `/` | `page.tsx` | Homepage |
+| `/browse` | `browse/page.tsx` | Browse outfits & products |
+| `/saved` | `saved/page.tsx` | Saved looks & liked items |
+| `/blog` | `blog/page.tsx` | Blog listing |
+| `/outfit/[id]` | `outfit/[id]/page.tsx` | Outfit detail |
+| `/product/[id]` | `product/[id]/page.tsx` | Product detail |
+| `/profile` | `profile/page.tsx` | Clerk-protected |
+| `/plans` | `plans/page.tsx` | 3-tier pricing + FAQ |
+| `/subscribe` | `subscribe/page.tsx` | Subscribe placeholder (plan via `?plan=` URL param) |
+| `/stylist` | `stylist/page.tsx` | AI stylist chat page |
+| `/builder` | `builder/page.tsx` | Outfit builder (3-col RUNWAY layout) |
+| `/admin` | `admin/page.tsx` | Admin dashboard (Supabase-backed) |
+| `/login` | `login/[[...sign-in]]/page.tsx` | Clerk sign-in |
+| `/register` | `register/[[...sign-up]]/page.tsx` | Clerk sign-up |
 
 ---
 
-## 4. API routes (`src/app/api/`)
+## 4. API Routes
 
 | Route | Methods | Purpose |
 |---|---|---|
-| `/api/admin/settings` | GET/POST/DELETE | Admin-only: manage OpenAI API key (env or Supabase `settings` table) |
-| `/api/admin/settings/test` | — | Test endpoint for admin settings |
-| `/api/brands` | GET/POST | List brands; admin creates |
-| `/api/brands/[name]` | — | Brand detail/update |
+| `/api/generate-outfit` | POST | DALL-E 3 / GPT-Image 1 outfit image generation |
+| `/api/stylist/chat` | POST | AI stylist chat — plan limits, daily usage, OpenAI |
+| `/api/stylist/chat/history` | GET/POST | Persist & fetch chat history per user/surface |
+| `/api/stylist/chat/sessions` | GET | List all sessions for a user |
+| `/api/upload` | POST | Supabase Storage image upload (outfit-images bucket) |
+| `/api/products` | GET/POST | Product CRUD (supports `raw=true`) |
+| `/api/products/[id]` | GET/PATCH | Single product |
+| `/api/products/bulk` | POST | Bulk import |
+| `/api/products/group` | GET | Variant grouping |
+| `/api/products/seed` | POST | Seed from static data |
+| `/api/outfits` | GET/POST | Outfit CRUD |
+| `/api/outfits/[id]` | GET/PATCH/DELETE | Single outfit |
+| `/api/brands` | GET/POST | Brand CRUD |
+| `/api/brands/[name]` | GET | Brand detail |
 | `/api/color-groups` | GET/POST | Color swatch CRUD |
-| `/api/generate-outfit` | POST | OpenAI `gpt-image-1` / DALL-E 3 outfit image generation |
-| `/api/nike` | GET | Proxy to Nike RapidAPI search |
-| `/api/outfits` | GET/POST | List / create outfits |
-| `/api/outfits/[id]` | — | Outfit get/update |
-| `/api/products` | GET/POST | List / create products (supports `raw` mode skipping variant grouping) |
-| `/api/products/[id]` | — | Product get/update |
-| `/api/products/bulk` | — | Bulk import |
-| `/api/products/group` | — | Variant (color) grouping |
-| `/api/products/seed` | — | DB seeding |
-| `/api/stylist/chat` | POST | AI chat (gpt-4o-mini); validates catalog IDs; extracts JSON block; rate-limited 10/min/IP |
-| `/api/stylist/chat/history` | GET/POST | Persist & fetch chat history per user/surface/context |
+| `/api/nike` | GET | Nike RapidAPI proxy |
+| `/api/admin/settings` | GET/POST/DELETE | OpenAI key management |
+| `/api/admin/settings/test` | GET | Test OpenAI key |
 
 ---
 
-## 5. Auth, rate-limiting, env
+## 5. Auth, plans, rate-limiting
 
 **Clerk**
-- Wrapped at root in `layout.tsx` via `<ClerkProvider>`.
-- `auth-context.tsx` exposes `{ id, name, email, plan, isAdmin, signOut, openSignIn, openSignUp }` using `useUser()` + `useClerk()`.
-- User plan read from Clerk `publicMetadata.plan` (`free` | `plus` | `ultra`).
-- Admin flag from `publicMetadata.isAdmin` **or** server check via `ADMIN_USER_IDS` env var (CSV of Clerk user IDs) — see `src/lib/server/admin-auth.ts`.
-- Sign-in/up live at `/login` and `/register` as catch-all routes.
+- `auth-context.tsx` exposes `{ id, name, email, plan, isAdmin }`.
+- Plan: `publicMetadata.plan` → `free` | `plus` | `ultra`. Default `free`.
+- Admin: `publicMetadata.isAdmin` (client) + `ADMIN_USER_IDS` env var (server via `requireAdmin()`).
 
-**Upstash rate-limit**
-- Used only by `/api/stylist/chat`. Env vars: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
-- Sliding window, 10 requests/minute per IP. Fails open if Upstash is unavailable.
+**Plan daily limits** (enforced in `/api/stylist/chat`)
+- free: 20 msg/day · plus: 150 msg/day · ultra: unlimited
+- Tracked in `stylist_daily_usage` Supabase table.
+- Burst protection via Upstash Redis (10 req/min/IP, fails open).
 
-**Required env vars** (non-exhaustive)
+**Required env vars**
 - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-- `OPENAI_API_KEY` (or set via admin settings UI → Supabase `settings`)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-- `ADMIN_USER_IDS` (comma-separated Clerk IDs)
-- `RAPIDAPI_KEY` (Nike service, optional)
+- `OPENAI_API_KEY` (or set via admin UI)
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (optional)
+- `ADMIN_USER_IDS` (CSV of Clerk IDs)
+- `RAPIDAPI_KEY` (Nike, optional)
 
 ---
 
-## 6. Supabase schema (`supabase-schema.sql`)
+## 6. Supabase schema
 
-| Table | Purpose / Key columns |
+| Table | Purpose |
 |---|---|
-| `products` | Catalog core. `name, brand, category, price_min/max, images[], colors[], sizes[], material, retailers JSONB, style_keywords[], gender, variant_group_id, color_hex, is_group_primary, crop_data JSONB, color_group_ids int[]` |
-| `brands` | `name` unique. Admin-managed |
-| `color_groups` | Swatches for filters: `id, name, hex_code, sort_order` |
-| `outfits` | `name, description, occasion, image_url, items JSONB, total_price_min/max, style_keywords[], is_ai_generated, is_saved, season` |
-| `settings` | Key-value admin config (e.g., `openai_api_key`): `key, value, updated_at` |
-| `stylist_chats` | Chat persistence: `user_id, surface, context_id, messages` |
+| `products` | Full catalog with variant grouping, crop data, style keywords |
+| `brands` | Admin-managed brand list |
+| `color_groups` | Swatches for browse filters |
+| `outfits` | Admin-uploaded outfits with image_url, items, keywords |
+| `settings` | Key-value config (`openai_api_key`) |
+| `stylist_chats` | Chat history: `user_id, surface, context_id, messages JSONB` |
+| `stylist_daily_usage` | Daily msg count: `user_id, usage_date, count` |
+
+Storage bucket: `outfit-images` (public, auto-created by `/api/upload`).
 
 RLS enabled on all tables; public read, service-role writes.
 
@@ -161,62 +202,43 @@ RLS enabled on all tables; public read, service-role writes.
 
 ## 7. Styling & typography
 
-- Single CSS file: `src/app/globals.css` — all CSS vars, keyframes, utilities live here.
+- Single CSS file: `src/app/globals.css` — all CSS vars, keyframes, utilities.
 - No `tailwind.config.js` (Tailwind v4 via PostCSS).
-- Fonts: the handoff design calls for **Fraunces** (serif display), **Inter Tight** (sans UI), **JetBrains Mono** (micro-labels). Check current state of `globals.css` before asserting whether these are loaded — historically the site used system stacks via `--font-body` / `--font-display`.
-- Light-mode bg token: was `#FAFAF8`, design target `#F4F2EE`. Verify current value before changing.
-- `.font-display` utility class applies `var(--font-display)` with `!important`.
+- Fonts: **Fraunces** (display serif) · **Inter Tight** (UI sans) · **JetBrains Mono** (micro-labels).
+- Light-mode bg: `#F4F2EE` | Dark-mode: `#0A0A0A`.
 
 ---
 
 ## 8. Data flow — Builder and Stylist
 
 **Builder (`/builder`)**
-- On mount: `GET /api/products` (falls back to `src/lib/data/products.ts` if Supabase down).
-- UI: 5 slots (outerwear · top · bottom · shoes · accessories) fed by catalog filters.
-- Selection synced to URL params (shareable links).
-- "Save" → `localStorage` key `goo-saved-outfits`.
-- "Generate" → `POST /api/generate-outfit` → modal with DALL-E/gpt-image-1 output.
-- Embeds `StylistDrawer` which posts to `/api/stylist/chat` (rate-limited).
-
-**Stylist (`/stylist`)**
-- Pure client wizard: 6 steps, local `useState`.
-- Result step **does not call an API** — filters `src/lib/data/outfits.ts` (or Supabase via `db.ts` if wired) by occasion.
-- Renders 4 `OutfitCard`s after a ~2.4s fake-generation animation.
-- "Regenerate" resets to step 1.
+- On mount: `GET /api/products` (falls back to `products.ts` if Supabase down).
+- 5 slots: outerwear · top · bottom · shoes · accessories.
+- Selection synced to URL params. Save → `localStorage goo-saved-outfits`.
+- "Generate" → `POST /api/generate-outfit` → DALL-E modal.
+- `persistLook({ generatedImage, generatedStyle })` — auto-saves after generation.
+- Embeds `StylistDrawer` (rate-limited, history-aware).
 
 **StylistDrawer (chat)**
-- Can appear on builder, browse, product pages.
-- Sends `{ messages, context, currentOutfit }` to `/api/stylist/chat`.
-- Server validates any catalog IDs referenced by the model, extracts a JSON suggestion block.
-- History optionally persisted via `/api/stylist/chat/history`.
+- Used in builder, browse, product pages.
+- Plan limits shown in composer footer (amber warning at ≤5 remaining).
+- History panel lists all sessions; click any to reload.
+- "Build this look" button appears when suggestions cover ≥2 different slots.
 
 ---
 
 ## 9. Known gotchas
 
-- **`h-screen` + fixed nav**: builder uses full viewport minus nav height. When touching layout, re-verify nav offset (~56px).
-- **Variant grouping**: products have `variant_group_id` + `is_group_primary` + `color_hex`. `/api/products` groups variants by default; pass `raw=true` to skip.
-- **Admin auth**: there are two checks — Clerk `publicMetadata.isAdmin` (client-side UX) and `ADMIN_USER_IDS` env (server-side truth). Mutations must go through `requireAdmin()`.
-- **OpenAI key resolution**: `get-openai-key.ts` tries env first, then Supabase `settings` table. Missing key → 500 on generate/chat endpoints.
-- **Upstash fail-open**: rate limiter returns `success: true` when Upstash is unreachable — do not rely on it for hard quota enforcement.
-- **Static fallbacks**: `db.ts` will silently return `products.ts` / `outfits.ts` if `NEXT_PUBLIC_SUPABASE_URL` is unset. Test against real Supabase before declaring a feature working.
-- **RLS**: all mutations require the service-role key on the server; client-side Supabase calls will only read.
+- **`h-screen` + fixed nav**: builder uses full viewport minus nav height (~56px).
+- **Variant grouping**: pass `raw=true` to `/api/products` to skip.
+- **Admin auth**: two checks — Clerk `publicMetadata.isAdmin` (client) + `ADMIN_USER_IDS` env (server). Mutations need `requireAdmin()`.
+- **OpenAI key**: `get-openai-key.ts` tries env then Supabase `settings`. Missing → 501.
+- **Upstash fail-open**: rate limiter passes through when Redis unreachable.
+- **Static fallbacks**: `db.ts` silently returns static data when `SUPABASE_URL` unset.
+- **RLS**: all mutations need service-role key server-side.
 
 ---
 
 ## 10. Git / branch policy
 
-- **Project policy** (from `CLAUDE.md`): always commit directly to `master`; do not create feature branches.
-- This file is safe to commit in isolation — it is documentation only.
-
----
-
-## 11. Companion docs in repo
-
-- `AI_STYLIST_ARCHITECTURE.md` — deep dive on stylist chat design
-- `BUILD_PROGRESS.md` — running log of build work
-- `FOLLOWUP_PLAN.md` — open follow-ups
-- `IMPLEMENTATION_PLAN.md` — implementation plan doc
-
-Read those for historical context; this file is the quick-orient snapshot.
+- **Project policy** (`CLAUDE.md`): always commit directly to `master`; no feature branches.
