@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
@@ -27,6 +28,7 @@ export async function PUT(
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidatePath("/");
   return NextResponse.json(dbToProduct(data as DbProduct));
 }
 
@@ -58,5 +60,6 @@ export async function DELETE(
   const { id } = await params;
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidatePath("/");
   return NextResponse.json({ success: true });
 }
