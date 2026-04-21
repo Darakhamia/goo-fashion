@@ -11,14 +11,15 @@ import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/componen
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
-type SlotId = "outerwear" | "top" | "bottom" | "shoes" | "accessories";
+type SlotId = "outerwear" | "top" | "bottom" | "shoes" | "accessories" | "accessories2";
 
 const SLOTS = [
   { id: "outerwear"   as SlotId, label: "Outerwear",   categories: ["outerwear", "blazers"] },
   { id: "top"         as SlotId, label: "Top",         categories: ["tops", "shirts", "knitwear"] },
   { id: "bottom"      as SlotId, label: "Bottom",      categories: ["bottoms", "jeans", "shorts", "skirts", "dresses", "jumpsuits"] },
   { id: "shoes"       as SlotId, label: "Shoes",       categories: ["footwear"] },
-  { id: "accessories" as SlotId, label: "Acc",         categories: ["accessories", "bags", "swimwear"] },
+  { id: "accessories"  as SlotId, label: "Acc 1",       categories: ["accessories", "bags", "swimwear"] },
+  { id: "accessories2" as SlotId, label: "Acc 2",       categories: ["accessories", "bags", "swimwear"] },
 ];
 
 // Vertical figure zones for the silhouette canvas (accessories float separately).
@@ -82,7 +83,7 @@ function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
         <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
       </>)}
-      {id === "accessories" && (<>
+      {(id === "accessories" || id === "accessories2") && (<>
         <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
         <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
       </>)}
@@ -105,7 +106,8 @@ export default function BuilderPage() {
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(true);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
+  const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -251,31 +253,39 @@ export default function BuilderPage() {
     return list;
   }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
 
-  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured";
+  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null;
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
   // Auto-routes product into the correct slot based on its category.
-  // Replaces any existing selection in that slot (toggle off if already selected).
+  // For multi-slot categories (accessories), fills the first empty slot; toggles off if already selected.
   const selectProduct = (product: Product) => {
-    const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
-    if (!targetSlot) return;
-    const slotId = targetSlot.id;
+    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+    if (matchingSlots.length === 0) return;
 
     setSelection(prev => {
       const next = { ...prev };
-      if (next[slotId]?.id === product.id) {
-        delete next[slotId];
-        setVariantOverrides(vo => { const n = { ...vo }; delete n[slotId]; return n; });
-      } else {
-        next[slotId] = product;
-        setVariantOverrides(vo => { const n = { ...vo }; delete n[slotId]; return n; });
+
+      // Toggle off if already selected in any matching slot
+      for (const slot of matchingSlots) {
+        if (next[slot.id]?.id === product.id) {
+          delete next[slot.id];
+          setVariantOverrides(vo => { const n = { ...vo }; delete n[slot.id]; return n; });
+          updateURL(next);
+          setActiveSlot(slot.id);
+          return next;
+        }
       }
+
+      // Find first empty slot, or fall back to first slot
+      const emptySlot = matchingSlots.find(s => !next[s.id]) ?? matchingSlots[0];
+      next[emptySlot.id] = product;
+      setVariantOverrides(vo => { const n = { ...vo }; delete n[emptySlot.id]; return n; });
       updateURL(next);
+      setActiveSlot(emptySlot.id);
       return next;
     });
     setSaved(false);
-    setActiveSlot(slotId);
   };
 
   const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
@@ -309,6 +319,8 @@ export default function BuilderPage() {
     setMaxPrice(null);
     setSelectedBrands([]);
     setSortBy("featured");
+    setLikedOnly(false);
+    setCatalogCategory(null);
   };
 
   const shopTheLook = () => {
@@ -700,11 +712,15 @@ export default function BuilderPage() {
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
                     {catalogProducts.map(product => {
-                    const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
-                    const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
-                    const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
-                    const activeVariant = product.variants?.find(v => v.id === variantId);
-                    const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
+                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                    const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                    const isSelected = !!selectedSlot;
+                    const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
+                    const targetSlot = selectedSlot ?? matchingSlots[0];
+                    // Preview: prefer catalog color preview, then selected variant, then base image
+                    const previewVariantId = catalogPreviews[product.id];
+                    const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
+                    const displayImage = activeVariant?.imageUrl ?? product.imageUrl;
                     const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
@@ -750,20 +766,23 @@ export default function BuilderPage() {
                           {hasVariants && (
                             <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
                               {product.variants!.slice(0, 5).map(swatch => {
-                                const isSwatchActive = isSelected && (variantId ?? product.id) === swatch.id;
+                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                const isSwatchActive = activeId === swatch.id;
                                 return (
                                   <button
                                     key={swatch.id}
                                     title={swatch.colorName}
                                     onClick={e => {
                                       e.stopPropagation();
-                                      selectProduct(product);
-                                      if (targetSlot) selectVariant(targetSlot.id, swatch);
+                                      // Preview color in catalog without selecting
+                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                      // If already in the look, also update the variant there
+                                      if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                     }}
                                     className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
                                       isSwatchActive
                                         ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
-                                        : "opacity-80 hover:opacity-100 hover:scale-110"
+                                        : "opacity-70 hover:opacity-100 hover:scale-110"
                                     }`}
                                     style={{
                                       background: swatch.colorHex === "#multicolor"
@@ -792,12 +811,53 @@ export default function BuilderPage() {
             >
               <div className="w-[180px] flex flex-col overflow-y-auto h-full">
 
+                {/* Sort — first */}
+                <div className="border-b border-[var(--border)]">
+                  <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Sort</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("sort") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {(["featured", "price-asc", "price-desc"] as const).map(s => (
+                        <button key={s} onClick={() => setSortBy(s)}
+                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                            sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {s === "featured" ? "Featured" : s === "price-asc" ? "Price ↑" : "Price ↓"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Liked only + Clear — second */}
+                <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
+                  <button
+                    onClick={() => setLikedOnly(v => !v)}
+                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                    </svg>
+                    Liked only
+                  </button>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
                 {/* Category */}
                 <div className="border-b border-[var(--border)]">
-                  <button
-                    onClick={() => toggleSection("category")}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  >
+                  <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
@@ -825,10 +885,7 @@ export default function BuilderPage() {
 
                 {/* Price */}
                 <div className="border-b border-[var(--border)]">
-                  <button
-                    onClick={() => toggleSection("price")}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  >
+                  <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
@@ -857,10 +914,7 @@ export default function BuilderPage() {
                 {/* Brand */}
                 {availableBrands.length > 0 && (
                   <div className="border-b border-[var(--border)]">
-                    <button
-                      onClick={() => toggleSection("brand")}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left"
-                    >
+                    <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                       <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
@@ -889,53 +943,6 @@ export default function BuilderPage() {
                     )}
                   </div>
                 )}
-
-                {/* Sort */}
-                <div className="border-b border-[var(--border)]">
-                  <button
-                    onClick={() => toggleSection("sort")}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  >
-                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Sort</p>
-                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
-                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
-                      <path d="M2 3.5L5 6.5L8 3.5" />
-                    </svg>
-                  </button>
-                  {!collapsedSections.has("sort") && (
-                    <div className="px-3 pb-3 flex flex-col gap-0.5">
-                      {(["featured", "price-asc", "price-desc"] as const).map(s => (
-                        <button key={s} onClick={() => setSortBy(s)}
-                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                            sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {s === "featured" ? "Featured" : s === "price-asc" ? "Price ↑" : "Price ↓"}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Liked + clear */}
-                <div className="px-3 py-3">
-                  <button
-                    onClick={() => setLikedOnly(v => !v)}
-                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-                    </svg>
-                    Liked only
-                  </button>
-                  {hasActiveFilters && (
-                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors mt-0.5">
-                      Clear filters
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
           </aside>
@@ -993,35 +1000,37 @@ export default function BuilderPage() {
                   })}
                 </div>
 
-                {/* Accessories — floating mini panel */}
-                {(() => {
-                  const id: SlotId = "accessories";
-                  const picked = selection[id];
-                  const displayImage = picked?.imageUrl;
-                  return (
-                    <button
-                      onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
-                      className={`absolute right-0 overflow-hidden border transition-all ${
-                        activeSlot === id ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]" : "border-[var(--border)]"
-                      }`}
-                      style={{ top: "50%", transform: "translateY(-50%)", width: 36, height: 44 }}
-                    >
-                      {!picked && (
-                        <>
-                          <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
-                          <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={9} /></div>
-                          </div>
-                        </>
-                      )}
-                      {displayImage && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1" />
-                      )}
-                    </button>
-                  );
-                })()}
+                {/* Accessories — two floating mini panels stacked */}
+                <div className="absolute right-0 flex flex-col gap-1" style={{ top: "50%", transform: "translateY(-50%)" }}>
+                  {(["accessories", "accessories2"] as SlotId[]).map(id => {
+                    const picked = selection[id];
+                    const displayImage = picked?.imageUrl;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => { setActiveSlot(id); setCatalogCategory("accessories"); }}
+                        className={`relative overflow-hidden border transition-all ${
+                          activeSlot === id ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]" : "border-[var(--border)]"
+                        }`}
+                        style={{ width: 34, height: 40 }}
+                      >
+                        {!picked && (
+                          <>
+                            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
+                            <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={9} /></div>
+                            </div>
+                          </>
+                        )}
+                        {displayImage && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
