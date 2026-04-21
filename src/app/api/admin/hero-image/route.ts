@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
+  revalidatePath("/");
   return NextResponse.json({ ok: true, url: publicUrl });
 }
 
@@ -87,5 +89,6 @@ export async function DELETE() {
   }
 
   await supabase.from("settings").delete().eq("key", SETTING_KEY);
+  revalidatePath("/");
   return NextResponse.json({ ok: true, url: DEFAULT_URL });
 }
