@@ -135,7 +135,26 @@ function buildFocusContext(piece: OutfitPiece): string {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(catalogSummary: string, outfitContext: string): string {
+interface StylistPersonalization {
+  nickname?: string;
+  pronouns?: string;
+  styleGoals?: string[];
+  hardLimits?: string;
+  lifestyle?: string;
+}
+
+function buildPersonalizationBlock(p: StylistPersonalization | null): string {
+  if (!p) return "";
+  const lines: string[] = ["USER PROFILE:"];
+  if (p.nickname) lines.push(`- Address the user as: ${p.nickname}${p.pronouns && p.pronouns !== "Skip" ? ` (${p.pronouns})` : ""}`);
+  if (p.styleGoals?.length) lines.push(`- Style goals: ${p.styleGoals.join(", ")}`);
+  if (p.lifestyle) lines.push(`- Lifestyle: ${p.lifestyle}`);
+  if (p.hardLimits) lines.push(`- NEVER suggest: ${p.hardLimits}`);
+  return lines.join("\n") + "\n";
+}
+
+function buildSystemPrompt(catalogSummary: string, outfitContext: string, personalization: StylistPersonalization | null = null): string {
+  const personalizationBlock = buildPersonalizationBlock(personalization);
   return `You are the AI Stylist for GOO, a curated luxury and contemporary fashion platform.
 Help users build outfits, discover pieces, and understand how to style them.
 
@@ -143,7 +162,8 @@ PERSONALITY:
 - Confident, concise, editorial. 1–3 sentences max. No filler or lectures.
 - Reference the user's actual outfit when it exists.
 - Warm but direct — like a knowledgeable friend who works in fashion.
-
+- If you know the user's name, use it occasionally (not every message).
+${personalizationBlock ? `\n${personalizationBlock}` : ""}
 RULES:
 1. ONLY recommend products from the GOO catalog listed below. Never invent names, brands, or IDs.
 2. If nothing matches, say so and redirect to the closest available option.
@@ -248,13 +268,16 @@ export async function POST(req: Request) {
   // ── Auth + plan ───────────────────────────────────────────────────────────
   const { userId } = await auth();
   let userPlan: keyof typeof PLAN_DAILY_LIMITS = "free";
+  let userPersonalization: StylistPersonalization | null = null;
 
   if (userId) {
     try {
       const clerkUser = await currentUser();
       const planRaw = (clerkUser?.publicMetadata as { plan?: string } | null)?.plan ?? "free";
       if (planRaw in PLAN_DAILY_LIMITS) userPlan = planRaw as typeof userPlan;
-    } catch { /* use default "free" */ }
+      const unsafe = clerkUser?.unsafeMetadata as { stylistPersonalization?: StylistPersonalization } | null;
+      if (unsafe?.stylistPersonalization) userPersonalization = unsafe.stylistPersonalization;
+    } catch { /* use defaults */ }
   }
 
   const dailyLimit = PLAN_DAILY_LIMITS[userPlan];
@@ -306,7 +329,7 @@ export async function POST(req: Request) {
     : browseContext
     ? buildBrowseContext(browseContext)
     : buildOutfitContext(currentOutfit ?? undefined);
-  const systemPrompt = buildSystemPrompt(catalogSummary, outfitContext);
+  const systemPrompt = buildSystemPrompt(catalogSummary, outfitContext, userPersonalization);
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
