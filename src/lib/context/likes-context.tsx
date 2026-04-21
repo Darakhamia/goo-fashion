@@ -28,6 +28,7 @@ export function LikesProvider({ children }: { children: React.ReactNode }) {
     try {
       const o = localStorage.getItem("goo-liked-outfits");
       const p = localStorage.getItem("goo-liked-products");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (o) setLikedOutfits(JSON.parse(o));
       if (p) setLikedProducts(JSON.parse(p));
     } catch {}

@@ -61,6 +61,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
 
   // Reset when the displayed images change (variant switch)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIdx(0);
     t.current.activeIdx = 0;
     t.current.direction = 1;
@@ -72,6 +73,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     if (!isHovered) {
       if (state.interval) { clearInterval(state.interval); state.interval = null; }
       // CSS transition on the strip handles the smooth return to image 0
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveIdx(0);
       state.activeIdx = 0;
       state.direction = 1;

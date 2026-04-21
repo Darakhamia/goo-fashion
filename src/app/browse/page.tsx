@@ -150,6 +150,7 @@ export default function BrowsePage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get("view");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (v === "pieces" || v === "outfits") setView(v);
   }, []);
   const [sort, setSort] = useState<SortOption>("featured");

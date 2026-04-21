@@ -30,6 +30,7 @@ export default function ProductGallery({
 
   // Reset to first image whenever the color changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIdx(0);
   }, [selectedColor]);
 

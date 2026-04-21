@@ -17,24 +17,27 @@ interface SavedLook {
   pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
-  generatedImage?: string;
+  generatedImage?: string | null;
   generatedStyle?: "mannequin" | "flatlay";
 }
 
-const SLOT_ORDER = ["top", "bottom", "shoes", "accessories"];
+const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories"];
 
 // ── Builder outfit card ───────────────────────────────────────────────────────
 function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const pieces = SLOT_ORDER.map((slot) => {
-    const piece = look.pieces.find((p) => p.slot === slot);
-    const product = piece ? staticProducts.find((p) => p.id === piece.productId) : null;
-    const imageUrl = piece?.imageUrl ?? product?.imageUrl ?? null;
-    const name = piece?.name ?? product?.name ?? slot;
-    const productId = piece?.productId ?? null;
-    return { slot, imageUrl, name, productId };
-  });
+  const pieces = SLOT_ORDER
+    .map((slot) => {
+      const piece = look.pieces.find((p) => p.slot === slot);
+      if (!piece) return null;
+      const product = staticProducts.find((p) => p.id === piece.productId);
+      const imageUrl = piece.imageUrl ?? product?.imageUrl ?? null;
+      const name = piece.name ?? product?.name ?? slot;
+      return { slot, imageUrl, name, productId: piece.productId };
+    })
+    .filter(Boolean) as { slot: string; imageUrl: string | null; name: string; productId: string }[];
 
   const builderUrl =
     "/builder?editId=" + look.id + "&" +
@@ -51,37 +54,46 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
     month: "short",
   });
 
+  const handleDelete = () => {
+    if (confirmDelete) {
+      onDelete();
+    } else {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 2500);
+    }
+  };
+
   return (
     <>
-      <div className="bg-[var(--background)] flex flex-col group">
-        {/* Thumbnail — AI-generated hero image when available, otherwise 2×2 piece grid */}
-        <button onClick={() => setOpen(true)} className="block w-full text-left">
+      <div className="bg-[var(--background)] flex flex-col">
+        {/* Main image — AI render or 2×2 product grid */}
+        <button onClick={() => setOpen(true)} className="block w-full text-left relative group overflow-hidden">
           {look.generatedImage ? (
-            <div className="relative aspect-square overflow-hidden bg-[var(--surface)]">
+            <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={look.generatedImage}
-                alt="AI generated outfit"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                alt="Generated look"
+                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
               />
-              <span className="absolute top-2 left-2 font-mono text-[8px] tracking-[0.14em] uppercase bg-[var(--background)]/80 backdrop-blur-sm text-[var(--foreground)] px-1.5 py-0.5">
-                AI · {look.generatedStyle === "flatlay" ? "Flat lay" : "Mannequin"}
+              <span className="absolute top-2.5 left-2.5 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+                AI{look.generatedStyle === "flatlay" ? " · Flat lay" : ""}
               </span>
             </div>
           ) : (
             <div className="grid grid-cols-2 grid-rows-2 aspect-square gap-px bg-[var(--border)]">
-              {pieces.map(({ slot, imageUrl, name }) => (
-                <div key={slot} className="overflow-hidden bg-[var(--surface)]">
-                  {imageUrl ? (
+              {(pieces.length > 0 ? pieces : [null, null, null, null]).slice(0, 4).map((piece, i) => (
+                <div key={piece?.slot ?? i} className="overflow-hidden bg-[var(--surface)] group-hover:[&>img]:scale-105">
+                  {piece?.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={imageUrl}
-                      alt={name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      src={piece.imageUrl}
+                      alt={piece.name}
+                      className="w-full h-full object-cover transition-transform duration-300"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[var(--border-strong)] text-xs">—</span>
+                      <span className="text-[var(--border-strong)] text-[10px]">—</span>
                     </div>
                   )}
                 </div>
@@ -91,38 +103,37 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
         </button>
 
         {/* Footer */}
-        <div className="p-3 flex items-end justify-between gap-2">
+        <div className="px-3 pt-2.5 pb-3 flex items-start justify-between gap-2 border-t border-[var(--border)]">
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-[var(--foreground)]">
+            <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
               ${look.totalPrice.toLocaleString()}
             </p>
             {look.styleKeywords.length > 0 && (
-              <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 truncate">
+              <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate">
                 {look.styleKeywords.slice(0, 3).join(" · ")}
               </p>
             )}
-            <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">{date}</p>
+            <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">{date}</p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setOpen(true)}
-              className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            >
-              Open →
-            </button>
+
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
             <Link
               href={builderUrl}
-              className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="h-7 px-3 flex items-center text-[9px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               Edit
             </Link>
             <button
-              onClick={onDelete}
-              title="Remove"
-              className="text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
+              onClick={handleDelete}
+              title={confirmDelete ? "Click again to confirm" : "Delete look"}
+              className={`h-7 w-7 flex items-center justify-center border transition-colors ${
+                confirmDelete
+                  ? "border-red-500 text-red-500 bg-red-500/5"
+                  : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400"
+              }`}
             >
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                <path d="M1 1L8 8M8 1L1 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </button>
           </div>
@@ -136,7 +147,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-[var(--background)] w-full max-w-md"
+            className="bg-[var(--background)] w-full max-w-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -146,7 +157,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   ${look.totalPrice.toLocaleString()}
                 </p>
                 {look.styleKeywords.length > 0 && (
-                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
                     {look.styleKeywords.slice(0, 3).join(" · ")}
                   </p>
                 )}
@@ -155,26 +166,30 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 <Link
                   href={builderUrl}
                   onClick={() => setOpen(false)}
-                  className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  Edit in builder →
+                  Edit in Builder →
                 </Link>
                 <button
                   onClick={() => setOpen(false)}
                   className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                    <path d="M1 1L10 10M10 1L1 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            {/* AI hero image — shown above the piece grid when present */}
+            {/* AI render (if exists) + 2×2 pieces grid */}
             {look.generatedImage && (
-              <div className="relative aspect-square overflow-hidden bg-[var(--surface)]">
+              <div className="relative border-b border-[var(--border)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={look.generatedImage} alt="AI generated outfit" className="w-full h-full object-cover" />
+                <img
+                  src={look.generatedImage}
+                  alt="Generated look"
+                  className="w-full max-h-72 object-cover object-top"
+                />
                 <a
                   href={look.generatedImage}
                   download="goo-outfit.jpg"
@@ -188,16 +203,15 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
               </div>
             )}
 
-            {/* 2×2 grid with product links */}
             <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
               {pieces.map(({ slot, imageUrl, name, productId }) => (
                 <Link
                   key={slot}
-                  href={productId ? `/product/${productId}` : "#"}
+                  href={`/product/${productId}`}
                   onClick={() => setOpen(false)}
                   className="group/item bg-[var(--surface)] block relative overflow-hidden"
                 >
-                  <div className="aspect-square overflow-hidden">
+                  <div className="aspect-[4/5] overflow-hidden">
                     {imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -211,8 +225,8 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                       </div>
                     )}
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-3 py-2 translate-y-full group-hover/item:translate-y-0 transition-transform duration-200">
-                    <p className="text-[10px] text-white truncate">{name}</p>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2.5 translate-y-full group-hover/item:translate-y-0 transition-transform duration-200">
+                    <p className="text-[10px] text-white font-medium truncate">{name}</p>
                     <p className="text-[9px] text-white/60 tracking-[0.08em] uppercase mt-0.5">View →</p>
                   </div>
                 </Link>
@@ -237,9 +251,11 @@ export default function SavedPage() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("goo-saved-outfits");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setMyLooks(JSON.parse(raw));
     } catch {}
     const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (params.get("tab") === "looks") setView("looks");
   }, []);
 
