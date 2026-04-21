@@ -483,6 +483,10 @@ export default function AdminProductsPage() {
   // Brands fetched from /api/brands — starts with the static list as a fallback so the
   // datalist is never empty while the request is in flight.
   const [suggestedBrands, setSuggestedBrands] = useState<string[]>(SUGGESTED_BRANDS);
+  const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
+  const [addingBrand, setAddingBrand] = useState(false);
+  const brandInputRef = useRef<HTMLInputElement>(null);
+  const brandDropdownRef = useRef<HTMLDivElement>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -593,6 +597,41 @@ export default function AdminProductsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Close brand dropdown when clicking outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (
+        brandDropdownRef.current &&
+        !brandDropdownRef.current.contains(e.target as Node) &&
+        !brandInputRef.current?.contains(e.target as Node)
+      ) {
+        setBrandDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  async function addBrandInline(name: string) {
+    setAddingBrand(true);
+    try {
+      const res = await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (res.ok) {
+        setSuggestedBrands((prev) =>
+          [...prev, name.trim()].sort((a, b) => a.localeCompare(b))
+        );
+      }
+    } finally {
+      setAddingBrand(false);
+    }
+    setForm((f) => ({ ...f, brand: name.trim() }));
+    setBrandDropdownOpen(false);
+  }
 
   const filtered = useMemo(() => {
     let list = products.filter(
@@ -1387,19 +1426,78 @@ export default function AdminProductsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className="relative">
                       <label className={labelCls}>Brand</label>
                       <input
+                        ref={brandInputRef}
                         type="text"
-                        list="brand-suggestions"
                         value={form.brand}
-                        onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                        onChange={(e) => {
+                          setForm((f) => ({ ...f, brand: e.target.value }));
+                          setBrandDropdownOpen(true);
+                        }}
+                        onFocus={() => setBrandDropdownOpen(true)}
                         placeholder="Type or pick brand…"
                         className={inputCls}
+                        autoComplete="off"
                       />
-                      <datalist id="brand-suggestions">
-                        {suggestedBrands.map((b) => <option key={b} value={b} />)}
-                      </datalist>
+                      {brandDropdownOpen && (
+                        <div
+                          ref={brandDropdownRef}
+                          className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg"
+                        >
+                          {(() => {
+                            const q = form.brand.toLowerCase().trim();
+                            const filtered = suggestedBrands.filter((b) =>
+                              b.toLowerCase().includes(q)
+                            );
+                            const exactMatch = suggestedBrands.some(
+                              (b) => b.toLowerCase() === q
+                            );
+                            return (
+                              <>
+                                {filtered.map((b) => (
+                                  <button
+                                    key={b}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setForm((f) => ({ ...f, brand: b }));
+                                      setBrandDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--surface)] transition-colors ${
+                                      form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
+                                    }`}
+                                  >
+                                    {b}
+                                  </button>
+                                ))}
+                                {form.brand.trim() && !exactMatch && (
+                                  <button
+                                    type="button"
+                                    disabled={addingBrand}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      addBrandInline(form.brand.trim());
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--surface)] flex items-center gap-2 transition-colors"
+                                  >
+                                    {addingBrand ? (
+                                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <span className="text-base leading-none">+</span>
+                                    )}
+                                    Add &ldquo;{form.brand.trim()}&rdquo; as new brand
+                                  </button>
+                                )}
+                                {filtered.length === 0 && !form.brand.trim() && (
+                                  <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className={labelCls}>Category</label>
