@@ -86,6 +86,16 @@ const navItems: { href: string; label: string; icon: React.ReactNode; superAdmin
     ),
   },
   {
+    href: "/admin/email",
+    label: "Email",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="4" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M2 5L8 9.5L14 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/settings",
     label: "Settings",
     icon: (
@@ -125,6 +135,7 @@ const pageTitles: Record<string, string> = {
   "/admin/analytics": "Analytics",
   "/admin/users": "Users",
   "/admin/brands": "Brands",
+  "/admin/email": "Email",
   "/admin/settings": "Settings",
   "/admin/activity": "Activity",
 };
