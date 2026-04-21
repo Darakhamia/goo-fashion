@@ -1130,11 +1130,10 @@ export default function AdminProductsPage() {
         </div>
       )}
       {dbConfigured === true && (
-        <div className="mb-4 border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center justify-between gap-4">
-          <span>Supabase connected — all changes are persisted to database.</span>
+        <div className="mb-4 flex justify-end">
           <button
             onClick={() => setShowMigrationModal(true)}
-            className="shrink-0 underline opacity-70 hover:opacity-100 transition-opacity"
+            className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors underline"
           >
             View variant migration SQL
           </button>
@@ -1466,11 +1465,7 @@ export default function AdminProductsPage() {
             </div>
 
             <div className="flex flex-col gap-6">
-              {/* ── Two-column layout: left = info, right = images + variants ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:gap-8">
-
-                {/* Left column */}
-                <div className="flex flex-col gap-0 divide-y divide-[var(--border)] border border-[var(--border)]">
+              <div className="flex flex-col gap-0 divide-y divide-[var(--border)] border border-[var(--border)]">
 
                   {/* ── Section: Basic info ── */}
                   <div className="px-4 py-4 flex flex-col gap-3">
@@ -1673,13 +1668,9 @@ export default function AdminProductsPage() {
                     />
                   </div>
 
-                </div>
-
-                {/* Right column */}
-                <div className="flex flex-col gap-5">
-
-                  {/* Colors */}
-                  <div>
+                  {/* ── Section: Colors ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Colors</p>
                     <div>
                       <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
                       <input
@@ -1692,135 +1683,130 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* Color variant linking */}
-                  <div className="border-t border-[var(--border)] pt-4">
-                    <label className={`${labelCls} mb-1`}>
-                        Color variants{" "}
-                        <span className="normal-case text-[var(--foreground-subtle)]">
-                          (link other products that are the same model in a different color)
-                        </span>
-                      </label>
+                  {/* ── Section: Color variants ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Color variants</p>
+                    <p className="text-[10px] text-[var(--foreground-subtle)] -mt-1">Link other products that are the same model in a different color</p>
 
-                      {/* Swatch color for THIS product */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <input
-                          type="color"
-                          value={form.variantColorHex}
-                          onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
-                          className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
-                          title="Swatch color for this product"
-                        />
-                        <input
-                          type="text"
-                          value={form.variantColorHex}
-                          onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
-                          placeholder="#888888"
-                          maxLength={7}
-                          className={`${inputCls} font-mono max-w-[110px] py-1.5`}
-                        />
-                        <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
-                      </div>
+                    {/* Swatch color for THIS product */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.variantColorHex}
+                        onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
+                        className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
+                        title="Swatch color for this product"
+                      />
+                      <input
+                        type="text"
+                        value={form.variantColorHex}
+                        onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
+                        placeholder="#888888"
+                        maxLength={7}
+                        className={`${inputCls} font-mono max-w-[110px] py-1.5`}
+                      />
+                      <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
+                    </div>
 
-                      {/* Linked products list */}
-                      {form.linkedProductIds.length > 0 && (
-                        <div className="flex flex-col gap-1.5 mb-2">
-                          {form.linkedProductIds.map((lid) => {
-                            const lp = products.find((x) => x.id === lid);
-                            if (!lp) return null;
-                            return (
-                              <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
-                                {lp.imageUrl && (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />
-                                )}
-                                <div
-                                  className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
-                                  style={{ backgroundColor: lp.colorHex ?? "#888888" }}
-                                />
-                                <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                                <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setForm((f) => ({
-                                      ...f,
-                                      linkedProductIds: f.linkedProductIds.filter((x) => x !== lid),
-                                    }))
-                                  }
-                                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1"
-                                  aria-label="Remove"
-                                >
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                    <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                                  </svg>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Search to add a product */}
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={variantSearch}
-                          onChange={(e) => setVariantSearch(e.target.value)}
-                          placeholder="Search product to link…"
-                          className={`${inputCls} py-1.5`}
-                        />
-                        {variantSearch.trim().length >= 1 && (() => {
-                          const q = variantSearch.toLowerCase();
-                          const matches = products.filter(
-                            (p) =>
-                              p.id !== (editingProduct?.id ?? "") &&
-                              !form.linkedProductIds.includes(p.id) &&
-                              (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))
-                          ).slice(0, 6);
-                          if (matches.length === 0) return null;
+                    {/* Linked products list */}
+                    {form.linkedProductIds.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        {form.linkedProductIds.map((lid) => {
+                          const lp = products.find((x) => x.id === lid);
+                          if (!lp) return null;
                           return (
-                            <div
-                              className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto"
-                              style={{ background: "var(--background)" }}
-                            >
-                              {matches.map((mp) => (
-                                <button
-                                  key={mp.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((f) => ({
-                                      ...f,
-                                      linkedProductIds: [...f.linkedProductIds, mp.id],
-                                    }));
-                                    setVariantSearch("");
-                                  }}
-                                  className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0"
-                                >
-                                  {mp.imageUrl && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />
-                                  )}
-                                  {mp.colorHex && (
-                                    <span
-                                      className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
-                                      style={{ backgroundColor: mp.colorHex }}
-                                    />
-                                  )}
-                                  <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
-                                  <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
-                                </button>
-                              ))}
+                            <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
+                              {lp.imageUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />
+                              )}
+                              <div
+                                className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
+                                style={{ backgroundColor: lp.colorHex ?? "#888888" }}
+                              />
+                              <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
+                              <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    linkedProductIds: f.linkedProductIds.filter((x) => x !== lid),
+                                  }))
+                                }
+                                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1"
+                                aria-label="Remove"
+                              >
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                  <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                                </svg>
+                              </button>
                             </div>
                           );
-                        })()}
+                        })}
                       </div>
-                      {form.linkedProductIds.length > 0 && (
-                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
-                          This product will be set as the <strong>primary</strong> (catalog representative) for the group.
-                        </p>
-                      )}
+                    )}
+
+                    {/* Search to add a product */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={variantSearch}
+                        onChange={(e) => setVariantSearch(e.target.value)}
+                        placeholder="Search product to link…"
+                        className={`${inputCls} py-1.5`}
+                      />
+                      {variantSearch.trim().length >= 1 && (() => {
+                        const q = variantSearch.toLowerCase();
+                        const matches = products.filter(
+                          (p) =>
+                            p.id !== (editingProduct?.id ?? "") &&
+                            !form.linkedProductIds.includes(p.id) &&
+                            (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))
+                        ).slice(0, 6);
+                        if (matches.length === 0) return null;
+                        return (
+                          <div
+                            className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto"
+                            style={{ background: "var(--background)" }}
+                          >
+                            {matches.map((mp) => (
+                              <button
+                                key={mp.id}
+                                type="button"
+                                onClick={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    linkedProductIds: [...f.linkedProductIds, mp.id],
+                                  }));
+                                  setVariantSearch("");
+                                }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0"
+                              >
+                                {mp.imageUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />
+                                )}
+                                {mp.colorHex && (
+                                  <span
+                                    className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
+                                    style={{ backgroundColor: mp.colorHex }}
+                                  />
+                                )}
+                                <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
+                                <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {form.linkedProductIds.length > 0 && (
+                      <p className="text-[10px] text-[var(--foreground-subtle)]">
+                        This product will be set as the <strong>primary</strong> (catalog representative) for the group.
+                      </p>
+                    )}
                   </div>
-                </div>
               </div>
 
               {/* ── Full-width: Color Groups (filter mapping) ── */}
