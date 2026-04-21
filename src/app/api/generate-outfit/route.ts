@@ -93,12 +93,6 @@ async function fetchAsDataUri(
 }
 
 function buildPrompt(pieces: SlotProduct[], style: Style): string {
-  const keywords = Array.from(
-    new Set(pieces.flatMap((p) => p.styleKeywords ?? []))
-  ).slice(0, 4);
-  const styleStr = keywords.length ? `Overall mood: ${keywords.join(", ")}.` : "";
-
-  // Numbered list so "reference image 1", "reference image 2"… maps 1:1 to image_input order.
   const itemsList = pieces
     .map((p, i) => {
       const color = p.colorName ?? (p.colors?.length ? p.colors[0] : "");
@@ -108,47 +102,35 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
     })
     .join("; ");
 
-  // Reinforce fidelity — nano-banana-2 tends to drift without explicit instructions.
+  // Fidelity block — logos and branding must survive.
   const fidelity = [
-    "CRITICAL: Reproduce every garment EXACTLY as shown in the reference images in the same numbered order.",
-    "Match the silhouette, cut, fabric texture, pattern, print, color, stitching, hardware, and any logos or text from each reference.",
-    "Do not invent, substitute, restyle, or add items that are not in the references. Do not change colors.",
+    "CRITICAL FIDELITY: Reproduce every garment EXACTLY as shown in the corresponding reference image.",
+    "Match silhouette, cut, fabric texture, drape, color, pattern, print, stitching, buttons, zippers, and hardware precisely.",
+    "LOGOS AND BRANDING: Preserve ALL logos, wordmarks, graphic prints, text, and emblems EXACTLY as they appear in the reference images — do not simplify, replace, blur, or omit any logo or text. If a logo is on the chest, it must appear on the chest. If there is a brand name on the shoe, it must be legible.",
+    "Do not invent, substitute, restyle, or add any item not in the references.",
   ].join(" ");
 
   if (style === "mannequin") {
-    // Reference: Balenciaga-style ecommerce lookbook — full-body matte black male mannequin
-    // (faceless sleek head) on a white seamless floor/backdrop, natural grounding shadow under
-    // the feet, subtle window-light gradient on the wall.
     return [
-      "Full-body luxury ecommerce lookbook photograph.",
-      `A faceless matte black (sleek dark skin-finish) male mannequin standing in a natural relaxed pose on a seamless off-white studio floor that curves into a soft white backdrop wall. The mannequin is wearing, head to toe: ${itemsList}.`,
-      "Layer the garments correctly on the figure: any outerwear is worn over the top (unzipped or open if it's a bomber/jacket, showing the top underneath), the bottom is worn on the legs, shoes on the feet, cap/hat on the head, bags worn crossbody or on the shoulder, never floating beside the figure.",
+      "Luxury fashion ecommerce photograph. Full-body shot of a faceless matte black mannequin (sleek, no facial features) wearing the following outfit, head to toe:",
+      itemsList + ".",
+      "Garment layering: outerwear is worn over the top (open or unzipped to reveal the top underneath); bottom worn on the legs; shoes on the feet; bags on the shoulder or crossbody — never floating.",
       fidelity,
-      styleStr,
-      "Soft diffused natural daylight from the upper left creating a subtle gradient on the backdrop and a realistic contact shadow on the floor beneath the feet.",
-      "Centered full-body front view, entire figure visible from cap to shoes with breathing room above and below, no cropping of limbs or shoes.",
-      "Square 1:1 frame, photorealistic, sharp focus, clean minimal luxury fashion house aesthetic.",
-    ]
-      .filter(Boolean)
-      .join(" ");
+      "BACKGROUND: Pure clean white seamless studio infinity cove — floor and wall blend into a single unbroken white. No props, no texture, no gradient, no shadow on the wall. Only a soft natural contact shadow directly beneath the mannequin's feet on the floor.",
+      "Lighting: soft diffused frontal studio light, no harsh shadows. The focus is entirely on the clothes.",
+      "Framing: full-body centered front view, entire figure head to toe visible with even breathing room on all sides. Square 1:1 frame. Photorealistic, sharp focus.",
+    ].join(" ");
   }
 
-  // Reference: Balenciaga/editorial flat-lay — outfit composed as a person-shaped silhouette on a
-  // clean cream-white paper, items can be folded (jeans stacked, tee folded to the side next to
-  // the pants) for visual rhythm, soft directional shadows, cap above where the head would be,
-  // bag hung alongside the torso, shoes at foot position.
   return [
-    "Editorial flat-lay fashion photograph, Balenciaga lookbook style.",
-    `Compose these items into the shape of a person wearing the outfit, laid out on a clean off-white seamless paper surface viewed straight down from directly above: ${itemsList}.`,
-    "Positioning rules: a cap/hat sits at the top of the frame where the head would be; the top is centered below it; any outerwear overlaps the top as if worn over it (jacket slightly open showing the top underneath); the bottom sits directly below the top along the same center line (long pants can be laid out full-length or folded in half and placed next to the top for visual variety, as in editorial lookbooks); shoes are placed at the bottom where the feet would be, pointing down; bags hang alongside the torso/waist by their strap; small accessories rest next to the hand position.",
-    "Items may have gentle, deliberate overlaps (e.g. jacket hem over the top, shoe heel over the trouser cuff) — absolutely NOT a grid, NOT four separate quadrants, NOT items isolated in corners.",
+    "Editorial fashion flat-lay photograph for a luxury magazine cover.",
+    `Arrange these clothing items and accessories on a pure white surface, viewed from directly overhead (top-down 90° shot): ${itemsList}.`,
+    "Composition: lay the pieces out as if a person is wearing the outfit — hat/cap at the top, top/shirt centered below, outerwear overlapping the top (slightly open), trousers/skirt below the top along the vertical center axis (can be folded at the knee for editorial rhythm), shoes at the bottom pointing downward. Bags and accessories rest naturally at the sides. Allow organic overlaps between adjacent pieces (jacket hem over shirt, shoe toe over trouser cuff) — this creates visual flow. NOT a grid, NOT items in separate corners.",
     fidelity,
-    styleStr,
-    "Soft directional daylight from the upper left, realistic contact drop shadows under each piece, true-to-life colors, luxury fashion magazine quality, tight centered composition filling the frame with minimal negative space.",
-    "Top-down overhead view, square 1:1 frame, high resolution, photorealistic, sharp focus.",
-  ]
-    .filter(Boolean)
-    .join(" ");
+    "BACKGROUND: Absolutely pure white — no texture, no paper grain, no shadows on the background itself. Each item casts only its own soft, sharp-edged drop shadow directly beneath it, giving a clean floating effect. The shadows are the only visual element besides the clothes.",
+    "Lighting: bright overhead studio strobe, perfectly even white exposure. Colors must be completely true-to-life.",
+    "Square 1:1 frame. Top-down overhead view. Photorealistic, ultra-sharp focus, luxury fashion editorial quality.",
+  ].join(" ");
 }
 
 export async function POST(req: Request) {
