@@ -5,21 +5,21 @@ import { useTheme } from "@/lib/context/theme-context";
 
 const footerLinks = {
   Platform: [
+    { label: "Browse",     href: "/browse" },
+    { label: "Builder",    href: "/builder" },
     { label: "AI Stylist", href: "/stylist" },
-    { label: "Browse", href: "/browse" },
-    { label: "Plans", href: "/plans" },
-    { label: "Profile", href: "/profile" },
+    { label: "Saved",      href: "/saved" },
+    { label: "Plans",      href: "/plans" },
+    { label: "Profile",    href: "/profile" },
   ],
   Company: [
-    { label: "About", href: "/about" },
-    { label: "Careers", href: "/careers" },
-    { label: "Press", href: "/press" },
-    { label: "Blog", href: "/blog" },
+    { label: "Blog",       href: "/blog" },
+    { label: "About",      href: "/about" },
   ],
   Legal: [
-    { label: "Privacy", href: "/privacy" },
-    { label: "Terms", href: "/terms" },
-    { label: "Cookies", href: "/cookies" },
+    { label: "Privacy Policy",   href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Sitemap",          href: "/sitemap.xml" },
   ],
 };
 
