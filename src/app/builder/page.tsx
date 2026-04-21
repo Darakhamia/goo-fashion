@@ -6,7 +6,6 @@ import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
-import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -110,7 +109,6 @@ export default function BuilderPage() {
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
 
   const [shopAdded, setShopAdded] = useState(false);
 
@@ -477,36 +475,6 @@ export default function BuilderPage() {
   return (
     <div className="h-screen pt-16 flex flex-col overflow-hidden">
 
-      {/* ─────────────────────────────────────────────────────────────────────
-          BUILDER CONTEXT BAR — utility only, no site nav duplication.
-          Context label left · Share / Clear actions right (conditional).
-          Site nav above handles all primary navigation.
-      ───────────────────────────────────────────────────────────────────────── */}
-      <header className="h-10 shrink-0 border-b border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-5 md:px-7">
-
-        {/* Left: context label */}
-        <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
-          Create
-        </p>
-
-        {/* Right: utility actions — only visible when something is selected */}
-        {selectedCount > 0 && (
-          <div className="flex items-center gap-4">
-            <button
-              onClick={shareOutfit}
-              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            >
-              {copied ? "Copied!" : "Share"}
-            </button>
-            <button
-              onClick={clearAll}
-              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        )}
-      </header>
 
       {/* ─────────────────────────────────────────────────────────────────────
           3-COLUMN BODY
@@ -519,22 +487,11 @@ export default function BuilderPage() {
           <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden">
 
             {/* Header */}
-            <div className="px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)] flex items-end justify-between">
-              <div>
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-1">In this look</p>
-                <p className="font-display text-[22px] font-light text-[var(--foreground)]">
-                  {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "Empty"}
-                </p>
-              </div>
-              <button
-                onClick={() => setAiOpen(v => !v)}
-                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase transition-colors mb-1 ${
-                  aiOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${aiOpen ? "bg-[var(--foreground)]" : "bg-[var(--foreground-subtle)] animate-pulse"}`} />
-                Stylist
-              </button>
+            <div className="px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-1">In this look</p>
+              <p className="font-display text-[22px] font-light text-[var(--foreground)]">
+                {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "Empty"}
+              </p>
             </div>
 
             {/* Slot rows */}
@@ -605,52 +562,24 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Actions */}
-            <div className="shrink-0 border-t border-[var(--border)] px-5 py-4 flex flex-col gap-2">
-              {/* Generate */}
-              {selectedCount >= 1 && (
-                <button
-                  onClick={openStylePicker}
-                  disabled={generating}
-                  className="w-full h-10 flex items-center justify-center gap-2 font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {generating ? (
-                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                  {generating ? "Generating…" : "Generate image"}
-                </button>
-              )}
-              {/* Save + Shop row */}
-              <div className="flex gap-2">
-                <button
-                  onClick={saveOutfit}
-                  disabled={selectedCount === 0}
-                  className={`flex-1 h-10 font-mono text-[10px] tracking-[0.14em] uppercase border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                    saved ? "border-[var(--border)] text-[var(--foreground-subtle)]" : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {saved ? "Saved ✓" : "Save"}
-                </button>
-                <button
-                  onClick={shopTheLook}
-                  disabled={selectedCount === 0}
-                  className="flex-1 h-10 font-mono text-[10px] tracking-[0.16em] uppercase transition-all disabled:cursor-not-allowed bg-[var(--foreground)] text-[var(--background)] disabled:opacity-30 hover:opacity-80"
-                >
-                  {shopAdded ? "Added ✓" : "Shop look"}
-                </button>
+            {/* Total + Share + Clear */}
+            <div className="shrink-0 border-t border-[var(--border)] px-5 py-3">
+              <div className="flex items-baseline justify-between">
+                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Total</p>
+                <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
+                  {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+                </p>
               </div>
-            </div>
-
-            {/* Total */}
-            <div className="shrink-0 border-t border-[var(--border)] px-5 py-3 flex items-baseline justify-between">
-              <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Total</p>
-              <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
-                {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
-              </p>
+              {selectedCount > 0 && (
+                <div className="flex items-center gap-3 mt-2">
+                  <button onClick={shareOutfit} className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                    {copied ? "Copied!" : "Share"}
+                  </button>
+                  <button onClick={clearAll} className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
           </aside>
 
@@ -1345,20 +1274,6 @@ export default function BuilderPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {/* Stylist — icon button */}
-              <button
-                onClick={() => setAiOpen(v => !v)}
-                className={`w-9 h-9 border flex items-center justify-center transition-all duration-150 shrink-0 ${
-                  aiOpen
-                    ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                }`}
-                aria-label="Open AI Stylist"
-              >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 2h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5l-3 2V3a1 1 0 0 1 1-1z" />
-                </svg>
-              </button>
               {/* Generate — icon-only on mobile, visible with ≥1 piece */}
               {selectedCount >= 1 && (
                 <button
@@ -1407,20 +1322,6 @@ export default function BuilderPage() {
           </div>
         </div>
 
-        {/* ── AI Stylist Drawer ──────────────────────────────────────────────
-            Extracted to StylistDrawer component.
-            Position: absolute within the body wrapper (does not overlay site nav).
-            Full-width on mobile, 380px on desktop.
-        ───────────────────────────────────────────────────────────────────── */}
-        <StylistDrawer
-          isOpen={aiOpen}
-          onClose={() => setAiOpen(false)}
-          surface="builder"
-          products={products}
-          position="absolute"
-          selection={selection}
-          onSelectProduct={selectProduct}
-        />
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────────
