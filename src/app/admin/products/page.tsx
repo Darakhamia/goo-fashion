@@ -14,9 +14,38 @@ const SUGGESTED_BRANDS = [
   "Toteme", "Valentino", "Zara",
 ];
 
-const CATEGORIES: Category[] = [
-  "outerwear", "tops", "bottoms", "footwear", "accessories", "dresses", "knitwear",
+const CATEGORY_CONFIG: {
+  value: Category;
+  label: string;
+  group: string;
+  sizes: string[];
+  sizeType: "letter" | "number" | "eu" | "one-size";
+}[] = [
+  // ── Tops
+  { value: "tops",       label: "T-Shirts & Tops",        group: "Tops",      sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL","XXXL"] },
+  { value: "shirts",     label: "Shirts & Blouses",        group: "Tops",      sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL"] },
+  { value: "knitwear",   label: "Knitwear & Sweaters",     group: "Tops",      sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  // ── Bottoms
+  { value: "bottoms",    label: "Trousers & Pants",        group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  { value: "jeans",      label: "Jeans & Denim",           group: "Bottoms",   sizeType: "number",   sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38"] },
+  { value: "shorts",     label: "Shorts",                  group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  { value: "skirts",     label: "Skirts",                  group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
+  // ── Outerwear
+  { value: "outerwear",  label: "Jackets & Coats",         group: "Outerwear", sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  { value: "blazers",    label: "Blazers & Suits",         group: "Outerwear", sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  // ── Dresses
+  { value: "dresses",    label: "Dresses",                 group: "Dresses",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  { value: "jumpsuits",  label: "Jumpsuits & Overalls",    group: "Dresses",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  // ── Footwear
+  { value: "footwear",   label: "Footwear",                group: "Footwear",  sizeType: "eu",       sizes: ["35","36","37","38","39","40","41","42","43","44","45","46"] },
+  // ── Accessories
+  { value: "accessories",label: "Accessories",             group: "Accessories",sizeType:"one-size", sizes: ["One Size","XS/S","S/M","M/L","L/XL"] },
+  { value: "bags",       label: "Bags & Luggage",          group: "Accessories",sizeType:"one-size", sizes: ["One Size"] },
+  // ── Other
+  { value: "swimwear",   label: "Swimwear",                group: "Other",     sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
 ];
+
+const CATEGORIES: Category[] = CATEGORY_CONFIG.map((c) => c.value);
 
 const STYLE_KEYWORDS: StyleKeyword[] = [
   "minimal", "streetwear", "classic", "avant-garde", "romantic",
@@ -1137,17 +1166,17 @@ export default function AdminProductsPage() {
           <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Filter:</span>
 
           {/* Category chips */}
-          {CATEGORIES.map((cat) => (
+          {CATEGORY_CONFIG.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setFilterCategory((prev) => (prev === cat ? "" : cat))}
+              key={cat.value}
+              onClick={() => setFilterCategory((prev) => (prev === cat.value ? "" : cat.value))}
               className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
-                filterCategory === cat
+                filterCategory === cat.value
                   ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                   : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
               }`}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
 
@@ -1413,179 +1442,196 @@ export default function AdminProductsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 lg:gap-8">
 
                 {/* Left column */}
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <label className={labelCls}>Name *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      placeholder="Product name"
-                      className={inputCls}
-                    />
+                <div className="flex flex-col gap-0 divide-y divide-[var(--border)] border border-[var(--border)]">
+
+                  {/* ── Section: Basic info ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Basic info</p>
+                    <div>
+                      <label className={labelCls}>Name *</label>
+                      <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="Product name"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative">
+                        <label className={labelCls}>Brand</label>
+                        <input
+                          ref={brandInputRef}
+                          type="text"
+                          value={form.brand}
+                          onChange={(e) => { setForm((f) => ({ ...f, brand: e.target.value })); setBrandDropdownOpen(true); }}
+                          onFocus={() => setBrandDropdownOpen(true)}
+                          placeholder="Type or pick brand…"
+                          className={inputCls}
+                          autoComplete="off"
+                        />
+                        {brandDropdownOpen && (
+                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg">
+                            {(() => {
+                              const q = form.brand.toLowerCase().trim();
+                              const filtered = suggestedBrands.filter((b) => b.toLowerCase().includes(q));
+                              const exactMatch = suggestedBrands.some((b) => b.toLowerCase() === q);
+                              return (
+                                <>
+                                  {filtered.map((b) => (
+                                    <button key={b} type="button" onMouseDown={(e) => { e.preventDefault(); setForm((f) => ({ ...f, brand: b })); setBrandDropdownOpen(false); }} className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--surface)] transition-colors ${form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{b}</button>
+                                  ))}
+                                  {form.brand.trim() && !exactMatch && (
+                                    <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--surface)] flex items-center gap-2 transition-colors">
+                                      {addingBrand ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <span className="text-base leading-none">+</span>}
+                                      Add &ldquo;{form.brand.trim()}&rdquo; as new brand
+                                    </button>
+                                  )}
+                                  {filtered.length === 0 && !form.brand.trim() && <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className={labelCls}>Gender</label>
+                        <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))} className={selectCls}>
+                          <option value="">Unspecified</option>
+                          <option value="women">Women</option>
+                          <option value="men">Men</option>
+                          <option value="unisex">Unisex</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                      <label className={labelCls}>Brand</label>
-                      <input
-                        ref={brandInputRef}
-                        type="text"
-                        value={form.brand}
-                        onChange={(e) => {
-                          setForm((f) => ({ ...f, brand: e.target.value }));
-                          setBrandDropdownOpen(true);
-                        }}
-                        onFocus={() => setBrandDropdownOpen(true)}
-                        placeholder="Type or pick brand…"
-                        className={inputCls}
-                        autoComplete="off"
-                      />
-                      {brandDropdownOpen && (
-                        <div
-                          ref={brandDropdownRef}
-                          className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg"
-                        >
-                          {(() => {
-                            const q = form.brand.toLowerCase().trim();
-                            const filtered = suggestedBrands.filter((b) =>
-                              b.toLowerCase().includes(q)
-                            );
-                            const exactMatch = suggestedBrands.some(
-                              (b) => b.toLowerCase() === q
-                            );
-                            return (
-                              <>
-                                {filtered.map((b) => (
+                  {/* ── Section: Category ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Category</p>
+                    {(() => {
+                      const groups = CATEGORY_CONFIG.reduce<Record<string, typeof CATEGORY_CONFIG>>((acc, c) => {
+                        (acc[c.group] ??= []).push(c);
+                        return acc;
+                      }, {});
+                      return (
+                        <div className="flex flex-col gap-2">
+                          {Object.entries(groups).map(([group, cats]) => (
+                            <div key={group}>
+                              <p className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5">{group}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {cats.map((c) => (
                                   <button
-                                    key={b}
+                                    key={c.value}
                                     type="button"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      setForm((f) => ({ ...f, brand: b }));
-                                      setBrandDropdownOpen(false);
+                                    onClick={() => {
+                                      setForm((f) => ({ ...f, category: c.value }));
                                     }}
-                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--surface)] transition-colors ${
-                                      form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
+                                    className={`px-3 py-1.5 text-[11px] border transition-colors ${
+                                      form.category === c.value
+                                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                                     }`}
                                   >
-                                    {b}
+                                    {c.label}
                                   </button>
                                 ))}
-                                {form.brand.trim() && !exactMatch && (
-                                  <button
-                                    type="button"
-                                    disabled={addingBrand}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      addBrandInline(form.brand.trim());
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--surface)] flex items-center gap-2 transition-colors"
-                                  >
-                                    {addingBrand ? (
-                                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <span className="text-base leading-none">+</span>
-                                    )}
-                                    Add &ldquo;{form.brand.trim()}&rdquo; as new brand
-                                  </button>
-                                )}
-                                {filtered.length === 0 && !form.brand.trim() && (
-                                  <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>
-                                )}
-                              </>
-                            );
-                          })()}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      );
+                    })()}
+                  </div>
+
+                  {/* ── Section: Sizes ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    {(() => {
+                      const catCfg = CATEGORY_CONFIG.find((c) => c.value === form.category);
+                      const preset = catCfg?.sizes ?? [];
+                      const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
+                      const toggle = (size: string) => {
+                        const next = selected.includes(size)
+                          ? selected.filter((s) => s !== size)
+                          : [...selected, size];
+                        setForm((f) => ({ ...f, sizes: next.join(", ") }));
+                      };
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Sizes</p>
+                            {selected.length > 0 && (
+                              <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors tracking-wide">
+                                Clear all
+                              </button>
+                            )}
+                          </div>
+                          {preset.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {preset.map((size) => {
+                                const active = selected.includes(size);
+                                return (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => toggle(size)}
+                                    className={`min-w-[36px] px-2 py-1.5 text-[11px] border transition-colors text-center ${
+                                      active
+                                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                                    }`}
+                                  >
+                                    {size}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div>
+                            <label className={labelCls}>Custom sizes <span className="normal-case text-[var(--foreground-subtle)]">(or add extra, comma-sep)</span></label>
+                            <input
+                              type="text"
+                              value={form.sizes}
+                              onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
+                              placeholder="XS, S, M, L, XL"
+                              className={inputCls}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* ── Section: Pricing ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Pricing</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Price Min ($)</label>
+                        <input type="number" value={form.priceMin} onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))} placeholder="0" min="0" className={inputCls} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Price Max ($)</label>
+                        <input type="number" value={form.priceMax} onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))} placeholder="0" min="0" className={inputCls} />
+                      </div>
                     </div>
-                    <div>
-                      <label className={labelCls}>Category</label>
-                      <select
-                        value={form.category}
-                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category }))}
-                        className={selectCls}
-                      >
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                        ))}
-                      </select>
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
+                      <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">Mark as new arrival</label>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* ── Section: Details ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Details</p>
                     <div>
-                      <label className={labelCls}>Gender</label>
-                      <select
-                        value={form.gender}
-                        onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))}
-                        className={selectCls}
-                      >
-                        <option value="">Unspecified</option>
-                        <option value="women">Women</option>
-                        <option value="men">Men</option>
-                        <option value="unisex">Unisex</option>
-                      </select>
+                      <label className={labelCls}>Description</label>
+                      <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
                     </div>
                     <div>
                       <label className={labelCls}>Material</label>
-                      <input
-                        type="text"
-                        value={form.material}
-                        onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}
-                        placeholder="100% Wool"
-                        className={inputCls}
-                      />
+                      <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Description</label>
-                    <textarea
-                      value={form.description}
-                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Short product description…"
-                      rows={3}
-                      className={`${inputCls} resize-none`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Price Min ($)</label>
-                      <input
-                        type="number"
-                        value={form.priceMin}
-                        onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
-                        placeholder="0"
-                        min="0"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Price Max ($)</label>
-                      <input
-                        type="number"
-                        value={form.priceMax}
-                        onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
-                        placeholder="0"
-                        min="0"
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-1">
-                    <input
-                      type="checkbox"
-                      id="isNew"
-                      checked={form.isNew}
-                      onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))}
-                      className="w-3.5 h-3.5 accent-[var(--foreground)]"
-                    />
-                    <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                      Mark as new arrival
-                    </label>
                   </div>
 
                 </div>

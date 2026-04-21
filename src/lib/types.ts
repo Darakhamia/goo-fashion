@@ -31,11 +31,19 @@ export type Brand =
 export type Category =
   | "outerwear"
   | "tops"
+  | "shirts"
   | "bottoms"
+  | "jeans"
+  | "shorts"
+  | "skirts"
   | "footwear"
   | "accessories"
+  | "bags"
   | "dresses"
-  | "knitwear";
+  | "jumpsuits"
+  | "knitwear"
+  | "blazers"
+  | "swimwear";
 
 export type Occasion =
   | "casual"
