@@ -207,24 +207,52 @@ function ImageList({
   images: string[];
   onChange: (imgs: string[]) => void;
 }) {
+  const [uploading, setUploading] = useState<number | null>(null);
+
   const addRow = () => onChange([...images, ""]);
   const removeRow = (i: number) => onChange(images.filter((_, idx) => idx !== i));
   const setVal = (i: number, v: string) =>
     onChange(images.map((img, idx) => (idx === i ? v : img)));
+
+  const handleBlur = async (i: number, url: string) => {
+    if (!url || !url.startsWith("http")) return;
+    // skip if already stored in Supabase
+    if (url.includes("supabase.co/storage")) return;
+    setUploading(i);
+    try {
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (data.url) setVal(i, data.url);
+    } catch {}
+    setUploading(null);
+  };
 
   return (
     <div className="flex flex-col gap-2">
       {images.map((url, i) => (
         <div key={i} className="flex gap-2 items-start">
           <div className="flex-1 flex flex-col gap-1">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setVal(i, e.target.value)}
-              placeholder="https://…"
-              className={inputCls}
-            />
-            {url && (
+            <div className="relative">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setVal(i, e.target.value)}
+                onBlur={(e) => handleBlur(i, e.target.value)}
+                placeholder="https://…"
+                className={`${inputCls} ${uploading === i ? "opacity-50" : ""}`}
+                disabled={uploading === i}
+              />
+              {uploading === i && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <span className="w-3.5 h-3.5 border border-[var(--foreground)] border-t-transparent rounded-full animate-spin inline-block" />
+                </span>
+              )}
+            </div>
+            {url && uploading !== i && (
               <div className="relative w-12 h-16 border border-[var(--border)] overflow-hidden shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1634,49 +1662,39 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                </div>
-
-                {/* Right column */}
-                <div className="flex flex-col gap-5">
-                  {/* Images */}
-                  <div>
-                    <label className={`${labelCls} mb-3`}>
-                      Images <span className="normal-case text-[var(--foreground-subtle)]">(first = main)</span>
-                    </label>
+                  {/* ── Section: Images ── */}
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                      Images <span className="normal-case text-[var(--foreground-subtle)] tracking-normal font-normal">(first = main · paste URL → auto-saved to storage)</span>
+                    </p>
                     <ImageList
                       images={form.images}
                       onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
                     />
                   </div>
 
-                  {/* Colors + Sizes */}
-                  <div className="border-t border-[var(--border)] pt-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                        <input
-                          type="text"
-                          value={form.colorsRaw}
-                          onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
-                          placeholder="Black, White, Camel"
-                          className={inputCls}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Sizes <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                        <input
-                          type="text"
-                          value={form.sizes}
-                          onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
-                          placeholder="XS, S, M, L, XL"
-                          className={inputCls}
-                        />
-                      </div>
-                    </div>
+                </div>
 
-                    {/* ── Color variant linking (replaces "Images per color") ── */}
-                    <div className="mt-4 border-t border-[var(--border)] pt-4">
-                      <label className={`${labelCls} mb-1`}>
+                {/* Right column */}
+                <div className="flex flex-col gap-5">
+
+                  {/* Colors */}
+                  <div>
+                    <div>
+                      <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
+                      <input
+                        type="text"
+                        value={form.colorsRaw}
+                        onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
+                        placeholder="Black, White, Camel"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Color variant linking */}
+                  <div className="border-t border-[var(--border)] pt-4">
+                    <label className={`${labelCls} mb-1`}>
                         Color variants{" "}
                         <span className="normal-case text-[var(--foreground-subtle)]">
                           (link other products that are the same model in a different color)
@@ -1801,7 +1819,6 @@ export default function AdminProductsPage() {
                           This product will be set as the <strong>primary</strong> (catalog representative) for the group.
                         </p>
                       )}
-                    </div>
                   </div>
                 </div>
               </div>
