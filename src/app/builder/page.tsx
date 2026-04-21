@@ -14,11 +14,11 @@ import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/componen
 type SlotId = "outerwear" | "top" | "bottom" | "shoes" | "accessories";
 
 const SLOTS = [
-  { id: "outerwear"   as SlotId, label: "Outerwear",   categories: ["outerwear"] },
-  { id: "top"         as SlotId, label: "Top",         categories: ["tops", "knitwear"] },
-  { id: "bottom"      as SlotId, label: "Bottom",      categories: ["bottoms", "dresses"] },
+  { id: "outerwear"   as SlotId, label: "Outerwear",   categories: ["outerwear", "blazers"] },
+  { id: "top"         as SlotId, label: "Top",         categories: ["tops", "shirts", "knitwear"] },
+  { id: "bottom"      as SlotId, label: "Bottom",      categories: ["bottoms", "jeans", "shorts", "skirts", "dresses", "jumpsuits"] },
   { id: "shoes"       as SlotId, label: "Shoes",       categories: ["footwear"] },
-  { id: "accessories" as SlotId, label: "Acc",         categories: ["accessories"] },
+  { id: "accessories" as SlotId, label: "Acc",         categories: ["accessories", "bags", "swimwear"] },
 ];
 
 // Vertical figure zones for the silhouette canvas (accessories float separately).
@@ -31,14 +31,24 @@ const FIGURE_SLOTS: Array<{ id: SlotId; label: string; flex: number }> = [
   { id: "shoes",     label: "Shoes",     flex: 3.5 },
 ];
 
-// Category filter chips for the right-panel catalog
-const CATALOG_CHIPS: Array<{ label: string; slotId: SlotId | null }> = [
-  { label: "All",          slotId: null          },
-  { label: "Outerwear",    slotId: "outerwear"   },
-  { label: "Tops",         slotId: "top"         },
-  { label: "Bottoms",      slotId: "bottom"      },
-  { label: "Shoes",        slotId: "shoes"       },
-  { label: "Accessories",  slotId: "accessories" },
+// Category filter chips — maps to actual Category values (or slot IDs for slot-based grouping)
+const CATALOG_CHIPS: Array<{ label: string; value: string | null }> = [
+  { label: "All",         value: null          },
+  { label: "Outerwear",   value: "outerwear"   },
+  { label: "Blazers",     value: "blazers"     },
+  { label: "Tops",        value: "tops"        },
+  { label: "Shirts",      value: "shirts"      },
+  { label: "Knitwear",    value: "knitwear"    },
+  { label: "Bottoms",     value: "bottoms"     },
+  { label: "Jeans",       value: "jeans"       },
+  { label: "Shorts",      value: "shorts"      },
+  { label: "Skirts",      value: "skirts"      },
+  { label: "Dresses",     value: "dresses"     },
+  { label: "Jumpsuits",   value: "jumpsuits"   },
+  { label: "Footwear",    value: "footwear"    },
+  { label: "Accessories", value: "accessories" },
+  { label: "Bags",        value: "bags"        },
+  { label: "Swimwear",    value: "swimwear"    },
 ];
 
 // Price filter buckets (null max = no cap)
@@ -89,12 +99,13 @@ export default function BuilderPage() {
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [catalogCategory, setCatalogCategory] = useState<SlotId | null>(null);
+  const [catalogCategory, setCatalogCategory] = useState<string | null>(null);
   const [likedOnly, setLikedOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -187,24 +198,29 @@ export default function BuilderPage() {
 
   // ── Filtered product list for the right-panel catalog ────────────────────
 
+  const filterByCategory = (list: Product[], cat: string | null) => {
+    if (!cat) return list;
+    const slot = SLOTS.find(s => s.id === cat);
+    if (slot) return list.filter(p => slot.categories.includes(p.category));
+    return list.filter(p => p.category === cat);
+  };
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
   // Brands available in the current category filter (for the brand multi-select)
-  const availableBrands = useMemo(() => {
-    const base = catalogCategory
-      ? products.filter(p => {
-          const slot = SLOTS.find(s => s.id === catalogCategory)!;
-          return slot.categories.includes(p.category);
-        })
-      : products;
-    return Array.from(new Set(base.map(p => p.brand))).sort() as Brand[];
-  }, [catalogCategory, products]);
+  const availableBrands = useMemo(() =>
+    Array.from(new Set(filterByCategory(products, catalogCategory).map(p => p.brand))).sort() as Brand[],
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [catalogCategory, products]);
 
   const catalogProducts = useMemo(() => {
-    let list = catalogCategory
-      ? products.filter(p => {
-          const slot = SLOTS.find(s => s.id === catalogCategory)!;
-          return slot.categories.includes(p.category);
-        })
-      : products;
+    let list = filterByCategory(products, catalogCategory);
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -520,12 +536,12 @@ export default function BuilderPage() {
                   <button
                     key={slot.id}
                     onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                    className={`w-full grid grid-cols-[68px_1fr_auto] gap-3 px-5 py-3 items-center border-b border-[var(--border)] min-h-[84px] text-left transition-colors duration-150 hover:bg-[var(--surface)] ${
+                    className={`w-full grid grid-cols-[90px_1fr_auto] gap-3 px-5 py-3 items-center border-b border-[var(--border)] min-h-[110px] text-left transition-colors duration-150 hover:bg-[var(--surface)] ${
                       activeSlot === slot.id ? "bg-[var(--surface)]" : ""
                     }`}
                   >
                     {/* Thumbnail */}
-                    <div className="w-[68px] h-[80px] bg-white border border-[var(--border)] shrink-0 overflow-hidden flex items-center justify-center">
+                    <div className="w-[90px] h-[106px] bg-white border border-[var(--border)] shrink-0 overflow-hidden flex items-center justify-center">
                       {displayImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={displayImage} alt={picked!.name} className="w-full h-full object-contain" />
@@ -626,119 +642,12 @@ export default function BuilderPage() {
             </div>
           </aside>
 
-          {/* ── RIGHT PANEL: Filters sidebar + catalog (65%) ─────────────── */}
+          {/* ── RIGHT PANEL: Catalog + collapsible filters on right (65%) ── */}
           <aside className="flex min-h-0 overflow-hidden bg-[var(--background)]">
-
-            {/* Filters sidebar — always visible */}
-            <div className="w-[200px] shrink-0 flex flex-col border-r border-[var(--border)] overflow-y-auto">
-              {/* Category */}
-              <div className="px-4 py-4 border-b border-[var(--border)]">
-                <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-3">Category</p>
-                <div className="flex flex-col gap-0.5">
-                  {CATALOG_CHIPS.map(({ label, slotId }) => {
-                    const isActive = catalogCategory === slotId;
-                    return (
-                      <button
-                        key={label}
-                        onClick={() => setCatalogCategory(slotId)}
-                        className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
-                          isActive
-                            ? "bg-[var(--foreground)] text-[var(--background)]"
-                            : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Price */}
-              <div className="px-4 py-4 border-b border-[var(--border)]">
-                <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-3">Price</p>
-                <div className="flex flex-col gap-0.5">
-                  {PRICE_BUCKETS.map(({ label, max }) => (
-                    <button
-                      key={label}
-                      onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
-                        maxPrice === max
-                          ? "bg-[var(--foreground)] text-[var(--background)]"
-                          : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Brand */}
-              {availableBrands.length > 0 && (
-                <div className="px-4 py-4 border-b border-[var(--border)]">
-                  <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-3">Brand</p>
-                  <div className="flex flex-col gap-0.5">
-                    {availableBrands.map(brand => {
-                      const isActive = selectedBrands.includes(brand);
-                      return (
-                        <button
-                          key={brand}
-                          onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                          className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors truncate ${
-                            isActive
-                              ? "bg-[var(--foreground)] text-[var(--background)]"
-                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {brand}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Sort */}
-              <div className="px-4 py-4 border-b border-[var(--border)]">
-                <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-3">Sort</p>
-                <div className="flex flex-col gap-0.5">
-                  {(["featured", "price-asc", "price-desc"] as const).map(s => (
-                    <button key={s} onClick={() => setSortBy(s)}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
-                        sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {s === "featured" ? "Featured" : s === "price-asc" ? "Price: Low–High" : "Price: High–Low"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Liked + clear */}
-              <div className="px-4 py-4">
-                <button
-                  onClick={() => setLikedOnly(v => !v)}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                    likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-                  </svg>
-                  Liked only
-                </button>
-                {hasActiveFilters && (
-                  <button onClick={clearFilters} className="w-full text-left px-2.5 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors mt-1">
-                    Clear filters
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Catalog main area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Top bar: search + count */}
+              {/* Top bar: search + count + filter toggle */}
               <div className="shrink-0 border-b border-[var(--border)] px-4 py-3 flex items-center gap-3">
                 <div className="relative flex-1">
                   <input
@@ -763,11 +672,24 @@ export default function BuilderPage() {
                   )}
                 </div>
                 <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] shrink-0">
-                  {catalogProducts.length} items
+                  {catalogProducts.length}
                 </p>
+                <button
+                  onClick={() => setFiltersOpen(v => !v)}
+                  className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase shrink-0 transition-colors ${
+                    filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                    <line x1="1" y1="3.5" x2="13" y2="3.5" />
+                    <line x1="3" y1="7" x2="11" y2="7" />
+                    <line x1="5" y1="10.5" x2="9" y2="10.5" />
+                  </svg>
+                  {hasActiveFilters ? `Filters · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0)}` : "Filters"}
+                </button>
               </div>
 
-              {/* Product grid — 3 columns */}
+              {/* Product grid — 4 columns */}
               <div className="flex-1 overflow-y-auto">
                 {catalogProducts.length === 0 ? (
                   <div className="py-16 text-center">
@@ -776,7 +698,7 @@ export default function BuilderPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-px bg-[var(--border)] p-px">
+                  <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
                     {catalogProducts.map(product => {
                     const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
                     const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
@@ -811,23 +733,23 @@ export default function BuilderPage() {
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
                           {isSelected && (
-                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                              <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
                                 <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             </div>
                           )}
                         </div>
                         {/* Info */}
-                        <div className="px-2.5 pt-2 pb-2.5">
-                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                        <div className="px-2 pt-1.5 pb-2">
+                          <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                           <div className="flex items-center justify-between mt-0.5 gap-1">
-                            <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                            <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                            <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                            <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
                           </div>
                           {hasVariants && (
-                            <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                              {product.variants!.slice(0, 6).map(swatch => {
+                            <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                              {product.variants!.slice(0, 5).map(swatch => {
                                 const isSwatchActive = isSelected && (variantId ?? product.id) === swatch.id;
                                 return (
                                   <button
@@ -838,7 +760,7 @@ export default function BuilderPage() {
                                       selectProduct(product);
                                       if (targetSlot) selectVariant(targetSlot.id, swatch);
                                     }}
-                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${
+                                    className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
                                       isSwatchActive
                                         ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
                                         : "opacity-80 hover:opacity-100 hover:scale-110"
@@ -861,6 +783,160 @@ export default function BuilderPage() {
                 </div>
               )}
             </div>
+          </div>
+
+            {/* Filters sidebar — collapsible, RIGHT side */}
+            <div
+              className="shrink-0 overflow-hidden border-l border-[var(--border)] transition-all duration-200"
+              style={{ width: filtersOpen ? 180 : 0 }}
+            >
+              <div className="w-[180px] flex flex-col overflow-y-auto h-full">
+
+                {/* Category */}
+                <div className="border-b border-[var(--border)]">
+                  <button
+                    onClick={() => toggleSection("category")}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  >
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Category</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("category") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {CATALOG_CHIPS.map(({ label, value }) => (
+                        <button
+                          key={label}
+                          onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
+                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                            catalogCategory === value
+                              ? "bg-[var(--foreground)] text-[var(--background)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Price */}
+                <div className="border-b border-[var(--border)]">
+                  <button
+                    onClick={() => toggleSection("price")}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  >
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Price</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("price") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {PRICE_BUCKETS.map(({ label, max }) => (
+                        <button
+                          key={label}
+                          onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                            maxPrice === max
+                              ? "bg-[var(--foreground)] text-[var(--background)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Brand */}
+                {availableBrands.length > 0 && (
+                  <div className="border-b border-[var(--border)]">
+                    <button
+                      onClick={() => toggleSection("brand")}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    >
+                      <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Brand</p>
+                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                        className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
+                        <path d="M2 3.5L5 6.5L8 3.5" />
+                      </svg>
+                    </button>
+                    {!collapsedSections.has("brand") && (
+                      <div className="px-3 pb-3 flex flex-col gap-0.5">
+                        {availableBrands.map(brand => {
+                          const isActive = selectedBrands.includes(brand);
+                          return (
+                            <button
+                              key={brand}
+                              onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
+                              className={`w-full text-left px-2 py-1.5 text-xs transition-colors truncate ${
+                                isActive
+                                  ? "bg-[var(--foreground)] text-[var(--background)]"
+                                  : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              }`}
+                            >
+                              {brand}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sort */}
+                <div className="border-b border-[var(--border)]">
+                  <button
+                    onClick={() => toggleSection("sort")}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  >
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Sort</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("sort") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {(["featured", "price-asc", "price-desc"] as const).map(s => (
+                        <button key={s} onClick={() => setSortBy(s)}
+                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                            sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {s === "featured" ? "Featured" : s === "price-asc" ? "Price ↑" : "Price ↓"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Liked + clear */}
+                <div className="px-3 py-3">
+                  <button
+                    onClick={() => setLikedOnly(v => !v)}
+                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                    </svg>
+                    Liked only
+                  </button>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors mt-0.5">
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </aside>
         </div>
@@ -1052,12 +1128,12 @@ export default function BuilderPage() {
 
           {/* 4. Category chips */}
           <div className="px-3 pb-2 shrink-0 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {CATALOG_CHIPS.map(({ label, slotId }) => {
-              const isActive = catalogCategory === slotId;
+            {CATALOG_CHIPS.map(({ label, value }) => {
+              const isActive = catalogCategory === value;
               return (
                 <button
                   key={label}
-                  onClick={() => setCatalogCategory(slotId)}
+                  onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
                   className={`shrink-0 px-3 py-1 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase font-medium border transition-all duration-150 ${
                     isActive
                       ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
