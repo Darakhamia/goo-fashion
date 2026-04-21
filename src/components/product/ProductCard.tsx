@@ -144,7 +144,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
     >
       <Link href={linkHref} className="block">
         {/* ── Image container ─────────────────────────────────────────── */}
-        <div className="relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
+        <div className="relative bg-white overflow-hidden aspect-[3/4]">
 
           {/* Image strip — all frames in a flex row, CSS transition slides to active frame */}
           <div
@@ -225,7 +225,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       </button>
 
       {/* ── Info block ──────────────────────────────────────────────────── */}
-      <Link href={linkHref} className="block mt-3 space-y-0.5">
+      <Link href={linkHref} className="block mt-2 space-y-0.5">
         {showBrand && (
           <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
             {product.brand}
@@ -299,7 +299,7 @@ function CroppedImage({
         src={src}
         alt={alt}
         fill
-        className="object-cover"
+        className="object-contain"
         sizes={sizes}
       />
     );
