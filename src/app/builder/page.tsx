@@ -598,12 +598,12 @@ export default function BuilderPage() {
             </div>
 
             {/* Silhouette zone — centered fashion plate */}
-            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-8 px-6">
-              {/* Container: 280px main figure + 16px gap + 72px accessories = 368px */}
-              <div className="relative h-full max-h-[540px]" style={{ width: 368 }}>
+            <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center py-4 px-4">
+              {/* Container: 360px main figure + 12px gap + 72px accessories = 444px */}
+              <div className="relative h-full max-h-[720px]" style={{ width: 444 }}>
 
                 {/* Main stacked figure: outerwear → top → bottom → shoes */}
-                <div className="absolute inset-y-0 left-0 flex flex-col bg-[var(--background)] shadow-[0_0_0_1px_var(--border)]" style={{ width: 280 }}>
+                <div className="absolute inset-y-0 left-0 flex flex-col bg-[var(--background)] shadow-[0_0_0_1px_var(--border)]" style={{ width: 360 }}>
                   {FIGURE_SLOTS.map(({ id, label, flex }) => {
                     const picked = selection[id];
                     const variantId = variantOverrides[id];
@@ -618,7 +618,7 @@ export default function BuilderPage() {
                         style={{ flex }}
                         className={`group relative w-full overflow-hidden transition-all duration-200 border-b border-[var(--border)] last:border-b-0 ${
                           isActive ? "ring-1 ring-inset ring-[var(--foreground)] z-10" : ""
-                        }`}
+                        } ${displayImage ? "bg-white" : ""}`}
                       >
                         {/* Empty: diagonal stripe */}
                         {!picked && (
@@ -634,16 +634,13 @@ export default function BuilderPage() {
                           <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
                         )}
 
-                        {/* Filled: product image — shoes use object-contain (wide product shots),
-                            everything else uses object-cover for the silhouette effect. */}
+                        {/* Filled: product image — object-contain so nothing gets cropped */}
                         {displayImage && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={displayImage}
                             alt={picked!.name}
-                            className={`absolute inset-0 w-full h-full ${
-                              id === "shoes" ? "object-contain p-2" : "object-cover"
-                            }`}
+                            className="absolute inset-0 w-full h-full object-contain"
                           />
                         )}
                         {/* Filled: hover dim */}
@@ -754,10 +751,10 @@ export default function BuilderPage() {
                   return (
                     <button
                       onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
-                      className={`group absolute right-0 overflow-hidden bg-[var(--background)] shadow-[0_0_0_1px_var(--border)] transition-all duration-200 ${
+                      className={`group absolute right-0 overflow-hidden shadow-[0_0_0_1px_var(--border)] transition-all duration-200 ${
                         isActive ? "ring-1 ring-[var(--foreground)]" : ""
-                      }`}
-                      style={{ top: "50%", transform: "translateY(-50%)", width: 72, height: 88 }}
+                      } ${displayImage ? "bg-white" : "bg-[var(--background)]"}`}
+                      style={{ top: "50%", transform: "translateY(-50%)", width: 72, height: 96 }}
                     >
                       {/* Empty: stripe + dashed border */}
                       {!picked && (
