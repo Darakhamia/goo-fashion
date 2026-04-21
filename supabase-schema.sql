@@ -176,3 +176,26 @@ create policy "Public read access"
 
 create index if not exists outfits_occasion_idx  on public.outfits (occasion);
 create index if not exists outfits_created_at_idx on public.outfits (created_at desc);
+
+-- ============================================================
+-- Admin Audit Log
+-- Tracks actions performed by admins; readable only by super admin via service role.
+-- Run this in your Supabase SQL Editor to enable the Activity page.
+-- ============================================================
+
+create table if not exists public.admin_audit_log (
+  id          bigserial   primary key,
+  admin_id    text        not null,
+  admin_email text,
+  action      text        not null,
+  target_id   text,
+  target_type text,
+  metadata    jsonb       not null default '{}',
+  created_at  timestamptz not null default now()
+);
+
+alter table public.admin_audit_log enable row level security;
+-- No public read policy — only accessible via service role key (server-side API).
+
+create index if not exists admin_audit_log_admin_id_idx   on public.admin_audit_log (admin_id);
+create index if not exists admin_audit_log_created_at_idx on public.admin_audit_log (created_at desc);

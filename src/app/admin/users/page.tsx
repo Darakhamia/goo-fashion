@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
+const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
+
 interface UserRow {
   id: string;
   firstName: string | null;
@@ -16,6 +18,7 @@ interface UserRow {
   locked: boolean;
   plan: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
 interface UserDetail extends UserRow {
@@ -24,6 +27,7 @@ interface UserDetail extends UserRow {
   updatedAt: number;
   twoFactorEnabled: boolean;
   publicMetadata: Record<string, unknown>;
+  isSuperAdmin: boolean;
 }
 
 const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
@@ -226,9 +230,11 @@ export default function AdminUsersPage() {
                       )}
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
-                        {u.isAdmin && (
+                        {(u.isSuperAdmin ?? (SUPER_ADMIN_ID && u.id === SUPER_ADMIN_ID)) ? (
+                          <span className="text-[9px] tracking-[0.1em] uppercase text-amber-500">Super Admin</span>
+                        ) : u.isAdmin ? (
                           <span className="text-[9px] tracking-[0.1em] uppercase text-emerald-600">Admin</span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </td>
@@ -250,28 +256,34 @@ export default function AdminUsersPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                        title="Edit"
-                        aria-label="Edit user"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                          <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(u.id, label); }}
-                        className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
-                        title="Delete"
-                        aria-label="Delete user"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                          <path d="M3 4H13M6 4V2H10V4M5 4L5.5 13H10.5L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                    </div>
+                    {(u.isSuperAdmin ?? (SUPER_ADMIN_ID && u.id === SUPER_ADMIN_ID)) ? (
+                      <div className="flex justify-end">
+                        <span className="text-[8px] tracking-[0.12em] uppercase text-amber-500 border border-amber-400/30 px-2 py-1">Protected</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
+                          className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                          title="Edit"
+                          aria-label="Edit user"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(u.id, label); }}
+                          className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
+                          title="Delete"
+                          aria-label="Delete user"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M3 4H13M6 4V2H10V4M5 4L5.5 13H10.5L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -439,6 +451,17 @@ function UserDrawer({
 
         {detail && !loading && (
           <div className="px-6 py-5 space-y-6">
+            {/* Super admin protection notice */}
+            {(detail.isSuperAdmin ?? (SUPER_ADMIN_ID && detail.id === SUPER_ADMIN_ID)) && (
+              <div className="flex items-center gap-3 border border-amber-400/30 bg-amber-400/8 px-4 py-3">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-500 flex-shrink-0">
+                  <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <p className="text-[10px] tracking-[0.1em] uppercase text-amber-600">
+                  Super admin — this account is protected and cannot be modified.
+                </p>
+              </div>
+            )}
             {/* Identity */}
             <div className="flex items-center gap-4">
               {detail.imageUrl ? (
@@ -511,27 +534,31 @@ function UserDrawer({
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-              <button
-                onClick={del}
-                disabled={saving}
-                className="text-[10px] tracking-[0.14em] uppercase text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
-              >
-                Delete user
-              </button>
-              <div className="flex gap-2">
+              {!(detail.isSuperAdmin ?? (SUPER_ADMIN_ID && detail.id === SUPER_ADMIN_ID)) && (
+                <button
+                  onClick={del}
+                  disabled={saving}
+                  className="text-[10px] tracking-[0.14em] uppercase text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                >
+                  Delete user
+                </button>
+              )}
+              <div className="flex gap-2 ml-auto">
                 <button
                   onClick={onClose}
                   className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={save}
-                  disabled={!hasChanges || saving}
-                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 hover:opacity-80 transition-opacity disabled:opacity-40"
-                >
-                  {saving ? "Saving…" : "Save changes"}
-                </button>
+                {!(detail.isSuperAdmin ?? (SUPER_ADMIN_ID && detail.id === SUPER_ADMIN_ID)) && (
+                  <button
+                    onClick={save}
+                    disabled={!hasChanges || saving}
+                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 hover:opacity-80 transition-opacity disabled:opacity-40"
+                  >
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                )}
               </div>
             </div>
           </div>

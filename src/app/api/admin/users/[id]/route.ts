@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
-import { requireAdmin } from "@/lib/server/admin-auth";
+import { requireAdmin, isSuperAdminId } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
 interface ClerkError {
   errors?: { message?: string }[];
@@ -45,6 +46,7 @@ export async function GET(
       privateMetadata: u.privateMetadata,
       plan: meta.plan ?? "free",
       isAdmin: meta.isAdmin === true,
+      isSuperAdmin: isSuperAdminId(u.id),
     });
   } catch (e) {
     return NextResponse.json({ error: errMsg(e) }, { status: 500 });
@@ -61,17 +63,44 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+
+  // Super admin account is immutable — no one can modify it via the admin panel.
+  if (isSuperAdminId(id)) {
+    return NextResponse.json(
+      { error: "Super admin account is protected and cannot be modified." },
+      { status: 403 }
+    );
+  }
+
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
 
   try {
     const cc = await clerkClient();
 
+    // Resolve admin email for audit log (best-effort)
+    let adminEmail: string | undefined;
+    try {
+      const adminUser = await cc.users.getUser(admin.userId);
+      adminEmail = adminUser.emailAddresses[0]?.emailAddress;
+    } catch { /* non-critical */ }
+
     // Profile fields → updateUser
     if (typeof body.firstName === "string" || typeof body.lastName === "string") {
       await cc.users.updateUser(id, {
         ...(typeof body.firstName === "string" ? { firstName: body.firstName } : {}),
         ...(typeof body.lastName  === "string" ? { lastName:  body.lastName  } : {}),
+      });
+      void logAdminAction({
+        admin_id: admin.userId,
+        admin_email: adminEmail,
+        action: "user.name_updated",
+        target_id: id,
+        target_type: "user",
+        metadata: {
+          firstName: body.firstName,
+          lastName: body.lastName,
+        },
       });
     }
 
@@ -85,12 +114,49 @@ export async function PATCH(
         ...("isAdmin" in body && typeof body.isAdmin === "boolean" ? { isAdmin: body.isAdmin } : {}),
       };
       await cc.users.updateUserMetadata(id, { publicMetadata: nextMeta });
+
+      if ("plan" in body && body.plan !== currentMeta.plan) {
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: "user.plan_changed",
+          target_id: id,
+          target_type: "user",
+          metadata: { from: currentMeta.plan ?? "free", to: body.plan },
+        });
+      }
+      if ("isAdmin" in body && typeof body.isAdmin === "boolean") {
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: body.isAdmin ? "user.admin_granted" : "user.admin_revoked",
+          target_id: id,
+          target_type: "user",
+        });
+      }
     }
 
     // Ban / unban
     if (typeof body.banned === "boolean") {
-      if (body.banned) await cc.users.banUser(id);
-      else              await cc.users.unbanUser(id);
+      if (body.banned) {
+        await cc.users.banUser(id);
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: "user.banned",
+          target_id: id,
+          target_type: "user",
+        });
+      } else {
+        await cc.users.unbanUser(id);
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: "user.unbanned",
+          target_id: id,
+          target_type: "user",
+        });
+      }
     }
 
     // Lock / unlock
@@ -111,6 +177,7 @@ export async function PATCH(
       locked: updated.locked,
       plan: meta.plan ?? "free",
       isAdmin: meta.isAdmin === true,
+      isSuperAdmin: isSuperAdminId(updated.id),
     });
   } catch (e) {
     return NextResponse.json({ error: errMsg(e) }, { status: 500 });
@@ -126,13 +193,47 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+
+  // Super admin account cannot be deleted.
+  if (isSuperAdminId(id)) {
+    return NextResponse.json(
+      { error: "Super admin account is protected and cannot be deleted." },
+      { status: 403 }
+    );
+  }
+
   // Safety: admin cannot delete themselves.
   if (id === admin.userId) {
     return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
   }
+
   try {
     const cc = await clerkClient();
+
+    let adminEmail: string | undefined;
+    try {
+      const adminUser = await cc.users.getUser(admin.userId);
+      adminEmail = adminUser.emailAddresses[0]?.emailAddress;
+    } catch { /* non-critical */ }
+
+    // Capture target info before deletion
+    let targetEmail: string | undefined;
+    try {
+      const target = await cc.users.getUser(id);
+      targetEmail = target.emailAddresses[0]?.emailAddress;
+    } catch { /* non-critical */ }
+
     await cc.users.deleteUser(id);
+
+    void logAdminAction({
+      admin_id: admin.userId,
+      admin_email: adminEmail,
+      action: "user.deleted",
+      target_id: id,
+      target_type: "user",
+      metadata: { target_email: targetEmail },
+    });
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: errMsg(e) }, { status: 500 });

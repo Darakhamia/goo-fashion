@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
+import { clerkClient } from "@clerk/nextjs/server";
 
 // Returns a masked version of the key — never returns the raw value to the browser.
 function maskKey(key: string): string {
@@ -77,6 +79,19 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Audit log — fire-and-forget
+  try {
+    const cc = await clerkClient();
+    const adminUser = await cc.users.getUser(admin.userId);
+    void logAdminAction({
+      admin_id: admin.userId,
+      admin_email: adminUser.emailAddresses[0]?.emailAddress,
+      action: "settings.api_key_updated",
+      target_type: "settings",
+      metadata: { key: body.key },
+    });
+  } catch { /* non-critical */ }
+
   return NextResponse.json({ ok: true, maskedKey: maskKey(value) });
 }
 
@@ -102,6 +117,19 @@ export async function DELETE(req: Request) {
     .eq("key", "openai_api_key");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Audit log — fire-and-forget
+  try {
+    const cc = await clerkClient();
+    const adminUser = await cc.users.getUser(admin.userId);
+    void logAdminAction({
+      admin_id: admin.userId,
+      admin_email: adminUser.emailAddresses[0]?.emailAddress,
+      action: "settings.api_key_deleted",
+      target_type: "settings",
+      metadata: { key },
+    });
+  } catch { /* non-critical */ }
 
   return NextResponse.json({ ok: true });
 }
