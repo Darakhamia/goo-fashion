@@ -704,10 +704,22 @@ export default function BuilderPage() {
               {/* Product grid — 4 columns */}
               <div className="flex-1 overflow-y-auto">
                 {catalogProducts.length === 0 ? (
-                  <div className="py-16 text-center">
-                    <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                      {likedOnly ? "No liked items" : search ? "No results" : "No products"}
-                    </p>
+                  <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-4 px-8 bg-[var(--surface)]">
+                    <div className="w-20 h-20 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
+                      <svg width="36" height="36" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
+                        <path d="M20 4C20 4 14 8 8 8V28C8 28 14 28 20 36C26 28 32 28 32 28V8C26 8 20 4 20 4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                        <path d="M20 4V36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <path d="M14 16H26M14 22H22" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div className="text-center space-y-1">
+                      <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                        {likedOnly ? "No saved items" : search ? "No results found" : "End of catalog"}
+                      </p>
+                      <p className="text-[11px] text-[var(--foreground-subtle)] opacity-60">
+                        {likedOnly ? "Like some items first" : search ? "Try a different search" : "That's all we have"}
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
@@ -1260,10 +1272,22 @@ export default function BuilderPage() {
           {/* 6. Product grid — scrollable */}
           <div className="flex-1 overflow-y-auto">
             {catalogProducts.length === 0 ? (
-              <div className="py-10 px-4 text-center">
-                <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                  {likedOnly ? "No liked items" : search ? "No results" : "No products"}
-                </p>
+              <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-3 px-6 bg-[var(--surface)]">
+                <div className="w-16 h-16 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
+                    <path d="M20 4C20 4 14 8 8 8V28C8 28 14 28 20 36C26 28 32 28 32 28V8C26 8 20 4 20 4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                    <path d="M20 4V36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    <path d="M14 16H26M14 22H22" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="text-center space-y-0.5">
+                  <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                    {likedOnly ? "No saved items" : search ? "No results found" : "End of catalog"}
+                  </p>
+                  <p className="text-[10px] text-[var(--foreground-subtle)] opacity-60">
+                    {likedOnly ? "Like some items first" : search ? "Try a different search" : "That's all we have"}
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 p-3">
