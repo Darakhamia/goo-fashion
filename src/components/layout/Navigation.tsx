@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -133,7 +133,7 @@ export default function Navigation() {
             )}
           </Link>
 
-          {/* Profile — Clerk */}
+          {/* Profile */}
           <SignedIn>
             <Link
               href="/profile"
@@ -145,15 +145,6 @@ export default function Navigation() {
                 <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </Link>
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-6 h-6",
-                  userButtonTrigger: `transition-opacity hover:opacity-70 ${iconColor}`,
-                },
-              }}
-            />
           </SignedIn>
           <SignedOut>
             <Link
@@ -236,12 +227,6 @@ export default function Navigation() {
                   </span>
                 )}
               </Link>
-              <SignedIn>
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{ elements: { avatarBox: "w-6 h-6" } }}
-                />
-              </SignedIn>
               <SignedOut>
                 <Link
                   href="/login"

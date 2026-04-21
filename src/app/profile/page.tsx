@@ -8,7 +8,7 @@ import Link from "next/link";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/plans";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "account" | "style" | "plan" | "stylist";
+type Tab = "account" | "plan" | "stylist";
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
 type StyleKeyword =
   | "minimal" | "classic" | "streetwear" | "sporty" | "avant-garde"
@@ -103,6 +103,31 @@ const PLAN_FEATURE_LABELS: Record<string, string> = {
 
 const ALL_FEATURES = ["aiStylist", "imageGeneration", "saveOutfits", "stylistMemory", "exclusiveStyles"];
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function nextBillingDate(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function fakeBillingHistory(plan: PlanId): { date: string; amount: number; label: string }[] {
+  if (plan === "free") return [];
+  const price = PLANS[plan].price;
+  const name = PLANS[plan].name;
+  const history = [];
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - i);
+    history.push({
+      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      amount: price,
+      label: name,
+    });
+  }
+  return history;
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -124,7 +149,7 @@ export default function ProfilePage() {
   const [stylistPersonalization, setStylistPersonalization] = useState<StylistPersonalization | null>(null);
   const [showStylistModal, setShowStylistModal] = useState(false);
 
-  // Hydrate preferences from Clerk unsafeMetadata
+  // Hydrate from Clerk unsafeMetadata
   useEffect(() => {
     if (!clerkUser || !isLoaded) return;
     const meta = clerkUser.unsafeMetadata as {
@@ -174,7 +199,6 @@ export default function ProfilePage() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "account", label: "Account" },
-    { id: "style", label: "Style" },
     { id: "plan", label: "Plan" },
     { id: "stylist", label: "AI Stylist" },
   ];
@@ -202,7 +226,7 @@ export default function ProfilePage() {
             </h1>
           </div>
 
-          {/* Tab navigation */}
+          {/* Tabs */}
           <div className="flex gap-0 border-b border-[var(--border)] mb-10 overflow-x-auto">
             {TABS.map((tab) => (
               <button
@@ -222,18 +246,18 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* Tab content */}
+          {/* Content */}
           <div className="max-w-2xl pb-20">
             {activeTab === "account" && (
-              <AccountTab
-                user={user}
-                clerkUser={clerkUser}
-                theme={theme}
-                toggleTheme={toggleTheme}
-              />
+              <AccountTab user={user} clerkUser={clerkUser} theme={theme} toggleTheme={toggleTheme} />
             )}
-            {activeTab === "style" && (
-              <StyleTab
+            {activeTab === "plan" && (
+              <PlanTab currentPlan={user?.plan ?? "free"} />
+            )}
+            {activeTab === "stylist" && (
+              <StylistTab
+                personalization={stylistPersonalization}
+                onCustomize={() => setShowStylistModal(true)}
                 bodyType={bodyType}
                 setBodyType={setBodyType}
                 budget={budget}
@@ -244,18 +268,9 @@ export default function ProfilePage() {
                 setSelectedStyles={setSelectedStyles}
                 sizes={sizes}
                 setSizes={setSizes}
-                onSave={saveStylePreferences}
-                saved={styleSaved}
-                saving={styleSaving}
-              />
-            )}
-            {activeTab === "plan" && (
-              <PlanTab currentPlan={user?.plan ?? "free"} />
-            )}
-            {activeTab === "stylist" && (
-              <StylistTab
-                personalization={stylistPersonalization}
-                onCustomize={() => setShowStylistModal(true)}
+                onSaveStyle={saveStylePreferences}
+                styleSaved={styleSaved}
+                styleSaving={styleSaving}
               />
             )}
           </div>
@@ -377,247 +392,11 @@ function AccountTab({
   );
 }
 
-// ── Style Tab ──────────────────────────────────────────────────────────────────
-function StyleTab({
-  bodyType, setBodyType,
-  budget, setBudget,
-  selectedColors, setSelectedColors,
-  selectedStyles, setSelectedStyles,
-  sizes, setSizes,
-  onSave, saved, saving,
-}: {
-  bodyType: BodyType | null;
-  setBodyType: (v: BodyType) => void;
-  budget: string | null;
-  setBudget: (v: string) => void;
-  selectedColors: string[];
-  setSelectedColors: (v: string[]) => void;
-  selectedStyles: StyleKeyword[];
-  setSelectedStyles: (v: StyleKeyword[]) => void;
-  sizes: { tops: string; bottoms: string; shoes: string; dresses: string };
-  setSizes: (v: { tops: string; bottoms: string; shoes: string; dresses: string }) => void;
-  onSave: () => void;
-  saved: boolean;
-  saving: boolean;
-}) {
-  const toggleColor = (hex: string) => {
-    setSelectedColors(
-      selectedColors.includes(hex)
-        ? selectedColors.filter((c) => c !== hex)
-        : selectedColors.length < 6
-        ? [...selectedColors, hex]
-        : selectedColors
-    );
-  };
-
-  const toggleStyle = (s: StyleKeyword) => {
-    setSelectedStyles(
-      selectedStyles.includes(s)
-        ? selectedStyles.filter((x) => x !== s)
-        : [...selectedStyles, s]
-    );
-  };
-
-  return (
-    <div className="animate-fade-up space-y-12">
-
-      {/* Colour palette */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-            Colour palette
-          </p>
-          <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)]">
-            {selectedColors.length} / 6
-          </span>
-        </div>
-        <p className="text-xs text-[var(--foreground-muted)] mb-5">
-          Pick up to 6 colours you gravitate towards. GOO uses these to match outfits to your taste.
-        </p>
-        <div className="grid grid-cols-8 gap-2">
-          {COLOR_PALETTE.map((color) => {
-            const isSelected = selectedColors.includes(color.hex);
-            const atMax = selectedColors.length >= 6 && !isSelected;
-            return (
-              <button
-                key={color.hex}
-                onClick={() => toggleColor(color.hex)}
-                title={color.name}
-                disabled={atMax}
-                className={`group relative aspect-square transition-all duration-200 ${
-                  isSelected
-                    ? "ring-2 ring-offset-2 ring-[var(--foreground)] ring-offset-[var(--background)] scale-105"
-                    : atMax
-                    ? "opacity-30 cursor-not-allowed"
-                    : "hover:scale-105"
-                }`}
-                style={{ backgroundColor: color.hex }}
-              >
-                {isSelected && (
-                  <span className="absolute inset-0 flex items-center justify-center">
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path
-                        d="M1 4L3.5 6.5L9 1"
-                        stroke={color.light ? "#0A0A0A" : "#F0EEE8"}
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                )}
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 text-[9px] tracking-[0.06em] whitespace-nowrap bg-[var(--foreground)] text-[var(--background)] px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">
-                  {color.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {selectedColors.length > 0 && (
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
-            <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">Your palette:</span>
-            {selectedColors.map((hex) => {
-              const c = COLOR_PALETTE.find((x) => x.hex === hex);
-              return (
-                <span
-                  key={hex}
-                  className="flex items-center gap-1.5 text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-1"
-                >
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
-                  {c?.name}
-                </span>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Aesthetic */}
-      <div>
-        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
-          Your aesthetic
-        </p>
-        <p className="text-xs text-[var(--foreground-muted)] mb-5">
-          Select all that speak to you. GOO will blend these keywords into every recommendation.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {STYLE_KEYWORDS.map((kw) => (
-            <button
-              key={kw}
-              onClick={() => toggleStyle(kw)}
-              className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border transition-all duration-200 ${
-                selectedStyles.includes(kw)
-                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {kw}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Body type */}
-      <div>
-        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-          Body type
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
-          {BODY_TYPES.map((bt) => (
-            <button
-              key={bt.id}
-              onClick={() => setBodyType(bt.id)}
-              className={`p-5 text-left transition-colors duration-200 ${
-                bodyType === bt.id ? "bg-[var(--foreground)]" : "bg-[var(--background)] hover:bg-[var(--surface)]"
-              }`}
-            >
-              <p className={`text-sm font-medium mb-0.5 ${bodyType === bt.id ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
-                {bt.label}
-              </p>
-              <p className={`text-xs ${bodyType === bt.id ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
-                {bt.description}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sizes */}
-      <div>
-        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-          Your sizes
-        </p>
-        <div className="grid grid-cols-2 gap-4">
-          {(
-            [
-              { key: "tops" as const, label: "Tops", placeholder: "XS / S / M / L / XL" },
-              { key: "bottoms" as const, label: "Bottoms", placeholder: "28 / 29 / 30..." },
-              { key: "shoes" as const, label: "Shoes", placeholder: "EU 38 / UK 5..." },
-              { key: "dresses" as const, label: "Dresses", placeholder: "34 / 36 / 38..." },
-            ] as const
-          ).map((field) => (
-            <div key={field.key}>
-              <label className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] block mb-2">
-                {field.label}
-              </label>
-              <input
-                type="text"
-                value={sizes[field.key]}
-                placeholder={field.placeholder}
-                onChange={(e) => setSizes({ ...sizes, [field.key]: e.target.value })}
-                className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Budget */}
-      <div>
-        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-          Typical outfit budget
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {BUDGET_OPTIONS.map((b) => (
-            <button
-              key={b.label}
-              onClick={() => setBudget(b.label)}
-              className={`p-4 text-left border transition-all duration-200 ${
-                budget === b.label
-                  ? "border-[var(--foreground)] bg-[var(--foreground)]"
-                  : "border-[var(--border)] hover:border-[var(--foreground)]"
-              }`}
-            >
-              <p className={`text-sm font-medium ${budget === b.label ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
-                {b.label}
-              </p>
-              <p className={`text-xs mt-0.5 ${budget === b.label ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
-                {b.range}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Save */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 disabled:opacity-40"
-        >
-          {saving ? "Saving..." : "Save Profile"}
-        </button>
-        {saved && (
-          <p className="text-xs text-[var(--foreground-muted)] animate-fade-in">Profile saved.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Plan Tab ───────────────────────────────────────────────────────────────────
 function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
+  const isPaid = currentPlan !== "free";
+  const billingHistory = fakeBillingHistory(currentPlan);
+
   return (
     <div className="animate-fade-up space-y-10">
 
@@ -633,9 +412,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 {PLANS[currentPlan].name}
               </p>
               <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                {PLANS[currentPlan].price === 0
-                  ? "Free forever"
-                  : `$${PLANS[currentPlan].price} / month`}
+                {PLANS[currentPlan].price === 0 ? "Free forever" : `$${PLANS[currentPlan].price} / month`}
               </p>
             </div>
             {currentPlan !== "premium" && (
@@ -674,58 +451,114 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
         </div>
       </div>
 
-      {/* Compare plans */}
-      {currentPlan !== "premium" && (
-        <div>
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-            Compare plans
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            {(["basic", "pro", "premium"] as PlanId[]).map((planId) => {
-              const plan = PLANS[planId];
-              const isCurrent = planId === currentPlan;
-              const isUpgrade = PLAN_ORDER.indexOf(planId) > PLAN_ORDER.indexOf(currentPlan);
-              return (
-                <div
-                  key={planId}
-                  className={`p-4 border transition-colors ${
-                    isCurrent ? "border-[var(--foreground)]" : "border-[var(--border)]"
-                  }`}
-                >
-                  <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
-                  <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">
-                    ${plan.price}/mo
-                  </p>
-                  {isCurrent ? (
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-                      Current
-                    </span>
-                  ) : isUpgrade ? (
-                    <Link
-                      href={`/subscribe?plan=${planId}`}
-                      className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity"
-                    >
-                      Select →
-                    </Link>
-                  ) : null}
-                </div>
-              );
-            })}
+      {/* Billing */}
+      {isPaid ? (
+        <>
+          <div>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+              Billing
+            </p>
+            <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
+              <div className="flex items-center justify-between px-5 py-4">
+                <p className="text-xs text-[var(--foreground-muted)]">Next payment</p>
+                <p className="text-xs font-medium text-[var(--foreground)]">
+                  ${PLANS[currentPlan].price}.00 on {nextBillingDate()}
+                </p>
+              </div>
+              <div className="flex items-center justify-between px-5 py-4">
+                <p className="text-xs text-[var(--foreground-muted)]">Billing cycle</p>
+                <p className="text-xs font-medium text-[var(--foreground)]">Monthly</p>
+              </div>
+              <div className="flex items-center justify-between px-5 py-4">
+                <p className="text-xs text-[var(--foreground-muted)]">Payment method</p>
+                <p className="text-xs font-medium text-[var(--foreground)] flex items-center gap-2">
+                  <span className="text-[var(--foreground-subtle)] tracking-widest">••••</span>
+                  4242
+                  <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] px-1.5 py-0.5">
+                    demo
+                  </span>
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-[var(--foreground-muted)] mt-4">
-            <Link href="/plans" className="link-underline text-[var(--foreground)]">
-              View full comparison →
-            </Link>
-          </p>
-        </div>
-      )}
 
-      {/* Billing notice */}
-      <div className="p-4 border border-[var(--border)] bg-[var(--surface)]">
-        <p className="text-xs text-[var(--foreground-muted)]">
-          Billing is currently in demo mode — no charges are made.
-        </p>
-      </div>
+          {/* Billing history */}
+          <div>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+              Billing history
+            </p>
+            <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
+              {billingHistory.map((entry, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="text-xs text-[var(--foreground)]">{entry.label} plan</p>
+                    <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{entry.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-[var(--foreground)]">${entry.amount}.00</p>
+                    <p className="text-[9px] tracking-[0.10em] uppercase text-green-600 dark:text-green-400 mt-0.5">paid</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Cancel */}
+          <div className="pt-2">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+              Manage
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link
+                href="/plans"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200 text-center"
+              >
+                Change plan
+              </Link>
+              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground-muted)] transition-colors duration-200">
+                Cancel subscription
+              </button>
+            </div>
+            <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
+              Billing is currently in demo mode — no actual charges are made.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Compare plans for free users */}
+          <div>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+              Compare plans
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {(["basic", "pro", "premium"] as PlanId[]).map((planId) => {
+                const plan = PLANS[planId];
+                const isUpgrade = PLAN_ORDER.indexOf(planId) > PLAN_ORDER.indexOf(currentPlan);
+                return (
+                  <div key={planId} className="p-4 border border-[var(--border)]">
+                    <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
+                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">${plan.price}/mo</p>
+                    {isUpgrade && (
+                      <Link
+                        href={`/subscribe?plan=${planId}`}
+                        className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity"
+                      >
+                        Select →
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-[var(--foreground-muted)] mt-4">
+              <Link href="/plans" className="link-underline text-[var(--foreground)]">
+                View full comparison →
+              </Link>
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -734,49 +567,79 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
 function StylistTab({
   personalization,
   onCustomize,
+  bodyType, setBodyType,
+  budget, setBudget,
+  selectedColors, setSelectedColors,
+  selectedStyles, setSelectedStyles,
+  sizes, setSizes,
+  onSaveStyle, styleSaved, styleSaving,
 }: {
   personalization: StylistPersonalization | null;
   onCustomize: () => void;
+  bodyType: BodyType | null;
+  setBodyType: (v: BodyType) => void;
+  budget: string | null;
+  setBudget: (v: string) => void;
+  selectedColors: string[];
+  setSelectedColors: (v: string[]) => void;
+  selectedStyles: StyleKeyword[];
+  setSelectedStyles: (v: StyleKeyword[]) => void;
+  sizes: { tops: string; bottoms: string; shoes: string; dresses: string };
+  setSizes: (v: { tops: string; bottoms: string; shoes: string; dresses: string }) => void;
+  onSaveStyle: () => void;
+  styleSaved: boolean;
+  styleSaving: boolean;
 }) {
+  const toggleColor = (hex: string) => {
+    setSelectedColors(
+      selectedColors.includes(hex)
+        ? selectedColors.filter((c) => c !== hex)
+        : selectedColors.length < 6
+        ? [...selectedColors, hex]
+        : selectedColors
+    );
+  };
+
+  const toggleStyle = (s: StyleKeyword) => {
+    setSelectedStyles(
+      selectedStyles.includes(s)
+        ? selectedStyles.filter((x) => x !== s)
+        : [...selectedStyles, s]
+    );
+  };
+
   return (
-    <div className="animate-fade-up space-y-8">
+    <div className="animate-fade-up space-y-12">
+
+      {/* ── Personalization section ── */}
       <div>
         <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
-          AI Stylist
+          Personalization
         </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-8">
-          Personalize how GOO&apos;s AI stylist communicates with you. Your goals, limits, and context shape every recommendation.
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-6">
+          Tell GOO your goals, limits, and how you live — applied to every recommendation.
         </p>
 
         {personalization ? (
-          <div className="space-y-6">
-            <div className="p-5 border border-[var(--border)] space-y-5">
+          <div className="space-y-5">
+            <div className="p-5 border border-[var(--border)] space-y-4">
               {personalization.nickname && (
                 <div>
-                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">
-                    Name
-                  </p>
+                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Name</p>
                   <p className="text-sm text-[var(--foreground)]">
                     {personalization.nickname}
                     {personalization.pronouns && personalization.pronouns !== "Skip" && (
-                      <span className="text-[var(--foreground-muted)] ml-2 text-xs">
-                        ({personalization.pronouns})
-                      </span>
+                      <span className="text-[var(--foreground-muted)] ml-2 text-xs">({personalization.pronouns})</span>
                     )}
                   </p>
                 </div>
               )}
               {personalization.styleGoals?.length > 0 && (
                 <div>
-                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-                    Style goals
-                  </p>
+                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">Style goals</p>
                   <div className="flex flex-wrap gap-1.5">
                     {personalization.styleGoals.map((g) => (
-                      <span
-                        key={g}
-                        className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]"
-                      >
+                      <span key={g} className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]">
                         {g}
                       </span>
                     ))}
@@ -785,9 +648,7 @@ function StylistTab({
               )}
               {personalization.lifestyle && (
                 <div>
-                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">
-                    Lifestyle
-                  </p>
+                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Lifestyle</p>
                   <p className="text-sm text-[var(--foreground)]">
                     {LIFESTYLE_OPTIONS.find((o) => o.id === personalization.lifestyle)?.label ?? personalization.lifestyle}
                   </p>
@@ -795,12 +656,8 @@ function StylistTab({
               )}
               {personalization.hardLimits && (
                 <div>
-                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">
-                    Hard limits
-                  </p>
-                  <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
-                    {personalization.hardLimits}
-                  </p>
+                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Hard limits</p>
+                  <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{personalization.hardLimits}</p>
                 </div>
               )}
             </div>
@@ -808,15 +665,15 @@ function StylistTab({
               onClick={onCustomize}
               className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200"
             >
-              Edit customization
+              Edit personalization
             </button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="p-6 border border-dashed border-[var(--border)]">
               <p className="text-sm font-medium text-[var(--foreground)] mb-2">Not yet personalized</p>
               <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
-                Tell GOO your style goals, what to avoid, and how you live. It takes 2 minutes and makes every AI recommendation significantly more personal.
+                2 minutes. Makes every AI recommendation significantly more personal.
               </p>
             </div>
             <button
@@ -827,6 +684,210 @@ function StylistTab({
             </button>
           </div>
         )}
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Style Profile section ── */}
+      <div className="space-y-12">
+        <div>
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+            Style profile
+          </p>
+          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+            Colours, aesthetics, and sizing — GOO uses these to tailor every outfit.
+          </p>
+        </div>
+
+        {/* Colour palette */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+              Colour palette
+            </p>
+            <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)]">
+              {selectedColors.length} / 6
+            </span>
+          </div>
+          <p className="text-xs text-[var(--foreground-muted)] mb-5">
+            Pick up to 6 colours you gravitate towards.
+          </p>
+          <div className="grid grid-cols-8 gap-2">
+            {COLOR_PALETTE.map((color) => {
+              const isSelected = selectedColors.includes(color.hex);
+              const atMax = selectedColors.length >= 6 && !isSelected;
+              return (
+                <button
+                  key={color.hex}
+                  onClick={() => toggleColor(color.hex)}
+                  title={color.name}
+                  disabled={atMax}
+                  className={`group relative aspect-square transition-all duration-200 ${
+                    isSelected
+                      ? "ring-2 ring-offset-2 ring-[var(--foreground)] ring-offset-[var(--background)] scale-105"
+                      : atMax
+                      ? "opacity-30 cursor-not-allowed"
+                      : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: color.hex }}
+                >
+                  {isSelected && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path
+                          d="M1 4L3.5 6.5L9 1"
+                          stroke={color.light ? "#0A0A0A" : "#F0EEE8"}
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 text-[9px] tracking-[0.06em] whitespace-nowrap bg-[var(--foreground)] text-[var(--background)] px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">
+                    {color.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedColors.length > 0 && (
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">Your palette:</span>
+              {selectedColors.map((hex) => {
+                const c = COLOR_PALETTE.find((x) => x.hex === hex);
+                return (
+                  <span key={hex} className="flex items-center gap-1.5 text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-1">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+                    {c?.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Aesthetic */}
+        <div>
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+            Your aesthetic
+          </p>
+          <p className="text-xs text-[var(--foreground-muted)] mb-5">
+            Select all that speak to you.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {STYLE_KEYWORDS.map((kw) => (
+              <button
+                key={kw}
+                onClick={() => toggleStyle(kw)}
+                className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border transition-all duration-200 ${
+                  selectedStyles.includes(kw)
+                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {kw}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Body type */}
+        <div>
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+            Body type
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+            {BODY_TYPES.map((bt) => (
+              <button
+                key={bt.id}
+                onClick={() => setBodyType(bt.id)}
+                className={`p-5 text-left transition-colors duration-200 ${
+                  bodyType === bt.id ? "bg-[var(--foreground)]" : "bg-[var(--background)] hover:bg-[var(--surface)]"
+                }`}
+              >
+                <p className={`text-sm font-medium mb-0.5 ${bodyType === bt.id ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                  {bt.label}
+                </p>
+                <p className={`text-xs ${bodyType === bt.id ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                  {bt.description}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sizes */}
+        <div>
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+            Your sizes
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            {(
+              [
+                { key: "tops" as const, label: "Tops", placeholder: "XS / S / M / L / XL" },
+                { key: "bottoms" as const, label: "Bottoms", placeholder: "28 / 29 / 30..." },
+                { key: "shoes" as const, label: "Shoes", placeholder: "EU 38 / UK 5..." },
+                { key: "dresses" as const, label: "Dresses", placeholder: "34 / 36 / 38..." },
+              ] as const
+            ).map((field) => (
+              <div key={field.key}>
+                <label className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] block mb-2">
+                  {field.label}
+                </label>
+                <input
+                  type="text"
+                  value={sizes[field.key]}
+                  placeholder={field.placeholder}
+                  onChange={(e) => setSizes({ ...sizes, [field.key]: e.target.value })}
+                  className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Budget */}
+        <div>
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
+            Typical outfit budget
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {BUDGET_OPTIONS.map((b) => (
+              <button
+                key={b.label}
+                onClick={() => setBudget(b.label)}
+                className={`p-4 text-left border transition-all duration-200 ${
+                  budget === b.label
+                    ? "border-[var(--foreground)] bg-[var(--foreground)]"
+                    : "border-[var(--border)] hover:border-[var(--foreground)]"
+                }`}
+              >
+                <p className={`text-sm font-medium ${budget === b.label ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                  {b.label}
+                </p>
+                <p className={`text-xs mt-0.5 ${budget === b.label ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                  {b.range}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Save style */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onSaveStyle}
+            disabled={styleSaving}
+            className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 disabled:opacity-40"
+          >
+            {styleSaving ? "Saving..." : "Save style profile"}
+          </button>
+          {styleSaved && (
+            <p className="text-xs text-[var(--foreground-muted)] animate-fade-in">Saved.</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -885,13 +946,8 @@ function StylistCustomizeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-[var(--background)]/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-[var(--background)]/80 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
       <div className="relative bg-[var(--background)] border border-[var(--border)] w-full max-w-lg p-8 animate-fade-up shadow-2xl">
 
         {/* Close */}
@@ -904,32 +960,24 @@ function StylistCustomizeModal({
           </svg>
         </button>
 
-        {/* Progress bar */}
+        {/* Progress */}
         <div className="flex gap-1.5 mb-8">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              className={`h-0.5 flex-1 transition-colors duration-300 ${
-                i <= step ? "bg-[var(--foreground)]" : "bg-[var(--border)]"
-              }`}
+              className={`h-0.5 flex-1 transition-colors duration-300 ${i <= step ? "bg-[var(--foreground)]" : "bg-[var(--border)]"}`}
             />
           ))}
         </div>
 
-        {/* Step indicator */}
         <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-3">
           Step {step + 1} of {TOTAL_STEPS}
         </p>
-
-        {/* Title */}
         <h2 className="font-display text-2xl font-light text-[var(--foreground)] mb-6">
           {STEP_TITLES[step]}
         </h2>
 
-        {/* Step content */}
         <div className="min-h-[200px]">
-
-          {/* Step 0: Name + pronouns */}
           {step === 0 && (
             <div className="space-y-6">
               <div>
@@ -968,11 +1016,10 @@ function StylistCustomizeModal({
             </div>
           )}
 
-          {/* Step 1: Style goals */}
           {step === 1 && (
             <div>
               <p className="text-xs text-[var(--foreground-muted)] mb-5">
-                Select everything that matters to you. GOO will balance these in every suggestion.
+                Select everything that matters to you.
               </p>
               <div className="flex flex-wrap gap-2">
                 {STYLE_GOALS.map((g) => (
@@ -992,7 +1039,6 @@ function StylistCustomizeModal({
             </div>
           )}
 
-          {/* Step 2: Hard limits */}
           {step === 2 && (
             <div className="space-y-4">
               <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
@@ -1009,7 +1055,6 @@ function StylistCustomizeModal({
             </div>
           )}
 
-          {/* Step 3: Lifestyle */}
           {step === 3 && (
             <div className="space-y-2">
               {LIFESTYLE_OPTIONS.map((opt) => (
@@ -1040,7 +1085,6 @@ function StylistCustomizeModal({
             </div>
           )}
 
-          {/* Step 4: Complete */}
           {step === 4 && (
             <div className="space-y-5">
               <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
@@ -1061,10 +1105,7 @@ function StylistCustomizeModal({
                     <p className="text-xs text-[var(--foreground-subtle)] mb-1.5">Goals:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {styleGoals.map((g) => (
-                        <span
-                          key={g}
-                          className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]"
-                        >
+                        <span key={g} className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]">
                           {g}
                         </span>
                       ))}
