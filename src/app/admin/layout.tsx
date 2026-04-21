@@ -5,7 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
 
-const navItems = [
+const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
+
+const navItems: { href: string; label: string; icon: React.ReactNode; superAdminOnly?: boolean }[] = [
   {
     href: "/admin",
     label: "Dashboard",
@@ -93,6 +95,16 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/admin/activity",
+    label: "Activity",
+    superAdminOnly: true,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 8H5L6.5 4L9 12L10.5 8H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 const darkVars: React.CSSProperties = {
@@ -114,6 +126,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Users",
   "/admin/brands": "Brands",
   "/admin/settings": "Settings",
+  "/admin/activity": "Activity",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -123,6 +136,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user } = useAuth();
 
   const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+
+  const isSuperAdmin = !!user && !!SUPER_ADMIN_ID && user.id === SUPER_ADMIN_ID;
 
   const currentTitle = pageTitles[pathname] ?? "Admin";
   const initials = user?.name
@@ -175,31 +190,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav className="flex-1 py-4 flex flex-col gap-0.5 overflow-hidden">
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={collapsed ? item.label : undefined}
-                className={`flex items-center transition-colors ${
-                  collapsed
-                    ? "justify-center px-0 mx-2 py-3"
-                    : "gap-3 px-3 mx-2 py-2.5"
-                } text-xs tracking-[0.1em] uppercase ${
-                  isActive
-                    ? "text-[var(--foreground)] bg-[var(--surface)]"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
-                }`}
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                {!collapsed && item.label}
-              </Link>
-            );
-          })}
+          {navItems
+            .filter((item) => !item.superAdminOnly || isSuperAdmin)
+            .map((item) => {
+              const isActive =
+                item.href === "/admin"
+                  ? pathname === "/admin"
+                  : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  className={`flex items-center transition-colors ${
+                    collapsed
+                      ? "justify-center px-0 mx-2 py-3"
+                      : "gap-3 px-3 mx-2 py-2.5"
+                  } text-xs tracking-[0.1em] uppercase ${
+                    isActive
+                      ? "text-[var(--foreground)] bg-[var(--surface)]"
+                      : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
+                  }`}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  {!collapsed && (
+                    <span className="flex items-center gap-2 flex-1 min-w-0">
+                      {item.label}
+                      {item.superAdminOnly && !collapsed && (
+                        <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none">
+                          SA
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
         </nav>
 
         {/* Bottom controls */}
@@ -258,11 +284,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Admin user */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-xs text-[var(--foreground)] leading-none mb-0.5">{user?.name ?? "Admin"}</p>
+              <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                <p className="text-xs text-[var(--foreground)] leading-none">{user?.name ?? "Admin"}</p>
+                {isSuperAdmin && (
+                  <span className="text-[7px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none">
+                    Super Admin
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-[var(--foreground-subtle)] leading-none">{user?.email ?? "admin@goo.com"}</p>
             </div>
             <div
-              className="w-8 h-8 flex items-center justify-center border border-[var(--border-strong)] text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)]"
+              className={`w-8 h-8 flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] ${
+                isSuperAdmin ? "border-amber-400/60" : "border-[var(--border-strong)]"
+              }`}
               style={{ background: "var(--surface)" }}
             >
               {initials}
