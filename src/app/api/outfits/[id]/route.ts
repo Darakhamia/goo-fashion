@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { updateOutfit, deleteOutfit, outfitToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
@@ -25,6 +26,7 @@ export async function PUT(
     return NextResponse.json({ error: "Failed to update outfit." }, { status: 500 });
   }
 
+  revalidatePath("/");
   return NextResponse.json(outfit);
 }
 
@@ -48,5 +50,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete outfit." }, { status: 500 });
   }
 
+  revalidatePath("/");
   return NextResponse.json({ success: true });
 }

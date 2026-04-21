@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getAllOutfits, createOutfit, outfitToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
@@ -31,5 +32,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status });
   }
 
+  revalidatePath("/");
   return NextResponse.json(outfit, { status: 201 });
 }
