@@ -44,7 +44,7 @@ async function getAccessToken(): Promise<string> {
   const refreshToken = process.env.STOCKX_REFRESH_TOKEN;
   if (!refreshToken) {
     throw new Error(
-      "STOCKX_REFRESH_TOKEN is not set. Add it to your Railway environment variables."
+      "STOCKX_REFRESH_TOKEN is not set. Add it to your environment variables and redeploy."
     );
   }
 
