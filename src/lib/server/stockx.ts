@@ -9,42 +9,46 @@ interface TokenCache {
 
 let tokenCache: TokenCache | null = null;
 
-async function getAccessToken(): Promise<string> {
-  if (tokenCache && Date.now() < tokenCache.expires_at - 60_000) {
-    return tokenCache.access_token;
-  }
-
-  const clientId = process.env.STOCKX_CLIENT_ID;
-  const clientSecret = process.env.STOCKX_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("STOCKX_CLIENT_ID or STOCKX_CLIENT_SECRET not configured");
-  }
-
+async function refreshViaToken(refreshToken: string): Promise<string> {
   const res = await fetch("https://accounts.stockx.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-      audience: "gateway.stockx.com",
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: process.env.STOCKX_CLIENT_ID ?? "",
+      client_secret: process.env.STOCKX_CLIENT_SECRET ?? "",
     }),
     cache: "no-store",
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`StockX auth failed (${res.status}): ${text}`);
+    throw new Error(`StockX token refresh failed (${res.status}): ${text}`);
   }
 
   const data = await res.json();
   tokenCache = {
     access_token: data.access_token,
-    expires_at: Date.now() + (data.expires_in ?? 43200) * 1000,
+    expires_at: Date.now() + (data.expires_in ?? 86400) * 1000,
   };
 
   return tokenCache.access_token;
+}
+
+async function getAccessToken(): Promise<string> {
+  if (tokenCache && Date.now() < tokenCache.expires_at - 60_000) {
+    return tokenCache.access_token;
+  }
+
+  const refreshToken = process.env.STOCKX_REFRESH_TOKEN;
+  if (!refreshToken) {
+    throw new Error(
+      "STOCKX_REFRESH_TOKEN is not set. Add it to your Railway environment variables."
+    );
+  }
+
+  return refreshViaToken(refreshToken);
 }
 
 async function stockxFetch(path: string): Promise<Response> {
