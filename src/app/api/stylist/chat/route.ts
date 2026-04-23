@@ -19,7 +19,6 @@ const PLAN_DAILY_LIMITS: Record<string, number | null> = {
 
 const MAX_USER_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ENTRIES = 20;
-const MAX_CATALOG_PRODUCTS = 300;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,10 +85,9 @@ function sanitizeHistory(
 
 // ── Catalog summary builder ───────────────────────────────────────────────────
 
-function buildCatalogSummary(products: Product[], limit = MAX_CATALOG_PRODUCTS): string {
+function buildCatalogSummary(products: Product[]): string {
   const lines = products
     .filter((p) => p.isGroupPrimary !== false) // exclude non-primary colour variants
-    .slice(0, limit)
     .map((p) => `${p.id}|${p.name}|${p.brand}|${p.category}|$${p.priceMin}|${p.styleKeywords.join(",")}`);
   return lines.join("\n");
 }
@@ -321,7 +319,7 @@ export async function POST(req: Request) {
   // ── Load full catalog ─────────────────────────────────────────────────────
   const products = await getAllProducts();
   const catalogIds = new Set(products.map((p) => p.id));
-  const catalogSummary = buildCatalogSummary(products, MAX_CATALOG_PRODUCTS);
+  const catalogSummary = buildCatalogSummary(products);
 
   // ── Build prompts ─────────────────────────────────────────────────────────
   const outfitContext = focusProduct
