@@ -169,6 +169,7 @@ export interface Outfit {
   isAIGenerated: boolean;
   isSaved: boolean;
   season: "all" | "spring" | "summer" | "autumn" | "winter";
+  source?: "community" | null;
 }
 
 export interface UserProfile {

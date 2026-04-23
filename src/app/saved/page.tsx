@@ -27,6 +27,29 @@ const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories"];
 function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (shareState !== "idle") return;
+    setShareState("submitting");
+    try {
+      await fetch("/api/looks/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatedImage: look.generatedImage,
+          generatedStyle: look.generatedStyle,
+          pieces: look.pieces,
+          totalPrice: look.totalPrice,
+          styleKeywords: look.styleKeywords,
+        }),
+      });
+      setShareState("done");
+    } catch {
+      setShareState("idle");
+    }
+  };
 
   const pieces = SLOT_ORDER
     .map((slot) => {
@@ -153,6 +176,20 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             >
               Edit
             </Link>
+            {look.generatedImage && (
+              <button
+                onClick={handleShare}
+                disabled={shareState !== "idle"}
+                title={shareState === "done" ? "Submitted for review" : "Share this look"}
+                className={`h-7 px-2.5 flex items-center text-[9px] tracking-[0.1em] uppercase font-medium border transition-colors ${
+                  shareState === "done"
+                    ? "border-green-500/40 text-green-500 bg-green-500/5"
+                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]"
+                } disabled:cursor-default`}
+              >
+                {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
+              </button>
+            )}
             <button
               onClick={handleDelete}
               title={confirmDelete ? "Click again to confirm" : "Delete look"}
@@ -203,6 +240,21 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 >
                   Edit in Builder →
                 </Link>
+                {look.generatedImage && (
+                  shareState === "done" ? (
+                    <span className="text-[9px] tracking-[0.12em] uppercase font-medium text-green-500">
+                      Under review ✓
+                    </span>
+                  ) : (
+                    <button
+                      onClick={handleShare}
+                      disabled={shareState === "submitting"}
+                      className="text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                    >
+                      {shareState === "submitting" ? "Sharing…" : "Share"}
+                    </button>
+                  )
+                )}
                 <button
                   onClick={() => setOpen(false)}
                   className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
@@ -324,7 +376,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SavedPage() {
-  const [view, setView] = useState<View>("outfits");
+  const [view, setView] = useState<View>("looks");
   const { likedOutfits, likedProducts } = useLikes();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
@@ -370,9 +422,9 @@ export default function SavedPage() {
   const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
   const tabs: { id: View; label: string; count: number }[] = [
-    { id: "outfits", label: "Outfits", count: likedOutfits.length },
-    { id: "pieces", label: "Pieces", count: likedProducts.length },
     { id: "looks", label: "My Looks", count: myLooks.length },
+    { id: "pieces", label: "Pieces", count: likedProducts.length },
+    { id: "outfits", label: "Outfits", count: likedOutfits.length },
   ];
 
   return (

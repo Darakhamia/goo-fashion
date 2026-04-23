@@ -43,6 +43,7 @@ export type DbOutfit = {
   is_saved: boolean;
   season: string;
   created_at: string;
+  source?: string | null;
 };
 
 export type DbBlogPost = {

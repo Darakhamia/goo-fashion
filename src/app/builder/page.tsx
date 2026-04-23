@@ -104,7 +104,7 @@ export default function BuilderPage() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -775,7 +775,27 @@ export default function BuilderPage() {
             >
               <div className="w-[180px] flex flex-col overflow-y-auto h-full">
 
-                {/* Sort — first */}
+                {/* Liked only + Clear — first */}
+                <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
+                  <button
+                    onClick={() => setLikedOnly(v => !v)}
+                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                    </svg>
+                    Liked only
+                  </button>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort — second */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Sort</p>
@@ -796,26 +816,6 @@ export default function BuilderPage() {
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Liked only + Clear — second */}
-                <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
-                  <button
-                    onClick={() => setLikedOnly(v => !v)}
-                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-                    </svg>
-                    Liked only
-                  </button>
-                  {hasActiveFilters && (
-                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
-                      Clear filters
-                    </button>
                   )}
                 </div>
 

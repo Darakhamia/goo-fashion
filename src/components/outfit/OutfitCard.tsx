@@ -48,12 +48,19 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
             />
           )}
 
-          {/* AI Badge */}
-          {outfit.isAIGenerated && (
-            <div className="absolute top-2 left-2 z-10">
-              <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block">
-                AI
-              </span>
+          {/* AI / Community Badge */}
+          {(outfit.isAIGenerated || outfit.source === "community") && (
+            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+              {outfit.isAIGenerated && (
+                <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block">
+                  AI
+                </span>
+              )}
+              {outfit.source === "community" && (
+                <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-2 py-1 block">
+                  Community
+                </span>
+              )}
             </div>
           )}
 
