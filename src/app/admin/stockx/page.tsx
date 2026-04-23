@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import type { StockXProduct } from "@/lib/server/stockx";
 
@@ -107,7 +107,7 @@ function ProductCard({
   );
 }
 
-export default function StockXImportPage() {
+function StockXImportContent() {
   const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -387,5 +387,13 @@ export default function StockXImportPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function StockXImportPage() {
+  return (
+    <Suspense fallback={<div className="text-xs text-[var(--foreground-muted)]">Loading...</div>}>
+      <StockXImportContent />
+    </Suspense>
   );
 }
