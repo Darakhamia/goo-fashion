@@ -1,51 +1,129 @@
 import type { Product } from "@/lib/types";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const STOCKX_API_BASE = "https://api.stockx.com/v1";
 const STOCKX_TOKEN_URL = "https://accounts.stockx.com/oauth/token";
 
-interface TokenCache {
-  access_token: string;
-  expires_at: number;
+export const STOCKX_APP_URL =
+  process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.goo-fashion.com";
+
+export const STOCKX_REDIRECT_URI = `${STOCKX_APP_URL}/api/stockx/callback`;
+
+async function readSettings(keys: string[]): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured || !supabase) return {};
+  const { data } = await supabase
+    .from("settings")
+    .select("key, value")
+    .in("key", keys);
+  const map: Record<string, string> = {};
+  for (const row of (data ?? []) as { key: string; value: string }[]) {
+    map[row.key] = row.value;
+  }
+  return map;
 }
 
-let tokenCache: TokenCache | null = null;
+async function writeSettings(entries: Record<string, string>) {
+  if (!isSupabaseConfigured || !supabase) return;
+  const rows = Object.entries(entries).map(([key, value]) => ({
+    key,
+    value,
+    updated_at: new Date().toISOString(),
+  }));
+  await supabase.from("settings").upsert(rows, { onConflict: "key" });
+}
 
-async function getAccessToken(): Promise<string> {
-  if (tokenCache && Date.now() < tokenCache.expires_at - 60_000) {
-    return tokenCache.access_token;
-  }
-
-  const clientId = process.env.STOCKX_CLIENT_ID;
-  const clientSecret = process.env.STOCKX_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("STOCKX_CLIENT_ID or STOCKX_CLIENT_SECRET not configured");
-  }
-
+async function refreshAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch(STOCKX_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-      audience: "gateway.stockx.com",
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: process.env.STOCKX_CLIENT_ID ?? "",
+      client_secret: process.env.STOCKX_CLIENT_SECRET ?? "",
     }),
     cache: "no-store",
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`StockX auth failed (${res.status}): ${text}`);
+    throw new Error(`StockX token refresh failed (${res.status}): ${text}`);
   }
 
   const data = await res.json();
-  tokenCache = {
-    access_token: data.access_token,
-    expires_at: Date.now() + (data.expires_in ?? 43200) * 1000,
-  };
+  const expiresAt = Date.now() + (data.expires_in ?? 86400) * 1000;
 
-  return tokenCache.access_token;
+  await writeSettings({
+    stockx_access_token: data.access_token,
+    stockx_token_expires_at: String(expiresAt),
+    ...(data.refresh_token ? { stockx_refresh_token: data.refresh_token } : {}),
+  });
+
+  return data.access_token;
+}
+
+async function getAccessToken(): Promise<string> {
+  const settings = await readSettings([
+    "stockx_access_token",
+    "stockx_refresh_token",
+    "stockx_token_expires_at",
+  ]);
+
+  const accessToken = settings["stockx_access_token"];
+  const refreshToken = settings["stockx_refresh_token"];
+  const expiresAt = parseInt(settings["stockx_token_expires_at"] ?? "0", 10);
+
+  if (accessToken && Date.now() < expiresAt - 60_000) {
+    return accessToken;
+  }
+
+  if (refreshToken) {
+    return refreshAccessToken(refreshToken);
+  }
+
+  throw new Error(
+    "StockX not connected. Go to /admin/stockx and click Connect."
+  );
+}
+
+export async function storeStockXTokens(tokens: {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+}) {
+  const expiresAt = Date.now() + (tokens.expires_in ?? 86400) * 1000;
+  await writeSettings({
+    stockx_access_token: tokens.access_token,
+    stockx_token_expires_at: String(expiresAt),
+    ...(tokens.refresh_token
+      ? { stockx_refresh_token: tokens.refresh_token }
+      : {}),
+  });
+}
+
+export async function clearStockXTokens() {
+  if (!isSupabaseConfigured || !supabase) return;
+  await supabase
+    .from("settings")
+    .delete()
+    .in("key", [
+      "stockx_access_token",
+      "stockx_refresh_token",
+      "stockx_token_expires_at",
+    ]);
+}
+
+export async function getStockXConnectionStatus(): Promise<{
+  connected: boolean;
+  expiresAt?: number;
+}> {
+  const settings = await readSettings([
+    "stockx_access_token",
+    "stockx_token_expires_at",
+  ]);
+  const token = settings["stockx_access_token"];
+  const expiresAt = parseInt(settings["stockx_token_expires_at"] ?? "0", 10);
+  return { connected: !!token, expiresAt: expiresAt || undefined };
 }
 
 async function stockxFetch(path: string): Promise<Response> {
@@ -95,7 +173,10 @@ export interface StockXSearchResponse {
   pagination?: { total: number; pageNumber: number; pageSize: number };
 }
 
-export async function searchStockX(query: string, page = 1): Promise<StockXSearchResponse> {
+export async function searchStockX(
+  query: string,
+  page = 1
+): Promise<StockXSearchResponse> {
   const params = new URLSearchParams({
     query,
     pageNumber: String(page),
@@ -114,10 +195,11 @@ export async function searchStockX(query: string, page = 1): Promise<StockXSearc
   return { products, pagination: data.pagination };
 }
 
-export async function getStockXVariants(productId: string): Promise<StockXVariant[]> {
+export async function getStockXVariants(
+  productId: string
+): Promise<StockXVariant[]> {
   const res = await stockxFetch(`/catalog/products/${productId}/variants`);
   if (!res.ok) return [];
-
   const data = await res.json();
   return Array.isArray(data) ? data : data.variants ?? [];
 }
@@ -176,9 +258,13 @@ export function mapStockXToProduct(p: StockXProduct, sizes: string[]) {
   const colorHex = COLOR_TO_HEX[colorKey] ?? undefined;
   const price = p.productAttributes.retailPrice ?? 0;
   const rawGender = (p.productAttributes.gender ?? "unisex").toLowerCase();
-  const gender = (["women", "men", "unisex"].includes(rawGender) ? rawGender : "unisex") as "women" | "men" | "unisex";
+  const gender = (["women", "men", "unisex"].includes(rawGender)
+    ? rawGender
+    : "unisex") as "women" | "men" | "unisex";
   const imageUrl = stockxCdnImage(p.productId);
-  const colors = p.productAttributes.colorway ? [p.productAttributes.colorway] : [];
+  const colors = p.productAttributes.colorway
+    ? [p.productAttributes.colorway]
+    : [];
 
   return {
     name: p.title,
