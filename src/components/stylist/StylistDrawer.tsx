@@ -319,9 +319,9 @@ export function StylistDrawer({
 
   const quickReplies = QUICK_REPLIES[surface];
 
-  // ── Remaining messages footer ─────────────────────────────────────────────
   const showUsage = dailyLimit !== null && remaining !== null;
   const usageWarning = showUsage && remaining <= 5;
+  const pctLeft = showUsage ? Math.round((remaining! / dailyLimit!) * 100) : 100;
 
   return (
     <>
@@ -356,16 +356,27 @@ export function StylistDrawer({
               <path d="M11 1l2 2-5 5H6V6l5-5Z" />
             </svg>
           </button>
-          {/* History tab toggle */}
+          {/* History icon toggle */}
           <button
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
-            className={`font-mono text-[9px] tracking-[0.12em] uppercase transition-colors ${
+            title={view === "history" ? "Back to chat" : "Chat history"}
+            aria-label={view === "history" ? "Back to chat" : "Chat history"}
+            className={`transition-colors ${
               view === "history"
                 ? "text-[var(--foreground)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            {view === "history" ? "← Chat" : "History"}
+            {view === "history" ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 2L4 7L9 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="7" cy="7" r="5.5" />
+                <path d="M7 4.5V7l1.5 1.5" />
+              </svg>
+            )}
           </button>
           <button
             onClick={onClose}
@@ -376,6 +387,37 @@ export function StylistDrawer({
           </button>
         </div>
       </div>
+
+      {/* ── Usage bar ─────────────────────────────────────────────────────── */}
+      {showUsage && (
+        <div className="px-5 py-2.5 border-b border-[var(--border)] shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+              Daily limit
+            </span>
+            <span className={`font-mono text-[8px] tracking-[0.08em] ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
+              {pctLeft}% remaining
+              {usageWarning && remaining! > 0 && (
+                <Link href="/plans" className="ml-2 underline hover:no-underline">
+                  Upgrade
+                </Link>
+              )}
+            </span>
+          </div>
+          <div className="h-[2px] bg-[var(--border)] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                pctLeft > 50
+                  ? "bg-[var(--foreground)]"
+                  : pctLeft > 20
+                  ? "bg-amber-400"
+                  : "bg-red-400"
+              }`}
+              style={{ width: `${pctLeft}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── History panel ─────────────────────────────────────────────────── */}
       {view === "history" && (
@@ -580,21 +622,10 @@ export function StylistDrawer({
               </button>
             </div>
 
-            {/* Usage counter */}
-            <div className="flex items-center justify-between mt-1.5">
+            <div className="mt-1.5">
               <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
                 ⏎ to send
               </p>
-              {showUsage && (
-                <p className={`font-mono text-[8px] tracking-[0.08em] uppercase ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
-                  {remaining} / {dailyLimit} messages left today
-                  {usageWarning && remaining > 0 && (
-                    <Link href="/plans" className="ml-1.5 underline hover:no-underline">
-                      Upgrade
-                    </Link>
-                  )}
-                </p>
-              )}
             </div>
           </div>
         </>
