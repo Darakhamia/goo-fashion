@@ -3,6 +3,11 @@
 import { useState, useCallback } from "react";
 import type { StockXProduct } from "@/lib/server/stockx";
 
+function getImageUrl(product: StockXProduct): string {
+  return product.media?.imageUrl ?? product.media?.smallImageUrl
+    ?? `https://images.stockx.com/images/${product.urlKey}.jpg`;
+}
+
 interface SearchResult {
   products: StockXProduct[];
   pagination?: { total: number; pageNumber: number; pageSize: number };
@@ -24,7 +29,7 @@ function ProductCard({
   onToggle: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
-  const imageUrl = `https://images.stockx.com/images/${product.productId}.jpg`;
+  const imageUrl = getImageUrl(product);
   const price = product.productAttributes.retailPrice;
   const color = product.productAttributes.colorway ?? product.productAttributes.color ?? "";
 

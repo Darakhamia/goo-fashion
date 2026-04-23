@@ -81,6 +81,11 @@ export interface StockXProduct {
   title: string;
   brand: string | null;
   productAttributes: StockXProductAttributes;
+  media?: {
+    imageUrl?: string;
+    smallImageUrl?: string;
+    thumbUrl?: string;
+  };
   sizeChart?: object;
 }
 
@@ -167,8 +172,12 @@ const COLOR_TO_HEX: Record<string, string> = {
   multicolor: "#888888",
 };
 
-export function stockxCdnImage(productId: string): string {
-  return `https://images.stockx.com/images/${productId}.jpg`;
+export function stockxCdnImage(urlKey: string): string {
+  return `https://images.stockx.com/images/${urlKey}.jpg`;
+}
+
+export function getStockXImageUrl(p: StockXProduct): string {
+  return p.media?.imageUrl ?? p.media?.smallImageUrl ?? stockxCdnImage(p.urlKey);
 }
 
 export function mapStockXToProduct(p: StockXProduct, sizes: string[]) {
@@ -178,7 +187,7 @@ export function mapStockXToProduct(p: StockXProduct, sizes: string[]) {
   const price = p.productAttributes.retailPrice ?? 0;
   const rawGender = (p.productAttributes.gender ?? "unisex").toLowerCase();
   const gender = (["women", "men", "unisex"].includes(rawGender) ? rawGender : "unisex") as "women" | "men" | "unisex";
-  const imageUrl = stockxCdnImage(p.productId);
+  const imageUrl = getStockXImageUrl(p);
   const colors = p.productAttributes.colorway ? [p.productAttributes.colorway] : [];
 
   return {
