@@ -5,6 +5,17 @@ import Image from "next/image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 
+interface PendingLook {
+  id: string;
+  created_at: string;
+  generated_image: string;
+  generated_style: string | null;
+  pieces: { slot: string; productId: string; imageUrl?: string; name?: string }[];
+  total_price: number | null;
+  style_keywords: string[];
+  status: string;
+}
+
 type OutfitRole = "hero" | "secondary" | "accent";
 type Season = "all" | "spring" | "summer" | "autumn" | "winter";
 
@@ -58,6 +69,8 @@ const selectCls =
 const labelCls = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
+  const [adminTab, setAdminTab] = useState<"outfits" | "pending">("outfits");
+
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -77,6 +90,10 @@ export default function AdminOutfitsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
+  const [pendingLooks, setPendingLooks] = useState<PendingLook[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
   // Load outfits on mount
   useEffect(() => {
     fetch("/api/outfits")
@@ -87,6 +104,49 @@ export default function AdminOutfitsPage() {
       .catch(() => setOutfits(staticOutfits))
       .finally(() => setLoading(false));
   }, []);
+
+  // Load pending looks when switching to pending tab
+  useEffect(() => {
+    if (adminTab !== "pending") return;
+    setLoadingPending(true);
+    fetch("/api/looks/pending")
+      .then((r) => r.json())
+      .then((data) => setPendingLooks(Array.isArray(data) ? data : []))
+      .catch(() => setPendingLooks([]))
+      .finally(() => setLoadingPending(false));
+  }, [adminTab]);
+
+  const handleApproveLook = async (id: string) => {
+    setApprovingId(id);
+    try {
+      const res = await fetch("/api/looks/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+      }
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleRejectLook = async (id: string) => {
+    setApprovingId(id);
+    try {
+      const res = await fetch("/api/looks/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+      }
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   // Load products when modal opens
   const loadProducts = useCallback(() => {
@@ -314,17 +374,111 @@ export default function AdminOutfitsPage() {
             {loading ? "Loading..." : `${outfits.length} total · ${filteredOutfits.length} shown`}
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          Add Outfit
-        </button>
+        {adminTab === "outfits" && (
+          <button
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            Add Outfit
+          </button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-[var(--border)] mb-6">
+        {(["outfits", "pending"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setAdminTab(t)}
+            className={`px-5 py-3 text-xs tracking-[0.12em] uppercase font-medium border-b-2 -mb-px transition-colors ${
+              adminTab === t
+                ? "border-[var(--foreground)] text-[var(--foreground)]"
+                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            {t === "pending" ? (
+              <span className="flex items-center gap-2">
+                Pending
+                {pendingLooks.length > 0 && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[9px]">
+                    {pendingLooks.length}
+                  </span>
+                )}
+              </span>
+            ) : "Outfits"}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Pending looks tab ── */}
+      {adminTab === "pending" && (
+        <div>
+          {loadingPending ? (
+            <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">Loading…</p>
+          ) : pendingLooks.length === 0 ? (
+            <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingLooks.map((look) => (
+                <div key={look.id} className="border border-[var(--border)] bg-[var(--background)] flex flex-col">
+                  {/* Image */}
+                  <div className="aspect-[3/4] bg-[var(--surface)] overflow-hidden relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={look.generated_image}
+                      alt="Pending look"
+                      className="w-full h-full object-cover"
+                    />
+                    {look.generated_style && (
+                      <span className="absolute top-2.5 left-2.5 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+                        {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
+                      </span>
+                    )}
+                  </div>
+                  {/* Meta */}
+                  <div className="px-4 py-3 flex-1">
+                    <p className="text-[10px] text-[var(--foreground-muted)] mb-1">
+                      {new Date(look.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                    {look.total_price != null && (
+                      <p className="text-sm text-[var(--foreground)] font-medium">${look.total_price.toLocaleString()}</p>
+                    )}
+                    {look.style_keywords.length > 0 && (
+                      <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
+                        {look.style_keywords.slice(0, 3).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div className="px-4 pb-4 flex gap-2">
+                    <button
+                      onClick={() => handleApproveLook(look.id)}
+                      disabled={approvingId === look.id}
+                      className="flex-1 h-8 text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+                    >
+                      {approvingId === look.id ? "…" : "Approve"}
+                    </button>
+                    <button
+                      onClick={() => handleRejectLook(look.id)}
+                      disabled={approvingId === look.id}
+                      className="flex-1 h-8 text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Outfits tab ── */}
+      {adminTab === "outfits" && (
+        <>
       {/* Search */}
       <div className="mb-5">
         <input
@@ -824,6 +978,8 @@ export default function AdminOutfitsPage() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

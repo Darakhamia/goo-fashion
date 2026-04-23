@@ -262,6 +262,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     isAIGenerated: row.is_ai_generated ?? false,
     isSaved: row.is_saved ?? false,
     season: (row.season ?? "all") as Outfit["season"],
+    source: (row.source === "community" ? "community" : null),
   };
 }
 
