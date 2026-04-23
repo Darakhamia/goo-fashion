@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/types";
 
-const STOCKX_API_BASE = "https://api.stockx.com/v1";
+const STOCKX_API_BASE = "https://api.stockx.com/v2";
 
 interface TokenCache {
   access_token: string;
