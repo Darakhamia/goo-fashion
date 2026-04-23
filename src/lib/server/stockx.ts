@@ -1,3 +1,5 @@
+import type { Product } from "@/lib/types";
+
 const STOCKX_API_BASE = "https://api.stockx.com/v1";
 const STOCKX_TOKEN_URL = "https://accounts.stockx.com/oauth/token";
 
@@ -180,7 +182,7 @@ export function mapStockXToProduct(p: StockXProduct, sizes: string[]) {
 
   return {
     name: p.title,
-    brand: p.brand ?? "",
+    brand: (p.brand ?? "") as Product["brand"],
     category,
     description: "",
     imageUrl,
