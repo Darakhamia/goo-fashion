@@ -9,6 +9,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q")?.trim() ?? "";
   const page = parseInt(searchParams.get("page") ?? "1", 10);
+  const pageSize = parseInt(searchParams.get("pageSize") ?? "40", 10);
 
   if (!query) {
     return NextResponse.json({ error: "Missing query parameter q" }, { status: 400 });
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const result = await searchStockX(query, page);
+    const result = await searchStockX(query, page, pageSize);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
