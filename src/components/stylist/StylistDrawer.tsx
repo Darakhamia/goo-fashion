@@ -140,19 +140,11 @@ export function StylistDrawer({
 
   const contextId = focusProduct?.id ?? "";
 
-  // Load chat history when drawer opens
-  useEffect(() => {
-    if (!isOpen) return;
-    fetch(`/api/stylist/chat/history?surface=${encodeURIComponent(surface)}&context_id=${encodeURIComponent(contextId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (Array.isArray(data?.messages) && data.messages.length > 0) {
-          setChatMessages([makeWelcome(focusProduct), ...data.messages]);
-        }
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  const startNewChat = () => {
+    setChatMessages([makeWelcome(focusProduct)]);
+    setChatInput("");
+    setView("chat");
+  };
 
   // Load chat sessions for history panel
   const loadSessions = () => {
@@ -352,6 +344,18 @@ export function StylistDrawer({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* New chat button */}
+          <button
+            onClick={startNewChat}
+            title="New chat"
+            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            aria-label="New chat"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
+              <path d="M11 1l2 2-5 5H6V6l5-5Z" />
+            </svg>
+          </button>
           {/* History tab toggle */}
           <button
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
