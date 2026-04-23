@@ -421,7 +421,7 @@ export async function POST(req: Request) {
       if (choice.finish_reason === "tool_calls" && msg.tool_calls?.length) {
         // Execute each tool call and append results
         for (const tc of msg.tool_calls) {
-          if (tc.function.name === "search_catalog") {
+          if (tc.type === "function" && tc.function.name === "search_catalog") {
             let args: { query?: string; category?: string; max_price?: number; limit?: number } = {};
             try { args = JSON.parse(tc.function.arguments); } catch { /* ignore */ }
 
