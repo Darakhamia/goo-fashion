@@ -8,6 +8,46 @@ function getImageUrl(product: StockXProduct): string {
     ?? `https://images.stockx.com/images/${product.urlKey}.jpg`;
 }
 
+// Mirror of inferCategory() from stockx.ts so the card can preview the mapped category
+function previewCategory(p: StockXProduct): string {
+  const type = (p.productType ?? "").toLowerCase();
+  const title = (p.title ?? "").toLowerCase();
+
+  if (/sneaker|shoe|boot|clog|sandal|slide|loafer|mule/.test(type)) return "footwear";
+  if (/jacket|coat|parka|anorak|windbreaker|blazer/.test(type)) return "outerwear";
+  if (/hoodie|sweatshirt|crewneck|pullover|fleece/.test(type)) return "tops";
+  if (/t-shirt|tee|shirt|blouse|polo|tank/.test(type)) return "tops";
+  if (/knitwear|sweater|cardigan/.test(type)) return "knitwear";
+  if (/jean|denim|pant|trouser|chino|legging/.test(type)) return "bottoms";
+  if (/short/.test(type)) return "shorts";
+  if (/skirt/.test(type)) return "skirts";
+  if (/dress/.test(type)) return "dresses";
+  if (/jumpsuit|overall|romper/.test(type)) return "jumpsuits";
+  if (/bag|backpack|tote|clutch|wallet|purse|handbag/.test(type)) return "bags";
+  if (/hat|cap|beanie|bucket/.test(type)) return "accessories";
+  if (/sock/.test(type)) return "accessories";
+  if (/accessory|accessories|jewelry|watch|belt|scarf|glove/.test(type)) return "accessories";
+  if (/collectible|electronics|trading|card/.test(type)) return "accessories";
+
+  if (/jacket|coat|parka|anorak|windbreaker|bomber|harrington/.test(title)) return "outerwear";
+  if (/blazer/.test(title)) return "outerwear";
+  if (/hoodie|hoody|sweatshirt|crewneck|pullover|fleece/.test(title)) return "tops";
+  if (/sweater|knitwear|cardigan|knit/.test(title)) return "knitwear";
+  if (/\bt-shirt\b|tee\b|\bshirt\b|blouse|polo|tank top/.test(title)) return "tops";
+  if (/pants\b|trousers|chinos|jeans\b|leggings|joggers/.test(title)) return "bottoms";
+  if (/denim(?! jacket)/.test(title)) return "bottoms";
+  if (/\bshorts\b/.test(title)) return "shorts";
+  if (/\bskirt\b/.test(title)) return "skirts";
+  if (/\bdress\b|\bgown\b/.test(title)) return "dresses";
+  if (/jumpsuit|playsuit|romper|\boveralls\b/.test(title)) return "jumpsuits";
+  if (/\bbag\b|backpack|tote|clutch|wallet|purse|satchel|duffel/.test(title)) return "bags";
+  if (/\bhat\b|\bcap\b|beanie|snapback|bucket hat|beret/.test(title)) return "accessories";
+  if (/\bsocks?\b/.test(title)) return "accessories";
+  if (/sneaker|shoe|boot|trainer|runner/.test(title)) return "footwear";
+
+  return "accessories";
+}
+
 interface SearchResult {
   products: StockXProduct[];
   pagination?: { total: number; pageNumber: number; pageSize: number };
@@ -32,6 +72,7 @@ function ProductCard({
   const imageUrl = getImageUrl(product);
   const price = product.productAttributes.retailPrice;
   const color = product.productAttributes.colorway ?? product.productAttributes.color ?? "";
+  const category = previewCategory(product);
 
   return (
     <div
@@ -83,9 +124,14 @@ function ProductCard({
       </div>
 
       <div className="p-3 border-t border-[var(--border)]">
-        <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1">
-          {product.brand ?? "—"} · {product.productType}
-        </p>
+        <div className="flex items-center justify-between gap-1 mb-1">
+          <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] truncate">
+            {product.brand ?? "—"} · {product.productType}
+          </p>
+          <span className="shrink-0 text-[8px] tracking-[0.1em] uppercase px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground-subtle)]">
+            {category}
+          </span>
+        </div>
         <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2 mb-2">
           {product.title}
         </p>
@@ -105,11 +151,20 @@ function ProductCard({
 export default function StockXImportPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<SearchResult | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchPage = async (q: string, page: number): Promise<SearchResult | null> => {
+    const res = await fetch(`/api/stockx/search?q=${encodeURIComponent(q)}&page=${page}&pageSize=40`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Search failed");
+    return data as SearchResult;
+  };
 
   const search = useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -118,21 +173,38 @@ export default function StockXImportPage() {
     setError(null);
     setImportResult(null);
     setSelected(new Set());
+    setCurrentPage(1);
     try {
-      const res = await fetch(`/api/stockx/search?q=${encodeURIComponent(query.trim())}`);
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Search failed");
-        setResults(null);
-      } else {
-        setResults(data);
-      }
-    } catch {
-      setError("Network error — could not reach StockX");
+      const data = await fetchPage(query.trim(), 1);
+      setResults(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error — could not reach StockX");
+      setResults(null);
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
+  const loadMore = async () => {
+    if (!results || !query.trim()) return;
+    const nextPage = currentPage + 1;
+    setLoadingMore(true);
+    try {
+      const data = await fetchPage(query.trim(), nextPage);
+      if (data) {
+        setResults((prev) => ({
+          products: [...(prev?.products ?? []), ...data.products],
+          pagination: data.pagination,
+        }));
+        setCurrentPage(nextPage);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more results");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const toggleSelect = (productId: string) => {
     setSelected((prev) => {
@@ -168,6 +240,10 @@ export default function StockXImportPage() {
     }
   };
 
+  const hasMore =
+    results?.pagination?.total != null &&
+    results.products.length < results.pagination.total;
+
   return (
     <div className="max-w-6xl">
       <div className="mb-8">
@@ -175,7 +251,7 @@ export default function StockXImportPage() {
           StockX Import
         </h1>
         <p className="text-xs text-[var(--foreground-muted)]">
-          Search the StockX catalog and import products directly into GOO.
+          Search the StockX catalog and import products directly into GOO. Category is inferred from product type and title.
         </p>
       </div>
 
@@ -184,7 +260,7 @@ export default function StockXImportPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search StockX catalog — e.g. Nike Air Force, Balenciaga..."
+          placeholder="Search StockX catalog — e.g. Nike Air Force, Balenciaga hoodie..."
           className="flex-1 h-10 px-4 text-xs bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors"
         />
         <button
@@ -225,9 +301,9 @@ export default function StockXImportPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)]">
-              {results.products.length} results
-              {results.pagination?.total && results.pagination.total > results.products.length
-                ? ` of ${results.pagination.total}`
+              {results.products.length} shown
+              {results.pagination?.total != null
+                ? ` of ${results.pagination.total} total`
                 : ""}
             </p>
             <button
@@ -241,7 +317,7 @@ export default function StockXImportPage() {
                 onClick={() => setSelected(new Set())}
                 className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
-                Clear
+                Clear ({selected.size})
               </button>
             )}
           </div>
@@ -263,16 +339,30 @@ export default function StockXImportPage() {
       )}
 
       {results && results.products.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {results.products.map((product) => (
-            <ProductCard
-              key={product.productId}
-              product={product}
-              selected={selected.has(product.productId)}
-              onToggle={() => toggleSelect(product.productId)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {results.products.map((product) => (
+              <ProductCard
+                key={product.productId}
+                product={product}
+                selected={selected.has(product.productId)}
+                onToggle={() => toggleSelect(product.productId)}
+              />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="h-10 px-8 text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] disabled:opacity-40 transition-all"
+              >
+                {loadingMore ? "Loading..." : `Load more — ${results.pagination!.total - results.products.length} remaining`}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {!results && !loading && !error && (

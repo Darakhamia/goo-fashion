@@ -101,11 +101,11 @@ export interface StockXSearchResponse {
   pagination?: { total: number; pageNumber: number; pageSize: number };
 }
 
-export async function searchStockX(query: string, page = 1): Promise<StockXSearchResponse> {
+export async function searchStockX(query: string, page = 1, pageSize = 40): Promise<StockXSearchResponse> {
   const params = new URLSearchParams({
     query,
     pageNumber: String(page),
-    pageSize: "24",
+    pageSize: String(Math.min(pageSize, 40)),
   });
 
   const res = await stockxFetch(`/catalog/search?${params}`);
@@ -130,25 +130,49 @@ export async function getStockXVariants(productId: string): Promise<StockXVarian
 
 // ── Mappers ──────────────────────────────────────────────────────────────────
 
-const PRODUCT_TYPE_TO_CATEGORY: Record<string, string> = {
-  Sneakers: "footwear",
-  Shoes: "footwear",
-  Apparel: "tops",
-  "Hoodies & Sweatshirts": "tops",
-  "T-Shirts": "tops",
-  "Jackets & Coats": "outerwear",
-  "Pants & Shorts": "bottoms",
-  Shorts: "shorts",
-  Skirts: "skirts",
-  Dresses: "dresses",
-  Handbags: "bags",
-  Accessories: "accessories",
-  Hats: "accessories",
-  Socks: "accessories",
-  Collectibles: "accessories",
-  Electronics: "accessories",
-  "Trading Cards": "accessories",
-};
+// Infer GOO category from StockX productType + product title.
+// productType alone is often too coarse ("Apparel"), so we fall back to
+// keyword-matching on the title when the type doesn't resolve precisely.
+function inferCategory(p: StockXProduct): string {
+  const type = (p.productType ?? "").toLowerCase();
+  const title = (p.title ?? "").toLowerCase();
+
+  // ── productType exact / keyword matches ─────────────────────────────────
+  if (/sneaker|shoe|boot|clog|sandal|slide|loafer|mule/.test(type)) return "footwear";
+  if (/jacket|coat|parka|anorak|windbreaker|blazer/.test(type)) return "outerwear";
+  if (/hoodie|sweatshirt|crewneck|pullover|fleece/.test(type)) return "tops";
+  if (/t-shirt|tee|shirt|blouse|polo|tank/.test(type)) return "tops";
+  if (/knitwear|sweater|cardigan/.test(type)) return "knitwear";
+  if (/jean|denim|pant|trouser|chino|legging/.test(type)) return "bottoms";
+  if (/short/.test(type)) return "shorts";
+  if (/skirt/.test(type)) return "skirts";
+  if (/dress/.test(type)) return "dresses";
+  if (/jumpsuit|overall|romper/.test(type)) return "jumpsuits";
+  if (/bag|backpack|tote|clutch|wallet|purse|handbag/.test(type)) return "bags";
+  if (/hat|cap|beanie|bucket/.test(type)) return "accessories";
+  if (/sock/.test(type)) return "accessories";
+  if (/accessory|accessories|jewelry|watch|belt|scarf|glove/.test(type)) return "accessories";
+  if (/collectible|electronics|trading|card/.test(type)) return "accessories";
+
+  // ── title keyword fallback ───────────────────────────────────────────────
+  if (/jacket|coat|parka|anorak|windbreaker|bomber|harrington/.test(title)) return "outerwear";
+  if (/blazer/.test(title)) return "outerwear";
+  if (/hoodie|hoody|sweatshirt|crewneck|pullover|fleece/.test(title)) return "tops";
+  if (/sweater|knitwear|cardigan|knit/.test(title)) return "knitwear";
+  if (/\bt-shirt\b|tee\b|\bshirt\b|blouse|polo|tank top/.test(title)) return "tops";
+  if (/pants\b|trousers|chinos|jeans\b|leggings|joggers/.test(title)) return "bottoms";
+  if (/denim(?! jacket)/.test(title)) return "bottoms";
+  if (/\bshorts\b/.test(title)) return "shorts";
+  if (/\bskirt\b/.test(title)) return "skirts";
+  if (/\bdress\b|\bgown\b/.test(title)) return "dresses";
+  if (/jumpsuit|playsuit|romper|\boveralls\b/.test(title)) return "jumpsuits";
+  if (/\bbag\b|backpack|tote|clutch|wallet|purse|satchel|duffel/.test(title)) return "bags";
+  if (/\bhat\b|\bcap\b|beanie|snapback|bucket hat|beret/.test(title)) return "accessories";
+  if (/\bsocks?\b/.test(title)) return "accessories";
+  if (/sneaker|shoe|boot|trainer|runner/.test(title)) return "footwear";
+
+  return "accessories";
+}
 
 const COLOR_TO_HEX: Record<string, string> = {
   black: "#000000",
@@ -181,7 +205,7 @@ export function getStockXImageUrl(p: StockXProduct): string {
 }
 
 export function mapStockXToProduct(p: StockXProduct, sizes: string[]) {
-  const category = PRODUCT_TYPE_TO_CATEGORY[p.productType] ?? "accessories";
+  const category = inferCategory(p);
   const colorKey = (p.productAttributes.color ?? "").toLowerCase().trim();
   const colorHex = COLOR_TO_HEX[colorKey] ?? undefined;
   const price = p.productAttributes.retailPrice ?? 0;
