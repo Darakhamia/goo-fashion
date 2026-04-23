@@ -4,7 +4,7 @@ import { requirePlan } from "@/lib/server/require-plan";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 
-type Style = "mannequin" | "flatlay";
+type Style = "mannequin" | "flatlay" | "tryon";
 
 interface SlotProduct {
   slot: string;
@@ -110,6 +110,21 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
     "Do not invent, substitute, restyle, or add any item not in the references.",
   ].join(" ");
 
+  if (style === "tryon") {
+    return [
+      "Fashion studio try-on photograph.",
+      "PERSON: The FIRST reference image shows the subject. Reproduce this exact person — their face, facial features, skin tone, hair colour, hair length, body shape, and proportions precisely. Do NOT alter, idealise, composite, or replace the person with a model.",
+      "OUTFIT: Dress this exact person in the following items, taken from the remaining reference images:",
+      itemsList + ".",
+      "Garment layering: outerwear worn over top; bottom on legs; shoes on feet; bags on shoulder or crossbody — never floating.",
+      fidelity,
+      "POSE: Simple, confident standing studio pose — feet shoulder-width apart, arms relaxed at sides (or one hand lightly in pocket). Full body visible head to toe. Natural, not stiff.",
+      "BACKGROUND: Pure white seamless studio infinity cove — floor and wall blend into one unbroken white plane. No props, no texture, no gradient. Only a soft contact shadow directly beneath the feet.",
+      "LIGHTING: Soft diffused frontal studio strobe, perfectly even, no harsh shadows. Natural skin-tone rendering.",
+      "Square 1:1 frame. Full body centered. Photorealistic, ultra-sharp focus, luxury fashion editorial quality.",
+    ].join(" ");
+  }
+
   if (style === "mannequin") {
     return [
       "Luxury fashion ecommerce photograph. Full-body shot of a faceless matte black mannequin (sleek, no facial features) wearing the following outfit, head to toe:",
@@ -154,23 +169,39 @@ export async function POST(req: Request) {
   }
 
   const pieces = body.pieces as SlotProduct[];
-  const style: Style = body.style === "flatlay" ? "flatlay" : "mannequin";
+  const style: Style =
+    body.style === "flatlay" ? "flatlay" : body.style === "tryon" ? "tryon" : "mannequin";
+
+  // For try-on: caller supplies the user's photo as a base64 data-URI.
+  // It becomes the first reference so the model knows whose body to dress.
+  const userPhotoDataUri: string | undefined =
+    style === "tryon" && typeof body.userPhotoDataUri === "string" && body.userPhotoDataUri.startsWith("data:")
+      ? body.userPhotoDataUri
+      : undefined;
+
+  if (style === "tryon" && !userPhotoDataUri) {
+    return NextResponse.json({ error: "A photo is required for the try-on style." }, { status: 400 });
+  }
 
   // Collect raw URLs (nano-banana-2 accepts up to 14 references)
   const rawUrls = pieces
     .map((p) => p.imageUrl)
     .filter((url): url is string => !!url)
-    .slice(0, 14);
+    .slice(0, userPhotoDataUri ? 13 : 14); // reserve one slot for the user photo
 
   // Fetch each image server-side and convert to base64 data-URIs.
   // This prevents Replicate from hitting merchant sites that block hotlinking.
   const fetched = await Promise.all(rawUrls.map(fetchAsDataUri));
-  const imageInput = fetched
+  const clothingDataUris = fetched
     .filter((r): r is { ok: true; dataUri: string } => r.ok)
     .map((r) => r.dataUri);
+
+  // User photo goes first so the model reads it as the "body reference"
+  const imageInput = userPhotoDataUri ? [userPhotoDataUri, ...clothingDataUris] : clothingDataUris;
   const failedUrls = fetched
     .filter((r): r is { ok: false; url: string; reason: string } => !r.ok)
     .map((r) => r.url);
+
 
   if (failedUrls.length > 0) {
     console.warn("[generate-outfit] failed to fetch reference images:", failedUrls);
