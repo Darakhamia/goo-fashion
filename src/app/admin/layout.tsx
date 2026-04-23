@@ -96,6 +96,17 @@ const navItems: { href: string; label: string; icon: React.ReactNode; superAdmin
     ),
   },
   {
+    href: "/admin/stockx",
+    label: "StockX Import",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 11L5 5L8 9L11 5L14 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 13V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M6 11L8 13L10 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/settings",
     label: "Settings",
     icon: (
@@ -136,6 +147,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Users",
   "/admin/brands": "Brands",
   "/admin/email": "Email",
+  "/admin/stockx": "StockX Import",
   "/admin/settings": "Settings",
   "/admin/activity": "Activity",
 };
