@@ -93,6 +93,7 @@ export default function AdminOutfitsPage() {
   const [pendingLooks, setPendingLooks] = useState<PendingLook[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [selectedLook, setSelectedLook] = useState<PendingLook | null>(null);
 
   // Load outfits on mount
   useEffect(() => {
@@ -126,6 +127,7 @@ export default function AdminOutfitsPage() {
       });
       if (res.ok) {
         setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+        setSelectedLook(null);
       }
     } finally {
       setApprovingId(null);
@@ -142,6 +144,7 @@ export default function AdminOutfitsPage() {
       });
       if (res.ok) {
         setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+        setSelectedLook(null);
       }
     } finally {
       setApprovingId(null);
@@ -421,58 +424,148 @@ export default function AdminOutfitsPage() {
           ) : pendingLooks.length === 0 ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pendingLooks.map((look) => (
-                <div key={look.id} className="border border-[var(--border)] bg-[var(--background)] flex flex-col">
-                  {/* Image */}
-                  <div className="aspect-[3/4] bg-[var(--surface)] overflow-hidden relative">
+            <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+              {pendingLooks.map((look, idx) => (
+                <div
+                  key={look.id}
+                  onClick={() => setSelectedLook(look)}
+                  className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-[var(--surface)] transition-colors ${
+                    idx !== 0 ? "border-t border-[var(--border)]" : ""
+                  }`}
+                >
+                  {/* Thumbnail */}
+                  <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={look.generated_image}
-                      alt="Pending look"
-                      className="w-full h-full object-cover"
-                    />
-                    {look.generated_style && (
-                      <span className="absolute top-2.5 left-2.5 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
-                        {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
-                      </span>
-                    )}
+                    <img src={look.generated_image} alt="Look" className="w-full h-full object-cover" />
                   </div>
                   {/* Meta */}
-                  <div className="px-4 py-3 flex-1">
-                    <p className="text-[10px] text-[var(--foreground-muted)] mb-1">
-                      {new Date(look.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                    {look.total_price != null && (
-                      <p className="text-sm text-[var(--foreground)] font-medium">${look.total_price.toLocaleString()}</p>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {look.generated_style && (
+                        <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5">
+                          {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
+                        </span>
+                      )}
+                      {look.total_price != null && (
+                        <span className="text-xs text-[var(--foreground)] font-medium">${look.total_price.toLocaleString()}</span>
+                      )}
+                    </div>
                     {look.style_keywords.length > 0 && (
-                      <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
-                        {look.style_keywords.slice(0, 3).join(" · ")}
+                      <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
+                        {look.style_keywords.slice(0, 4).join(" · ")}
                       </p>
                     )}
+                    <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
+                      {new Date(look.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {" · "}{look.pieces.length} pieces
+                    </p>
                   </div>
-                  {/* Actions */}
-                  <div className="px-4 pb-4 flex gap-2">
-                    <button
-                      onClick={() => handleApproveLook(look.id)}
-                      disabled={approvingId === look.id}
-                      className="flex-1 h-8 text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
-                    >
-                      {approvingId === look.id ? "…" : "Approve"}
-                    </button>
-                    <button
-                      onClick={() => handleRejectLook(look.id)}
-                      disabled={approvingId === look.id}
-                      className="flex-1 h-8 text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
-                    >
-                      Reject
-                    </button>
-                  </div>
+                  {/* Arrow */}
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
+                    <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Pending look detail modal ── */}
+      {selectedLook && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSelectedLook(null)}
+        >
+          <div
+            className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)]"
+            style={{ maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+              <div className="flex items-center gap-3">
+                {selectedLook.generated_style && (
+                  <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5">
+                    {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On You" : "AI"}
+                  </span>
+                )}
+                {selectedLook.total_price != null && (
+                  <p className="text-sm font-medium text-[var(--foreground)]">${selectedLook.total_price.toLocaleString()}</p>
+                )}
+                {selectedLook.style_keywords.length > 0 && (
+                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
+                    {selectedLook.style_keywords.slice(0, 3).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedLook(null)}
+                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body: image left, pieces right */}
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              {/* Generated image */}
+              <div className="w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedLook.generated_image}
+                  alt="Generated look"
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+
+              {/* Pieces list */}
+              <div className="flex-1 flex flex-col border-l border-[var(--border)] overflow-y-auto divide-y divide-[var(--border)]">
+                {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
+                  <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-12 h-12 shrink-0 bg-[var(--surface)] border border-[var(--border)] overflow-hidden">
+                      {piece.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="font-mono text-[8px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{piece.slot}</p>
+                      <p className="text-xs text-[var(--foreground)] truncate">{piece.name ?? "—"}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="flex items-center justify-center flex-1 py-12">
+                    <p className="text-xs text-[var(--foreground-subtle)]">No pieces</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 px-5 py-4 border-t border-[var(--border)] shrink-0">
+              <button
+                onClick={() => handleApproveLook(selectedLook.id)}
+                disabled={approvingId === selectedLook.id}
+                className="flex-1 h-10 text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+              >
+                {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
+              </button>
+              <button
+                onClick={() => handleRejectLook(selectedLook.id)}
+                disabled={approvingId === selectedLook.id}
+                className="flex-1 h-10 text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

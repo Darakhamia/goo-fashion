@@ -25,6 +25,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Pending look not found" }, { status: 404 });
   }
 
+  // Map builder pieces → outfit items (first = hero, second = secondary, rest = accent)
+  const roles = ["hero", "secondary", "accent"] as const;
+  const items = (look.pieces ?? []).map(
+    (p: { productId: string }, i: number) => ({
+      product_id: p.productId,
+      role: roles[Math.min(i, 2)],
+    })
+  );
+
   // Create an outfit from the pending look
   const { data: outfit, error: insertErr } = await supabase
     .from("outfits")
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
       occasion: "casual",
       season: "all",
       image_url: look.generated_image,
-      items: [],
+      items,
       total_price_min: look.total_price ?? 0,
       total_price_max: look.total_price ?? 0,
       currency: "USD",
