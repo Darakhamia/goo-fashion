@@ -569,7 +569,7 @@ export default function BuilderPage() {
                               {picked.variants!.slice(0, 6).map(sw => (
                                 <button key={sw.id} title={sw.colorName}
                                   onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                  className={`w-4 h-4 rounded-full shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                  className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
                                   style={{
                                     background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                     boxShadow: (variantId ?? picked.id) === sw.id
@@ -825,7 +825,7 @@ export default function BuilderPage() {
                                       // If already in the look, also update the variant there
                                       if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                     }}
-                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                    className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                     style={{
                                       background: swatch.colorHex === "#multicolor"
                                         ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"

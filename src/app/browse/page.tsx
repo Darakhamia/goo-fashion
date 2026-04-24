@@ -717,7 +717,7 @@ export default function BrowsePage() {
                       className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
                     >
                       <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        className="w-2.5 h-2.5 shrink-0"
                         style={
                           cg.hexCode === "#multicolor"
                             ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }

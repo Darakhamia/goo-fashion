@@ -759,7 +759,7 @@ function StylistTab({
                 const c = COLOR_PALETTE.find((x) => x.hex === hex);
                 return (
                   <span key={hex} className="flex items-center gap-1.5 text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-1">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+                    <span className="w-2.5 h-2.5 shrink-0" style={{ backgroundColor: hex }} />
                     {c?.name}
                   </span>
                 );
