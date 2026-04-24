@@ -550,6 +550,11 @@ export default function AdminProductsPage() {
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [form, setForm] = useState<ProductFormState>(defaultForm);
   const [saving, setSaving] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    new Set(["details", "colors", "color-groups", "style", "variants", "retailers"])
+  );
+  const toggleSection = (key: string) =>
+    setCollapsed((c) => { const n = new Set(c); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   const [showImport, setShowImport] = useState(false);
   const [importTab, setImportTab] = useState<ImportTab>("csv");
@@ -1449,11 +1454,11 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] p-6 md:p-8 max-w-4xl w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] max-w-5xl w-full mx-4 max-h-[94vh] flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                 {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
               </h2>
@@ -1464,21 +1469,57 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-0 divide-y divide-[var(--border)] border border-[var(--border)]">
+            {/* Body — two-column */}
+            <div className="grid grid-cols-[220px_1fr] flex-1 min-h-0 divide-x divide-[var(--border)]">
 
-                  {/* ── Section: Basic info ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Basic info</p>
-                    <div>
-                      <label className={labelCls}>Name *</label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder="Product name"
-                        className={inputCls}
-                      />
+              {/* ── Left: Images ── */}
+              <div className="flex flex-col gap-3 px-4 py-4 overflow-y-auto">
+                <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Images</p>
+                <p className="text-[9px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → auto-uploaded to storage.</p>
+                <ImageList
+                  images={form.images}
+                  onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
+                />
+              </div>
+
+              {/* ── Right: Sections ── */}
+              <div className="flex flex-col divide-y divide-[var(--border)] overflow-y-auto">
+
+                {/* Chevron helper */}
+                {(() => {
+                  const Chevron = ({ open }: { open: boolean }) => (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform ${open ? "rotate-180" : ""}`}>
+                      <path d="M2 4.5L6 7.5L10 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  );
+                  const SecHead = ({ id, label, hint }: { id: string; label: string; hint?: string }) => (
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(id)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--surface)] transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{label}</span>
+                        {hint && <span className="text-[9px] text-[var(--foreground-subtle)] normal-case tracking-normal font-normal">{hint}</span>}
+                      </span>
+                      <span className="text-[var(--foreground-subtle)]"><Chevron open={!collapsed.has(id)} /></span>
+                    </button>
+                  );
+
+                  return (
+                    <>
+                      {/* ── Basic info (always open) ── */}
+                      <div className="px-4 py-4 flex flex-col gap-3">
+                        <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Basic info</p>
+                        <div>
+                          <label className={labelCls}>Name *</label>
+                          <input
+                            type="text"
+                            value={form.name}
+                            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                            placeholder="Product name"
+                            className={inputCls}
+                          />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="relative">
@@ -1529,434 +1570,262 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* ── Section: Category ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    {(() => {
-                      const groups = CATEGORY_CONFIG.reduce<Record<string, typeof CATEGORY_CONFIG>>((acc, c) => {
-                        (acc[c.group] ??= []).push(c);
-                        return acc;
-                      }, {});
-                      const groupNames = Object.keys(groups);
-                      const activeGroup = CATEGORY_CONFIG.find((c) => c.value === form.category)?.group ?? groupNames[0];
-                      const subcats = groups[activeGroup] ?? [];
-                      return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Category</p>
-                            <span className="text-[10px] text-[var(--foreground-subtle)] tracking-wide">
-                              {CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}
-                            </span>
-                          </div>
-                          {/* Group tabs */}
-                          <div className="grid grid-cols-4 gap-1">
-                            {groupNames.map((g) => (
-                              <button
-                                key={g}
-                                type="button"
-                                onClick={() => {
-                                  const first = groups[g]?.[0];
-                                  if (first) setForm((f) => ({ ...f, category: first.value }));
-                                }}
-                                className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${
-                                  activeGroup === g
-                                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                                }`}
-                              >
-                                {g}
-                              </button>
-                            ))}
-                          </div>
-                          {/* Subcategory buttons for active group */}
-                          <div className="flex flex-wrap gap-1.5">
-                            {subcats.map((c) => (
-                              <button
-                                key={c.value}
-                                type="button"
-                                onClick={() => setForm((f) => ({ ...f, category: c.value }))}
-                                className={`px-2.5 py-1.5 text-[11px] border transition-colors ${
-                                  form.category === c.value
-                                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                                }`}
-                              >
-                                {c.label}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* ── Section: Sizes ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    {(() => {
-                      const catCfg = CATEGORY_CONFIG.find((c) => c.value === form.category);
-                      const preset = catCfg?.sizes ?? [];
-                      const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
-                      const toggle = (size: string) => {
-                        const next = selected.includes(size)
-                          ? selected.filter((s) => s !== size)
-                          : [...selected, size];
-                        const sorted = [...next].sort((a, b) => {
-                          const ai = preset.indexOf(a);
-                          const bi = preset.indexOf(b);
-                          if (ai === -1 && bi === -1) return 0;
-                          if (ai === -1) return 1;
-                          if (bi === -1) return -1;
-                          return ai - bi;
-                        });
-                        setForm((f) => ({ ...f, sizes: sorted.join(", ") }));
-                      };
-                      return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Sizes</p>
-                            {selected.length > 0 && (
-                              <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors tracking-wide">
-                                Clear all
-                              </button>
-                            )}
-                          </div>
-                          {preset.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                              {preset.map((size) => {
-                                const active = selected.includes(size);
-                                return (
-                                  <button
-                                    key={size}
-                                    type="button"
-                                    onClick={() => toggle(size)}
-                                    className={`min-w-[36px] px-2 py-1.5 text-[11px] border transition-colors text-center ${
-                                      active
-                                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                                    }`}
-                                  >
-                                    {size}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                          <div>
-                            <label className={labelCls}>Custom sizes <span className="normal-case text-[var(--foreground-subtle)]">(or add extra, comma-sep)</span></label>
-                            <input
-                              type="text"
-                              value={form.sizes}
-                              onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
-                              placeholder="XS, S, M, L, XL"
-                              className={inputCls}
-                            />
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* ── Section: Pricing ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Pricing</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Price Min ($)</label>
-                        <input type="number" value={form.priceMin} onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))} placeholder="0" min="0" className={inputCls} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Price Max ($)</label>
-                        <input type="number" value={form.priceMax} onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))} placeholder="0" min="0" className={inputCls} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
-                      <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                        Mark as new arrival <span className="text-[var(--foreground-subtle)]">(badge auto-hides after 7 days)</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* ── Section: Details ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Details</p>
-                    <div>
-                      <label className={labelCls}>Description</label>
-                      <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Material</label>
-                      <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
-                    </div>
-                  </div>
-
-                  {/* ── Section: Images ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                      Images <span className="normal-case text-[var(--foreground-subtle)] tracking-normal font-normal">(first = main · paste URL → auto-saved to storage)</span>
-                    </p>
-                    <ImageList
-                      images={form.images}
-                      onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
-                    />
-                  </div>
-
-                  {/* ── Section: Colors ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Colors</p>
-                    <div>
-                      <label className={labelCls}>Colors <span className="normal-case text-[var(--foreground-subtle)]">(comma-sep)</span></label>
-                      <input
-                        type="text"
-                        value={form.colorsRaw}
-                        onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))}
-                        placeholder="Black, White, Camel"
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-
-                  {/* ── Section: Color variants ── */}
-                  <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Color variants</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)] -mt-1">Link other products that are the same model in a different color</p>
-
-                    {/* Swatch color for THIS product */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={form.variantColorHex}
-                        onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
-                        className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
-                        title="Swatch color for this product"
-                      />
-                      <input
-                        type="text"
-                        value={form.variantColorHex}
-                        onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))}
-                        placeholder="#888888"
-                        maxLength={7}
-                        className={`${inputCls} font-mono max-w-[110px] py-1.5`}
-                      />
-                      <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
-                    </div>
-
-                    {/* Linked products list */}
-                    {form.linkedProductIds.length > 0 && (
-                      <div className="flex flex-col gap-1.5">
-                        {form.linkedProductIds.map((lid) => {
-                          const lp = products.find((x) => x.id === lid);
-                          if (!lp) return null;
+                  {/* ── Category ── */}
+                  <div>
+                    <SecHead id="category" label="Category" hint={`— ${CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}`} />
+                    {!collapsed.has("category") && (
+                      <div className="px-4 pb-4 flex flex-col gap-2">
+                        {(() => {
+                          const groups = CATEGORY_CONFIG.reduce<Record<string, typeof CATEGORY_CONFIG>>((acc, c) => {
+                            (acc[c.group] ??= []).push(c);
+                            return acc;
+                          }, {});
+                          const groupNames = Object.keys(groups);
+                          const activeGroup = CATEGORY_CONFIG.find((c) => c.value === form.category)?.group ?? groupNames[0];
+                          const subcats = groups[activeGroup] ?? [];
                           return (
-                            <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
-                              {lp.imageUrl && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />
-                              )}
-                              <div
-                                className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
-                                style={{ backgroundColor: lp.colorHex ?? "#888888" }}
-                              />
-                              <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                              <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    linkedProductIds: f.linkedProductIds.filter((x) => x !== lid),
-                                  }))
-                                }
-                                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1"
-                                aria-label="Remove"
-                              >
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                  <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            </div>
+                            <>
+                              <div className="grid grid-cols-4 gap-1">
+                                {groupNames.map((g) => (
+                                  <button key={g} type="button"
+                                    onClick={() => { const first = groups[g]?.[0]; if (first) setForm((f) => ({ ...f, category: first.value })); }}
+                                    className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup === g ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                  >{g}</button>
+                                ))}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {subcats.map((c) => (
+                                  <button key={c.value} type="button"
+                                    onClick={() => setForm((f) => ({ ...f, category: c.value }))}
+                                    className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.category === c.value ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                  >{c.label}</button>
+                                ))}
+                              </div>
+                            </>
                           );
-                        })}
+                        })()}
                       </div>
                     )}
+                  </div>
 
-                    {/* Search to add a product */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={variantSearch}
-                        onChange={(e) => setVariantSearch(e.target.value)}
-                        placeholder="Search product to link…"
-                        className={`${inputCls} py-1.5`}
-                      />
-                      {variantSearch.trim().length >= 1 && (() => {
-                        const q = variantSearch.toLowerCase();
-                        const matches = products.filter(
-                          (p) =>
-                            p.id !== (editingProduct?.id ?? "") &&
-                            !form.linkedProductIds.includes(p.id) &&
-                            (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))
-                        ).slice(0, 6);
-                        if (matches.length === 0) return null;
-                        return (
-                          <div
-                            className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto"
-                            style={{ background: "var(--background)" }}
-                          >
-                            {matches.map((mp) => (
-                              <button
-                                key={mp.id}
-                                type="button"
-                                onClick={() => {
-                                  setForm((f) => ({
-                                    ...f,
-                                    linkedProductIds: [...f.linkedProductIds, mp.id],
-                                  }));
-                                  setVariantSearch("");
-                                }}
-                                className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0"
-                              >
-                                {mp.imageUrl && (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />
+                  {/* ── Sizes ── */}
+                  <div>
+                    <SecHead id="sizes" label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
+                    {!collapsed.has("sizes") && (
+                      <div className="px-4 pb-4 flex flex-col gap-2">
+                        {(() => {
+                          const catCfg = CATEGORY_CONFIG.find((c) => c.value === form.category);
+                          const preset = catCfg?.sizes ?? [];
+                          const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
+                          const toggle = (size: string) => {
+                            const next = selected.includes(size) ? selected.filter((s) => s !== size) : [...selected, size];
+                            const sorted = [...next].sort((a, b) => {
+                              const ai = preset.indexOf(a), bi = preset.indexOf(b);
+                              if (ai === -1 && bi === -1) return 0;
+                              if (ai === -1) return 1;
+                              if (bi === -1) return -1;
+                              return ai - bi;
+                            });
+                            setForm((f) => ({ ...f, sizes: sorted.join(", ") }));
+                          };
+                          return (
+                            <>
+                              {preset.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {preset.map((size) => {
+                                    const active = selected.includes(size);
+                                    return (
+                                      <button key={size} type="button" onClick={() => toggle(size)}
+                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      >{size}</button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
+                                {selected.length > 0 && (
+                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[9px] tracking-wide text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0">Clear</button>
                                 )}
-                                {mp.colorHex && (
-                                  <span
-                                    className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
-                                    style={{ backgroundColor: mp.colorHex }}
-                                  />
-                                )}
-                                <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
-                                <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    {form.linkedProductIds.length > 0 && (
-                      <p className="text-[10px] text-[var(--foreground-subtle)]">
-                        This product will be set as the <strong>primary</strong> (catalog representative) for the group.
-                      </p>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
                     )}
                   </div>
-              </div>
 
-              {/* ── Full-width: Color Groups (filter mapping) ── */}
-              <div className="border-t border-[var(--border)] pt-5">
-                <label className={labelCls}>
-                  Color Filter Groups{" "}
-                  <span className="normal-case text-[var(--foreground-subtle)]">
-                    (shown in browse sidebar — select all base colors this item belongs to)
-                  </span>
-                </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "12px" }}>
-                  {colorGroups.map((cg) => {
-                    const active = form.colorGroupIds.includes(cg.id);
-                    return (
-                      <button
-                        key={cg.id}
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            colorGroupIds: active
-                              ? f.colorGroupIds.filter((id) => id !== cg.id)
-                              : [...f.colorGroupIds, cg.id],
-                          }))
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          padding: "5px 0",
-                          fontSize: "11px",
-                          background: "transparent",
-                          border: "none",
-                          color: "var(--foreground)",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {/* Checkbox */}
-                        <span
-                          style={{
-                            width: "14px",
-                            height: "14px",
-                            border: `1px solid ${active ? "var(--foreground)" : "var(--border-strong)"}`,
-                            background: active ? "var(--foreground)" : "transparent",
-                            flexShrink: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          {active && (
-                            <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
-                              <path
-                                d="M1 2.5L2.5 4L6 1"
-                                stroke="var(--background)"
-                                strokeWidth="1.3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
-                        </span>
-                        {/* Color swatch */}
-                        <span
-                          style={{
-                            width: "14px",
-                            height: "14px",
-                            background: cg.hexCode === "#multicolor"
-                              ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                              : cg.hexCode,
-                            flexShrink: 0,
-                            border: "1px solid rgba(0,0,0,0.15)",
-                          }}
-                        />
-                        {cg.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                  {/* ── Pricing ── */}
+                  <div>
+                    <SecHead id="pricing" label="Pricing" />
+                    {!collapsed.has("pricing") && (
+                      <div className="px-4 pb-4 flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={labelCls}>Price Min ($)</label>
+                            <input type="number" value={form.priceMin} onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))} placeholder="0" min="0" className={inputCls} />
+                          </div>
+                          <div>
+                            <label className={labelCls}>Price Max ($)</label>
+                            <input type="number" value={form.priceMax} onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))} placeholder="0" min="0" className={inputCls} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
+                          <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                            New arrival <span className="text-[var(--foreground-subtle)]">(badge auto-hides after 7 days)</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              {/* ── Full-width: Style Keywords ── */}
-              <div className="border-t border-[var(--border)] pt-5">
-                <label className={labelCls}>Style Keywords</label>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {STYLE_KEYWORDS.map((kw) => (
-                    <button
-                      key={kw}
-                      type="button"
-                      onClick={() => toggleKeyword(kw)}
-                      className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
-                        form.styleKeywords.includes(kw)
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {kw}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  {/* ── Details (collapsible) ── */}
+                  <div>
+                    <SecHead id="details" label="Details" />
+                    {!collapsed.has("details") && (
+                      <div className="px-4 pb-4 flex flex-col gap-3">
+                        <div>
+                          <label className={labelCls}>Description</label>
+                          <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Material</label>
+                          <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              {/* ── Full-width: Retailers ── */}
-              <div className="border-t border-[var(--border)] pt-5">
-                <label className={`${labelCls} mb-3`}>Where to buy</label>
-                <RetailerList
-                  retailers={form.retailers}
-                  onChange={(r) => setForm((f) => ({ ...f, retailers: r }))}
-                />
+                  {/* ── Colors (collapsible) ── */}
+                  <div>
+                    <SecHead id="colors" label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
+                    {!collapsed.has("colors") && (
+                      <div className="px-4 pb-4">
+                        <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder="Black, White, Camel" className={inputCls} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Color filter groups (collapsible, compact grid) ── */}
+                  <div>
+                    <SecHead id="color-groups" label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
+                    {!collapsed.has("color-groups") && (
+                      <div className="px-4 pb-4">
+                        <div className="grid grid-cols-2 gap-1 mt-1">
+                          {colorGroups.map((cg) => {
+                            const active = form.colorGroupIds.includes(cg.id);
+                            return (
+                              <button
+                                key={cg.id}
+                                type="button"
+                                onClick={() => setForm((f) => ({
+                                  ...f,
+                                  colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
+                                }))}
+                                className={`flex items-center gap-2 px-2.5 py-2 border text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                              >
+                                <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
+                                  style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
+                                {cg.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Style keywords (collapsible) ── */}
+                  <div>
+                    <SecHead id="style" label="Style keywords" />
+                    {!collapsed.has("style") && (
+                      <div className="px-4 pb-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {STYLE_KEYWORDS.map((kw) => (
+                            <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
+                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
+                            >{kw}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Color variants (collapsible) ── */}
+                  <div>
+                    <SecHead id="variants" label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
+                    {!collapsed.has("variants") && (
+                      <div className="px-4 pb-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
+                          <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
+                          <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
+                        </div>
+                        {form.linkedProductIds.length > 0 && (
+                          <div className="flex flex-col gap-1.5">
+                            {form.linkedProductIds.map((lid) => {
+                              const lp = products.find((x) => x.id === lid);
+                              if (!lp) return null;
+                              return (
+                                <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
+                                  {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />}
+                                  <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
+                                  <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
+                                  <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
+                                  <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1" aria-label="Remove">
+                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="relative">
+                          <input type="text" value={variantSearch} onChange={(e) => setVariantSearch(e.target.value)} placeholder="Search product to link…" className={`${inputCls} py-1.5`} />
+                          {variantSearch.trim().length >= 1 && (() => {
+                            const q = variantSearch.toLowerCase();
+                            const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
+                            if (matches.length === 0) return null;
+                            return (
+                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--background)" }}>
+                                {matches.map((mp) => (
+                                  <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0">
+                                    {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />}
+                                    {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
+                                    <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
+                                    <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        {form.linkedProductIds.length > 0 && (
+                          <p className="text-[10px] text-[var(--foreground-subtle)]">This product will be set as the <strong>primary</strong> (catalog representative) for the group.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Retailers (collapsible) ── */}
+                  <div>
+                    <SecHead id="retailers" label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
+                    {!collapsed.has("retailers") && (
+                      <div className="px-4 pb-4">
+                        <RetailerList retailers={form.retailers} onChange={(r) => setForm((f) => ({ ...f, retailers: r }))} />
+                      </div>
+                    )}
+                  </div>
+
+                </>
+              );
+            })()}
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 mt-7">
+            <div className="flex gap-3 px-6 py-4 border-t border-[var(--border)] shrink-0">
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving}
