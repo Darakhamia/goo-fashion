@@ -83,6 +83,26 @@ export interface Retailer {
   currency: string;
   availability: "in stock" | "low stock" | "sold out";
   isOfficial: boolean;
+  /** Average star rating 1–5 (optional, entered by admin or sourced externally) */
+  rating?: number;
+  /** Number of reviews backing the rating */
+  reviewCount?: number;
+}
+
+export interface PricePoint {
+  date: string;       // ISO date YYYY-MM-DD
+  price: number;
+  retailerName?: string;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;     // 1–5
+  text: string;
+  createdAt: string;
 }
 
 /**
