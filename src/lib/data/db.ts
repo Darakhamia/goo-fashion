@@ -8,6 +8,11 @@ import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
 
+function isWithinLastWeek(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  return Date.now() - new Date(dateStr).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
 export function dbToProduct(row: DbProduct): Product {
   return {
     id: row.id,
@@ -25,7 +30,7 @@ export function dbToProduct(row: DbProduct): Product {
     priceMin: row.price_min,
     priceMax: row.price_max,
     currency: row.currency ?? "USD",
-    isNew: row.is_new ?? false,
+    isNew: (row.is_new ?? false) && isWithinLastWeek(row.created_at),
     isSaved: row.is_saved ?? false,
     styleKeywords: (row.style_keywords ?? []) as Product["styleKeywords"],
     gender: (row.gender ?? undefined) as Product["gender"],
@@ -34,6 +39,7 @@ export function dbToProduct(row: DbProduct): Product {
     isGroupPrimary: row.is_group_primary ?? undefined,
     cropData: row.crop_data ?? undefined,
     colorGroupIds: row.color_group_ids?.length ? row.color_group_ids : undefined,
+    createdAt: row.created_at,
   };
 }
 

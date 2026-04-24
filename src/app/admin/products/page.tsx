@@ -1531,38 +1531,60 @@ export default function AdminProductsPage() {
 
                   {/* ── Section: Category ── */}
                   <div className="px-4 py-4 flex flex-col gap-3">
-                    <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Category</p>
                     {(() => {
                       const groups = CATEGORY_CONFIG.reduce<Record<string, typeof CATEGORY_CONFIG>>((acc, c) => {
                         (acc[c.group] ??= []).push(c);
                         return acc;
                       }, {});
+                      const groupNames = Object.keys(groups);
+                      const activeGroup = CATEGORY_CONFIG.find((c) => c.value === form.category)?.group ?? groupNames[0];
+                      const subcats = groups[activeGroup] ?? [];
                       return (
-                        <div className="flex flex-col gap-2">
-                          {Object.entries(groups).map(([group, cats]) => (
-                            <div key={group}>
-                              <p className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5">{group}</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {cats.map((c) => (
-                                  <button
-                                    key={c.value}
-                                    type="button"
-                                    onClick={() => {
-                                      setForm((f) => ({ ...f, category: c.value }));
-                                    }}
-                                    className={`px-3 py-1.5 text-[11px] border transition-colors ${
-                                      form.category === c.value
-                                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                                        : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                                    }`}
-                                  >
-                                    {c.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <>
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Category</p>
+                            <span className="text-[10px] text-[var(--foreground-subtle)] tracking-wide">
+                              {CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}
+                            </span>
+                          </div>
+                          {/* Group tabs */}
+                          <div className="grid grid-cols-4 gap-1">
+                            {groupNames.map((g) => (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => {
+                                  const first = groups[g]?.[0];
+                                  if (first) setForm((f) => ({ ...f, category: first.value }));
+                                }}
+                                className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${
+                                  activeGroup === g
+                                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                                }`}
+                              >
+                                {g}
+                              </button>
+                            ))}
+                          </div>
+                          {/* Subcategory buttons for active group */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {subcats.map((c) => (
+                              <button
+                                key={c.value}
+                                type="button"
+                                onClick={() => setForm((f) => ({ ...f, category: c.value }))}
+                                className={`px-2.5 py-1.5 text-[11px] border transition-colors ${
+                                  form.category === c.value
+                                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                                }`}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       );
                     })()}
                   </div>
@@ -1640,7 +1662,9 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
-                      <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">Mark as new arrival</label>
+                      <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                        Mark as new arrival <span className="text-[var(--foreground-subtle)]">(badge auto-hides after 7 days)</span>
+                      </label>
                     </div>
                   </div>
 

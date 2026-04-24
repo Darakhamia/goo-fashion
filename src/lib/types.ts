@@ -148,6 +148,8 @@ export interface Product {
    * Stored as int[] on the DB row; used for server- and client-side filtering.
    */
   colorGroupIds?: number[];
+  /** ISO date string from DB — used to auto-expire the NEW badge after 7 days */
+  createdAt?: string;
 }
 
 export interface OutfitItem {
