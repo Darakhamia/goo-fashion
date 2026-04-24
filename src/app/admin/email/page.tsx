@@ -301,6 +301,33 @@ export default function AdminEmailPage() {
                 rows={12}
                 className={`${inputCls} resize-y font-mono leading-relaxed`}
               />
+
+              {/* Format guide */}
+              <div className="mt-2 border border-[var(--border)] divide-y divide-[var(--border)]">
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Формат текста</p>
+                  <p className="text-[10px] text-[var(--foreground-subtle)]">пишешь → так отображается в письме</p>
+                </div>
+                {[
+                  { input: "# Заголовок",        output: "Большой заголовок письма (H1)" },
+                  { input: "## Подзаголовок",     output: "Раздел внутри письма (H2)" },
+                  { input: "Обычный текст",       output: "Параграф — просто пиши как обычно" },
+                  { input: "- Пункт один",        output: "• Маркированный список" },
+                  { input: "**жирный текст**",    output: "жирный текст" },
+                  { input: "*курсив*",            output: "курсив" },
+                  { input: "(пустая строка)",     output: "Отступ между параграфами" },
+                ].map(({ input, output }) => (
+                  <div key={input} className="grid grid-cols-[1fr_1fr] px-3 py-1.5 gap-4">
+                    <code className="text-[11px] text-[var(--foreground-muted)] font-mono">{input}</code>
+                    <span className="text-[11px] text-[var(--foreground-subtle)]">{output}</span>
+                  </div>
+                ))}
+                <div className="px-3 py-2 bg-[var(--surface)]">
+                  <p className="text-[10px] text-[var(--foreground-subtle)]">
+                    Нажми <span className="text-[var(--foreground-muted)] font-medium">AI Write</span> чтобы не писать вручную — опиши что должно быть в письме и GPT напишет сам.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
