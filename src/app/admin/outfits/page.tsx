@@ -22,6 +22,7 @@ type Season = "all" | "spring" | "summer" | "autumn" | "winter";
 interface SelectedItem {
   product: Product;
   role: OutfitRole;
+  light: number;
 }
 
 interface OutfitFormState {
@@ -185,7 +186,7 @@ export default function AdminOutfitsPage() {
       styleKeywords: outfit.styleKeywords,
       isAIGenerated: outfit.isAIGenerated,
     });
-    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role })));
+    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, light: i.light ?? 0 })));
     setSaveError("");
     setUploadError("");
     setProductSearch("");
@@ -230,7 +231,7 @@ export default function AdminOutfitsPage() {
 
     const body = {
       ...form,
-      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role })),
+      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, light: i.light })),
       totalPriceMin: priceMin,
       totalPriceMax: priceMax,
       currency: "USD",
@@ -271,10 +272,10 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
+  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; light: number }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
     const hydratedItems = body.items.map((i) => {
       const p = products.find((p) => p.id === i.productId);
-      return p ? { product: p, role: i.role } : null;
+      return p ? { product: p, role: i.role, light: i.light } : null;
     }).filter(Boolean) as SelectedItem[];
 
     if (editingId) {
@@ -326,13 +327,19 @@ export default function AdminOutfitsPage() {
       if (exists) return prev.filter((i) => i.product.id !== product.id);
       const role: OutfitRole =
         prev.length === 0 ? "hero" : prev.length === 1 ? "secondary" : "accent";
-      return [...prev, { product, role }];
+      return [...prev, { product, role, light: 0 }];
     });
   };
 
   const setRole = (productId: string, role: OutfitRole) => {
     setSelectedItems((prev) =>
       prev.map((i) => (i.product.id === productId ? { ...i, role } : i))
+    );
+  };
+
+  const setLight = (productId: string, light: number) => {
+    setSelectedItems((prev) =>
+      prev.map((i) => (i.product.id === productId ? { ...i, light } : i))
     );
   };
 
@@ -844,40 +851,71 @@ export default function AdminOutfitsPage() {
                         {selectedItems.map((item) => (
                           <div
                             key={item.product.id}
-                            className="flex items-center gap-3 border border-[var(--border)] p-2"
+                            className="flex flex-col gap-2 border border-[var(--border)] p-2"
                           >
-                            <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
-                              <Image
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                fill
-                                className="object-cover"
-                                sizes="40px"
-                              />
+                            <div className="flex items-center gap-3">
+                              <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
+                                <Image
+                                  src={item.product.imageUrl}
+                                  alt={item.product.name}
+                                  fill
+                                  className="object-cover"
+                                  style={item.light ? { filter: `brightness(${(100 + item.light) / 100})` } : undefined}
+                                  sizes="40px"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
+                                <p className="text-[10px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
+                              </div>
+                              {/* Role */}
+                              <select
+                                value={item.role}
+                                onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
+                                className="text-[10px] uppercase tracking-[0.08em] border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                              >
+                                {ROLES.map((r) => (
+                                  <option key={r} value={r}>{r}</option>
+                                ))}
+                              </select>
+                              {/* Remove */}
+                              <button
+                                onClick={() => removeItem(item.product.id)}
+                                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                </svg>
+                              </button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                              <p className="text-[10px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
-                            </div>
-                            {/* Role */}
-                            <select
-                              value={item.role}
-                              onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                              className="text-[10px] uppercase tracking-[0.08em] border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
-                            >
-                              {ROLES.map((r) => (
-                                <option key={r} value={r}>{r}</option>
-                              ))}
-                            </select>
-                            {/* Remove */}
-                            <button
-                              onClick={() => removeItem(item.product.id)}
-                              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            {/* Light slider */}
+                            <div className="flex items-center gap-2 px-1">
+                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
+                                <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+                                <path d="M6 1v1M6 10v1M1 6h1M10 6h1M2.5 2.5l.7.7M8.8 8.8l.7.7M2.5 9.5l.7-.7M8.8 3.2l.7-.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                               </svg>
-                            </button>
+                              <input
+                                type="range"
+                                min={-100}
+                                max={100}
+                                step={5}
+                                value={item.light}
+                                onChange={(e) => setLight(item.product.id, Number(e.target.value))}
+                                className="flex-1 h-0.5 accent-[var(--foreground)] cursor-pointer"
+                              />
+                              <span className="text-[10px] text-[var(--foreground-subtle)] w-8 text-right tabular-nums">
+                                {item.light > 0 ? `+${item.light}` : item.light}
+                              </span>
+                              {item.light !== 0 && (
+                                <button
+                                  onClick={() => setLight(item.product.id, 0)}
+                                  className="text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                                  title="Reset"
+                                >
+                                  ↺
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                         {/* Price total */}
