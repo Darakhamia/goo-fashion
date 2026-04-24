@@ -6,6 +6,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCurrency } from "@/lib/context/currency-context";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -18,6 +19,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, showBrand = true }: ProductCardProps) {
   const { isProductLiked, toggleProductLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
+  const { formatPrice } = useCurrency();
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
@@ -236,8 +238,8 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </h3>
         <p className="text-xs text-[var(--foreground-muted)]">
           {displayPriceMin === displayPriceMax
-            ? `$${displayPriceMin.toLocaleString()}`
-            : `From $${displayPriceMin.toLocaleString()}`}
+            ? formatPrice(displayPriceMin)
+            : `From ${formatPrice(displayPriceMin)}`}
         </p>
       </Link>
 

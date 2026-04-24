@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import type { Product, ProductSwatch } from "@/lib/types";
+import { useCurrency } from "@/lib/context/currency-context";
 import ProductCard from "./ProductCard";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { track } from "@/lib/analytics/track";
@@ -17,6 +18,7 @@ interface Props {
 export default function ProductClient({ product, relatedProducts, lowestPrice, allProducts }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
+  const { formatPrice } = useCurrency();
   const defaultColor = useMemo(() => {
     if (!product.colorImages) return null;
     return product.colors.find((c) => (product.colorImages![c]?.length ?? 0) > 0) ?? null;
@@ -134,7 +136,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
           {/* Price */}
           <div className="mb-8 pb-8 border-b border-[var(--border)]">
             <p className="font-display text-2xl font-light text-[var(--foreground)]">
-              From ${lowestPrice.toLocaleString()}
+              From {formatPrice(lowestPrice)}
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Price varies by retailer · All prices include tax
@@ -302,7 +304,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
                       <div className="flex items-center gap-4 shrink-0">
                         <div className="text-right">
                           <p className="text-sm text-[var(--foreground)] font-medium">
-                            ${retailer.price.toLocaleString()}
+                            {formatPrice(retailer.price)}
                           </p>
                           <p className={`text-[9px] tracking-[0.1em] mt-0.5 ${
                             retailer.availability === "in stock"

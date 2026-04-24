@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
+import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 
 const navLinks = [
@@ -19,9 +20,12 @@ export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   const cartDrawerRef = useRef<HTMLDivElement>(null);
+  const currencyRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
   const { cartItems, removeFromCart } = useCart();
+  const { currency, setCurrency, formatPrice } = useCurrency();
 
   const isHero = pathname === "/";
   const showWhiteText = isHero && !scrolled;
@@ -40,6 +44,18 @@ export default function Navigation() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [cartOpen]);
+
+  // Close currency dropdown on click outside
+  useEffect(() => {
+    if (!currencyOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
+        setCurrencyOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [currencyOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -90,6 +106,37 @@ export default function Navigation() {
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-6">
+          {/* Currency selector */}
+          <div ref={currencyRef} className="relative">
+            <button
+              onClick={() => setCurrencyOpen((v) => !v)}
+              className={`flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase font-medium transition-colors duration-200 ${iconColor}`}
+              aria-label="Select currency"
+            >
+              {currency}
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-150 ${currencyOpen ? "rotate-180" : ""}`}>
+                <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {currencyOpen && (
+              <div className="absolute top-full right-0 mt-2 w-36 border border-[var(--border)] bg-[var(--background)] shadow-lg z-50 py-1">
+                {CURRENCIES.map((c) => (
+                  <button
+                    key={c.code}
+                    onClick={() => { setCurrency(c.code); setCurrencyOpen(false); }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] ${
+                      currency === c.code
+                        ? "text-[var(--foreground)]"
+                        : "text-[var(--foreground-muted)]"
+                    }`}
+                  >
+                    <span>{c.code}</span>
+                    <span className="text-[var(--foreground-subtle)]">{c.symbol}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {/* Cart */}
           <button
             onClick={() => setCartOpen(v => !v)}
@@ -313,7 +360,7 @@ export default function Navigation() {
                           {item.brand}
                         </p>
                         <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">
-                          ${item.price.toLocaleString()}
+                          {formatPrice(item.price)}
                         </p>
                       </div>
                       {/* Remove */}
@@ -340,7 +387,7 @@ export default function Navigation() {
                     Estimated total
                   </p>
                   <p className="font-display text-[20px] font-light text-[var(--foreground)]">
-                    ${cartTotal.toLocaleString()}
+                    {formatPrice(cartTotal)}
                   </p>
                 </div>
                 <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">
