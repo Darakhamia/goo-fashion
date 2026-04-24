@@ -36,6 +36,20 @@ function textToHtml(text: string): string {
   return parts.join("\n");
 }
 
+// Strip markdown to clean plain text for the text/plain part required by Resend
+function buildPlainText(text: string, subject: string): string {
+  const body = text
+    .replace(/^## (.+)$/gm, "\n$1\n" + "-".repeat(30))
+    .replace(/^# (.+)$/gm, "\n$1\n" + "=".repeat(30))
+    .replace(/^\* (.+)$/gm, "• $1")
+    .replace(/^- (.+)$/gm, "• $1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .trim();
+  return `GOO Fashion\n${"=".repeat(40)}\n${subject}\n${"=".repeat(40)}\n\n${body}\n\n---\nYou received this email because you have an account on goo-fashion.com.\n© ${new Date().getFullYear()} GOO Fashion. All rights reserved.`;
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -149,6 +163,7 @@ export async function POST(req: Request) {
 
   const bodyHtml = textToHtml(text);
   const html = buildHtml(subject, bodyHtml);
+  const plainText = buildPlainText(text, subject.trim());
   const resend = new Resend(RESEND_API_KEY);
 
   // Send individually so recipients cannot see each other's addresses.
@@ -166,6 +181,7 @@ export async function POST(req: Request) {
           to: [to],
           subject: subject.trim(),
           html,
+          text: plainText,
         }))
       );
       sent += batch.length;
