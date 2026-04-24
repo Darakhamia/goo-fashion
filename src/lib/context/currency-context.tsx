@@ -99,12 +99,11 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
       setRatesLoading(true);
       try {
-        const codes = CURRENCIES.filter((c) => c.code !== "USD").map((c) => c.code).join(",");
-        const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${codes}`);
+        const res = await fetch("/api/exchange-rates");
         if (!res.ok) throw new Error("rate fetch failed");
-        const data: { rates: Record<string, number> } = await res.json();
-        setRates(data.rates);
-        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates: data.rates, ts: Date.now() } satisfies RateCache));
+        const rates: Record<string, number> = await res.json();
+        setRates(rates);
+        localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() } satisfies RateCache));
       } catch {
         setRates(FALLBACK_RATES);
       } finally {
