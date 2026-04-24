@@ -1599,7 +1599,15 @@ export default function AdminProductsPage() {
                         const next = selected.includes(size)
                           ? selected.filter((s) => s !== size)
                           : [...selected, size];
-                        setForm((f) => ({ ...f, sizes: next.join(", ") }));
+                        const sorted = [...next].sort((a, b) => {
+                          const ai = preset.indexOf(a);
+                          const bi = preset.indexOf(b);
+                          if (ai === -1 && bi === -1) return 0;
+                          if (ai === -1) return 1;
+                          if (bi === -1) return -1;
+                          return ai - bi;
+                        });
+                        setForm((f) => ({ ...f, sizes: sorted.join(", ") }));
                       };
                       return (
                         <>
