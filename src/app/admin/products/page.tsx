@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
+const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const SUGGESTED_BRANDS = [
@@ -1401,7 +1403,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">
-                        ${product.priceMin}{product.priceMax !== product.priceMin ? `–$${product.priceMax}` : ""}
+                        {fmtPrice(product.priceMin)}{product.priceMax !== product.priceMin ? `–${fmtPrice(product.priceMax)}` : ""}
                       </span>
                     </td>
                     <td className="px-2 py-3 hidden sm:table-cell">
@@ -1790,7 +1792,7 @@ export default function AdminProductsPage() {
                                   {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />}
                                   <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                   <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                                  <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">${lp.priceMin}</span>
+                                  <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
                                   <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1" aria-label="Remove">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                                   </button>
@@ -1956,7 +1958,7 @@ export default function AdminProductsPage() {
                     {/* Name + swatch */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[10px] text-[var(--foreground-muted)] truncate">{p.brand} · ${p.priceMin}</p>
+                      <p className="text-[10px] text-[var(--foreground-muted)] truncate">{p.brand} · {fmtPrice(p.priceMin)}</p>
 
                       <div className="flex items-center gap-2 mt-2">
                         <input
@@ -2123,7 +2125,7 @@ export default function AdminProductsPage() {
                 {importPreview.map((p, i) => (
                   <div key={i} className="px-3 py-2 text-xs text-[var(--foreground)] border-b border-[var(--border)] last:border-b-0 flex items-center justify-between gap-4">
                     <span className="font-medium truncate">{p.name || "—"}</span>
-                    <span className="text-[var(--foreground-muted)] shrink-0">{p.brand} · {p.category} · ${p.priceMin}</span>
+                    <span className="text-[var(--foreground-muted)] shrink-0">{p.brand} · {p.category} · {fmtPrice(p.priceMin)}</span>
                   </div>
                 ))}
               </div>

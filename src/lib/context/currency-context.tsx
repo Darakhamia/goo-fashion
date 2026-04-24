@@ -28,13 +28,12 @@ export const CURRENCIES: CurrencyInfo[] = [
   { code: "TRY", symbol: "₺",   position: "suffix", name: "Lira" },
 ];
 
-// ── Format helper — dots as thousands separator (European style) ────────────
+// ── Format helper ──────────────────────────────────────────────────────────
 export function applyFormat(usdAmount: number, currency: CurrencyCode, rates: Record<string, number>): string {
   const info = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
   const rate  = currency === "USD" ? 1 : (rates[currency] ?? 1);
   const value = Math.round(usdAmount * rate);
-  // de-DE locale: 1.234.567 (dots thousands, comma decimal)
-  const numStr = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(value);
+  const numStr = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
   return info.position === "prefix"
     ? `${info.symbol}${numStr}`
     : `${numStr} ${info.symbol}`;
