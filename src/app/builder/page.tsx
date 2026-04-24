@@ -98,6 +98,7 @@ export default function BuilderPage() {
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
+  const [colorImageOverrides, setColorImageOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState<string | null>(null);
@@ -108,6 +109,7 @@ export default function BuilderPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
+  const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -273,6 +275,7 @@ export default function BuilderPage() {
         if (next[slot.id]?.id === product.id) {
           delete next[slot.id];
           setVariantOverrides(vo => { const n = { ...vo }; delete n[slot.id]; return n; });
+          setColorImageOverrides(co => { const n = { ...co }; delete n[slot.id]; return n; });
           updateURL(next);
           setActiveSlot(slot.id);
           return next;
@@ -283,6 +286,12 @@ export default function BuilderPage() {
       const emptySlot = matchingSlots.find(s => !next[s.id]) ?? matchingSlots[0];
       next[emptySlot.id] = product;
       setVariantOverrides(vo => { const n = { ...vo }; delete n[emptySlot.id]; return n; });
+      // Carry the catalogColorPreview into the left panel when adding to look
+      setColorImageOverrides(co => {
+        const colorKey = catalogColorPreviews[product.id];
+        if (colorKey) return { ...co, [emptySlot.id]: colorKey };
+        const n = { ...co }; delete n[emptySlot.id]; return n;
+      });
       updateURL(next);
       setActiveSlot(emptySlot.id);
       return next;
@@ -308,11 +317,13 @@ export default function BuilderPage() {
       return next;
     });
     setVariantOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
+    setColorImageOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
   };
 
   const clearAll = () => {
     setSelection({});
     setVariantOverrides({});
+    setColorImageOverrides({});
     updateURL({});
     setSaved(false);
   };
@@ -525,7 +536,9 @@ export default function BuilderPage() {
                 const picked = selection[slot.id];
                 const variantId = variantOverrides[slot.id];
                 const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                const colorKey = colorImageOverrides[slot.id];
+                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
                 return (
                   <button
                     key={slot.id}
@@ -550,7 +563,7 @@ export default function BuilderPage() {
                         <>
                           <p className="text-[12px] leading-snug text-[var(--foreground)] truncate">{picked.name}</p>
                           <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5 truncate">{picked.brand}</p>
-                          {/* Color swatches */}
+                          {/* Variant colour swatches (separate products) */}
                           {(picked.variants?.length ?? 0) > 1 && (
                             <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
                               {picked.variants!.slice(0, 6).map(sw => (
@@ -560,6 +573,23 @@ export default function BuilderPage() {
                                   style={{ background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex, boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)" }}
                                 />
                               ))}
+                            </div>
+                          )}
+                          {/* colorImages swatches (multiple colours within same product) */}
+                          {Object.keys(picked.colorImages ?? {}).length > 1 && (
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
+                              {Object.keys(picked.colorImages!).map(color => {
+                                const img = picked.colorImages![color]?.[0];
+                                const isActive = (colorImageOverrides[slot.id] ?? Object.keys(picked.colorImages!)[0]) === color;
+                                return (
+                                  <button key={color} title={color}
+                                    onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
+                                    className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                  >
+                                    {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </>
@@ -686,7 +716,13 @@ export default function BuilderPage() {
                     // Preview: prefer catalog color preview, then selected variant, then base image
                     const previewVariantId = catalogPreviews[product.id];
                     const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
-                    const displayImage = activeVariant?.imageUrl ?? product.imageUrl;
+                    const colorImageKeys = Object.keys(product.colorImages ?? {});
+                    const hasColorImages = colorImageKeys.length > 1;
+                    const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
+                    const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
+                      ? product.colorImages![selectedColorKey][0]
+                      : null;
+                    const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
                     const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
@@ -719,6 +755,45 @@ export default function BuilderPage() {
                               <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
                                 <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
+                            </div>
+                          )}
+                          {/* Colour swatches — slide up on hover */}
+                          {hasColorImages && (
+                            <div
+                              className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+                                {colorImageKeys.map((color, idx) => {
+                                  const previewImg = product.colorImages![color]?.[0];
+                                  const isActive = selectedColorKey === color;
+                                  return (
+                                    <button
+                                      key={color}
+                                      title={color}
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
+                                        if (isSelected && targetSlot) {
+                                          setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
+                                        }
+                                      }}
+                                      style={{ transitionDelay: `${idx * 25}ms` }}
+                                      className={`relative w-6 h-6 shrink-0 overflow-hidden border transition-all duration-200 ${
+                                        isActive
+                                          ? "border-white scale-110 shadow-md"
+                                          : "border-white/50 hover:border-white hover:scale-105"
+                                      }`}
+                                    >
+                                      {previewImg
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
+                                        : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
+                                      }
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                         </div>
