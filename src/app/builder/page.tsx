@@ -1702,6 +1702,66 @@ export default function BuilderPage() {
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
 
+      {/* ── Generating overlay ────────────────────────────────────────────────── */}
+      {generating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 overflow-hidden animate-scale-in">
+
+            {/* Indeterminate progress line at top */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--surface)] overflow-hidden">
+              <div className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] origin-left animate-progress-bar" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3.5 border-b border-[var(--border)]">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                  Generating Look
+                </p>
+                <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                  {selectedCount} {selectedCount === 1 ? "piece" : "pieces"} ·{" "}
+                  {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"}
+                </p>
+              </div>
+              {/* Bouncing dots */}
+              <div className="flex items-center gap-1">
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    className="block w-1.5 h-1.5 rounded-full bg-[var(--foreground-subtle)]"
+                    style={{ animation: `dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Shimmer image placeholder */}
+            <div className="relative w-full aspect-square bg-[var(--surface)] overflow-hidden flex flex-col items-center justify-center gap-4">
+              {/* shimmer sweep */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent animate-shimmer pointer-events-none" />
+              {/* Pulsing central icon */}
+              <svg
+                width="48" height="48" viewBox="0 0 24 24" fill="none"
+                className="text-[var(--foreground-subtle)] opacity-20 animate-pulse"
+              >
+                <path d="M12 2L14.4 9.6H22L15.8 14.4L18.2 22L12 17.6L5.8 22L8.2 14.4L2 9.6H9.6L12 2Z"
+                  stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              </svg>
+              <p className="font-mono text-[9px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] opacity-30 animate-pulse">
+                Creating your look…
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-[var(--border)]">
+              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
+                This may take 10–30 seconds. Sit back and relax.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Generated image modal (preserved exactly) ──────────────────────── */}
       {showModal && generatedImage && (
         <div
