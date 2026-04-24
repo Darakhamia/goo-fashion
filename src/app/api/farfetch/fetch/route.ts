@@ -82,17 +82,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A valid Farfetch product URL is required" }, { status: 400 });
   }
 
-  // Map URL locale to a Retailed-supported country code (uppercase).
-  // Many Farfetch locales (cz, sk, pl…) are not supported — fall back to UK.
-  const countryMatch = url.match(/farfetch\.com\/([a-z]{2})\//i);
-  const urlLocale = countryMatch?.[1]?.toUpperCase() ?? "";
-  const SUPPORTED = new Set(["UK", "US", "FR", "DE", "IT", "ES", "PT", "AU", "CA", "JP", "KR", "HK", "SG", "AE", "SA", "BR", "RU", "MX", "SE", "NL"]);
-  const country = SUPPORTED.has(urlLocale) ? urlLocale : "UK";
+  // Retailed only supports certain Farfetch locales.
+  // Rewrite the URL locale AND set matching country so Farfetch doesn't reject the request.
+  const SUPPORTED = new Set(["uk", "us", "fr", "de", "it", "es", "pt", "au", "ca", "jp", "kr", "hk", "sg", "ae", "sa", "br", "ru", "mx", "se", "nl"]);
+  const localeMatch = url.match(/farfetch\.com\/([a-z]{2})\//i);
+  const urlLocale = localeMatch?.[1]?.toLowerCase() ?? "";
+  const targetLocale = SUPPORTED.has(urlLocale) ? urlLocale : "uk";
+
+  // Rewrite URL to the supported locale (e.g. /cz/ → /uk/)
+  const normalizedUrl = urlLocale && urlLocale !== targetLocale
+    ? url.replace(`farfetch.com/${urlLocale}/`, `farfetch.com/${targetLocale}/`)
+    : url;
 
   // Call Retailed API
   const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
-  retailedUrl.searchParams.set("query", url);
-  retailedUrl.searchParams.set("country", country);
+  retailedUrl.searchParams.set("query", normalizedUrl);
+  retailedUrl.searchParams.set("country", targetLocale.toUpperCase());
 
   const retailedRes = await fetch(retailedUrl.toString(), {
     headers: { "x-api-key": RETAILED_KEY },
