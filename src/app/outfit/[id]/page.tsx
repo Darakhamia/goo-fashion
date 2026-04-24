@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,8 +9,34 @@ import OutfitActions from "@/components/outfit/OutfitActions";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
+
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const outfit = await getOutfitById(id);
+  if (!outfit) return {};
+
+  const title = `${outfit.name} Outfit | GOO`;
+  const description = outfit.description
+    ? outfit.description.slice(0, 155)
+    : `Curated ${outfit.occasion} outfit for ${outfit.season === "all" ? "all seasons" : outfit.season}. From $${outfit.totalPriceMin.toLocaleString()}.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE_URL}/outfit/${id}` },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/outfit/${id}`,
+      type: "website",
+      images: outfit.imageUrl ? [{ url: outfit.imageUrl, alt: outfit.name }] : [],
+    },
+  };
 }
 
 export default async function OutfitDetailPage({ params }: Props) {

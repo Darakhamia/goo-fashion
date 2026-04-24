@@ -105,7 +105,7 @@ export default function BuilderPage() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -125,7 +125,9 @@ export default function BuilderPage() {
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
-  const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay">("mannequin");
+  const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
+  const [tryonStep, setTryonStep] = useState(false);
+  const [userPhotoDataUri, setUserPhotoDataUri] = useState<string | null>(null);
   // Tracks the localStorage id of the look we've already persisted in this session,
   // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
   const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
@@ -416,8 +418,25 @@ export default function BuilderPage() {
     setShowStylePicker(true);
   };
 
+  // Resize + compress a user photo client-side before sending to the API
+  const compressPhoto = (file: File, maxPx = 1024): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
+      };
+      img.src = objectUrl;
+    });
+
   // ── Nano Banana 2 generation via Replicate ────────────────────────────────
-  const generateOutfit = async (style: "mannequin" | "flatlay") => {
+  const generateOutfit = async (style: "mannequin" | "flatlay" | "tryon", photoUri?: string) => {
     setActiveStyle(style);
     setGenerating(true);
     setGenerateError(null);
@@ -446,7 +465,11 @@ export default function BuilderPage() {
       const res = await fetch("/api/generate-outfit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pieces, style }),
+        body: JSON.stringify({
+          pieces,
+          style,
+          ...(style === "tryon" && photoUri ? { userPhotoDataUri: photoUri } : {}),
+        }),
       });
 
       const upgrade = await parseUpgradePrompt(res);
@@ -754,7 +777,27 @@ export default function BuilderPage() {
             >
               <div className="w-[180px] flex flex-col overflow-y-auto h-full">
 
-                {/* Sort — first */}
+                {/* Liked only + Clear — first */}
+                <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
+                  <button
+                    onClick={() => setLikedOnly(v => !v)}
+                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                    </svg>
+                    Liked only
+                  </button>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort — second */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Sort</p>
@@ -775,26 +818,6 @@ export default function BuilderPage() {
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Liked only + Clear — second */}
-                <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
-                  <button
-                    onClick={() => setLikedOnly(v => !v)}
-                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-                    </svg>
-                    Liked only
-                  </button>
-                  {hasActiveFilters && (
-                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
-                      Clear filters
-                    </button>
                   )}
                 </div>
 
@@ -1413,18 +1436,31 @@ export default function BuilderPage() {
       {showStylePicker && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowStylePicker(false)}
+          onClick={() => { setShowStylePicker(false); setTryonStep(false); setUserPhotoDataUri(null); }}
         >
           <div
             className="bg-[var(--background)] shadow-2xl w-full max-w-sm mx-4 animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
+            {/* Header */}
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
-              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
-                Choose style
-              </p>
+              {tryonStep ? (
+                <button
+                  onClick={() => { setTryonStep(false); setUserPhotoDataUri(null); }}
+                  className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 6H2M2 6L6 2M2 6L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="font-mono text-[10px] tracking-[0.18em] uppercase">Back</span>
+                </button>
+              ) : (
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                  Choose style
+                </p>
+              )}
               <button
-                onClick={() => setShowStylePicker(false)}
+                onClick={() => { setShowStylePicker(false); setTryonStep(false); setUserPhotoDataUri(null); }}
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
@@ -1432,52 +1468,148 @@ export default function BuilderPage() {
                 </svg>
               </button>
             </div>
-            <div className="p-5 grid grid-cols-2 gap-3">
-              {/* Mannequin — dark */}
-              <button
-                onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
-                className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
-              >
-                {/* Preview icon: dark square with figure silhouette */}
-                <div className="w-full aspect-square bg-[#111] flex items-center justify-center">
-                  <svg width="32" height="48" viewBox="0 0 32 56" fill="none">
-                    <ellipse cx="16" cy="6" rx="5" ry="5" fill="#555" />
-                    <rect x="10" y="13" width="12" height="22" rx="2" fill="#555" />
-                    <rect x="4" y="13" width="6" height="16" rx="2" fill="#444" />
-                    <rect x="22" y="13" width="6" height="16" rx="2" fill="#444" />
-                    <rect x="10" y="36" width="5" height="18" rx="2" fill="#555" />
-                    <rect x="17" y="36" width="5" height="18" rx="2" fill="#555" />
-                  </svg>
-                </div>
-                <div className="text-center">
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Mannequin</p>
-                  <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">Black background</p>
-                </div>
-              </button>
 
-              {/* Flat lay — white */}
-              <button
-                onClick={() => { setShowStylePicker(false); generateOutfit("flatlay"); }}
-                className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
-              >
-                {/* Preview icon: white square with folded items */}
-                <div className="w-full aspect-square bg-[#F8F7F4] border border-[var(--border)] flex items-center justify-center">
-                  <svg width="48" height="36" viewBox="0 0 56 40" fill="none">
-                    <rect x="4" y="4" width="20" height="14" rx="2" fill="#ccc" />
-                    <rect x="32" y="4" width="20" height="14" rx="2" fill="#bbb" />
-                    <rect x="4" y="24" width="20" height="12" rx="2" fill="#ddd" />
-                    <rect x="32" y="24" width="20" height="12" rx="2" fill="#c8c8c8" />
-                  </svg>
+            {/* ── Step 1: Style selection ── */}
+            {!tryonStep && (
+              <>
+                <div className="p-5 grid grid-cols-2 gap-3">
+                  {/* Mannequin */}
+                  <button
+                    onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                  >
+                    <div className="w-full aspect-square bg-[#111] flex items-center justify-center">
+                      <svg width="32" height="48" viewBox="0 0 32 56" fill="none">
+                        <ellipse cx="16" cy="6" rx="5" ry="5" fill="#555" />
+                        <rect x="10" y="13" width="12" height="22" rx="2" fill="#555" />
+                        <rect x="4" y="13" width="6" height="16" rx="2" fill="#444" />
+                        <rect x="22" y="13" width="6" height="16" rx="2" fill="#444" />
+                        <rect x="10" y="36" width="5" height="18" rx="2" fill="#555" />
+                        <rect x="17" y="36" width="5" height="18" rx="2" fill="#555" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Mannequin</p>
+                      <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">Black studio</p>
+                    </div>
+                  </button>
+
+                  {/* Flat lay */}
+                  <button
+                    onClick={() => { setShowStylePicker(false); generateOutfit("flatlay"); }}
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                  >
+                    <div className="w-full aspect-square bg-[#F8F7F4] border border-[var(--border)] flex items-center justify-center">
+                      <svg width="48" height="36" viewBox="0 0 56 40" fill="none">
+                        <rect x="4" y="4" width="20" height="14" rx="2" fill="#ccc" />
+                        <rect x="32" y="4" width="20" height="14" rx="2" fill="#bbb" />
+                        <rect x="4" y="24" width="20" height="12" rx="2" fill="#ddd" />
+                        <rect x="32" y="24" width="20" height="12" rx="2" fill="#c8c8c8" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Flat lay</p>
+                      <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">White studio</p>
+                    </div>
+                  </button>
                 </div>
-                <div className="text-center">
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)] mb-0.5">Flat lay</p>
-                  <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">White studio</p>
+
+                {/* On You — full-width */}
+                <div className="px-5 pb-5">
+                  <button
+                    onClick={() => setTryonStep(true)}
+                    className="group w-full flex items-center gap-4 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                  >
+                    <div className="w-14 h-14 shrink-0 bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center">
+                      <svg width="28" height="40" viewBox="0 0 28 48" fill="none">
+                        <ellipse cx="14" cy="5" rx="4" ry="4" stroke="currentColor" strokeWidth="1.3" />
+                        <path d="M7 12H21L22 28H16L14 44H14L12 28H6L7 12Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                        <path d="M7 14L2 20M21 14L26 20" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div className="text-left flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground)]">On You</p>
+                        <span className="font-mono text-[7px] tracking-[0.12em] uppercase px-1.5 py-0.5 bg-[var(--foreground)] text-[var(--background)]">New</span>
+                      </div>
+                      <p className="font-mono text-[8px] text-[var(--foreground-subtle)]">Upload your photo · AI dresses you</p>
+                    </div>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors shrink-0">
+                      <path d="M2 6H10M10 6L6 2M10 6L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 </div>
-              </button>
-            </div>
-            <p className="px-5 pb-4 font-mono text-[8px] text-[var(--foreground-subtle)] text-center">
-              Product images sent as references · 1K resolution · Nano Banana 2
-            </p>
+
+                <p className="px-5 pb-4 font-mono text-[8px] text-[var(--foreground-subtle)] text-center">
+                  Product images sent as references · 1K resolution · Nano Banana 2
+                </p>
+              </>
+            )}
+
+            {/* ── Step 2: Photo upload for try-on ── */}
+            {tryonStep && (
+              <div className="p-5 flex flex-col gap-4">
+                <p className="font-mono text-[9px] text-[var(--foreground-muted)] leading-relaxed">
+                  Upload a full-body photo of yourself in a T-pose on a plain background. The AI will place you in a studio shot wearing the selected outfit.
+                </p>
+
+                {/* Drop zone */}
+                <label className="relative cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const uri = await compressPhoto(file);
+                      setUserPhotoDataUri(uri);
+                    }}
+                  />
+                  {userPhotoDataUri ? (
+                    /* Photo preview */
+                    <div className="relative w-full aspect-[3/4] overflow-hidden border border-[var(--foreground)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={userPhotoDataUri} alt="Your photo" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center">
+                        <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-white opacity-0 hover:opacity-100 transition-opacity">Change photo</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Empty drop zone */
+                    <div className="w-full aspect-[3/4] border border-dashed border-[var(--border-strong)] flex flex-col items-center justify-center gap-3 hover:border-[var(--foreground)] transition-colors">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-[var(--foreground-subtle)]">
+                        <path d="M12 16V8M12 8L9 11M12 8L15 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                      </svg>
+                      <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                        Click to upload
+                      </p>
+                      <p className="font-mono text-[8px] text-[var(--foreground-subtle)] text-center px-4">
+                        Full body · T-pose · plain background
+                      </p>
+                    </div>
+                  )}
+                </label>
+
+                <button
+                  disabled={!userPhotoDataUri}
+                  onClick={() => {
+                    if (!userPhotoDataUri) return;
+                    setShowStylePicker(false);
+                    setTryonStep(false);
+                    generateOutfit("tryon", userPhotoDataUri);
+                  }}
+                  className={`w-full h-10 font-mono text-[10px] tracking-[0.18em] uppercase transition-all duration-150 ${
+                    userPhotoDataUri
+                      ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
+                      : "bg-[var(--border)] text-[var(--foreground-subtle)] cursor-not-allowed"
+                  }`}
+                >
+                  Generate
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1508,7 +1640,7 @@ export default function BuilderPage() {
                   AI Generated Look
                 </p>
                 <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  Nano Banana 2 · {activeStyle === "mannequin" ? "Mannequin" : "Flat lay"} · {selectedCount} pieces
+                  Nano Banana 2 · {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"} · {selectedCount} pieces
                 </p>
               </div>
               <div className="flex items-center gap-3">

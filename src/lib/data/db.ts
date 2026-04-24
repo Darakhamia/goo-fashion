@@ -132,17 +132,28 @@ function toSwatch(p: Product): ProductSwatch {
 export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
   if (!isSupabaseConfigured || !supabase) return staticProducts;
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const PAGE = 1000;
+  const allData: DbProduct[] = [];
+  let from = 0;
 
-  if (error) {
-    console.error("[db] getAllProducts:", error.message);
-    return [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+
+    if (error) {
+      console.error("[db] getAllProducts:", error.message);
+      return [];
+    }
+
+    allData.push(...(data as DbProduct[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
 
-  const all = (data as DbProduct[]).map(dbToProduct);
+  const all = allData.map(dbToProduct);
   return skipGrouping ? all : groupVariants(all);
 }
 
@@ -262,6 +273,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     isAIGenerated: row.is_ai_generated ?? false,
     isSaved: row.is_saved ?? false,
     season: (row.season ?? "all") as Outfit["season"],
+    source: (row.source === "community" ? "community" : null),
   };
 }
 

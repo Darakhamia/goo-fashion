@@ -142,7 +142,7 @@ function ActiveChip({
 /* ── Main page ── */
 
 export default function BrowsePage() {
-  const [view, setView] = useState<View>("outfits");
+  const [view, setView] = useState<View>("pieces");
   const [searchQuery, setSearchQuery] = useState("");
   const [stylistOpen, setStylistOpen] = useState(false);
 
@@ -572,7 +572,7 @@ export default function BrowsePage() {
 
           {/* View tabs */}
           <div className="flex border-b border-[var(--border)]">
-            {(["outfits", "pieces"] as View[]).map((v) => (
+            {(["pieces", "outfits"] as View[]).map((v) => (
               <button
                 key={v}
                 onClick={() => {
