@@ -556,15 +556,28 @@ function UserDrawer({
   const [isAdmin, setIsAdmin]     = useState(false);
   const [banned, setBanned]       = useState(false);
 
+  interface UserStats {
+    stylistMsgToday:  number;
+    stylistMsgTotal:  number;
+    stylistLimitDay:  number | null;
+    stylistRemaining: number | null;
+    imagesGenerated:  number;
+    looksPublished:   number;
+  }
+  const [stats, setStats] = useState<UserStats | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/admin/users/${userId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
-        const body = await res.json() as UserDetail;
+        const [detailRes, statsRes] = await Promise.all([
+          fetch(`/api/admin/users/${userId}`,        { cache: "no-store" }),
+          fetch(`/api/admin/users/${userId}/stats`,  { cache: "no-store" }),
+        ]);
+        if (!detailRes.ok) throw new Error((await detailRes.json().catch(() => ({}))).error || `HTTP ${detailRes.status}`);
+        const body = await detailRes.json() as UserDetail;
         if (cancelled) return;
         setDetail(body);
         setFirstName(body.firstName ?? "");
@@ -572,6 +585,7 @@ function UserDrawer({
         setPlan(body.plan);
         setIsAdmin(body.isAdmin);
         setBanned(body.banned);
+        if (statsRes.ok) setStats(await statsRes.json() as UserStats);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -706,6 +720,57 @@ function UserDrawer({
               <MetaItem label="Last active"  value={fmtRelative(detail.lastActiveAt)} />
               <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
               <MetaItem label="Username"     value={detail.username ?? "—"} />
+            </div>
+
+            {/* Activity stats */}
+            <div>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Activity</p>
+              {!stats ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="border border-[var(--border)] p-3 animate-pulse h-14" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {/* AI Stylist today */}
+                  <div className="border border-[var(--border)] p-3">
+                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist today</p>
+                    <p className="font-display text-xl font-light text-[var(--foreground)]">
+                      {stats.stylistMsgToday}
+                      <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
+                        / {stats.stylistLimitDay === null ? "∞" : stats.stylistLimitDay}
+                      </span>
+                    </p>
+                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">
+                      {stats.stylistRemaining === null
+                        ? "Unlimited"
+                        : `${stats.stylistRemaining} left`}
+                    </p>
+                  </div>
+
+                  {/* AI Stylist all-time */}
+                  <div className="border border-[var(--border)] p-3">
+                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist total</p>
+                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
+                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
+                  </div>
+
+                  {/* Images generated */}
+                  <div className="border border-[var(--border)] p-3">
+                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">AI images</p>
+                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
+                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">generated</p>
+                  </div>
+
+                  {/* Looks published */}
+                  <div className="border border-[var(--border)] p-3">
+                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Looks</p>
+                    <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
+                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">published</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
