@@ -349,12 +349,13 @@ function SwatchButton({
         e.preventDefault();
         onSelect();
       }}
-      className={`w-4 h-4 border-2 transition-all duration-150 shrink-0 ${
-        active
-          ? "border-[var(--foreground)] scale-110 shadow-sm"
-          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:scale-105"
-      }`}
-      style={{ backgroundColor: swatch.colorHex, boxShadow: "inset 0 0 0 1.5px rgba(128,128,128,0.4)" }}
+      className={`w-4 h-4 transition-all duration-150 shrink-0 ${active ? "scale-110" : "hover:scale-105"}`}
+      style={{
+        backgroundColor: swatch.colorHex,
+        boxShadow: active
+          ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+          : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+      }}
     />
   );
 }

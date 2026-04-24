@@ -569,8 +569,13 @@ export default function BuilderPage() {
                               {picked.variants!.slice(0, 6).map(sw => (
                                 <button key={sw.id} title={sw.colorName}
                                   onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                  className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all ${(variantId ?? picked.id) === sw.id ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-70 hover:opacity-100"}`}
-                                  style={{ background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex, boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)" }}
+                                  className={`w-4 h-4 rounded-full shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                  style={{
+                                    background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                    boxShadow: (variantId ?? picked.id) === sw.id
+                                      ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                      : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                  }}
                                 />
                               ))}
                             </div>
@@ -820,16 +825,14 @@ export default function BuilderPage() {
                                       // If already in the look, also update the variant there
                                       if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                     }}
-                                    className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
-                                      isSwatchActive
-                                        ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
-                                        : "opacity-70 hover:opacity-100 hover:scale-110"
-                                    }`}
+                                    className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                     style={{
                                       background: swatch.colorHex === "#multicolor"
                                         ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
                                         : swatch.colorHex,
-                                      boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
+                                      boxShadow: isSwatchActive
+                                        ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                        : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
                                     }}
                                   />
                                 );
