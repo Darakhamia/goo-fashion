@@ -258,7 +258,7 @@ export default function StylistPage() {
                     >
                       <div className="flex gap-1.5 mb-3">
                         {pal.colors.map((color, i) => (
-                          <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
+                          <div key={i} className="w-5 h-5" style={{ backgroundColor: color }} />
                         ))}
                       </div>
                       <p className="text-sm font-medium text-[var(--foreground)]">{pal.label}</p>
