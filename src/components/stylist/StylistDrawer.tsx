@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
+import { useCurrency } from "@/lib/context/currency-context";
 import type { ChatSession } from "@/app/api/stylist/chat/sessions/route";
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export function StylistDrawer({
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [view, setView] = useState<"chat" | "history">("chat");
+  const { formatPrice } = useCurrency();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -471,7 +473,7 @@ export function StylistDrawer({
                               {product.brand}
                             </p>
                             <p className="font-mono text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
-                              ${product.priceMin.toLocaleString()}
+                              {formatPrice(product.priceMin)}
                             </p>
                           </>
                         );

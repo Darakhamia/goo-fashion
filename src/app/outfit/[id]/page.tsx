@@ -6,6 +6,7 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
 import OutfitActions from "@/components/outfit/OutfitActions";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
+import Price from "@/components/ui/Price";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -88,10 +89,10 @@ export default async function OutfitDetailPage({ params }: Props) {
                     Total
                   </p>
                   <p className="font-display text-2xl font-light text-[var(--foreground)]">
-                    ${outfit.totalPriceMin.toLocaleString()}
+                    <Price amount={outfit.totalPriceMin} />
                     <span className="text-base text-[var(--foreground-muted)]">
                       {" "}
-                      — ${outfit.totalPriceMax.toLocaleString()}
+                      — <Price amount={outfit.totalPriceMax} />
                     </span>
                   </p>
                 </div>
@@ -151,7 +152,7 @@ export default async function OutfitDetailPage({ params }: Props) {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm text-[var(--foreground)]">
-                        From ${product.priceMin.toLocaleString()}
+                        From <Price amount={product.priceMin} />
                       </p>
                       <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
                         {product.retailers.length} stores

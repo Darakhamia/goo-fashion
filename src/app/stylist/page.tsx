@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import { outfits } from "@/lib/data/outfits";
+import { useCurrency } from "@/lib/context/currency-context";
 import { Occasion, StyleKeyword } from "@/lib/types";
 
 type Step = "occasion" | "style" | "palette" | "fit" | "season" | "budget" | "result";
@@ -94,6 +95,7 @@ export default function StylistPage() {
     budgetMax: 1500,
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const stepIndex = steps.indexOf(currentStep);
   const totalSteps = steps.length - 1;
@@ -368,7 +370,7 @@ export default function StylistPage() {
                   Selected range
                 </p>
                 <p className="font-display text-3xl font-light text-[var(--foreground)]">
-                  ${form.budgetMin.toLocaleString()} — ${form.budgetMax.toLocaleString()}
+                  {formatPrice(form.budgetMin)} — {formatPrice(form.budgetMax)}
                 </p>
               </div>
 
@@ -387,7 +389,7 @@ export default function StylistPage() {
                         {preset.label}
                       </p>
                       <p className={`font-mono text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
-                        ${preset.min.toLocaleString()}–${preset.max.toLocaleString()}
+                        {formatPrice(preset.min)}–{formatPrice(preset.max)}
                       </p>
                     </button>
                   );

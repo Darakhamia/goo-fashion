@@ -6,6 +6,7 @@ import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import Price from "@/components/ui/Price";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
@@ -137,9 +138,7 @@ export default async function HomePage() {
                       {featuredOutfits[5].name}
                     </h3>
                     <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                      {featuredOutfits[5].items.length} pieces · $
-                      {featuredOutfits[5].totalPriceMin.toLocaleString()}–$
-                      {featuredOutfits[5].totalPriceMax.toLocaleString()}
+                      {featuredOutfits[5].items.length} pieces · <Price amount={featuredOutfits[5].totalPriceMin} />–<Price amount={featuredOutfits[5].totalPriceMax} />
                     </p>
                   </div>
                 </div>

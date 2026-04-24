@@ -6,6 +6,7 @@ import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -115,6 +116,7 @@ export default function BuilderPage() {
   const { likedProducts } = useLikes();
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
+  const { formatPrice } = useCurrency();
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -544,7 +546,7 @@ export default function BuilderPage() {
                     </div>
                     {/* Price + remove */}
                     <div className="shrink-0 text-right flex flex-col items-end gap-2">
-                      {picked && <p className="text-[12px] font-medium text-[var(--foreground)]">${picked.priceMin.toLocaleString()}</p>}
+                      {picked && <p className="text-[12px] font-medium text-[var(--foreground)]">{formatPrice(picked.priceMin)}</p>}
                       {picked && (
                         <button
                           onClick={e => clearSlot(slot.id, e)}
@@ -567,7 +569,7 @@ export default function BuilderPage() {
               <div className="flex items-baseline justify-between">
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Total</p>
                 <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
-                  {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
                 </p>
               </div>
               {selectedCount > 0 && (
@@ -702,7 +704,7 @@ export default function BuilderPage() {
                           <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                           <div className="flex items-center justify-between mt-0.5 gap-1">
                             <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                            <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                            <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
                           </div>
                           {hasVariants && (
                             <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
@@ -1253,7 +1255,7 @@ export default function BuilderPage() {
                         <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                         <div className="flex items-center justify-between mt-0.5 gap-1">
                           <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
                         </div>
                       </div>
                     </button>
@@ -1270,7 +1272,7 @@ export default function BuilderPage() {
               <p className={`font-display font-light leading-none mt-0.5 transition-all ${
                 selectedCount > 0 ? "text-[20px] text-[var(--foreground)]" : "text-[16px] text-[var(--foreground-subtle)]"
               }`}>
-                {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+                {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1315,7 +1317,7 @@ export default function BuilderPage() {
                 {shopAdded
                   ? "Added ✓"
                   : selectedCount > 0
-                  ? `Shop · $${totalPrice.toLocaleString()}`
+                  ? `Shop · ${formatPrice(totalPrice)}`
                   : "Shop the Look"}
               </button>
             </div>
@@ -1400,7 +1402,7 @@ export default function BuilderPage() {
             ) : (
               <>
                 <span>Shop the Look</span>
-                {selectedCount > 0 && <span>${totalPrice.toLocaleString()}</span>}
+                {selectedCount > 0 && <span>{formatPrice(totalPrice)}</span>}
               </>
             )}
           </button>
