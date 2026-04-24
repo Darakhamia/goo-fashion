@@ -47,6 +47,12 @@ export default function AdminEmailPage() {
   const [result, setResult] = useState<SendResult | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
 
+  // AI writing
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiWriting, setAiWriting] = useState(false);
+  const [aiWriteError, setAiWriteError] = useState("");
+
   // Templates
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
@@ -116,6 +122,25 @@ export default function AdminEmailPage() {
     } finally {
       if (testOnly) setTestSending(false); else setSending(false);
       setConfirmSend(false);
+    }
+  };
+
+  const handleAiWrite = async () => {
+    setAiWriting(true);
+    setAiWriteError("");
+    try {
+      const res = await fetch("/api/admin/email/ai-write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: subject.trim(), brief: aiBrief.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAiWriteError(data.error ?? "Failed"); return; }
+      setBody(data.body ?? "");
+      setShowAiModal(false);
+      setAiBrief("");
+    } finally {
+      setAiWriting(false);
     }
   };
 
@@ -251,9 +276,23 @@ export default function AdminEmailPage() {
                 <label className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
                   Body
                 </label>
-                <span className="text-[9px] text-[var(--foreground-subtle)] tracking-[0.06em]">
-                  Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic* &nbsp;`code`
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-[9px] text-[var(--foreground-subtle)] tracking-[0.06em]">
+                    Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic*
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
+                    className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1" />
+                      <path d="M3.5 5C3.5 4.17 4.17 3.5 5 3.5C5.83 3.5 6.5 4.17 6.5 5C6.5 5.83 5.83 6.5 5 6.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                      <circle cx="5" cy="5" r="0.8" fill="currentColor" />
+                    </svg>
+                    AI Write
+                  </button>
+                </div>
               </div>
               <textarea
                 value={body}
@@ -430,6 +469,68 @@ export default function AdminEmailPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Write modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="border border-[var(--border)] w-full max-w-md" style={{ background: "var(--background)" }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+              <div>
+                <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                  Describe what to write — AI generates the email body
+                </p>
+              </div>
+              <button onClick={() => setShowAiModal(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              {subject && (
+                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 border border-[var(--border)] bg-[var(--surface)]">
+                  Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Brief — what should the email say?</label>
+                <textarea
+                  value={aiBrief}
+                  onChange={(e) => setAiBrief(e.target.value)}
+                  placeholder={"e.g. Announce new summer collection, mention free shipping this week, include styling tips for hot weather"}
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                  autoFocus
+                  disabled={aiWriting}
+                />
+              </div>
+              {aiWriteError && <p className="text-xs text-red-400">{aiWriteError}</p>}
+              {aiWriting && (
+                <p className="text-xs text-[var(--foreground-muted)] animate-pulse">Writing your email…</p>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
+              <button
+                onClick={handleAiWrite}
+                disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+              >
+                {aiWriting
+                  ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
+                  : "Generate body"}
+              </button>
+              <button
+                onClick={() => setShowAiModal(false)}
+                disabled={aiWriting}
+                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Save template modal */}
       {showSaveModal && (
