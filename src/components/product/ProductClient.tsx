@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { Product, ProductSwatch } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
 import ProductCard from "./ProductCard";
+import PriceHistoryChart from "./PriceHistoryChart";
+import ProductReviews from "./ProductReviews";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { track } from "@/lib/analytics/track";
 
@@ -302,6 +304,20 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
                       </div>
 
                       <div className="flex items-center gap-4 shrink-0">
+                        {retailer.rating != null && (
+                          <div className="text-right hidden sm:block">
+                            <div className="flex items-center gap-1 justify-end">
+                              {[1,2,3,4,5].map((s) => (
+                                <svg key={s} width="9" height="9" viewBox="0 0 12 12" fill={s <= Math.round(retailer.rating!) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" className="text-[var(--foreground-muted)]">
+                                  <polygon points="6,1 7.5,4.5 11,4.8 8.5,7 9.3,10.5 6,8.7 2.7,10.5 3.5,7 1,4.8 4.5,4.5" />
+                                </svg>
+                              ))}
+                            </div>
+                            {retailer.reviewCount != null && (
+                              <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5 text-right">{retailer.reviewCount.toLocaleString()} reviews</p>
+                            )}
+                          </div>
+                        )}
                         <div className="text-right">
                           <p className="text-sm text-[var(--foreground)] font-medium">
                             {formatPrice(retailer.price)}
@@ -339,6 +355,12 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
         products={allProducts}
         focusProduct={product}
       />
+
+      {/* Price history chart */}
+      <PriceHistoryChart productId={product.id} />
+
+      {/* User reviews */}
+      <ProductReviews productId={product.id} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

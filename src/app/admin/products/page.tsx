@@ -80,6 +80,8 @@ interface RetailerForm {
   price: string;
   availability: "in stock" | "low stock" | "sold out";
   isOfficial: boolean;
+  rating: string;       // "4.5" or ""
+  reviewCount: string;  // "1234" or ""
 }
 
 interface ProductFormState {
@@ -303,7 +305,7 @@ function RetailerList({
   onChange: (r: RetailerForm[]) => void;
 }) {
   const add = () =>
-    onChange([...retailers, { name: "", url: "", price: "", availability: "in stock", isOfficial: false }]);
+    onChange([...retailers, { name: "", url: "", price: "", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
   const remove = (i: number) => onChange(retailers.filter((_, idx) => idx !== i));
   const set = (i: number, patch: Partial<RetailerForm>) =>
     onChange(retailers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -354,8 +356,8 @@ function RetailerList({
               className={inputCls}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
               <label className={labelCls}>Availability</label>
               <select
                 value={r.availability}
@@ -367,18 +369,28 @@ function RetailerList({
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2 mt-4">
-              <input
-                type="checkbox"
-                id={`official-${i}`}
-                checked={r.isOfficial}
-                onChange={(e) => set(i, { isOfficial: e.target.checked })}
-                className="w-3.5 h-3.5 accent-[var(--foreground)]"
-              />
-              <label htmlFor={`official-${i}`} className="text-xs text-[var(--foreground-muted)] cursor-pointer">
-                Official store
-              </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls}>Rating <span className="normal-case tracking-normal">1–5</span></label>
+                <input type="number" value={r.rating} onChange={(e) => set(i, { rating: e.target.value })} placeholder="4.5" min="1" max="5" step="0.1" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Reviews</label>
+                <input type="number" value={r.reviewCount} onChange={(e) => set(i, { reviewCount: e.target.value })} placeholder="1234" min="0" className={inputCls} />
+              </div>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`official-${i}`}
+              checked={r.isOfficial}
+              onChange={(e) => set(i, { isOfficial: e.target.checked })}
+              className="w-3.5 h-3.5 accent-[var(--foreground)]"
+            />
+            <label htmlFor={`official-${i}`} className="text-xs text-[var(--foreground-muted)] cursor-pointer">
+              Official store
+            </label>
           </div>
         </div>
       ))}
@@ -754,6 +766,8 @@ export default function AdminProductsPage() {
         price: String(r.price),
         availability: r.availability,
         isOfficial: r.isOfficial,
+        rating: r.rating != null ? String(r.rating) : "",
+        reviewCount: r.reviewCount != null ? String(r.reviewCount) : "",
       })),
       isNew: product.isNew,
       variantColorHex: product.colorHex ?? "#888888",
@@ -786,6 +800,8 @@ export default function AdminProductsPage() {
         price: String(r.price),
         availability: r.availability,
         isOfficial: r.isOfficial,
+        rating: r.rating != null ? String(r.rating) : "",
+        reviewCount: r.reviewCount != null ? String(r.reviewCount) : "",
       })),
       isNew: product.isNew,
       variantColorHex: product.colorHex ?? "#888888",
@@ -835,6 +851,8 @@ export default function AdminProductsPage() {
         currency: "USD",
         availability: r.availability,
         isOfficial: r.isOfficial,
+        rating: r.rating ? parseFloat(r.rating) : undefined,
+        reviewCount: r.reviewCount ? parseInt(r.reviewCount, 10) : undefined,
       })) as Retailer[],
       isNew: form.isNew,
       isSaved: false,
