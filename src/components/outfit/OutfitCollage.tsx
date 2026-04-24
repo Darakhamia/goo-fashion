@@ -28,6 +28,11 @@ export default function OutfitCollage({
   const frames = sorted.slice(0, 4);
   const count = frames.length;
 
+  const brightness = (f: (typeof frames)[number]) => {
+    const l = f.light ?? 0;
+    return l !== 0 ? { filter: `brightness(${(100 + l) / 100})` } : undefined;
+  };
+
   if (count === 1) {
     return (
       <div className="absolute inset-0">
@@ -36,6 +41,7 @@ export default function OutfitCollage({
           alt={frames[0].product.name}
           fill
           className="object-cover"
+          style={brightness(frames[0])}
           priority={priority}
           sizes={sizes}
         />
@@ -53,6 +59,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
+              style={brightness(f)}
               priority={priority && i === 0}
               sizes={sizes}
             />
@@ -71,6 +78,7 @@ export default function OutfitCollage({
             alt={frames[0].product.name}
             fill
             className="object-cover"
+            style={brightness(frames[0])}
             priority={priority}
             sizes={sizes}
           />
@@ -83,6 +91,7 @@ export default function OutfitCollage({
                 alt={f.product.name}
                 fill
                 className="object-cover"
+                style={brightness(f)}
                 sizes={sizes}
               />
             </div>
@@ -103,6 +112,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
+              style={brightness(f)}
               priority={priority && i === 0}
               sizes={sizes}
             />
@@ -117,6 +127,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
+              style={brightness(f)}
               sizes={sizes}
             />
           </div>
