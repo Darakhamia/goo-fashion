@@ -2125,7 +2125,7 @@ export default function AdminProductsPage() {
                 {importPreview.map((p, i) => (
                   <div key={i} className="px-3 py-2 text-xs text-[var(--foreground)] border-b border-[var(--border)] last:border-b-0 flex items-center justify-between gap-4">
                     <span className="font-medium truncate">{p.name || "—"}</span>
-                    <span className="text-[var(--foreground-muted)] shrink-0">{p.brand} · {p.category} · {fmtPrice(p.priceMin)}</span>
+                    <span className="text-[var(--foreground-muted)] shrink-0">{p.brand} · {p.category} · {fmtPrice(p.priceMin ?? 0)}</span>
                   </div>
                 ))}
               </div>
