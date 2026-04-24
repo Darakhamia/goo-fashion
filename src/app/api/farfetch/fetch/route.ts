@@ -94,20 +94,39 @@ export async function POST(req: Request) {
     ? url.replace(`farfetch.com/${urlLocale}/`, `farfetch.com/${targetLocale}/`)
     : url;
 
-  // Call Retailed API
-  const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
-  retailedUrl.searchParams.set("query", normalizedUrl);
-  retailedUrl.searchParams.set("country", targetLocale.toUpperCase());
+  // Extract product ID from URL (item-XXXXXXXX)
+  const productIdMatch = url.match(/item-(\d+)/i);
+  const productId = productIdMatch?.[1];
 
-  const retailedRes = await fetch(retailedUrl.toString(), {
-    headers: { "x-api-key": RETAILED_KEY },
-    signal: AbortSignal.timeout(20_000),
-  });
+  // Try 1: full URL
+  // Try 2: product ID with extended mode (fallback)
+  const attempts = [
+    { query: normalizedUrl, mode: undefined },
+    ...(productId ? [{ query: productId, mode: "extended" }] : []),
+  ];
 
-  if (!retailedRes.ok) {
-    const text = await retailedRes.text().catch(() => "");
+  let retailedRes: Response | null = null;
+  let attemptedUrl = "";
+
+  for (const attempt of attempts) {
+    const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
+    retailedUrl.searchParams.set("query", attempt.query);
+    retailedUrl.searchParams.set("country", targetLocale.toUpperCase());
+    if (attempt.mode) retailedUrl.searchParams.set("mode", attempt.mode);
+    attemptedUrl = retailedUrl.toString();
+
+    retailedRes = await fetch(attemptedUrl, {
+      headers: { "x-api-key": RETAILED_KEY },
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (retailedRes.ok) break;
+  }
+
+  if (!retailedRes || !retailedRes.ok) {
+    const text = await retailedRes?.text().catch(() => "") ?? "";
     return NextResponse.json(
-      { error: `Retailed API error ${retailedRes.status}: ${text.slice(0, 200)}` },
+      { error: `Retailed API error ${retailedRes?.status}: ${text.slice(0, 300)}`, debug: attemptedUrl },
       { status: 502 }
     );
   }
