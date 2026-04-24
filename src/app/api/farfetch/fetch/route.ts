@@ -5,6 +5,12 @@ import type { Category, Gender } from "@/lib/types";
 
 const BUCKET = "product-images";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const SCRAPER_KEY = process.env.SCRAPER_API_KEY;
+
+function scraperUrl(target: string): string {
+  if (!SCRAPER_KEY) return target;
+  return `https://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(target)}&country_code=gb`;
+}
 
 export interface FarfetchProduct {
   farfetchId: string;
@@ -170,15 +176,9 @@ async function scrapeFarfetchProduct(url: string): Promise<FarfetchProduct> {
   // Normalise to UK to get GBP pricing
   const normalised = url.replace(/farfetch\.com\/[a-z]{2}\//, "farfetch.com/uk/");
 
-  const res = await fetch(normalised, {
-    headers: {
-      "User-Agent": UA,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-GB,en;q=0.9",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Cache-Control": "no-cache",
-    },
-    signal: AbortSignal.timeout(20_000),
+  const res = await fetch(scraperUrl(normalised), {
+    headers: { "User-Agent": UA },
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!res.ok) throw new Error(`Farfetch returned ${res.status}`);
@@ -206,6 +206,10 @@ async function scrapeFarfetchProduct(url: string): Promise<FarfetchProduct> {
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!SCRAPER_KEY) {
+    return NextResponse.json({ error: "SCRAPER_API_KEY is not configured. Sign up free at scraperapi.com and add the key to your environment variables." }, { status: 501 });
+  }
 
   const { url } = await req.json().catch(() => ({}));
   if (!url || typeof url !== "string" || !url.includes("farfetch.com")) {

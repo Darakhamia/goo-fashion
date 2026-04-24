@@ -3,6 +3,12 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import type { Category } from "@/lib/types";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const SCRAPER_KEY = process.env.SCRAPER_API_KEY;
+
+function scraperUrl(target: string): string {
+  if (!SCRAPER_KEY) return target;
+  return `https://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(target)}&country_code=gb`;
+}
 
 export interface FarfetchListItem {
   id: string;
@@ -124,13 +130,13 @@ export async function GET(req: Request) {
   farfetchUrl.searchParams.set("page", String(page));
   farfetchUrl.searchParams.set("view", "90");
 
-  const res = await fetch(farfetchUrl.toString(), {
-    headers: {
-      "User-Agent": UA,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-GB,en;q=0.9",
-    },
-    signal: AbortSignal.timeout(20_000),
+  if (!SCRAPER_KEY) {
+    return NextResponse.json({ error: "SCRAPER_API_KEY is not configured. Sign up free at scraperapi.com." }, { status: 501 });
+  }
+
+  const res = await fetch(scraperUrl(farfetchUrl.toString()), {
+    headers: { "User-Agent": UA },
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!res.ok) {
