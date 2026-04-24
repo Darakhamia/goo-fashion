@@ -82,9 +82,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A valid Farfetch product URL is required" }, { status: 400 });
   }
 
-  // Auto-detect country from URL path: farfetch.com/uk/ → "uk", /us/ → "us", etc.
+  // Map URL locale to a Retailed-supported country code (uppercase).
+  // Many Farfetch locales (cz, sk, pl…) are not supported — fall back to UK.
   const countryMatch = url.match(/farfetch\.com\/([a-z]{2})\//i);
-  const country = countryMatch ? countryMatch[1].toLowerCase() : "uk";
+  const urlLocale = countryMatch?.[1]?.toUpperCase() ?? "";
+  const SUPPORTED = new Set(["UK", "US", "FR", "DE", "IT", "ES", "PT", "AU", "CA", "JP", "KR", "HK", "SG", "AE", "SA", "BR", "RU", "MX", "SE", "NL"]);
+  const country = SUPPORTED.has(urlLocale) ? urlLocale : "UK";
 
   // Call Retailed API
   const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
