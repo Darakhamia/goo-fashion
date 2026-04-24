@@ -175,8 +175,8 @@ export interface Product {
 export interface OutfitItem {
   product: Product;
   role: "hero" | "secondary" | "accent";
-  /** Brightness adjustment: -100 (black) … 0 (normal) … 100 (2× bright) */
-  light?: number;
+  /** Hue rotation in degrees: -180 … 0 (none) … +180 */
+  hue?: number;
 }
 
 export interface Outfit {
