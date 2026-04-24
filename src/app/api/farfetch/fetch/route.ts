@@ -77,16 +77,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "RETAILED_API_KEY is not configured" }, { status: 501 });
   }
 
-  const { url, country = "GB" } = await req.json().catch(() => ({}));
+  const { url } = await req.json().catch(() => ({}));
   if (!url || typeof url !== "string" || !url.includes("farfetch.com")) {
     return NextResponse.json({ error: "A valid Farfetch product URL is required" }, { status: 400 });
   }
+
+  // Auto-detect country from URL path: farfetch.com/uk/ → "uk", /us/ → "us", etc.
+  const countryMatch = url.match(/farfetch\.com\/([a-z]{2})\//i);
+  const country = countryMatch ? countryMatch[1].toLowerCase() : "uk";
 
   // Call Retailed API
   const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
   retailedUrl.searchParams.set("query", url);
   retailedUrl.searchParams.set("country", country);
-  retailedUrl.searchParams.set("mode", "simple");
 
   const retailedRes = await fetch(retailedUrl.toString(), {
     headers: { "x-api-key": RETAILED_KEY },
