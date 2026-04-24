@@ -3,18 +3,21 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Category, Gender } from "@/lib/types";
 
-const RETAILED_KEY = process.env.RETAILED_API_KEY;
 const BUCKET = "product-images";
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-interface RetailedProduct {
-  id: string;
+export interface FarfetchProduct {
+  farfetchId: string;
   name: string;
   brand: string;
   price: number;
-  gender: string;
+  currency: string;
+  gender?: Gender;
+  category: Category;
+  description: string;
+  imageUrl: string;
   images: string[];
-  description: string | null;
-  price_currency: string;
+  sourceUrl: string;
 }
 
 function inferCategory(name: string, gender: string): Category {
@@ -36,124 +39,189 @@ function inferCategory(name: string, gender: string): Category {
   if (/\bhat\b|\bcap\b|beanie|bucket hat|beret|snapback/.test(t)) return "accessories";
   if (/\bsock/.test(t)) return "accessories";
   if (/belt|scarf|glove|sunglasses|glasses|watch|jewelry|jewellery|ring|necklace|bracelet|earring/.test(t)) return "accessories";
-  if (gender === "women") return "tops";
-  return "tops";
+  return gender === "Women" ? "tops" : "tops";
 }
 
 async function uploadImageToStorage(url: string): Promise<string> {
   if (!isSupabaseConfigured || !supabase) return url;
+  try {
+    const res = await fetch(url, {
+      headers: { "Referer": "https://www.farfetch.com/", "User-Agent": UA },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return url;
+    const contentType = res.headers.get("content-type") ?? "image/jpeg";
+    if (!contentType.startsWith("image/")) return url;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const ext = contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
+    const filename = `farfetch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!res.ok) return url;
-
-  const contentType = res.headers.get("content-type") ?? "image/jpeg";
-  if (!contentType.startsWith("image/")) return url;
-
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const ext = contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
-  const filename = `farfetch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.find((b) => b.name === BUCKET)) {
-    await supabase.storage.createBucket(BUCKET, { public: true });
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (!buckets?.find((b) => b.name === BUCKET)) {
+      await supabase.storage.createBucket(BUCKET, { public: true });
+    }
+    const { error } = await supabase.storage.from(BUCKET).upload(filename, buffer, { contentType, upsert: false });
+    if (error) return url;
+    return supabase.storage.from(BUCKET).getPublicUrl(filename).data.publicUrl;
+  } catch {
+    return url;
   }
-
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filename, buffer, { contentType, upsert: false });
-
-  if (error) return url;
-
-  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-  return publicUrl;
 }
 
-// POST /api/farfetch/fetch  { url: string, country?: string }
+// Parse product data from Farfetch __NEXT_DATA__ JSON
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseNextData(data: any, sourceUrl: string): FarfetchProduct | null {
+  try {
+    // Try multiple known paths in the Next.js page props
+    const pageProps =
+      data?.props?.pageProps ??
+      data?.props?.initialProps ??
+      data?.props ?? {};
+
+    const productData =
+      pageProps?.productDetails ??
+      pageProps?.product ??
+      pageProps?.initialData?.productDetails ??
+      pageProps?.initialData?.product ??
+      // Deep search for product object with id + brand
+      findProductInObject(pageProps);
+
+    if (!productData) return null;
+
+    const id = String(productData.id ?? productData.productId ?? "");
+    const name: string = productData.name ?? productData.shortDescription ?? "";
+    const brand: string =
+      productData.brand?.name ??
+      productData.brand ??
+      productData.designerName ??
+      "";
+
+    // Price
+    const priceInfo =
+      productData.priceInfo ??
+      productData.price ??
+      productData.currentPriceInfo ??
+      {};
+    const price: number =
+      priceInfo.finalPrice ??
+      priceInfo.initialPrice ??
+      priceInfo.price ??
+      productData.priceMin ??
+      0;
+    const currency: string = priceInfo.currencyCode ?? priceInfo.currency ?? "GBP";
+
+    // Images
+    const images: string[] = [];
+    const rawImages =
+      productData.images ??
+      productData.imageGroups ??
+      productData.media ??
+      [];
+    if (Array.isArray(rawImages)) {
+      for (const img of rawImages) {
+        const src = typeof img === "string" ? img : (img?.url ?? img?.src ?? img?.imageUrl ?? img?.images?.[0]?.url);
+        if (src && typeof src === "string" && src.startsWith("http")) images.push(src);
+        // Some images arrays are nested
+        if (img?.images && Array.isArray(img.images)) {
+          for (const i2 of img.images) {
+            const s2 = i2?.url ?? i2?.src;
+            if (s2 && typeof s2 === "string") images.push(s2);
+          }
+        }
+      }
+    }
+
+    const gender: string = productData.gender ?? productData.genderName ?? "";
+    const description: string = productData.description ?? productData.longDescription ?? "";
+
+    if (!name || !brand) return null;
+
+    return {
+      farfetchId: id,
+      name,
+      brand,
+      price,
+      currency,
+      gender: gender.toLowerCase().includes("men") ? "men" : gender.toLowerCase().includes("women") ? "women" : undefined,
+      category: inferCategory(name, gender),
+      description,
+      imageUrl: images[0] ?? "",
+      images: images.slice(0, 8),
+      sourceUrl,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Recursively search for a product-shaped object
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findProductInObject(obj: any, depth = 0): any {
+  if (!obj || typeof obj !== "object" || depth > 6) return null;
+  if (obj.name && obj.brand && (obj.id || obj.productId)) return obj;
+  for (const key of Object.keys(obj)) {
+    const result = findProductInObject(obj[key], depth + 1);
+    if (result) return result;
+  }
+  return null;
+}
+
+async function scrapeFarfetchProduct(url: string): Promise<FarfetchProduct> {
+  // Normalise to UK to get GBP pricing
+  const normalised = url.replace(/farfetch\.com\/[a-z]{2}\//, "farfetch.com/uk/");
+
+  const res = await fetch(normalised, {
+    headers: {
+      "User-Agent": UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-GB,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!res.ok) throw new Error(`Farfetch returned ${res.status}`);
+
+  const html = await res.text();
+
+  // Extract __NEXT_DATA__ JSON
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!match) throw new Error("Could not find __NEXT_DATA__ in page — Farfetch may be blocking the request");
+
+  let nextData: unknown;
+  try {
+    nextData = JSON.parse(match[1]);
+  } catch {
+    throw new Error("Failed to parse __NEXT_DATA__ JSON");
+  }
+
+  const product = parseNextData(nextData, url);
+  if (!product) throw new Error("Could not extract product data from page — structure may have changed");
+
+  return product;
+}
+
+// POST /api/farfetch/fetch  { url: string }
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (!RETAILED_KEY) {
-    return NextResponse.json({ error: "RETAILED_API_KEY is not configured" }, { status: 501 });
-  }
 
   const { url } = await req.json().catch(() => ({}));
   if (!url || typeof url !== "string" || !url.includes("farfetch.com")) {
     return NextResponse.json({ error: "A valid Farfetch product URL is required" }, { status: 400 });
   }
 
-  // Retailed only supports certain Farfetch locales.
-  // Rewrite the URL locale AND set matching country so Farfetch doesn't reject the request.
-  const SUPPORTED = new Set(["uk", "us", "fr", "de", "it", "es", "pt", "au", "ca", "jp", "kr", "hk", "sg", "ae", "sa", "br", "ru", "mx", "se", "nl"]);
-  const localeMatch = url.match(/farfetch\.com\/([a-z]{2})\//i);
-  const urlLocale = localeMatch?.[1]?.toLowerCase() ?? "";
-  const targetLocale = SUPPORTED.has(urlLocale) ? urlLocale : "uk";
-
-  // Rewrite URL to the supported locale (e.g. /cz/ → /uk/)
-  const normalizedUrl = urlLocale && urlLocale !== targetLocale
-    ? url.replace(`farfetch.com/${urlLocale}/`, `farfetch.com/${targetLocale}/`)
-    : url;
-
-  // Extract product ID from URL (item-XXXXXXXX)
-  const productIdMatch = url.match(/item-(\d+)/i);
-  const productId = productIdMatch?.[1];
-
-  // Try 1: full URL
-  // Try 2: product ID with extended mode (fallback)
-  const attempts = [
-    { query: normalizedUrl, mode: undefined },
-    ...(productId ? [{ query: productId, mode: "extended" }] : []),
-  ];
-
-  let retailedRes: Response | null = null;
-  let attemptedUrl = "";
-
-  for (const attempt of attempts) {
-    const retailedUrl = new URL("https://app.retailed.io/api/v1/scraper/farfetch/product");
-    retailedUrl.searchParams.set("query", attempt.query);
-    retailedUrl.searchParams.set("country", targetLocale.toUpperCase());
-    if (attempt.mode) retailedUrl.searchParams.set("mode", attempt.mode);
-    attemptedUrl = retailedUrl.toString();
-
-    retailedRes = await fetch(attemptedUrl, {
-      headers: { "x-api-key": RETAILED_KEY },
-      signal: AbortSignal.timeout(20_000),
-    });
-
-    if (retailedRes.ok) break;
+  let product: FarfetchProduct;
+  try {
+    product = await scrapeFarfetchProduct(url);
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Scrape failed" }, { status: 502 });
   }
 
-  if (!retailedRes || !retailedRes.ok) {
-    const text = await retailedRes?.text().catch(() => "") ?? "";
-    return NextResponse.json(
-      { error: `Retailed API error ${retailedRes?.status}: ${text.slice(0, 300)}`, debug: attemptedUrl },
-      { status: 502 }
-    );
-  }
-
-  const raw: RetailedProduct = await retailedRes.json();
-
-  // Upload images to Supabase Storage in parallel (max 6)
-  const imageUrls = (raw.images ?? []).slice(0, 6);
-  const uploadedImages = await Promise.all(imageUrls.map(uploadImageToStorage));
+  // Upload images to Supabase Storage (max 6, in parallel)
+  const uploadedImages = await Promise.all(product.images.slice(0, 6).map(uploadImageToStorage));
   const imageUrl = uploadedImages[0] ?? "";
 
-  const gender = raw.gender === "men" ? "men" : raw.gender === "women" ? "women" : undefined;
-  const category = inferCategory(raw.name, raw.gender ?? "");
-
-  return NextResponse.json({
-    farfetchId: raw.id,
-    name: raw.name,
-    brand: raw.brand,
-    price: raw.price,
-    currency: raw.price_currency ?? "USD",
-    gender: gender as Gender | undefined,
-    category,
-    description: raw.description ?? "",
-    imageUrl,
-    images: uploadedImages,
-    sourceUrl: url,
-    // Raw Farfetch image URLs in case the admin wants to inspect them
-    originalImages: imageUrls,
-  });
+  return NextResponse.json({ ...product, imageUrl, images: uploadedImages });
 }
