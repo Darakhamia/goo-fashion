@@ -184,6 +184,20 @@ export default function FarfetchImportPage() {
         </div>
       </div>
 
+      {/* Setup banner */}
+      <div className="flex items-start gap-3 px-4 py-3 border border-amber-400/30 bg-amber-400/5 text-xs">
+        <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
+        <div>
+          <span className="text-amber-400 font-medium">Требуется SCRAPER_API_KEY</span>
+          <span className="text-[var(--foreground-muted)] ml-2">
+            Farfetch блокирует прямые запросы (Cloudflare). Зарегистрируйся на{" "}
+            <a href="https://www.scraperapi.com" target="_blank" rel="noreferrer" className="underline">scraperapi.com</a>
+            {" "}(бесплатно 1000 запросов/мес), добавь ключ как{" "}
+            <code className="bg-[var(--surface)] px-1">SCRAPER_API_KEY</code> в переменные окружения.
+          </span>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex border-b border-[var(--border)]">
         {([["search", "Search catalog"], ["url", "Single product URL"]] as [Tab, string][]).map(([t, label]) => (
