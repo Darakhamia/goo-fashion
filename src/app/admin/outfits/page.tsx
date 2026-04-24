@@ -22,7 +22,7 @@ type Season = "all" | "spring" | "summer" | "autumn" | "winter";
 interface SelectedItem {
   product: Product;
   role: OutfitRole;
-  hue: number;
+  selectedColor?: string;
 }
 
 interface OutfitFormState {
@@ -186,7 +186,7 @@ export default function AdminOutfitsPage() {
       styleKeywords: outfit.styleKeywords,
       isAIGenerated: outfit.isAIGenerated,
     });
-    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, hue: i.hue ?? 0 })));
+    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, selectedColor: i.selectedColor })));
     setSaveError("");
     setUploadError("");
     setProductSearch("");
@@ -231,7 +231,7 @@ export default function AdminOutfitsPage() {
 
     const body = {
       ...form,
-      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, hue: i.hue })),
+      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, selectedColor: i.selectedColor })),
       totalPriceMin: priceMin,
       totalPriceMax: priceMax,
       currency: "USD",
@@ -272,10 +272,10 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; hue: number }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
+  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; selectedColor?: string }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
     const hydratedItems = body.items.map((i) => {
       const p = products.find((p) => p.id === i.productId);
-      return p ? { product: p, role: i.role, hue: i.hue } : null;
+      return p ? { product: p, role: i.role, selectedColor: i.selectedColor } : null;
     }).filter(Boolean) as SelectedItem[];
 
     if (editingId) {
@@ -327,7 +327,7 @@ export default function AdminOutfitsPage() {
       if (exists) return prev.filter((i) => i.product.id !== product.id);
       const role: OutfitRole =
         prev.length === 0 ? "hero" : prev.length === 1 ? "secondary" : "accent";
-      return [...prev, { product, role, hue: 0 }];
+      return [...prev, { product, role }];
     });
   };
 
@@ -337,9 +337,9 @@ export default function AdminOutfitsPage() {
     );
   };
 
-  const setHue = (productId: string, hue: number) => {
+  const setSelectedColor = (productId: string, color: string) => {
     setSelectedItems((prev) =>
-      prev.map((i) => (i.product.id === productId ? { ...i, hue } : i))
+      prev.map((i) => (i.product.id === productId ? { ...i, selectedColor: color } : i))
     );
   };
 
@@ -848,7 +848,14 @@ export default function AdminOutfitsPage() {
                       </p>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        {selectedItems.map((item) => (
+                        {selectedItems.map((item) => {
+                          const colorKeys = Object.keys(item.product.colorImages ?? {});
+                          const activeColor = item.selectedColor ?? colorKeys[0];
+                          const thumbSrc =
+                            activeColor && item.product.colorImages?.[activeColor]?.[0]
+                              ? item.product.colorImages[activeColor][0]
+                              : item.product.imageUrl;
+                          return (
                           <div
                             key={item.product.id}
                             className="flex flex-col gap-2 border border-[var(--border)] p-2"
@@ -856,11 +863,10 @@ export default function AdminOutfitsPage() {
                             <div className="flex items-center gap-3">
                               <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
                                 <Image
-                                  src={item.product.imageUrl}
+                                  src={thumbSrc}
                                   alt={item.product.name}
                                   fill
                                   className="object-cover"
-                                  style={item.hue ? { filter: `hue-rotate(${item.hue}deg)` } : undefined}
                                   sizes="40px"
                                 />
                               </div>
@@ -888,36 +894,43 @@ export default function AdminOutfitsPage() {
                                 </svg>
                               </button>
                             </div>
-                            {/* Hue slider */}
-                            <div className="flex items-center gap-2 px-1">
-                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
-                                <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" />
-                                <path d="M6 1.5V6l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              <input
-                                type="range"
-                                min={-180}
-                                max={180}
-                                step={10}
-                                value={item.hue}
-                                onChange={(e) => setHue(item.product.id, Number(e.target.value))}
-                                className="flex-1 h-0.5 accent-[var(--foreground)] cursor-pointer"
-                              />
-                              <span className="text-[10px] text-[var(--foreground-subtle)] w-10 text-right tabular-nums">
-                                {item.hue > 0 ? `+${item.hue}°` : `${item.hue}°`}
-                              </span>
-                              {item.hue !== 0 && (
-                                <button
-                                  onClick={() => setHue(item.product.id, 0)}
-                                  className="text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                                  title="Сбросить"
-                                >
-                                  ↺
-                                </button>
-                              )}
-                            </div>
+                            {/* Colour swatches (only for products with multiple colours) */}
+                            {colorKeys.length > 1 && (
+                              <div className="flex items-center gap-1.5 px-1 flex-wrap">
+                                {colorKeys.map((color) => {
+                                  const previewImg = item.product.colorImages![color]?.[0];
+                                  const isActive = (item.selectedColor ?? colorKeys[0]) === color;
+                                  return (
+                                    <button
+                                      key={color}
+                                      title={color}
+                                      onClick={() => setSelectedColor(item.product.id, color)}
+                                      className={`relative w-6 h-6 overflow-hidden border transition-all ${
+                                        isActive
+                                          ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
+                                          : "border-[var(--border)] hover:border-[var(--foreground)]"
+                                      }`}
+                                    >
+                                      {previewImg ? (
+                                        <Image
+                                          src={previewImg}
+                                          alt={color}
+                                          fill
+                                          className="object-cover"
+                                          sizes="24px"
+                                        />
+                                      ) : (
+                                        <span className="text-[7px] leading-none text-[var(--foreground-subtle)] capitalize px-0.5 truncate block mt-1">{color[0]}</span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                                <span className="text-[10px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                         {/* Price total */}
                         <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
                           <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Total</span>

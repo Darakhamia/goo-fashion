@@ -26,7 +26,7 @@ export const isSupabaseConfigured = !!(url && key);
 export type DbOutfitItem = {
   product_id: string;
   role: "hero" | "secondary" | "accent";
-  hue?: number;
+  selected_color?: string;
 };
 
 export type DbOutfit = {
