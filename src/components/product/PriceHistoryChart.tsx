@@ -63,7 +63,7 @@ export default function PriceHistoryChart({ productId }: Props) {
     points.slice(1).map((p) => `L${toX(p.date).toFixed(1)},${toY(p.price).toFixed(1)}`).join(" ") +
     ` L${toX(points[points.length - 1].date).toFixed(1)},${(H - PAD.bottom).toFixed(1)} L${toX(points[0].date).toFixed(1)},${(H - PAD.bottom).toFixed(1)} Z`;
 
-  const hovPt = hovered !== null ? points[hovered] : null;
+  const hovPt = hovered !== null && hovered < points.length ? points[hovered] : null;
   const lastPt = points[points.length - 1];
   const firstPt = points[0];
   const priceDiff = lastPt.price - firstPt.price;
@@ -75,12 +75,11 @@ export default function PriceHistoryChart({ productId }: Props) {
   const pad = priceRange * 0.15;
   const yTicks = [minP - pad, minP + (priceRange + pad * 2) / 2, maxP + pad].map((v) => Math.round(v));
 
-  // X-axis labels: first, mid, last
-  const xLabels = [
-    { date: points[0].date, x: toX(points[0].date) },
-    { date: points[Math.floor(points.length / 2)].date, x: toX(points[Math.floor(points.length / 2)].date) },
-    { date: points[points.length - 1].date, x: toX(points[points.length - 1].date) },
-  ];
+  // X-axis labels: first, mid, last (deduplicated)
+  const xLabelIndices = [...new Set([0, Math.floor(points.length / 2), points.length - 1])];
+  const xLabels = xLabelIndices
+    .filter((idx) => points[idx] !== undefined)
+    .map((idx) => ({ date: points[idx].date, x: toX(points[idx].date) }));
 
   const fmt = (d: string) => {
     const dt = new Date(d);
