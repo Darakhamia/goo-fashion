@@ -31,7 +31,7 @@ function AnimatedCard({ children }: { children: React.ReactNode }) {
   }, []);
   return (
     <div
-      className="transition-all duration-350 ease-out"
+      className="transition-all duration-300 ease-out"
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(12px)",
@@ -169,57 +169,66 @@ export default function OutfitCarousel({ outfits }: Props) {
         </button>
       </div>
 
-      {/* Carousel */}
-      <div className="flex items-start overflow-hidden">
-        {/* Left arrow — pushed away from cards with extra right margin */}
-        <div className="hidden md:flex shrink-0 items-center justify-center mx-6 xl:mx-10" style={{ paddingTop: "32%" }}>
-          <button
-            onClick={prev}
-            aria-label="Previous outfit"
-            className="w-11 h-11 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Left peek */}
-        <div
-          className="hidden lg:block shrink-0 w-[26%] max-w-[340px] opacity-40 hover:opacity-60 transition-opacity duration-300 cursor-pointer"
+      {/*
+        Carousel track — arrows are absolutely positioned on the outer relative
+        wrapper so they are never clipped by overflow:hidden on the inner track.
+        The inner track uses px-24 xl:px-32 to leave room for the arrows.
+      */}
+      <div className="relative">
+        {/* Left arrow — outside overflow, always visible */}
+        <button
           onClick={prev}
-          aria-hidden="true"
+          aria-label="Previous outfit"
+          className="hidden md:flex absolute left-4 xl:left-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
+          style={{ top: "37%" }}
         >
-          <CarouselCard outfit={prevOutfit} variant="peek" onNext={next} />
-        </div>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
 
-        {/* Center */}
-        <div className="flex-1 min-w-0 max-w-[560px] lg:max-w-none lg:w-[44%] lg:flex-none shrink-0 px-4 lg:px-6 xl:px-8 mx-auto lg:mx-0">
-          <AnimatedCard key={index}>
-            <CarouselCard outfit={current} variant="center" onNext={next} />
-          </AnimatedCard>
-        </div>
-
-        {/* Right peek */}
-        <div
-          className="hidden lg:block shrink-0 w-[26%] max-w-[340px] opacity-40 hover:opacity-60 transition-opacity duration-300 cursor-pointer"
+        {/* Right arrow — outside overflow, always visible */}
+        <button
           onClick={next}
-          aria-hidden="true"
+          aria-label="Next outfit"
+          className="hidden md:flex absolute right-4 xl:right-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
+          style={{ top: "37%" }}
         >
-          <CarouselCard outfit={nextOutfit} variant="peek" onNext={next} />
-        </div>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
 
-        {/* Right arrow — pushed away from cards with extra left margin */}
-        <div className="hidden md:flex shrink-0 items-center justify-center mx-6 xl:mx-10" style={{ paddingTop: "32%" }}>
-          <button
-            onClick={next}
-            aria-label="Next outfit"
-            className="w-11 h-11 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+        {/* Card track — overflow:hidden to clip peek cards at edges */}
+        <div className="overflow-hidden px-6 md:px-24 xl:px-32">
+          <div className="flex items-start gap-5 xl:gap-6">
+            {/* Left peek */}
+            <div
+              className="hidden lg:block shrink-0 opacity-40 hover:opacity-60 transition-opacity duration-300 cursor-pointer"
+              style={{ width: "27%" }}
+              onClick={prev}
+              aria-hidden="true"
+            >
+              <CarouselCard outfit={prevOutfit} variant="peek" onNext={next} />
+            </div>
+
+            {/* Center */}
+            <div className="flex-1 min-w-0">
+              <AnimatedCard key={index}>
+                <CarouselCard outfit={current} variant="center" onNext={next} />
+              </AnimatedCard>
+            </div>
+
+            {/* Right peek */}
+            <div
+              className="hidden lg:block shrink-0 opacity-40 hover:opacity-60 transition-opacity duration-300 cursor-pointer"
+              style={{ width: "27%" }}
+              onClick={next}
+              aria-hidden="true"
+            >
+              <CarouselCard outfit={nextOutfit} variant="peek" onNext={next} />
+            </div>
+          </div>
         </div>
       </div>
 
