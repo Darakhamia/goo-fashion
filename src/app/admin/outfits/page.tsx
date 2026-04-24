@@ -22,7 +22,7 @@ type Season = "all" | "spring" | "summer" | "autumn" | "winter";
 interface SelectedItem {
   product: Product;
   role: OutfitRole;
-  light: number;
+  hue: number;
 }
 
 interface OutfitFormState {
@@ -186,7 +186,7 @@ export default function AdminOutfitsPage() {
       styleKeywords: outfit.styleKeywords,
       isAIGenerated: outfit.isAIGenerated,
     });
-    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, light: i.light ?? 0 })));
+    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, hue: i.hue ?? 0 })));
     setSaveError("");
     setUploadError("");
     setProductSearch("");
@@ -231,7 +231,7 @@ export default function AdminOutfitsPage() {
 
     const body = {
       ...form,
-      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, light: i.light })),
+      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, hue: i.hue })),
       totalPriceMin: priceMin,
       totalPriceMax: priceMax,
       currency: "USD",
@@ -272,10 +272,10 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; light: number }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
+  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; hue: number }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
     const hydratedItems = body.items.map((i) => {
       const p = products.find((p) => p.id === i.productId);
-      return p ? { product: p, role: i.role, light: i.light } : null;
+      return p ? { product: p, role: i.role, hue: i.hue } : null;
     }).filter(Boolean) as SelectedItem[];
 
     if (editingId) {
@@ -327,7 +327,7 @@ export default function AdminOutfitsPage() {
       if (exists) return prev.filter((i) => i.product.id !== product.id);
       const role: OutfitRole =
         prev.length === 0 ? "hero" : prev.length === 1 ? "secondary" : "accent";
-      return [...prev, { product, role, light: 0 }];
+      return [...prev, { product, role, hue: 0 }];
     });
   };
 
@@ -337,9 +337,9 @@ export default function AdminOutfitsPage() {
     );
   };
 
-  const setLight = (productId: string, light: number) => {
+  const setHue = (productId: string, hue: number) => {
     setSelectedItems((prev) =>
-      prev.map((i) => (i.product.id === productId ? { ...i, light } : i))
+      prev.map((i) => (i.product.id === productId ? { ...i, hue } : i))
     );
   };
 
@@ -860,7 +860,7 @@ export default function AdminOutfitsPage() {
                                   alt={item.product.name}
                                   fill
                                   className="object-cover"
-                                  style={item.light ? { filter: `brightness(${(100 + item.light) / 100})` } : undefined}
+                                  style={item.hue ? { filter: `hue-rotate(${item.hue}deg)` } : undefined}
                                   sizes="40px"
                                 />
                               </div>
@@ -888,29 +888,29 @@ export default function AdminOutfitsPage() {
                                 </svg>
                               </button>
                             </div>
-                            {/* Light slider */}
+                            {/* Hue slider */}
                             <div className="flex items-center gap-2 px-1">
                               <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
-                                <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                                <path d="M6 1v1M6 10v1M1 6h1M10 6h1M2.5 2.5l.7.7M8.8 8.8l.7.7M2.5 9.5l.7-.7M8.8 3.2l.7-.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" />
+                                <path d="M6 1.5V6l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                               <input
                                 type="range"
-                                min={-100}
-                                max={100}
-                                step={5}
-                                value={item.light}
-                                onChange={(e) => setLight(item.product.id, Number(e.target.value))}
+                                min={-180}
+                                max={180}
+                                step={10}
+                                value={item.hue}
+                                onChange={(e) => setHue(item.product.id, Number(e.target.value))}
                                 className="flex-1 h-0.5 accent-[var(--foreground)] cursor-pointer"
                               />
-                              <span className="text-[10px] text-[var(--foreground-subtle)] w-8 text-right tabular-nums">
-                                {item.light > 0 ? `+${item.light}` : item.light}
+                              <span className="text-[10px] text-[var(--foreground-subtle)] w-10 text-right tabular-nums">
+                                {item.hue > 0 ? `+${item.hue}°` : `${item.hue}°`}
                               </span>
-                              {item.light !== 0 && (
+                              {item.hue !== 0 && (
                                 <button
-                                  onClick={() => setLight(item.product.id, 0)}
+                                  onClick={() => setHue(item.product.id, 0)}
                                   className="text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                                  title="Reset"
+                                  title="Сбросить"
                                 >
                                   ↺
                                 </button>

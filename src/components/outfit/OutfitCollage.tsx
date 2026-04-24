@@ -28,9 +28,9 @@ export default function OutfitCollage({
   const frames = sorted.slice(0, 4);
   const count = frames.length;
 
-  const brightness = (f: (typeof frames)[number]) => {
-    const l = f.light ?? 0;
-    return l !== 0 ? { filter: `brightness(${(100 + l) / 100})` } : undefined;
+  const hueStyle = (f: (typeof frames)[number]) => {
+    const h = f.hue ?? 0;
+    return h !== 0 ? { filter: `hue-rotate(${h}deg)` } : undefined;
   };
 
   if (count === 1) {
@@ -41,7 +41,7 @@ export default function OutfitCollage({
           alt={frames[0].product.name}
           fill
           className="object-cover"
-          style={brightness(frames[0])}
+          style={hueStyle(frames[0])}
           priority={priority}
           sizes={sizes}
         />
@@ -59,7 +59,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
-              style={brightness(f)}
+              style={hueStyle(f)}
               priority={priority && i === 0}
               sizes={sizes}
             />
@@ -78,7 +78,7 @@ export default function OutfitCollage({
             alt={frames[0].product.name}
             fill
             className="object-cover"
-            style={brightness(frames[0])}
+            style={hueStyle(frames[0])}
             priority={priority}
             sizes={sizes}
           />
@@ -91,7 +91,7 @@ export default function OutfitCollage({
                 alt={f.product.name}
                 fill
                 className="object-cover"
-                style={brightness(f)}
+                style={hueStyle(f)}
                 sizes={sizes}
               />
             </div>
@@ -112,7 +112,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
-              style={brightness(f)}
+              style={hueStyle(f)}
               priority={priority && i === 0}
               sizes={sizes}
             />
@@ -127,7 +127,7 @@ export default function OutfitCollage({
               alt={f.product.name}
               fill
               className="object-cover"
-              style={brightness(f)}
+              style={hueStyle(f)}
               sizes={sizes}
             />
           </div>

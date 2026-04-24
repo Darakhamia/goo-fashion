@@ -262,7 +262,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
   for (const item of row.items ?? []) {
     const product = productMap.get(item.product_id);
     if (product) {
-      items.push({ product, role: item.role, light: item.light });
+      items.push({ product, role: item.role, hue: item.hue });
     }
   }
   return {
@@ -288,7 +288,7 @@ export interface OutfitApiBody {
   description?: string;
   occasion?: string;
   imageUrl?: string;
-  items?: { productId: string; role: string; light?: number }[];
+  items?: { productId: string; role: string; hue?: number }[];
   totalPriceMin?: number;
   totalPriceMax?: number;
   currency?: string;
@@ -304,7 +304,7 @@ export function outfitToDb(o: OutfitApiBody) {
     description: o.description ?? "",
     occasion: o.occasion ?? "casual",
     image_url: o.imageUrl ?? "",
-    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role, light: i.light })),
+    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role, hue: i.hue })),
     total_price_min: o.totalPriceMin ?? 0,
     total_price_max: o.totalPriceMax ?? o.totalPriceMin ?? 0,
     currency: o.currency ?? "USD",
