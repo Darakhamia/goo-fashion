@@ -151,20 +151,23 @@ export async function POST(req: Request) {
   const html = buildHtml(subject, bodyHtml);
   const resend = new Resend(RESEND_API_KEY);
 
-  // Resend supports up to 50 recipients per call — batch if needed.
-  const BATCH = 50;
+  // Send individually so recipients cannot see each other's addresses.
+  // Resend batch API supports up to 100 sends per call.
+  const BATCH = 100;
   let sent = 0;
   const errors: string[] = [];
 
   for (let i = 0; i < recipients.length; i += BATCH) {
     const batch = recipients.slice(i, i + BATCH);
     try {
-      await resend.emails.send({
-        from: FROM_ADDRESS,
-        to: batch,
-        subject: subject.trim(),
-        html,
-      });
+      await resend.batch.send(
+        batch.map((to) => ({
+          from: FROM_ADDRESS,
+          to: [to],
+          subject: subject.trim(),
+          html,
+        }))
+      );
       sent += batch.length;
     } catch (e) {
       errors.push(e instanceof Error ? e.message : "Batch send failed");

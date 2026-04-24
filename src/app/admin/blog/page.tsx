@@ -90,6 +90,12 @@ export default function AdminBlogPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showSeo, setShowSeo] = useState(false);
 
+  // AI generation
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiUrl, setAiUrl] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+
   useEffect(() => {
     fetch("/api/blog?all=true")
       .then((r) => r.json())
@@ -221,6 +227,54 @@ export default function AdminBlogPage() {
     }
   };
 
+  const openAiModal = () => {
+    setAiUrl("");
+    setAiError("");
+    setShowAiModal(true);
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiUrl.trim()) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const res = await fetch("/api/admin/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: aiUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAiError(data.error ?? "Generation failed.");
+        return;
+      }
+      setShowAiModal(false);
+      setEditingId(null);
+      setForm({
+        ...defaultForm,
+        title: data.title ?? "",
+        slug: data.slug ?? "",
+        excerpt: data.excerpt ?? "",
+        body: data.body ?? "",
+        category: data.category ?? "",
+        coverImageUrl: data.coverImageUrl ?? "",
+        metaTitle: data.metaTitle ?? "",
+        metaDescription: data.metaDescription ?? "",
+        readTime: data.body ? estimateReadTime(data.body) : "1 min",
+      });
+      setAutoSlug(false);
+      setAutoReadTime(false);
+      setShowAdvanced(false);
+      setShowSeo(false);
+      setSaveError("");
+      setShowModal(true);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Network error.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const filteredPosts = posts.filter(
     (p) =>
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -244,20 +298,33 @@ export default function AdminBlogPage() {
               : `${posts.length} posts · ${filteredPosts.length} shown`}
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path
-              d="M6 1V11M1 6H11"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
-          New Post
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openAiModal}
+            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)]"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M4 6C4 4.9 4.9 4 6 4C7.1 4 8 4.9 8 6C8 7.1 7.1 8 6 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <circle cx="6" cy="6" r="1" fill="currentColor" />
+            </svg>
+            AI Draft
+          </button>
+          <button
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M6 1V11M1 6H11"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
+            New Post
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -424,6 +491,70 @@ export default function AdminBlogPage() {
           </tbody>
         </table>
       </div>
+
+      {/* AI Generate Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div
+            className="border border-[var(--border)] w-full max-w-md"
+            style={{ background: "var(--background)" }}
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+              <div>
+                <h2 className="font-display text-xl font-light text-[var(--foreground)]">AI Draft</h2>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                  Paste a URL — news article, brand page, or collection
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAiModal(false)}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 flex flex-col gap-4">
+              <div>
+                <label className={labelCls}>URL</label>
+                <input
+                  type="url"
+                  value={aiUrl}
+                  onChange={(e) => setAiUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+                  placeholder="https://vogue.com/article/..."
+                  className={inputCls}
+                  autoFocus
+                  disabled={aiLoading}
+                />
+              </div>
+              {aiError && <p className="text-xs text-red-500">{aiError}</p>}
+              {aiLoading && (
+                <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
+                  Reading article and writing post — this takes about 10 seconds...
+                </p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
+              <button
+                onClick={handleAiGenerate}
+                disabled={!aiUrl.trim() || aiLoading}
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {aiLoading ? "Generating..." : "Generate post"}
+              </button>
+              <button
+                onClick={() => setShowAiModal(false)}
+                disabled={aiLoading}
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
