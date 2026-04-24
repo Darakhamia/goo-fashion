@@ -199,12 +199,13 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
                       href={`/product/${swatch.id}`}
                       title={swatch.colorName}
                       aria-label={`View in ${swatch.colorName}`}
-                      className={`w-7 h-7 border-2 transition-colors duration-150 shrink-0 inline-block ${
-                        isCurrent
-                          ? "border-[var(--foreground)] scale-110 shadow-sm"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                      }`}
-                      style={{ backgroundColor: swatch.colorHex, boxShadow: "inset 0 0 0 1.5px rgba(128,128,128,0.4)" }}
+                      className={`w-7 h-7 transition-all duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
+                      style={{
+                        backgroundColor: swatch.colorHex,
+                        boxShadow: isCurrent
+                          ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                          : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                      }}
                     />
                   );
                 })}
