@@ -201,7 +201,7 @@ export default function OutfitCarousel({ outfits }: Props) {
 
         {/* Card track — overflow:hidden to clip peek cards at edges */}
         <div className="overflow-hidden px-6 md:px-24 xl:px-32">
-          <div className="flex items-start gap-5 xl:gap-6">
+          <div className="flex items-center gap-5 xl:gap-6">
             {/* Left peek */}
             <div
               className="hidden lg:block shrink-0 opacity-40 hover:opacity-60 transition-opacity duration-300 cursor-pointer"
