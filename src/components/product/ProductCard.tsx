@@ -225,58 +225,49 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       </button>
 
       {/* ── Info block ──────────────────────────────────────────────────── */}
-      <Link href={linkHref} className="block mt-2 space-y-0.5">
-        {showBrand && (
-          <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
-            {product.brand}
+      <div className="mt-2">
+        <Link href={linkHref} className="block space-y-0.5">
+          {showBrand && (
+            <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)] truncate">
+              {product.brand}
+            </p>
+          )}
+          <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200 truncate">
+            {displayName}
+          </h3>
+          <p className="text-xs text-[var(--foreground-muted)] truncate">
+            {displayPriceMin === displayPriceMax
+              ? `$${displayPriceMin.toLocaleString()}`
+              : `From $${displayPriceMin.toLocaleString()}`}
           </p>
-        )}
-        <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
-          {displayName}
-        </h3>
-        <p className="text-xs text-[var(--foreground-muted)]">
-          {displayPriceMin === displayPriceMax
-            ? `$${displayPriceMin.toLocaleString()}`
-            : `From $${displayPriceMin.toLocaleString()}`}
-        </p>
-      </Link>
+        </Link>
 
-      {/* ── Available sizes (in-stock preview) ──────────────────────────── */}
-      {displaySizes.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {displaySizes.slice(0, 5).map((size) => (
-            <span
-              key={size}
-              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5"
-            >
-              {size}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* ── Colour swatch palette ────────────────────────────────────────── */}
-      {hasSwatches && baseSwatch && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {/* Swatch for the base/primary product */}
-          <SwatchButton
-            swatch={baseSwatch}
-            active={activeSwatchId === product.id}
-            onSelect={() => setActiveVariant(null)}
-          />
-          {/* Swatches for the other variants */}
-          {swatches!
-            .filter((s) => s.id !== product.id)
-            .map((swatch) => (
-              <SwatchButton
-                key={swatch.id}
-                swatch={swatch}
-                active={activeSwatchId === swatch.id}
-                onSelect={() => setActiveVariant(swatch)}
-              />
+        {/* ── Sizes row — fixed height so all cards align ─────────────── */}
+        <div className="h-6 mt-1.5 flex items-center overflow-hidden">
+          <div className="flex gap-1 overflow-hidden">
+            {displaySizes.slice(0, 5).map((size) => (
+              <span
+                key={size}
+                className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 shrink-0"
+              >
+                {size}
+              </span>
             ))}
+          </div>
         </div>
-      )}
+
+        {/* ── Colour count — fixed height so all cards align ──────────── */}
+        <div className="h-4 mt-1 flex items-center">
+          {hasSwatches && baseSwatch && (
+            <p className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
+              {(() => {
+                const total = 1 + swatches!.filter((s) => s.id !== product.id).length;
+                return total === 1 ? "1 color" : `${total} colors`;
+              })()}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
