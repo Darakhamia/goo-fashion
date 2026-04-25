@@ -88,6 +88,7 @@ export default function AdminOutfitsPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -309,10 +310,14 @@ export default function AdminOutfitsPage() {
 
   const handleDelete = async (id: string) => {
     setDeleteId(id);
+    setDeleteError("");
     try {
       const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
       if (res.ok || res.status === 501) {
         setOutfits((prev) => prev.filter((o) => o.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setDeleteError(err.error ?? "Failed to delete outfit.");
       }
     } catch {
       setOutfits((prev) => prev.filter((o) => o.id !== id));
@@ -579,6 +584,18 @@ export default function AdminOutfitsPage() {
       {/* ── Outfits tab ── */}
       {adminTab === "outfits" && (
         <>
+      {/* Delete error */}
+      {deleteError && (
+        <div className="mb-4 flex items-center justify-between border border-red-300 bg-red-50 px-4 py-2.5 text-xs text-red-600">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="ml-4 text-red-400 hover:text-red-600 transition-colors">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Search */}
       <div className="mb-5">
         <input
