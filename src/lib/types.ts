@@ -119,6 +119,7 @@ export interface ProductSwatch {
   imageUrl: string;
   images: string[];
   sizes: string[];
+  colorGroupIds?: number[];
 }
 
 export interface CropData {

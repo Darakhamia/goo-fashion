@@ -114,15 +114,16 @@ export async function getAllColorGroups(): Promise<ColorGroup[]> {
  */
 function toSwatch(p: Product): ProductSwatch {
   return {
-    id:         p.id,
-    name:       p.name,
-    colorName:  p.colors?.[0] || p.name,
-    colorHex:   p.colorHex ?? "#888888",
-    priceMin:   p.priceMin,
-    priceMax:   p.priceMax,
-    imageUrl:   p.imageUrl,
-    images:     p.images ?? [],
-    sizes:      p.sizes ?? [],
+    id:            p.id,
+    name:          p.name,
+    colorName:     p.colors?.[0] || p.name,
+    colorHex:      p.colorHex ?? "#888888",
+    priceMin:      p.priceMin,
+    priceMax:      p.priceMax,
+    imageUrl:      p.imageUrl,
+    images:        p.images ?? [],
+    sizes:         p.sizes ?? [],
+    colorGroupIds: p.colorGroupIds,
   };
 }
 
