@@ -255,28 +255,16 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </div>
       )}
 
-      {/* ── Colour swatch palette ────────────────────────────────────────── */}
-      {hasSwatches && baseSwatch && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {/* Swatch for the base/primary product */}
-          <SwatchButton
-            swatch={baseSwatch}
-            active={activeSwatchId === product.id}
-            onSelect={() => setActiveVariant(null)}
-          />
-          {/* Swatches for the other variants */}
-          {swatches!
-            .filter((s) => s.id !== product.id)
-            .map((swatch) => (
-              <SwatchButton
-                key={swatch.id}
-                swatch={swatch}
-                active={activeSwatchId === swatch.id}
-                onSelect={() => setActiveVariant(swatch)}
-              />
-            ))}
-        </div>
-      )}
+      {/* ── Colour count label ──────────────────────────────────────────── */}
+      {hasSwatches && baseSwatch && (() => {
+        const total = 1 + swatches!.filter((s) => s.id !== product.id).length;
+        const label = total === 1 ? "1 color" : `${total} colors`;
+        return (
+          <p className="mt-2 text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
+            {label}
+          </p>
+        );
+      })()}
     </div>
   );
 }
