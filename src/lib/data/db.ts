@@ -453,14 +453,20 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
   return dbToOutfit(row, productMap);
 }
 
-export async function deleteOutfit(id: string): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) return false;
-  const { error } = await supabase.from("outfits").delete().eq("id", id);
-  if (error) {
-    console.error("[db] deleteOutfit:", error.message);
-    return false;
+export async function deleteOutfit(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) return { ok: false, error: "Database not configured." };
+  try {
+    const { error } = await supabase.from("outfits").delete().eq("id", id);
+    if (error) {
+      console.error("[db] deleteOutfit:", error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    console.error("[db] deleteOutfit exception:", msg);
+    return { ok: false, error: msg };
   }
-  return true;
 }
 
 // ─── Blog posts ─────────────────────────────────────────────────────────────

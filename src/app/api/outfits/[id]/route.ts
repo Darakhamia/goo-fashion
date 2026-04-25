@@ -46,10 +46,10 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const ok = await deleteOutfit(id);
+  const result = await deleteOutfit(id);
 
-  if (!ok) {
-    return NextResponse.json({ error: "Failed to delete outfit." }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error ?? "Failed to delete outfit." }, { status: 500 });
   }
 
   revalidatePath("/");
