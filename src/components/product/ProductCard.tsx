@@ -14,9 +14,10 @@ const INTERVAL_MS = 5000;
 interface ProductCardProps {
   product: Product;
   showBrand?: boolean;
+  initialVariant?: ProductSwatch | null;
 }
 
-export default function ProductCard({ product, showBrand = true }: ProductCardProps) {
+export default function ProductCard({ product, showBrand = true, initialVariant = null }: ProductCardProps) {
   const { isProductLiked, toggleProductLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
@@ -31,7 +32,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   };
 
   // ── Active variant (null = show the base product) ──────────────────────────
-  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(null);
+  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(initialVariant);
 
   // Derived display values — switch between base product and the selected swatch
   const displayImages = useMemo(() => {
