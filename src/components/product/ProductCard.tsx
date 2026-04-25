@@ -243,30 +243,31 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </p>
       </Link>
 
-      {/* ── Available sizes (in-stock preview) ──────────────────────────── */}
-      {displaySizes.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
+      {/* ── Sizes row — fixed height so all cards align ─────────────── */}
+      <div className="h-6 mt-1.5 flex items-center overflow-hidden">
+        <div className="flex gap-1 overflow-hidden">
           {displaySizes.slice(0, 5).map((size) => (
             <span
               key={size}
-              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5"
+              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 shrink-0"
             >
               {size}
             </span>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* ── Colour count label ──────────────────────────────────────────── */}
-      {hasSwatches && baseSwatch && (() => {
-        const total = 1 + swatches!.filter((s) => s.id !== product.id).length;
-        const label = total === 1 ? "1 color" : `${total} colors`;
-        return (
-          <p className="mt-2 text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
-            {label}
+      {/* ── Colour count — fixed height so all cards align ──────────── */}
+      <div className="h-4 mt-1 flex items-center">
+        {hasSwatches && baseSwatch && (
+          <p className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
+            {(() => {
+              const total = 1 + swatches!.filter((s) => s.id !== product.id).length;
+              return total === 1 ? "1 color" : `${total} colors`;
+            })()}
           </p>
-        );
-      })()}
+        )}
+      </div>
     </div>
   );
 }
