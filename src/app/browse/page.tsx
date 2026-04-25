@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
-import type { Category, ColorGroup, Gender, Occasion, Outfit, Product } from "@/lib/types";
+import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 
 type View = "outfits" | "pieces";
@@ -321,8 +321,59 @@ export default function BrowsePage() {
     return r;
   }, [catalogOutfits, selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort]);
 
+  // When color filters are active, expand each product into one entry per matching
+  // color variant. This lets a single product appear as multiple cards when multiple
+  // selected colors are present in its variant group.
+  type DisplayItem = { product: Product; forcedVariant: ProductSwatch | null; key: string };
+  const displayItems = useMemo((): DisplayItem[] => {
+    if (!selectedColorGroupIds.length) {
+      return filteredProducts.map((p) => ({ product: p, forcedVariant: null, key: p.id }));
+    }
+
+    const items: DisplayItem[] = [];
+    const seen = new Set<string>();
+
+    for (const product of filteredProducts) {
+      const variants = product.variants ?? [];
+
+      if (!variants.length) {
+        // Standalone product (no variant group) — show once
+        if (!seen.has(product.id)) {
+          seen.add(product.id);
+          items.push({ product, forcedVariant: null, key: product.id });
+        }
+        continue;
+      }
+
+      // Find all variants whose colorGroupIds intersect the active color filter
+      const matching = variants.filter((v) =>
+        (v.colorGroupIds ?? []).some((id) => selectedColorGroupIds.includes(id))
+      );
+
+      if (!matching.length) {
+        // No variant specifically tagged — fall back to showing the base card once
+        if (!seen.has(product.id)) {
+          seen.add(product.id);
+          items.push({ product, forcedVariant: null, key: product.id });
+        }
+        continue;
+      }
+
+      for (const variant of matching) {
+        if (!seen.has(variant.id)) {
+          seen.add(variant.id);
+          // If the matching variant IS the base product, don't force a variant
+          const forcedVariant = variant.id === product.id ? null : variant;
+          items.push({ product, forcedVariant, key: `${product.id}__${variant.id}` });
+        }
+      }
+    }
+
+    return items;
+  }, [filteredProducts, selectedColorGroupIds]);
+
   const count =
-    view === "outfits" ? filteredOutfits.length : filteredProducts.length;
+    view === "outfits" ? filteredOutfits.length : displayItems.length;
 
   /* Browse context passed to the AI Stylist — mirrors active filter state */
   const browseContext = useMemo(() => ({
@@ -779,14 +830,14 @@ export default function BrowsePage() {
                 ) : (
                   <EmptyState onClear={clearAll} noun="outfits" />
                 )
-              ) : filteredProducts.length > 0 ? (
+              ) : displayItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)] stagger-children">
-                  {filteredProducts.map((product) => (
+                  {displayItems.map(({ product, forcedVariant, key }) => (
                     <div
-                      key={product.id}
+                      key={key}
                       className="border-r border-b border-[var(--border)] p-2 animate-fade-up"
                     >
-                      <ProductCard product={product} />
+                      <ProductCard product={product} initialVariant={forcedVariant} />
                     </div>
                   ))}
                 </div>
