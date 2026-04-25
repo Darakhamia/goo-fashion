@@ -11,9 +11,6 @@ interface Props {
   outfits: Outfit[];
 }
 
-function getTypeLabel(outfit: Outfit): string {
-  return outfit.isAIGenerated ? "AI GENERATED" : "CURATED PICK";
-}
 
 function getTags(outfit: Outfit): string {
   return [
@@ -142,28 +139,6 @@ export default function OutfitCarousel({ outfits }: Props) {
         <h2 className="font-mono text-4xl md:text-5xl lg:text-[3.75rem] font-bold tracking-[0.08em] uppercase text-[var(--foreground)]">
           OUTFITS
         </h2>
-      </div>
-
-      {/* Category nav */}
-      <div className="flex items-center justify-center gap-10 md:gap-24 mb-8 px-6">
-        <button
-          onClick={prev}
-          className="text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] transition-colors duration-200"
-        >
-          {getTypeLabel(prevOutfit)}
-        </button>
-        <div className="flex flex-col items-center gap-1 min-w-[130px]">
-          <span className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[var(--foreground)]">
-            {getTypeLabel(current)}
-          </span>
-          <div className="h-px w-full bg-[var(--foreground)]" />
-        </div>
-        <button
-          onClick={next}
-          className="text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] transition-colors duration-200"
-        >
-          {getTypeLabel(nextOutfit)}
-        </button>
       </div>
 
       {/*
