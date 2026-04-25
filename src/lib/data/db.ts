@@ -456,6 +456,12 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
 export async function deleteOutfit(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!isSupabaseConfigured || !supabase) return { ok: false, error: "Database not configured." };
   try {
+    // Clear outfit_id reference in pending_looks to avoid FK constraint violation.
+    await supabase
+      .from("pending_looks")
+      .update({ outfit_id: null })
+      .eq("outfit_id", id);
+
     const { error } = await supabase.from("outfits").delete().eq("id", id);
     if (error) {
       console.error("[db] deleteOutfit:", error.message);
