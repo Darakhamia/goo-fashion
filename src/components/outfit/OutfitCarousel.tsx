@@ -140,11 +140,8 @@ export default function OutfitCarousel({ outfits }: Props) {
       {/* Title */}
       <div className="text-center px-6 mb-10">
         <h2 className="font-mono text-4xl md:text-5xl lg:text-[3.75rem] font-bold tracking-[0.08em] uppercase text-[var(--foreground)]">
-          AI · FLAT LAY
+          OUTFITS
         </h2>
-        <p className="mt-3 text-sm text-[var(--foreground-muted)]">
-          Discover AI-generated looks and curated picks.
-        </p>
       </div>
 
       {/* Category nav */}
