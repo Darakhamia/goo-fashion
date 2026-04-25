@@ -226,24 +226,33 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </svg>
       </button>
 
-      {/* ── Info block ──────────────────────────────────────────────────── */}
-      <Link href={linkHref} className="block mt-2 space-y-0.5">
-        {showBrand && (
-          <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
-            {product.brand}
+      {/* ── Info block — every row has a fixed height so all cards align ── */}
+      <Link href={linkHref} className="block mt-2">
+        {/* Brand */}
+        <div className="h-3.5 flex items-center overflow-hidden">
+          {showBrand && (
+            <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)] truncate">
+              {product.brand}
+            </p>
+          )}
+        </div>
+        {/* Name */}
+        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
+          <h3 className="text-xs text-[var(--foreground)] leading-none group-hover:text-[var(--foreground-muted)] transition-colors duration-200 truncate w-full">
+            {displayName}
+          </h3>
+        </div>
+        {/* Price */}
+        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
+          <p className="text-xs text-[var(--foreground-muted)] truncate">
+            {displayPriceMin === displayPriceMax
+              ? formatPrice(displayPriceMin)
+              : `From ${formatPrice(displayPriceMin)}`}
           </p>
-        )}
-        <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200 line-clamp-1">
-          {displayName}
-        </h3>
-        <p className="text-xs text-[var(--foreground-muted)]">
-          {displayPriceMin === displayPriceMax
-            ? formatPrice(displayPriceMin)
-            : `From ${formatPrice(displayPriceMin)}`}
-        </p>
+        </div>
       </Link>
 
-      {/* ── Sizes row — fixed height so all cards align ─────────────── */}
+      {/* Sizes — fixed height so cards with no sizes still reserve the row */}
       <div className="h-6 mt-1.5 flex items-center overflow-hidden">
         <div className="flex gap-1 overflow-hidden">
           {displaySizes.slice(0, 5).map((size) => (
@@ -257,8 +266,8 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </div>
       </div>
 
-      {/* ── Colour count — fixed height so all cards align ──────────── */}
-      <div className="h-4 mt-1 flex items-center">
+      {/* Colour count — fixed height so cards without variants still reserve the row */}
+      <div className="h-4 mt-1 flex items-center overflow-hidden">
         {hasSwatches && baseSwatch && (
           <p className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
             {(() => {
