@@ -8,14 +8,15 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       { error: "Database not configured." },
       { status: 501 }
     );
   }
+
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
@@ -34,14 +35,15 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured) {
     return NextResponse.json(
       { error: "Database not configured." },
       { status: 501 }
     );
   }
+
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   const ok = await deleteOutfit(id);
