@@ -233,7 +233,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
             {product.brand}
           </p>
         )}
-        <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
+        <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200 line-clamp-1">
           {displayName}
         </h3>
         <p className="text-xs text-[var(--foreground-muted)]">
