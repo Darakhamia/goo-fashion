@@ -22,6 +22,11 @@ const SLOTS = [
   { id: "accessories2" as SlotId, label: "Acc 2",       categories: ["accessories", "bags", "swimwear"] },
 ];
 
+type CatalogItem =
+  | { kind: "product"; key: string; product: Product }
+  | { kind: "variant"; key: string; product: Product; swatch: ProductSwatch }
+  | { kind: "color"; key: string; product: Product; colorKey: string };
+
 // Vertical figure zones for the silhouette canvas (accessories float separately).
 // Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
 // enough to show the full pair without cramping — tuned against the catalog set.
@@ -257,6 +262,26 @@ export default function BuilderPage() {
     return list;
   }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
 
+  const expandedCatalogItems = useMemo((): CatalogItem[] => {
+    const items: CatalogItem[] = [];
+    for (const product of catalogProducts) {
+      const variantCount = product.variants?.length ?? 0;
+      const colorKeys = Object.keys(product.colorImages ?? {});
+      if (variantCount > 4) {
+        for (const swatch of product.variants!) {
+          items.push({ kind: "variant", key: `v-${swatch.id}`, product, swatch });
+        }
+      } else if (colorKeys.length > 4) {
+        for (const colorKey of colorKeys) {
+          items.push({ kind: "color", key: `c-${product.id}-${colorKey}`, product, colorKey });
+        }
+      } else {
+        items.push({ kind: "product", key: product.id, product });
+      }
+    }
+    return items;
+  }, [catalogProducts]);
+
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null;
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -306,6 +331,55 @@ export default function BuilderPage() {
       return next;
     });
     setSaved(false);
+  };
+
+  const selectExpandedVariantCard = (product: Product, swatch: ProductSwatch) => {
+    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+    if (matchingSlots.length === 0) return;
+    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+    if (currentSlot) {
+      const activeVariantId = variantOverrides[currentSlot.id] ?? product.id;
+      if (activeVariantId === swatch.id) {
+        selectProduct(product);
+      } else {
+        selectVariant(currentSlot.id, swatch);
+      }
+    } else {
+      const emptySlot = matchingSlots.find(s => !selection[s.id]) ?? matchingSlots[0];
+      const nextSelection = { ...selection, [emptySlot.id]: product };
+      const nextVariants = { ...variantOverrides, [emptySlot.id]: swatch.id };
+      setSelection(nextSelection);
+      setVariantOverrides(nextVariants);
+      setColorImageOverrides(co => { const n = { ...co }; delete n[emptySlot.id]; return n; });
+      setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+      updateURL(nextSelection, nextVariants);
+      setActiveSlot(emptySlot.id);
+      setSaved(false);
+    }
+  };
+
+  const selectExpandedColorCard = (product: Product, colorKey: string) => {
+    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+    if (matchingSlots.length === 0) return;
+    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+    if (currentSlot) {
+      const activeColor = colorImageOverrides[currentSlot.id] ?? Object.keys(product.colorImages ?? {})[0];
+      if (activeColor === colorKey) {
+        selectProduct(product);
+      } else {
+        setColorImageOverrides(co => ({ ...co, [currentSlot.id]: colorKey }));
+      }
+    } else {
+      const emptySlot = matchingSlots.find(s => !selection[s.id]) ?? matchingSlots[0];
+      const nextSelection = { ...selection, [emptySlot.id]: product };
+      setSelection(nextSelection);
+      setVariantOverrides(vo => { const n = { ...vo }; delete n[emptySlot.id]; return n; });
+      setColorImageOverrides(co => ({ ...co, [emptySlot.id]: colorKey }));
+      setCatalogColorPreviews(prev => ({ ...prev, [product.id]: colorKey }));
+      updateURL(nextSelection);
+      setActiveSlot(emptySlot.id);
+      setSaved(false);
+    }
   };
 
   const clearSlot = (slotId: SlotId, e?: React.MouseEvent) => {
@@ -673,7 +747,7 @@ export default function BuilderPage() {
                   )}
                 </div>
                 <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] shrink-0">
-                  {catalogProducts.length}
+                  {expandedCatalogItems.length}
                 </p>
                 <button
                   onClick={() => setFiltersOpen(v => !v)}
@@ -712,137 +786,210 @@ export default function BuilderPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
-                    {catalogProducts.map(product => {
-                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-                    const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-                    const isSelected = !!selectedSlot;
-                    const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
-                    const targetSlot = selectedSlot ?? matchingSlots[0];
-                    // Preview: prefer catalog color preview, then selected variant, then base image
-                    const previewVariantId = catalogPreviews[product.id];
-                    const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
-                    const colorImageKeys = Object.keys(product.colorImages ?? {});
-                    const hasColorImages = colorImageKeys.length > 1;
-                    const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
-                    const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
-                      ? product.colorImages![selectedColorKey][0]
-                      : null;
-                    const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
-                    const hasVariants = (product.variants?.length ?? 0) > 1;
-
-                    return (
-                      <div
-                        key={product.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectProduct(product)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            selectProduct(product);
-                          }
-                        }}
-                        className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${
-                          isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""
-                        }`}
-                      >
-                        {/* Image */}
-                        <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={displayImage}
-                            alt={product.name}
-                            className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
-                          {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                              <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
-                                <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                    {expandedCatalogItems.map(item => {
+                      if (item.kind === "variant") {
+                        const { product, swatch } = item;
+                        const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                        const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                        const activeVariantId = currentSlot ? (variantOverrides[currentSlot.id] ?? product.id) : null;
+                        const isSelected = !!currentSlot && activeVariantId === swatch.id;
+                        return (
+                          <div
+                            key={item.key}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => selectExpandedVariantCard(product, swatch)}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectExpandedVariantCard(product, swatch); } }}
+                            className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""}`}
+                          >
+                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={swatch.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
+                              {isSelected && (
+                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                  <svg width="7" height="6" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {/* Colour swatches — slide up on hover */}
-                          {hasColorImages && (
-                            <div
-                              className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
-                                {colorImageKeys.map((color, idx) => {
-                                  const previewImg = product.colorImages![color]?.[0];
-                                  const isActive = selectedColorKey === color;
+                            <div className="px-2 pt-1.5 pb-2">
+                              <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                              <div className="flex items-center justify-between mt-0.5 gap-1">
+                                <p className="text-[9px] text-[var(--foreground-muted)] truncate capitalize">{swatch.colorName}</p>
+                                <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(swatch.priceMin)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (item.kind === "color") {
+                        const { product, colorKey } = item;
+                        const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                        const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                        const colorKeys = Object.keys(product.colorImages ?? {});
+                        const activeColor = currentSlot ? (colorImageOverrides[currentSlot.id] ?? colorKeys[0]) : null;
+                        const isSelected = !!currentSlot && activeColor === colorKey;
+                        const displayImage = product.colorImages![colorKey]?.[0] ?? product.imageUrl;
+                        return (
+                          <div
+                            key={item.key}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => selectExpandedColorCard(product, colorKey)}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectExpandedColorCard(product, colorKey); } }}
+                            className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""}`}
+                          >
+                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={displayImage} alt={product.name} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
+                              {isSelected && (
+                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                  <svg width="7" height="6" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="px-2 pt-1.5 pb-2">
+                              <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                              <div className="flex items-center justify-between mt-0.5 gap-1">
+                                <p className="text-[9px] text-[var(--foreground-muted)] truncate capitalize">{colorKey}</p>
+                                <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // kind === "product": original render
+                      const { product } = item;
+                      const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                      const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                      const isSelected = !!selectedSlot;
+                      const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
+                      const targetSlot = selectedSlot ?? matchingSlots[0];
+                      const previewVariantId = catalogPreviews[product.id];
+                      const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
+                      const colorImageKeys = Object.keys(product.colorImages ?? {});
+                      const hasColorImages = colorImageKeys.length > 1;
+                      const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
+                      const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
+                        ? product.colorImages![selectedColorKey][0]
+                        : null;
+                      const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                      const hasVariants = (product.variants?.length ?? 0) > 1;
+
+                      return (
+                        <div
+                          key={item.key}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => selectProduct(product)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              selectProduct(product);
+                            }
+                          }}
+                          className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${
+                            isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""
+                          }`}
+                        >
+                          {/* Image */}
+                          <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={displayImage}
+                              alt={product.name}
+                              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
+                            {isSelected && (
+                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
+                                  <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </div>
+                            )}
+                            {/* Colour swatches — slide up on hover */}
+                            {hasColorImages && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+                                  {colorImageKeys.map((color, idx) => {
+                                    const previewImg = product.colorImages![color]?.[0];
+                                    const isActive = selectedColorKey === color;
+                                    return (
+                                      <button
+                                        key={color}
+                                        title={color}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
+                                          if (isSelected && targetSlot) {
+                                            setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
+                                          }
+                                        }}
+                                        style={{ transitionDelay: `${idx * 25}ms` }}
+                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border transition-all duration-200 ${
+                                          isActive
+                                            ? "border-white scale-110 shadow-md"
+                                            : "border-white/50 hover:border-white hover:scale-105"
+                                        }`}
+                                      >
+                                        {previewImg
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
+                                          : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
+                                        }
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Info */}
+                          <div className="px-2 pt-1.5 pb-2">
+                            <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                            <div className="flex items-center justify-between mt-0.5 gap-1">
+                              <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                              <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
+                            </div>
+                            {hasVariants && (
+                              <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                {product.variants!.slice(0, 5).map(swatch => {
+                                  const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                  const isSwatchActive = activeId === swatch.id;
                                   return (
                                     <button
-                                      key={color}
-                                      title={color}
+                                      key={swatch.id}
+                                      title={swatch.colorName}
                                       onClick={e => {
                                         e.stopPropagation();
-                                        setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
-                                        if (isSelected && targetSlot) {
-                                          setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
-                                        }
+                                        setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                        if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                       }}
-                                      style={{ transitionDelay: `${idx * 25}ms` }}
-                                      className={`relative w-6 h-6 shrink-0 overflow-hidden border transition-all duration-200 ${
-                                        isActive
-                                          ? "border-white scale-110 shadow-md"
-                                          : "border-white/50 hover:border-white hover:scale-105"
-                                      }`}
-                                    >
-                                      {previewImg
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
-                                        : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
-                                      }
-                                    </button>
+                                      className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                      style={{
+                                        background: swatch.colorHex === "#multicolor"
+                                          ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                          : swatch.colorHex,
+                                        boxShadow: isSwatchActive
+                                          ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                          : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                      }}
+                                    />
                                   );
                                 })}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                        {/* Info */}
-                        <div className="px-2 pt-1.5 pb-2">
-                          <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                          <div className="flex items-center justify-between mt-0.5 gap-1">
-                            <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                            <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
+                            )}
                           </div>
-                          {hasVariants && (
-                            <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                              {product.variants!.slice(0, 5).map(swatch => {
-                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
-                                const isSwatchActive = activeId === swatch.id;
-                                return (
-                                  <button
-                                    key={swatch.id}
-                                    title={swatch.colorName}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      // Preview color in catalog without selecting
-                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-                                      // If already in the look, also update the variant there
-                                      if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
-                                    }}
-                                    className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                    style={{
-                                      background: swatch.colorHex === "#multicolor"
-                                        ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                        : swatch.colorHex,
-                                      boxShadow: isSwatchActive
-                                        ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                        : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1286,7 +1433,7 @@ export default function BuilderPage() {
           {/* 5. Count + liked toggle */}
           <div className="px-3 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
             <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-              {catalogProducts.length} {catalogProducts.length === 1 ? "item" : "items"}
+              {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "item" : "items"}
             </p>
             <button
               onClick={() => setLikedOnly(v => !v)}
@@ -1303,7 +1450,7 @@ export default function BuilderPage() {
 
           {/* 6. Product grid — scrollable */}
           <div className="flex-1 overflow-y-auto">
-            {catalogProducts.length === 0 ? (
+            {expandedCatalogItems.length === 0 ? (
               <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-3 px-6 bg-[var(--surface)]">
                 <div className="w-16 h-16 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
                   <svg width="28" height="28" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
@@ -1323,7 +1470,75 @@ export default function BuilderPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 p-3">
-                {catalogProducts.map(product => {
+                {expandedCatalogItems.map(item => {
+                  if (item.kind === "variant") {
+                    const { product, swatch } = item;
+                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                    const activeVariantId = currentSlot ? (variantOverrides[currentSlot.id] ?? product.id) : null;
+                    const isSelected = !!currentSlot && activeVariantId === swatch.id;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => selectExpandedVariantCard(product, swatch)}
+                        className={`group relative flex flex-col text-left transition-all duration-150 ${isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""}`}
+                      >
+                        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={swatch.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          {isSelected && (
+                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="pt-1.5 pb-1 px-0.5">
+                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                          <div className="flex items-center justify-between mt-0.5 gap-1">
+                            <p className="text-[10px] text-[var(--foreground-muted)] truncate capitalize">{swatch.colorName}</p>
+                            <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">{formatPrice(swatch.priceMin)}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  if (item.kind === "color") {
+                    const { product, colorKey } = item;
+                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                    const colorKeys = Object.keys(product.colorImages ?? {});
+                    const activeColor = currentSlot ? (colorImageOverrides[currentSlot.id] ?? colorKeys[0]) : null;
+                    const isSelected = !!currentSlot && activeColor === colorKey;
+                    const displayImage = product.colorImages![colorKey]?.[0] ?? product.imageUrl;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => selectExpandedColorCard(product, colorKey)}
+                        className={`group relative flex flex-col text-left transition-all duration-150 ${isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""}`}
+                      >
+                        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={displayImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          {isSelected && (
+                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="pt-1.5 pb-1 px-0.5">
+                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                          <div className="flex items-center justify-between mt-0.5 gap-1">
+                            <p className="text-[10px] text-[var(--foreground-muted)] truncate capitalize">{colorKey}</p>
+                            <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
+
+                  // kind === "product"
+                  const { product } = item;
                   const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
                   const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
                   const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
@@ -1331,7 +1546,7 @@ export default function BuilderPage() {
                   const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
                   return (
                     <button
-                      key={product.id}
+                      key={item.key}
                       onClick={() => selectProduct(product)}
                       className={`group relative flex flex-col text-left transition-all duration-150 ${
                         isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
