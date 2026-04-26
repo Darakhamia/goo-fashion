@@ -19,19 +19,29 @@ function getTags(outfit: Outfit): string {
   ].join(" · ");
 }
 
-/** Fades + slides up on mount; remount via `key` to replay */
-function AnimatedCard({ children }: { children: React.ReactNode }) {
+function AnimatedCard({
+  children,
+  dir,
+  distance = 40,
+  duration = 340,
+}: {
+  children: React.ReactNode;
+  dir?: "next" | "prev";
+  distance?: number;
+  duration?: number;
+}) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(id);
   }, []);
+  const offset = dir === "next" ? distance : dir === "prev" ? -distance : 0;
   return (
     <div
-      className="transition-all duration-300 ease-out"
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(12px)",
+        transform: visible ? "translateX(0px)" : `translateX(${offset}px)`,
+        transition: `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`,
       }}
     >
       {children}
@@ -106,6 +116,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
 
 export default function OutfitCarousel({ outfits }: Props) {
   const [index, setIndex] = useState(0);
+  const [navDir, setNavDir] = useState<"next" | "prev">("next");
 
   if (!outfits.length) return null;
 
@@ -117,8 +128,8 @@ export default function OutfitCarousel({ outfits }: Props) {
   const prevOutfit = outfits[prevIndex];
   const nextOutfit = outfits[nextIndex];
 
-  const prev = () => setIndex(prevIndex);
-  const next = () => setIndex(nextIndex);
+  const prev = () => { setNavDir("prev"); setIndex(prevIndex); };
+  const next = () => { setNavDir("next"); setIndex(nextIndex); };
 
   return (
     <section className="py-24 md:py-32">
@@ -169,12 +180,14 @@ export default function OutfitCarousel({ outfits }: Props) {
               onClick={prev}
               aria-hidden="true"
             >
-              <CarouselCard outfit={prevOutfit} variant="peek" />
+              <AnimatedCard key={prevIndex} duration={220}>
+                <CarouselCard outfit={prevOutfit} variant="peek" />
+              </AnimatedCard>
             </div>
 
             {/* Center */}
             <div className="flex-1 min-w-0">
-              <AnimatedCard key={index}>
+              <AnimatedCard key={index} dir={navDir}>
                 <CarouselCard outfit={current} variant="center" />
               </AnimatedCard>
             </div>
@@ -186,7 +199,9 @@ export default function OutfitCarousel({ outfits }: Props) {
               onClick={next}
               aria-hidden="true"
             >
-              <CarouselCard outfit={nextOutfit} variant="peek" />
+              <AnimatedCard key={nextIndex} duration={220}>
+                <CarouselCard outfit={nextOutfit} variant="peek" />
+              </AnimatedCard>
             </div>
           </div>
         </div>
