@@ -42,10 +42,9 @@ function AnimatedCard({ children }: { children: React.ReactNode }) {
 interface CardProps {
   outfit: Outfit;
   variant: "center" | "peek";
-  onNext: () => void;
 }
 
-function CarouselCard({ outfit, variant, onNext }: CardProps) {
+function CarouselCard({ outfit, variant }: CardProps) {
   const isPeek = variant === "peek";
 
   return (
@@ -91,25 +90,18 @@ function CarouselCard({ outfit, variant, onNext }: CardProps) {
         <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] leading-relaxed truncate">
           {getTags(outfit)}
         </p>
-        <div className="flex items-center gap-2 pt-0.5">
+        <div className="flex justify-center pt-1">
           <Link
             href={`/outfit/${outfit.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className={`text-[10px] tracking-[0.14em] uppercase font-medium px-4 py-2 transition-opacity hover:opacity-70 ${
+            tabIndex={isPeek ? -1 : 0}
+            className={`text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-2 transition-opacity hover:opacity-70 ${
               isPeek
                 ? "border border-[var(--border)] text-[var(--foreground-muted)]"
                 : "bg-[var(--foreground)] text-[var(--background)]"
             }`}
           >
-            EDIT
+            VIEW OUTFIT
           </Link>
-          <button
-            onClick={onNext}
-            aria-label="Next outfit"
-            className="w-8 h-8 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors text-lg leading-none"
-          >
-            ×
-          </button>
         </div>
       </div>
     </div>
@@ -181,13 +173,13 @@ export default function OutfitCarousel({ outfits }: Props) {
               onClick={prev}
               aria-hidden="true"
             >
-              <CarouselCard outfit={prevOutfit} variant="peek" onNext={next} />
+              <CarouselCard outfit={prevOutfit} variant="peek" />
             </div>
 
             {/* Center */}
             <div className="flex-1 min-w-0">
               <AnimatedCard key={index}>
-                <CarouselCard outfit={current} variant="center" onNext={next} />
+                <CarouselCard outfit={current} variant="center" />
               </AnimatedCard>
             </div>
 
@@ -198,7 +190,7 @@ export default function OutfitCarousel({ outfits }: Props) {
               onClick={next}
               aria-hidden="true"
             >
-              <CarouselCard outfit={nextOutfit} variant="peek" onNext={next} />
+              <CarouselCard outfit={nextOutfit} variant="peek" />
             </div>
           </div>
         </div>
