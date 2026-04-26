@@ -90,15 +90,11 @@ function CarouselCard({ outfit, variant }: CardProps) {
         <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] leading-relaxed truncate">
           {getTags(outfit)}
         </p>
-        <div className="flex justify-center pt-1">
+        <div className="pt-1">
           <Link
             href={`/outfit/${outfit.id}`}
             tabIndex={isPeek ? -1 : 0}
-            className={`text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-2 transition-opacity hover:opacity-70 ${
-              isPeek
-                ? "border border-[var(--border)] text-[var(--foreground-muted)]"
-                : "bg-[var(--foreground)] text-[var(--background)]"
-            }`}
+            className="block w-full text-center text-[10px] tracking-[0.14em] uppercase font-medium py-2.5 border border-white/30 text-white/60 bg-black/60 hover:border-white/60 hover:text-white/90 transition-all duration-200"
           >
             VIEW OUTFIT
           </Link>
