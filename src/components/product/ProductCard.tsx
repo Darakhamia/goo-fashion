@@ -139,6 +139,20 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   const activeSwatchId = activeVariant?.id ?? product.id;
 
+  const [swatchPopupOpen, setSwatchPopupOpen] = useState(false);
+  const swatchPopupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!swatchPopupOpen) return;
+    const close = (e: MouseEvent) => {
+      if (swatchPopupRef.current && !swatchPopupRef.current.contains(e.target as Node)) {
+        setSwatchPopupOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [swatchPopupOpen]);
+
   return (
     <div
       className="group relative block"
@@ -267,16 +281,50 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </div>
       </div>
 
-      {/* Colour count — fixed height so cards without variants still reserve the row */}
-      <div className="h-4 mt-1 flex items-center overflow-hidden">
-        {hasSwatches && baseSwatch && (
-          <p className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
-            {(() => {
-              const total = 1 + swatches!.filter((s) => s.id !== product.id).length;
-              return total === 1 ? "1 color" : `${total} colors`;
-            })()}
-          </p>
-        )}
+      {/* Colour swatches — fixed height row; popup floats above if colours exceed MAX */}
+      <div className="h-4 mt-1 flex items-center">
+        {hasSwatches && baseSwatch && (() => {
+          const allSwatches = [baseSwatch, ...swatches!.filter(s => s.id !== product.id)];
+          const MAX = 6;
+          const visible = allSwatches.slice(0, MAX);
+          const hiddenCount = allSwatches.length - MAX;
+          return (
+            <div className="relative flex items-center gap-1" ref={swatchPopupRef}>
+              {visible.map(sw => (
+                <SwatchButton
+                  key={sw.id}
+                  swatch={sw}
+                  active={activeSwatchId === sw.id}
+                  onSelect={() => setActiveVariant(sw.id === product.id ? null : sw)}
+                />
+              ))}
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSwatchPopupOpen(v => !v); }}
+                  className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] shrink-0 transition-colors px-0.5"
+                >
+                  +{hiddenCount}
+                </button>
+              )}
+              {swatchPopupOpen && (
+                <div
+                  className="absolute bottom-full left-0 mb-1.5 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                  style={{ minWidth: "80px", maxWidth: "140px" }}
+                >
+                  {allSwatches.map(sw => (
+                    <SwatchButton
+                      key={sw.id}
+                      swatch={sw}
+                      active={activeSwatchId === sw.id}
+                      onSelect={() => { setActiveVariant(sw.id === product.id ? null : sw); setSwatchPopupOpen(false); }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

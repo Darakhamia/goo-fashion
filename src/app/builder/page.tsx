@@ -117,6 +117,7 @@ export default function BuilderPage() {
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
 
   const [shopAdded, setShopAdded] = useState(false);
 
@@ -138,6 +139,14 @@ export default function BuilderPage() {
   // Tracks the localStorage id of the look we've already persisted in this session,
   // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
   const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
+
+  // Close swatch popup when clicking outside
+  useEffect(() => {
+    if (!openSwatchPopup) return;
+    const close = () => setOpenSwatchPopup(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openSwatchPopup]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -638,39 +647,109 @@ export default function BuilderPage() {
                           <p className="text-[12px] leading-snug text-[var(--foreground)] truncate">{picked.name}</p>
                           <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5 truncate">{picked.brand}</p>
                           {/* Variant colour swatches (separate products) */}
-                          {(picked.variants?.length ?? 0) > 1 && (
-                            <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                              {picked.variants!.slice(0, 6).map(sw => (
-                                <button key={sw.id} title={sw.colorName}
-                                  onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                  className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
-                                  style={{
-                                    background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
-                                    boxShadow: (variantId ?? picked.id) === sw.id
-                                      ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                      : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          )}
-                          {/* colorImages swatches (multiple colours within same product) */}
-                          {Object.keys(picked.colorImages ?? {}).length > 1 && (
-                            <div className="flex items-center gap-1 mt-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
-                              {Object.keys(picked.colorImages!).map(color => {
-                                const img = picked.colorImages![color]?.[0];
-                                const isActive = (colorImageOverrides[slot.id] ?? Object.keys(picked.colorImages!)[0]) === color;
-                                return (
-                                  <button key={color} title={color}
-                                    onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
-                                    className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                          {(picked.variants?.length ?? 0) > 1 && (() => {
+                            const variants = picked.variants!;
+                            const MAX = 6;
+                            const visible = variants.slice(0, MAX);
+                            const hidden = variants.length - MAX;
+                            const popupKey = `slot-${slot.id}-variant`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visible.map(sw => (
+                                  <button key={sw.id} title={sw.colorName}
+                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
+                                    className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                    style={{
+                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                      boxShadow: (variantId ?? picked.id) === sw.id
+                                        ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                        : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                    }}
+                                  />
+                                ))}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
                                   >
-                                    {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                    +{hidden}
                                   </button>
-                                );
-                              })}
-                            </div>
-                          )}
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {variants.map(sw => (
+                                      <button key={sw.id} title={sw.colorName}
+                                        onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
+                                        className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                        style={{
+                                          background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                          boxShadow: (variantId ?? picked.id) === sw.id
+                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {/* colorImages swatches (multiple colours within same product) */}
+                          {Object.keys(picked.colorImages ?? {}).length > 1 && (() => {
+                            const colorKeys = Object.keys(picked.colorImages!);
+                            const MAX = 6;
+                            const visibleKeys = colorKeys.slice(0, MAX);
+                            const hidden = colorKeys.length - MAX;
+                            const popupKey = `slot-${slot.id}-colorImage`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visibleKeys.map(color => {
+                                  const img = picked.colorImages![color]?.[0];
+                                  const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                  return (
+                                    <button key={color} title={color}
+                                      onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
+                                      className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                    >
+                                      {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                    </button>
+                                  );
+                                })}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                  >
+                                    +{hidden}
+                                  </button>
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {colorKeys.map(color => {
+                                      const img = picked.colorImages![color]?.[0];
+                                      const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                      return (
+                                        <button key={color} title={color}
+                                          onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
+                                          className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                        >
+                                          {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </>
                       ) : (
                         <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
@@ -958,34 +1037,82 @@ export default function BuilderPage() {
                               <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
                               <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
                             </div>
-                            {hasVariants && (
-                              <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                                {product.variants!.slice(0, 5).map(swatch => {
-                                  const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
-                                  const isSwatchActive = activeId === swatch.id;
-                                  return (
+                            {hasVariants && (() => {
+                              const variants = product.variants!;
+                              const MAX = 5;
+                              const visible = variants.slice(0, MAX);
+                              const hidden = variants.length - MAX;
+                              const popupKey = `catalog-${product.id}-variant`;
+                              return (
+                                <div className="relative flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                  {visible.map(swatch => {
+                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                    const isSwatchActive = activeId === swatch.id;
+                                    return (
+                                      <button
+                                        key={swatch.id}
+                                        title={swatch.colorName}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                          if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                        }}
+                                        className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                        style={{
+                                          background: swatch.colorHex === "#multicolor"
+                                            ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                            : swatch.colorHex,
+                                          boxShadow: isSwatchActive
+                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                  {hidden > 0 && (
                                     <button
-                                      key={swatch.id}
-                                      title={swatch.colorName}
-                                      onClick={e => {
-                                        e.stopPropagation();
-                                        setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-                                        if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
-                                      }}
-                                      className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                      style={{
-                                        background: swatch.colorHex === "#multicolor"
-                                          ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                          : swatch.colorHex,
-                                        boxShadow: isSwatchActive
-                                          ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                          : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                      }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            )}
+                                      onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                      className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                    >
+                                      +{hidden}
+                                    </button>
+                                  )}
+                                  {openSwatchPopup === popupKey && (
+                                    <div
+                                      onClick={e => e.stopPropagation()}
+                                      className="absolute bottom-full left-0 mb-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                      style={{ minWidth: "80px", maxWidth: "140px" }}
+                                    >
+                                      {variants.map(swatch => {
+                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                        const isSwatchActive = activeId === swatch.id;
+                                        return (
+                                          <button
+                                            key={swatch.id}
+                                            title={swatch.colorName}
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                              if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                              setOpenSwatchPopup(null);
+                                            }}
+                                            className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                            style={{
+                                              background: swatch.colorHex === "#multicolor"
+                                                ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                                : swatch.colorHex,
+                                              boxShadow: isSwatchActive
+                                                ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                                : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                            }}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       );
