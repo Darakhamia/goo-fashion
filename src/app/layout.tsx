@@ -6,6 +6,7 @@ import { LikesProvider } from "@/lib/context/likes-context";
 import { AuthProvider } from "@/lib/context/auth-context";
 import { ThemeProvider } from "@/lib/context/theme-context";
 import { CartProvider } from "@/lib/context/cart-context";
+import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import { FloatingStylist } from "@/components/stylist/FloatingStylist";
@@ -66,9 +67,11 @@ export default function RootLayout({
             <AuthProvider>
               <LikesProvider>
                 <CartProvider>
+                  <CurrencyProvider>
                   <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
                   <FloatingStylist />
                   <AnalyticsTracker />
+                  </CurrencyProvider>
                 </CartProvider>
               </LikesProvider>
             </AuthProvider>

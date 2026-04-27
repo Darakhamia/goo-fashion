@@ -22,6 +22,7 @@ type Season = "all" | "spring" | "summer" | "autumn" | "winter";
 interface SelectedItem {
   product: Product;
   role: OutfitRole;
+  selectedColor?: string;
 }
 
 interface OutfitFormState {
@@ -87,6 +88,7 @@ export default function AdminOutfitsPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -185,7 +187,7 @@ export default function AdminOutfitsPage() {
       styleKeywords: outfit.styleKeywords,
       isAIGenerated: outfit.isAIGenerated,
     });
-    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role })));
+    setSelectedItems(outfit.items.map((i) => ({ product: i.product, role: i.role, selectedColor: i.selectedColor })));
     setSaveError("");
     setUploadError("");
     setProductSearch("");
@@ -230,7 +232,7 @@ export default function AdminOutfitsPage() {
 
     const body = {
       ...form,
-      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role })),
+      items: selectedItems.map((i) => ({ productId: i.product.id, role: i.role, selectedColor: i.selectedColor })),
       totalPriceMin: priceMin,
       totalPriceMax: priceMax,
       currency: "USD",
@@ -271,10 +273,10 @@ export default function AdminOutfitsPage() {
     }
   };
 
-  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
+  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; selectedColor?: string }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
     const hydratedItems = body.items.map((i) => {
       const p = products.find((p) => p.id === i.productId);
-      return p ? { product: p, role: i.role } : null;
+      return p ? { product: p, role: i.role, selectedColor: i.selectedColor } : null;
     }).filter(Boolean) as SelectedItem[];
 
     if (editingId) {
@@ -308,10 +310,14 @@ export default function AdminOutfitsPage() {
 
   const handleDelete = async (id: string) => {
     setDeleteId(id);
+    setDeleteError("");
     try {
       const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
       if (res.ok || res.status === 501) {
         setOutfits((prev) => prev.filter((o) => o.id !== id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setDeleteError(err.error ?? "Failed to delete outfit.");
       }
     } catch {
       setOutfits((prev) => prev.filter((o) => o.id !== id));
@@ -333,6 +339,12 @@ export default function AdminOutfitsPage() {
   const setRole = (productId: string, role: OutfitRole) => {
     setSelectedItems((prev) =>
       prev.map((i) => (i.product.id === productId ? { ...i, role } : i))
+    );
+  };
+
+  const setSelectedColor = (productId: string, color: string) => {
+    setSelectedItems((prev) =>
+      prev.map((i) => (i.product.id === productId ? { ...i, selectedColor: color } : i))
     );
   };
 
@@ -572,6 +584,18 @@ export default function AdminOutfitsPage() {
       {/* ── Outfits tab ── */}
       {adminTab === "outfits" && (
         <>
+      {/* Delete error */}
+      {deleteError && (
+        <div className="mb-4 flex items-center justify-between border border-red-300 bg-red-50 px-4 py-2.5 text-xs text-red-600">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="ml-4 text-red-400 hover:text-red-600 transition-colors">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Search */}
       <div className="mb-5">
         <input
@@ -841,45 +865,89 @@ export default function AdminOutfitsPage() {
                       </p>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        {selectedItems.map((item) => (
+                        {selectedItems.map((item) => {
+                          const colorKeys = Object.keys(item.product.colorImages ?? {});
+                          const activeColor = item.selectedColor ?? colorKeys[0];
+                          const thumbSrc =
+                            activeColor && item.product.colorImages?.[activeColor]?.[0]
+                              ? item.product.colorImages[activeColor][0]
+                              : item.product.imageUrl;
+                          return (
                           <div
                             key={item.product.id}
-                            className="flex items-center gap-3 border border-[var(--border)] p-2"
+                            className="flex flex-col gap-2 border border-[var(--border)] p-2"
                           >
-                            <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
-                              <Image
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                fill
-                                className="object-cover"
-                                sizes="40px"
-                              />
+                            <div className="flex items-center gap-3">
+                              <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
+                                <Image
+                                  src={thumbSrc}
+                                  alt={item.product.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="40px"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
+                                <p className="text-[10px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
+                              </div>
+                              {/* Role */}
+                              <select
+                                value={item.role}
+                                onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
+                                className="text-[10px] uppercase tracking-[0.08em] border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                              >
+                                {ROLES.map((r) => (
+                                  <option key={r} value={r}>{r}</option>
+                                ))}
+                              </select>
+                              {/* Remove */}
+                              <button
+                                onClick={() => removeItem(item.product.id)}
+                                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                </svg>
+                              </button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                              <p className="text-[10px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
-                            </div>
-                            {/* Role */}
-                            <select
-                              value={item.role}
-                              onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                              className="text-[10px] uppercase tracking-[0.08em] border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
-                            >
-                              {ROLES.map((r) => (
-                                <option key={r} value={r}>{r}</option>
-                              ))}
-                            </select>
-                            {/* Remove */}
-                            <button
-                              onClick={() => removeItem(item.product.id)}
-                              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                              </svg>
-                            </button>
+                            {/* Colour swatches (only for products with multiple colours) */}
+                            {colorKeys.length > 1 && (
+                              <div className="flex items-center gap-1.5 px-1 flex-wrap">
+                                {colorKeys.map((color) => {
+                                  const previewImg = item.product.colorImages![color]?.[0];
+                                  const isActive = (item.selectedColor ?? colorKeys[0]) === color;
+                                  return (
+                                    <button
+                                      key={color}
+                                      title={color}
+                                      onClick={() => setSelectedColor(item.product.id, color)}
+                                      className={`relative w-6 h-6 overflow-hidden border transition-all ${
+                                        isActive
+                                          ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
+                                          : "border-[var(--border)] hover:border-[var(--foreground)]"
+                                      }`}
+                                    >
+                                      {previewImg ? (
+                                        <Image
+                                          src={previewImg}
+                                          alt={color}
+                                          fill
+                                          className="object-cover"
+                                          sizes="24px"
+                                        />
+                                      ) : (
+                                        <span className="text-[7px] leading-none text-[var(--foreground-subtle)] capitalize px-0.5 truncate block mt-1">{color[0]}</span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                                <span className="text-[10px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                         {/* Price total */}
                         <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
                           <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Total</span>

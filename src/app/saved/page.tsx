@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLikes } from "@/lib/context/likes-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit } from "@/lib/types";
 import OutfitCard from "@/components/outfit/OutfitCard";
@@ -27,6 +28,7 @@ const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories"];
 function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { formatPrice } = useCurrency();
   const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -156,44 +158,23 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
         </button>
 
         {/* Footer */}
-        <div className="px-3 pt-2.5 pb-3 flex items-start justify-between gap-2 border-t border-[var(--border)]">
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
-              ${look.totalPrice.toLocaleString()}
-            </p>
-            {look.styleKeywords.length > 0 && (
-              <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate">
-                {look.styleKeywords.slice(0, 3).join(" · ")}
+        <div className="px-3 pt-2.5 pb-3 border-t border-[var(--border)]">
+          <div className="flex items-start justify-between gap-2 mb-2.5">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
+                {formatPrice(look.totalPrice)}
               </p>
-            )}
-            <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">{date}</p>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-            <Link
-              href={builderUrl}
-              className="h-7 px-3 flex items-center text-[9px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              Edit
-            </Link>
-            {look.generatedImage && (
-              <button
-                onClick={handleShare}
-                disabled={shareState !== "idle"}
-                title={shareState === "done" ? "Submitted for review" : "Share this look"}
-                className={`h-7 px-2.5 flex items-center text-[9px] tracking-[0.1em] uppercase font-medium border transition-colors ${
-                  shareState === "done"
-                    ? "border-green-500/40 text-green-500 bg-green-500/5"
-                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]"
-                } disabled:cursor-default`}
-              >
-                {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
-              </button>
-            )}
+              {look.styleKeywords.length > 0 && (
+                <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate">
+                  {look.styleKeywords.slice(0, 3).join(" · ")}
+                </p>
+              )}
+              <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">{date}</p>
+            </div>
             <button
               onClick={handleDelete}
               title={confirmDelete ? "Click again to confirm" : "Delete look"}
-              className={`h-7 w-7 flex items-center justify-center border transition-colors ${
+              className={`shrink-0 h-7 w-7 flex items-center justify-center border transition-colors ${
                 confirmDelete
                   ? "border-red-500 text-red-500 bg-red-500/5"
                   : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400"
@@ -202,6 +183,28 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
+            </button>
+          </div>
+          <div className="flex gap-1.5">
+            <Link
+              href={builderUrl}
+              className="flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+            >
+              Edit
+            </Link>
+            <button
+              onClick={look.generatedImage ? handleShare : undefined}
+              disabled={!look.generatedImage || shareState !== "idle"}
+              title={shareState === "done" ? "Submitted for review" : "Share this look"}
+              className={`flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium border transition-colors disabled:cursor-default ${
+                !look.generatedImage
+                  ? "border-[var(--border)] text-[var(--foreground-subtle)] opacity-25"
+                  : shareState === "done"
+                  ? "border-green-500/40 text-green-500 bg-green-500/5"
+                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]"
+              }`}
+            >
+              {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
             </button>
           </div>
         </div>
@@ -224,7 +227,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div>
                 <p className="text-[13px] font-medium text-[var(--foreground)]">
-                  ${look.totalPrice.toLocaleString()}
+                  {formatPrice(look.totalPrice)}
                 </p>
                 {look.styleKeywords.length > 0 && (
                   <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
@@ -378,6 +381,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
 export default function SavedPage() {
   const [view, setView] = useState<View>("looks");
   const { likedOutfits, likedProducts } = useLikes();
+  const { formatPrice } = useCurrency();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);

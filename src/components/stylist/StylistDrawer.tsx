@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
+import { useCurrency } from "@/lib/context/currency-context";
 import type { ChatSession } from "@/app/api/stylist/chat/sessions/route";
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export function StylistDrawer({
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [view, setView] = useState<"chat" | "history">("chat");
+  const { formatPrice } = useCurrency();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -140,19 +142,11 @@ export function StylistDrawer({
 
   const contextId = focusProduct?.id ?? "";
 
-  // Load chat history when drawer opens
-  useEffect(() => {
-    if (!isOpen) return;
-    fetch(`/api/stylist/chat/history?surface=${encodeURIComponent(surface)}&context_id=${encodeURIComponent(contextId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (Array.isArray(data?.messages) && data.messages.length > 0) {
-          setChatMessages([makeWelcome(focusProduct), ...data.messages]);
-        }
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  const startNewChat = () => {
+    setChatMessages([makeWelcome(focusProduct)]);
+    setChatInput("");
+    setView("chat");
+  };
 
   // Load chat sessions for history panel
   const loadSessions = () => {
@@ -327,9 +321,9 @@ export function StylistDrawer({
 
   const quickReplies = QUICK_REPLIES[surface];
 
-  // ── Remaining messages footer ─────────────────────────────────────────────
   const showUsage = dailyLimit !== null && remaining !== null;
   const usageWarning = showUsage && remaining <= 5;
+  const pctLeft = showUsage ? Math.round((remaining! / dailyLimit!) * 100) : 100;
 
   return (
     <>
@@ -352,16 +346,39 @@ export function StylistDrawer({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* History tab toggle */}
+          {/* New chat button */}
+          <button
+            onClick={startNewChat}
+            title="New chat"
+            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            aria-label="New chat"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
+              <path d="M11 1l2 2-5 5H6V6l5-5Z" />
+            </svg>
+          </button>
+          {/* History icon toggle */}
           <button
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
-            className={`font-mono text-[9px] tracking-[0.12em] uppercase transition-colors ${
+            title={view === "history" ? "Back to chat" : "Chat history"}
+            aria-label={view === "history" ? "Back to chat" : "Chat history"}
+            className={`transition-colors ${
               view === "history"
                 ? "text-[var(--foreground)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            {view === "history" ? "← Chat" : "History"}
+            {view === "history" ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 2L4 7L9 12" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="7" cy="7" r="5.5" />
+                <path d="M7 4.5V7l1.5 1.5" />
+              </svg>
+            )}
           </button>
           <button
             onClick={onClose}
@@ -372,6 +389,37 @@ export function StylistDrawer({
           </button>
         </div>
       </div>
+
+      {/* ── Usage bar ─────────────────────────────────────────────────────── */}
+      {showUsage && (
+        <div className="px-5 py-2.5 border-b border-[var(--border)] shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+              Daily limit
+            </span>
+            <span className={`font-mono text-[8px] tracking-[0.08em] ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
+              {pctLeft}% remaining
+              {usageWarning && remaining! > 0 && (
+                <Link href="/plans" className="ml-2 underline hover:no-underline">
+                  Upgrade
+                </Link>
+              )}
+            </span>
+          </div>
+          <div className="h-[2px] bg-[var(--border)] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                pctLeft > 50
+                  ? "bg-[var(--foreground)]"
+                  : pctLeft > 20
+                  ? "bg-amber-400"
+                  : "bg-red-400"
+              }`}
+              style={{ width: `${pctLeft}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── History panel ─────────────────────────────────────────────────── */}
       {view === "history" && (
@@ -471,7 +519,7 @@ export function StylistDrawer({
                               {product.brand}
                             </p>
                             <p className="font-mono text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
-                              ${product.priceMin.toLocaleString()}
+                              {formatPrice(product.priceMin)}
                             </p>
                           </>
                         );
@@ -576,21 +624,10 @@ export function StylistDrawer({
               </button>
             </div>
 
-            {/* Usage counter */}
-            <div className="flex items-center justify-between mt-1.5">
+            <div className="mt-1.5">
               <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
                 ⏎ to send
               </p>
-              {showUsage && (
-                <p className={`font-mono text-[8px] tracking-[0.08em] uppercase ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
-                  {remaining} / {dailyLimit} messages left today
-                  {usageWarning && remaining > 0 && (
-                    <Link href="/plans" className="ml-1.5 underline hover:no-underline">
-                      Upgrade
-                    </Link>
-                  )}
-                </p>
-              )}
             </div>
           </div>
         </>

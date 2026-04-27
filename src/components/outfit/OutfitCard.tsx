@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import OutfitCollage from "./OutfitCollage";
 
 interface OutfitCardProps {
@@ -16,6 +17,7 @@ interface OutfitCardProps {
 export default function OutfitCard({ outfit, size = "default", compact = false }: OutfitCardProps) {
   const { isOutfitLiked, toggleOutfitLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
+  const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
 
   const handleLike = () => {
@@ -107,7 +109,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
           <p className="font-mono text-[10px] text-[var(--foreground-muted)]">
             {outfit.items.length} pieces
             <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
-            ${outfit.totalPriceMin.toLocaleString()}–${outfit.totalPriceMax.toLocaleString()}
+            {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
           </p>
           <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
             {outfit.occasion}

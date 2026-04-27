@@ -8,6 +8,11 @@ import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
 
+function isWithinLastWeek(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  return Date.now() - new Date(dateStr).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
 export function dbToProduct(row: DbProduct): Product {
   return {
     id: row.id,
@@ -25,7 +30,7 @@ export function dbToProduct(row: DbProduct): Product {
     priceMin: row.price_min,
     priceMax: row.price_max,
     currency: row.currency ?? "USD",
-    isNew: row.is_new ?? false,
+    isNew: (row.is_new ?? false) && isWithinLastWeek(row.created_at),
     isSaved: row.is_saved ?? false,
     styleKeywords: (row.style_keywords ?? []) as Product["styleKeywords"],
     gender: (row.gender ?? undefined) as Product["gender"],
@@ -34,6 +39,7 @@ export function dbToProduct(row: DbProduct): Product {
     isGroupPrimary: row.is_group_primary ?? undefined,
     cropData: row.crop_data ?? undefined,
     colorGroupIds: row.color_group_ids?.length ? row.color_group_ids : undefined,
+    createdAt: row.created_at,
   };
 }
 
@@ -108,15 +114,16 @@ export async function getAllColorGroups(): Promise<ColorGroup[]> {
  */
 function toSwatch(p: Product): ProductSwatch {
   return {
-    id:         p.id,
-    name:       p.name,
-    colorName:  p.colors?.[0] || p.name,
-    colorHex:   p.colorHex ?? "#888888",
-    priceMin:   p.priceMin,
-    priceMax:   p.priceMax,
-    imageUrl:   p.imageUrl,
-    images:     p.images ?? [],
-    sizes:      p.sizes ?? [],
+    id:            p.id,
+    name:          p.name,
+    colorName:     p.colors?.[0] || p.name,
+    colorHex:      p.colorHex ?? "#888888",
+    priceMin:      p.priceMin,
+    priceMax:      p.priceMax,
+    imageUrl:      p.imageUrl,
+    images:        p.images ?? [],
+    sizes:         p.sizes ?? [],
+    colorGroupIds: p.colorGroupIds,
   };
 }
 
@@ -132,17 +139,28 @@ function toSwatch(p: Product): ProductSwatch {
 export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
   if (!isSupabaseConfigured || !supabase) return staticProducts;
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const PAGE = 1000;
+  const allData: DbProduct[] = [];
+  let from = 0;
 
-  if (error) {
-    console.error("[db] getAllProducts:", error.message);
-    return [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+
+    if (error) {
+      console.error("[db] getAllProducts:", error.message);
+      return [];
+    }
+
+    allData.push(...(data as DbProduct[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
   }
 
-  const all = (data as DbProduct[]).map(dbToProduct);
+  const all = allData.map(dbToProduct);
   return skipGrouping ? all : groupVariants(all);
 }
 
@@ -245,7 +263,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
   for (const item of row.items ?? []) {
     const product = productMap.get(item.product_id);
     if (product) {
-      items.push({ product, role: item.role });
+      items.push({ product, role: item.role, selectedColor: item.selected_color });
     }
   }
   return {
@@ -271,7 +289,7 @@ export interface OutfitApiBody {
   description?: string;
   occasion?: string;
   imageUrl?: string;
-  items?: { productId: string; role: string }[];
+  items?: { productId: string; role: string; selectedColor?: string }[];
   totalPriceMin?: number;
   totalPriceMax?: number;
   currency?: string;
@@ -287,7 +305,7 @@ export function outfitToDb(o: OutfitApiBody) {
     description: o.description ?? "",
     occasion: o.occasion ?? "casual",
     image_url: o.imageUrl ?? "",
-    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role })),
+    items: (o.items ?? []).map((i) => ({ product_id: i.productId, role: i.role, selected_color: i.selectedColor })),
     total_price_min: o.totalPriceMin ?? 0,
     total_price_max: o.totalPriceMax ?? o.totalPriceMin ?? 0,
     currency: o.currency ?? "USD",

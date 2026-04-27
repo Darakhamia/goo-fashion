@@ -3,7 +3,10 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import type { Product, ProductSwatch } from "@/lib/types";
+import { useCurrency } from "@/lib/context/currency-context";
 import ProductCard from "./ProductCard";
+import PriceHistoryChart from "./PriceHistoryChart";
+import ProductReviews from "./ProductReviews";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { track } from "@/lib/analytics/track";
 
@@ -17,6 +20,7 @@ interface Props {
 export default function ProductClient({ product, relatedProducts, lowestPrice, allProducts }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
+  const { formatPrice } = useCurrency();
   const defaultColor = useMemo(() => {
     if (!product.colorImages) return null;
     return product.colors.find((c) => (product.colorImages![c]?.length ?? 0) > 0) ?? null;
@@ -134,7 +138,7 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
           {/* Price */}
           <div className="mb-8 pb-8 border-b border-[var(--border)]">
             <p className="font-display text-2xl font-light text-[var(--foreground)]">
-              From ${lowestPrice.toLocaleString()}
+              From {formatPrice(lowestPrice)}
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Price varies by retailer · All prices include tax
@@ -195,12 +199,13 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
                       href={`/product/${swatch.id}`}
                       title={swatch.colorName}
                       aria-label={`View in ${swatch.colorName}`}
-                      className={`w-7 h-7 border-2 transition-colors duration-150 shrink-0 inline-block ${
-                        isCurrent
-                          ? "border-[var(--foreground)] scale-110 shadow-sm"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                      }`}
-                      style={{ backgroundColor: swatch.colorHex, boxShadow: "inset 0 0 0 1.5px rgba(128,128,128,0.4)" }}
+                      className={`w-7 h-7 transition-all duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
+                      style={{
+                        backgroundColor: swatch.colorHex,
+                        boxShadow: isCurrent
+                          ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                          : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                      }}
                     />
                   );
                 })}
@@ -300,9 +305,23 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
                       </div>
 
                       <div className="flex items-center gap-4 shrink-0">
+                        {retailer.rating != null && (
+                          <div className="text-right hidden sm:block">
+                            <div className="flex items-center gap-1 justify-end">
+                              {[1,2,3,4,5].map((s) => (
+                                <svg key={s} width="9" height="9" viewBox="0 0 12 12" fill={s <= Math.round(retailer.rating!) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" className="text-[var(--foreground-muted)]">
+                                  <polygon points="6,1 7.5,4.5 11,4.8 8.5,7 9.3,10.5 6,8.7 2.7,10.5 3.5,7 1,4.8 4.5,4.5" />
+                                </svg>
+                              ))}
+                            </div>
+                            {retailer.reviewCount != null && (
+                              <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5 text-right">{retailer.reviewCount.toLocaleString()} reviews</p>
+                            )}
+                          </div>
+                        )}
                         <div className="text-right">
                           <p className="text-sm text-[var(--foreground)] font-medium">
-                            ${retailer.price.toLocaleString()}
+                            {formatPrice(retailer.price)}
                           </p>
                           <p className={`text-[9px] tracking-[0.1em] mt-0.5 ${
                             retailer.availability === "in stock"
@@ -337,6 +356,12 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
         products={allProducts}
         focusProduct={product}
       />
+
+      {/* Price history chart */}
+      <PriceHistoryChart productId={product.id} />
+
+      {/* User reviews */}
+      <ProductReviews productId={product.id} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

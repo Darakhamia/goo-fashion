@@ -6,6 +6,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCurrency } from "@/lib/context/currency-context";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -13,11 +14,13 @@ const INTERVAL_MS = 5000;
 interface ProductCardProps {
   product: Product;
   showBrand?: boolean;
+  initialVariant?: ProductSwatch | null;
 }
 
-export default function ProductCard({ product, showBrand = true }: ProductCardProps) {
+export default function ProductCard({ product, showBrand = true, initialVariant = null }: ProductCardProps) {
   const { isProductLiked, toggleProductLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
+  const { formatPrice } = useCurrency();
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
@@ -29,7 +32,7 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
   };
 
   // ── Active variant (null = show the base product) ──────────────────────────
-  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(null);
+  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(initialVariant);
 
   // Derived display values — switch between base product and the selected swatch
   const displayImages = useMemo(() => {
@@ -134,8 +137,6 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
       }
     : null;
 
-  const activeSwatchId = activeVariant?.id ?? product.id;
-
   return (
     <div
       className="group relative block"
@@ -224,59 +225,57 @@ export default function ProductCard({ product, showBrand = true }: ProductCardPr
         </svg>
       </button>
 
-      {/* ── Info block ──────────────────────────────────────────────────── */}
-      <Link href={linkHref} className="block mt-2 space-y-0.5">
-        {showBrand && (
-          <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)]">
-            {product.brand}
+      {/* ── Info block — every row has a fixed height so all cards align ── */}
+      <Link href={linkHref} className="block mt-2">
+        {/* Brand */}
+        <div className="h-3.5 flex items-center overflow-hidden">
+          {showBrand && (
+            <p className="text-[9px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-subtle)] truncate">
+              {product.brand}
+            </p>
+          )}
+        </div>
+        {/* Name */}
+        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
+          <h3 className="text-xs text-[var(--foreground)] leading-none group-hover:text-[var(--foreground-muted)] transition-colors duration-200 truncate w-full">
+            {displayName}
+          </h3>
+        </div>
+        {/* Price */}
+        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
+          <p className="text-xs text-[var(--foreground-muted)] truncate">
+            {displayPriceMin === displayPriceMax
+              ? formatPrice(displayPriceMin)
+              : `From ${formatPrice(displayPriceMin)}`}
           </p>
-        )}
-        <h3 className="text-xs text-[var(--foreground)] leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
-          {displayName}
-        </h3>
-        <p className="text-xs text-[var(--foreground-muted)]">
-          {displayPriceMin === displayPriceMax
-            ? `$${displayPriceMin.toLocaleString()}`
-            : `From $${displayPriceMin.toLocaleString()}`}
-        </p>
+        </div>
       </Link>
 
-      {/* ── Available sizes (in-stock preview) ──────────────────────────── */}
-      {displaySizes.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
+      {/* Sizes — fixed height so cards with no sizes still reserve the row */}
+      <div className="h-6 mt-1.5 flex items-center overflow-hidden">
+        <div className="flex gap-1 overflow-hidden">
           {displaySizes.slice(0, 5).map((size) => (
             <span
               key={size}
-              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5"
+              className="text-[9px] tracking-[0.08em] border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 shrink-0"
             >
               {size}
             </span>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* ── Colour swatch palette ────────────────────────────────────────── */}
-      {hasSwatches && baseSwatch && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {/* Swatch for the base/primary product */}
-          <SwatchButton
-            swatch={baseSwatch}
-            active={activeSwatchId === product.id}
-            onSelect={() => setActiveVariant(null)}
-          />
-          {/* Swatches for the other variants */}
-          {swatches!
-            .filter((s) => s.id !== product.id)
-            .map((swatch) => (
-              <SwatchButton
-                key={swatch.id}
-                swatch={swatch}
-                active={activeSwatchId === swatch.id}
-                onSelect={() => setActiveVariant(swatch)}
-              />
-            ))}
-        </div>
-      )}
+      {/* Colour count */}
+      <div className="h-4 mt-1 flex items-center">
+        {hasSwatches && baseSwatch && (() => {
+          const count = 1 + swatches!.filter(s => s.id !== product.id).length;
+          return (
+            <span className="text-[11px] leading-none text-[var(--foreground-subtle)]">
+              {count} {count === 1 ? "цвет" : count >= 2 && count <= 4 ? "цвета" : "цветов"}
+            </span>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -329,30 +328,3 @@ function CroppedImage({
   );
 }
 
-function SwatchButton({
-  swatch,
-  active,
-  onSelect,
-}: {
-  swatch: ProductSwatch;
-  active: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={swatch.colorName}
-      aria-label={`Switch to ${swatch.colorName}`}
-      onClick={(e) => {
-        e.preventDefault();
-        onSelect();
-      }}
-      className={`w-4 h-4 border-2 transition-all duration-150 shrink-0 ${
-        active
-          ? "border-[var(--foreground)] scale-110 shadow-sm"
-          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:scale-105"
-      }`}
-      style={{ backgroundColor: swatch.colorHex, boxShadow: "inset 0 0 0 1.5px rgba(128,128,128,0.4)" }}
-    />
-  );
-}

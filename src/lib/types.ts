@@ -83,6 +83,26 @@ export interface Retailer {
   currency: string;
   availability: "in stock" | "low stock" | "sold out";
   isOfficial: boolean;
+  /** Average star rating 1–5 (optional, entered by admin or sourced externally) */
+  rating?: number;
+  /** Number of reviews backing the rating */
+  reviewCount?: number;
+}
+
+export interface PricePoint {
+  date: string;       // ISO date YYYY-MM-DD
+  price: number;
+  retailerName?: string;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;     // 1–5
+  text: string;
+  createdAt: string;
 }
 
 /**
@@ -99,6 +119,7 @@ export interface ProductSwatch {
   imageUrl: string;
   images: string[];
   sizes: string[];
+  colorGroupIds?: number[];
 }
 
 export interface CropData {
@@ -148,11 +169,15 @@ export interface Product {
    * Stored as int[] on the DB row; used for server- and client-side filtering.
    */
   colorGroupIds?: number[];
+  /** ISO date string from DB — used to auto-expire the NEW badge after 7 days */
+  createdAt?: string;
 }
 
 export interface OutfitItem {
   product: Product;
   role: "hero" | "secondary" | "accent";
+  /** Selected colour key from product.colorImages (if the product has multiple colours) */
+  selectedColor?: string;
 }
 
 export interface Outfit {

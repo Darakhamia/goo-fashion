@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import OutfitCarousel from "@/components/outfit/OutfitCarousel";
 
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
@@ -30,7 +30,7 @@ export default async function HomePage() {
     getAllOutfits(),
     getHeroImageUrl(),
   ]);
-  const featuredOutfits = allOutfits.slice(0, 6);
+  const featuredOutfits = allOutfits.slice(0, 12);
   const featuredProducts = allProducts.slice(0, 4);
 
   return (
@@ -79,78 +79,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── OUTFITS SECTION ─── */}
-      <section className="max-w-[1440px] mx-auto px-6 md:px-12 pt-24 md:pt-32">
-        <SectionLabel
-          label="Outfits"
-          heading="Curated for your style"
-          subheading="AI-generated and editorial picks, built around how you live."
-          action={
-            <Link
-              href="/browse"
-              className="text-[11px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 link-underline"
-            >
-              View all
-            </Link>
-          }
-        />
-
-        {/* Outfit Grid */}
-        <div className={`mt-10 grid grid-cols-1 md:grid-cols-3 gap-px ${featuredOutfits.length > 1 ? "bg-[var(--border)]" : "bg-[var(--background)]"}`}>
-          {featuredOutfits[0] && (
-            <div className="md:col-span-1 bg-[var(--background)]">
-              <div className="p-4">
-                <OutfitCard outfit={featuredOutfits[0]} size="large" />
-              </div>
-            </div>
-          )}
-          {featuredOutfits.slice(1, 5).length > 0 && (
-            <div className="md:col-span-2 bg-[var(--border)]">
-              <div className="grid grid-cols-2 gap-px">
-                {featuredOutfits.slice(1, 5).map((outfit) => (
-                  <div key={outfit.id} className="bg-[var(--background)] p-4">
-                    <OutfitCard outfit={outfit} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {featuredOutfits[5] && (
-          <div className="mt-px bg-[var(--border)]">
-            <div className="bg-[var(--background)] px-4">
-              <Link
-                href={`/outfit/${featuredOutfits[5].id}`}
-                className="group flex items-center justify-between gap-8 py-5"
-              >
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 shrink-0 overflow-hidden relative bg-[var(--surface)]">
-                    <img
-                      src={featuredOutfits[5].imageUrl}
-                      alt={featuredOutfits[5].name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-[var(--foreground)]">
-                      {featuredOutfits[5].name}
-                    </h3>
-                    <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-                      {featuredOutfits[5].items.length} pieces · $
-                      {featuredOutfits[5].totalPriceMin.toLocaleString()}–$
-                      {featuredOutfits[5].totalPriceMax.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] transition-colors duration-200 shrink-0">
-                  View →
-                </span>
-              </Link>
-            </div>
-          </div>
-        )}
-      </section>
+      {/* ─── OUTFITS CAROUSEL ─── */}
+      <div className="max-w-[1440px] mx-auto pt-16 md:pt-20">
+        <OutfitCarousel outfits={featuredOutfits} />
+      </div>
 
       {/* ─── AI STYLIST CTA BAND ─── */}
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32">

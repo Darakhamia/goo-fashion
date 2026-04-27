@@ -1,10 +1,17 @@
 import Image from "next/image";
-import { Outfit } from "@/lib/types";
+import { Outfit, OutfitItem } from "@/lib/types";
 
 interface Props {
   outfit: Outfit;
   priority?: boolean;
   sizes?: string;
+}
+
+function itemImageUrl(item: OutfitItem): string {
+  if (item.selectedColor && item.product.colorImages?.[item.selectedColor]?.[0]) {
+    return item.product.colorImages[item.selectedColor][0];
+  }
+  return item.product.imageUrl;
 }
 
 /**
@@ -32,7 +39,7 @@ export default function OutfitCollage({
     return (
       <div className="absolute inset-0">
         <Image
-          src={frames[0].product.imageUrl}
+          src={itemImageUrl(frames[0])}
           alt={frames[0].product.name}
           fill
           className="object-cover"
@@ -49,7 +56,7 @@ export default function OutfitCollage({
         {frames.map((f, i) => (
           <div key={i} className="relative overflow-hidden flex-1">
             <Image
-              src={f.product.imageUrl}
+              src={itemImageUrl(f)}
               alt={f.product.name}
               fill
               className="object-cover"
@@ -67,7 +74,7 @@ export default function OutfitCollage({
       <div className="absolute inset-0 flex gap-px">
         <div className="relative overflow-hidden" style={{ width: "55%" }}>
           <Image
-            src={frames[0].product.imageUrl}
+            src={itemImageUrl(frames[0])}
             alt={frames[0].product.name}
             fill
             className="object-cover"
@@ -79,7 +86,7 @@ export default function OutfitCollage({
           {frames.slice(1).map((f, i) => (
             <div key={i} className="relative overflow-hidden flex-1">
               <Image
-                src={f.product.imageUrl}
+                src={itemImageUrl(f)}
                 alt={f.product.name}
                 fill
                 className="object-cover"
@@ -99,7 +106,7 @@ export default function OutfitCollage({
         {frames.slice(0, 2).map((f, i) => (
           <div key={i} className="relative overflow-hidden flex-1">
             <Image
-              src={f.product.imageUrl}
+              src={itemImageUrl(f)}
               alt={f.product.name}
               fill
               className="object-cover"
@@ -113,7 +120,7 @@ export default function OutfitCollage({
         {frames.slice(2).map((f, i) => (
           <div key={i} className="relative overflow-hidden flex-1">
             <Image
-              src={f.product.imageUrl}
+              src={itemImageUrl(f)}
               alt={f.product.name}
               fill
               className="object-cover"

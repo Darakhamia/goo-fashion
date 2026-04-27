@@ -6,6 +6,7 @@ import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
+import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -20,6 +21,8 @@ const SLOTS = [
   { id: "accessories"  as SlotId, label: "Acc 1",       categories: ["accessories", "bags", "swimwear"] },
   { id: "accessories2" as SlotId, label: "Acc 2",       categories: ["accessories", "bags", "swimwear"] },
 ];
+
+type CatalogItem = { kind: "product"; key: string; product: Product };
 
 // Vertical figure zones for the silhouette canvas (accessories float separately).
 // Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
@@ -97,6 +100,7 @@ export default function BuilderPage() {
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
+  const [colorImageOverrides, setColorImageOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState<string | null>(null);
@@ -107,14 +111,17 @@ export default function BuilderPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
+  const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
 
   const [shopAdded, setShopAdded] = useState(false);
 
   const { likedProducts } = useLikes();
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
+  const { formatPrice } = useCurrency();
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -129,6 +136,14 @@ export default function BuilderPage() {
   // Tracks the localStorage id of the look we've already persisted in this session,
   // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
   const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
+
+  // Close swatch popup when clicking outside
+  useEffect(() => {
+    if (!openSwatchPopup) return;
+    const close = () => setOpenSwatchPopup(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openSwatchPopup]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -253,6 +268,10 @@ export default function BuilderPage() {
     return list;
   }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
 
+  const expandedCatalogItems = useMemo((): CatalogItem[] => {
+    return catalogProducts.map(product => ({ kind: "product", key: product.id, product }));
+  }, [catalogProducts]);
+
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null;
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -271,6 +290,7 @@ export default function BuilderPage() {
         if (next[slot.id]?.id === product.id) {
           delete next[slot.id];
           setVariantOverrides(vo => { const n = { ...vo }; delete n[slot.id]; return n; });
+          setColorImageOverrides(co => { const n = { ...co }; delete n[slot.id]; return n; });
           updateURL(next);
           setActiveSlot(slot.id);
           return next;
@@ -318,11 +338,13 @@ export default function BuilderPage() {
       return next;
     });
     setVariantOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
+    setColorImageOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
   };
 
   const clearAll = () => {
     setSelection({});
     setVariantOverrides({});
+    setColorImageOverrides({});
     updateURL({});
     setSaved(false);
   };
@@ -535,7 +557,9 @@ export default function BuilderPage() {
                 const picked = selection[slot.id];
                 const variantId = variantOverrides[slot.id];
                 const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                const colorKey = colorImageOverrides[slot.id];
+                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
                 return (
                   <button
                     key={slot.id}
@@ -560,18 +584,110 @@ export default function BuilderPage() {
                         <>
                           <p className="text-[12px] leading-snug text-[var(--foreground)] truncate">{picked.name}</p>
                           <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5 truncate">{picked.brand}</p>
-                          {/* Color swatches */}
-                          {(picked.variants?.length ?? 0) > 1 && (
-                            <div className="flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                              {picked.variants!.slice(0, 6).map(sw => (
-                                <button key={sw.id} title={sw.colorName}
-                                  onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                  className={`w-3.5 h-3.5 rounded-full shrink-0 transition-all ${(variantId ?? picked.id) === sw.id ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-70 hover:opacity-100"}`}
-                                  style={{ background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex, boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)" }}
-                                />
-                              ))}
-                            </div>
-                          )}
+                          {/* Variant colour swatches (separate products) */}
+                          {(picked.variants?.length ?? 0) > 1 && (() => {
+                            const variants = picked.variants!;
+                            const MAX = 6;
+                            const visible = variants.slice(0, MAX);
+                            const hidden = variants.length - MAX;
+                            const popupKey = `slot-${slot.id}-variant`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visible.map(sw => (
+                                  <button key={sw.id} title={sw.colorName}
+                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
+                                    className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                    style={{
+                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                      boxShadow: (variantId ?? picked.id) === sw.id
+                                        ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                        : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                    }}
+                                  />
+                                ))}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                  >
+                                    +{hidden}
+                                  </button>
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {variants.map(sw => (
+                                      <button key={sw.id} title={sw.colorName}
+                                        onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
+                                        className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                        style={{
+                                          background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                          boxShadow: (variantId ?? picked.id) === sw.id
+                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {/* colorImages swatches (multiple colours within same product) */}
+                          {Object.keys(picked.colorImages ?? {}).length > 1 && (() => {
+                            const colorKeys = Object.keys(picked.colorImages!);
+                            const MAX = 6;
+                            const visibleKeys = colorKeys.slice(0, MAX);
+                            const hidden = colorKeys.length - MAX;
+                            const popupKey = `slot-${slot.id}-colorImage`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visibleKeys.map(color => {
+                                  const img = picked.colorImages![color]?.[0];
+                                  const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                  return (
+                                    <button key={color} title={color}
+                                      onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
+                                      className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                    >
+                                      {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                    </button>
+                                  );
+                                })}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                  >
+                                    +{hidden}
+                                  </button>
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {colorKeys.map(color => {
+                                      const img = picked.colorImages![color]?.[0];
+                                      const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                      return (
+                                        <button key={color} title={color}
+                                          onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
+                                          className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                        >
+                                          {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </>
                       ) : (
                         <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
@@ -579,7 +695,7 @@ export default function BuilderPage() {
                     </div>
                     {/* Price + remove */}
                     <div className="shrink-0 text-right flex flex-col items-end gap-2">
-                      {picked && <p className="text-[12px] font-medium text-[var(--foreground)]">${picked.priceMin.toLocaleString()}</p>}
+                      {picked && <p className="text-[12px] font-medium text-[var(--foreground)]">{formatPrice(picked.priceMin)}</p>}
                       {picked && (
                         <button
                           onClick={e => clearSlot(slot.id, e)}
@@ -602,7 +718,7 @@ export default function BuilderPage() {
               <div className="flex items-baseline justify-between">
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Total</p>
                 <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
-                  {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
                 </p>
               </div>
               {selectedCount > 0 && (
@@ -648,7 +764,7 @@ export default function BuilderPage() {
                   )}
                 </div>
                 <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] shrink-0">
-                  {catalogProducts.length}
+                  {expandedCatalogItems.length}
                 </p>
                 <button
                   onClick={() => setFiltersOpen(v => !v)}
@@ -687,94 +803,183 @@ export default function BuilderPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
-                    {catalogProducts.map(product => {
-                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-                    const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-                    const isSelected = !!selectedSlot;
-                    const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
-                    const targetSlot = selectedSlot ?? matchingSlots[0];
-                    // Preview: prefer catalog color preview, then selected variant, then base image
-                    const previewVariantId = catalogPreviews[product.id];
-                    const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
-                    const displayImage = activeVariant?.imageUrl ?? product.imageUrl;
-                    const hasVariants = (product.variants?.length ?? 0) > 1;
+                    {expandedCatalogItems.map(item => {
+                      const { product } = item;
+                      const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                      const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                      const isSelected = !!selectedSlot;
+                      const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
+                      const targetSlot = selectedSlot ?? matchingSlots[0];
+                      const previewVariantId = catalogPreviews[product.id];
+                      const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
+                      const colorImageKeys = Object.keys(product.colorImages ?? {});
+                      const hasColorImages = colorImageKeys.length > 1;
+                      const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
+                      const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
+                        ? product.colorImages![selectedColorKey][0]
+                        : null;
+                      const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                      const hasVariants = (product.variants?.length ?? 0) > 1;
 
-                    return (
-                      <div
-                        key={product.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectProduct(product)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            selectProduct(product);
-                          }
-                        }}
-                        className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${
-                          isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""
-                        }`}
-                      >
-                        {/* Image */}
-                        <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={displayImage}
-                            alt={product.name}
-                            className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
-                          {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                              <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
-                                <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        {/* Info */}
-                        <div className="px-2 pt-1.5 pb-2">
-                          <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                          <div className="flex items-center justify-between mt-0.5 gap-1">
-                            <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                            <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                      return (
+                        <div
+                          key={item.key}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => selectProduct(product)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              selectProduct(product);
+                            }
+                          }}
+                          className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${
+                            isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""
+                          }`}
+                        >
+                          {/* Image */}
+                          <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={displayImage}
+                              alt={product.name}
+                              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
+                            {isSelected && (
+                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
+                                  <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </div>
+                            )}
+                            {/* Colour swatches — slide up on hover */}
+                            {hasColorImages && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+                                  {colorImageKeys.map((color, idx) => {
+                                    const previewImg = product.colorImages![color]?.[0];
+                                    const isActive = selectedColorKey === color;
+                                    return (
+                                      <button
+                                        key={color}
+                                        title={color}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
+                                          if (isSelected && targetSlot) {
+                                            setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
+                                          }
+                                        }}
+                                        style={{ transitionDelay: `${idx * 25}ms` }}
+                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border transition-all duration-200 ${
+                                          isActive
+                                            ? "border-white scale-110 shadow-md"
+                                            : "border-white/50 hover:border-white hover:scale-105"
+                                        }`}
+                                      >
+                                        {previewImg
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
+                                          : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
+                                        }
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          {hasVariants && (
-                            <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                              {product.variants!.slice(0, 5).map(swatch => {
-                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
-                                const isSwatchActive = activeId === swatch.id;
-                                return (
-                                  <button
-                                    key={swatch.id}
-                                    title={swatch.colorName}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      // Preview color in catalog without selecting
-                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-                                      // If already in the look, also update the variant there
-                                      if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
-                                    }}
-                                    className={`w-3 h-3 rounded-full shrink-0 transition-all duration-150 ${
-                                      isSwatchActive
-                                        ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110"
-                                        : "opacity-70 hover:opacity-100 hover:scale-110"
-                                    }`}
-                                    style={{
-                                      background: swatch.colorHex === "#multicolor"
-                                        ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                        : swatch.colorHex,
-                                      boxShadow: "inset 0 0 0 1px rgba(128,128,128,0.4)",
-                                    }}
-                                  />
-                                );
-                              })}
+                          {/* Info */}
+                          <div className="px-2 pt-1.5 pb-2">
+                            <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                            <div className="flex items-center justify-between mt-0.5 gap-1">
+                              <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                              <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
                             </div>
-                          )}
+                            {hasVariants && (() => {
+                              const variants = product.variants!;
+                              const MAX = 5;
+                              const visible = variants.slice(0, MAX);
+                              const hidden = variants.length - MAX;
+                              const popupKey = `catalog-${product.id}-variant`;
+                              return (
+                                <div className="relative flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                  {visible.map(swatch => {
+                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                    const isSwatchActive = activeId === swatch.id;
+                                    return (
+                                      <button
+                                        key={swatch.id}
+                                        title={swatch.colorName}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                          if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                        }}
+                                        className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                        style={{
+                                          background: swatch.colorHex === "#multicolor"
+                                            ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                            : swatch.colorHex,
+                                          boxShadow: isSwatchActive
+                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                  {hidden > 0 && (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                      className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                    >
+                                      +{hidden}
+                                    </button>
+                                  )}
+                                  {openSwatchPopup === popupKey && (
+                                    <div
+                                      onClick={e => e.stopPropagation()}
+                                      className="absolute bottom-full left-0 mb-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                      style={{ minWidth: "80px", maxWidth: "140px" }}
+                                    >
+                                      {variants.map(swatch => {
+                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                        const isSwatchActive = activeId === swatch.id;
+                                        return (
+                                          <button
+                                            key={swatch.id}
+                                            title={swatch.colorName}
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                              if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                              setOpenSwatchPopup(null);
+                                            }}
+                                            className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                            style={{
+                                              background: swatch.colorHex === "#multicolor"
+                                                ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                                : swatch.colorHex,
+                                              boxShadow: isSwatchActive
+                                                ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                                : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                            }}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1218,7 +1423,7 @@ export default function BuilderPage() {
           {/* 5. Count + liked toggle */}
           <div className="px-3 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
             <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-              {catalogProducts.length} {catalogProducts.length === 1 ? "item" : "items"}
+              {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "item" : "items"}
             </p>
             <button
               onClick={() => setLikedOnly(v => !v)}
@@ -1235,7 +1440,7 @@ export default function BuilderPage() {
 
           {/* 6. Product grid — scrollable */}
           <div className="flex-1 overflow-y-auto">
-            {catalogProducts.length === 0 ? (
+            {expandedCatalogItems.length === 0 ? (
               <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-3 px-6 bg-[var(--surface)]">
                 <div className="w-16 h-16 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
                   <svg width="28" height="28" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
@@ -1255,7 +1460,8 @@ export default function BuilderPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 p-3">
-                {catalogProducts.map(product => {
+                {expandedCatalogItems.map(item => {
+                  const { product } = item;
                   const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
                   const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
                   const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
@@ -1263,7 +1469,7 @@ export default function BuilderPage() {
                   const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
                   return (
                     <button
-                      key={product.id}
+                      key={item.key}
                       onClick={() => selectProduct(product)}
                       className={`group relative flex flex-col text-left transition-all duration-150 ${
                         isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
@@ -1288,7 +1494,7 @@ export default function BuilderPage() {
                         <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                         <div className="flex items-center justify-between mt-0.5 gap-1">
                           <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">${product.priceMin.toLocaleString()}</p>
+                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
                         </div>
                       </div>
                     </button>
@@ -1305,7 +1511,7 @@ export default function BuilderPage() {
               <p className={`font-display font-light leading-none mt-0.5 transition-all ${
                 selectedCount > 0 ? "text-[20px] text-[var(--foreground)]" : "text-[16px] text-[var(--foreground-subtle)]"
               }`}>
-                {selectedCount > 0 ? `$${totalPrice.toLocaleString()}` : "—"}
+                {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1350,7 +1556,7 @@ export default function BuilderPage() {
                 {shopAdded
                   ? "Added ✓"
                   : selectedCount > 0
-                  ? `Shop · $${totalPrice.toLocaleString()}`
+                  ? `Shop · ${formatPrice(totalPrice)}`
                   : "Shop the Look"}
               </button>
             </div>
@@ -1435,7 +1641,7 @@ export default function BuilderPage() {
             ) : (
               <>
                 <span>Shop the Look</span>
-                {selectedCount > 0 && <span>${totalPrice.toLocaleString()}</span>}
+                {selectedCount > 0 && <span>{formatPrice(totalPrice)}</span>}
               </>
             )}
           </button>
@@ -1633,6 +1839,66 @@ export default function BuilderPage() {
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
+
+      {/* ── Generating overlay ────────────────────────────────────────────────── */}
+      {generating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 overflow-hidden animate-scale-in">
+
+            {/* Indeterminate progress line at top */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--surface)] overflow-hidden">
+              <div className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] origin-left animate-progress-bar" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3.5 border-b border-[var(--border)]">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                  Generating Look
+                </p>
+                <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                  {selectedCount} {selectedCount === 1 ? "piece" : "pieces"} ·{" "}
+                  {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"}
+                </p>
+              </div>
+              {/* Bouncing dots */}
+              <div className="flex items-center gap-1">
+                {[0, 1, 2].map(i => (
+                  <span
+                    key={i}
+                    className="block w-1.5 h-1.5 rounded-full bg-[var(--foreground-subtle)]"
+                    style={{ animation: `dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Shimmer image placeholder */}
+            <div className="relative w-full aspect-square bg-[var(--surface)] overflow-hidden flex flex-col items-center justify-center gap-4">
+              {/* shimmer sweep */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent animate-shimmer pointer-events-none" />
+              {/* Pulsing central icon */}
+              <svg
+                width="48" height="48" viewBox="0 0 24 24" fill="none"
+                className="text-[var(--foreground-subtle)] opacity-20 animate-pulse"
+              >
+                <path d="M12 2L14.4 9.6H22L15.8 14.4L18.2 22L12 17.6L5.8 22L8.2 14.4L2 9.6H9.6L12 2Z"
+                  stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              </svg>
+              <p className="font-mono text-[9px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] opacity-30 animate-pulse">
+                Creating your look…
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-[var(--border)]">
+              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
+                This may take 10–30 seconds. Sit back and relax.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Generated image modal (preserved exactly) ──────────────────────── */}
       {showModal && generatedImage && (
