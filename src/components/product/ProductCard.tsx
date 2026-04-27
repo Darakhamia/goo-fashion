@@ -271,7 +271,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           const count = 1 + swatches!.filter(s => s.id !== product.id).length;
           return (
             <span className="text-[11px] leading-none text-[var(--foreground-subtle)]">
-              {count} {count === 1 ? "цвет" : count >= 2 && count <= 4 ? "цвета" : "цветов"}
+              {count} {count === 1 ? "color" : "colors"}
             </span>
           );
         })()}
