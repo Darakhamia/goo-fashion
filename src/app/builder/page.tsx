@@ -22,10 +22,7 @@ const SLOTS = [
   { id: "accessories2" as SlotId, label: "Acc 2",       categories: ["accessories", "bags", "swimwear"] },
 ];
 
-type CatalogItem =
-  | { kind: "product"; key: string; product: Product }
-  | { kind: "variant"; key: string; product: Product; swatch: ProductSwatch }
-  | { kind: "color"; key: string; product: Product; colorKey: string };
+type CatalogItem = { kind: "product"; key: string; product: Product };
 
 // Vertical figure zones for the silhouette canvas (accessories float separately).
 // Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
@@ -272,23 +269,7 @@ export default function BuilderPage() {
   }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
-    const items: CatalogItem[] = [];
-    for (const product of catalogProducts) {
-      const variantCount = product.variants?.length ?? 0;
-      const colorKeys = Object.keys(product.colorImages ?? {});
-      if (variantCount > 4) {
-        for (const swatch of product.variants!) {
-          items.push({ kind: "variant", key: `v-${swatch.id}`, product, swatch });
-        }
-      } else if (colorKeys.length > 4) {
-        for (const colorKey of colorKeys) {
-          items.push({ kind: "color", key: `c-${product.id}-${colorKey}`, product, colorKey });
-        }
-      } else {
-        items.push({ kind: "product", key: product.id, product });
-      }
-    }
-    return items;
+    return catalogProducts.map(product => ({ kind: "product", key: product.id, product }));
   }, [catalogProducts]);
 
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null;
@@ -340,55 +321,6 @@ export default function BuilderPage() {
       return next;
     });
     setSaved(false);
-  };
-
-  const selectExpandedVariantCard = (product: Product, swatch: ProductSwatch) => {
-    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-    if (matchingSlots.length === 0) return;
-    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-    if (currentSlot) {
-      const activeVariantId = variantOverrides[currentSlot.id] ?? product.id;
-      if (activeVariantId === swatch.id) {
-        selectProduct(product);
-      } else {
-        selectVariant(currentSlot.id, swatch);
-      }
-    } else {
-      const emptySlot = matchingSlots.find(s => !selection[s.id]) ?? matchingSlots[0];
-      const nextSelection = { ...selection, [emptySlot.id]: product };
-      const nextVariants = { ...variantOverrides, [emptySlot.id]: swatch.id };
-      setSelection(nextSelection);
-      setVariantOverrides(nextVariants);
-      setColorImageOverrides(co => { const n = { ...co }; delete n[emptySlot.id]; return n; });
-      setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-      updateURL(nextSelection, nextVariants);
-      setActiveSlot(emptySlot.id);
-      setSaved(false);
-    }
-  };
-
-  const selectExpandedColorCard = (product: Product, colorKey: string) => {
-    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-    if (matchingSlots.length === 0) return;
-    const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-    if (currentSlot) {
-      const activeColor = colorImageOverrides[currentSlot.id] ?? Object.keys(product.colorImages ?? {})[0];
-      if (activeColor === colorKey) {
-        selectProduct(product);
-      } else {
-        setColorImageOverrides(co => ({ ...co, [currentSlot.id]: colorKey }));
-      }
-    } else {
-      const emptySlot = matchingSlots.find(s => !selection[s.id]) ?? matchingSlots[0];
-      const nextSelection = { ...selection, [emptySlot.id]: product };
-      setSelection(nextSelection);
-      setVariantOverrides(vo => { const n = { ...vo }; delete n[emptySlot.id]; return n; });
-      setColorImageOverrides(co => ({ ...co, [emptySlot.id]: colorKey }));
-      setCatalogColorPreviews(prev => ({ ...prev, [product.id]: colorKey }));
-      updateURL(nextSelection);
-      setActiveSlot(emptySlot.id);
-      setSaved(false);
-    }
   };
 
   const clearSlot = (slotId: SlotId, e?: React.MouseEvent) => {
@@ -866,81 +798,6 @@ export default function BuilderPage() {
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
                     {expandedCatalogItems.map(item => {
-                      if (item.kind === "variant") {
-                        const { product, swatch } = item;
-                        const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-                        const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-                        const activeVariantId = currentSlot ? (variantOverrides[currentSlot.id] ?? product.id) : null;
-                        const isSelected = !!currentSlot && activeVariantId === swatch.id;
-                        return (
-                          <div
-                            key={item.key}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => selectExpandedVariantCard(product, swatch)}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectExpandedVariantCard(product, swatch); } }}
-                            className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""}`}
-                          >
-                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={swatch.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
-                              {isSelected && (
-                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                  <svg width="7" height="6" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                </div>
-                              )}
-                            </div>
-                            <div className="px-2 pt-1.5 pb-2">
-                              <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                              <div className="flex items-center justify-between mt-0.5 gap-1">
-                                <p className="text-[9px] text-[var(--foreground-muted)] truncate capitalize">{swatch.colorName}</p>
-                                <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(swatch.priceMin)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      if (item.kind === "color") {
-                        const { product, colorKey } = item;
-                        const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-                        const currentSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-                        const colorKeys = Object.keys(product.colorImages ?? {});
-                        const activeColor = currentSlot ? (colorImageOverrides[currentSlot.id] ?? colorKeys[0]) : null;
-                        const isSelected = !!currentSlot && activeColor === colorKey;
-                        const displayImage = product.colorImages![colorKey]?.[0] ?? product.imageUrl;
-                        return (
-                          <div
-                            key={item.key}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => selectExpandedColorCard(product, colorKey)}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectExpandedColorCard(product, colorKey); } }}
-                            className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""}`}
-                          >
-                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={displayImage} alt={product.name} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
-                              {isSelected && (
-                                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                  <svg width="7" height="6" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                </div>
-                              )}
-                            </div>
-                            <div className="px-2 pt-1.5 pb-2">
-                              <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                              <div className="flex items-center justify-between mt-0.5 gap-1">
-                                <p className="text-[9px] text-[var(--foreground-muted)] truncate capitalize">{colorKey}</p>
-                                <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // kind === "product": original render
                       const { product } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                       const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
