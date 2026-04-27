@@ -300,7 +300,13 @@ export default function BuilderPage() {
       // Find first empty slot, or fall back to first slot
       const emptySlot = matchingSlots.find(s => !next[s.id]) ?? matchingSlots[0];
       next[emptySlot.id] = product;
-      setVariantOverrides(vo => { const n = { ...vo }; delete n[emptySlot.id]; return n; });
+      setVariantOverrides(vo => {
+        const n = { ...vo };
+        const previewVariantId = catalogPreviews[product.id];
+        if (previewVariantId) n[emptySlot.id] = previewVariantId;
+        else delete n[emptySlot.id];
+        return n;
+      });
       // Carry the catalogColorPreview into the left panel when adding to look
       setColorImageOverrides(co => {
         const colorKey = catalogColorPreviews[product.id];
