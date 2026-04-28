@@ -6,137 +6,52 @@ const features = [
   {
     index: "01",
     title: "AI Stylist",
-    subtitle: "Your personal stylist, always on.",
-    body: "Tell GOO your occasion, mood, and budget. Receive a complete outfit curated around your profile — instantly.",
-    tag: "GPT-4o",
-    accent: "from-indigo-500/10 to-purple-500/5",
-    visual: (
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-2 items-start">
-          <div className="shrink-0 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center mt-0.5">
-            <span className="text-[9px] text-white/50">You</span>
-          </div>
-          <div className="bg-white/6 border border-white/8 rounded-lg rounded-tl-none px-4 py-3 max-w-[85%]">
-            <p className="text-sm text-white/70 leading-relaxed">
-              Dinner date, elegant, budget $400
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2 items-start flex-row-reverse">
-          <div className="shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center mt-0.5">
-            <span className="text-[9px] text-white/80 font-medium">G</span>
-          </div>
-          <div className="bg-white/10 border border-white/15 rounded-lg rounded-tr-none px-4 py-3 max-w-[85%]">
-            <p className="text-[10px] tracking-[0.14em] uppercase text-white/35 mb-2">GOO suggests</p>
-            <div className="flex flex-col gap-1.5">
-              {[
-                "Cream wool blazer — Toteme",
-                "Ivory silk trousers — The Row",
-                "Kitten heel mules — Jil Sander",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-white/40 shrink-0" />
-                  <span className="text-[12px] text-white/70">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-1 mt-1">
-          <div className="flex-1 h-px bg-white/6" />
-          <span className="text-[9px] tracking-[0.14em] uppercase text-white/20">
-            total · $387
-          </span>
-          <div className="flex-1 h-px bg-white/6" />
-        </div>
-      </div>
+    body: "Tell GOO your occasion, mood, and budget. Receive a complete outfit curated around your profile — every time, instantly.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 4v4M14 20v4M4 14H8M20 14h4M7.5 7.5l2.8 2.8M17.7 17.7l2.8 2.8M7.5 20.5l2.8-2.8M17.7 10.3l2.8-2.8" />
+        <circle cx="14" cy="14" r="3.5" />
+      </svg>
     ),
+    items: [
+      "Reads your occasion & mood",
+      "Builds full look in seconds",
+      "Matches your body & budget",
+    ],
   },
   {
     index: "02",
     title: "Smart Wardrobe",
-    subtitle: "Built around you. Better every time.",
-    body: "Set your profile once. The AI learns your body, palette, and style — refining every suggestion with each session.",
-    tag: "Personalised",
-    accent: "from-emerald-500/10 to-teal-500/5",
-    visual: (
-      <div className="flex flex-col gap-4">
-        {/* Style board */}
-        <div className="flex gap-2">
-          {["#E8E3DC", "#C4B49A", "#8A7968", "#3D3530", "#1A1614"].map((c) => (
-            <div
-              key={c}
-              className="flex-1 h-10 rounded-sm border border-white/8"
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-        <p className="text-[9px] tracking-[0.16em] uppercase text-white/20">Your palette</p>
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 mt-1">
-          {[
-            { label: "Outfits built", value: "34" },
-            { label: "Brands saved", value: "12" },
-            { label: "Style score", value: "94" },
-          ].map((s) => (
-            <div key={s.label} className="bg-white/4 border border-white/8 rounded-sm px-3 py-3">
-              <p className="text-xl font-light text-white leading-none mb-1">{s.value}</p>
-              <p className="text-[9px] tracking-[0.12em] uppercase text-white/25">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    body: "Build your profile once — body type, palette, occasions. The AI refines its picks every session, learning what fits you.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 5a3 3 0 0 0-3 3H8L5 10v2h18v-2l-3-2h-3a3 3 0 0 0-3-3z" />
+        <path d="M7 12v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V12" />
+        <path d="M11 17h6M11 20h4" />
+      </svg>
     ),
+    items: [
+      "Profile set once, improves always",
+      "Colour palette & style DNA",
+      "Saved brands & outfits",
+    ],
   },
   {
     index: "03",
     title: "Best Price",
-    subtitle: "50+ retailers. One lowest price.",
-    body: "Every item is compared across the web in real time. You always buy at the lowest available price — automatically.",
-    tag: "50+ retailers",
-    accent: "from-amber-500/10 to-orange-500/5",
-    visual: (
-      <div className="flex flex-col gap-2">
-        <div className="mb-2">
-          <p className="text-[9px] tracking-[0.16em] uppercase text-white/25 mb-1">Comparing · Ivory silk trousers</p>
-          <div className="h-px bg-white/6" />
-        </div>
-        {[
-          { store: "SSENSE", price: "$340", saving: "Best", pct: 100, best: true },
-          { store: "Mytheresa", price: "$365", saving: null, pct: 70, best: false },
-          { store: "Net-a-Porter", price: "$378", saving: null, pct: 50, best: false },
-          { store: "Farfetch", price: "$390", saving: null, pct: 30, best: false },
-        ].map((item) => (
-          <div
-            key={item.store}
-            className={`flex items-center gap-3 px-4 py-3 rounded-sm transition-all ${
-              item.best
-                ? "bg-white/10 border border-white/20"
-                : "bg-white/[0.03] border border-white/6"
-            }`}
-          >
-            <div
-              className="shrink-0 h-1 rounded-full bg-white/20"
-              style={{ width: `${item.pct * 0.4}px` }}
-            />
-            <span className={`flex-1 text-[11px] tracking-wide ${item.best ? "text-white/80" : "text-white/30"}`}>
-              {item.store}
-            </span>
-            {item.best && (
-              <span className="text-[8px] tracking-[0.16em] uppercase text-white/50 border border-white/20 px-2 py-0.5 rounded-sm">
-                Best
-              </span>
-            )}
-            <span className={`text-sm font-light tabular-nums ${item.best ? "text-white" : "text-white/30"}`}>
-              {item.price}
-            </span>
-          </div>
-        ))}
-        <p className="text-[9px] tracking-wide text-white/20 mt-1 text-right">
-          You save <span className="text-white/50">$50</span> vs avg
-        </p>
-      </div>
+    body: "Every item is compared across 50+ retailers in real time. You always buy at the lowest available price.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 14 14 4l10 10v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z" />
+        <path d="M10 24V16a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8" />
+        <path d="M17 10l-4 4-2-2" />
+      </svg>
     ),
+    items: [
+      "50+ retailers compared live",
+      "Lowest price always shown",
+      "One click to buy",
+    ],
   },
 ];
 
@@ -150,16 +65,16 @@ export default function FeatureCarousel() {
     setTimeout(() => {
       setActive(idx);
       setFading(false);
-    }, 260);
+    }, 240);
   }, [active, fading]);
 
   useEffect(() => {
     const id = setInterval(() => {
       setFading(true);
       setTimeout(() => {
-        setActive((prev) => (prev + 1) % features.length);
+        setActive((p) => (p + 1) % features.length);
         setFading(false);
-      }, 260);
+      }, 240);
     }, 5000);
     return () => clearInterval(id);
   }, []);
@@ -167,78 +82,77 @@ export default function FeatureCarousel() {
   const f = features[active];
 
   return (
-    <div className="flex flex-col gap-6 h-full">
+    <div className="flex flex-col gap-8 h-full">
 
-      {/* Main card */}
+      {/* Card */}
       <div
-        className="relative flex-1 overflow-hidden border border-white/8 bg-[#111110]"
+        className="flex-1 border border-white/8 bg-white/[0.02] flex flex-col justify-between p-10"
         style={{
           opacity: fading ? 0 : 1,
-          transform: fading ? "translateY(10px)" : "translateY(0)",
-          transition: "opacity 0.26s ease, transform 0.26s ease",
+          transform: fading ? "translateY(8px)" : "translateY(0)",
+          transition: "opacity 0.24s ease, transform 0.24s ease",
         }}
       >
-        {/* Gradient accent */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${f.accent} pointer-events-none`} />
-
-        {/* Big index watermark */}
-        <div
-          className="absolute -right-4 -top-6 font-display font-light text-white/[0.04] select-none pointer-events-none leading-none"
-          style={{ fontSize: "clamp(7rem, 15vw, 11rem)", fontFamily: "var(--font-display)" }}
-          aria-hidden
-        >
-          {f.index}
-        </div>
-
-        <div className="relative z-10 flex flex-col h-full p-8 lg:p-10 gap-8">
-          {/* Tag */}
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] tracking-[0.2em] uppercase text-white/25">{f.index} / 03</span>
-            <span className="text-[9px] tracking-[0.14em] uppercase text-white/25 border border-white/10 px-2.5 py-1">
-              {f.tag}
-            </span>
+        {/* Top */}
+        <div className="flex flex-col gap-8">
+          {/* Icon + index */}
+          <div className="flex items-start justify-between">
+            <div className="text-white/30">{f.icon}</div>
+            <span className="text-[10px] tracking-[0.22em] uppercase text-white/15">{f.index}</span>
           </div>
 
-          {/* Title block */}
+          {/* Title */}
           <div>
             <h3
-              className="font-display font-light text-white leading-[0.9] tracking-tight mb-3"
+              className="font-display font-light text-white leading-none tracking-tight mb-4"
               style={{
-                fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)",
+                fontSize: "clamp(2.8rem, 5vw, 4rem)",
                 fontFamily: "var(--font-display)",
               }}
             >
               {f.title}
             </h3>
-            <p className="text-[13px] text-white/35 leading-relaxed max-w-sm">
+            <p className="text-[13px] text-white/35 leading-relaxed max-w-xs">
               {f.body}
             </p>
           </div>
+        </div>
 
-          {/* Visual */}
-          <div className="mt-auto">{f.visual}</div>
+        {/* Bottom — feature list */}
+        <div className="flex flex-col gap-0 border-t border-white/6 mt-10">
+          {f.items.map((item, i) => (
+            <div
+              key={item}
+              className="flex items-center gap-4 py-4 border-b border-white/6"
+            >
+              <span className="text-[9px] tracking-[0.14em] text-white/15 tabular-nums w-4 shrink-0">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="text-[13px] text-white/55 leading-snug">{item}</span>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-6">
         {features.map((feat, i) => (
           <button
             key={i}
             onClick={() => go(i)}
-            className="flex flex-col gap-1.5 group text-left"
+            className="flex items-center gap-3 group"
             aria-label={feat.title}
           >
             <div
               className="h-px transition-all duration-500"
               style={{
-                width: i === active ? "40px" : "20px",
-                background: i === active ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.12)",
+                width: i === active ? "36px" : "18px",
+                background: i === active ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.1)",
               }}
             />
             <span
-              className="text-[9px] tracking-[0.14em] uppercase transition-all duration-300"
-              style={{ color: i === active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.15)" }}
+              className="text-[10px] tracking-[0.16em] uppercase transition-colors duration-300"
+              style={{ color: i === active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)" }}
             >
               {feat.title}
             </span>
