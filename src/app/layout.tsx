@@ -9,7 +9,6 @@ import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
-import { FloatingStylist } from "@/components/stylist/FloatingStylist";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -69,7 +68,6 @@ export default function RootLayout({
                 <CartProvider>
                   <CurrencyProvider>
                   <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
-                  <FloatingStylist />
                   <AnalyticsTracker />
                   </CurrencyProvider>
                 </CartProvider>

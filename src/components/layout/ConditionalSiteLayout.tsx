@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
+import { FloatingStylist } from "@/components/stylist/FloatingStylist";
 
 interface ConditionalSiteLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export default function ConditionalSiteLayout({ children }: ConditionalSiteLayou
       <Navigation />
       <main>{children}</main>
       <Footer />
+      <FloatingStylist />
     </>
   );
 }
