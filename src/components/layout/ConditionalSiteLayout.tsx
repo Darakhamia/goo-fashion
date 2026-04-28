@@ -14,7 +14,8 @@ export default function ConditionalSiteLayout({ children }: ConditionalSiteLayou
   const isBarePage =
     pathname.startsWith("/admin") ||
     pathname === "/login" ||
-    pathname === "/register";
+    pathname === "/register" ||
+    pathname === "/coming-soon";
 
   if (isBarePage) {
     return <>{children}</>;
