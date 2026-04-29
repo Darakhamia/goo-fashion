@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import type { Product, ProductSwatch } from "@/lib/types";
+import type { Outfit, Product, ProductSwatch } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
 import ProductCard from "./ProductCard";
+import OutfitCard from "@/components/outfit/OutfitCard";
 import PriceHistoryChart from "./PriceHistoryChart";
 import ProductReviews from "./ProductReviews";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
@@ -13,11 +14,12 @@ import { track } from "@/lib/analytics/track";
 interface Props {
   product: Product;
   relatedProducts: Product[];
+  outfitsWithProduct: Outfit[];
   lowestPrice: number;
   allProducts: Product[];
 }
 
-export default function ProductClient({ product, relatedProducts, lowestPrice, allProducts }: Props) {
+export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, allProducts }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
@@ -362,6 +364,33 @@ export default function ProductClient({ product, relatedProducts, lowestPrice, a
 
       {/* User reviews */}
       <ProductReviews productId={product.id} />
+
+      {/* Outfits featuring this item */}
+      {outfitsWithProduct.length > 0 && (
+        <section className="mt-20 md:mt-28 mb-4">
+          <div className="mb-8">
+            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+              Style it with
+            </p>
+            <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+              Outfits with this piece
+            </h2>
+          </div>
+          <div className={`grid gap-px bg-[var(--border)] ${
+            outfitsWithProduct.length === 1
+              ? "grid-cols-1 max-w-xs"
+              : outfitsWithProduct.length === 2
+              ? "grid-cols-2 md:grid-cols-2"
+              : "grid-cols-2 md:grid-cols-4"
+          }`}>
+            {outfitsWithProduct.slice(0, 4).map((outfit) => (
+              <div key={outfit.id} className="bg-[var(--background)] p-4">
+                <OutfitCard outfit={outfit} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

@@ -454,6 +454,11 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
   return dbToOutfit(row, productMap);
 }
 
+export async function getOutfitsByProductId(productId: string): Promise<Outfit[]> {
+  const all = await getAllOutfits();
+  return all.filter((outfit) => outfit.items.some((item) => item.product.id === productId));
+}
+
 export async function deleteOutfit(id: string): Promise<boolean> {
   if (!isSupabaseConfigured || !supabase) return false;
   const { error } = await supabase.from("outfits").delete().eq("id", id);
