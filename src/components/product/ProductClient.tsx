@@ -376,13 +376,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               Outfits with this piece
             </h2>
           </div>
-          <div className={`grid gap-px bg-[var(--border)] ${
-            outfitsWithProduct.length === 1
-              ? "grid-cols-1 max-w-xs"
-              : outfitsWithProduct.length === 2
-              ? "grid-cols-2 md:grid-cols-2"
-              : "grid-cols-2 md:grid-cols-4"
-          }`}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
               <div key={outfit.id} className="bg-[var(--background)] p-4">
                 <OutfitCard outfit={outfit} />
