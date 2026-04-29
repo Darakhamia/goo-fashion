@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProductById, getAllProducts } from "@/lib/data/db";
+import { getProductById, getAllProducts, getOutfitsByProductId } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -42,7 +42,10 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const allProducts = await getAllProducts();
+  const [allProducts, outfitsWithProduct] = await Promise.all([
+    getAllProducts(),
+    getOutfitsByProductId(id),
+  ]);
   const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.category === product.category)
     .slice(0, 4);
@@ -57,6 +60,7 @@ export default async function ProductDetailPage({ params }: Props) {
         <ProductClient
           product={product}
           relatedProducts={relatedProducts}
+          outfitsWithProduct={outfitsWithProduct}
           lowestPrice={lowestPrice}
           allProducts={allProducts}
         />
