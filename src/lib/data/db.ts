@@ -454,9 +454,10 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
   return dbToOutfit(row, productMap);
 }
 
-export async function getOutfitsByProductId(productId: string): Promise<Outfit[]> {
+export async function getOutfitsByProductId(productIds: string | string[]): Promise<Outfit[]> {
+  const ids = Array.isArray(productIds) ? productIds : [productIds];
   const all = await getAllOutfits();
-  return all.filter((outfit) => outfit.items.some((item) => item.product.id === productId));
+  return all.filter((outfit) => outfit.items.some((item) => ids.includes(item.product.id)));
 }
 
 export async function deleteOutfit(id: string): Promise<boolean> {
