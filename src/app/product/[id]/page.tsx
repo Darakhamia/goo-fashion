@@ -42,9 +42,11 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductById(id);
   if (!product) notFound();
 
+  const variantIds = [product.id, ...(product.variants?.map((v) => v.id) ?? [])];
+
   const [allProducts, outfitsWithProduct] = await Promise.all([
     getAllProducts(),
-    getOutfitsByProductId(id),
+    getOutfitsByProductId(variantIds),
   ]);
   const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.category === product.category)
