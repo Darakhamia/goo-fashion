@@ -4,7 +4,7 @@ const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
 const COOKIE_NAME = "goo_preview";
 
 function siteBase(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? new URL(req.url).origin;
+  return new URL(req.url).origin;
 }
 
 export function GET(req: NextRequest) {
