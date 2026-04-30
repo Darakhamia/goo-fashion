@@ -1280,13 +1280,13 @@ export default function BuilderPage() {
 
               return (
                 <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/65 backdrop-blur-md rounded-2xl py-2.5 px-1.5 transition-all duration-300 ease-out ${
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/35 backdrop-blur-sm rounded-2xl py-2.5 px-1.5 transition-all duration-300 ease-out ${
                     hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
                   }`}
                 >
                   <div
-                    className="flex flex-col items-center gap-1.5 overflow-y-auto"
-                    style={{ maxHeight: "calc(6 * 2.75rem + 5 * 0.375rem)", scrollbarWidth: "none", touchAction: "pan-y" }}
+                    className="flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden"
+                    style={{ maxHeight: "calc(6 * 2.75rem + 5 * 0.375rem)", scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
                   >
                     {colors.map(color => {
                       const isActive = color.id === activeId;
