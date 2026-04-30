@@ -122,6 +122,7 @@ export default function BuilderPage() {
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [showSavedPopup, setShowSavedPopup] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -457,6 +458,16 @@ export default function BuilderPage() {
     setShowSaveModal(true);
   };
 
+  const handleMobileSave = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
+    persistLook();
+    setSaved(true);
+    setShowSavedPopup(true);
+  };
+
   const openStylePicker = () => {
     if (!isLoggedIn) {
       login("", "");
@@ -545,7 +556,7 @@ export default function BuilderPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-56px)] md:h-[calc(100vh-64px)] flex flex-col overflow-hidden">
 
 
       {/* ─────────────────────────────────────────────────────────────────────
@@ -1149,8 +1160,34 @@ export default function BuilderPage() {
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* 1. Hero canvas — fills top ~60% */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 58%" }}>
+          {/* Mobile top header: back + save */}
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
+            <Link
+              href="/"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <button
+              onClick={handleMobileSave}
+              disabled={selectedCount === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                saved
+                  ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/50"
+                  : "bg-[#c9a84c] text-black hover:bg-[#d4b060]"
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
+              </svg>
+              {saved ? "Saved" : "Save"}
+            </button>
+          </div>
+
+          {/* 1. Hero canvas */}
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 52%" }}>
 
             {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1308,7 +1345,7 @@ export default function BuilderPage() {
               );
             })()}
 
-            {/* Bottom gradient: price + generate button */}
+            {/* Bottom gradient: price + generate */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
               <div className="flex items-end justify-between gap-3">
                 <div className="pointer-events-none">
@@ -1331,12 +1368,12 @@ export default function BuilderPage() {
                   <button
                     onClick={openStylePicker}
                     disabled={generating}
-                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[13px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/35 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[13px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/40 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     {generating ? (
                       <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
                         <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
                           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
                       </svg>
@@ -1346,7 +1383,6 @@ export default function BuilderPage() {
                 )}
               </div>
             </div>
-
           </div>
 
           {/* 2. Bottom sheet panel */}
@@ -1421,7 +1457,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-2 pb-14 h-full items-start">
+                <div className="flex gap-3 px-4 py-2 h-full items-start">
                   {expandedCatalogItems.map(item => {
                     const { product } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1852,6 +1888,67 @@ export default function BuilderPage() {
         <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
           {generateError}
         </p>
+      )}
+
+      {/* ── Saved popup (mobile) ─────────────────────────────────────────────── */}
+      {showSavedPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:hidden"
+          onClick={() => setShowSavedPopup(false)}
+        >
+          <div
+            className="w-full bg-[var(--background)] border-t border-[var(--border)] px-5 pt-5 pb-8 animate-slide-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Outfit saved</p>
+              <button
+                onClick={() => setShowSavedPopup(false)}
+                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Outfit thumbnails */}
+            {Object.values(selection).filter(Boolean).length > 0 && (
+              <div className="flex gap-2 mb-5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {(Object.entries(selection) as [SlotId, Product][])
+                  .filter(([, p]) => p != null)
+                  .map(([slotId, product]) => {
+                    const colorKey = colorImageOverrides[slotId];
+                    const colorImageUrl = colorKey && product.colorImages?.[colorKey]?.[0];
+                    const variantId = variantOverrides[slotId];
+                    const activeVariant = product.variants?.find(v => v.id === variantId);
+                    const img = colorImageUrl || activeVariant?.imageUrl || product.imageUrl;
+                    return (
+                      <div key={slotId} className="shrink-0 w-16 h-20 border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                        {img && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={img} alt={product.name} className="w-full h-full object-contain p-1" />
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Navigation */}
+            <Link
+              href="/saved?tab=looks"
+              onClick={() => setShowSavedPopup(false)}
+              className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
+            >
+              <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Looks</span>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </div>
+        </div>
       )}
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
