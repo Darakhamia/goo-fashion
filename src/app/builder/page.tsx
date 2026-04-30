@@ -63,6 +63,15 @@ const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
   { label: "< $2k",  max: 2000 },
 ];
 
+// Simplified category tabs for mobile
+const MOBILE_CHIPS: Array<{ label: string; value: string | null }> = [
+  { label: "All",         value: null          },
+  { label: "Tops",        value: "top"         },
+  { label: "Bottoms",     value: "bottom"      },
+  { label: "Shoes",       value: "shoes"       },
+  { label: "Accessories", value: "accessories" },
+];
+
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
 function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
@@ -1130,41 +1139,40 @@ export default function BuilderPage() {
         </div>
 
         {/* ── MOBILE LAYOUT ─────────────────────────────────────────────────
-            Visible below md breakpoint only. Stacked single-column layout:
-            mini-canvas → slot strip → search+chips → product grid → bottom bar.
+            Hero canvas + bottom-sheet catalog panel.
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* 1. Mini silhouette canvas */}
-          <div className="h-[220px] shrink-0 bg-[var(--surface)] border-b border-[var(--border)] relative overflow-hidden">
+          {/* 1. Hero canvas — fills top ~60% */}
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 58%" }}>
+
+            {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative h-full" style={{ width: 180 }}>
+              <div className="relative h-full" style={{ width: 230 }}>
 
                 {/* Main stacked figure */}
-                <div className="absolute inset-y-0 left-0 flex flex-col" style={{ width: 140 }}>
+                <div className="absolute inset-y-4 left-0 flex flex-col" style={{ width: 185 }}>
                   {FIGURE_SLOTS.map(({ id, label, flex }) => {
                     const picked = selection[id];
                     const variantId = variantOverrides[id];
                     const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                    const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
+                    const colorKey = colorImageOverrides[id];
+                    const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                    const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
                     return (
                       <button
                         key={id}
                         onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
                         style={{ flex }}
-                        className={`relative overflow-hidden border-b border-[var(--border)] last:border-b-0 transition-all ${
-                          activeSlot === id ? "ring-1 ring-inset ring-[var(--foreground)] z-10" : ""
+                        className={`relative overflow-hidden transition-all ${
+                          activeSlot === id ? "ring-1 ring-inset ring-white/30 z-10" : ""
                         }`}
                       >
                         {!picked && (
-                          <>
-                            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
-                            <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-                              <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={11} /></div>
-                              <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] opacity-40">{label}</p>
-                            </div>
-                          </>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+                            <div className="text-white/15"><SlotIcon id={id} size={13} /></div>
+                            <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-white/15">{label}</p>
+                          </div>
                         )}
                         {displayImage && (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -1172,7 +1180,7 @@ export default function BuilderPage() {
                             src={displayImage}
                             alt={picked!.name}
                             className={`absolute inset-0 w-full h-full ${
-                              id === "shoes" ? "object-contain p-1.5" : "object-cover"
+                              id === "shoes" ? "object-contain p-2" : "object-contain"
                             }`}
                           />
                         )}
@@ -1181,8 +1189,8 @@ export default function BuilderPage() {
                   })}
                 </div>
 
-                {/* Accessories — two floating mini panels stacked */}
-                <div className="absolute right-0 flex flex-col gap-1" style={{ top: "50%", transform: "translateY(-50%)" }}>
+                {/* Accessories — two floating mini panels */}
+                <div className="absolute right-0 flex flex-col gap-2" style={{ top: "50%", transform: "translateY(-50%)" }}>
                   {(["accessories", "accessories2"] as SlotId[]).map(id => {
                     const picked = selection[id];
                     const displayImage = picked?.imageUrl;
@@ -1191,18 +1199,14 @@ export default function BuilderPage() {
                         key={id}
                         onClick={() => { setActiveSlot(id); setCatalogCategory("accessories"); }}
                         className={`relative overflow-hidden border transition-all ${
-                          activeSlot === id ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]" : "border-[var(--border)]"
+                          activeSlot === id ? "border-white/30 ring-1 ring-white/20" : "border-white/10"
                         }`}
-                        style={{ width: 34, height: 40 }}
+                        style={{ width: 38, height: 46 }}
                       >
                         {!picked && (
-                          <>
-                            <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
-                            <div className="absolute inset-0 border border-dashed border-[var(--border)]" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={id} size={9} /></div>
-                            </div>
-                          </>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-white/15"><SlotIcon id={id} size={9} /></div>
+                          </div>
                         )}
                         {displayImage && (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -1215,349 +1219,215 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Canvas label overlay */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 h-8 pointer-events-none">
-              <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                {selectedCount > 0 ? `Look ${lookNumber}` : "Look —"}
-              </p>
+            {/* Bottom gradient: price + improve outfit button */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-white/45 text-[10px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className={`font-light leading-none transition-all ${
+                      selectedCount > 0 ? "text-[22px] text-white" : "text-[18px] text-white/30"
+                    }`}>
+                      {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
+                    </p>
+                    {selectedCount > 0 && (
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-white/35 mt-0.5 shrink-0">
+                        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                {selectedCount >= 1 && (
+                  <button
+                    onClick={openStylePicker}
+                    disabled={generating}
+                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[12px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/35 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    {generating ? (
+                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {generating ? "Generating…" : "Improve outfit"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Top-right: clear + save */}
+            <div className="absolute top-3 right-3 flex items-center gap-3">
               {selectedCount > 0 && (
                 <button
                   onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors pointer-events-auto"
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/35 hover:text-white/60 transition-colors"
                 >
                   Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 2. Slot strip — horizontal scrollable thumbnails */}
-          <div
-            className="shrink-0 flex gap-2 px-3 py-2.5 border-b border-[var(--border)] overflow-x-auto"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {SLOTS.map(slot => {
-              const picked = selection[slot.id];
-              const variantId = variantOverrides[slot.id];
-              const activeVariant = picked?.variants?.find(v => v.id === variantId);
-              const displayImage = activeVariant?.imageUrl ?? picked?.imageUrl;
-              const isActive = activeSlot === slot.id;
-              return (
-                <div
-                  key={slot.id}
-                  className={`shrink-0 flex flex-col items-center gap-1 transition-opacity ${isActive ? "opacity-100" : "opacity-60"}`}
-                >
-                  {/* Thumbnail tap area */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                    onKeyDown={e => e.key === "Enter" && (setActiveSlot(slot.id), setCatalogCategory(slot.id))}
-                    className={`relative overflow-hidden bg-[var(--surface)] transition-all cursor-pointer ${
-                      isActive ? "ring-1 ring-[var(--foreground)]" : "border border-[var(--border)]"
-                    }`}
-                    style={{ width: 52, height: 64 }}
-                  >
-                    {displayImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 4px, var(--fg-overlay-05) 4px, var(--fg-overlay-05) 5px)" }} />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-[var(--foreground-subtle)] opacity-35"><SlotIcon id={slot.id} size={11} /></div>
-                        </div>
-                      </>
-                    )}
-                    {picked && (
-                      <button
-                        onClick={e => clearSlot(slot.id, e)}
-                        className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center bg-[var(--background)]/85 text-[var(--foreground)] text-xs leading-none font-medium"
-                        aria-label={`Remove ${slot.label}`}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
-                    {slot.label.length > 5 ? slot.label.slice(0, 3) : slot.label}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 3. Search */}
-          <div className="px-3 pt-2.5 pb-1.5 shrink-0">
-            <div className="relative">
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search products…"
-                className="w-full h-[38px] bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-9 pr-8 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-              />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-                  <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-              </span>
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 4. Category chips */}
-          <div className="px-3 pb-2 shrink-0 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {CATALOG_CHIPS.map(({ label, value }) => {
-              const isActive = catalogCategory === value;
-              return (
-                <button
-                  key={label}
-                  onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
-                  className={`shrink-0 px-3 py-1 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase font-medium border transition-all duration-150 ${
-                    isActive
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 4b. Mobile filter toggle row */}
-          <div className="px-3 pb-1.5 shrink-0 flex items-center justify-between">
-            <button
-              onClick={() => setFiltersOpen(v => !v)}
-              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
-                hasActiveFilters || filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
-              }`}
-            >
-              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                <line x1="1" y1="3.5" x2="13" y2="3.5" />
-                <line x1="3" y1="7" x2="11" y2="7" />
-                <line x1="5" y1="10.5" x2="9" y2="10.5" />
-              </svg>
-              Filters{hasActiveFilters ? ` · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0)}` : ""}
-            </button>
-            <div className="flex items-center gap-2">
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)] transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={() => setSortBy(s => s === "featured" ? "price-asc" : s === "price-asc" ? "price-desc" : "featured")}
-                className={`font-mono text-[9px] tracking-[0.08em] uppercase transition-colors ${
-                  sortBy !== "featured" ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
-                }`}
-              >
-                {sortBy === "price-asc" ? "Price ↑" : sortBy === "price-desc" ? "Price ↓" : "Sort"}
-              </button>
-            </div>
-          </div>
-
-          {/* 4c. Mobile expandable filter panel */}
-          {filtersOpen && (
-            <div className="px-3 pb-2 shrink-0 border-b border-[var(--border)] space-y-2.5">
-              <div>
-                <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Price</p>
-                <div className="flex flex-wrap gap-1">
-                  {PRICE_BUCKETS.map(({ label, max }) => (
-                    <button
-                      key={label}
-                      onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                      className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
-                        maxPrice === max
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {availableBrands.length > 0 && (
-                <div>
-                  <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Brand</p>
-                  <div className="flex flex-wrap gap-1 max-h-[64px] overflow-y-auto">
-                    {availableBrands.map(brand => {
-                      const isActive = selectedBrands.includes(brand);
-                      return (
-                        <button
-                          key={brand}
-                          onClick={() => setSelectedBrands(prev =>
-                            isActive ? prev.filter(b => b !== brand) : [...prev, brand]
-                          )}
-                          className={`px-2.5 py-0.5 font-mono text-[9px] tracking-[0.06em] border transition-all duration-150 ${
-                            isActive
-                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                              : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                          }`}
-                        >
-                          {brand}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 5. Count + liked toggle */}
-          <div className="px-3 pb-2 shrink-0 flex items-center justify-between border-b border-[var(--border)]">
-            <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-              {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "item" : "items"}
-            </p>
-            <button
-              onClick={() => setLikedOnly(v => !v)}
-              className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase transition-colors ${
-                likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
-              }`}
-            >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-              </svg>
-              Liked
-            </button>
-          </div>
-
-          {/* 6. Product grid — scrollable */}
-          <div className="flex-1 overflow-y-auto">
-            {expandedCatalogItems.length === 0 ? (
-              <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-3 px-6 bg-[var(--surface)]">
-                <div className="w-16 h-16 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
-                  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
-                    <path d="M20 4C20 4 14 8 8 8V28C8 28 14 28 20 36C26 28 32 28 32 28V8C26 8 20 4 20 4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                    <path d="M20 4V36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    <path d="M14 16H26M14 22H22" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="text-center space-y-0.5">
-                  <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
-                    {likedOnly ? "No saved items" : search ? "No results found" : "End of catalog"}
-                  </p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] opacity-60">
-                    {likedOnly ? "Like some items first" : search ? "Try a different search" : "That's all we have"}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 p-3">
-                {expandedCatalogItems.map(item => {
-                  const { product } = item;
-                  const targetSlot = SLOTS.find(s => s.categories.includes(product.category));
-                  const isSelected = targetSlot ? selection[targetSlot.id]?.id === product.id : false;
-                  const variantId = targetSlot ? variantOverrides[targetSlot.id] : undefined;
-                  const activeVariant = product.variants?.find(v => v.id === variantId);
-                  const displayImage = (isSelected && activeVariant?.imageUrl) ? activeVariant.imageUrl : product.imageUrl;
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => selectProduct(product)}
-                      className={`group relative flex flex-col text-left transition-all duration-150 ${
-                        isSelected ? "outline outline-1 outline-[var(--foreground)]" : ""
-                      }`}
-                    >
-                      <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--surface)]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displayImage}
-                          alt={product.name}
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                              <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-1.5 pb-1 px-0.5">
-                        <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                        <div className="flex items-center justify-between mt-0.5 gap-1">
-                          <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                          <p className="font-mono text-[10px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 7. Mobile bottom bar */}
-          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] px-4 py-2.5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-mono text-[8px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
-              <p className={`font-display font-light leading-none mt-0.5 transition-all ${
-                selectedCount > 0 ? "text-[20px] text-[var(--foreground)]" : "text-[16px] text-[var(--foreground-subtle)]"
-              }`}>
-                {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Generate — icon-only on mobile, visible with ≥1 piece */}
-              {selectedCount >= 1 && (
-                <button
-                  onClick={openStylePicker}
-                  disabled={generating}
-                  className="w-9 h-9 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  aria-label="Generate outfit image"
-                >
-                  {generating ? (
-                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
-                  )}
                 </button>
               )}
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
-                className={`font-mono text-[9px] tracking-[0.14em] uppercase px-3 h-9 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase px-3 py-1.5 rounded-full border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
                   saved
-                    ? "border-[var(--border)] text-[var(--foreground-muted)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
+                    : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
                 }`}
               >
-                {saved ? "Saved ✓" : "Save"}
+                <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                </svg>
+                {saved ? "Saved" : "Save"}
               </button>
+            </div>
+          </div>
+
+          {/* 2. Bottom sheet panel */}
+          <div className="flex flex-col bg-[var(--background)] min-h-0" style={{ flex: "0 0 42%" }}>
+
+            {/* Drag handle */}
+            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
+            </div>
+
+            {/* Category tabs */}
+            <div className="shrink-0 flex gap-5 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
+              {MOBILE_CHIPS.map(({ label, value }) => {
+                const isActive = catalogCategory === value;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
+                    className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
+                      isActive
+                        ? "border-[#c9a84c] text-[var(--foreground)]"
+                        : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Horizontal product scroll */}
+            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
+              {expandedCatalogItems.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
+                    {search ? "No results" : "No items"}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-3 px-4 py-3 h-full items-start">
+                  {expandedCatalogItems.map(item => {
+                    const { product } = item;
+                    const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                    const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                    const isSelected = !!selectedSlot;
+                    const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
+                    const previewVariantId = catalogPreviews[product.id];
+                    const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
+                    const colorImageKeys = Object.keys(product.colorImages ?? {});
+                    const hasColorImages = colorImageKeys.length > 1;
+                    const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
+                    const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
+                      ? product.colorImages![selectedColorKey][0]
+                      : null;
+                    const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                    const hasVariants = (product.variants?.length ?? 0) > 1;
+
+                    return (
+                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 128 }}>
+                        {/* Image area */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => selectProduct(product)}
+                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
+                          className={`relative overflow-hidden bg-[var(--surface)] cursor-pointer transition-all rounded-sm ${
+                            isSelected ? "ring-1 ring-[#c9a84c]" : ""
+                          }`}
+                          style={{ width: 128, height: 152 }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={displayImage}
+                            alt={product.name}
+                            className="absolute inset-0 w-full h-full object-contain"
+                          />
+                          {/* Heart / in-outfit indicator */}
+                          <button
+                            onClick={e => { e.stopPropagation(); selectProduct(product); }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center"
+                            aria-label={isSelected ? "Remove from outfit" : "Add to outfit"}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 16 16"
+                              fill={isSelected ? "#c9a84c" : "none"}
+                              stroke={isSelected ? "#c9a84c" : "rgba(0,0,0,0.35)"}
+                              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                            >
+                              <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                            </svg>
+                          </button>
+                        </div>
+                        {/* Info */}
+                        <div className="pt-1.5">
+                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
+                          <p className="font-mono text-[10px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
+                          {/* Colour swatches */}
+                          {hasVariants && (
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              {product.variants!.slice(0, 5).map(sw => {
+                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                const isSwatchActive = activeId === sw.id;
+                                return (
+                                  <button
+                                    key={sw.id}
+                                    title={sw.colorName}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: sw.id }));
+                                      if (isSelected && selectedSlot) selectVariant(selectedSlot.id, sw);
+                                    }}
+                                    className={`w-3 h-3 shrink-0 rounded-full transition-all ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                    style={{
+                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                      boxShadow: isSwatchActive
+                                        ? "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.45)"
+                                        : "0 0 0 1px rgba(0,0,0,0.15)",
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Shop CTA bar */}
+            <div className="shrink-0 border-t border-[var(--border)] px-4 py-2.5 flex items-center justify-between gap-3">
+              <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
+                {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "item" : "items"}
+              </p>
               <button
                 onClick={shopTheLook}
                 disabled={selectedCount === 0}
-                className={`h-9 px-4 font-mono text-[9px] tracking-[0.16em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
+                className={`h-8 px-4 font-mono text-[9px] tracking-[0.16em] uppercase rounded-full transition-all duration-150 disabled:cursor-not-allowed ${
                   selectedCount > 0
                     ? "bg-[var(--foreground)] text-[var(--background)]"
                     : "bg-[var(--border)] text-[var(--foreground-subtle)]"
                 }`}
               >
-                {shopAdded
-                  ? "Added ✓"
-                  : selectedCount > 0
-                  ? `Shop · ${formatPrice(totalPrice)}`
-                  : "Shop the Look"}
+                {shopAdded ? "Added ✓" : selectedCount > 0 ? `Shop · ${formatPrice(totalPrice)}` : "Shop the Look"}
               </button>
             </div>
           </div>
