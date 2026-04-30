@@ -126,7 +126,6 @@ export default function BuilderPage() {
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [colorPanelScroll, setColorPanelScroll] = useState(0);
 
   const [shopAdded, setShopAdded] = useState(false);
 
@@ -158,7 +157,6 @@ export default function BuilderPage() {
   }, [openSwatchPopup]);
 
   // Reset colour panel scroll when active slot changes
-  useEffect(() => { setColorPanelScroll(0); }, [activeSlot]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1276,71 +1274,51 @@ export default function BuilderPage() {
                 ? variants.map(v => ({ id: v.id, hex: v.colorHex, name: v.colorName, isVariant: true }))
                 : colorImgKeys.map(k => ({ id: k, hex: null, name: k, imgUrl: activeProduct!.colorImages![k]?.[0], isVariant: false }));
 
-              const VISIBLE = 6;
-              const maxScroll = Math.max(0, colors.length - VISIBLE);
-              const visibleColors = colors.slice(colorPanelScroll, colorPanelScroll + VISIBLE);
-
               const activeId = useVariants
                 ? (variantOverrides[activeSlot] ?? activeProduct?.id ?? "")
                 : (colorImageOverrides[activeSlot] ?? colorImgKeys[0] ?? "");
 
               return (
                 <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1.5 bg-black/65 backdrop-blur-md rounded-2xl py-2.5 px-1.5 transition-all duration-300 ease-out ${
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/65 backdrop-blur-md rounded-2xl py-2.5 px-1.5 transition-all duration-300 ease-out ${
                     hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
                   }`}
                 >
-                  {/* Up arrow */}
-                  <button
-                    onClick={() => setColorPanelScroll(i => Math.max(0, i - 1))}
-                    className={`text-white/50 hover:text-white transition-colors ${colorPanelScroll === 0 ? "opacity-0 pointer-events-none" : ""}`}
+                  <div
+                    className="flex flex-col items-center gap-1.5 overflow-y-auto"
+                    style={{ maxHeight: "calc(6 * 2.75rem + 5 * 0.375rem)", scrollbarWidth: "none", touchAction: "pan-y" }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                      <path d="M3 9.5L7 5.5L11 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-
-                  {/* Swatches */}
-                  {visibleColors.map(color => {
-                    const isActive = color.id === activeId;
-                    return (
-                      <button
-                        key={color.id}
-                        title={color.name}
-                        onClick={() => {
-                          if (color.isVariant) {
-                            const swatch = variants.find(v => v.id === color.id);
-                            if (swatch) selectVariant(activeSlot, swatch);
-                          } else {
-                            setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
-                          }
-                        }}
-                        className={`w-9 h-9 shrink-0 transition-all duration-200 ${isActive ? "scale-105" : "opacity-60 hover:opacity-90 hover:scale-105"}`}
-                        style={{
-                          background: color.hex === "#multicolor"
-                            ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
-                            : color.hex
-                            ? color.hex
-                            : color.imgUrl
-                            ? `url(${color.imgUrl}) center/cover`
-                            : "#555",
-                          boxShadow: isActive
-                            ? "0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.3)"
-                            : "0 0 0 1px rgba(255,255,255,0.12)",
-                        }}
-                      />
-                    );
-                  })}
-
-                  {/* Down arrow */}
-                  <button
-                    onClick={() => setColorPanelScroll(i => Math.min(maxScroll, i + 1))}
-                    className={`text-white/50 hover:text-white transition-colors ${colorPanelScroll >= maxScroll ? "opacity-0 pointer-events-none" : ""}`}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                      <path d="M3 4.5L7 8.5L11 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                    {colors.map(color => {
+                      const isActive = color.id === activeId;
+                      return (
+                        <button
+                          key={color.id}
+                          title={color.name}
+                          onClick={() => {
+                            if (color.isVariant) {
+                              const swatch = variants.find(v => v.id === color.id);
+                              if (swatch) selectVariant(activeSlot, swatch);
+                            } else {
+                              setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
+                            }
+                          }}
+                          className={`w-9 h-9 shrink-0 transition-all duration-200 ${isActive ? "scale-105" : "opacity-60 hover:opacity-90 hover:scale-105"}`}
+                          style={{
+                            background: color.hex === "#multicolor"
+                              ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
+                              : color.hex
+                              ? color.hex
+                              : color.imgUrl
+                              ? `url(${color.imgUrl}) center/cover`
+                              : "#555",
+                            boxShadow: isActive
+                              ? "0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.3)"
+                              : "0 0 0 1px rgba(255,255,255,0.12)",
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })()}
