@@ -122,6 +122,7 @@ export default function BuilderPage() {
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [showSavedPopup, setShowSavedPopup] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
 
@@ -449,6 +450,16 @@ export default function BuilderPage() {
     }
     persistLook();
     setSaved(true);
+  };
+
+  const handleMobileSave = () => {
+    if (!isLoggedIn) {
+      login("", "");
+      return;
+    }
+    persistLook();
+    setSaved(true);
+    setShowSavedPopup(true);
   };
 
   const openStylePicker = () => {
@@ -1219,8 +1230,8 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Bottom gradient: price + improve outfit button */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
+            {/* Bottom gradient: price */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4 pointer-events-none">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-white/45 text-[10px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
@@ -1238,50 +1249,7 @@ export default function BuilderPage() {
                     )}
                   </div>
                 </div>
-                {selectedCount >= 1 && (
-                  <button
-                    onClick={openStylePicker}
-                    disabled={generating}
-                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[12px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/35 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  >
-                    {generating ? (
-                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {generating ? "Generating…" : "Improve outfit"}
-                  </button>
-                )}
               </div>
-            </div>
-
-            {/* Top-right: clear + save */}
-            <div className="absolute top-3 right-3 flex items-center gap-3">
-              {selectedCount > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/35 hover:text-white/60 transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={saveOutfit}
-                disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase px-3 py-1.5 rounded-full border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                  saved
-                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
-                    : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-                }`}
-              >
-                <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                {saved ? "Saved" : "Save"}
-              </button>
             </div>
           </div>
 
@@ -1313,17 +1281,63 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Floating shop button — over the scroll list */}
-            {selectedCount > 0 && (
-              <div className="absolute bottom-3 right-4 z-20">
+            {/* Action bar: Clear · Generate · Saved · Shop */}
+            <div className="shrink-0 border-b border-[var(--border)] px-4 py-2 flex items-center gap-2">
+              {selectedCount > 0 && (
                 <button
-                  onClick={shopTheLook}
-                  className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
+                  onClick={clearAll}
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                  Clear
                 </button>
-              </div>
-            )}
+              )}
+              {selectedCount >= 1 && (
+                <>
+                  <span className="text-[var(--border-strong)] text-[10px]">·</span>
+                  <button
+                    onClick={openStylePicker}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {generating ? (
+                      <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {generating ? "Generating…" : "Generate"}
+                  </button>
+                </>
+              )}
+              <span className="flex-1" />
+              <button
+                onClick={handleMobileSave}
+                disabled={selectedCount === 0}
+                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase px-3 py-1.5 rounded-full border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                  saved
+                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
+                    : "border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="9" height="9" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                </svg>
+                {saved ? "Saved" : "Save"}
+              </button>
+              {selectedCount > 0 && (
+                <>
+                  <span className="text-[var(--border-strong)] text-[10px]">·</span>
+                  <button
+                    onClick={shopTheLook}
+                    className="flex items-center gap-1.5 bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase transition-all active:scale-95"
+                  >
+                    {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                  </button>
+                </>
+              )}
+            </div>
 
             {/* Horizontal product scroll */}
             <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
@@ -1334,7 +1348,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-2 pb-14 h-full items-start">
+                <div className="flex gap-3 px-4 py-2 h-full items-start">
                   {expandedCatalogItems.map(item => {
                     const { product } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1700,6 +1714,85 @@ export default function BuilderPage() {
         <p className="fixed bottom-20 right-4 z-50 text-[11px] text-red-600 bg-[var(--background)] border border-red-300 px-3 py-2 shadow-md max-w-[260px]">
           {generateError}
         </p>
+      )}
+
+      {/* ── Saved popup (mobile) ─────────────────────────────────────────────── */}
+      {showSavedPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:hidden"
+          onClick={() => setShowSavedPopup(false)}
+        >
+          <div
+            className="w-full bg-[var(--background)] border-t border-[var(--border)] px-5 pt-5 pb-8 animate-slide-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Outfit saved</p>
+              <button
+                onClick={() => setShowSavedPopup(false)}
+                className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Outfit thumbnails */}
+            {Object.values(selection).filter(Boolean).length > 0 && (
+              <div className="flex gap-2 mb-5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {(Object.entries(selection) as [SlotId, Product][])
+                  .filter(([, p]) => p != null)
+                  .map(([slotId, product]) => {
+                    const colorKey = colorImageOverrides[slotId];
+                    const colorImageUrl = colorKey && product.colorImages?.[colorKey]?.[0];
+                    const variantId = variantOverrides[slotId];
+                    const activeVariant = product.variants?.find(v => v.id === variantId);
+                    const img = colorImageUrl || activeVariant?.imageUrl || product.imageUrl;
+                    return (
+                      <div key={slotId} className="shrink-0 w-16 h-20 border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+                        {img && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={img} alt={product.name} className="w-full h-full object-contain p-1" />
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Navigation links */}
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/profile"
+                onClick={() => setShowSavedPopup(false)}
+                className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
+              >
+                <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Profile</span>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+              <Link
+                href="/saved?tab=looks"
+                onClick={() => setShowSavedPopup(false)}
+                className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
+              >
+                <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Looks</span>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+              <button
+                onClick={() => setShowSavedPopup(false)}
+                className="mt-1 w-full py-2.5 font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
