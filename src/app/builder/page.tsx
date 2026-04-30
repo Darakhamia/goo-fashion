@@ -539,7 +539,7 @@ export default function BuilderPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-screen pt-16 flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden">
 
 
       {/* ─────────────────────────────────────────────────────────────────────

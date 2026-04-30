@@ -205,14 +205,14 @@ export default function ProfilePage() {
 
   if (!isLoaded) {
     return (
-      <div className="pt-16 min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="w-4 h-4 border border-[var(--foreground)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         <div className="pt-12 md:pt-16">
 

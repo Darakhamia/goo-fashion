@@ -432,7 +432,7 @@ export default function SavedPage() {
   ];
 
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         <div className="pt-12 md:pt-16 mb-10">
           <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">

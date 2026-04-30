@@ -75,7 +75,7 @@ export default async function BlogPostPage({ params }: Props) {
   };
 
   return (
-    <article className="pt-16 min-h-screen">
+    <article className="min-h-screen">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
