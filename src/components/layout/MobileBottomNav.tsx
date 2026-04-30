@@ -1,0 +1,81 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export default function MobileBottomNav() {
+  const pathname = usePathname();
+
+  const tabs = [
+    {
+      href: "/builder",
+      label: "Outfit",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z"
+            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0}
+          />
+        </svg>
+      ),
+    },
+    {
+      href: "/saved",
+      label: "Closet",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+            fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" />
+          <path d="M12 5v4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M12 9.5L3 19h18L12 9.5Z"
+            stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0} />
+        </svg>
+      ),
+    },
+    {
+      href: "/browse",
+      label: "Discover",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.3"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
+          <path d="M17 17l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      href: "/profile",
+      label: "Profile",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.3"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0} />
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"
+            stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] flex items-stretch h-14">
+      {tabs.map(({ href, label, icon }) => {
+        const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
+              active ? "text-[#c9a84c]" : "text-[var(--foreground-subtle)]"
+            }`}
+          >
+            {icon(active)}
+            <span className="font-mono text-[8px] tracking-[0.06em] uppercase">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
