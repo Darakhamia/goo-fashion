@@ -1281,57 +1281,6 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Floating action buttons — same spot as old Shop button */}
-            <div className="absolute bottom-3 right-4 z-20 flex items-center gap-2">
-              {selectedCount > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="flex items-center h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] shadow-lg transition-all active:scale-95"
-                >
-                  Clear
-                </button>
-              )}
-              {selectedCount >= 1 && (
-                <button
-                  onClick={openStylePicker}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {generating ? (
-                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                  {generating ? "Generating…" : "Generate"}
-                </button>
-              )}
-              <button
-                onClick={handleMobileSave}
-                disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border ${
-                  saved
-                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
-                    : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <svg width="9" height="9" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                {saved ? "Saved" : "Save"}
-              </button>
-              {selectedCount > 0 && (
-                <button
-                  onClick={shopTheLook}
-                  className="flex items-center gap-1.5 h-8 px-4 bg-[var(--foreground)] text-[var(--background)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
-                >
-                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
-                </button>
-              )}
-            </div>
-
             {/* Horizontal product scroll */}
             <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
               {expandedCatalogItems.length === 0 ? (
@@ -1341,7 +1290,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-2 pb-14 h-full items-start">
+                <div className="flex gap-3 px-4 py-2 h-full items-start">
                   {expandedCatalogItems.map(item => {
                     const { product } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1429,6 +1378,57 @@ export default function BuilderPage() {
                     );
                   })}
                 </div>
+              )}
+            </div>
+
+            {/* Static action bar — always at bottom of panel */}
+            <div className="shrink-0 flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--border)]">
+              {selectedCount > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="flex items-center h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-95"
+                >
+                  Clear
+                </button>
+              )}
+              {selectedCount >= 1 && (
+                <button
+                  onClick={openStylePicker}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {generating ? (
+                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                  {generating ? "Generating…" : "Generate"}
+                </button>
+              )}
+              <button
+                onClick={handleMobileSave}
+                disabled={selectedCount === 0}
+                className={`flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border ${
+                  saved
+                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
+                    : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="9" height="9" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                </svg>
+                {saved ? "Saved" : "Save"}
+              </button>
+              {selectedCount > 0 && (
+                <button
+                  onClick={shopTheLook}
+                  className="flex items-center gap-1.5 h-8 px-4 bg-[var(--foreground)] text-[var(--background)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase transition-all active:scale-95"
+                >
+                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                </button>
               )}
             </div>
 
@@ -1755,35 +1755,17 @@ export default function BuilderPage() {
               </div>
             )}
 
-            {/* Navigation links */}
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/profile"
-                onClick={() => setShowSavedPopup(false)}
-                className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
-              >
-                <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Profile</span>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
-              <Link
-                href="/saved?tab=looks"
-                onClick={() => setShowSavedPopup(false)}
-                className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
-              >
-                <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Looks</span>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
-              <button
-                onClick={() => setShowSavedPopup(false)}
-                className="mt-1 w-full py-2.5 font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-              >
-                Close
-              </button>
-            </div>
+            {/* Navigation */}
+            <Link
+              href="/saved?tab=looks"
+              onClick={() => setShowSavedPopup(false)}
+              className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
+            >
+              <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)]">My Looks</span>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8H13M9 4L13 8L9 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
           </div>
         </div>
       )}
