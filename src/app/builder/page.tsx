@@ -124,6 +124,8 @@ export default function BuilderPage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [colorPanelScroll, setColorPanelScroll] = useState(0);
 
   const [shopAdded, setShopAdded] = useState(false);
 
@@ -153,6 +155,9 @@ export default function BuilderPage() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [openSwatchPopup]);
+
+  // Reset colour panel scroll when active slot changes
+  useEffect(() => { setColorPanelScroll(0); }, [activeSlot]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -449,6 +454,7 @@ export default function BuilderPage() {
     }
     persistLook();
     setSaved(true);
+    setShowSaveModal(true);
   };
 
   const openStylePicker = () => {
@@ -1219,6 +1225,89 @@ export default function BuilderPage() {
               </div>
             </div>
 
+            {/* Left colour panel — slides in when active item has colour variants */}
+            {(() => {
+              const activeProduct = selection[activeSlot];
+              const variants = activeProduct?.variants ?? [];
+              const colorImgKeys = Object.keys(activeProduct?.colorImages ?? {});
+              const useVariants = variants.length > 1;
+              const useColorImages = !useVariants && colorImgKeys.length > 1;
+              const hasColors = useVariants || useColorImages;
+
+              type SwatchEntry = { id: string; hex: string | null; name: string; imgUrl?: string; isVariant: boolean };
+              const colors: SwatchEntry[] = useVariants
+                ? variants.map(v => ({ id: v.id, hex: v.colorHex, name: v.colorName, isVariant: true }))
+                : colorImgKeys.map(k => ({ id: k, hex: null, name: k, imgUrl: activeProduct!.colorImages![k]?.[0], isVariant: false }));
+
+              const VISIBLE = 6;
+              const maxScroll = Math.max(0, colors.length - VISIBLE);
+              const visibleColors = colors.slice(colorPanelScroll, colorPanelScroll + VISIBLE);
+
+              const activeId = useVariants
+                ? (variantOverrides[activeSlot] ?? activeProduct?.id ?? "")
+                : (colorImageOverrides[activeSlot] ?? colorImgKeys[0] ?? "");
+
+              return (
+                <div
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1.5 bg-black/65 backdrop-blur-md rounded-2xl py-2.5 px-1.5 transition-all duration-300 ease-out ${
+                    hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
+                  }`}
+                >
+                  {/* Up arrow */}
+                  <button
+                    onClick={() => setColorPanelScroll(i => Math.max(0, i - 1))}
+                    className={`text-white/50 hover:text-white transition-colors ${colorPanelScroll === 0 ? "opacity-0 pointer-events-none" : ""}`}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 9.5L7 5.5L11 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+
+                  {/* Swatches */}
+                  {visibleColors.map(color => {
+                    const isActive = color.id === activeId;
+                    return (
+                      <button
+                        key={color.id}
+                        title={color.name}
+                        onClick={() => {
+                          if (color.isVariant) {
+                            const swatch = variants.find(v => v.id === color.id);
+                            if (swatch) selectVariant(activeSlot, swatch);
+                          } else {
+                            setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
+                          }
+                        }}
+                        className={`w-9 h-9 shrink-0 transition-all duration-200 ${isActive ? "scale-105" : "opacity-60 hover:opacity-90 hover:scale-105"}`}
+                        style={{
+                          background: color.hex === "#multicolor"
+                            ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
+                            : color.hex
+                            ? color.hex
+                            : color.imgUrl
+                            ? `url(${color.imgUrl}) center/cover`
+                            : "#555",
+                          boxShadow: isActive
+                            ? "0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.3)"
+                            : "0 0 0 1px rgba(255,255,255,0.12)",
+                        }}
+                      />
+                    );
+                  })}
+
+                  {/* Down arrow */}
+                  <button
+                    onClick={() => setColorPanelScroll(i => Math.min(maxScroll, i + 1))}
+                    className={`text-white/50 hover:text-white transition-colors ${colorPanelScroll >= maxScroll ? "opacity-0 pointer-events-none" : ""}`}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 4.5L7 8.5L11 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })()}
+
             {/* Bottom gradient: price + improve outfit button */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
               <div className="flex items-end justify-between gap-3">
@@ -1258,31 +1347,6 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Top-right: clear + save */}
-            <div className="absolute top-3 right-3 flex items-center gap-3">
-              {selectedCount > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/35 hover:text-white/60 transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={saveOutfit}
-                disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase px-3 py-1.5 rounded-full border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                  saved
-                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
-                    : "border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
-                }`}
-              >
-                <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                {saved ? "Saved" : "Save"}
-              </button>
-            </div>
           </div>
 
           {/* 2. Bottom sheet panel */}
@@ -1313,15 +1377,38 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Floating shop button — over the scroll list */}
+            {/* Floating action bar — Clear · Save · Shop */}
             {selectedCount > 0 && (
-              <div className="absolute bottom-3 right-4 z-20">
+              <div className="absolute bottom-3 left-4 right-4 z-20 flex items-center justify-between gap-2">
+                {/* Clear */}
                 <button
-                  onClick={shopTheLook}
-                  className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
+                  onClick={clearAll}
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors px-2 h-8"
                 >
-                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                  Clear
                 </button>
+                {/* Save + Shop */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={saveOutfit}
+                    className={`flex items-center gap-1.5 px-3 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase border shadow-lg transition-all active:scale-95 ${
+                      saved
+                        ? "bg-[#c9a84c]/10 border-[#c9a84c]/50 text-[#c9a84c]"
+                        : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground)]"
+                    }`}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                    </svg>
+                    {saved ? "Saved" : "Save"}
+                  </button>
+                  <button
+                    onClick={shopTheLook}
+                    className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
+                  >
+                    {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1429,6 +1516,71 @@ export default function BuilderPage() {
         </div>
 
       </div>
+
+      {/* ── MOBILE SAVE MODAL ─────────────────────────────────────────────── */}
+      {showSaveModal && (
+        <div className="md:hidden fixed inset-0 z-[60] flex items-end justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowSaveModal(false)}
+          />
+          {/* Sheet */}
+          <div className="relative w-full bg-[var(--background)] rounded-t-2xl px-5 pb-8 pt-5 animate-slide-up">
+            {/* Handle */}
+            <div className="flex justify-center mb-4">
+              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
+            </div>
+
+            {/* Outfit preview — small thumbnails of selected pieces */}
+            <div className="flex gap-2 justify-center mb-5">
+              {SLOTS.map(slot => {
+                const picked = selection[slot.id];
+                const variantId = variantOverrides[slot.id];
+                const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                const colorKey = colorImageOverrides[slot.id];
+                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+                if (!picked) return null;
+                return (
+                  <div key={slot.id} className="w-16 h-20 bg-white overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={displayImage!} alt={picked.name} className="w-full h-full object-contain" />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Message */}
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="#c9a84c" stroke="none">
+                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                </svg>
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground)]">Look saved</p>
+              </div>
+              <p className="text-[12px] text-[var(--foreground-subtle)]">Added to your saved looks</p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <Link
+                href="/saved"
+                onClick={() => setShowSaveModal(false)}
+                className="w-full h-11 bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-mono text-[10px] tracking-[0.18em] uppercase rounded-full"
+              >
+                View saved looks →
+              </Link>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="w-full h-11 border border-[var(--border-strong)] text-[var(--foreground-muted)] flex items-center justify-center font-mono text-[10px] tracking-[0.14em] uppercase rounded-full"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────────────
           BUILDER FOOTER — RUNWAY design
