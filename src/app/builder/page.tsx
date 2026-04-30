@@ -1360,7 +1360,7 @@ export default function BuilderPage() {
                           tabIndex={0}
                           onClick={() => selectProduct(product)}
                           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
-                          className={`relative overflow-hidden bg-[var(--surface)] cursor-pointer transition-all rounded-sm ${
+                          className={`relative overflow-hidden bg-white cursor-pointer transition-all ${
                             isSelected ? "ring-1 ring-[#c9a84c]" : ""
                           }`}
                           style={{ width: 120, height: 112 }}
@@ -1405,7 +1405,7 @@ export default function BuilderPage() {
                                       setCatalogPreviews(prev => ({ ...prev, [product.id]: sw.id }));
                                       if (isSelected && selectedSlot) selectVariant(selectedSlot.id, sw);
                                     }}
-                                    className={`w-3 h-3 shrink-0 rounded-full transition-all ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                    className={`w-3 h-3 shrink-0 transition-all ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                     style={{
                                       background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                       boxShadow: isSwatchActive
