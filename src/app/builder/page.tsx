@@ -1286,7 +1286,7 @@ export default function BuilderPage() {
           </div>
 
           {/* 2. Bottom sheet panel */}
-          <div className="flex flex-col bg-[var(--background)] min-h-0" style={{ flex: "0 0 42%" }}>
+          <div className="relative flex flex-col bg-[var(--background)] min-h-0" style={{ flex: "0 0 42%" }}>
 
             {/* Drag handle */}
             <div className="flex justify-center pt-2.5 pb-1 shrink-0">
@@ -1313,6 +1313,18 @@ export default function BuilderPage() {
               })}
             </div>
 
+            {/* Floating shop button — over the scroll list */}
+            {selectedCount > 0 && (
+              <div className="absolute bottom-3 right-4 z-20">
+                <button
+                  onClick={shopTheLook}
+                  className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
+                >
+                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                </button>
+              </div>
+            )}
+
             {/* Horizontal product scroll */}
             <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
               {expandedCatalogItems.length === 0 ? (
@@ -1322,7 +1334,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-3 h-full items-start">
+                <div className="flex gap-3 px-4 py-2 pb-14 h-full items-start">
                   {expandedCatalogItems.map(item => {
                     const { product } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1341,7 +1353,7 @@ export default function BuilderPage() {
                     const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
-                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 128 }}>
+                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 120 }}>
                         {/* Image area */}
                         <div
                           role="button"
@@ -1351,7 +1363,7 @@ export default function BuilderPage() {
                           className={`relative overflow-hidden bg-[var(--surface)] cursor-pointer transition-all rounded-sm ${
                             isSelected ? "ring-1 ring-[#c9a84c]" : ""
                           }`}
-                          style={{ width: 128, height: 152 }}
+                          style={{ width: 120, height: 112 }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1413,23 +1425,6 @@ export default function BuilderPage() {
               )}
             </div>
 
-            {/* Shop CTA bar */}
-            <div className="shrink-0 border-t border-[var(--border)] px-4 py-2.5 flex items-center justify-between gap-3">
-              <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-                {expandedCatalogItems.length} {expandedCatalogItems.length === 1 ? "item" : "items"}
-              </p>
-              <button
-                onClick={shopTheLook}
-                disabled={selectedCount === 0}
-                className={`h-8 px-4 font-mono text-[9px] tracking-[0.16em] uppercase rounded-full transition-all duration-150 disabled:cursor-not-allowed ${
-                  selectedCount > 0
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "bg-[var(--border)] text-[var(--foreground-subtle)]"
-                }`}
-              >
-                {shopAdded ? "Added ✓" : selectedCount > 0 ? `Shop · ${formatPrice(totalPrice)}` : "Shop the Look"}
-              </button>
-            </div>
           </div>
         </div>
 
