@@ -1289,7 +1289,7 @@ export default function BuilderPage() {
                           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
                       </svg>
                     )}
-                    {generating ? "Generating…" : "Improve outfit"}
+                    {generating ? "Generating…" : "Generate"}
                   </button>
                 )}
               </div>
