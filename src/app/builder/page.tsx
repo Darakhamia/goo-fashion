@@ -550,7 +550,7 @@ export default function BuilderPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-56px)] md:h-[calc(100vh-64px)] flex flex-col overflow-hidden">
 
 
       {/* ─────────────────────────────────────────────────────────────────────
@@ -1154,8 +1154,34 @@ export default function BuilderPage() {
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* 1. Hero canvas — fills top ~60% */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 58%" }}>
+          {/* Mobile top header: back + save */}
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
+            <Link
+              href="/"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <button
+              onClick={handleMobileSave}
+              disabled={selectedCount === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                saved
+                  ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/50"
+                  : "bg-[#c9a84c] text-black hover:bg-[#d4b060]"
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
+              </svg>
+              {saved ? "Saved" : "Save"}
+            </button>
+          </div>
+
+          {/* 1. Hero canvas */}
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 52%" }}>
 
             {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1230,10 +1256,10 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Bottom gradient: price */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4 pointer-events-none">
+            {/* Bottom gradient: price + generate */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
               <div className="flex items-end justify-between gap-3">
-                <div>
+                <div className="pointer-events-none">
                   <p className="text-white/45 text-[10px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
                   <div className="flex items-center gap-1.5">
                     <p className={`font-light leading-none transition-all ${
@@ -1249,12 +1275,29 @@ export default function BuilderPage() {
                     )}
                   </div>
                 </div>
+                {selectedCount >= 1 && (
+                  <button
+                    onClick={openStylePicker}
+                    disabled={generating}
+                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[13px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/40 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  >
+                    {generating ? (
+                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {generating ? "Generating…" : "Improve outfit"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
           {/* 2. Bottom sheet panel */}
-          <div className="relative flex flex-col bg-[var(--background)] min-h-0" style={{ flex: "0 0 42%" }}>
+          <div className="relative flex flex-col bg-[var(--background)] min-h-0 flex-1">
 
             {/* Drag handle */}
             <div className="flex justify-center pt-2.5 pb-1 shrink-0">
@@ -1378,57 +1421,6 @@ export default function BuilderPage() {
                     );
                   })}
                 </div>
-              )}
-            </div>
-
-            {/* Static action bar — always at bottom of panel */}
-            <div className="shrink-0 flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--border)]">
-              {selectedCount > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="flex items-center h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-95"
-                >
-                  Clear
-                </button>
-              )}
-              {selectedCount >= 1 && (
-                <button
-                  onClick={openStylePicker}
-                  disabled={generating}
-                  className="flex items-center gap-1.5 h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {generating ? (
-                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                  {generating ? "Generating…" : "Generate"}
-                </button>
-              )}
-              <button
-                onClick={handleMobileSave}
-                disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border ${
-                  saved
-                    ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
-                    : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <svg width="9" height="9" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                </svg>
-                {saved ? "Saved" : "Save"}
-              </button>
-              {selectedCount > 0 && (
-                <button
-                  onClick={shopTheLook}
-                  className="flex items-center gap-1.5 h-8 px-4 bg-[var(--foreground)] text-[var(--background)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase transition-all active:scale-95"
-                >
-                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
-                </button>
               )}
             </div>
 

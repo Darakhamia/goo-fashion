@@ -28,6 +28,7 @@ export default function Navigation() {
   const { currency, setCurrency, formatPrice } = useCurrency();
 
   const isHero = pathname === "/";
+  const isBuilder = pathname === "/builder";
   const showWhiteText = isHero && !scrolled;
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
@@ -79,7 +80,7 @@ export default function Navigation() {
     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]";
 
   return (
-    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg}`}>
+    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg} ${isBuilder ? "hidden md:block" : ""}`}>
       <nav className="max-w-[1440px] mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link
@@ -203,90 +204,26 @@ export default function Navigation() {
           </SignedOut>
         </div>
 
-        {/* Mobile Menu Toggle */}
+        {/* Mobile: cart icon only (navigation via bottom tab bar) */}
         <button
-          className={`md:hidden transition-colors ${iconColor}`}
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Menu"
+          onClick={() => setCartOpen(v => !v)}
+          aria-label="Cart"
+          className={`md:hidden relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
         >
-          {menuOpen ? (
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M4 4L14 14M14 4L4 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M3 5H15M3 9H15M3 13H15" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+            <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+          </svg>
+          {cartCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+              <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            </span>
           )}
         </button>
       </nav>
-
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden bg-[var(--background)] border-b border-[var(--border)] px-6 pb-8 pt-4">
-          <div className="flex flex-col gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className={`text-sm tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
-                  pathname === link.href
-                    ? "text-[var(--foreground)]"
-                    : "text-[var(--foreground-muted)]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <SignedIn>
-              <Link
-                href="/profile"
-                onClick={() => setMenuOpen(false)}
-                className={`text-sm tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
-                  pathname === "/profile"
-                    ? "text-[var(--foreground)]"
-                    : "text-[var(--foreground-muted)]"
-                }`}
-              >
-                Profile
-              </Link>
-            </SignedIn>
-            <div className="flex items-center gap-5 pt-2">
-              <Link
-                href="/saved"
-                onClick={() => setMenuOpen(false)}
-                className="relative text-[var(--foreground-muted)]"
-                aria-label="Saved"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                  />
-                </svg>
-                {totalLikes > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                    <span className="text-[7px] font-medium text-[var(--background)]">
-                      {totalLikes > 9 ? "9+" : totalLikes}
-                    </span>
-                  </span>
-                )}
-              </Link>
-              <SignedOut>
-                <Link
-                  href="/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
-                >
-                  Sign in
-                </Link>
-              </SignedOut>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Cart drawer overlay */}
       {cartOpen && (

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
+import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import { FloatingStylist } from "@/components/stylist/FloatingStylist";
 
 interface ConditionalSiteLayoutProps {
@@ -18,6 +19,8 @@ export default function ConditionalSiteLayout({ children }: ConditionalSiteLayou
     pathname === "/register" ||
     pathname === "/coming-soon";
 
+  const isBuilder = pathname === "/builder";
+
   if (isBarePage) {
     return <>{children}</>;
   }
@@ -25,9 +28,11 @@ export default function ConditionalSiteLayout({ children }: ConditionalSiteLayou
   return (
     <>
       <Navigation />
-      <main>{children}</main>
-      <Footer />
+      {/* On mobile non-builder pages add bottom padding for the tab bar */}
+      <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>{children}</main>
+      <div className="hidden md:block"><Footer /></div>
       <FloatingStylist />
+      <MobileBottomNav />
     </>
   );
 }
