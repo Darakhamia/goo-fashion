@@ -1281,44 +1281,40 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Action bar: Clear · Generate · Saved · Shop */}
-            <div className="shrink-0 border-b border-[var(--border)] px-4 py-2 flex items-center gap-2">
+            {/* Floating action buttons — same spot as old Shop button */}
+            <div className="absolute bottom-3 right-4 z-20 flex items-center gap-2">
               {selectedCount > 0 && (
                 <button
                   onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="flex items-center h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] shadow-lg transition-all active:scale-95"
                 >
                   Clear
                 </button>
               )}
               {selectedCount >= 1 && (
-                <>
-                  <span className="text-[var(--border-strong)] text-[10px]">·</span>
-                  <button
-                    onClick={openStylePicker}
-                    disabled={generating}
-                    className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {generating ? (
-                      <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {generating ? "Generating…" : "Generate"}
-                  </button>
-                </>
+                <button
+                  onClick={openStylePicker}
+                  disabled={generating}
+                  className="flex items-center gap-1.5 h-8 px-3 bg-[var(--background)] border border-[var(--border-strong)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {generating ? (
+                    <span className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                  {generating ? "Generating…" : "Generate"}
+                </button>
               )}
-              <span className="flex-1" />
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.1em] uppercase px-3 py-1.5 rounded-full border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`flex items-center gap-1.5 h-8 px-3 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed border ${
                   saved
                     ? "border-[#c9a84c]/60 text-[#c9a84c]/80 bg-[#c9a84c]/10"
-                    : "border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
                 }`}
               >
                 <svg width="9" height="9" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -1327,15 +1323,12 @@ export default function BuilderPage() {
                 {saved ? "Saved" : "Save"}
               </button>
               {selectedCount > 0 && (
-                <>
-                  <span className="text-[var(--border-strong)] text-[10px]">·</span>
-                  <button
-                    onClick={shopTheLook}
-                    className="flex items-center gap-1.5 bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.1em] uppercase transition-all active:scale-95"
-                  >
-                    {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
-                  </button>
-                </>
+                <button
+                  onClick={shopTheLook}
+                  className="flex items-center gap-1.5 h-8 px-4 bg-[var(--foreground)] text-[var(--background)] rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
+                >
+                  {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
+                </button>
               )}
             </div>
 
@@ -1348,7 +1341,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-2 h-full items-start">
+                <div className="flex gap-3 px-4 py-2 pb-14 h-full items-start">
                   {expandedCatalogItems.map(item => {
                     const { product } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
