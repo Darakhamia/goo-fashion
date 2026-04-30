@@ -117,7 +117,7 @@ export default function StylistPage() {
   const back = () => setCurrentStep(steps[stepIndex - 1]);
 
   return (
-    <div className="min-h-screen pt-16">
+    <div className="min-h-screen">
       {currentStep !== "result" ? (
         <div className="max-w-[1440px] mx-auto px-6 md:px-12">
           {/* Progress */}

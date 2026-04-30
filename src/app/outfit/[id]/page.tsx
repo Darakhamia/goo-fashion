@@ -50,7 +50,7 @@ export default async function OutfitDetailPage({ params }: Props) {
     .slice(0, 3);
 
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         {/* Breadcrumb */}
         <div className="pt-8 flex items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">

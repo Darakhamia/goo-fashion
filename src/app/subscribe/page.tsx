@@ -97,7 +97,7 @@ function SubscribeInner() {
   // ── Success state ────────────────────────────────────────────────────────
   if (success) {
     return (
-      <div className="pt-16 min-h-screen">
+      <div className="min-h-screen">
         <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24 text-center">
           <div className="w-14 h-14 mx-auto mb-8 border border-[var(--foreground)] flex items-center justify-center">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -137,7 +137,7 @@ function SubscribeInner() {
 
   // ── Main state ───────────────────────────────────────────────────────────
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24">
 
         {/* Back link */}

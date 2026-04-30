@@ -79,7 +79,7 @@ export default function Navigation() {
     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]";
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg}`}>
+    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg}`}>
       <nav className="max-w-[1440px] mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link

@@ -404,7 +404,7 @@ const SECTIONS = [
 
 export default function TermsPage() {
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         <div className="pt-16 md:pt-24 pb-32 max-w-2xl">
 

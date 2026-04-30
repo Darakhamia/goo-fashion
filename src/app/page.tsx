@@ -80,7 +80,7 @@ export default async function HomePage() {
       </section>
 
       {/* ─── OUTFITS CAROUSEL ─── */}
-      <div className="max-w-[1440px] mx-auto pt-16 md:pt-20">
+      <div className="max-w-[1440px] mx-auto md:pt-20">
         <OutfitCarousel outfits={featuredOutfits} />
       </div>
 

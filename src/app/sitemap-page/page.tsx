@@ -37,7 +37,7 @@ export default async function SitemapPage() {
   ]);
 
   return (
-    <div className="pt-16 min-h-screen">
+    <div className="min-h-screen">
 
       {/* Hero */}
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 pt-16 md:pt-24 pb-16">
