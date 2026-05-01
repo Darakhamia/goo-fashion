@@ -1196,7 +1196,7 @@ export default function BuilderPage() {
           </div>
 
           {/* 1. Hero canvas */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 52%" }}>
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 46%" }}>
 
             {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1337,7 +1337,7 @@ export default function BuilderPage() {
           </div>
 
           {/* Price + Generate bar */}
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-[#0f0f0f] border-t border-white/5">
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-[#0f0f0f] border-t border-white/5">
             <div>
               <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
               <div className="flex items-center gap-1.5">
