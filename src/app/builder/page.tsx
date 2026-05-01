@@ -1184,8 +1184,8 @@ export default function BuilderPage() {
               disabled={selectedCount === 0}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                 saved
-                  ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/50"
-                  : "bg-[#c9a84c] text-black hover:bg-[#d4b060]"
+                  ? "bg-white/20 text-white border border-white/50"
+                  : "bg-white text-black hover:bg-white/90"
               }`}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -1412,28 +1412,6 @@ export default function BuilderPage() {
                 >
                   Clear
                 </button>
-                {/* Save + Shop */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={saveOutfit}
-                    className={`flex items-center gap-1.5 px-3 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase border shadow-lg transition-all active:scale-95 ${
-                      saved
-                        ? "bg-[var(--foreground)]/10 border-[var(--foreground)]/30 text-[var(--foreground)]"
-                        : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground)]"
-                    }`}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                    </svg>
-                    {saved ? "Saved" : "Save"}
-                  </button>
-                  <button
-                    onClick={shopTheLook}
-                    className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
-                  >
-                    {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
-                  </button>
-                </div>
               </div>
             )}
 
