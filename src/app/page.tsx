@@ -144,9 +144,17 @@ export default async function HomePage() {
             }
           />
 
-          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
+          {/* Mobile: horizontal swipe row; Desktop: 4-column grid */}
+          <div className="mt-10 md:grid md:grid-cols-4 md:gap-px md:bg-[var(--border)] hidden md:grid">
             {featuredProducts.map((product) => (
               <div key={product.id} className="bg-[var(--background)] p-4">
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex gap-3 overflow-x-auto md:hidden" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+            {featuredProducts.map((product) => (
+              <div key={product.id} className="shrink-0 w-[62vw] max-w-[260px] bg-[var(--background)] border border-[var(--border)] p-3">
                 <ProductCard product={product} />
               </div>
             ))}
