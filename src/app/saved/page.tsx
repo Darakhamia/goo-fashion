@@ -107,7 +107,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             </div>
           ) : pieces.length > 0 ? (
             /* Collage grid based on piece count */
-            <div className="aspect-[3/4] flex flex-col gap-px bg-white/20">
+            <div className="aspect-[3/4] flex flex-col gap-px bg-gray-200">
               {(() => {
                 const n = pieces.length;
                 const img = (piece: typeof pieces[0], pad = "p-3") => piece?.imageUrl ? (
@@ -125,14 +125,14 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 if (n === 1) return <div className="flex-1 overflow-hidden bg-white">{img(pieces[0])}</div>;
 
                 if (n === 2) return (
-                  <div className="flex-1 flex gap-px">
+                  <div className="flex-1 flex gap-px bg-gray-200">
                     {pieces.slice(0, 2).map(p => cell(p))}
                   </div>
                 );
 
                 if (n === 3) return (
                   <>
-                    <div className="flex gap-px" style={{ flex: "0 0 60%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
                       {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
                     <div className="overflow-hidden bg-white" style={{ flex: "0 0 40%" }}>
@@ -143,10 +143,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
 
                 if (n === 4) return (
                   <>
-                    <div className="flex gap-px flex-1">
+                    <div className="flex gap-px flex-1 bg-gray-200">
                       {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
-                    <div className="flex gap-px flex-1">
+                    <div className="flex gap-px flex-1 bg-gray-200">
                       {pieces.slice(2, 4).map(p => cell(p))}
                     </div>
                   </>
@@ -154,10 +154,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
 
                 if (n === 5) return (
                   <>
-                    <div className="flex gap-px" style={{ flex: "0 0 57%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
                       {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
-                    <div className="flex gap-px" style={{ flex: "0 0 43%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
                       {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
                     </div>
                   </>
@@ -166,10 +166,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 // 6+ pieces
                 return (
                   <>
-                    <div className="flex gap-px" style={{ flex: "0 0 40%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
                       {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
-                    <div className="flex gap-px" style={{ flex: "0 0 33%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
                       {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
                     </div>
                     <div className="overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
