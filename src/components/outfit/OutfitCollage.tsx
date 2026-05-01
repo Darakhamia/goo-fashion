@@ -38,7 +38,7 @@ export default function OutfitCollage({
   const n = frames.length;
 
   const cell = (f: OutfitItem, i: number, pad = "p-3") => (
-    <div key={i} className="relative overflow-hidden flex-1">
+    <div key={i} className="relative overflow-hidden flex-1 bg-white">
       <Image
         src={itemImageUrl(f)}
         alt={f.product.name}
@@ -52,15 +52,15 @@ export default function OutfitCollage({
 
   if (n === 1) {
     return (
-      <div className="absolute inset-0">
-        <Image src={itemImageUrl(frames[0])} alt={frames[0].product.name} fill className="object-cover" priority={priority} sizes={sizes} />
+      <div className="absolute inset-0 bg-white">
+        <Image src={itemImageUrl(frames[0])} alt={frames[0].product.name} fill className="object-contain p-3" priority={priority} sizes={sizes} />
       </div>
     );
   }
 
   if (n === 2) {
     return (
-      <div className="absolute inset-0 flex gap-px">
+      <div className="absolute inset-0 flex gap-px bg-white/20">
         {frames.map((f, i) => cell(f, i))}
       </div>
     );
@@ -68,11 +68,11 @@ export default function OutfitCollage({
 
   if (n === 3) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px">
+      <div className="absolute inset-0 flex flex-col gap-px bg-white/20">
         <div className="flex gap-px" style={{ flex: "0 0 60%" }}>
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
-        <div className="relative overflow-hidden" style={{ flex: "0 0 40%" }}>
+        <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 40%" }}>
           <Image src={itemImageUrl(frames[2])} alt={frames[2].product.name} fill className="object-contain p-2" sizes={sizes} />
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function OutfitCollage({
 
   if (n === 4) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px">
+      <div className="absolute inset-0 flex flex-col gap-px bg-white/20">
         <div className="flex gap-px flex-1">
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
@@ -94,7 +94,7 @@ export default function OutfitCollage({
 
   if (n === 5) {
     return (
-      <div className="absolute inset-0 flex flex-col gap-px">
+      <div className="absolute inset-0 flex flex-col gap-px bg-white/20">
         <div className="flex gap-px" style={{ flex: "0 0 57%" }}>
           {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
@@ -107,14 +107,14 @@ export default function OutfitCollage({
 
   // 6 pieces
   return (
-    <div className="absolute inset-0 flex flex-col gap-px">
+    <div className="absolute inset-0 flex flex-col gap-px bg-white/20">
       <div className="flex gap-px" style={{ flex: "0 0 40%" }}>
         {frames.slice(0, 2).map((f, i) => cell(f, i))}
       </div>
       <div className="flex gap-px" style={{ flex: "0 0 33%" }}>
         {frames.slice(2, 5).map((f, i) => cell(f, i + 2, "p-2"))}
       </div>
-      <div className="relative overflow-hidden" style={{ flex: "0 0 27%" }}>
+      <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
         <Image src={itemImageUrl(frames[5])} alt={frames[5].product.name} fill className="object-contain p-2" sizes={sizes} />
       </div>
     </div>
