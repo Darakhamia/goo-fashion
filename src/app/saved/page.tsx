@@ -106,44 +106,78 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
               </span>
             </div>
           ) : pieces.length > 0 ? (
-            /* Editorial grid: hero top + items row */
+            /* Collage grid based on piece count */
             <div className="aspect-[3/4] flex flex-col gap-px bg-[var(--border)]">
-              {/* Hero — first piece */}
-              <div className="flex-[3] overflow-hidden bg-[var(--surface)]">
-                {pieces[0].imageUrl ? (
+              {(() => {
+                const n = pieces.length;
+                const img = (piece: typeof pieces[0], pad = "p-3") => piece?.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={pieces[0].imageUrl}
-                    alt={pieces[0].name}
-                    className="w-full h-full object-contain p-3 group-hover:scale-[1.03] transition-transform duration-500"
-                  />
+                  <img src={piece.imageUrl} alt={piece?.name ?? ""} className={`w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">{pieces[0].slot}</span>
+                    <span className="font-mono text-[8px] uppercase text-[var(--foreground-subtle)]">{piece?.slot?.[0] ?? ""}</span>
                   </div>
-                )}
-              </div>
-              {/* Bottom row — remaining pieces */}
-              {pieces.length > 1 && (
-                <div className="flex flex-[1] gap-px bg-[var(--border)]">
-                  {pieces.slice(1, 4).map((piece) => (
-                    <div key={piece.slot} className="flex-1 overflow-hidden bg-[var(--surface)]">
-                      {piece.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={piece.imageUrl}
-                          alt={piece.name}
-                          className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="font-mono text-[8px] uppercase text-[var(--border-strong)]">{piece.slot[0]}</span>
-                        </div>
-                      )}
+                );
+                const cell = (piece: typeof pieces[0], pad?: string) => (
+                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-[var(--surface)]">{img(piece, pad)}</div>
+                );
+
+                if (n === 1) return <div className="flex-1 overflow-hidden bg-[var(--surface)]">{img(pieces[0])}</div>;
+
+                if (n === 2) return (
+                  <div className="flex-1 flex gap-px">
+                    {pieces.slice(0, 2).map(p => cell(p))}
+                  </div>
+                );
+
+                if (n === 3) return (
+                  <>
+                    <div className="flex gap-px" style={{ flex: "0 0 60%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 40%" }}>
+                      {img(pieces[2], "p-2")}
+                    </div>
+                  </>
+                );
+
+                if (n === 4) return (
+                  <>
+                    <div className="flex gap-px flex-1">
+                      {pieces.slice(0, 2).map(p => cell(p))}
+                    </div>
+                    <div className="flex gap-px flex-1">
+                      {pieces.slice(2, 4).map(p => cell(p))}
+                    </div>
+                  </>
+                );
+
+                if (n === 5) return (
+                  <>
+                    <div className="flex gap-px" style={{ flex: "0 0 57%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p))}
+                    </div>
+                    <div className="flex gap-px" style={{ flex: "0 0 43%" }}>
+                      {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
+                    </div>
+                  </>
+                );
+
+                // 6+ pieces
+                return (
+                  <>
+                    <div className="flex gap-px" style={{ flex: "0 0 40%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p))}
+                    </div>
+                    <div className="flex gap-px" style={{ flex: "0 0 33%" }}>
+                      {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
+                    </div>
+                    <div className="overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 27%" }}>
+                      {img(pieces[5], "p-2")}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           ) : (
             /* No pieces yet */
