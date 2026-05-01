@@ -1647,6 +1647,47 @@ export default function BuilderPage() {
             </button>
           )}
 
+          {/* Save */}
+          <button
+            onClick={saveOutfit}
+            disabled={selectedCount === 0}
+            className={`font-mono text-[10px] tracking-[0.14em] uppercase px-3 h-8 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+              saved
+                ? "border-[var(--border)] text-[var(--foreground-muted)]"
+                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            {saved ? "Saved ✓" : "Save"}
+          </button>
+          {saved && (
+            <Link
+              href="/saved?tab=looks"
+              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              View →
+            </Link>
+          )}
+
+          {/* Shop the Look CTA */}
+          <button
+            onClick={shopTheLook}
+            disabled={selectedCount === 0}
+            className={`flex items-center gap-3 h-[42px] px-5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
+              selectedCount > 0
+                ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
+                : "bg-[var(--border)] text-[var(--foreground-subtle)]"
+            }`}
+          >
+            {shopAdded ? (
+              <span>Added to Cart ✓</span>
+            ) : (
+              <>
+                <span>Shop the Look</span>
+                {selectedCount > 0 && <span>{formatPrice(totalPrice)}</span>}
+              </>
+            )}
+          </button>
+
         </div>
       </footer>
 
