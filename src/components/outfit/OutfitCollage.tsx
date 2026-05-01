@@ -16,11 +16,13 @@ function itemImageUrl(item: OutfitItem): string {
 
 /**
  * Renders a collage of the outfit's product images.
- * Layouts:
- *  1 item  → single full image
- *  2 items → equal side-by-side split
- *  3 items → hero (55%) + two stacked on the right (45%)
- *  4 items → 2×2 grid
+ * Layouts by count:
+ *  1 → full
+ *  2 → 50/50 side by side
+ *  3 → top 2 (60%) + bottom 1 wide (40%)
+ *  4 → 2×2 grid
+ *  5 → top 2 (57%) + bottom 3 (43%)
+ *  6 → top 2 (40%) + mid 3 (33%) + bottom 1 wide (27%)
  */
 export default function OutfitCollage({
   outfit,
@@ -32,102 +34,88 @@ export default function OutfitCollage({
     return (order[a.role] ?? 3) - (order[b.role] ?? 3);
   });
 
-  const frames = sorted.slice(0, 4);
-  const count = frames.length;
+  const frames = sorted.slice(0, 6);
+  const n = frames.length;
 
-  if (count === 1) {
+  const cell = (f: OutfitItem, i: number, pad = "p-3") => (
+    <div key={i} className="relative overflow-hidden flex-1">
+      <Image
+        src={itemImageUrl(f)}
+        alt={f.product.name}
+        fill
+        className={`object-contain ${pad}`}
+        priority={priority && i === 0}
+        sizes={sizes}
+      />
+    </div>
+  );
+
+  if (n === 1) {
     return (
       <div className="absolute inset-0">
-        <Image
-          src={itemImageUrl(frames[0])}
-          alt={frames[0].product.name}
-          fill
-          className="object-cover"
-          priority={priority}
-          sizes={sizes}
-        />
+        <Image src={itemImageUrl(frames[0])} alt={frames[0].product.name} fill className="object-cover" priority={priority} sizes={sizes} />
       </div>
     );
   }
 
-  if (count === 2) {
+  if (n === 2) {
     return (
       <div className="absolute inset-0 flex gap-px">
-        {frames.map((f, i) => (
-          <div key={i} className="relative overflow-hidden flex-1">
-            <Image
-              src={itemImageUrl(f)}
-              alt={f.product.name}
-              fill
-              className="object-cover"
-              priority={priority && i === 0}
-              sizes={sizes}
-            />
-          </div>
-        ))}
+        {frames.map((f, i) => cell(f, i))}
       </div>
     );
   }
 
-  if (count === 3) {
+  if (n === 3) {
     return (
-      <div className="absolute inset-0 flex gap-px">
-        <div className="relative overflow-hidden" style={{ width: "55%" }}>
-          <Image
-            src={itemImageUrl(frames[0])}
-            alt={frames[0].product.name}
-            fill
-            className="object-cover"
-            priority={priority}
-            sizes={sizes}
-          />
+      <div className="absolute inset-0 flex flex-col gap-px">
+        <div className="flex gap-px" style={{ flex: "0 0 60%" }}>
+          {frames.slice(0, 2).map((f, i) => cell(f, i))}
         </div>
-        <div className="flex flex-col gap-px overflow-hidden" style={{ width: "45%" }}>
-          {frames.slice(1).map((f, i) => (
-            <div key={i} className="relative overflow-hidden flex-1">
-              <Image
-                src={itemImageUrl(f)}
-                alt={f.product.name}
-                fill
-                className="object-cover"
-                sizes={sizes}
-              />
-            </div>
-          ))}
+        <div className="relative overflow-hidden" style={{ flex: "0 0 40%" }}>
+          <Image src={itemImageUrl(frames[2])} alt={frames[2].product.name} fill className="object-contain p-2" sizes={sizes} />
         </div>
       </div>
     );
   }
 
-  // 4 items: 2×2 grid
+  if (n === 4) {
+    return (
+      <div className="absolute inset-0 flex flex-col gap-px">
+        <div className="flex gap-px flex-1">
+          {frames.slice(0, 2).map((f, i) => cell(f, i))}
+        </div>
+        <div className="flex gap-px flex-1">
+          {frames.slice(2, 4).map((f, i) => cell(f, i + 2))}
+        </div>
+      </div>
+    );
+  }
+
+  if (n === 5) {
+    return (
+      <div className="absolute inset-0 flex flex-col gap-px">
+        <div className="flex gap-px" style={{ flex: "0 0 57%" }}>
+          {frames.slice(0, 2).map((f, i) => cell(f, i))}
+        </div>
+        <div className="flex gap-px" style={{ flex: "0 0 43%" }}>
+          {frames.slice(2, 5).map((f, i) => cell(f, i + 2, "p-2"))}
+        </div>
+      </div>
+    );
+  }
+
+  // 6 pieces
   return (
     <div className="absolute inset-0 flex flex-col gap-px">
-      <div className="flex gap-px flex-1">
-        {frames.slice(0, 2).map((f, i) => (
-          <div key={i} className="relative overflow-hidden flex-1">
-            <Image
-              src={itemImageUrl(f)}
-              alt={f.product.name}
-              fill
-              className="object-cover"
-              priority={priority && i === 0}
-              sizes={sizes}
-            />
-          </div>
-        ))}
+      <div className="flex gap-px" style={{ flex: "0 0 40%" }}>
+        {frames.slice(0, 2).map((f, i) => cell(f, i))}
       </div>
-      <div className="flex gap-px flex-1">
-        {frames.slice(2).map((f, i) => (
-          <div key={i} className="relative overflow-hidden flex-1">
-            <Image
-              src={itemImageUrl(f)}
-              alt={f.product.name}
-              fill
-              className="object-cover"
-              sizes={sizes}
-            />
-          </div>
-        ))}
+      <div className="flex gap-px" style={{ flex: "0 0 33%" }}>
+        {frames.slice(2, 5).map((f, i) => cell(f, i + 2, "p-2"))}
+      </div>
+      <div className="relative overflow-hidden" style={{ flex: "0 0 27%" }}>
+        <Image src={itemImageUrl(frames[5])} alt={frames[5].product.name} fill className="object-contain p-2" sizes={sizes} />
       </div>
     </div>
   );
