@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
@@ -133,6 +134,7 @@ export default function BuilderPage() {
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
+  const router = useRouter();
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -2008,10 +2010,31 @@ export default function BuilderPage() {
                   AI Generated Look
                 </p>
                 <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  Nano Banana 2 · {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"} · {selectedCount} pieces
+                  {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"} · {selectedCount} pieces
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                {/* Regenerate */}
+                <button
+                  onClick={() => { setShowModal(false); openStylePicker(); }}
+                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Regenerate
+                </button>
+                {/* Save */}
+                <button
+                  onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
+                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                  </svg>
+                  Save
+                </button>
+                {/* Download */}
                 <a
                   href={generatedImage}
                   download="goo-outfit.png"
@@ -2043,19 +2066,10 @@ export default function BuilderPage() {
               className="w-full aspect-square object-cover"
             />
 
-            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between">
-              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] max-w-xs leading-relaxed">
+            <div className="px-5 py-3 border-t border-[var(--border)]">
+              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
                 AI-generated image based on selected pieces. May not reflect exact products.
               </p>
-              <button
-                onClick={() => { setShowModal(false); openStylePicker(); }}
-                className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
-              >
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Regenerate
-              </button>
             </div>
           </div>
         </div>
