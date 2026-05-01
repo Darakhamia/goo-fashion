@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
@@ -135,6 +135,7 @@ export default function BuilderPage() {
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
   const router = useRouter();
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -158,7 +159,10 @@ export default function BuilderPage() {
     return () => document.removeEventListener("click", close);
   }, [openSwatchPopup]);
 
-  // Reset colour panel scroll when active slot changes
+  // Reset mobile product scroll to start when category changes
+  useEffect(() => {
+    mobileScrollRef.current?.scrollTo({ left: 0, behavior: "instant" });
+  }, [catalogCategory]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -333,6 +337,7 @@ export default function BuilderPage() {
       return next;
     });
     setSaved(false);
+    setGeneratedImage(null);
   };
 
   const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
@@ -354,6 +359,7 @@ export default function BuilderPage() {
     });
     setVariantOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
     setColorImageOverrides(prev => { const n = { ...prev }; delete n[slotId]; return n; });
+    setGeneratedImage(null);
   };
 
   const clearAll = () => {
@@ -362,6 +368,7 @@ export default function BuilderPage() {
     setColorImageOverrides({});
     updateURL({});
     setSaved(false);
+    setGeneratedImage(null);
   };
 
   const clearFilters = () => {
@@ -1429,7 +1436,7 @@ export default function BuilderPage() {
             )}
 
             {/* Horizontal product scroll */}
-            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
+            <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
               {expandedCatalogItems.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
