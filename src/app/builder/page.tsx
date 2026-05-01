@@ -1334,44 +1334,43 @@ export default function BuilderPage() {
               );
             })()}
 
-            {/* Bottom gradient: price + generate */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
-              <div className="flex items-end justify-between gap-3">
-                <div className="pointer-events-none">
-                  <p className="text-white/45 text-[10px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
-                  <div className="flex items-center gap-1.5">
-                    <p className={`font-light leading-none transition-all ${
-                      selectedCount > 0 ? "text-[22px] text-white" : "text-[18px] text-white/30"
-                    }`}>
-                      {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                    </p>
-                    {selectedCount > 0 && (
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-white/35 mt-0.5 shrink-0">
-                        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-                        <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                {selectedCount >= 1 && (
-                  <button
-                    onClick={openStylePicker}
-                    disabled={generating}
-                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[13px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/40 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  >
-                    {generating ? (
-                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {generating ? "Generating…" : "Generate"}
-                  </button>
+          </div>
+
+          {/* Price + Generate bar */}
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-[#0f0f0f] border-t border-white/5">
+            <div>
+              <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
+              <div className="flex items-center gap-1.5">
+                <p className={`font-light leading-none transition-all ${
+                  selectedCount > 0 ? "text-[20px] text-white" : "text-[16px] text-white/30"
+                }`}>
+                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
+                </p>
+                {selectedCount > 0 && (
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white/35 shrink-0">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+                    <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
                 )}
               </div>
             </div>
+            {selectedCount >= 1 && (
+              <button
+                onClick={openStylePicker}
+                disabled={generating}
+                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {generating ? (
+                  <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                      stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {generating ? "Generating…" : "Generate"}
+              </button>
+            )}
           </div>
 
           {/* 2. Bottom sheet panel */}
