@@ -408,7 +408,7 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = (extra: { generatedImage?: string; generatedStyle?: string } = {}) => {
+  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string } = {}) => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -432,7 +432,8 @@ export default function BuilderPage() {
                 pieces,
                 totalPrice,
                 styleKeywords,
-                ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage }),
+                // null explicitly clears the stored image; undefined means "don't touch"
+                ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage ?? null }),
                 ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
               }
             : o
@@ -460,7 +461,8 @@ export default function BuilderPage() {
       login("", "");
       return;
     }
-    persistLook();
+    // Pass current generatedImage — if null (edited since last generation), clears stored image
+    persistLook({ generatedImage: generatedImage });
     setSaved(true);
     setShowSaveModal(true);
   };
