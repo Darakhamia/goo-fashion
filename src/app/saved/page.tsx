@@ -107,7 +107,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             </div>
           ) : pieces.length > 0 ? (
             /* Collage grid based on piece count */
-            <div className="aspect-[3/4] flex flex-col gap-px bg-[var(--border)]">
+            <div className="aspect-[3/4] flex flex-col gap-px bg-white/20">
               {(() => {
                 const n = pieces.length;
                 const img = (piece: typeof pieces[0], pad = "p-3") => piece?.imageUrl ? (
@@ -119,10 +119,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   </div>
                 );
                 const cell = (piece: typeof pieces[0], pad?: string) => (
-                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-[var(--surface)]">{img(piece, pad)}</div>
+                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
                 );
 
-                if (n === 1) return <div className="flex-1 overflow-hidden bg-[var(--surface)]">{img(pieces[0])}</div>;
+                if (n === 1) return <div className="flex-1 overflow-hidden bg-white">{img(pieces[0])}</div>;
 
                 if (n === 2) return (
                   <div className="flex-1 flex gap-px">
@@ -135,7 +135,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                     <div className="flex gap-px" style={{ flex: "0 0 60%" }}>
                       {pieces.slice(0, 2).map(p => cell(p))}
                     </div>
-                    <div className="overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 40%" }}>
+                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 40%" }}>
                       {img(pieces[2], "p-2")}
                     </div>
                   </>
@@ -172,7 +172,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                     <div className="flex gap-px" style={{ flex: "0 0 33%" }}>
                       {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
                     </div>
-                    <div className="overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 27%" }}>
+                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
                       {img(pieces[5], "p-2")}
                     </div>
                   </>
