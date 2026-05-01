@@ -2063,9 +2063,9 @@ export default function BuilderPage() {
               {/* Save */}
               <button
                 onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
-                className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 hover:opacity-80 transition-opacity shrink-0"
               >
-                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
                 </svg>
                 Save
