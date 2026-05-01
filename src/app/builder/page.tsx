@@ -472,7 +472,7 @@ export default function BuilderPage() {
       login("", "");
       return;
     }
-    persistLook();
+    persistLook({ generatedImage: generatedImage });
     setSaved(true);
     setShowSavedPopup(true);
   };
