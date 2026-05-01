@@ -1392,7 +1392,7 @@ export default function BuilderPage() {
                     onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
                     className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
                       isActive
-                        ? "border-[#c9a84c] text-[var(--foreground)]"
+                        ? "border-[var(--foreground)] text-[var(--foreground)]"
                         : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1418,11 +1418,11 @@ export default function BuilderPage() {
                     onClick={saveOutfit}
                     className={`flex items-center gap-1.5 px-3 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase border shadow-lg transition-all active:scale-95 ${
                       saved
-                        ? "bg-[#c9a84c]/10 border-[#c9a84c]/50 text-[#c9a84c]"
+                        ? "bg-[var(--foreground)]/10 border-[var(--foreground)]/30 text-[var(--foreground)]"
                         : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground)]"
                     }`}
                   >
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "#c9a84c" : "none"} stroke={saved ? "#c9a84c" : "currentColor"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
                     </svg>
                     {saved ? "Saved" : "Save"}
@@ -1620,7 +1620,7 @@ export default function BuilderPage() {
             : "Add pieces to build your look"}
         </p>
 
-        {/* Right: actions */}
+        {/* Right: Generate only */}
         <div className="flex items-center gap-2.5">
 
           {/* Generate — shown with ≥1 piece selected */}
@@ -1647,46 +1647,6 @@ export default function BuilderPage() {
             </button>
           )}
 
-          {/* Save */}
-          <button
-            onClick={saveOutfit}
-            disabled={selectedCount === 0}
-            className={`font-mono text-[10px] tracking-[0.14em] uppercase px-3 h-8 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
-              saved
-                ? "border-[var(--border)] text-[var(--foreground-muted)]"
-                : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-            }`}
-          >
-            {saved ? "Saved ✓" : "Save"}
-          </button>
-          {saved && (
-            <Link
-              href="/saved?tab=looks"
-              className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-            >
-              View →
-            </Link>
-          )}
-
-          {/* Shop the Look CTA */}
-          <button
-            onClick={shopTheLook}
-            disabled={selectedCount === 0}
-            className={`flex items-center gap-3 h-[42px] px-5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
-              selectedCount > 0
-                ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
-                : "bg-[var(--border)] text-[var(--foreground-subtle)]"
-            }`}
-          >
-            {shopAdded ? (
-              <span>Added to Cart ✓</span>
-            ) : (
-              <>
-                <span>Shop the Look</span>
-                {selectedCount > 0 && <span>{formatPrice(totalPrice)}</span>}
-              </>
-            )}
-          </button>
         </div>
       </footer>
 
