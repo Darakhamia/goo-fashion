@@ -2024,16 +2024,6 @@ export default function BuilderPage() {
                   </svg>
                   Regenerate
                 </button>
-                {/* Save */}
-                <button
-                  onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
-                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                  </svg>
-                  Save
-                </button>
                 {/* Download */}
                 <a
                   href={generatedImage}
@@ -2066,10 +2056,20 @@ export default function BuilderPage() {
               className="w-full aspect-square object-cover"
             />
 
-            <div className="px-5 py-3 border-t border-[var(--border)]">
+            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-4">
               <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
                 AI-generated image based on selected pieces. May not reflect exact products.
               </p>
+              {/* Save */}
+              <button
+                onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
+                className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+              >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
+                </svg>
+                Save
+              </button>
             </div>
           </div>
         </div>
