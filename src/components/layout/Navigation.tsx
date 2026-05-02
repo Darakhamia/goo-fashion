@@ -7,8 +7,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
-import { StylistDrawer } from "@/components/stylist/StylistDrawer";
-import type { Product } from "@/lib/types";
+import { useStylist } from "@/lib/context/stylist-context";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -23,8 +22,7 @@ export default function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
-  const [stylistOpen, setStylistOpen] = useState(false);
-  const [stylistProducts, setStylistProducts] = useState<Product[]>([]);
+  const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
@@ -37,16 +35,6 @@ export default function Navigation() {
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
-
-  // Load products when stylist opens
-  useEffect(() => {
-    if (stylistOpen && stylistProducts.length === 0) {
-      fetch("/api/products")
-        .then(r => r.json())
-        .then(d => { if (Array.isArray(d)) setStylistProducts(d); })
-        .catch(() => {});
-    }
-  }, [stylistOpen, stylistProducts.length]);
 
   // Close cart drawer on click outside
   useEffect(() => {
@@ -220,9 +208,8 @@ export default function Navigation() {
 
         {/* Mobile: AI Stylist + Cart */}
         <div className="md:hidden flex items-center gap-3">
-          {/* AI Stylist button */}
           <button
-            onClick={() => setStylistOpen(v => !v)}
+            onClick={toggleStylist}
             aria-label="Open AI Stylist"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
               stylistOpen
@@ -240,7 +227,6 @@ export default function Navigation() {
             </span>
           </button>
 
-          {/* Cart button */}
           <button
             onClick={() => setCartOpen(v => !v)}
             aria-label="Cart"
@@ -262,18 +248,7 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* Mobile Stylist drawer */}
-      <div className="md:hidden">
-        <StylistDrawer
-          isOpen={stylistOpen}
-          onClose={() => setStylistOpen(false)}
-          surface="browse"
-          products={stylistProducts}
-          position="fixed"
-        />
-      </div>
-
-      {/* Cart drawer overlay */}
+      {/* Cart drawer overlay */
       {cartOpen && (
         <>
           {/* Backdrop */}
