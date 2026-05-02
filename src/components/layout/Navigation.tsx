@@ -248,7 +248,7 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* Cart drawer overlay */
+      {/* Cart drawer overlay */}
       {cartOpen && (
         <>
           {/* Backdrop */}
