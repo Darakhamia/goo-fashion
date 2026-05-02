@@ -57,7 +57,8 @@ function inferCategory(text: string): Category {
   if (/\bdress\b|\bgown\b/.test(t)) return "dresses";
   if (/jumpsuit|playsuit|romper|\boveralls?\b/.test(t)) return "jumpsuits";
   if (/swimsuit|bikini|swimwear|\bswim\b/.test(t)) return "swimwear";
-  if (/sneaker|trainer|runner|loafer|\bboot\b|\bshoe\b|sandal|slide|\bmule\b|heel|pump|slipper/.test(t)) return "footwear";
+  // footwear — broad list incl. "low-top", "high-top", "athletic", "running"
+  if (/sneaker|trainer|runner|loafer|\bboot\b|\bshoe\b|sandal|slide|\bmule\b|heel|pump|slipper|low.?top|high.?top|athletic|running shoe|court shoe|derby|oxford|espadrille|clog/.test(t)) return "footwear";
   if (/\bbag\b|backpack|tote|clutch|wallet|purse|satchel|handbag/.test(t)) return "bags";
   return "accessories";
 }
@@ -106,10 +107,46 @@ function fixImageUrl(url: string): string {
 function isValidImageUrl(url: string): boolean {
   return (
     url.startsWith("http") &&
-    !url.includes("__") &&          // still-unresolved placeholders
+    !url.includes("__") &&
     !url.includes("placeholder") &&
     !url.includes("noimage")
   );
+}
+
+// Extract all og:image tags (pages can have multiple)
+function extractOgImages(html: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const patterns = [
+    /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["']/gi,
+    /<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:image["']/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const url = fixImageUrl(m[1]);
+      if (isValidImageUrl(url) && !seen.has(url)) {
+        seen.add(url);
+        result.push(url);
+      }
+    }
+  }
+  return result;
+}
+
+// For SSENSE: image URLs end with _1/slug.jpg — generate _2…_6 variants
+function expandSsenseAngles(urls: string[]): string[] {
+  const expanded: string[] = [...urls];
+  for (const url of urls) {
+    if (!url.includes("ssensemedia.com")) continue;
+    const m = url.match(/(_1)(\/[^/]+\.jpg)/);
+    if (!m) continue;
+    const base = url.slice(0, url.lastIndexOf(m[1] + m[2]));
+    for (let i = 2; i <= 6; i++) {
+      expanded.push(`${base}_${i}${m[2]}`);
+    }
+  }
+  return [...new Set(expanded)];
 }
 
 // ── Structured data extracted from a page ────────────────────────────────────
@@ -224,7 +261,6 @@ function extractOgTags(html: string, sourceUrl: string): Extracted | null {
   if (!title) return null;
 
   const description = getMeta(html, "property", "og:description") ?? getMeta(html, "name", "description") ?? "";
-  const image = getMeta(html, "property", "og:image");
   const price = parseFloat(
     getMeta(html, "property", "product:price:amount") ??
     getMeta(html, "property", "og:price:amount") ?? "0"
@@ -233,23 +269,26 @@ function extractOgTags(html: string, sourceUrl: string): Extracted | null {
     getMeta(html, "property", "product:price:currency") ??
     getMeta(html, "property", "og:price:currency") ?? "USD";
 
-  // Try to find brand from og:site_name or a dedicated meta
   const brand =
     getMeta(html, "property", "og:brand") ??
     getMeta(html, "name", "brand") ??
     getMeta(html, "property", "og:site_name") ?? "";
 
+  // Use title + description + URL path for category — og:title on many sites is "Brand | Site"
+  const urlPath = (() => { try { return new URL(sourceUrl).pathname; } catch { return ""; } })();
+  const categoryHint = title + " " + description + " " + urlPath;
+
   return {
     name: title,
     brand,
-    category: inferCategory(title),
+    category: inferCategory(categoryHint),
     description,
     price,
     currency,
     colors: [],
     sizes: [],
     gender: inferGender(title + " " + description),
-    image_urls: image ? [fixImageUrl(image)].filter(isValidImageUrl) : [],
+    image_urls: extractOgImages(html),
     source_url: sourceUrl,
     platform: detectPlatform(sourceUrl),
   };
@@ -310,6 +349,12 @@ async function extractProduct(url: string): Promise<Extracted> {
     extractHtmlFallback(html, url);
 
   if (!result) throw new Error("Could not extract product data from page");
+
+  // Expand SSENSE angle variants + merge any OG images not already in the list
+  const ogImages = extractOgImages(html);
+  const merged = [...new Set([...result.image_urls, ...ogImages])];
+  result.image_urls = expandSsenseAngles(merged).slice(0, 10);
+
   return result;
 }
 
