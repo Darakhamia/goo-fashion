@@ -381,6 +381,16 @@ body {
   animation: slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
+/* Stylist drawer: slide-up on mobile, slide-in-right on desktop */
+.stylist-drawer-animate {
+  animation: slideUp 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@media (min-width: 768px) {
+  .stylist-drawer-animate {
+    animation: slideInRight 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+}
+
 /* Noise texture overlay for hero */
 .noise-overlay::before {
   content: '';
