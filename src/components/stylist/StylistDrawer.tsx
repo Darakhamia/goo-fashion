@@ -642,7 +642,7 @@ export function StylistDrawer({
                 placeholder="Message stylist…"
                 maxLength={500}
                 disabled={chatLoading}
-                className="flex-1 h-10 bg-transparent outline-none px-3 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
+                className="flex-1 h-10 bg-transparent outline-none px-3 text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => sendMessage(chatInput)}
