@@ -9,6 +9,8 @@ import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { useStylist } from "@/lib/context/stylist-context";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -134,6 +136,7 @@ export default function BuilderPage() {
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
+  const { isOpen: stylistOpen, toggle: toggleStylist, close: closeStylist } = useStylist();
   const router = useRouter();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
 
@@ -1169,7 +1172,7 @@ export default function BuilderPage() {
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* Mobile top header: back + save */}
+          {/* Mobile top header: back + ai stylist + save */}
           <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
             <Link
               href="/"
@@ -1179,6 +1182,19 @@ export default function BuilderPage() {
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
+            <button
+              onClick={toggleStylist}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
+                stylistOpen
+                  ? "bg-white text-black border-white"
+                  : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+              </svg>
+              <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+            </button>
             <button
               onClick={handleMobileSave}
               disabled={selectedCount === 0}
@@ -1917,6 +1933,18 @@ export default function BuilderPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile AI Stylist drawer — always mounted so chat history persists on open/close */}
+      <div className="md:hidden">
+        <StylistDrawer
+          isOpen={stylistOpen}
+          onClose={closeStylist}
+          surface="builder"
+          products={products}
+          position="fixed"
+          selection={selection}
+        />
+      </div>
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
