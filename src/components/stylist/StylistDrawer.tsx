@@ -129,7 +129,17 @@ export function StylistDrawer({
   focusProduct,
   browseContext,
 }: StylistDrawerProps) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [makeWelcome(focusProduct)]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") return [makeWelcome(focusProduct)];
+    try {
+      const stored = sessionStorage.getItem("stylist_chat_v1");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [makeWelcome(focusProduct)];
+  });
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [view, setView] = useState<"chat" | "history">("chat");
@@ -143,9 +153,11 @@ export function StylistDrawer({
   const contextId = focusProduct?.id ?? "";
 
   const startNewChat = () => {
-    setChatMessages([makeWelcome(focusProduct)]);
+    const fresh = [makeWelcome(focusProduct)];
+    setChatMessages(fresh);
     setChatInput("");
     setView("chat");
+    try { sessionStorage.removeItem("stylist_chat_v1"); } catch {}
   };
 
   // Load chat sessions for history panel
@@ -199,6 +211,11 @@ export function StylistDrawer({
       body: JSON.stringify({ surface, context_id: contextId, messages: toSave }),
     }).catch(() => {});
   };
+
+  // Persist messages to sessionStorage so chat survives page navigation
+  useEffect(() => {
+    try { sessionStorage.setItem("stylist_chat_v1", JSON.stringify(chatMessages)); } catch {}
+  }, [chatMessages]);
 
   // Auto-scroll
   useEffect(() => {
