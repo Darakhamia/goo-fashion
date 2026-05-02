@@ -50,16 +50,18 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
       </div>
       <FloatingStylist />
 
-      {/* Mobile stylist drawer — rendered here, outside <header>, to avoid backdrop-filter stacking context bug */}
-      <div className="md:hidden">
-        <StylistDrawer
-          isOpen={isOpen}
-          onClose={close}
-          surface="browse"
-          products={products}
-          position="fixed"
-        />
-      </div>
+      {/* Mobile stylist drawer — skip on builder page (builder manages its own with outfit context) */}
+      {!isBuilder && (
+        <div className="md:hidden">
+          <StylistDrawer
+            isOpen={isOpen}
+            onClose={close}
+            surface="browse"
+            products={products}
+            position="fixed"
+          />
+        </div>
+      )}
 
       <MobileBottomNav />
     </>
