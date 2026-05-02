@@ -1455,7 +1455,6 @@ export default function BuilderPage() {
                       ? product.colorImages![selectedColorKey][0]
                       : null;
                     const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
-                    const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
                       <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 120 }}>
@@ -1495,33 +1494,6 @@ export default function BuilderPage() {
                         <div className="pt-1.5">
                           <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                           <p className="font-mono text-[10px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
-                          {/* Colour swatches */}
-                          {hasVariants && (
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
-                              {product.variants!.slice(0, 5).map(sw => {
-                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
-                                const isSwatchActive = activeId === sw.id;
-                                return (
-                                  <button
-                                    key={sw.id}
-                                    title={sw.colorName}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: sw.id }));
-                                      if (isSelected && selectedSlot) selectVariant(selectedSlot.id, sw);
-                                    }}
-                                    className={`w-3 h-3 shrink-0 transition-all ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                    style={{
-                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
-                                      boxShadow: isSwatchActive
-                                        ? "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.45)"
-                                        : "0 0 0 1px rgba(0,0,0,0.15)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
