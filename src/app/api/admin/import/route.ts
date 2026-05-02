@@ -385,15 +385,34 @@ export async function POST(req: Request) {
     ai_tags: [],
   };
 
-  // Upsert on source_url so re-importing the same URL updates instead of errors
-  const { data: product, error: upsertErr } = await supabase
+  // Check for existing product with same source_url to avoid upsert constraint issues
+  const { data: existing } = await supabase
     .from("products")
-    .upsert(row, { onConflict: "source_url" })
-    .select()
-    .single();
+    .select("id")
+    .eq("source_url", extracted.source_url)
+    .maybeSingle();
 
-  if (upsertErr || !product) {
-    return fail(upsertErr?.message ?? "Failed to save product");
+  let product: Record<string, unknown> | null = null;
+
+  if (existing?.id) {
+    // Update in place
+    const { data, error: updateErr } = await supabase
+      .from("products")
+      .update(row)
+      .eq("id", existing.id)
+      .select()
+      .single();
+    if (updateErr || !data) return fail(updateErr?.message ?? "Failed to update product");
+    product = data as Record<string, unknown>;
+  } else {
+    // Fresh insert
+    const { data, error: insertErr } = await supabase
+      .from("products")
+      .insert(row)
+      .select()
+      .single();
+    if (insertErr || !data) return fail(insertErr?.message ?? "Failed to save product");
+    product = data as Record<string, unknown>;
   }
 
   // Mark job as done
@@ -414,8 +433,8 @@ export async function POST(req: Request) {
       price: product.price_min,
       currency: product.currency,
       image_url: product.image_url,
-      status: (product as Record<string, unknown>).status ?? "draft",
-      source_url: (product as Record<string, unknown>).source_url,
+      status: product.status ?? "draft",
+      source_url: product.source_url,
     },
     job: { id: jobId, status: "done" },
   }, { status: 201 });

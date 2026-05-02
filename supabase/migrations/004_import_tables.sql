@@ -10,10 +10,13 @@ alter table public.products
   add column if not exists source_url text,
   add column if not exists ai_tags    text[]      not null default '{}';
 
--- Partial unique index so only non-null source_url values are constrained
+-- Unique index on source_url (nulls are not considered equal, so multiple NULLs are fine)
 create unique index if not exists products_source_url_idx
   on public.products (source_url)
   where source_url is not null;
+
+-- Note: the API uses select→insert/update instead of ON CONFLICT to avoid
+-- PostgREST limitations with partial indexes. This index still prevents duplicates at the DB level.
 
 -- ── Import jobs ──────────────────────────────────────────────
 create table if not exists public.import_jobs (
