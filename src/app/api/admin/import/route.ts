@@ -98,6 +98,20 @@ function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Fix Cloudinary template placeholders (e.g. SSENSE uses __IMAGE_PARAMS__)
+function fixImageUrl(url: string): string {
+  return url.replace(/__IMAGE_PARAMS__/g, "f_auto,c_limit,w_1200");
+}
+
+function isValidImageUrl(url: string): boolean {
+  return (
+    url.startsWith("http") &&
+    !url.includes("__") &&          // still-unresolved placeholders
+    !url.includes("placeholder") &&
+    !url.includes("noimage")
+  );
+}
+
 // ── Structured data extracted from a page ────────────────────────────────────
 
 interface Extracted {
@@ -140,7 +154,8 @@ function parseSchemaProduct(p: any, sourceUrl: string): Extracted | null {
   const rawImages = Array.isArray(p.image) ? p.image : p.image ? [p.image] : [];
   const image_urls: string[] = rawImages
     .map((img: unknown) => (typeof img === "string" ? img : (img as Record<string, string>)?.url ?? ""))
-    .filter((u: string) => u.startsWith("http"))
+    .map(fixImageUrl)
+    .filter(isValidImageUrl)
     .slice(0, 8);
 
   // Colors & sizes (schema.org ProductVariant style)
@@ -234,7 +249,7 @@ function extractOgTags(html: string, sourceUrl: string): Extracted | null {
     colors: [],
     sizes: [],
     gender: inferGender(title + " " + description),
-    image_urls: image ? [image] : [],
+    image_urls: image ? [fixImageUrl(image)].filter(isValidImageUrl) : [],
     source_url: sourceUrl,
     platform: detectPlatform(sourceUrl),
   };
