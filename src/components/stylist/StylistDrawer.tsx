@@ -317,7 +317,7 @@ export function StylistDrawer({
 
   const positionClasses = position === "absolute"
     ? "absolute top-0 right-0 bottom-0 z-20 w-full md:w-[380px]"
-    : "fixed bottom-14 left-0 right-0 z-40 w-full h-[58vh] rounded-t-2xl md:top-16 md:bottom-0 md:left-auto md:right-0 md:w-[380px] md:h-auto md:rounded-none";
+    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-16 md:bottom-0 md:left-auto md:right-0 md:w-[380px] md:h-auto md:rounded-none";
 
   const quickReplies = QUICK_REPLIES[surface];
 
@@ -330,7 +330,7 @@ export function StylistDrawer({
       {/* Mobile backdrop */}
       {position === "fixed" && (
         <div
-          className="md:hidden fixed inset-0 z-30 bg-black/40"
+          className="md:hidden fixed inset-0 z-[55] bg-black/40"
           style={{ animation: "overlayIn 0.2s ease forwards" }}
           onClick={onClose}
           aria-hidden="true"
