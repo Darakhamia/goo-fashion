@@ -232,23 +232,23 @@ export default function Navigation() {
             aria-label="Cart"
             className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
           >
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-            <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-            <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-          </svg>
-          {cartCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-              <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
-                {cartCount > 9 ? "9+" : cartCount}
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
               </span>
-            </span>
-          )}
+            )}
           </button>
         </div>
       </nav>
 
-      {/* Cart drawer overlay */}
+      {/* Cart drawer overlay */
       {cartOpen && (
         <>
           {/* Backdrop */}

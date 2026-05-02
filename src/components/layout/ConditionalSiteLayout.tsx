@@ -44,9 +44,10 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
     <>
       <Navigation />
       <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>{children}</main>
-      <div className="hidden md:block"><Footer /></div>
-
-      {/* Desktop floating stylist button + drawer */}
+      {/* Footer: visible on all screens; on mobile add bottom padding for the nav bar */}
+      <div className={!isBuilder ? "pb-14 md:pb-0" : "hidden md:block"}>
+        <Footer />
+      </div>
       <FloatingStylist />
 
       {/* Mobile stylist drawer — rendered here, outside <header>, to avoid backdrop-filter stacking context bug */}
