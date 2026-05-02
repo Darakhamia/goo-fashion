@@ -9,6 +9,13 @@ import type { Category, Gender } from "@/lib/types";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
+const SCRAPER_KEY = process.env.SCRAPER_API_KEY;
+
+function proxyUrl(target: string): string {
+  if (!SCRAPER_KEY) return target;
+  return `https://api.scraperapi.com/?api_key=${SCRAPER_KEY}&url=${encodeURIComponent(target)}&country_code=gb`;
+}
+
 // ── Platform detection ────────────────────────────────────────────────────────
 
 function detectPlatform(url: string): string {
@@ -263,7 +270,8 @@ function extractHtmlFallback(html: string, sourceUrl: string): Extracted | null 
 // ── Main extraction pipeline ──────────────────────────────────────────────────
 
 async function extractProduct(url: string): Promise<Extracted> {
-  const res = await fetch(url, {
+  const fetchUrl = proxyUrl(url);
+  const res = await fetch(fetchUrl, {
     headers: {
       "User-Agent": UA,
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -272,7 +280,12 @@ async function extractProduct(url: string): Promise<Extracted> {
     signal: AbortSignal.timeout(30_000),
   });
 
-  if (!res.ok) throw new Error(`Page returned HTTP ${res.status}`);
+  if (!res.ok) {
+    const hint = !SCRAPER_KEY && res.status === 403
+      ? " — this site blocks bots. Add SCRAPER_API_KEY to bypass (free at scraperapi.com)"
+      : "";
+    throw new Error(`Page returned HTTP ${res.status}${hint}`);
+  }
 
   const html = await res.text();
 
