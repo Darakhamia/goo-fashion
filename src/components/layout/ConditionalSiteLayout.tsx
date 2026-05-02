@@ -28,9 +28,11 @@ export default function ConditionalSiteLayout({ children }: ConditionalSiteLayou
   return (
     <>
       <Navigation />
-      {/* On mobile non-builder pages add bottom padding for the tab bar */}
       <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>{children}</main>
-      <div className="hidden md:block"><Footer /></div>
+      {/* Footer visible on all screen sizes; on mobile add bottom padding for the tab bar */}
+      <div className={!isBuilder ? "pb-14 md:pb-0" : "hidden md:block"}>
+        <Footer />
+      </div>
       <FloatingStylist />
       <MobileBottomNav />
     </>
