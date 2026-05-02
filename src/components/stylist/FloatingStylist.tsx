@@ -32,7 +32,7 @@ export function FloatingStylist() {
       <button
         onClick={() => setIsOpen(v => !v)}
         aria-label="Open AI Stylist"
-        className={`fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full flex items-center justify-center shadow-lg border transition-all duration-200 ${
+        className={`hidden md:flex fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full items-center justify-center shadow-lg border transition-all duration-200 ${
           isOpen
             ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
             : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] hover:border-[var(--foreground)]"
