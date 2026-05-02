@@ -7,6 +7,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { useStylist } from "@/lib/context/stylist-context";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -21,6 +22,7 @@ export default function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
@@ -204,12 +206,32 @@ export default function Navigation() {
           </SignedOut>
         </div>
 
-        {/* Mobile: cart icon only (navigation via bottom tab bar) */}
-        <button
-          onClick={() => setCartOpen(v => !v)}
-          aria-label="Cart"
-          className={`md:hidden relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
-        >
+        {/* Mobile: AI Stylist + Cart */}
+        <div className="md:hidden flex items-center gap-3">
+          <button
+            onClick={toggleStylist}
+            aria-label="Open AI Stylist"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
+              stylistOpen
+                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                : showWhiteText
+                ? "bg-white/10 text-white border-white/30 hover:bg-white/20"
+                : "bg-[var(--surface)] text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+            </svg>
+            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">
+              AI Stylist
+            </span>
+          </button>
+
+          <button
+            onClick={() => setCartOpen(v => !v)}
+            aria-label="Cart"
+            className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
+          >
           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
             <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
@@ -222,7 +244,8 @@ export default function Navigation() {
               </span>
             </span>
           )}
-        </button>
+          </button>
+        </div>
       </nav>
 
       {/* Cart drawer overlay */}
