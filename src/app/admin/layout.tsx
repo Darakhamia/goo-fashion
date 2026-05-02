@@ -126,17 +126,6 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/import",
-    label: "URL Import",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 10V13H14V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 2V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M5 5L8 2L11 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
     href: "/admin/settings",
     label: "Settings",
     icon: (
@@ -179,7 +168,6 @@ const pageTitles: Record<string, string> = {
   "/admin/email": "Email",
   "/admin/stockx": "StockX Import",
   "/admin/farfetch": "Farfetch Import",
-  "/admin/import": "URL Import",
   "/admin/settings": "Settings",
   "/admin/activity": "Activity",
 };

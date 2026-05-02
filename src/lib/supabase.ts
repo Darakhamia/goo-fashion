@@ -66,15 +66,6 @@ export type DbBlogPost = {
   updated_at: string;
 };
 
-export type DbImportJob = {
-  id: string;
-  url: string;
-  status: "pending" | "processing" | "done" | "failed";
-  error: string | null;
-  result_product_id: string | null;
-  created_at: string;
-};
-
 export type DbProduct = {
   id: string;
   name: string;
