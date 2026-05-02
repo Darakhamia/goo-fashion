@@ -7,6 +7,8 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import type { Product } from "@/lib/types";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -21,6 +23,8 @@ export default function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [stylistOpen, setStylistOpen] = useState(false);
+  const [stylistProducts, setStylistProducts] = useState<Product[]>([]);
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
@@ -33,6 +37,16 @@ export default function Navigation() {
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+
+  // Load products when stylist opens
+  useEffect(() => {
+    if (stylistOpen && stylistProducts.length === 0) {
+      fetch("/api/products")
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d)) setStylistProducts(d); })
+        .catch(() => {});
+    }
+  }, [stylistOpen, stylistProducts.length]);
 
   // Close cart drawer on click outside
   useEffect(() => {
@@ -204,26 +218,60 @@ export default function Navigation() {
           </SignedOut>
         </div>
 
-        {/* Mobile: cart icon only (navigation via bottom tab bar) */}
-        <button
-          onClick={() => setCartOpen(v => !v)}
-          aria-label="Cart"
-          className={`md:hidden relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
-        >
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-            <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-            <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-          </svg>
-          {cartCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-              <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
-                {cartCount > 9 ? "9+" : cartCount}
-              </span>
+        {/* Mobile: AI Stylist + Cart */}
+        <div className="md:hidden flex items-center gap-3">
+          {/* AI Stylist button */}
+          <button
+            onClick={() => setStylistOpen(v => !v)}
+            aria-label="Open AI Stylist"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
+              stylistOpen
+                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                : showWhiteText
+                ? "bg-white/10 text-white border-white/30 hover:bg-white/20"
+                : "bg-[var(--surface)] text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+            </svg>
+            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">
+              AI Stylist
             </span>
-          )}
-        </button>
+          </button>
+
+          {/* Cart button */}
+          <button
+            onClick={() => setCartOpen(v => !v)}
+            aria-label="Cart"
+            className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
+          >
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              </span>
+            )}
+          </button>
+        </div>
       </nav>
+
+      {/* Mobile Stylist drawer */}
+      <div className="md:hidden">
+        <StylistDrawer
+          isOpen={stylistOpen}
+          onClose={() => setStylistOpen(false)}
+          surface="browse"
+          products={stylistProducts}
+          position="fixed"
+        />
+      </div>
 
       {/* Cart drawer overlay */}
       {cartOpen && (
