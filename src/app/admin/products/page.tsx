@@ -1680,16 +1680,45 @@ export default function AdminProductsPage() {
                     <SecHead id="pricing" label="Pricing" />
                     {!collapsed.has("pricing") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={labelCls}>Price Min ($)</label>
-                            <input type="number" value={form.priceMin} onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))} placeholder="0" min="0" className={inputCls} />
-                          </div>
-                          <div>
-                            <label className={labelCls}>Price Max ($)</label>
-                            <input type="number" value={form.priceMax} onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))} placeholder="0" min="0" className={inputCls} />
-                          </div>
-                        </div>
+                        {(() => {
+                          const retailerPrices = form.retailers.map((r) => parseFloat(r.price)).filter((p) => p > 0);
+                          const isAutoCalc = retailerPrices.length > 0;
+                          return (
+                            <>
+                              {isAutoCalc && (
+                                <p className="text-[10px] text-[var(--foreground-muted)] tracking-[0.08em]">
+                                  Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
+                                </p>
+                              )}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className={labelCls}>Price Min ($)</label>
+                                  <input
+                                    type="number"
+                                    value={form.priceMin}
+                                    onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
+                                    placeholder="0"
+                                    min="0"
+                                    readOnly={isAutoCalc}
+                                    className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className={labelCls}>Price Max ($)</label>
+                                  <input
+                                    type="number"
+                                    value={form.priceMax}
+                                    onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
+                                    placeholder="0"
+                                    min="0"
+                                    readOnly={isAutoCalc}
+                                    className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
                         <div className="flex items-center gap-3">
                           <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
                           <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
@@ -1833,7 +1862,18 @@ export default function AdminProductsPage() {
                     <SecHead id="retailers" label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
                     {!collapsed.has("retailers") && (
                       <div className="px-4 pb-4">
-                        <RetailerList retailers={form.retailers} onChange={(r) => setForm((f) => ({ ...f, retailers: r }))} />
+                        <RetailerList
+                          retailers={form.retailers}
+                          onChange={(r) => {
+                            const prices = r.map((x) => parseFloat(x.price)).filter((x) => x > 0);
+                            setForm((f) => ({
+                              ...f,
+                              retailers: r,
+                              priceMin: prices.length > 0 ? String(Math.min(...prices)) : f.priceMin,
+                              priceMax: prices.length > 0 ? String(Math.max(...prices)) : f.priceMax,
+                            }));
+                          }}
+                        />
                       </div>
                     )}
                   </div>
