@@ -48,7 +48,7 @@ interface RateCache { rates: Record<string, number>; ts: number }
 
 // Approximate fallback rates (USD base)
 const FALLBACK_RATES: Record<string, number> = {
-  EUR: 0.92, GBP: 0.79, RUB: 92, AED: 3.67, JPY: 156, TRY: 32,
+  EUR: 0.85, GBP: 0.74, RUB: 75, AED: 3.67, JPY: 157, TRY: 45,
 };
 
 // ── Context ────────────────────────────────────────────────────────────────
