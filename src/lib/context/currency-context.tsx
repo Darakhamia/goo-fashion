@@ -9,7 +9,7 @@ import {
 } from "react";
 
 // ── Supported currencies ───────────────────────────────────────────────────
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "RUB" | "AED" | "JPY" | "TRY";
+export type CurrencyCode = "USD" | "EUR" | "GBP" | "UAH" | "CZK" | "JPY" | "TRY";
 
 export interface CurrencyInfo {
   code: CurrencyCode;
@@ -19,13 +19,13 @@ export interface CurrencyInfo {
 }
 
 export const CURRENCIES: CurrencyInfo[] = [
-  { code: "USD", symbol: "$",   position: "prefix", name: "US Dollar" },
-  { code: "EUR", symbol: "€",   position: "suffix", name: "Euro" },
-  { code: "GBP", symbol: "£",   position: "prefix", name: "Pound" },
-  { code: "RUB", symbol: "₽",   position: "suffix", name: "Ruble" },
-  { code: "AED", symbol: "AED", position: "suffix", name: "Dirham" },
-  { code: "JPY", symbol: "¥",   position: "prefix", name: "Yen" },
-  { code: "TRY", symbol: "₺",   position: "suffix", name: "Lira" },
+  { code: "USD", symbol: "$",  position: "prefix", name: "US Dollar" },
+  { code: "EUR", symbol: "€",  position: "suffix", name: "Euro" },
+  { code: "GBP", symbol: "£",  position: "prefix", name: "Pound" },
+  { code: "UAH", symbol: "₴",  position: "suffix", name: "Hryvnia" },
+  { code: "CZK", symbol: "Kč", position: "suffix", name: "Koruna" },
+  { code: "JPY", symbol: "¥",  position: "prefix", name: "Yen" },
+  { code: "TRY", symbol: "₺",  position: "suffix", name: "Lira" },
 ];
 
 // ── Format helper ──────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ interface RateCache { rates: Record<string, number>; ts: number }
 
 // Approximate fallback rates (USD base)
 const FALLBACK_RATES: Record<string, number> = {
-  EUR: 0.85, GBP: 0.74, RUB: 75, AED: 3.67, JPY: 157, TRY: 45,
+  EUR: 0.85, GBP: 0.74, UAH: 44, CZK: 21, JPY: 157, TRY: 45,
 };
 
 // ── Context ────────────────────────────────────────────────────────────────

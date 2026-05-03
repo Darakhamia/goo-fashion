@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-const CODES = ["EUR", "GBP", "RUB", "AED", "JPY", "TRY"];
-const FALLBACK = { EUR: 0.85, GBP: 0.74, RUB: 75, AED: 3.67, JPY: 157, TRY: 45 };
+const CODES = ["EUR", "GBP", "UAH", "CZK", "JPY", "TRY"];
+const FALLBACK = { EUR: 0.85, GBP: 0.74, UAH: 44, CZK: 21, JPY: 157, TRY: 45 };
 
 export async function GET() {
   try {
