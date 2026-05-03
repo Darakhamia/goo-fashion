@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { PAID_PLAN_IDS, PLANS, type PlanId } from "@/lib/plans";
+import { StylistPersonalizationModal, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
 
 // ── Plan presentation — marketing copy, kept separate from the feature gate map ─
 
@@ -51,6 +52,8 @@ function SubscribeInner() {
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
 
+  const [showPersonalization, setShowPersonalization] = useState(false);
+
   const rawPlanId = searchParams.get("plan");
   const planId: Exclude<PlanId, "free"> = PAID_PLAN_IDS.includes(rawPlanId as PlanId)
     ? (rawPlanId as Exclude<PlanId, "free">)
@@ -87,6 +90,7 @@ function SubscribeInner() {
       // Reload the Clerk session so publicMetadata.plan is fresh everywhere.
       await user?.reload();
       setSuccess(true);
+      setShowPersonalization(true);
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -96,6 +100,16 @@ function SubscribeInner() {
 
   // ── Success state ────────────────────────────────────────────────────────
   if (success) {
+    const handleSavePersonalization = async (data: StylistPersonalization) => {
+      await user?.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          stylistPersonalization: data,
+        },
+      });
+      setShowPersonalization(false);
+    };
+
     return (
       <div className="min-h-screen">
         <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24 text-center">
@@ -131,6 +145,15 @@ function SubscribeInner() {
             Demo mode — no card was charged. Billing will be wired up in a future release.
           </p>
         </div>
+
+        {showPersonalization && (
+          <StylistPersonalizationModal
+            initial={null}
+            userName={user?.firstName ?? ""}
+            onClose={() => setShowPersonalization(false)}
+            onSave={handleSavePersonalization}
+          />
+        )}
       </div>
     );
   }
