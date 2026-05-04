@@ -47,7 +47,10 @@ export async function POST(req: Request) {
   let userId: string | null = null;
   try { userId = (await auth()).userId; } catch { /* anon request */ }
 
-  const country = await resolveCountry(req);
+  const clientCountry = typeof body.country === "string" && /^[A-Z]{2}$/.test(body.country)
+    ? body.country
+    : null;
+  const country = clientCountry ?? await resolveCountry(req);
 
   await supabase.from("page_views").insert({
     session_id:   body.session_id,

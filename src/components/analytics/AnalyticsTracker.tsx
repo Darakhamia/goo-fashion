@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   beacon,
   getSessionId,
+  getCountryFromTimezone,
   parseUTM,
   detectDevice,
   detectBrowser,
@@ -70,6 +71,7 @@ export default function AnalyticsTracker() {
       utm_source:   utmSource   ?? null,
       utm_medium:   utmMedium   ?? null,
       utm_campaign: utmCampaign ?? null,
+      country: getCountryFromTimezone(),
       device,
       browser,
       os,
