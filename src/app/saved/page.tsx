@@ -79,13 +79,9 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
     month: "short",
   });
 
-  const handleDelete = () => {
-    if (confirmDelete) {
-      onDelete();
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 2500);
-    }
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDelete(true);
   };
 
   return (
@@ -207,12 +203,8 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             </div>
             <button
               onClick={handleDelete}
-              title={confirmDelete ? "Click again to confirm" : "Delete look"}
-              className={`shrink-0 h-7 w-7 flex items-center justify-center border transition-colors ${
-                confirmDelete
-                  ? "border-red-500 text-red-500 bg-red-500/5"
-                  : "border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400"
-              }`}
+              title="Delete look"
+              className="shrink-0 h-7 w-7 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400 transition-colors"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -243,6 +235,36 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
           </div>
         </div>
       </div>
+
+      {/* ── Delete confirmation modal ── */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setConfirmDelete(false)}
+        >
+          <div
+            className="bg-[var(--background)] border border-[var(--border)] p-6 max-w-xs w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-medium text-[var(--foreground)] mb-1">Удалить этот лук?</p>
+            <p className="text-[11px] text-[var(--foreground-subtle)] mb-5">Это действие нельзя отменить.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { onDelete(); setConfirmDelete(false); }}
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Нет
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Look preview modal ── */}
       {open && (
@@ -371,36 +393,64 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 </div>
               </div>
             ) : (
-              /* ── No generated image: pieces grid ── */
+              /* ── No generated image: collage with clickable pieces + names ── */
               <div className="overflow-y-auto">
-                <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
-                  {pieces.map(({ slot, imageUrl, name, productId }) => (
-                    <Link
-                      key={slot}
-                      href={`/product/${productId}`}
-                      onClick={() => setOpen(false)}
-                      className="group/item bg-[var(--surface)] block relative overflow-hidden"
-                    >
-                      <div className="aspect-[4/5] overflow-hidden">
-                        {imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={imageUrl}
-                            alt={name}
-                            className="w-full h-full object-contain p-3 group-hover/item:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-mono text-[9px] uppercase text-[var(--border-strong)] capitalize">{slot}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="px-3 py-2 border-t border-[var(--border)]">
-                        <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] capitalize">{slot}</p>
-                        <p className="text-[11px] text-[var(--foreground)] truncate mt-0.5">{name}</p>
-                      </div>
-                    </Link>
-                  ))}
+                <div className="aspect-[3/4] flex flex-col gap-px bg-gray-200">
+                  {(() => {
+                    const n = pieces.length;
+
+                    const cellLink = (piece: typeof pieces[0], pad = "p-3") => (
+                      <Link
+                        key={piece.slot}
+                        href={`/product/${piece.productId}`}
+                        onClick={() => setOpen(false)}
+                        className="flex-1 flex flex-col overflow-hidden bg-white group/item min-w-0"
+                      >
+                        <div className="flex-1 overflow-hidden">
+                          {piece.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={piece.imageUrl} alt={piece.name} className={`w-full h-full object-contain ${pad} group-hover/item:scale-105 transition-transform duration-300`} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="font-mono text-[8px] uppercase text-[var(--border-strong)] capitalize">{piece.slot}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="shrink-0 px-2 py-1.5 border-t border-[var(--border)] bg-[var(--surface)]">
+                          <p className="text-[10px] leading-tight text-[var(--foreground)] truncate">{piece.name}</p>
+                        </div>
+                      </Link>
+                    );
+
+                    if (n === 0) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces</p></div>;
+                    if (n === 1) return <>{cellLink(pieces[0])}</>;
+                    if (n === 2) return <div className="flex-1 flex gap-px">{pieces.slice(0, 2).map(p => cellLink(p))}</div>;
+                    if (n === 3) return (
+                      <>
+                        <div className="flex gap-px" style={{ flex: "0 0 60%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
+                        <div className="flex" style={{ flex: "0 0 40%" }}>{cellLink(pieces[2], "p-2")}</div>
+                      </>
+                    );
+                    if (n === 4) return (
+                      <>
+                        <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cellLink(p))}</div>
+                        <div className="flex gap-px flex-1">{pieces.slice(2, 4).map(p => cellLink(p))}</div>
+                      </>
+                    );
+                    if (n === 5) return (
+                      <>
+                        <div className="flex gap-px" style={{ flex: "0 0 57%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
+                        <div className="flex gap-px" style={{ flex: "0 0 43%" }}>{pieces.slice(2, 5).map(p => cellLink(p, "p-2"))}</div>
+                      </>
+                    );
+                    return (
+                      <>
+                        <div className="flex gap-px" style={{ flex: "0 0 40%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
+                        <div className="flex gap-px" style={{ flex: "0 0 33%" }}>{pieces.slice(2, 5).map(p => cellLink(p, "p-2"))}</div>
+                        <div className="flex" style={{ flex: "0 0 27%" }}>{cellLink(pieces[5], "p-2")}</div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             )}
