@@ -66,42 +66,22 @@ const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
   { label: "< $2k",  max: 2000 },
 ];
 
-const COLOR_HEX: Record<string, string> = {
-  "Black":       "#1c1c1c",
-  "White":       "#f5f5f0",
-  "Ivory":       "#f9f6ee",
-  "Ecru":        "#c8b99a",
-  "Cream":       "#fffdd0",
-  "Milk":        "#fdfcf0",
-  "Camel":       "#c19a6b",
-  "Cognac":      "#9a4722",
-  "Tobacco":     "#8b6c42",
-  "Dark Brown":  "#4a2f1a",
-  "Champagne":   "#f7e7ce",
-  "Dusty Rose":  "#dcae96",
-  "Pale Rose":   "#f2d4d4",
-  "Pale Pink":   "#fadadd",
-  "Dusty Mauve": "#896f7e",
-  "Red":         "#cc2200",
-  "Burgundy":    "#7d1128",
-  "Charcoal":    "#36454f",
-  "Anthracite":  "#3b3b3b",
-  "Light Grey":  "#d3d3d3",
-  "Stone":       "#928e85",
-  "Sand":        "#c2b080",
-  "Khaki":       "#c3b091",
-  "Olive":       "#6b6b2a",
-  "Sage":        "#8faa82",
-  "Forest Green":"#1f5e2e",
-  "Navy":        "#001f5b",
-  "Dark Navy":   "#0d1b2a",
-  "Indigo":      "#3d3580",
-  "Pale Blue":   "#b0cfe0",
-  "Sky Blue":    "#87ceeb",
-  "Light Blue":  "#aacfdf",
-  "Medium Blue": "#2d6fa3",
-  "Faded Blue":  "#7faac0",
-};
+// Standard color groups (same 13 as Browse page)
+const STANDARD_COLORS: { name: string; hex: string; matches: string[] }[] = [
+  { name: "White",      hex: "#ffffff", matches: ["White", "Ivory", "Cream", "Milk", "Ecru"] },
+  { name: "Multicolor", hex: "#multicolor", matches: ["Multicolor"] },
+  { name: "Brown",      hex: "#7a4f35", matches: ["Brown", "Dark Brown", "Cognac", "Tobacco"] },
+  { name: "Pink",       hex: "#e8698a", matches: ["Pink", "Pale Pink", "Dusty Rose", "Pale Rose", "Dusty Mauve"] },
+  { name: "Yellow",     hex: "#f5c518", matches: ["Yellow", "Champagne"] },
+  { name: "Orange",     hex: "#e87722", matches: ["Orange"] },
+  { name: "Grey",       hex: "#808080", matches: ["Grey", "Light Grey", "Charcoal", "Anthracite"] },
+  { name: "Black",      hex: "#111111", matches: ["Black", "Dark Navy"] },
+  { name: "Green",      hex: "#2d6a3f", matches: ["Green", "Forest Green", "Olive", "Sage"] },
+  { name: "Red",        hex: "#c0392b", matches: ["Red", "Burgundy"] },
+  { name: "Violet",     hex: "#7b3fa0", matches: ["Violet", "Indigo"] },
+  { name: "Blue",       hex: "#1a47a0", matches: ["Blue", "Navy", "Pale Blue", "Sky Blue", "Light Blue", "Medium Blue", "Faded Blue"] },
+  { name: "Beige",      hex: "#d4c5a9", matches: ["Beige", "Sand", "Stone", "Khaki", "Camel"] },
+];
 
 // Simplified category tabs for mobile
 const MOBILE_CHIPS: Array<{ label: string; value: string | null }> = [
@@ -298,11 +278,8 @@ export default function BuilderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [catalogCategory, products]);
 
-  // Colors available in the current category filter
-  const availableColors = useMemo(() =>
-    Array.from(new Set(filterByCategory(products, catalogCategory).flatMap(p => p.colors ?? []))).sort(),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [catalogCategory, products]);
+  // Always show all 13 standard color groups (same as Browse)
+  const availableColors = STANDARD_COLORS;
 
   const catalogProducts = useMemo(() => {
     let list = filterByCategory(products, catalogCategory);
@@ -328,7 +305,13 @@ export default function BuilderPage() {
     }
 
     if (selectedColors.length > 0) {
-      list = list.filter(p => (p.colors ?? []).some(c => selectedColors.includes(c)));
+      list = list.filter(p => {
+        const productColors = p.colors ?? [];
+        return selectedColors.some(groupName => {
+          const group = STANDARD_COLORS.find(c => c.name === groupName);
+          return group ? productColors.some(pc => group.matches.includes(pc)) : productColors.includes(groupName);
+        });
+      });
     }
 
     if (selectedGender) {
@@ -1141,7 +1124,7 @@ export default function BuilderPage() {
                     <div className="px-3 pb-3 flex flex-col gap-0.5">
                       {(["featured", "price-asc", "price-desc"] as const).map(s => (
                         <button key={s} onClick={() => setSortBy(s)}
-                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                          className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
                           }`}
                         >
@@ -1167,7 +1150,7 @@ export default function BuilderPage() {
                         <button
                           key={label}
                           onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
-                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                          className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             catalogCategory === value
                               ? "bg-[var(--foreground)] text-[var(--background)]"
                               : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
@@ -1195,7 +1178,7 @@ export default function BuilderPage() {
                         <button
                           key={label}
                           onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                          className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             maxPrice === max
                               ? "bg-[var(--foreground)] text-[var(--background)]"
                               : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
@@ -1223,7 +1206,7 @@ export default function BuilderPage() {
                         <button
                           key={g ?? "all"}
                           onClick={() => setSelectedGender(g)}
-                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors capitalize ${
+                          className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors capitalize ${
                             selectedGender === g
                               ? "bg-[var(--foreground)] text-[var(--background)]"
                               : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
@@ -1237,44 +1220,40 @@ export default function BuilderPage() {
                 </div>
 
                 {/* Colors */}
-                {availableColors.length > 0 && (
-                  <div className="border-b border-[var(--border)]">
-                    <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left">
-                      <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Colors</p>
-                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
-                        className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
-                        <path d="M2 3.5L5 6.5L8 3.5" />
-                      </svg>
-                    </button>
-                    {!collapsedSections.has("color") && (
-                      <div className="px-3 pb-3 flex flex-wrap gap-2">
-                        {availableColors.map(color => {
-                          const isActive = selectedColors.includes(color);
-                          const hex = COLOR_HEX[color] ?? "#aaa";
-                          return (
-                            <button
-                              key={color}
-                              title={color}
-                              onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== color) : [...prev, color])}
-                              className="relative shrink-0 transition-transform hover:scale-110"
-                              style={{ width: 18, height: 18 }}
-                            >
-                              <span
-                                className="absolute inset-0 rounded-full"
-                                style={{
-                                  background: hex,
-                                  boxShadow: isActive
-                                    ? "0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
-                                    : "0 0 0 1px rgba(0,0,0,0.18)",
-                                }}
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="border-b border-[var(--border)]">
+                  <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Colors</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("color") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {availableColors.map(({ name, hex }) => {
+                        const isActive = selectedColors.includes(name);
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-medium transition-colors ${
+                              isActive
+                                ? "bg-[var(--foreground)] text-[var(--background)]"
+                                : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                            }`}
+                          >
+                            {hex === "#multicolor" ? (
+                              <span className="shrink-0 w-4 h-4" style={{ background: "conic-gradient(red,orange,yellow,green,blue,violet,red)", outline: isActive ? "1.5px solid var(--foreground-subtle)" : "1px solid rgba(0,0,0,0.15)", outlineOffset: "1px" }} />
+                            ) : (
+                              <span className="shrink-0 w-4 h-4" style={{ background: hex, outline: isActive ? "1.5px solid var(--foreground-subtle)" : "1px solid rgba(0,0,0,0.15)", outlineOffset: "1px" }} />
+                            )}
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {/* Brand */}
                 {availableBrands.length > 0 && (
@@ -1316,7 +1295,7 @@ export default function BuilderPage() {
                               <button
                                 key={brand}
                                 onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                                className={`w-full text-left px-2 py-1.5 text-xs transition-colors truncate ${
+                                className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors truncate ${
                                   isActive
                                     ? "bg-[var(--foreground)] text-[var(--background)]"
                                     : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"

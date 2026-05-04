@@ -202,11 +202,11 @@ export default function BrowsePage() {
 
   /* Accordion state */
   const [openSections, setOpenSections] = useState({
-    brand: true,
-    category: true,
-    gender: true,
-    color: true,
-    occasion: true,
+    brand: false,
+    category: false,
+    gender: false,
+    color: false,
+    occasion: false,
     price: false,
   });
   const toggleSection = (k: keyof typeof openSections) =>
