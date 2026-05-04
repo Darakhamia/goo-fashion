@@ -1,9 +1,12 @@
 "use client";
 
-// Session ID survives navigation within a tab. New tab = new session.
-// Stored in sessionStorage so it resets on browser close.
+// Session ID persists across navigations on the same device.
+// A new session is created only after 30 minutes of inactivity.
+// Stored in localStorage so it survives browser close/reopen within the window.
 
-const SESSION_KEY = "goo-analytics-session";
+const SESSION_KEY = "goo_sid";
+const SESSION_TS_KEY = "goo_sid_ts";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -15,11 +18,18 @@ function uuid(): string {
 export function getSessionId(): string {
   if (typeof window === "undefined") return "";
   try {
-    let id = sessionStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = uuid();
-      sessionStorage.setItem(SESSION_KEY, id);
+    const existing = localStorage.getItem(SESSION_KEY);
+    const lastTs = Number(localStorage.getItem(SESSION_TS_KEY) ?? "0");
+    const now = Date.now();
+
+    if (existing && now - lastTs < SESSION_TIMEOUT_MS) {
+      localStorage.setItem(SESSION_TS_KEY, String(now));
+      return existing;
     }
+
+    const id = uuid();
+    localStorage.setItem(SESSION_KEY, id);
+    localStorage.setItem(SESSION_TS_KEY, String(now));
     return id;
   } catch {
     return uuid();
