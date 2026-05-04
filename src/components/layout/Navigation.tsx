@@ -82,6 +82,7 @@ export default function Navigation() {
     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]";
 
   return (
+    <>
     <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg} ${isBuilder ? "hidden md:block" : ""}`}>
       <nav className="max-w-[1440px] mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
         {/* Logo */}
@@ -248,7 +249,9 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* Cart drawer overlay */}
+    </header>
+
+      {/* Cart drawer overlay — rendered outside <header> to avoid sticky stacking context issues */}
       {cartOpen && (
         <>
           {/* Backdrop */}
@@ -302,20 +305,28 @@ export default function Navigation() {
                 <ul className="divide-y divide-[var(--border)]">
                   {cartItems.map(item => (
                     <li key={item.id} className="flex gap-3 px-4 py-3 items-start">
-                      {/* Thumbnail */}
-                      <div className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden">
+                      {/* Thumbnail — links to product page */}
+                      <Link
+                        href={`/product/${item.id}`}
+                        onClick={() => setCartOpen(false)}
+                        className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden hover:opacity-80 transition-opacity"
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.imageUrl}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
-                      </div>
+                      </Link>
                       {/* Info */}
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">
+                        <Link
+                          href={`/product/${item.id}`}
+                          onClick={() => setCartOpen(false)}
+                          className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2 hover:underline block"
+                        >
                           {item.name}
-                        </p>
+                        </Link>
                         <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">
                           {item.brand}
                         </p>
@@ -358,6 +369,6 @@ export default function Navigation() {
           </div>
         </>
       )}
-    </header>
+    </>
   );
 }
