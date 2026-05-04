@@ -246,20 +246,20 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             className="bg-[var(--background)] border border-[var(--border)] p-6 max-w-xs w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-medium text-[var(--foreground)] mb-1">Удалить этот лук?</p>
-            <p className="text-[11px] text-[var(--foreground-subtle)] mb-5">Это действие нельзя отменить.</p>
+            <p className="text-sm font-medium text-[var(--foreground)] mb-1">Delete this look?</p>
+            <p className="text-[11px] text-[var(--foreground-subtle)] mb-5">This action cannot be undone.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { onDelete(); setConfirmDelete(false); }}
                 className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
               >
-                Да
+                Yes
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
                 className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
-                Нет
+                No
               </button>
             </div>
           </div>
