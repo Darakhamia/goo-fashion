@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   beacon,
   getSessionId,
+  getCountryCode,
   parseUTM,
   detectDevice,
   detectBrowser,
@@ -58,23 +59,26 @@ export default function AnalyticsTracker() {
     const os      = detectOS(ua);
     const { utmSource, utmMedium, utmCampaign } = parseUTM(window.location.search);
 
-    // Load timing (if available)
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
     const load_ms = nav ? Math.round(nav.loadEventEnd - nav.startTime) : null;
     const ttfb_ms = nav ? Math.round(nav.responseStart - nav.requestStart) : null;
 
-    beacon("/api/analytics/pageview", {
-      session_id: getSessionId(),
-      path:     pathname,
-      referrer: document.referrer || null,
-      utm_source:   utmSource   ?? null,
-      utm_medium:   utmMedium   ?? null,
-      utm_campaign: utmCampaign ?? null,
-      device,
-      browser,
-      os,
-      load_ms: load_ms && load_ms > 0 && load_ms < 600_000 ? load_ms : null,
-      ttfb_ms: ttfb_ms && ttfb_ms > 0 && ttfb_ms < 600_000 ? ttfb_ms : null,
+    // Resolve country via Cloudflare trace (cached 24h), then beacon.
+    getCountryCode().then((country) => {
+      beacon("/api/analytics/pageview", {
+        session_id: getSessionId(),
+        path:     pathname,
+        referrer: document.referrer || null,
+        utm_source:   utmSource   ?? null,
+        utm_medium:   utmMedium   ?? null,
+        utm_campaign: utmCampaign ?? null,
+        country,
+        device,
+        browser,
+        os,
+        load_ms: load_ms && load_ms > 0 && load_ms < 600_000 ? load_ms : null,
+        ttfb_ms: ttfb_ms && ttfb_ms > 0 && ttfb_ms < 600_000 ? ttfb_ms : null,
+      });
     });
   }, [pathname]);
 

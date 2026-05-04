@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    turbopackUseSystemTlsCerts: true,
+  },
   images: {
     // Allow images from any HTTPS domain so admins can paste any product image URL
     remotePatterns: [

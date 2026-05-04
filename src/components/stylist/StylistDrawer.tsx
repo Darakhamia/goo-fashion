@@ -129,7 +129,17 @@ export function StylistDrawer({
   focusProduct,
   browseContext,
 }: StylistDrawerProps) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [makeWelcome(focusProduct)]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") return [makeWelcome(focusProduct)];
+    try {
+      const stored = sessionStorage.getItem("stylist_chat_v1");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [makeWelcome(focusProduct)];
+  });
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [view, setView] = useState<"chat" | "history">("chat");
@@ -143,9 +153,11 @@ export function StylistDrawer({
   const contextId = focusProduct?.id ?? "";
 
   const startNewChat = () => {
-    setChatMessages([makeWelcome(focusProduct)]);
+    const fresh = [makeWelcome(focusProduct)];
+    setChatMessages(fresh);
     setChatInput("");
     setView("chat");
+    try { sessionStorage.removeItem("stylist_chat_v1"); } catch {}
   };
 
   // Load chat sessions for history panel
@@ -199,6 +211,11 @@ export function StylistDrawer({
       body: JSON.stringify({ surface, context_id: contextId, messages: toSave }),
     }).catch(() => {});
   };
+
+  // Persist messages to sessionStorage so chat survives page navigation
+  useEffect(() => {
+    try { sessionStorage.setItem("stylist_chat_v1", JSON.stringify(chatMessages)); } catch {}
+  }, [chatMessages]);
 
   // Auto-scroll
   useEffect(() => {
@@ -317,8 +334,8 @@ export function StylistDrawer({
   if (!isOpen) return null;
 
   const positionClasses = position === "absolute"
-    ? "absolute top-0 right-0 bottom-0 z-20"
-    : "fixed top-16 right-0 bottom-0 z-40";
+    ? "absolute top-0 right-0 bottom-0 z-20 w-full md:w-[380px]"
+    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-16 md:bottom-0 md:left-auto md:right-0 md:w-[380px] md:h-auto md:rounded-none";
 
   const quickReplies = QUICK_REPLIES[surface];
 
@@ -328,10 +345,25 @@ export function StylistDrawer({
 
   return (
     <>
+      {/* Mobile backdrop */}
+      {position === "fixed" && (
+        <div
+          className="md:hidden fixed inset-0 z-[55] bg-black/40"
+          style={{ animation: "overlayIn 0.2s ease forwards" }}
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
     <div
-      className={`${positionClasses} w-full md:w-[380px] bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col animate-slide-in-right`}
-      style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.12)" }}
+      className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border-t-0 md:border-l md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
+      style={{ boxShadow: position === "fixed" ? "0 -8px 40px rgba(0,0,0,0.18), -20px 0 60px rgba(0,0,0,0.08)" : undefined }}
     >
+      {/* Mobile drag handle */}
+      {position === "fixed" && (
+        <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-9 h-1 rounded-full bg-[var(--border-strong)]" />
+        </div>
+      )}
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -611,7 +643,7 @@ export function StylistDrawer({
                 placeholder="Message stylist…"
                 maxLength={500}
                 disabled={chatLoading}
-                className="flex-1 h-10 bg-transparent outline-none px-3 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
+                className="flex-1 h-10 bg-transparent outline-none px-3 text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => sendMessage(chatInput)}

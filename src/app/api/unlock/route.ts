@@ -4,7 +4,9 @@ const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
 const COOKIE_NAME = "goo_preview";
 
 function siteBase(req: NextRequest): string {
-  return new URL(req.url).origin;
+  const proto = req.headers.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
+  const host = req.headers.get("x-forwarded-host") ?? new URL(req.url).host;
+  return `${proto}://${host}`;
 }
 
 export function GET(req: NextRequest) {

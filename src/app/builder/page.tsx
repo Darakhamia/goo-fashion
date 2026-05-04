@@ -9,6 +9,8 @@ import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
+import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { useStylist } from "@/lib/context/stylist-context";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -154,6 +156,7 @@ export default function BuilderPage() {
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
+  const { isOpen: stylistOpen, toggle: toggleStylist, close: closeStylist } = useStylist();
   const router = useRouter();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
 
@@ -689,9 +692,13 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
-                                    +{hidden}
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                      <line x1="4" y1="1" x2="4" y2="7" />
+                                      <line x1="1" y1="4" x2="7" y2="4" />
+                                    </svg>
                                   </button>
                                 )}
                                 {openSwatchPopup === popupKey && (
@@ -741,9 +748,13 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
-                                    +{hidden}
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                      <line x1="4" y1="1" x2="4" y2="7" />
+                                      <line x1="1" y1="4" x2="7" y2="4" />
+                                    </svg>
                                   </button>
                                 )}
                                 {openSwatchPopup === popupKey && (
@@ -849,11 +860,11 @@ export default function BuilderPage() {
                 </p>
                 <button
                   onClick={() => setFiltersOpen(v => !v)}
-                  className={`flex items-center gap-1.5 font-mono text-[9px] tracking-[0.12em] uppercase shrink-0 transition-colors ${
-                    filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                  className={`flex items-center gap-1.5 font-mono text-[10px] tracking-[0.12em] uppercase font-medium shrink-0 transition-colors ${
+                    filtersOpen ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <line x1="1" y1="3.5" x2="13" y2="3.5" />
                     <line x1="3" y1="7" x2="11" y2="7" />
                     <line x1="5" y1="10.5" x2="9" y2="10.5" />
@@ -1019,9 +1030,13 @@ export default function BuilderPage() {
                                   {hidden > 0 && (
                                     <button
                                       onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                      className="text-[9px] leading-none text-[var(--foreground-subtle)] hover:text-[var(--foreground)] px-0.5 shrink-0 transition-colors"
+                                      className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                      style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                     >
-                                      +{hidden}
+                                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                        <line x1="4" y1="1" x2="4" y2="7" />
+                                        <line x1="1" y1="4" x2="7" y2="4" />
+                                      </svg>
                                     </button>
                                   )}
                                   {openSwatchPopup === popupKey && (
@@ -1105,6 +1120,7 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
+                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1129,6 +1145,7 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
+                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1157,6 +1174,7 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
+                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1250,6 +1268,7 @@ export default function BuilderPage() {
                   <div className="border-b border-[var(--border)]">
                     <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                       <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
+                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
                         <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1312,7 +1331,7 @@ export default function BuilderPage() {
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* Mobile top header: back + save */}
+          {/* Mobile top header: back + ai stylist + save */}
           <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
             <Link
               href="/"
@@ -1323,12 +1342,25 @@ export default function BuilderPage() {
               </svg>
             </Link>
             <button
+              onClick={toggleStylist}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
+                stylistOpen
+                  ? "bg-white text-black border-white"
+                  : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+              </svg>
+              <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+            </button>
+            <button
               onClick={handleMobileSave}
               disabled={selectedCount === 0}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                 saved
-                  ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/50"
-                  : "bg-[#c9a84c] text-black hover:bg-[#d4b060]"
+                  ? "bg-white/20 text-white border border-white/50"
+                  : "bg-white text-black hover:bg-white/90"
               }`}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -1339,7 +1371,7 @@ export default function BuilderPage() {
           </div>
 
           {/* 1. Hero canvas */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 52%" }}>
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 46%" }}>
 
             {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1477,44 +1509,43 @@ export default function BuilderPage() {
               );
             })()}
 
-            {/* Bottom gradient: price + generate */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent pt-12 pb-4 px-4">
-              <div className="flex items-end justify-between gap-3">
-                <div className="pointer-events-none">
-                  <p className="text-white/45 text-[10px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
-                  <div className="flex items-center gap-1.5">
-                    <p className={`font-light leading-none transition-all ${
-                      selectedCount > 0 ? "text-[22px] text-white" : "text-[18px] text-white/30"
-                    }`}>
-                      {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                    </p>
-                    {selectedCount > 0 && (
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-white/35 mt-0.5 shrink-0">
-                        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-                        <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                {selectedCount >= 1 && (
-                  <button
-                    onClick={openStylePicker}
-                    disabled={generating}
-                    className="flex items-center gap-2 bg-black/60 border border-white/20 text-white/90 px-4 py-2.5 rounded-full text-[13px] backdrop-blur-sm font-medium whitespace-nowrap transition-all hover:border-white/40 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                  >
-                    {generating ? (
-                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {generating ? "Generating…" : "Generate"}
-                  </button>
+          </div>
+
+          {/* Price + Generate bar */}
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-[#0f0f0f] border-t border-white/5">
+            <div>
+              <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
+              <div className="flex items-center gap-1.5">
+                <p className={`font-light leading-none transition-all ${
+                  selectedCount > 0 ? "text-[20px] text-white" : "text-[16px] text-white/30"
+                }`}>
+                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
+                </p>
+                {selectedCount > 0 && (
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white/35 shrink-0">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+                    <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
                 )}
               </div>
             </div>
+            {selectedCount >= 1 && (
+              <button
+                onClick={openStylePicker}
+                disabled={generating}
+                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {generating ? (
+                  <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                      stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {generating ? "Generating…" : "Generate"}
+              </button>
+            )}
           </div>
 
           {/* 2. Bottom sheet panel */}
@@ -1555,28 +1586,6 @@ export default function BuilderPage() {
                 >
                   Clear
                 </button>
-                {/* Save + Shop */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={saveOutfit}
-                    className={`flex items-center gap-1.5 px-3 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase border shadow-lg transition-all active:scale-95 ${
-                      saved
-                        ? "bg-[var(--foreground)]/10 border-[var(--foreground)]/30 text-[var(--foreground)]"
-                        : "bg-[var(--background)] border-[var(--border-strong)] text-[var(--foreground)]"
-                    }`}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
-                    </svg>
-                    {saved ? "Saved" : "Save"}
-                  </button>
-                  <button
-                    onClick={shopTheLook}
-                    className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground)] px-4 h-8 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase shadow-lg transition-all active:scale-95"
-                  >
-                    {shopAdded ? "Added ✓" : `Shop · ${formatPrice(totalPrice)}`}
-                  </button>
-                </div>
               </div>
             )}
 
@@ -1605,7 +1614,6 @@ export default function BuilderPage() {
                       ? product.colorImages![selectedColorKey][0]
                       : null;
                     const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
-                    const hasVariants = (product.variants?.length ?? 0) > 1;
 
                     return (
                       <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 120 }}>
@@ -1645,33 +1653,6 @@ export default function BuilderPage() {
                         <div className="pt-1.5">
                           <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
                           <p className="font-mono text-[10px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
-                          {/* Colour swatches */}
-                          {hasVariants && (
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
-                              {product.variants!.slice(0, 5).map(sw => {
-                                const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
-                                const isSwatchActive = activeId === sw.id;
-                                return (
-                                  <button
-                                    key={sw.id}
-                                    title={sw.colorName}
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      setCatalogPreviews(prev => ({ ...prev, [product.id]: sw.id }));
-                                      if (isSelected && selectedSlot) selectVariant(selectedSlot.id, sw);
-                                    }}
-                                    className={`w-3 h-3 shrink-0 transition-all ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                    style={{
-                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
-                                      boxShadow: isSwatchActive
-                                        ? "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.45)"
-                                        : "0 0 0 1px rgba(0,0,0,0.15)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -2083,6 +2064,18 @@ export default function BuilderPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile AI Stylist drawer — always mounted so chat history persists on open/close */}
+      <div className="md:hidden">
+        <StylistDrawer
+          isOpen={stylistOpen}
+          onClose={closeStylist}
+          surface="builder"
+          products={products}
+          position="fixed"
+          selection={selection}
+        />
+      </div>
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
