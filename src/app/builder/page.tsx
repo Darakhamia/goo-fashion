@@ -812,7 +812,12 @@ export default function BuilderPage() {
                     <line x1="3" y1="7" x2="11" y2="7" />
                     <line x1="5" y1="10.5" x2="9" y2="10.5" />
                   </svg>
-                  {hasActiveFilters ? `Filters · ${(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0)}` : "Filters"}
+                  Filters
+                  <span className={`inline-flex items-center justify-center min-w-[1.25rem] h-4 text-[8px] font-mono transition-opacity ${
+                    hasActiveFilters ? "opacity-100" : "opacity-0"
+                  }`}>
+                    · {(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0)}
+                  </span>
                 </button>
               </div>
 
@@ -1040,11 +1045,16 @@ export default function BuilderPage() {
                     </svg>
                     Liked only
                   </button>
-                  {hasActiveFilters && (
-                    <button onClick={clearFilters} className="w-full text-left px-2 py-1.5 text-xs text-[var(--foreground-subtle)] hover:text-red-500 transition-colors">
-                      Clear filters
-                    </button>
-                  )}
+                  <button
+                    onClick={hasActiveFilters ? clearFilters : undefined}
+                    className={`w-full text-left px-2 py-1.5 text-xs font-medium tracking-wide transition-colors rounded-sm ${
+                      hasActiveFilters
+                        ? "text-red-500 hover:text-red-600 cursor-pointer"
+                        : "text-[var(--foreground-subtle)] opacity-30 cursor-default"
+                    }`}
+                  >
+                    Clear filters
+                  </button>
                 </div>
 
                 {/* Sort — second */}
