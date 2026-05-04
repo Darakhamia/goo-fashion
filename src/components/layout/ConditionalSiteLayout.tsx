@@ -44,10 +44,12 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
     <>
       <Navigation />
       <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>{children}</main>
-      {/* Footer: visible on all screens; on mobile add bottom padding for the nav bar */}
-      <div className={!isBuilder ? "pb-14 md:pb-0" : "hidden md:block"}>
-        <Footer />
-      </div>
+      {/* Footer: hidden entirely on builder */}
+      {!isBuilder && (
+        <div className="pb-14 md:pb-0">
+          <Footer />
+        </div>
+      )}
       <FloatingStylist />
 
       {/* Mobile stylist drawer — skip on builder page (builder manages its own with outfit context) */}
