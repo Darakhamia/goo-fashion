@@ -646,9 +646,10 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
-                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                       <line x1="4" y1="1" x2="4" y2="7" />
                                       <line x1="1" y1="4" x2="7" y2="4" />
                                     </svg>
@@ -701,9 +702,10 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
-                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                       <line x1="4" y1="1" x2="4" y2="7" />
                                       <line x1="1" y1="4" x2="7" y2="4" />
                                     </svg>
@@ -979,9 +981,10 @@ export default function BuilderPage() {
                                   {hidden > 0 && (
                                     <button
                                       onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                      className="w-3.5 h-3.5 shrink-0 border border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                                      className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                      style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                     >
-                                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                         <line x1="4" y1="1" x2="4" y2="7" />
                                         <line x1="1" y1="4" x2="7" y2="4" />
                                       </svg>
