@@ -284,13 +284,14 @@ export function StylistDrawer({
         .map((id: string) => products.find(p => p.id === id))
         .filter((p): p is Product => p != null);
 
+      const keywords = (json.styleKeywords as string[] ?? []);
       const finalSuggestions: Product[] =
         suggestedProducts.length > 0
           ? suggestedProducts
-          : (json.styleKeywords as string[] ?? []).length > 0
+          : keywords.length > 0
           ? products
-              .filter(p => (json.styleKeywords as string[]).some(kw => (p.styleKeywords as string[]).includes(kw)))
-              .slice(0, 4)
+              .filter(p => keywords.some(kw => (p.styleKeywords as string[] ?? []).includes(kw)))
+              .slice(0, 6)
           : [];
 
       const aiMsg: ChatMessage = {
