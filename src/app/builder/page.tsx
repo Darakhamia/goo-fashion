@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Product, ProductSwatch, StyleKeyword, Brand } from "@/lib/types";
+import type { Product, ProductSwatch, StyleKeyword, Brand, Gender } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useAuth } from "@/lib/context/auth-context";
@@ -66,6 +66,43 @@ const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
   { label: "< $2k",  max: 2000 },
 ];
 
+const COLOR_HEX: Record<string, string> = {
+  "Black":       "#1c1c1c",
+  "White":       "#f5f5f0",
+  "Ivory":       "#f9f6ee",
+  "Ecru":        "#c8b99a",
+  "Cream":       "#fffdd0",
+  "Milk":        "#fdfcf0",
+  "Camel":       "#c19a6b",
+  "Cognac":      "#9a4722",
+  "Tobacco":     "#8b6c42",
+  "Dark Brown":  "#4a2f1a",
+  "Champagne":   "#f7e7ce",
+  "Dusty Rose":  "#dcae96",
+  "Pale Rose":   "#f2d4d4",
+  "Pale Pink":   "#fadadd",
+  "Dusty Mauve": "#896f7e",
+  "Red":         "#cc2200",
+  "Burgundy":    "#7d1128",
+  "Charcoal":    "#36454f",
+  "Anthracite":  "#3b3b3b",
+  "Light Grey":  "#d3d3d3",
+  "Stone":       "#928e85",
+  "Sand":        "#c2b080",
+  "Khaki":       "#c3b091",
+  "Olive":       "#6b6b2a",
+  "Sage":        "#8faa82",
+  "Forest Green":"#1f5e2e",
+  "Navy":        "#001f5b",
+  "Dark Navy":   "#0d1b2a",
+  "Indigo":      "#3d3580",
+  "Pale Blue":   "#b0cfe0",
+  "Sky Blue":    "#87ceeb",
+  "Light Blue":  "#aacfdf",
+  "Medium Blue": "#2d6fa3",
+  "Faded Blue":  "#7faac0",
+};
+
 // Simplified category tabs for mobile
 const MOBILE_CHIPS: Array<{ label: string; value: string | null }> = [
   { label: "All",         value: null          },
@@ -119,9 +156,12 @@ export default function BuilderPage() {
   const [likedOnly, setLikedOnly] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
+  const [brandSearch, setBrandSearch] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "color", "gender", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -258,6 +298,12 @@ export default function BuilderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [catalogCategory, products]);
 
+  // Colors available in the current category filter
+  const availableColors = useMemo(() =>
+    Array.from(new Set(filterByCategory(products, catalogCategory).flatMap(p => p.colors ?? []))).sort(),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [catalogCategory, products]);
+
   const catalogProducts = useMemo(() => {
     let list = filterByCategory(products, catalogCategory);
 
@@ -281,6 +327,14 @@ export default function BuilderPage() {
       list = list.filter(p => selectedBrands.includes(p.brand as Brand));
     }
 
+    if (selectedColors.length > 0) {
+      list = list.filter(p => (p.colors ?? []).some(c => selectedColors.includes(c)));
+    }
+
+    if (selectedGender) {
+      list = list.filter(p => !p.gender || p.gender === selectedGender || p.gender === "unisex");
+    }
+
     if (sortBy === "price-asc") {
       list = [...list].sort((a, b) => a.priceMin - b.priceMin);
     } else if (sortBy === "price-desc") {
@@ -288,13 +342,14 @@ export default function BuilderPage() {
     }
 
     return list;
-  }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, sortBy]);
+  }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, selectedGender, sortBy]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
     return catalogProducts.map(product => ({ kind: "product", key: product.id, product }));
   }, [catalogProducts]);
 
-  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null;
+  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || sortBy !== "featured" || likedOnly || catalogCategory !== null;
+  const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -377,6 +432,9 @@ export default function BuilderPage() {
   const clearFilters = () => {
     setMaxPrice(null);
     setSelectedBrands([]);
+    setSelectedColors([]);
+    setSelectedGender(null);
+    setBrandSearch("");
     setSortBy("featured");
     setLikedOnly(false);
     setCatalogCategory(null);
@@ -824,10 +882,8 @@ export default function BuilderPage() {
                     <line x1="5" y1="10.5" x2="9" y2="10.5" />
                   </svg>
                   Filters
-                  <span className={`inline-flex items-center justify-center min-w-[1.25rem] h-4 text-[8px] font-mono transition-opacity ${
-                    hasActiveFilters ? "opacity-100" : "opacity-0"
-                  }`}>
-                    · {(maxPrice !== null ? 1 : 0) + selectedBrands.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0)}
+                  <span className="inline-flex items-center justify-center min-w-[1.25rem] h-4 text-[8px] font-mono">
+                    · {activeFilterCount}
                   </span>
                 </button>
               </div>
@@ -1152,6 +1208,74 @@ export default function BuilderPage() {
                   )}
                 </div>
 
+                {/* Gender */}
+                <div className="border-b border-[var(--border)]">
+                  <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Gender</p>
+                    <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                      className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("gender") ? "-rotate-90" : ""}`}>
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("gender") && (
+                    <div className="px-3 pb-3 flex flex-col gap-0.5">
+                      {([null, "women", "men", "unisex"] as (Gender | null)[]).map(g => (
+                        <button
+                          key={g ?? "all"}
+                          onClick={() => setSelectedGender(g)}
+                          className={`w-full text-left px-2 py-1.5 text-xs transition-colors capitalize ${
+                            selectedGender === g
+                              ? "bg-[var(--foreground)] text-[var(--background)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Colors */}
+                {availableColors.length > 0 && (
+                  <div className="border-b border-[var(--border)]">
+                    <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                      <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Colors</p>
+                      <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
+                        className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
+                        <path d="M2 3.5L5 6.5L8 3.5" />
+                      </svg>
+                    </button>
+                    {!collapsedSections.has("color") && (
+                      <div className="px-3 pb-3 flex flex-wrap gap-2">
+                        {availableColors.map(color => {
+                          const isActive = selectedColors.includes(color);
+                          const hex = COLOR_HEX[color] ?? "#aaa";
+                          return (
+                            <button
+                              key={color}
+                              title={color}
+                              onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== color) : [...prev, color])}
+                              className="relative shrink-0 transition-transform hover:scale-110"
+                              style={{ width: 18, height: 18 }}
+                            >
+                              <span
+                                className="absolute inset-0 rounded-full"
+                                style={{
+                                  background: hex,
+                                  boxShadow: isActive
+                                    ? "0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                                    : "0 0 0 1px rgba(0,0,0,0.18)",
+                                }}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Brand */}
                 {availableBrands.length > 0 && (
                   <div className="border-b border-[var(--border)]">
@@ -1164,22 +1288,47 @@ export default function BuilderPage() {
                     </button>
                     {!collapsedSections.has("brand") && (
                       <div className="px-3 pb-3 flex flex-col gap-0.5">
-                        {availableBrands.map(brand => {
-                          const isActive = selectedBrands.includes(brand);
-                          return (
+                        {/* Brand search */}
+                        <div className="relative mb-1">
+                          <input
+                            type="text"
+                            value={brandSearch}
+                            onChange={e => setBrandSearch(e.target.value)}
+                            placeholder="Search brands…"
+                            className="w-full bg-[var(--surface)] border border-[var(--border)] px-2 py-1.5 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                          />
+                          {brandSearch && (
                             <button
-                              key={brand}
-                              onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                              className={`w-full text-left px-2 py-1.5 text-xs transition-colors truncate ${
-                                isActive
-                                  ? "bg-[var(--foreground)] text-[var(--background)]"
-                                  : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
-                              }`}
+                              onClick={() => setBrandSearch("")}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
                             >
-                              {brand}
+                              <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                <path d="M1 1L9 9M9 1L1 9" />
+                              </svg>
                             </button>
-                          );
-                        })}
+                          )}
+                        </div>
+                        {availableBrands
+                          .filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()))
+                          .map(brand => {
+                            const isActive = selectedBrands.includes(brand);
+                            return (
+                              <button
+                                key={brand}
+                                onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
+                                className={`w-full text-left px-2 py-1.5 text-xs transition-colors truncate ${
+                                  isActive
+                                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                                    : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                                }`}
+                              >
+                                {brand}
+                              </button>
+                            );
+                          })}
+                        {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length === 0 && (
+                          <p className="px-2 py-2 text-[11px] text-[var(--foreground-subtle)]">No brands found</p>
+                        )}
                       </div>
                     )}
                   </div>
