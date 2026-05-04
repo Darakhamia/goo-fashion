@@ -196,13 +196,47 @@ const TZ_COUNTRY: Record<string, string> = {
   "Pacific/Wake":"UM","Pacific/Wallis":"WF",
 };
 
-export function getCountryFromTimezone(): string | null {
+function getCountryFromTimezone(): string | null {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return TZ_COUNTRY[tz] ?? null;
   } catch {
     return null;
   }
+}
+
+const COUNTRY_CACHE_KEY = "goo_country";
+const COUNTRY_CACHE_TS  = "goo_country_ts";
+const COUNTRY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 h
+
+// Returns the visitor's real country via Cloudflare's public trace endpoint.
+// Response is cached in localStorage for 24 h so it's only fetched once per day.
+// Falls back to timezone-based heuristic when the fetch fails.
+export async function getCountryCode(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = localStorage.getItem(COUNTRY_CACHE_KEY);
+    const cachedTs = Number(localStorage.getItem(COUNTRY_CACHE_TS) ?? "0");
+    if (cached && Date.now() - cachedTs < COUNTRY_CACHE_TTL) return cached;
+  } catch { /* ignore storage errors */ }
+
+  try {
+    const res = await fetch("https://cloudflare.com/cdn-cgi/trace", {
+      signal: AbortSignal.timeout(2500),
+    });
+    const text = await res.text();
+    const m = /^loc=([A-Z]{2})$/m.exec(text);
+    const code = m?.[1] ?? null;
+    if (code) {
+      try {
+        localStorage.setItem(COUNTRY_CACHE_KEY, code);
+        localStorage.setItem(COUNTRY_CACHE_TS, String(Date.now()));
+      } catch { /* ignore */ }
+      return code;
+    }
+  } catch { /* network error — fall through */ }
+
+  return getCountryFromTimezone();
 }
 
 // Post a payload without blocking navigation.
