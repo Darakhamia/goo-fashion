@@ -66,21 +66,21 @@ const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
   { label: "< $2k",  max: 2000 },
 ];
 
-// Standard color groups (same 13 as Browse page)
-const STANDARD_COLORS: { name: string; hex: string; matches: string[] }[] = [
-  { name: "White",      hex: "#ffffff", matches: ["White", "Ivory", "Cream", "Milk", "Ecru"] },
-  { name: "Multicolor", hex: "#multicolor", matches: ["Multicolor"] },
-  { name: "Brown",      hex: "#7a4f35", matches: ["Brown", "Dark Brown", "Cognac", "Tobacco"] },
-  { name: "Pink",       hex: "#e8698a", matches: ["Pink", "Pale Pink", "Dusty Rose", "Pale Rose", "Dusty Mauve"] },
-  { name: "Yellow",     hex: "#f5c518", matches: ["Yellow", "Champagne"] },
-  { name: "Orange",     hex: "#e87722", matches: ["Orange"] },
-  { name: "Grey",       hex: "#808080", matches: ["Grey", "Light Grey", "Charcoal", "Anthracite"] },
-  { name: "Black",      hex: "#111111", matches: ["Black", "Dark Navy"] },
-  { name: "Green",      hex: "#2d6a3f", matches: ["Green", "Forest Green", "Olive", "Sage"] },
-  { name: "Red",        hex: "#c0392b", matches: ["Red", "Burgundy"] },
-  { name: "Violet",     hex: "#7b3fa0", matches: ["Violet", "Indigo"] },
-  { name: "Blue",       hex: "#1a47a0", matches: ["Blue", "Navy", "Pale Blue", "Sky Blue", "Light Blue", "Medium Blue", "Faded Blue"] },
-  { name: "Beige",      hex: "#d4c5a9", matches: ["Beige", "Sand", "Stone", "Khaki", "Camel"] },
+// Standard color groups (same IDs as Browse DEFAULT_COLOR_GROUPS)
+const STANDARD_COLORS: { id: number; name: string; hex: string; matches: string[] }[] = [
+  { id: 1,  name: "White",      hex: "#ffffff",    matches: ["White", "Ivory", "Cream", "Milk", "Ecru"] },
+  { id: 2,  name: "Multicolor", hex: "#multicolor",matches: ["Multicolor"] },
+  { id: 3,  name: "Brown",      hex: "#7a4f35",    matches: ["Brown", "Dark Brown", "Cognac", "Tobacco"] },
+  { id: 4,  name: "Pink",       hex: "#e8698a",    matches: ["Pink", "Pale Pink", "Dusty Rose", "Pale Rose", "Dusty Mauve"] },
+  { id: 5,  name: "Yellow",     hex: "#f5c518",    matches: ["Yellow", "Champagne"] },
+  { id: 6,  name: "Orange",     hex: "#e87722",    matches: ["Orange"] },
+  { id: 7,  name: "Grey",       hex: "#808080",    matches: ["Grey", "Light Grey", "Charcoal", "Anthracite"] },
+  { id: 8,  name: "Black",      hex: "#111111",    matches: ["Black", "Dark Navy"] },
+  { id: 9,  name: "Green",      hex: "#2d6a3f",    matches: ["Green", "Forest Green", "Olive", "Sage"] },
+  { id: 10, name: "Red",        hex: "#c0392b",    matches: ["Red", "Burgundy"] },
+  { id: 11, name: "Violet",     hex: "#7b3fa0",    matches: ["Violet", "Indigo"] },
+  { id: 12, name: "Blue",       hex: "#1a47a0",    matches: ["Blue", "Navy", "Pale Blue", "Sky Blue", "Light Blue", "Medium Blue", "Faded Blue"] },
+  { id: 13, name: "Beige",      hex: "#d4c5a9",    matches: ["Beige", "Sand", "Stone", "Khaki", "Camel"] },
 ];
 
 // Simplified category tabs for mobile
@@ -305,11 +305,16 @@ export default function BuilderPage() {
     }
 
     if (selectedColors.length > 0) {
+      const selectedIds = selectedColors.map(n => STANDARD_COLORS.find(c => c.name === n)?.id).filter(Boolean) as number[];
       list = list.filter(p => {
+        // Prefer colorGroupIds (Supabase products), fall back to colors string array
+        if (p.colorGroupIds?.length) {
+          return p.colorGroupIds.some(id => selectedIds.includes(id));
+        }
         const productColors = p.colors ?? [];
         return selectedColors.some(groupName => {
           const group = STANDARD_COLORS.find(c => c.name === groupName);
-          return group ? productColors.some(pc => group.matches.includes(pc)) : productColors.includes(groupName);
+          return group ? productColors.some(pc => group.matches.includes(pc)) : false;
         });
       });
     }
@@ -1090,7 +1095,7 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)] px-3 py-3 flex flex-col gap-0.5">
                   <button
                     onClick={() => setLikedOnly(v => !v)}
-                    className={`w-full text-left px-2 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                    className={`w-full text-left px-2 py-1.5 text-xs font-medium flex items-center gap-2 transition-colors ${
                       likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                     }`}
                   >
@@ -1114,6 +1119,7 @@ export default function BuilderPage() {
                 {/* Sort — second */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
                     <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
@@ -1138,6 +1144,7 @@ export default function BuilderPage() {
                 {/* Category */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
                     <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
@@ -1166,6 +1173,7 @@ export default function BuilderPage() {
                 {/* Price */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
                     <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
@@ -1194,7 +1202,7 @@ export default function BuilderPage() {
                 {/* Gender */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left">
-                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Gender</p>
+                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Gender</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("gender") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1222,7 +1230,7 @@ export default function BuilderPage() {
                 {/* Colors */}
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left">
-                    <p className="font-mono text-[8px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Colors</p>
+                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Colors</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1259,6 +1267,7 @@ export default function BuilderPage() {
                 {availableBrands.length > 0 && (
                   <div className="border-b border-[var(--border)]">
                     <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                      <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
                       <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
