@@ -117,7 +117,7 @@ function SimplePie({ items, title }: { items: PieItem[]; title: string }) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, name: string) => [`${value} (${Math.round((value / total) * 100)}%)`, name]}
+                formatter={(value) => { const n = Number(value); return [`${n} (${Math.round((n / total) * 100)}%)`, ""]; }}
                 {...tooltipStyle}
               />
             </PieChart>
