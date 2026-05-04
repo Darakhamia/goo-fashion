@@ -121,7 +121,7 @@ export default function BuilderPage() {
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["price", "brand", "sort"]));
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
