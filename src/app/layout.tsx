@@ -41,13 +41,17 @@ export const metadata: Metadata = {
   },
 };
 
+// Fallback key satisfies Clerk's base64 format check (pk_test_ + base64("clerk.example.com$"))
+// so the build succeeds when the real key isn't present in the build environment.
+const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={clerkKey}>
       <html
         lang="en"
         suppressHydrationWarning
@@ -67,8 +71,8 @@ export default function RootLayout({
               <LikesProvider>
                 <CartProvider>
                   <CurrencyProvider>
-                  <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
-                  <AnalyticsTracker />
+                    <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
+                    <AnalyticsTracker />
                   </CurrencyProvider>
                 </CartProvider>
               </LikesProvider>
