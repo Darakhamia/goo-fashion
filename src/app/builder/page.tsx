@@ -1598,11 +1598,11 @@ export default function BuilderPage() {
             {/* Category tabs */}
             <div className="shrink-0 flex gap-5 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
               {MOBILE_CHIPS.map(({ label, value }) => {
-                const isActive = catalogCategory === value;
+                const isActive = catalogCategory === value && !likedOnly;
                 return (
                   <button
                     key={label}
-                    onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
+                    onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
                     className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
                       isActive
                         ? "border-[var(--foreground)] text-[var(--foreground)]"
@@ -1613,6 +1613,20 @@ export default function BuilderPage() {
                   </button>
                 );
               })}
+              {/* Liked tab */}
+              <button
+                onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
+                className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  likedOnly
+                    ? "border-[var(--foreground)] text-[var(--foreground)]"
+                    : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                </svg>
+                Liked
+              </button>
             </div>
 
 
@@ -1661,20 +1675,14 @@ export default function BuilderPage() {
                             alt={product.name}
                             className="absolute inset-0 w-full h-full object-contain"
                           />
-                          {/* Heart / in-outfit indicator */}
-                          <button
-                            onClick={e => { e.stopPropagation(); selectProduct(product); }}
-                            className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center"
-                            aria-label={isSelected ? "Remove from outfit" : "Add to outfit"}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 16 16"
-                              fill={isSelected ? "#c9a84c" : "none"}
-                              stroke={isSelected ? "#c9a84c" : "rgba(0,0,0,0.35)"}
-                              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                            >
-                              <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
-                            </svg>
-                          </button>
+                          {/* Selected indicator */}
+                          {isSelected && (
+                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
+                              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
                         {/* Info */}
                         <div className="pt-1.5">
