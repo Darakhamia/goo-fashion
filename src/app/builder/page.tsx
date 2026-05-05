@@ -529,6 +529,18 @@ export default function BuilderPage() {
       }
       localStorage.setItem("goo-saved-outfits", JSON.stringify(updated));
       setPersistedLookId(savedId);
+
+      // Sync to server when logged in
+      if (isLoggedIn) {
+        const look = updated.find((o: Record<string, unknown>) => o.id === savedId);
+        if (look) {
+          fetch("/api/user/looks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(look),
+          }).catch(() => {});
+        }
+      }
     } catch {}
   };
 
