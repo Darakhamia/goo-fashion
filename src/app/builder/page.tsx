@@ -25,7 +25,7 @@ const SLOTS = [
   { id: "accessories2" as SlotId, label: "Acc 2",       categories: ["accessories", "bags", "swimwear"] },
 ];
 
-type CatalogItem = { kind: "product"; key: string; product: Product };
+type CatalogItem = { kind: "product"; key: string; product: Product; forcedVariant?: ProductSwatch | null };
 
 // Vertical figure zones for the silhouette canvas (accessories float separately).
 // Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
@@ -333,8 +333,32 @@ export default function BuilderPage() {
   }, [catalogCategory, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, selectedGender, sortBy]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
-    return catalogProducts.map(product => ({ kind: "product", key: product.id, product }));
-  }, [catalogProducts]);
+    if (!selectedColors.length) {
+      return catalogProducts.map(product => ({ kind: "product", key: product.id, product, forcedVariant: null }));
+    }
+    const selectedIds = selectedColors.map(n => STANDARD_COLORS.find(c => c.name === n)?.id).filter(Boolean) as number[];
+    const items: CatalogItem[] = [];
+    const seen = new Set<string>();
+    for (const product of catalogProducts) {
+      const variants = product.variants ?? [];
+      if (!variants.length) {
+        if (!seen.has(product.id)) { seen.add(product.id); items.push({ kind: "product", key: product.id, product, forcedVariant: null }); }
+        continue;
+      }
+      const matching = variants.filter(v => (v.colorGroupIds ?? []).some(id => selectedIds.includes(id)));
+      if (!matching.length) {
+        if (!seen.has(product.id)) { seen.add(product.id); items.push({ kind: "product", key: product.id, product, forcedVariant: null }); }
+        continue;
+      }
+      for (const variant of matching) {
+        if (!seen.has(variant.id)) {
+          seen.add(variant.id);
+          items.push({ kind: "product", key: `${product.id}__${variant.id}`, product, forcedVariant: variant.id === product.id ? null : variant });
+        }
+      }
+    }
+    return items;
+  }, [catalogProducts, selectedColors]);
 
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || sortBy !== "featured" || likedOnly || catalogCategory !== null;
   const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
@@ -899,7 +923,7 @@ export default function BuilderPage() {
                 ) : (
                   <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
                     {expandedCatalogItems.map(item => {
-                      const { product } = item;
+                      const { product, forcedVariant } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                       const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
                       const isSelected = !!selectedSlot;
@@ -913,7 +937,7 @@ export default function BuilderPage() {
                       const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
                         ? product.colorImages![selectedColorKey][0]
                         : null;
-                      const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                      const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
                       const hasVariants = (product.variants?.length ?? 0) > 1;
 
                       return (
@@ -1118,7 +1142,7 @@ export default function BuilderPage() {
 
                 {/* Sort — second */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                  <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
@@ -1142,7 +1166,7 @@ export default function BuilderPage() {
 
                 {/* Category */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                  <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
@@ -1170,7 +1194,7 @@ export default function BuilderPage() {
 
                 {/* Price */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                  <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
@@ -1198,7 +1222,7 @@ export default function BuilderPage() {
 
                 {/* Gender */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                  <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Gender</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("gender") ? "-rotate-90" : ""}`}>
@@ -1226,7 +1250,7 @@ export default function BuilderPage() {
 
                 {/* Colors */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                  <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Colors</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
@@ -1263,7 +1287,7 @@ export default function BuilderPage() {
                 {/* Brand */}
                 {availableBrands.length > 0 && (
                   <div className="border-b border-[var(--border)]">
-                    <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
                       <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
@@ -1596,7 +1620,7 @@ export default function BuilderPage() {
               ) : (
                 <div className="flex gap-3 px-4 py-2 h-full items-start">
                   {expandedCatalogItems.map(item => {
-                    const { product } = item;
+                    const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                     const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
                     const isSelected = !!selectedSlot;
@@ -1609,7 +1633,7 @@ export default function BuilderPage() {
                     const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
                       ? product.colorImages![selectedColorKey][0]
                       : null;
-                    const displayImage = colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                    const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
 
                     return (
                       <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 120 }}>
