@@ -1120,7 +1120,7 @@ export default function BuilderPage() {
                   <button
                     onClick={() => setLikedOnly(v => !v)}
                     className={`w-full text-left px-2 py-1.5 text-xs font-medium flex items-center gap-2 transition-colors ${
-                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] active:text-[var(--foreground)]"
                     }`}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -1142,8 +1142,8 @@ export default function BuilderPage() {
 
                 {/* Sort — second */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
+                  <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                    <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("sort") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Sort</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1154,7 +1154,7 @@ export default function BuilderPage() {
                       {(["featured", "price-asc", "price-desc"] as const).map(s => (
                         <button key={s} onClick={() => setSortBy(s)}
                           className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
-                            sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                            sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                           }`}
                         >
                           {s === "featured" ? "Featured" : s === "price-asc" ? "Price ↑" : "Price ↓"}
@@ -1166,8 +1166,8 @@ export default function BuilderPage() {
 
                 {/* Category */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
+                  <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                    <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("category") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1182,7 +1182,7 @@ export default function BuilderPage() {
                           className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             catalogCategory === value
                               ? "bg-[var(--foreground)] text-[var(--background)]"
-                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                           }`}
                         >
                           {label}
@@ -1194,8 +1194,8 @@ export default function BuilderPage() {
 
                 {/* Price */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
+                  <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                    <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("price") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1210,7 +1210,7 @@ export default function BuilderPage() {
                           className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             maxPrice === max
                               ? "bg-[var(--foreground)] text-[var(--background)]"
-                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                           }`}
                         >
                           {label}
@@ -1222,8 +1222,8 @@ export default function BuilderPage() {
 
                 {/* Gender */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Gender</p>
+                  <button onClick={() => toggleSection("gender")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                    <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("gender") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Gender</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("gender") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1238,7 +1238,7 @@ export default function BuilderPage() {
                           className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors capitalize ${
                             selectedGender === g
                               ? "bg-[var(--foreground)] text-[var(--background)]"
-                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                              : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                           }`}
                         >
                           {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
@@ -1250,8 +1250,8 @@ export default function BuilderPage() {
 
                 {/* Colors */}
                 <div className="border-b border-[var(--border)]">
-                  <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                    <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Colors</p>
+                  <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                    <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("color") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Colors</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("color") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1268,7 +1268,7 @@ export default function BuilderPage() {
                             className={`w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-medium transition-colors ${
                               isActive
                                 ? "bg-[var(--foreground)] text-[var(--background)]"
-                                : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                                : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                             }`}
                           >
                             {hex === "#multicolor" ? (
@@ -1287,8 +1287,8 @@ export default function BuilderPage() {
                 {/* Brand */}
                 {availableBrands.length > 0 && (
                   <div className="border-b border-[var(--border)]">
-                    <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] transition-colors duration-150">
-                      <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
+                    <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface)] active:bg-[var(--surface)] transition-colors duration-150">
+                      <p className={`text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-150 ${collapsedSections.has("brand") ? "text-[var(--foreground-muted)]" : "text-[var(--foreground)]"}`}>Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
                         <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1327,7 +1327,7 @@ export default function BuilderPage() {
                                 className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors truncate ${
                                   isActive
                                     ? "bg-[var(--foreground)] text-[var(--background)]"
-                                    : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+                                    : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                                 }`}
                               >
                                 {brand}
