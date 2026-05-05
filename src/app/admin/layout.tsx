@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/context/auth-context";
 
 const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const NAV_ORDER_KEY = "goo-admin-nav-order";
+const ADMIN_THEME_KEY = "goo-admin-theme";
 
 type NavItem = {
   href: string;
@@ -255,7 +256,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  // Load saved theme
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ADMIN_THEME_KEY);
+      if (saved === "dark" || saved === "light") setTheme(saved);
+    } catch {}
+  }, []);
+
+  const toggleTheme = () =>
+    setTheme((t) => {
+      const next = t === "light" ? "dark" : "light";
+      try { localStorage.setItem(ADMIN_THEME_KEY, next); } catch {}
+      return next;
+    });
 
   const isSuperAdmin = !!user && !!SUPER_ADMIN_ID && user.id === SUPER_ADMIN_ID;
 

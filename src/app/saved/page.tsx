@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { products as staticProducts } from "@/lib/data/products";
@@ -466,21 +467,39 @@ export default function SavedPage() {
   const [view, setView] = useState<View>("looks");
   const { likedOutfits, likedProducts } = useLikes();
   const { formatPrice } = useCurrency();
+  const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
 
-  // Load builder-saved outfits from localStorage + respect ?tab= param
+  // Load saved looks — from API when logged in, else from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("goo-saved-outfits");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setMyLooks(JSON.parse(raw));
-    } catch {}
     const params = new URLSearchParams(window.location.search);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (params.get("tab") === "looks") setView("looks");
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (user) {
+      fetch("/api/user/looks")
+        .then((r) => r.json())
+        .then((d) => { if (Array.isArray(d)) setMyLooks(d); })
+        .catch(() => {
+          try {
+            const raw = localStorage.getItem("goo-saved-outfits");
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            if (raw) setMyLooks(JSON.parse(raw));
+          } catch {}
+        });
+    } else {
+      try {
+        const raw = localStorage.getItem("goo-saved-outfits");
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (raw) setMyLooks(JSON.parse(raw));
+      } catch {}
+    }
+  }, [isLoaded, user]);
 
   // Fetch outfits from API (includes DB outfits)
   useEffect(() => {
@@ -502,6 +521,9 @@ export default function SavedPage() {
     setMyLooks((prev) => {
       const next = prev.filter((l) => l.id !== id);
       try { localStorage.setItem("goo-saved-outfits", JSON.stringify(next)); } catch {}
+      if (user) {
+        fetch(`/api/user/looks?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+      }
       return next;
     });
   };
