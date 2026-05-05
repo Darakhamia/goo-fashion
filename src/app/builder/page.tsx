@@ -1486,10 +1486,10 @@ export default function BuilderPage() {
 
               return (
                 <div
-                  className={`absolute left-3 top-4 bottom-4 z-10 flex flex-col rounded-[22px] transition-all duration-300 ease-out ${
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col rounded-[22px] transition-all duration-300 ease-out ${
                     hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
                   }`}
-                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)", width: 56 }}
+                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)", width: 56, maxHeight: "calc(100% - 32px)" }}
                 >
                   <div
                     className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-3 px-2"
