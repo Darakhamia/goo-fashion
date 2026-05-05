@@ -8,6 +8,7 @@ import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
+import { useTheme } from "@/lib/context/theme-context";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -26,6 +27,7 @@ export default function Navigation() {
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
+  const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
   const { currency, setCurrency, formatPrice } = useCurrency();
 
@@ -184,6 +186,24 @@ export default function Navigation() {
             )}
           </Link>
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            className={`transition-colors duration-200 ${iconColor}`}
+          >
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="3" />
+                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
+              </svg>
+            )}
+          </button>
+
           {/* Profile */}
           <SignedIn>
             <Link
@@ -226,6 +246,24 @@ export default function Navigation() {
             <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">
               AI Stylist
             </span>
+          </button>
+
+          {/* Theme toggle — mobile */}
+          <button
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            className={`transition-colors duration-200 ${iconColor}`}
+          >
+            {theme === "dark" ? (
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="3" />
+                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
+              </svg>
+            )}
           </button>
 
           <button
