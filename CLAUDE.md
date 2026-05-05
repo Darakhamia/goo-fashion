@@ -5,6 +5,13 @@
 - Never create new feature branches
 - Commit and push all changes to `master`
 
+## After Every Code Change
+1. Commit the changes with a clear descriptive message
+2. Push to `master`: `git push -u origin master`
+3. Create a **draft pull request** on GitHub for the pushed changes (if one doesn't already exist)
+4. The PR title should briefly describe what changed
+5. The PR body should include a short summary and a test plan checklist
+
 ---
 
 # Project Documentation: GOO Fashion
