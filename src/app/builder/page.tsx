@@ -1355,7 +1355,7 @@ export default function BuilderPage() {
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
           {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-start justify-between px-4 py-3 bg-[#0f0f0f]">
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
             <Link
               href="/"
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
@@ -1364,43 +1364,34 @@ export default function BuilderPage() {
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
-            <button
-              onClick={toggleStylist}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
-                stylistOpen
-                  ? "bg-white text-black border-white"
-                  : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
-              }`}
-            >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-              </svg>
-              <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
-            </button>
-            <div className="flex flex-col items-end gap-2">
+            {/* AI Stylist + Save — same pill shape, side by side */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleStylist}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
+                  stylistOpen
+                    ? "bg-white text-black border-white"
+                    : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+                </svg>
+                <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+              </button>
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] tracking-[0.1em] uppercase font-medium leading-none transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                   saved
-                    ? "bg-white/20 text-white border border-white/50"
-                    : "bg-white text-black hover:bg-white/90"
+                    ? "bg-white/20 text-white border-white/40"
+                    : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
                 }`}
               >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
                 </svg>
                 {saved ? "Saved" : "Save"}
-              </button>
-              <button
-                onClick={selectedCount > 0 ? clearAll : undefined}
-                className={`font-mono text-[9px] tracking-[0.1em] uppercase px-3 py-1 rounded-full border transition-colors ${
-                  selectedCount > 0
-                    ? "text-white/55 border-white/20 bg-white/8 active:text-white/90 active:bg-white/15 cursor-pointer"
-                    : "text-white/20 border-white/10 bg-transparent cursor-default"
-                }`}
-              >
-                Clear
               </button>
             </div>
           </div>
@@ -1553,7 +1544,7 @@ export default function BuilderPage() {
 
           </div>
 
-          {/* Price + Generate bar */}
+          {/* Price + Clear + Generate bar */}
           <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-1.5 bg-[#0f0f0f] border-t border-white/5">
             <div>
               <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
@@ -1571,11 +1562,23 @@ export default function BuilderPage() {
                 )}
               </div>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Clear — gray when empty, red when items added */}
+              <button
+                onClick={selectedCount > 0 ? clearAll : undefined}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap border transition-all active:scale-95 ${
+                  selectedCount > 0
+                    ? "text-red-400 border-red-400/40 bg-red-400/10 hover:bg-red-400/20 cursor-pointer"
+                    : "text-white/20 border-white/10 bg-transparent cursor-default"
+                }`}
+              >
+                Clear
+              </button>
             {selectedCount >= 1 && (
               <button
                 onClick={openStylePicker}
                 disabled={generating}
-                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {generating ? (
                   <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -1588,6 +1591,7 @@ export default function BuilderPage() {
                 {generating ? "Generating…" : "Generate"}
               </button>
             )}
+            </div>
           </div>
 
           {/* 2. Bottom sheet panel */}
