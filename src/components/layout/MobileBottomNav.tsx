@@ -22,7 +22,7 @@ export default function MobileBottomNav() {
     },
     {
       href: "/saved",
-      label: "Liked",
+      label: "My Likes",
       icon: (active: boolean) => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path d="M12 20.5C12 20.5 2.5 14.5 2.5 8C2.5 5.015 4.985 2.5 8 2.5C9.93 2.5 11.64 3.515 12.6 5.05C13.56 3.515 15.27 2.5 17.2 2.5C20.215 2.5 22.7 4.985 22.7 8C22.7 14.5 12 20.5 12 20.5Z"
