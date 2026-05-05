@@ -1484,11 +1484,6 @@ export default function BuilderPage() {
                 ? (variantOverrides[activeSlot] ?? activeProduct?.id ?? "")
                 : (colorImageOverrides[activeSlot] ?? colorImgKeys[0] ?? "");
 
-              const MAX_VISIBLE = 5;
-              const visibleColors = colors.slice(0, MAX_VISIBLE);
-              const hiddenCount = colors.length - MAX_VISIBLE;
-              const popupKey = `mobile-color-pill-${activeSlot}`;
-
               return (
                 <div
                   className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 rounded-[22px] py-3 px-2.5 transition-all duration-300 ease-out ${
@@ -1496,8 +1491,11 @@ export default function BuilderPage() {
                   }`}
                   style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    {visibleColors.map(color => {
+                  <div
+                    className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden"
+                    style={{ maxHeight: "55vh", scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
+                  >
+                    {colors.map(color => {
                       const isActive = color.id === activeId;
                       return (
                         <button
@@ -1533,61 +1531,7 @@ export default function BuilderPage() {
                         </button>
                       );
                     })}
-                    {hiddenCount > 0 && (
-                      <button
-                        onClick={() => setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey)}
-                        className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center bg-white/15 text-white/80 active:bg-white/25 transition-colors"
-                        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)" }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                          <line x1="6" y1="2" x2="6" y2="10" />
-                          <line x1="2" y1="6" x2="10" y2="6" />
-                        </svg>
-                      </button>
-                    )}
                   </div>
-                  {openSwatchPopup === popupKey && (
-                    <div
-                      onClick={e => e.stopPropagation()}
-                      className="absolute left-full top-0 ml-2 bg-black/70 backdrop-blur-md rounded-2xl p-2.5 shadow-xl z-50 flex flex-col gap-2"
-                    >
-                      {colors.map(color => {
-                        const isActive = color.id === activeId;
-                        return (
-                          <button
-                            key={color.id}
-                            title={color.name}
-                            onClick={() => {
-                              if (color.isVariant) {
-                                const swatch = variants.find(v => v.id === color.id);
-                                if (swatch) selectVariant(activeSlot, swatch);
-                              } else {
-                                setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
-                              }
-                              setOpenSwatchPopup(null);
-                            }}
-                            className={`relative w-9 h-9 rounded-full shrink-0 transition-all duration-200 ${isActive ? "scale-110" : "opacity-55 active:opacity-80"}`}
-                            style={{
-                              background: color.hex === "#multicolor"
-                                ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
-                                : color.hex ? color.hex
-                                : color.imgUrl ? `url(${color.imgUrl}) center/cover`
-                                : "#555",
-                              boxShadow: isActive
-                                ? "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 2.5px #c9a84c, 0 0 0 4px rgba(201,168,76,0.25)"
-                                : "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.10)",
-                            }}
-                          >
-                            {isActive && (
-                              <svg className="absolute inset-0 m-auto w-4 h-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 16 16" fill="none">
-                                <path d="M3 8.5L6.5 12L13 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               );
             })()}
