@@ -1120,7 +1120,6 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("sort")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
-                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Sort</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("sort") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1145,7 +1144,6 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
-                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Category</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("category") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1174,7 +1172,6 @@ export default function BuilderPage() {
                 <div className="border-b border-[var(--border)]">
                   <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                     <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
-                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Price</p>
                     <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                       className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("price") ? "-rotate-90" : ""}`}>
                       <path d="M2 3.5L5 6.5L8 3.5" />
@@ -1268,7 +1265,6 @@ export default function BuilderPage() {
                   <div className="border-b border-[var(--border)]">
                     <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between px-4 py-3 text-left">
                       <p className="text-[10px] tracking-[0.16em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
-                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]">Brand</p>
                       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
                         className={`text-[var(--foreground-subtle)] transition-transform duration-150 ${collapsedSections.has("brand") ? "-rotate-90" : ""}`}>
                         <path d="M2 3.5L5 6.5L8 3.5" />
