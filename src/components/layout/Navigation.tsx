@@ -266,6 +266,26 @@ export default function Navigation() {
             )}
           </button>
 
+          {/* Saved — mobile */}
+          <Link
+            href="/saved"
+            aria-label="Saved items"
+            className={`relative transition-colors duration-200 ${pathname === "/saved" ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
+          >
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.015 3.015 1.5 5.5 1.5C6.695 1.5 7.739 2.1 8.368 3.031C8.997 2.1 10.041 1.5 11.236 1.5C13.721 1.5 15.236 3.015 15.236 5.5C15.236 9.5 8 13.5 8 13.5Z"
+                fill={pathname === "/saved" ? "currentColor" : "none"}
+              />
+            </svg>
+            {totalLikes > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
+                  {totalLikes > 9 ? "9+" : totalLikes}
+                </span>
+              </span>
+            )}
+          </Link>
+
           <button
             onClick={() => setCartOpen(v => !v)}
             aria-label="Cart"
