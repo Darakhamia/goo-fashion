@@ -1374,20 +1374,30 @@ export default function BuilderPage() {
               </svg>
               <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
             </button>
-            <button
-              onClick={handleMobileSave}
-              disabled={selectedCount === 0}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
-                saved
-                  ? "bg-white/20 text-white border border-white/50"
-                  : "bg-white text-black hover:bg-white/90"
-              }`}
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
-              </svg>
-              {saved ? "Saved" : "Save"}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleMobileSave}
+                disabled={selectedCount === 0}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                  saved
+                    ? "bg-white/20 text-white border border-white/50"
+                    : "bg-white text-black hover:bg-white/90"
+                }`}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
+                </svg>
+                {saved ? "Saved" : "Save"}
+              </button>
+              {selectedCount > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/40 active:text-white/80 transition-colors px-1"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 1. Hero canvas */}
@@ -1603,18 +1613,6 @@ export default function BuilderPage() {
               })}
             </div>
 
-            {/* Floating action bar — Clear · Save · Shop */}
-            {selectedCount > 0 && (
-              <div className="absolute bottom-3 left-4 right-4 z-20 flex items-center justify-between gap-2">
-                {/* Clear */}
-                <button
-                  onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors px-2 h-8"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
 
             {/* Horizontal product scroll */}
             <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
