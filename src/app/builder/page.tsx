@@ -1028,7 +1028,7 @@ export default function BuilderPage() {
                               return (
                                 <div className="relative flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
                                   {visible.map(swatch => {
-                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
                                     const isSwatchActive = activeId === swatch.id;
                                     return (
                                       <button
@@ -1070,7 +1070,7 @@ export default function BuilderPage() {
                                       style={{ minWidth: "80px", maxWidth: "140px" }}
                                     >
                                       {variants.map(swatch => {
-                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? product.id;
+                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
                                         const isSwatchActive = activeId === swatch.id;
                                         return (
                                           <button
