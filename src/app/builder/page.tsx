@@ -680,7 +680,7 @@ export default function BuilderPage() {
                     <div className="w-[90px] h-[106px] bg-white border border-[var(--border)] shrink-0 overflow-hidden flex items-center justify-center">
                       {displayImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayImage} alt={picked!.name} className="w-full h-full object-contain" />
+                        <img key={displayImage} src={displayImage} alt={picked!.name} className="swatch-img-enter w-full h-full object-contain" />
                       ) : (
                         <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={slot.id} size={20} /></div>
                       )}
@@ -704,12 +704,12 @@ export default function BuilderPage() {
                                 {visible.map(sw => (
                                   <button key={sw.id} title={sw.colorName}
                                     onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                    className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                    className={`w-4 h-4 shrink-0 transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                     style={{
                                       background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                       boxShadow: (variantId ?? picked.id) === sw.id
-                                        ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                        : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                                        : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
                                     }}
                                   />
                                 ))}
@@ -734,12 +734,12 @@ export default function BuilderPage() {
                                     {variants.map(sw => (
                                       <button key={sw.id} title={sw.colorName}
                                         onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
-                                        className={`w-4 h-4 shrink-0 transition-all duration-150 ${(variantId ?? picked.id) === sw.id ? "scale-110" : "hover:scale-105"}`}
+                                        className={`w-4 h-4 shrink-0 transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                         style={{
                                           background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                           boxShadow: (variantId ?? picked.id) === sw.id
-                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                            ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                                            : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
                                         }}
                                       />
                                     ))}
