@@ -13,12 +13,24 @@ type NavItem = {
   label: string;
   icon: React.ReactNode;
   superAdminOnly?: boolean;
+  category: string;
 };
+
+const NAV_CATEGORIES = [
+  { key: "overview", label: "Overview" },
+  { key: "catalog", label: "Catalog" },
+  { key: "content", label: "Content" },
+  { key: "imports", label: "Imports" },
+  { key: "users", label: "Users" },
+  { key: "data", label: "Data" },
+  { key: "system", label: "System" },
+] as const;
 
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin",
     label: "Dashboard",
+    category: "overview",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="2" width="5" height="5" stroke="currentColor" strokeWidth="1.2" />
@@ -31,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/products",
     label: "Products",
+    category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 5L8 2L14 5V11L8 14L2 11V5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -43,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/outfits",
     label: "Outfits",
+    category: "catalog",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M5 2L3 5H13L11 2H5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -53,8 +67,19 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/admin/brands",
+    label: "Brands",
+    category: "catalog",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 4H14M2 8H10M2 12H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/blog",
     label: "Blog",
+    category: "content",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M3 2H13V14L8 11.5L3 14V2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -65,6 +90,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/analytics",
     label: "Analytics",
+    category: "data",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 13V3M2 13H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -75,6 +101,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/users",
     label: "Users",
+    category: "users",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -85,17 +112,9 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/brands",
-    label: "Brands",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 4H14M2 8H10M2 12H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
     href: "/admin/email",
     label: "Email",
+    category: "users",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="4" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
@@ -106,6 +125,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/stockx",
     label: "StockX Import",
+    category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 11L5 5L8 9L11 5L14 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -117,6 +137,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/farfetch",
     label: "Farfetch Import",
+    category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="6" r="3.5" stroke="currentColor" strokeWidth="1.2" />
@@ -128,6 +149,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/import",
     label: "URL Import",
+    category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 10V13H14V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -139,6 +161,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/settings",
     label: "Settings",
+    category: "system",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
@@ -149,6 +172,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/admin/activity",
     label: "Activity",
+    category: "data",
     superAdminOnly: true,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -329,39 +353,59 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
-          {orderedItems.map((item) => {
-            const isActive =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+        <nav className="flex-1 py-3 flex flex-col overflow-y-auto overflow-x-hidden">
+          {NAV_CATEGORIES.map((cat) => {
+            const items = orderedItems.filter((i) => i.category === cat.key);
+            if (items.length === 0) return null;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={collapsed ? item.label : undefined}
-                className={`flex items-center transition-colors ${
-                  collapsed
-                    ? "justify-center px-0 mx-2 py-3"
-                    : "gap-3 px-3 mx-2 py-2.5"
-                } text-xs tracking-[0.1em] uppercase ${
-                  isActive
-                    ? "text-[var(--foreground)] bg-[var(--surface)]"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
-                }`}
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
+              <div key={cat.key} className="mb-1">
                 {!collapsed && (
-                  <span className="flex items-center gap-2 flex-1 min-w-0">
-                    {item.label}
-                    {item.superAdminOnly && (
-                      <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none">
-                        SA
-                      </span>
-                    )}
-                  </span>
+                  <div className="px-5 pt-3 pb-1">
+                    <span className="text-[8px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)]">
+                      {cat.label}
+                    </span>
+                  </div>
                 )}
-              </Link>
+                {collapsed && (
+                  <div className="mx-3 my-1 border-t border-[var(--border)]" />
+                )}
+                <div className="flex flex-col gap-0.5">
+                  {items.map((item) => {
+                    const isActive =
+                      item.href === "/admin"
+                        ? pathname === "/admin"
+                        : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        title={collapsed ? item.label : undefined}
+                        className={`flex items-center transition-colors ${
+                          collapsed
+                            ? "justify-center px-0 mx-2 py-3"
+                            : "gap-3 px-3 mx-2 py-2"
+                        } text-xs tracking-[0.1em] uppercase ${
+                          isActive
+                            ? "text-[var(--foreground)] bg-[var(--surface)]"
+                            : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
+                        }`}
+                      >
+                        <span className="flex-shrink-0">{item.icon}</span>
+                        {!collapsed && (
+                          <span className="flex items-center gap-2 flex-1 min-w-0">
+                            {item.label}
+                            {item.superAdminOnly && (
+                              <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none">
+                                SA
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
