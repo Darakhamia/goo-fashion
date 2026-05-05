@@ -1486,14 +1486,14 @@ export default function BuilderPage() {
 
               return (
                 <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 rounded-[22px] py-3 px-2.5 transition-all duration-300 ease-out ${
+                  className={`absolute left-3 top-4 bottom-4 z-10 flex flex-col rounded-[22px] transition-all duration-300 ease-out ${
                     hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
                   }`}
-                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
+                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)", width: 56 }}
                 >
                   <div
-                    className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden"
-                    style={{ maxHeight: "55vh", scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
+                    className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-3 px-2"
+                    style={{ scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
                   >
                     {colors.map(color => {
                       const isActive = color.id === activeId;
@@ -1509,7 +1509,7 @@ export default function BuilderPage() {
                               setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
                             }
                           }}
-                          className={`relative w-9 h-9 rounded-full shrink-0 transition-all duration-200 ${isActive ? "scale-110" : "opacity-55 active:opacity-80 active:scale-105"}`}
+                          className={`relative w-8 h-8 rounded-full shrink-0 transition-all duration-200 ${isActive ? "scale-110" : "opacity-55 active:opacity-80 active:scale-105"}`}
                           style={{
                             background: color.hex === "#multicolor"
                               ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
@@ -1519,12 +1519,12 @@ export default function BuilderPage() {
                               ? `url(${color.imgUrl}) center/cover`
                               : "#555",
                             boxShadow: isActive
-                              ? "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 2.5px #c9a84c, 0 0 0 4px rgba(201,168,76,0.25)"
+                              ? "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.25)"
                               : "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.10)",
                           }}
                         >
                           {isActive && (
-                            <svg className="absolute inset-0 m-auto w-4 h-4 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 16 16" fill="none">
+                            <svg className="absolute inset-0 m-auto w-3.5 h-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 16 16" fill="none">
                               <path d="M3 8.5L6.5 12L13 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
