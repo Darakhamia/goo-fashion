@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useTheme } from "@/lib/context/theme-context";
 
 const footerLinks = {
   Platform: [
@@ -24,8 +23,6 @@ const footerLinks = {
 };
 
 export default function Footer() {
-  const { theme, toggleTheme } = useTheme();
-
   return (
     <footer className="border-t border-[var(--border)] mt-16 md:mt-32">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-10 md:py-24">
@@ -45,32 +42,6 @@ export default function Footer() {
                 Your personal AI stylist. Curated outfits, premium fashion.
               </p>
             </div>
-            {/* Theme toggle — top right on mobile */}
-            <button
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-              className="flex items-center gap-1.5 text-[var(--foreground-muted)] active:text-[var(--foreground)] transition-colors duration-200 mt-1"
-            >
-              {theme === "dark" ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.2" />
-                  <path
-                    d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4"
-                    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M13.5 10.5A6 6 0 015.5 2.5a6 6 0 108 8z"
-                    stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-              <span className="text-[9px] tracking-[0.14em] uppercase">
-                {theme === "dark" ? "Light" : "Dark"}
-              </span>
-            </button>
           </div>
 
           {/* Links grid — 3 columns on mobile */}
@@ -161,32 +132,6 @@ export default function Footer() {
                 v{new Date().toISOString().slice(0, 10)}
               </span>
 
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 group"
-              >
-                {theme === "dark" ? (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.2" />
-                    <path
-                      d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4"
-                      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"
-                    />
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M13.5 10.5A6 6 0 015.5 2.5a6 6 0 108 8z"
-                      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-                <span className="text-[9px] tracking-[0.14em] uppercase">
-                  {theme === "dark" ? "Light" : "Dark"}
-                </span>
-              </button>
             </div>
           </div>
         </div>
