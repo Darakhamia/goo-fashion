@@ -1633,31 +1633,6 @@ export default function BuilderPage() {
                   Sort
                 </button>
               </div>
-              {/* Row 2: Quick filter chips */}
-              <div className="flex gap-2 px-4 pb-2.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-                {[
-                  { label: "Brand", active: selectedBrands.length > 0 },
-                  { label: "Price", active: maxPrice !== null },
-                  { label: "Color", active: selectedColors.length > 0 },
-                  { label: "Gender", active: selectedGender !== null },
-                  { label: "Size", active: false },
-                ].map(({ label, active }) => (
-                  <button
-                    key={label}
-                    onClick={() => setMobileFiltersOpen(true)}
-                    className={`shrink-0 flex items-center gap-1 px-3 h-7 rounded-full border text-[11px] font-medium transition-all active:scale-95 ${
-                      active
-                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                        : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                    }`}
-                  >
-                    {label}
-                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M2 3.5L5 6.5L8 3.5" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Category tabs */}
