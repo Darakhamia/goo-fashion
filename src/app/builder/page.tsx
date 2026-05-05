@@ -1389,14 +1389,16 @@ export default function BuilderPage() {
                 </svg>
                 {saved ? "Saved" : "Save"}
               </button>
-              {selectedCount > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/55 active:text-white/90 transition-colors px-3 py-1 rounded-full border border-white/20 bg-white/8 active:bg-white/15"
-                >
-                  Clear
-                </button>
-              )}
+              <button
+                onClick={selectedCount > 0 ? clearAll : undefined}
+                className={`font-mono text-[9px] tracking-[0.1em] uppercase px-3 py-1 rounded-full border transition-colors ${
+                  selectedCount > 0
+                    ? "text-white/55 border-white/20 bg-white/8 active:text-white/90 active:bg-white/15 cursor-pointer"
+                    : "text-white/20 border-white/10 bg-transparent cursor-default"
+                }`}
+              >
+                Clear
+              </button>
             </div>
           </div>
 
