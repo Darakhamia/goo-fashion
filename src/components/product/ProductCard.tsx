@@ -212,7 +212,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
-        className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className={`absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 ${liked ? "opacity-100" : "opacity-60"}`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <path
