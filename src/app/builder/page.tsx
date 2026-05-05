@@ -1374,7 +1374,7 @@ export default function BuilderPage() {
               </svg>
               <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
             </button>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-2">
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
@@ -1392,7 +1392,7 @@ export default function BuilderPage() {
               {selectedCount > 0 && (
                 <button
                   onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/40 active:text-white/80 transition-colors px-1"
+                  className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/55 active:text-white/90 transition-colors px-3 py-1 rounded-full border border-white/20 bg-white/8 active:bg-white/15"
                 >
                   Clear
                 </button>
