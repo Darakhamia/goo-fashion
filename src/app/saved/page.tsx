@@ -87,7 +87,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
 
   return (
     <>
-      <div className="bg-[var(--background)] flex flex-col">
+      <div className="bg-[var(--background)] flex flex-col h-full">
         {/* Main image — AI render or product grid */}
         <button onClick={() => setOpen(true)} className="block w-full text-left relative group overflow-hidden">
           {look.generatedImage ? (
@@ -189,17 +189,15 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
         </button>
 
         {/* Footer */}
-        <div className="px-3 pt-2.5 pb-3 border-t border-[var(--border)]">
+        <div className="px-3 pt-2.5 pb-3 border-t border-[var(--border)] mt-auto">
           <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
                 {formatPrice(look.totalPrice)}
               </p>
-              {look.styleKeywords.length > 0 && (
-                <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate">
-                  {look.styleKeywords.slice(0, 3).join(" · ")}
-                </p>
-              )}
+              <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate min-h-[12px]">
+                {look.styleKeywords.slice(0, 3).join(" · ")}
+              </p>
               <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">{date}</p>
             </div>
             <button
@@ -625,9 +623,9 @@ export default function SavedPage() {
         {/* ── My Looks (builder-created) ── */}
         {view === "looks" && (
           myLooks.length > 0 ? (
-            <div className="flex flex-wrap">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {myLooks.map((look) => (
-                <div key={look.id} className="w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 border-r border-b border-[var(--border)]">
+                <div key={look.id} className="border-r border-b border-[var(--border)] flex flex-col">
                   <LookCard look={look} onDelete={() => deleteLook(look.id)} />
                 </div>
               ))}
