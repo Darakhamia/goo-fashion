@@ -1491,9 +1491,10 @@ export default function BuilderPage() {
 
               return (
                 <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/40 backdrop-blur-md rounded-[20px] py-2.5 px-2 transition-all duration-300 ease-out ${
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 rounded-[22px] py-3 px-2.5 transition-all duration-300 ease-out ${
                     hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
                   }`}
+                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)" }}
                 >
                   <div className="flex flex-col items-center gap-2">
                     {visibleColors.map(color => {
