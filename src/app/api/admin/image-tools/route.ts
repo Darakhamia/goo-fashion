@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import Replicate from "replicate";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const BUCKET = "product-images";
 
 // ── Supabase upload ───────────────────────────────────────────────────────────
@@ -46,58 +46,27 @@ async function fetchBuffer(url: string): Promise<{ buffer: Buffer; contentType: 
 // ── Replicate: remove background ─────────────────────────────────────────────
 
 async function removeBackground(imageUrl: string): Promise<string> {
-  if (!REPLICATE_API_TOKEN) throw new Error("REPLICATE_API_TOKEN is not set");
+  const apiToken = process.env.REPLICATE_API_TOKEN?.trim();
+  if (!apiToken) throw new Error("REPLICATE_API_TOKEN is not set");
 
-  // Create prediction using 851-labs/background-remover (no version hash needed)
-  const createRes = await fetch(
-    "https://api.replicate.com/v1/models/851-labs/background-remover/predictions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
-        "Content-Type": "application/json",
-        Prefer: "wait",          // ask Replicate to wait up to ~60s before returning
-      },
-      body: JSON.stringify({ input: { image: imageUrl } }),
-      signal: AbortSignal.timeout(90_000),
-    }
-  );
+  const replicate = new Replicate({ auth: apiToken });
 
-  if (!createRes.ok) {
-    const body = await createRes.text();
-    throw new Error(`Replicate API error ${createRes.status}: ${body}`);
+  // lucataco/remove-bg is a well-maintained background removal model
+  const output = await replicate.run("lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285d65c14d73e5bd9fb6666ca6d", {
+    input: { image: imageUrl },
+  });
+
+  // output is a URL string or ReadableStream depending on SDK version
+  if (typeof output === "string") return output;
+  if (output instanceof URL) return output.href;
+
+  // Some SDK versions wrap as ReadableStream — convert to blob URL via buffer
+  if (output && typeof (output as { url?: () => Promise<URL> }).url === "function") {
+    const url = await (output as { url: () => Promise<URL> }).url();
+    return url.href;
   }
 
-  let prediction = await createRes.json() as {
-    id: string;
-    status: string;
-    output?: string;
-    error?: string;
-    urls?: { get: string };
-  };
-
-  // If Prefer:wait returned a final status, use it immediately
-  if (prediction.status !== "succeeded" && prediction.status !== "failed") {
-    // Otherwise poll
-    const pollUrl = prediction.urls?.get ?? `https://api.replicate.com/v1/predictions/${prediction.id}`;
-    const deadline = Date.now() + 120_000;
-    while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-      if (Date.now() > deadline) throw new Error("Replicate timed out after 120s");
-      await new Promise((r) => setTimeout(r, 1500));
-      const pollRes = await fetch(pollUrl, {
-        headers: { Authorization: `Bearer ${REPLICATE_API_TOKEN}` },
-      });
-      prediction = await pollRes.json();
-    }
-  }
-
-  if (prediction.status === "failed" || prediction.error) {
-    throw new Error(`Replicate failed: ${prediction.error ?? "unknown error"}`);
-  }
-
-  if (!prediction.output) throw new Error("Replicate returned no output");
-
-  return prediction.output as string;
+  throw new Error(`Unexpected Replicate output type: ${typeof output}`);
 }
 
 // ── POST /api/admin/image-tools ───────────────────────────────────────────────
