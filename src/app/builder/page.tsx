@@ -1625,7 +1625,7 @@ export default function BuilderPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-3 px-4 py-2 h-full items-start">
+                <div className="flex gap-2.5 px-4 py-2 items-start">
                   {expandedCatalogItems.map(item => {
                     const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1643,7 +1643,7 @@ export default function BuilderPage() {
                     const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
 
                     return (
-                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 120 }}>
+                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 108 }}>
                         {/* Image area */}
                         <div
                           role="button"
@@ -1653,7 +1653,7 @@ export default function BuilderPage() {
                           className={`relative overflow-hidden bg-white cursor-pointer transition-all ${
                             isSelected ? "ring-1 ring-[#c9a84c]" : ""
                           }`}
-                          style={{ width: 120, height: 112 }}
+                          style={{ width: 108, height: 94 }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1678,8 +1678,8 @@ export default function BuilderPage() {
                         </div>
                         {/* Info */}
                         <div className="pt-1.5">
-                          <p className="text-[11px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                          <p className="font-mono text-[10px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
+                          <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
+                          <p className="font-mono text-[9px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
                         </div>
                       </div>
                     );
