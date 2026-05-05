@@ -1418,7 +1418,7 @@ export default function BuilderPage() {
           </div>
 
           {/* 1. Hero canvas */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 46%" }}>
+          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 34%" }}>
 
             {/* Outfit silhouette figure */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -1566,7 +1566,7 @@ export default function BuilderPage() {
           </div>
 
           {/* Price + Generate bar */}
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-[#0f0f0f] border-t border-white/5">
+          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-1.5 bg-[#0f0f0f] border-t border-white/5">
             <div>
               <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
               <div className="flex items-center gap-1.5">
@@ -1606,56 +1606,39 @@ export default function BuilderPage() {
           <div className="relative flex flex-col bg-[var(--background)] min-h-0 flex-1">
 
             {/* Drag handle */}
-            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+            <div className="flex justify-center pt-2 pb-0 shrink-0">
               <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
             </div>
 
-            {/* Filters + Sort toolbar */}
-            <div className="shrink-0 border-b border-[var(--border)]">
-              {/* Row 1: Filters & Sort buttons */}
-              <div className="flex items-center justify-between px-4 pt-2.5 pb-2">
-                <button
-                  onClick={() => setMobileFiltersOpen(true)}
-                  className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
-                    hasActiveFilters
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                  }`}
-                >
-                  <svg width="13" height="10" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1" y1="1.5" x2="13" y2="1.5" />
-                    <line x1="3" y1="5.5" x2="11" y2="5.5" />
-                    <line x1="5" y1="9.5" x2="9" y2="9.5" />
-                  </svg>
-                  Filters
-                  {activeFilterCount > 0 && <span className="text-[10px] opacity-80">· {activeFilterCount}</span>}
-                </button>
-                <button
-                  onClick={() => setMobileFiltersOpen(true)}
-                  className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
-                    sortBy !== "featured"
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
-                  }`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 2v10M3 2L1 4.5M3 2L5 4.5" />
-                    <path d="M11 12V2M11 12L9 9.5M11 12L13 9.5" />
-                  </svg>
-                  Sort
-                </button>
-              </div>
+            {/* Filters toolbar */}
+            <div className="shrink-0 px-4 py-2 border-b border-[var(--border)]">
+              <button
+                onClick={() => setMobileFiltersOpen(true)}
+                className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
+                  hasActiveFilters
+                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                }`}
+              >
+                <svg width="13" height="10" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <line x1="1" y1="1.5" x2="13" y2="1.5" />
+                  <line x1="3" y1="5.5" x2="11" y2="5.5" />
+                  <line x1="5" y1="9.5" x2="9" y2="9.5" />
+                </svg>
+                Filters
+                {activeFilterCount > 0 && <span className="text-[10px] opacity-80">· {activeFilterCount}</span>}
+              </button>
             </div>
 
             {/* Category tabs */}
-            <div className="shrink-0 flex gap-5 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
+            <div className="shrink-0 flex gap-4 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
               {MOBILE_CHIPS.map(({ label, value }) => {
                 const isActive = catalogCategory === value && !likedOnly;
                 return (
                   <button
                     key={label}
                     onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
-                    className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
+                    className={`shrink-0 pb-2 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
                       isActive
                         ? "border-[var(--foreground)] text-[var(--foreground)]"
                         : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
@@ -1668,7 +1651,7 @@ export default function BuilderPage() {
               {/* Liked tab */}
               <button
                 onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
-                className={`shrink-0 pb-2.5 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                className={`shrink-0 pb-2 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all flex items-center gap-1.5 whitespace-nowrap ${
                   likedOnly
                     ? "border-[var(--foreground)] text-[var(--foreground)]"
                     : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
@@ -1719,7 +1702,7 @@ export default function BuilderPage() {
                           className={`relative overflow-hidden bg-white cursor-pointer transition-all ${
                             isSelected ? "ring-1 ring-[#c9a84c]" : ""
                           }`}
-                          style={{ width: 108, height: 94 }}
+                          style={{ width: 108, height: 120 }}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
