@@ -142,6 +142,7 @@ export default function BuilderPage() {
   const [sortBy, setSortBy] = useState<"featured" | "new-in" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [lookExpanded, setLookExpanded] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "color", "gender", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
@@ -153,7 +154,7 @@ export default function BuilderPage() {
 
   const [shopAdded, setShopAdded] = useState(false);
 
-  const { likedProducts } = useLikes();
+  const { likedProducts, toggleProductLike } = useLikes();
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
@@ -1362,12 +1363,12 @@ export default function BuilderPage() {
         </div>
 
         {/* ── MOBILE LAYOUT ─────────────────────────────────────────────────
-            Hero canvas + bottom-sheet catalog panel.
+            Compact look bar + vertical product grid.
         ───────────────────────────────────────────────────────────────────── */}
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
-          {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-start justify-between px-4 py-3 bg-[#0f0f0f]">
+          {/* Mobile top header: back + ai stylist + save + ··· */}
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
             <Link
               href="/"
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
@@ -1389,11 +1390,11 @@ export default function BuilderPage() {
               </svg>
               <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
             </button>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                   saved
                     ? "bg-white/20 text-white border border-white/50"
                     : "bg-white text-black hover:bg-white/90"
@@ -1404,209 +1405,134 @@ export default function BuilderPage() {
                 </svg>
                 {saved ? "Saved" : "Save"}
               </button>
+              {/* ··· menu: Generate */}
               <button
-                onClick={selectedCount > 0 ? clearAll : undefined}
-                className={`font-mono text-[9px] tracking-[0.1em] uppercase px-3 py-1 rounded-full border transition-colors ${
-                  selectedCount > 0
-                    ? "text-white/55 border-white/20 bg-white/8 active:text-white/90 active:bg-white/15 cursor-pointer"
-                    : "text-white/20 border-white/10 bg-transparent cursor-default"
-                }`}
+                onClick={selectedCount >= 1 ? openStylePicker : undefined}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
               >
-                Clear
+                <svg width="15" height="4" viewBox="0 0 15 4" fill="currentColor">
+                  <circle cx="1.5" cy="2" r="1.5" />
+                  <circle cx="7.5" cy="2" r="1.5" />
+                  <circle cx="13.5" cy="2" r="1.5" />
+                </svg>
               </button>
             </div>
           </div>
 
-          {/* 1. Hero canvas */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 46%" }}>
+          {/* YOUR LOOK — compact slot bar (collapses/expands) */}
+          <div className="shrink-0 bg-[#0f0f0f]">
 
-            {/* Outfit silhouette figure */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative h-full" style={{ width: 230 }}>
-
-                {/* Main stacked figure */}
-                <div className="absolute inset-y-4 left-0 flex flex-col" style={{ width: 185 }}>
-                  {FIGURE_SLOTS.map(({ id, label, flex }) => {
-                    const picked = selection[id];
-                    const variantId = variantOverrides[id];
-                    const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                    const colorKey = colorImageOverrides[id];
-                    const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-                    const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
-                        style={{ flex }}
-                        className={`relative overflow-hidden transition-all ${
-                          activeSlot === id ? "ring-1 ring-inset ring-white/30 z-10" : ""
-                        }`}
-                      >
-                        {!picked && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-                            <div className="text-white/15"><SlotIcon id={id} size={13} /></div>
-                            <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-white/15">{label}</p>
-                          </div>
-                        )}
-                        {displayImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={displayImage}
-                            alt={picked!.name}
-                            className={`absolute inset-0 w-full h-full ${
-                              id === "shoes" ? "object-contain p-2" : "object-contain"
-                            }`}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Accessories — two floating mini panels */}
-                <div className="absolute right-0 flex flex-col gap-2" style={{ top: "50%", transform: "translateY(-50%)" }}>
-                  {(["accessories", "accessories2"] as SlotId[]).map(id => {
-                    const picked = selection[id];
-                    const displayImage = picked?.imageUrl;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => { setActiveSlot(id); setCatalogCategory("accessories"); }}
-                        className={`relative overflow-hidden border transition-all ${
-                          activeSlot === id ? "border-white/30 ring-1 ring-white/20" : "border-white/10"
-                        }`}
-                        style={{ width: 38, height: 46 }}
-                      >
-                        {!picked && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-white/15"><SlotIcon id={id} size={9} /></div>
-                          </div>
-                        )}
-                        {displayImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Header row: label + total + toggle */}
+            <button
+              onClick={() => setLookExpanded(v => !v)}
+              className="w-full flex items-center justify-between px-4 pt-2 pb-1.5"
+            >
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-white/40">Your Look</p>
+              <div className="flex items-center gap-1.5 text-white/50">
+                <span className="font-mono text-[11px]">{selectedCount > 0 ? formatPrice(totalPrice) : "$0"}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+                  className={`transition-transform duration-200 ${lookExpanded ? "rotate-180" : ""}`}>
+                  <path d="M2 3.5L5 6.5L8 3.5" />
+                </svg>
               </div>
-            </div>
+            </button>
 
-            {/* Left colour panel — slides in when active item has colour variants */}
-            {(() => {
-              const activeProduct = selection[activeSlot];
-              const variants = activeProduct?.variants ?? [];
-              const colorImgKeys = Object.keys(activeProduct?.colorImages ?? {});
-              const useVariants = variants.length > 1;
-              const useColorImages = !useVariants && colorImgKeys.length > 1;
-              const hasColors = useVariants || useColorImages;
+            {/* Compact: single row of 6 slot icons */}
+            {!lookExpanded && (
+              <div className="flex gap-2 px-4 pb-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {SLOTS.map(slot => {
+                  const picked = selection[slot.id];
+                  const variantId = variantOverrides[slot.id];
+                  const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                  const colorKey = colorImageOverrides[slot.id];
+                  const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                  const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+                  const isActive = activeSlot === slot.id;
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                      className={`shrink-0 flex flex-col items-center gap-1 transition-all active:scale-95`}
+                      style={{ width: 52 }}
+                    >
+                      <div className={`w-[52px] h-[52px] flex items-center justify-center overflow-hidden border transition-all ${
+                        isActive ? "border-white/35" : "border-white/10"
+                      } ${picked ? "ring-1 ring-[#c9a84c] ring-offset-[2px] ring-offset-[#0f0f0f]" : "bg-white/5"}`}>
+                        {displayImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={displayImage} alt={picked!.name} className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="text-white/20"><SlotIcon id={slot.id} size={16} /></div>
+                        )}
+                      </div>
+                      <p className="font-mono text-[7px] tracking-[0.06em] uppercase text-white/25 leading-none w-full text-center truncate">
+                        {slot.label}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-              type SwatchEntry = { id: string; hex: string | null; name: string; imgUrl?: string; isVariant: boolean };
-              const colors: SwatchEntry[] = useVariants
-                ? variants.map(v => ({ id: v.id, hex: v.colorHex, name: v.colorName, isVariant: true }))
-                : colorImgKeys.map(k => ({ id: k, hex: null, name: k, imgUrl: activeProduct!.colorImages![k]?.[0], isVariant: false }));
-
-              const activeId = useVariants
-                ? (variantOverrides[activeSlot] ?? activeProduct?.id ?? "")
-                : (colorImageOverrides[activeSlot] ?? colorImgKeys[0] ?? "");
-
-              return (
-                <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col rounded-[22px] transition-all duration-300 ease-out ${
-                    hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
-                  }`}
-                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)", width: 56, maxHeight: "calc(100% - 32px)" }}
-                >
-                  <div
-                    className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-3 px-2"
-                    style={{ scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
-                  >
-                    {colors.map(color => {
-                      const isActive = color.id === activeId;
-                      return (
-                        <button
-                          key={color.id}
-                          title={color.name}
-                          onClick={() => {
-                            if (color.isVariant) {
-                              const swatch = variants.find(v => v.id === color.id);
-                              if (swatch) selectVariant(activeSlot, swatch);
-                            } else {
-                              setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
-                            }
-                          }}
-                          className={`relative w-8 h-8 rounded-full shrink-0 transition-all duration-200 ${isActive ? "scale-110" : "opacity-55 active:opacity-80 active:scale-105"}`}
-                          style={{
-                            background: color.hex === "#multicolor"
-                              ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
-                              : color.hex
-                              ? color.hex
-                              : color.imgUrl
-                              ? `url(${color.imgUrl}) center/cover`
-                              : "#555",
-                            boxShadow: isActive
-                              ? "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.25)"
-                              : "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.10)",
-                          }}
-                        >
-                          {isActive && (
-                            <svg className="absolute inset-0 m-auto w-3.5 h-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 16 16" fill="none">
-                              <path d="M3 8.5L6.5 12L13 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Expanded: 3×2 grid */}
+            {lookExpanded && (
+              <div className="grid grid-cols-3 gap-2 px-4 pb-4">
+                {SLOTS.map(slot => {
+                  const picked = selection[slot.id];
+                  const variantId = variantOverrides[slot.id];
+                  const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                  const colorKey = colorImageOverrides[slot.id];
+                  const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                  const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+                  const isActive = activeSlot === slot.id;
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); setLookExpanded(false); }}
+                      className={`relative flex flex-col border transition-all active:scale-[0.97] ${
+                        isActive ? "border-white/35 bg-white/8" : "border-white/10 bg-white/4"
+                      } ${picked ? "ring-1 ring-[#c9a84c]" : ""}`}
+                      style={{ height: 104 }}
+                    >
+                      {displayImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={displayImage} alt={picked!.name} className="flex-1 w-full object-contain p-1.5" />
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="text-white/18"><SlotIcon id={slot.id} size={18} /></div>
+                        </div>
+                      )}
+                      <div className="px-1.5 pb-1.5 flex items-end justify-between gap-1">
+                        <p className="font-mono text-[7px] tracking-[0.06em] uppercase text-white/25 leading-none truncate">{slot.label}</p>
+                        {picked ? (
+                          <button
+                            onClick={e => { e.stopPropagation(); clearSlot(slot.id, e); }}
+                            className="shrink-0 text-white/25 hover:text-white/60 transition-colors"
+                          >
+                            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                              <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                             </svg>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-          </div>
-
-          {/* Price + Generate bar */}
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 bg-[#0f0f0f] border-t border-white/5">
-            <div>
-              <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
-              <div className="flex items-center gap-1.5">
-                <p className={`font-light leading-none transition-all ${
-                  selectedCount > 0 ? "text-[20px] text-white" : "text-[16px] text-white/30"
-                }`}>
-                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                </p>
-                {selectedCount > 0 && (
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white/35 shrink-0">
-                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                )}
+                          </button>
+                        ) : (
+                          <div className="shrink-0 text-white/20">
+                            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                              <line x1="5" y1="1" x2="5" y2="9" /><line x1="1" y1="5" x2="9" y2="5" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-            {selectedCount >= 1 && (
-              <button
-                onClick={openStylePicker}
-                disabled={generating}
-                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-              >
-                {generating ? (
-                  <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                      stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {generating ? "Generating…" : "Generate"}
-              </button>
             )}
           </div>
 
-          {/* 2. Bottom sheet panel */}
-          <div className="relative flex flex-col bg-[var(--background)] min-h-0 flex-1">
+          {/* ── Catalog panel ─────────────────────────────────────────────────── */}
+          <div className="relative flex flex-col bg-[var(--background)] min-h-0 flex-1 overflow-hidden">
 
             {/* Drag handle */}
-            <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+            <div className="flex justify-center pt-2.5 pb-0 shrink-0">
               <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
             </div>
 
@@ -1682,16 +1608,16 @@ export default function BuilderPage() {
             </div>
 
 
-            {/* Horizontal product scroll */}
-            <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
+            {/* Vertical product grid — 3 columns */}
+            <div className="flex-1 overflow-y-auto">
               {expandedCatalogItems.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
+                <div className="h-40 flex items-center justify-center">
                   <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
                     {search ? "No results" : "No items"}
                   </p>
                 </div>
               ) : (
-                <div className="flex gap-2.5 px-4 py-2 items-start">
+                <div className="grid grid-cols-3 gap-px bg-[var(--border)]">
                   {expandedCatalogItems.map(item => {
                     const { product, forcedVariant } = item;
                     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1707,29 +1633,34 @@ export default function BuilderPage() {
                       ? product.colorImages![selectedColorKey][0]
                       : null;
                     const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                    const isLiked = likedProducts.includes(product.id);
 
                     return (
-                      <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 108 }}>
-                        {/* Image area */}
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => selectProduct(product)}
-                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
-                          className={`relative overflow-hidden bg-white cursor-pointer transition-all ${
-                            isSelected ? "ring-1 ring-[#c9a84c]" : ""
-                          }`}
-                          style={{ width: 108, height: 94 }}
-                        >
+                      <div
+                        key={item.key}
+                        className="relative flex flex-col bg-[var(--background)] cursor-pointer"
+                        onClick={() => selectProduct(product)}
+                      >
+                        {/* Image */}
+                        <div className={`relative w-full overflow-hidden bg-white ${isSelected ? "ring-2 ring-inset ring-[#c9a84c]" : ""}`} style={{ aspectRatio: "3/4" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={displayImage}
                             alt={product.name}
                             className="absolute inset-0 w-full h-full object-contain"
                           />
-                          {/* Selected indicator */}
+                          {/* Heart */}
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center transition-colors"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill={isLiked ? "#c9a84c" : "none"} stroke={isLiked ? "#c9a84c" : "rgba(0,0,0,0.35)"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
+                            </svg>
+                          </button>
+                          {/* Selected checkmark */}
                           {isSelected && (
-                            <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
+                            <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
                               <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
                                 <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
@@ -1737,9 +1668,10 @@ export default function BuilderPage() {
                           )}
                         </div>
                         {/* Info */}
-                        <div className="pt-1.5">
+                        <div className="px-1.5 pt-1.5 pb-2">
                           <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                          <p className="font-mono text-[9px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
+                          <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5 truncate">{product.brand}</p>
+                          <p className="font-mono text-[9px] text-[var(--foreground)] mt-0.5">{formatPrice(product.priceMin)}</p>
                         </div>
                       </div>
                     );
