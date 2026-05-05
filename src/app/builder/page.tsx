@@ -139,8 +139,9 @@ export default function BuilderPage() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [brandSearch, setBrandSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+  const [sortBy, setSortBy] = useState<"featured" | "new-in" | "price-asc" | "price-desc">("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "color", "gender", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
@@ -327,6 +328,8 @@ export default function BuilderPage() {
       list = [...list].sort((a, b) => a.priceMin - b.priceMin);
     } else if (sortBy === "price-desc") {
       list = [...list].sort((a, b) => b.priceMin - a.priceMin);
+    } else if (sortBy === "new-in") {
+      list = [...list].sort((a, b) => b.id.localeCompare(a.id));
     }
 
     return list;
@@ -1151,13 +1154,13 @@ export default function BuilderPage() {
                   </button>
                   {!collapsedSections.has("sort") && (
                     <div className="px-3 pb-3 flex flex-col gap-0.5">
-                      {(["featured", "price-asc", "price-desc"] as const).map(s => (
+                      {(["featured", "new-in", "price-asc", "price-desc"] as const).map(s => (
                         <button key={s} onClick={() => setSortBy(s)}
                           className={`w-full text-left px-2 py-1.5 text-xs font-medium transition-colors ${
                             sortBy === s ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] active:bg-[var(--surface)] active:text-[var(--foreground)]"
                           }`}
                         >
-                          {s === "featured" ? "Featured" : s === "price-asc" ? "Price ↑" : "Price ↓"}
+                          {s === "featured" ? "Featured" : s === "new-in" ? "New In" : s === "price-asc" ? "Price ↑" : "Price ↓"}
                         </button>
                       ))}
                     </div>
@@ -1595,6 +1598,68 @@ export default function BuilderPage() {
               <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
             </div>
 
+            {/* Filters + Sort toolbar */}
+            <div className="shrink-0 border-b border-[var(--border)]">
+              {/* Row 1: Filters & Sort buttons */}
+              <div className="flex items-center justify-between px-4 pt-2.5 pb-2">
+                <button
+                  onClick={() => setMobileFiltersOpen(true)}
+                  className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
+                    hasActiveFilters
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  <svg width="13" height="10" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="1" y1="1.5" x2="13" y2="1.5" />
+                    <line x1="3" y1="5.5" x2="11" y2="5.5" />
+                    <line x1="5" y1="9.5" x2="9" y2="9.5" />
+                  </svg>
+                  Filters
+                  {activeFilterCount > 0 && <span className="text-[10px] opacity-80">· {activeFilterCount}</span>}
+                </button>
+                <button
+                  onClick={() => setMobileFiltersOpen(true)}
+                  className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
+                    sortBy !== "featured"
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 2v10M3 2L1 4.5M3 2L5 4.5" />
+                    <path d="M11 12V2M11 12L9 9.5M11 12L13 9.5" />
+                  </svg>
+                  Sort
+                </button>
+              </div>
+              {/* Row 2: Quick filter chips */}
+              <div className="flex gap-2 px-4 pb-2.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {[
+                  { label: "Brand", active: selectedBrands.length > 0 },
+                  { label: "Price", active: maxPrice !== null },
+                  { label: "Color", active: selectedColors.length > 0 },
+                  { label: "Gender", active: selectedGender !== null },
+                  { label: "Size", active: false },
+                ].map(({ label, active }) => (
+                  <button
+                    key={label}
+                    onClick={() => setMobileFiltersOpen(true)}
+                    className={`shrink-0 flex items-center gap-1 px-3 h-7 rounded-full border text-[11px] font-medium transition-all active:scale-95 ${
+                      active
+                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
+                    }`}
+                  >
+                    {label}
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M2 3.5L5 6.5L8 3.5" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Category tabs */}
             <div className="shrink-0 flex gap-5 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
               {MOBILE_CHIPS.map(({ label, value }) => {
@@ -1760,6 +1825,229 @@ export default function BuilderPage() {
                 className="w-full h-11 border border-[var(--border-strong)] text-[var(--foreground-muted)] flex items-center justify-center font-mono text-[10px] tracking-[0.14em] uppercase rounded-full"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE FILTERS BOTTOM SHEET ───────────────────────────────────── */}
+      {mobileFiltersOpen && (
+        <div className="md:hidden fixed inset-0 z-[70] flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="relative bg-[var(--background)] rounded-t-2xl flex flex-col" style={{ maxHeight: "90dvh" }}>
+            {/* Handle */}
+            <div className="flex justify-center pt-3 shrink-0">
+              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 shrink-0">
+              <p className="text-[17px] font-medium text-[var(--foreground)]">Filters</p>
+              <button
+                onClick={() => setMobileFiltersOpen(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Scrollable sections */}
+            <div className="overflow-y-auto flex-1 px-5" style={{ WebkitOverflowScrolling: "touch" }}>
+
+              {/* Sort by */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Sort by</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: "featured", label: "Featured" },
+                    { value: "new-in", label: "New In" },
+                    { value: "price-asc", label: "Price: Low to High" },
+                    { value: "price-desc", label: "Price: High to Low" },
+                  ] as const).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setSortBy(value)}
+                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-all active:scale-95 ${
+                        sortBy === value
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Category</p>
+                <div className="flex flex-wrap gap-2">
+                  {MOBILE_CHIPS.map(({ label, value }) => (
+                    <button
+                      key={label}
+                      onClick={() => setCatalogCategory(catalogCategory === value ? null : value)}
+                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-all active:scale-95 ${
+                        catalogCategory === value
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price range */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Price range</p>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[12px] text-[var(--foreground-subtle)]">$0</span>
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">
+                    {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={2000}
+                  step={50}
+                  value={maxPrice ?? 2000}
+                  onChange={e => {
+                    const val = Number(e.target.value);
+                    setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                  }}
+                  className="w-full h-1 accent-[var(--foreground)] cursor-pointer"
+                  style={{ accentColor: "var(--foreground)" }}
+                />
+              </div>
+
+              {/* Gender */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Gender</p>
+                <div className="flex flex-wrap gap-2">
+                  {([null, "men", "women", "unisex"] as (Gender | null)[]).map(g => (
+                    <button
+                      key={g ?? "all"}
+                      onClick={() => setSelectedGender(g)}
+                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-all active:scale-95 capitalize ${
+                        selectedGender === g
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Color</p>
+                <div className="flex flex-wrap gap-3">
+                  {availableColors.map(({ name, hex }) => {
+                    const isActive = selectedColors.includes(name);
+                    return (
+                      <button
+                        key={name}
+                        title={name}
+                        onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
+                        className={`w-9 h-9 rounded-full shrink-0 transition-all active:scale-95 ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                        style={{
+                          background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
+                          boxShadow: isActive
+                            ? "0 0 0 2.5px var(--background), 0 0 0 4px var(--foreground)"
+                            : "inset 0 0 0 1px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.06)",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Brand */}
+              <div className="mb-4">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Brand</p>
+                {/* Brand search */}
+                <div className="relative mb-3">
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
+                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={brandSearch}
+                    onChange={e => setBrandSearch(e.target.value)}
+                    placeholder="Search brand"
+                    className="w-full h-10 bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-9 pr-4 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                  />
+                </div>
+                {/* Brand list */}
+                <div>
+                  {availableBrands
+                    .filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()))
+                    .map(brand => {
+                      const isActive = selectedBrands.includes(brand);
+                      return (
+                        <button
+                          key={brand}
+                          onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
+                          className="w-full flex items-center justify-between py-3.5 border-b border-[var(--border)] text-left active:bg-[var(--surface)] transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex items-center justify-center shrink-0 border transition-colors ${
+                                isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
+                              }`}
+                              style={{ width: 18, height: 18 }}
+                            >
+                              {isActive && (
+                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-[14px] ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>
+                              {brand}
+                            </span>
+                          </div>
+                          <svg width="6" height="10" viewBox="0 0 6 10" fill="none" className="text-[var(--foreground-subtle)] shrink-0">
+                            <path d="M1 1L5 5L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      );
+                    })
+                  }
+                  {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length === 0 && (
+                    <p className="py-3 text-[13px] text-[var(--foreground-subtle)]">No brands found</p>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer: Clear all + Show results */}
+            <div className="px-5 pt-4 pb-8 shrink-0 border-t border-[var(--border)] flex gap-3">
+              <button
+                onClick={() => { clearFilters(); }}
+                className="flex-1 h-12 border border-[var(--border-strong)] text-[var(--foreground)] text-[14px] font-medium rounded-xl hover:bg-[var(--surface)] transition-colors active:scale-[0.98]"
+              >
+                Clear all
+              </button>
+              <button
+                onClick={() => setMobileFiltersOpen(false)}
+                className="flex-1 h-12 bg-white text-black text-[14px] font-medium rounded-xl hover:bg-white/90 transition-colors active:scale-[0.98]"
+              >
+                Show results
               </button>
             </div>
           </div>
