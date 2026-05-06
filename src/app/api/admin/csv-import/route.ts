@@ -126,20 +126,32 @@ function cleanName(raw: string): string {
   return raw.replace(SIZE_SUFFIXES, "").trim();
 }
 
+// ── Boost AWIN proxy image resolution (200→800px) ────────────────────────────
+
+function boostAwinkImageUrl(url: string): string {
+  if (!url.includes("productserve.com") && !url.includes("awin1.com")) return url;
+  return url.replace(/w=\d+/, "w=800").replace(/h=\d+/, "h=800");
+}
+
 // ── Collect all non-empty image URLs preserving quality order ─────────────────
 
 function collectImages(row: Record<string, string>): string[] {
-  // Priority: Original/Full merchant images first, then AWIN proxy (resized), then thumbs
+  // aw_image_url / aw_thumb_url are AWIN's own proxy — no hotlink issues, always accessible.
+  // Merchant-hosted URLs (brianjamesmenswear.com etc.) often block hotlinking.
+  // Priority: AWIN proxy (boosted to 800px) → merchant original → merchant full → extras
+  const awImage = boostAwinkImageUrl(resolve(row, "aw_image_url"));
+  const awThumb = boostAwinkImageUrl(resolve(row, "aw_thumb_url"));
+
   const candidates = [
-    resolve(row, "alternate_image"),        // /Images/Models/Original/ — best quality
-    resolve(row, "merchant_image_url"),     // /Images/Models/Full/ — full size
-    resolve(row, "alternate_image_three"),  // additional angle
-    resolve(row, "alternate_image_four"),   // additional angle
-    resolve(row, "aw_image_url"),           // AWIN proxy 200×200 — reliable fallback
+    awImage,                                // AWIN proxy 800×800 — always works
+    resolve(row, "alternate_image"),        // /Models/Original/ — may be hotlink-blocked
+    resolve(row, "merchant_image_url"),     // /Models/Full/ — may be hotlink-blocked
+    resolve(row, "alternate_image_three"),  // extra angle
+    resolve(row, "alternate_image_four"),   // extra angle
     resolve(row, "large_image"),            // often empty in Awin feeds
-    resolve(row, "alternate_image_two"),    // usually a thumbnail
+    resolve(row, "alternate_image_two"),    // usually small
     resolve(row, "merchant_thumb_url"),
-    resolve(row, "aw_thumb_url"),
+    awThumb,
   ];
 
   const seen = new Set<string>();
