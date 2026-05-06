@@ -510,11 +510,25 @@ export default function BuilderPage() {
       let savedId: string;
       if (targetId && existing.some((o) => o.id === targetId)) {
         savedId = targetId;
+        const existingLook = existing.find((o) => o.id === targetId) as Record<string, unknown> | undefined;
+
+        // When editing, preserve existing pieces for slots that are still in the URL
+        // (user hasn't explicitly removed them) but couldn't be restored from the catalog.
+        // URL is the source of truth for intended slots — clearSlot() removes a slot from URL.
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSlots = new Set<string>(SLOTS.filter(s => urlParams.has(s.id)).map(s => s.id));
+        const currentSlots = new Set(pieces.map(p => p.slot));
+        const existingPieces = (existingLook?.pieces as typeof pieces | undefined) ?? [];
+        const orphanedPieces = existingPieces.filter(
+          p => urlSlots.has(p.slot) && !currentSlots.has(p.slot)
+        );
+        const mergedPieces = [...pieces, ...orphanedPieces];
+
         updated = existing.map((o) =>
           o.id === targetId
             ? {
                 ...o,
-                pieces,
+                pieces: mergedPieces,
                 totalPrice,
                 styleKeywords,
                 // null explicitly clears the stored image; undefined means "don't touch"

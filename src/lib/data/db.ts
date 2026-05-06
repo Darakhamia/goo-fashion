@@ -337,13 +337,18 @@ export async function getAllOutfits(): Promise<Outfit[]> {
 
   const productMap = new Map<string, Product>();
   if (productIds.length > 0) {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds);
-    if (prodData) {
-      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-        productMap.set(p.id, p);
+    // Fetch in batches of 200 to avoid URL-too-long errors with PostgREST .in() filters
+    const BATCH = 200;
+    for (let i = 0; i < productIds.length; i += BATCH) {
+      const batch = productIds.slice(i, i + BATCH);
+      const { data: prodData } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", batch);
+      if (prodData) {
+        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+          productMap.set(p.id, p);
+        }
       }
     }
   }
