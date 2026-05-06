@@ -6,7 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { products as staticProducts } from "@/lib/data/products";
-import type { Outfit } from "@/lib/types";
+import type { Outfit, Product } from "@/lib/types";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 
@@ -26,7 +26,7 @@ interface SavedLook {
 const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories", "accessories2"];
 
 // ── Builder outfit card ───────────────────────────────────────────────────────
-function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
+function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: () => void; allProducts: Product[] }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { formatPrice } = useCurrency();
@@ -62,7 +62,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   const pieces = [...look.pieces]
     .sort((a, b) => (SLOT_PRIORITY[a.slot] ?? 99) - (SLOT_PRIORITY[b.slot] ?? 99))
     .map((piece) => {
-      const product = staticProducts.find((p) => p.id === piece.productId);
+      const product = allProducts.find((p) => p.id === piece.productId);
       return {
         slot: piece.slot,
         imageUrl: piece.imageUrl ?? product?.imageUrl ?? null,
@@ -615,7 +615,7 @@ export default function SavedPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {myLooks.map((look) => (
                 <div key={look.id} className="border-r border-b border-[var(--border)] flex flex-col aspect-[3/5]">
-                  <LookCard look={look} onDelete={() => deleteLook(look.id)} />
+                  <LookCard look={look} onDelete={() => deleteLook(look.id)} allProducts={allProducts} />
                 </div>
               ))}
             </div>
