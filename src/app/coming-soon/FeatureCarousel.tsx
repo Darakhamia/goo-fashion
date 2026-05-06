@@ -104,10 +104,9 @@ export default function FeatureCarousel() {
           {/* Title */}
           <div>
             <h3
-              className="font-display font-light text-white leading-none tracking-tight mb-4"
+              className="font-black text-white leading-none tracking-tight mb-4"
               style={{
                 fontSize: "clamp(2.8rem, 5vw, 4rem)",
-                fontFamily: "var(--font-display)",
               }}
             >
               {f.title}

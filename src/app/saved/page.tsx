@@ -531,7 +531,7 @@ export default function SavedPage() {
           <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
             Saved
           </p>
-          <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)]">
+          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)]">
             Your Likes
           </h1>
         </div>
@@ -565,7 +565,7 @@ export default function SavedPage() {
             </div>
           ) : (
             <div className="py-32 text-center">
-              <p className="font-display text-2xl font-light text-[var(--foreground)] mb-3">
+              <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No saved outfits yet
               </p>
               <p className="text-sm text-[var(--foreground-muted)] mb-8">
@@ -593,7 +593,7 @@ export default function SavedPage() {
             </div>
           ) : (
             <div className="py-32 text-center">
-              <p className="font-display text-2xl font-light text-[var(--foreground)] mb-3">
+              <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No saved pieces yet
               </p>
               <p className="text-sm text-[var(--foreground-muted)] mb-8">
@@ -621,7 +621,7 @@ export default function SavedPage() {
             </div>
           ) : (
             <div className="py-32 text-center">
-              <p className="font-display text-2xl font-light text-[var(--foreground)] mb-3">
+              <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No looks built yet
               </p>
               <p className="text-sm text-[var(--foreground-muted)] mb-8">

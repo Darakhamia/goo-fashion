@@ -146,7 +146,7 @@ export default function StylistPage() {
           {/* ── OCCASION ── */}
           {currentStep === "occasion" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 What&apos;s the occasion?
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -175,7 +175,7 @@ export default function StylistPage() {
           {/* ── STYLE ── */}
           {currentStep === "style" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 Your aesthetic.
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -234,7 +234,7 @@ export default function StylistPage() {
           {/* ── PALETTE ── */}
           {currentStep === "palette" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 Your color world.
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -284,7 +284,7 @@ export default function StylistPage() {
           {/* ── FIT ── */}
           {currentStep === "fit" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 How do you like to wear clothes?
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -321,7 +321,7 @@ export default function StylistPage() {
           {/* ── SEASON ── */}
           {currentStep === "season" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 What&apos;s the season?
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -358,7 +358,7 @@ export default function StylistPage() {
           {/* ── BUDGET ── */}
           {currentStep === "budget" && (
             <div className="max-w-2xl mx-auto">
-              <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] mb-3">
+              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
                 What&apos;s your budget?
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
@@ -369,7 +369,7 @@ export default function StylistPage() {
                 <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Selected range
                 </p>
-                <p className="font-display text-3xl font-light text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)]">
                   {formatPrice(form.budgetMin)} — {formatPrice(form.budgetMax)}
                 </p>
               </div>
@@ -423,7 +423,7 @@ export default function StylistPage() {
                     <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
                       AI Generated
                     </p>
-                    <h1 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)]">
+                    <h1 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)]">
                       Your outfits are ready.
                     </h1>
                     <p className="mt-2 text-sm text-[var(--foreground-muted)]">

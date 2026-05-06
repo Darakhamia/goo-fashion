@@ -132,14 +132,14 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
               {product.brand}
             </p>
-            <h1 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)] leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)] leading-tight">
               {product.name}
             </h1>
           </div>
 
           {/* Price */}
           <div className="mb-8 pb-8 border-b border-[var(--border)]">
-            <p className="font-display text-2xl font-light text-[var(--foreground)]">
+            <p className="text-2xl font-bold text-[var(--foreground)]">
               From {formatPrice(lowestPrice)}
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
@@ -160,7 +160,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               onClick={() => setStylistOpen(true)}
               className="flex items-center gap-3 w-full border border-[var(--border-strong)] px-4 py-3 hover:border-[var(--foreground)] transition-colors duration-150 group"
             >
-              <div className="w-6 h-6 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-display text-[11px] font-medium italic shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[11px] font-medium italic shrink-0">
                 G
               </div>
               <div className="text-left flex-1">
@@ -372,7 +372,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
               Style it with
             </p>
-            <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
               Outfits with this piece
             </h2>
           </div>
@@ -393,7 +393,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
               More {product.category}
             </p>
-            <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
               You may also like
             </h2>
           </div>

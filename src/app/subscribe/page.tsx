@@ -121,7 +121,7 @@ function SubscribeInner() {
           <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
             You are in
           </p>
-          <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] leading-[1.05] mb-5">
+          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-5">
             Welcome to {plan.name}
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed mb-10">
@@ -179,7 +179,7 @@ function SubscribeInner() {
           <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
             Subscribe
           </p>
-          <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] leading-[1.05]">
+          <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.05]">
             {plan.name} plan
           </h1>
         </div>
@@ -189,7 +189,7 @@ function SubscribeInner() {
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-1">
             You are subscribing to
           </p>
-          <p className="font-display text-2xl font-light text-[var(--foreground)]">
+          <p className="text-2xl font-bold text-[var(--foreground)]">
             {plan.name} — <span className="text-[var(--foreground)]">${plan.price} / month</span>
           </p>
         </div>

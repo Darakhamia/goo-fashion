@@ -51,7 +51,7 @@ export default async function HomePage() {
             <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-white/50 mb-6">
               AI Stylist · Personal Wardrobe
             </p>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-light text-white leading-[0.95] tracking-tight mb-8">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase text-white leading-[0.95] tracking-tight mb-8">
               Dress like
               <br />
               <em>you think.</em>
@@ -99,7 +99,7 @@ export default async function HomePage() {
               <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
                 AI Stylist
               </p>
-              <h2 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)] leading-tight">
+              <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight">
                 Your stylist. Always on.
                 <br />
                 <em>Always personal.</em>
@@ -222,7 +222,7 @@ export default async function HomePage() {
                 {item.step}
               </span>
               <div>
-                <h3 className="font-display text-xl font-light text-[var(--foreground)] mb-2">
+                <h3 className="text-xl font-semibold text-[var(--foreground)] mb-2">
                   {item.title}
                 </h3>
                 <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
@@ -241,7 +241,7 @@ export default async function HomePage() {
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
               Plans
             </p>
-            <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
               Free to start. Better as you grow.
             </h2>
           </div>
@@ -268,7 +268,7 @@ export default async function HomePage() {
                 <p className="text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">
                   {item.plan}
                 </p>
-                <p className="text-xl font-display font-light text-[var(--foreground)]">
+                <p className="text-xl font-bold text-[var(--foreground)]">
                   {item.price}
                   <span className="text-xs font-sans text-[var(--foreground-muted)] ml-1">
                     / mo

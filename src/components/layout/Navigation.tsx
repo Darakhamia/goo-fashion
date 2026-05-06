@@ -90,7 +90,7 @@ export default function Navigation() {
         {/* Logo */}
         <Link
           href="/"
-          className={`font-display text-2xl font-light tracking-[0.2em] hover:opacity-70 transition-opacity duration-200 ${logoColor}`}
+          className={`text-2xl font-black tracking-[0.2em] hover:opacity-70 transition-opacity duration-200 ${logoColor}`}
         >
           GOO
         </Link>
@@ -395,7 +395,7 @@ export default function Navigation() {
                   <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
                     Estimated total
                   </p>
-                  <p className="font-display text-[20px] font-light text-[var(--foreground)]">
+                  <p className="text-[20px] font-bold text-[var(--foreground)]">
                     {formatPrice(cartTotal)}
                   </p>
                 </div>

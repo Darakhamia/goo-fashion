@@ -367,7 +367,7 @@ export function StylistDrawer({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-display text-[13px] font-medium italic">
+          <div className="w-7 h-7 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[13px] font-medium italic">
             G
           </div>
           <div>

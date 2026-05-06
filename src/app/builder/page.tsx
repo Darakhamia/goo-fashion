@@ -692,7 +692,7 @@ export default function BuilderPage() {
             {/* Header */}
             <div className="px-6 pt-5 pb-4 shrink-0 border-b border-[var(--border)]">
               <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-1">In this look</p>
-              <p className="font-display text-[22px] font-light text-[var(--foreground)]">
+              <p className="text-[22px] font-bold text-[var(--foreground)]">
                 {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "Empty"}
               </p>
             </div>
@@ -871,7 +871,7 @@ export default function BuilderPage() {
             <div className="shrink-0 border-t border-[var(--border)] px-5 py-3">
               <div className="flex items-baseline justify-between">
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Total</p>
-                <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
+                <p className={`font-bold transition-all ${selectedCount > 0 ? "text-[22px] text-[var(--foreground)]" : "text-[18px] text-[var(--foreground-subtle)]"}`}>
                   {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
                 </p>
               </div>

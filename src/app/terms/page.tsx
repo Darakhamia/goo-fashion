@@ -413,7 +413,7 @@ export default function TermsPage() {
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
               Legal
             </p>
-            <h1 className="font-display text-5xl md:text-6xl font-light text-[var(--foreground)] mb-4">
+            <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
               Terms &amp; Conditions
             </h1>
             <p className="text-sm text-[var(--foreground-subtle)]">Last updated: April 25, 2026</p>

@@ -1080,7 +1080,7 @@ function EmptyState({
 }) {
   return (
     <div className="py-24 text-center">
-      <p className="font-display text-xl font-light text-[var(--foreground)] mb-2">
+      <p className="text-xl font-semibold text-[var(--foreground)] mb-2">
         No {noun} found
       </p>
       <p className="text-sm text-[var(--foreground-muted)] mb-4">

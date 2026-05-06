@@ -24,7 +24,7 @@ export default function SectionLabel({
           {label}
         </p>
         {heading && (
-          <h2 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)] leading-tight">
+          <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight">
             {heading}
           </h2>
         )}

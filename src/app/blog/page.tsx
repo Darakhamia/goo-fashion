@@ -38,7 +38,7 @@ export default async function BlogPage() {
           <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
             Journal
           </p>
-          <h1 className="font-display text-5xl md:text-7xl font-light text-[var(--foreground)] leading-[0.95] tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[0.95] tracking-tight">
             Style, explained.
           </h1>
           <p className="mt-8 text-sm text-[var(--foreground-muted)]">
@@ -60,7 +60,7 @@ export default async function BlogPage() {
           <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
             Journal
           </p>
-          <h1 className="font-display text-5xl md:text-7xl font-light text-[var(--foreground)] leading-[0.95] tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[0.95] tracking-tight">
             Style, explained.
           </h1>
         </div>
@@ -88,7 +88,7 @@ export default async function BlogPage() {
                     {featured.readTime} read
                   </span>
                 </div>
-                <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] leading-snug mb-4 group-hover:opacity-70 transition-opacity duration-200">
+                <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)] leading-snug mb-4 group-hover:opacity-70 transition-opacity duration-200">
                   {featured.title}
                 </h2>
                 <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
@@ -134,7 +134,7 @@ export default async function BlogPage() {
                       {post.readTime} read
                     </span>
                   </div>
-                  <h3 className="font-display text-lg font-light text-[var(--foreground)] leading-snug mb-3 group-hover:opacity-70 transition-opacity duration-200">
+                  <h3 className="text-lg font-medium text-[var(--foreground)] leading-snug mb-3 group-hover:opacity-70 transition-opacity duration-200">
                     {post.title}
                   </h3>
                   <p className="text-xs text-[var(--foreground-muted)] leading-relaxed flex-1">
@@ -156,7 +156,7 @@ export default async function BlogPage() {
               <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
                 Newsletter
               </p>
-              <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+              <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)]">
                 Style notes, weekly.
               </h2>
               <p className="mt-2 text-sm text-[var(--foreground-muted)]">

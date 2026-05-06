@@ -109,7 +109,7 @@ export function StylistPersonalizationModal({
         <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-3">
           Step {step + 1} of {TOTAL_STEPS}
         </p>
-        <h2 className="font-display text-2xl font-light text-[var(--foreground)] mb-6">
+        <h2 className="text-2xl font-bold text-[var(--foreground)] mb-6">
           {STEP_TITLES[step]}
         </h2>
 

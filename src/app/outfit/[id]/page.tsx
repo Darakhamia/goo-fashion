@@ -103,7 +103,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 capitalize">
                 {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
               </p>
-              <h1 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)] leading-tight mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight mb-4">
                 {outfit.name}
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-w-sm">
@@ -115,7 +115,7 @@ export default async function OutfitDetailPage({ params }: Props) {
                   <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">
                     Total
                   </p>
-                  <p className="font-display text-2xl font-light text-[var(--foreground)]">
+                  <p className="text-2xl font-bold text-[var(--foreground)]">
                     <Price amount={outfit.totalPriceMin} />
                     <span className="text-base text-[var(--foreground-muted)]">
                       {" "}
@@ -127,7 +127,7 @@ export default async function OutfitDetailPage({ params }: Props) {
                   <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">
                     Pieces
                   </p>
-                  <p className="font-display text-2xl font-light text-[var(--foreground)]">
+                  <p className="text-2xl font-bold text-[var(--foreground)]">
                     {outfit.items.length}
                   </p>
                 </div>
@@ -199,7 +199,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
                 Similar Outfits
               </p>
-              <h2 className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)]">
+              <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
                 You might also like
               </h2>
             </div>
