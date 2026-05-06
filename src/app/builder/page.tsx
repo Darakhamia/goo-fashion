@@ -160,6 +160,7 @@ export default function BuilderPage() {
   const { isOpen: stylistOpen, toggle: toggleStylist, close: closeStylist } = useStylist();
   const router = useRouter();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const hasRestoredFromURL = useRef(false);
 
   // Generation state
   const [generating, setGenerating] = useState(false);
@@ -232,8 +233,11 @@ export default function BuilderPage() {
     window.history.replaceState({}, "", url.toString());
   }, []);
 
-  // Restore selection from URL when products are available
+  // Restore selection from URL params — runs only ONCE when products first load.
+  // Must not re-run on subsequent product refreshes or it overwrites user edits.
   useEffect(() => {
+    if (hasRestoredFromURL.current || products.length === 0) return;
+
     const params = new URLSearchParams(window.location.search);
     const restored: Partial<Record<SlotId, Product>> = {};
     const restoredVariants: Partial<Record<SlotId, string>> = {};
@@ -249,12 +253,12 @@ export default function BuilderPage() {
           restored[id] = p;
           found = true;
           const vid = params.get(`${id}_variant`);
-          // If the original pid was a swatch, treat it as the variant selection
           if (vid) restoredVariants[id] = vid;
           else if (p.id !== pid) restoredVariants[id] = pid;
         }
       }
     }
+    hasRestoredFromURL.current = true;
     if (found) {
       setSelection(restored);
       if (Object.keys(restoredVariants).length > 0) setVariantOverrides(restoredVariants);
