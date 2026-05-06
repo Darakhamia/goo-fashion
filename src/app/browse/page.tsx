@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
@@ -154,7 +154,20 @@ export default function BrowsePage() {
     if (v === "pieces" || v === "outfits") setView(v);
   }, []);
   const [sort, setSort] = useState<SortOption>("featured");
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortOpen]);
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -705,20 +718,52 @@ export default function BrowsePage() {
               </div>
 
               {/* Sort */}
-              <div className="flex items-center gap-2">
+              <div className="relative flex items-center gap-2" ref={sortRef}>
                 <span className="hidden sm:block text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
                   Sort:
                 </span>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as SortOption)}
-                  className="text-[10px] tracking-[0.08em] uppercase bg-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)] focus:outline-none cursor-pointer transition-colors duration-200"
+                <button
+                  onClick={() => setSortOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 cursor-pointer"
                 >
-                  <option value="featured">Featured</option>
-                  <option value="price-asc">Price ↑</option>
-                  <option value="price-desc">Price ↓</option>
-                  <option value="newest">Newest</option>
-                </select>
+                  {sort === "featured" && "Featured"}
+                  {sort === "price-asc" && "Price ↑"}
+                  {sort === "price-desc" && "Price ↓"}
+                  {sort === "newest" && "Newest"}
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 8 8"
+                    fill="none"
+                    className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
+                  >
+                    <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {sortOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+                    {(
+                      [
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price ↑" },
+                        { value: "price-desc", label: "Price ↓" },
+                        { value: "newest", label: "Newest" },
+                      ] as { value: SortOption; label: string }[]
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { setSort(opt.value); setSortOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-[9px] tracking-[0.14em] uppercase transition-colors duration-150 ${
+                          sort === opt.value
+                            ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                            : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
