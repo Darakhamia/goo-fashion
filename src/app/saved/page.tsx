@@ -149,9 +149,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 );
 
                 // Two-row layout: upper (big) + lower (small)
-                const upperPct = displayLower.length >= 4 ? "50%" : displayLower.length >= 3 ? "54%" : "58%";
-                const lowerPad = displayLower.length >= 4 ? "p-0.5" : displayLower.length >= 3 ? "p-1" : "p-1.5";
-                const upperPad = displayLower.length >= 4 ? "p-1.5" : "p-2";
+                // Proportions match the design: big top hero, small bottom strip
+                const upperPct = displayLower.length >= 4 ? "55%" : displayLower.length >= 3 ? "60%" : "65%";
+                const lowerPad = displayLower.length >= 4 ? "p-1" : displayLower.length >= 3 ? "p-1.5" : "p-2";
+                const upperPad = displayLower.length >= 4 ? "p-2" : "p-2.5";
                 return (
                   <>
                     <div className="flex gap-px bg-gray-200" style={{ flex: `0 0 ${upperPct}` }}>
