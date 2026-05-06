@@ -102,11 +102,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
               </span>
             </div>
           ) : pieces.length > 0 ? (
-            /* Collage grid based on piece count */
+            /* Collage grid: upper-body (outerwear/top) = big row, lower-body = small row */
             <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
               {(() => {
-                const n = pieces.length;
-                const img = (piece: typeof pieces[0], pad = "p-3") => piece?.imageUrl ? (
+                const img = (piece: typeof pieces[0], pad = "p-2") => piece?.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={piece.imageUrl} alt={piece?.name ?? ""} className={`w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
                 ) : (
@@ -118,72 +117,33 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
                 );
 
-                if (n === 1) return <div className="flex-1 overflow-hidden bg-white">{img(pieces[0], "p-2")}</div>;
+                const upper = pieces.filter(p => p.slot === "outerwear" || p.slot === "top");
+                const lower = pieces.filter(p => p.slot !== "outerwear" && p.slot !== "top");
 
-                if (n === 2) return (
+                // Only upper-body items
+                if (lower.length === 0) return (
                   <div className="flex-1 flex gap-px bg-gray-200">
-                    {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
+                    {upper.map(p => cell(p, "p-2"))}
                   </div>
                 );
 
-                if (n === 3) return (
-                  <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 58%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
-                    </div>
-                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 42%" }}>
-                      {img(pieces[2], "p-1.5")}
-                    </div>
-                  </>
+                // Only lower-body items
+                if (upper.length === 0) return (
+                  <div className="flex-1 flex gap-px bg-gray-200">
+                    {lower.map(p => cell(p, lower.length >= 4 ? "p-1" : "p-1.5"))}
+                  </div>
                 );
 
-                if (n === 4) return (
-                  <>
-                    <div className="flex gap-px flex-1 bg-gray-200">
-                      {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
-                    </div>
-                    <div className="flex gap-px flex-1 bg-gray-200">
-                      {pieces.slice(2, 4).map(p => cell(p, "p-2"))}
-                    </div>
-                  </>
-                );
-
-                if (n === 5) return (
-                  <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 55%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p, "p-1.5"))}
-                    </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 45%" }}>
-                      {pieces.slice(2, 5).map(p => cell(p, "p-1"))}
-                    </div>
-                  </>
-                );
-
-                if (n === 6) return (
-                  <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 36%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p, "p-1.5"))}
-                    </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 34%" }}>
-                      {pieces.slice(2, 4).map(p => cell(p, "p-1.5"))}
-                    </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 30%" }}>
-                      {pieces.slice(4, 6).map(p => cell(p, "p-1"))}
-                    </div>
-                  </>
-                );
-
-                // 7+ pieces
+                // Upper row (big) + lower row (small)
+                const upperPct = lower.length >= 4 ? "57%" : "55%";
+                const lowerPad = lower.length >= 4 ? "p-1" : "p-1.5";
                 return (
                   <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: `0 0 ${upperPct}` }}>
+                      {upper.map(p => cell(p, "p-2"))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
-                      {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
-                    </div>
-                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
-                      {img(pieces[5], "p-2")}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "1 1 0" }}>
+                      {lower.map(p => cell(p, lowerPad))}
                     </div>
                   </>
                 );
