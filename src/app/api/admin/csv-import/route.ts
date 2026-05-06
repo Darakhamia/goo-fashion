@@ -154,15 +154,7 @@ export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const formData = await req.formData().catch(() => null);
-  if (!formData) return NextResponse.json({ error: "Expected multipart form data" }, { status: 400 });
-
-  const file = formData.get("csv");
-  if (!file || typeof file === "string") {
-    return NextResponse.json({ error: "csv file is required" }, { status: 400 });
-  }
-
-  const text = await (file as Blob).text();
+  const text = await req.text().catch(() => "");
   if (!text.trim()) return NextResponse.json({ error: "CSV file is empty" }, { status: 400 });
 
   const { headers, rows: csvRows } = parseCSV(text);
