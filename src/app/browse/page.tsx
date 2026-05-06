@@ -144,6 +144,8 @@ function ActiveChip({
 export default function BrowsePage() {
   const [view, setView] = useState<View>("pieces");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [stylistOpen, setStylistOpen] = useState(false);
 
   // Restore tab from URL on mount (survives browser back navigation)
@@ -602,56 +604,13 @@ export default function BrowsePage() {
       <div className="max-w-[1440px] mx-auto">
         {/* ── Page header ── */}
         <div className="px-6 md:px-12 pt-12 md:pt-16">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-[var(--foreground-subtle)] mb-4">
-            Browse
-          </p>
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-            <div>
-              <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
-                The Edit
-              </h1>
-              <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
-                Curated pieces from the world's most forward-thinking brands.
-              </p>
-            </div>
-
-            {/* Search */}
-            <div className="relative md:w-[480px] mt-2">
-              <input
-                type="text"
-                placeholder="Search outfits, brands, styles…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-4 py-2.5 text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors duration-200 pr-8"
-              />
-              {searchQuery ? (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path
-                      d="M2 2L10 10M10 2L2 10"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              ) : (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                    <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path
-                      d="M11 11L14 14"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-              )}
-            </div>
+          <div className="mb-8">
+            <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
+              Browse
+            </h1>
+            <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
+              Curated pieces from the world's most forward-thinking brands.
+            </p>
           </div>
 
           {/* View tabs */}
@@ -713,20 +672,51 @@ export default function BrowsePage() {
                   )}
                 </button>
 
-                {/* Trending toggle */}
-                <button
-                  onClick={() => { setFiltersOpen(false); setStylistOpen(true); }}
-                  className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
-                    stylistOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-                  </svg>
-                  <span>Trending</span>
-                </button>
+                {/* Search toggle */}
+                <div className={`flex items-center border rounded-full transition-all duration-300 overflow-hidden ${
+                  searchOpen
+                    ? "border-[var(--foreground)] bg-[var(--foreground)] pl-3 pr-1 py-1"
+                    : "border-[var(--foreground-muted)] px-4 py-2 hover:bg-[var(--fg-overlay-05)]"
+                }`}>
+                  {!searchOpen ? (
+                    <button
+                      onClick={() => {
+                        setSearchOpen(true);
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                      className="flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)]"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      <span>Search</span>
+                    </button>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--background)]">
+                        <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Search…"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-transparent outline-none text-[var(--background)] placeholder:text-[var(--background)]/50 text-xs mx-2 w-40"
+                      />
+                      <button
+                        onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                        className="w-6 h-6 rounded-full bg-[var(--background)]/20 hover:bg-[var(--background)]/30 flex items-center justify-center shrink-0 transition-colors"
+                      >
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="var(--background)" strokeWidth="1.2" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Sort */}
