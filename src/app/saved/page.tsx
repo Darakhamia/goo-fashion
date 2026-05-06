@@ -22,7 +22,7 @@ interface SavedLook {
   generatedStyle?: "mannequin" | "flatlay" | "tryon";
 }
 
-const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories"];
+const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories", "accessories2"];
 
 // ── Builder outfit card ───────────────────────────────────────────────────────
 function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void }) {
@@ -159,7 +159,21 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   </>
                 );
 
-                // 6+ pieces
+                if (n === 6) return (
+                  <>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p))}
+                    </div>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
+                      {pieces.slice(2, 4).map(p => cell(p))}
+                    </div>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 27%" }}>
+                      {pieces.slice(4, 6).map(p => cell(p, "p-2"))}
+                    </div>
+                  </>
+                );
+
+                // 7+ pieces
                 return (
                   <>
                     <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
