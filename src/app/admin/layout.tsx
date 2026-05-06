@@ -125,60 +125,13 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/admin/brightdata",
-    label: "BrightData Import",
-    category: "imports",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 13V10L8 4L14 10V13H10V9.5H6V13H2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-        <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/stockx",
-    label: "StockX Import",
-    category: "imports",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 11L5 5L8 9L11 5L14 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 13V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M6 11L8 13L10 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/farfetch",
-    label: "Farfetch Import",
-    category: "imports",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="6" r="3.5" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M8 9.5V14.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M5.5 12H10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/import",
-    label: "URL Import",
+    label: "Import",
     category: "imports",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 10V13H14V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M8 2V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
         <path d="M5 5L8 2L11 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/image-tools",
-    label: "Image Tools",
-    category: "imports",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="2" y="2" width="12" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M2 9l3-3 2.5 2.5L10 6l4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="5.5" cy="5.5" r="1" fill="currentColor" />
       </svg>
     ),
   },
@@ -225,11 +178,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Users",
   "/admin/brands": "Brands",
   "/admin/email": "Email",
-  "/admin/brightdata": "BrightData Import",
-  "/admin/stockx": "StockX Import",
-  "/admin/farfetch": "Farfetch Import",
-  "/admin/import": "URL Import",
-  "/admin/image-tools": "Image Tools",
+  "/admin/brightdata": "Import",
   "/admin/settings": "Settings",
   "/admin/activity": "Activity",
 };
