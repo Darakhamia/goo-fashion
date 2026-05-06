@@ -53,7 +53,7 @@ export function UpgradeModal({ prompt, onClose }: Props) {
           <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
             Upgrade required
           </p>
-          <h2 className="font-display text-2xl font-light text-[var(--foreground)] leading-tight mb-3">
+          <h2 className="text-2xl font-bold text-[var(--foreground)] leading-tight mb-3">
             {planName
               ? `This feature is on ${planName}`
               : "Upgrade to continue"}
@@ -69,7 +69,7 @@ export function UpgradeModal({ prompt, onClose }: Props) {
               <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                 {planName}
               </span>
-              <span className="font-display text-xl font-light text-[var(--foreground)]">
+              <span className="text-xl font-semibold text-[var(--foreground)]">
                 ${price}
                 <span className="text-xs text-[var(--foreground-muted)] ml-1">/mo</span>
               </span>

@@ -24,8 +24,7 @@ export default function ComingSoonPage() {
             Coming Soon
           </p>
           <h1
-            className="font-display text-[clamp(3.5rem,8vw,7.5rem)] font-light text-white leading-[0.9] tracking-tight mb-8"
-            style={{ fontFamily: "var(--font-display)" }}
+            className="text-[clamp(3.5rem,8vw,7.5rem)] font-black text-white leading-[0.9] tracking-tight mb-8"
           >
             Dress like
             <br />

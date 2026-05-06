@@ -44,7 +44,7 @@ export default async function SitemapPage() {
         <p className="text-[10px] tracking-[0.22em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
           Navigation
         </p>
-        <h1 className="font-display text-5xl md:text-6xl font-light text-[var(--foreground)] leading-[1.05]">
+        <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] leading-[1.05]">
           Sitemap
         </h1>
         <p className="mt-4 text-sm text-[var(--foreground-muted)] max-w-sm">
@@ -81,7 +81,7 @@ export default async function SitemapPage() {
               <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6">
                 Outfits
               </p>
-              <p className="font-display text-5xl font-light text-[var(--foreground)]">
+              <p className="text-5xl font-black text-[var(--foreground)]">
                 {outfits.length}
               </p>
               <Link
@@ -97,7 +97,7 @@ export default async function SitemapPage() {
               <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-6">
                 Products
               </p>
-              <p className="font-display text-5xl font-light text-[var(--foreground)]">
+              <p className="text-5xl font-black text-[var(--foreground)]">
                 {products.length}
               </p>
               <Link
@@ -120,7 +120,7 @@ export default async function SitemapPage() {
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Outfits
                 </p>
-                <p className="font-display text-3xl font-light text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)]">
                   {outfits.length} looks
                 </p>
               </div>
@@ -163,7 +163,7 @@ export default async function SitemapPage() {
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Products
                 </p>
-                <p className="font-display text-3xl font-light text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)]">
                   {products.length} items
                 </p>
               </div>
@@ -206,7 +206,7 @@ export default async function SitemapPage() {
                 <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Journal
                 </p>
-                <p className="font-display text-3xl font-light text-[var(--foreground)]">
+                <p className="text-3xl font-bold text-[var(--foreground)]">
                   {blogPosts.length} articles
                 </p>
               </div>

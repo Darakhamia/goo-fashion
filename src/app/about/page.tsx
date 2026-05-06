@@ -16,7 +16,7 @@ export default function AboutPage() {
           <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
             About
           </p>
-          <h1 className="font-display text-5xl md:text-7xl font-light text-[var(--foreground)] leading-[1.05] mb-8">
+          <h1 className="text-5xl md:text-7xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-8">
             Style, simplified<br />by intelligence.
           </h1>
           <p className="text-lg md:text-xl text-[var(--foreground-muted)] leading-relaxed max-w-xl">
@@ -153,7 +153,7 @@ export default function AboutPage() {
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-8">
               Our mission
             </p>
-            <p className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] leading-[1.1] mb-8">
+            <p className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-[1.1] mb-8">
               Style should be simple.
             </p>
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-w-lg mx-auto">
@@ -200,7 +200,7 @@ export default function AboutPage() {
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
             <div>
-              <p className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)] mb-2">
+              <p className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] mb-2">
                 Ready to start?
               </p>
               <p className="text-sm text-[var(--foreground-muted)]">
