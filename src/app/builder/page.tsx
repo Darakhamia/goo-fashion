@@ -241,12 +241,17 @@ export default function BuilderPage() {
     for (const { id } of SLOTS) {
       const pid = params.get(id);
       if (pid) {
-        const p = products.find(x => x.id === pid);
+        // Direct match first; fall back to searching variant swatches (handles
+        // products that were regrouped after the look was saved).
+        const p = products.find(x => x.id === pid)
+          ?? products.find(x => x.variants?.some(v => v.id === pid));
         if (p) {
           restored[id] = p;
           found = true;
           const vid = params.get(`${id}_variant`);
+          // If the original pid was a swatch, treat it as the variant selection
           if (vid) restoredVariants[id] = vid;
+          else if (p.id !== pid) restoredVariants[id] = pid;
         }
       }
     }
