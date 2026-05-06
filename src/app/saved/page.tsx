@@ -136,14 +136,16 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 );
 
                 // Upper row (big) + lower row (small)
-                const upperPct = lower.length >= 4 ? "57%" : "55%";
-                const lowerPad = lower.length >= 4 ? "p-1" : "p-1.5";
+                // Give more height to lower row when it's densely packed
+                const upperPct = lower.length >= 4 ? "50%" : lower.length >= 3 ? "54%" : "58%";
+                const lowerPad = lower.length >= 4 ? "p-0.5" : lower.length >= 3 ? "p-1" : "p-1.5";
+                const upperPad = lower.length >= 4 ? "p-1.5" : "p-2";
                 return (
                   <>
                     <div className="flex gap-px bg-gray-200" style={{ flex: `0 0 ${upperPct}` }}>
-                      {upper.map(p => cell(p, "p-2"))}
+                      {upper.map(p => cell(p, upperPad))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "1 1 0" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "1 1 0", minHeight: 0 }}>
                       {lower.map(p => cell(p, lowerPad))}
                     </div>
                   </>
