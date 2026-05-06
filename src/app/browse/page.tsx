@@ -727,10 +727,7 @@ export default function BrowsePage() {
 
               {/* Sort */}
               <div className="relative flex items-center gap-2" ref={sortRef}>
-                <span className="hidden sm:block text-[9px] tracking-[0.14em] uppercase font-semibold text-[var(--foreground-muted)]">
-                  Sort by:
-                </span>
-                <button
+<button
                   onClick={() => setSortOpen((o) => !o)}
                   className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)] hover:text-[var(--foreground-muted)] transition-colors duration-200 cursor-pointer"
                 >
