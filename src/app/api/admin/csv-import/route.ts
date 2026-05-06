@@ -100,24 +100,31 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const name = resolve(row, "name", "product_name", "title", "product", "название", "наименование");
   if (!name) issues.push("missing name");
 
-  const brand = resolve(row, "brand", "brand_name", "manufacturer", "бренд", "марка");
-  if (!brand) issues.push("missing brand");
+  const brand = resolve(row, "brand", "brand_name", "merchant_name", "manufacturer", "бренд", "марка");
 
-  const priceRaw = resolve(row, "price", "цена", "стоимость");
+  // Awin feed uses search_price / store_price; generic feeds use price
+  const priceRaw = resolve(row, "search_price", "store_price", "display_price", "base_price", "price", "цена", "стоимость");
   const price = priceRaw ? parseFloat(priceRaw.replace(/[^\d.,]/g, "").replace(",", ".")) : 0;
   if (!price) issues.push("missing price");
 
-  const currency = resolve(row, "currency", "валюта") || "EUR";
+  const currency = resolve(row, "currency", "валюта") || "GBP";
 
-  const imageUrl = resolve(row, "image_url", "image", "photo", "img", "picture", "фото", "изображение");
+  // Awin feed: merchant_image_url, aw_image_url, large_image; generic: image_url / image / photo
+  const imageUrl = resolve(row,
+    "large_image", "merchant_image_url", "aw_image_url", "merchant_thumb_url", "aw_thumb_url",
+    "image_url", "image", "photo", "img", "picture", "фото", "изображение",
+  );
 
+  // Awin feed: aw_deep_link (affiliate link), merchant_deep_link (direct)
   const referralUrl = resolve(
     row,
+    "aw_deep_link", "merchant_deep_link",
     "referral_url", "affiliate_url", "affiliate_link", "referral_link",
     "url", "link", "product_url", "ссылка", "реферальная_ссылка",
   );
 
-  const categoryRaw = resolve(row, "category", "категория");
+  // Awin feed: category_name, merchant_category
+  const categoryRaw = resolve(row, "category_name", "merchant_category", "merchant_product_category_path", "category", "product_type", "категория");
   const category: Category = categoryRaw
     ? (inferCategory(categoryRaw) || inferCategory(name))
     : inferCategory(name);
