@@ -54,16 +54,22 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
     }
   };
 
-  const pieces = SLOT_ORDER
-    .map((slot) => {
-      const piece = look.pieces.find((p) => p.slot === slot);
-      if (!piece) return null;
+  // Priority order for display layout
+  const SLOT_PRIORITY: Record<string, number> = {
+    outerwear: 0, top: 1, bottom: 2, shoes: 3, accessories: 4, accessories2: 5,
+  };
+
+  const pieces = [...look.pieces]
+    .sort((a, b) => (SLOT_PRIORITY[a.slot] ?? 99) - (SLOT_PRIORITY[b.slot] ?? 99))
+    .map((piece) => {
       const product = staticProducts.find((p) => p.id === piece.productId);
-      const imageUrl = piece.imageUrl ?? product?.imageUrl ?? null;
-      const name = piece.name ?? product?.name ?? slot;
-      return { slot, imageUrl, name, productId: piece.productId };
-    })
-    .filter(Boolean) as { slot: string; imageUrl: string | null; name: string; productId: string }[];
+      return {
+        slot: piece.slot,
+        imageUrl: piece.imageUrl ?? product?.imageUrl ?? null,
+        name: piece.name ?? product?.name ?? piece.slot,
+        productId: piece.productId,
+      };
+    });
 
   const builderUrl =
     "/builder?editId=" + look.id + "&" +
@@ -121,35 +127,38 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
                 );
 
-                const upper = pieces.filter(p => p.slot === "outerwear" || p.slot === "top");
-                const lower = pieces.filter(p => p.slot !== "outerwear" && p.slot !== "top");
+                const UPPER_SLOTS = new Set(["outerwear", "top"]);
+                const upper = pieces.filter(p => UPPER_SLOTS.has(p.slot));
+                const lower = pieces.filter(p => !UPPER_SLOTS.has(p.slot));
 
-                // Only upper-body items
-                if (lower.length === 0) return (
+                // Safety: if slot-aware split leaves upper empty but we have items,
+                // treat first 1-2 items as upper and the rest as lower
+                const displayUpper = upper.length > 0 ? upper : pieces.slice(0, Math.min(2, pieces.length));
+                const displayLower = upper.length > 0 ? lower : pieces.slice(displayUpper.length);
+
+                // Single row (all upper or all lower)
+                if (displayLower.length === 0) return (
                   <div className="flex-1 flex gap-px bg-gray-200">
-                    {upper.map(p => cell(p, "p-2"))}
+                    {displayUpper.map(p => cell(p, "p-2"))}
+                  </div>
+                );
+                if (displayUpper.length === 0) return (
+                  <div className="flex-1 flex gap-px bg-gray-200">
+                    {displayLower.map(p => cell(p, displayLower.length >= 4 ? "p-1" : "p-1.5"))}
                   </div>
                 );
 
-                // Only lower-body items
-                if (upper.length === 0) return (
-                  <div className="flex-1 flex gap-px bg-gray-200">
-                    {lower.map(p => cell(p, lower.length >= 4 ? "p-1" : "p-1.5"))}
-                  </div>
-                );
-
-                // Upper row (big) + lower row (small)
-                // Give more height to lower row when it's densely packed
-                const upperPct = lower.length >= 4 ? "50%" : lower.length >= 3 ? "54%" : "58%";
-                const lowerPad = lower.length >= 4 ? "p-0.5" : lower.length >= 3 ? "p-1" : "p-1.5";
-                const upperPad = lower.length >= 4 ? "p-1.5" : "p-2";
+                // Two-row layout: upper (big) + lower (small)
+                const upperPct = displayLower.length >= 4 ? "50%" : displayLower.length >= 3 ? "54%" : "58%";
+                const lowerPad = displayLower.length >= 4 ? "p-0.5" : displayLower.length >= 3 ? "p-1" : "p-1.5";
+                const upperPad = displayLower.length >= 4 ? "p-1.5" : "p-2";
                 return (
                   <>
                     <div className="flex gap-px bg-gray-200" style={{ flex: `0 0 ${upperPct}` }}>
-                      {upper.map(p => cell(p, upperPad))}
+                      {displayUpper.map(p => cell(p, upperPad))}
                     </div>
                     <div className="flex gap-px bg-gray-200" style={{ flex: "1 1 0", minHeight: 0 }}>
-                      {lower.map(p => cell(p, lowerPad))}
+                      {displayLower.map(p => cell(p, lowerPad))}
                     </div>
                   </>
                 );
