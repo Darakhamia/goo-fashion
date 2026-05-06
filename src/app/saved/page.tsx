@@ -109,12 +109,15 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={piece.imageUrl} alt={piece?.name ?? ""} className={`w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-mono text-[8px] uppercase text-[var(--foreground-subtle)]">{piece?.slot?.[0] ?? ""}</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-[var(--surface)]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="opacity-20 shrink-0">
+                      <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                    </svg>
+                    <span className="font-mono text-[7px] uppercase text-[var(--foreground-subtle)] opacity-50 leading-none">{piece?.name?.split(" ")[0] ?? piece?.slot ?? ""}</span>
                   </div>
                 );
                 const cell = (piece: typeof pieces[0], pad?: string) => (
-                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
+                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-[var(--surface)]">{img(piece, pad)}</div>
                 );
 
                 const upper = pieces.filter(p => p.slot === "outerwear" || p.slot === "top");
