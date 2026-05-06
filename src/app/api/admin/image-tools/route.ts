@@ -30,14 +30,31 @@ async function uploadToStorage(buffer: Buffer, ext: string, contentType: string)
   return data.publicUrl;
 }
 
-// ── Download any URL to a Buffer ─────────────────────────────────────────────
+// ── Download image with browser-like headers (bypasses CDN hotlink protection) ─
 
-async function fetchBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+async function fetchImageBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+  let referer = "https://www.google.com/";
+  try {
+    const { origin, hostname } = new URL(url);
+    if (hostname.includes("farfetch")) referer = "https://www.farfetch.com/";
+    else if (hostname.includes("ssense")) referer = "https://www.ssense.com/";
+    else if (hostname.includes("mytheresa")) referer = "https://www.mytheresa.com/";
+    else referer = origin + "/";
+  } catch {}
+
   const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; GOO-Fashion-Bot/1.0)" },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Referer": referer,
+      "Sec-Fetch-Dest": "image",
+      "Sec-Fetch-Mode": "no-cors",
+      "Sec-Fetch-Site": "cross-site",
+    },
     signal: AbortSignal.timeout(30_000),
   });
-  if (!res.ok) throw new Error(`Failed to fetch image: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = res.headers.get("content-type") ?? "image/jpeg";
   const buffer = Buffer.from(await res.arrayBuffer());
   return { buffer, contentType };
@@ -45,26 +62,29 @@ async function fetchBuffer(url: string): Promise<{ buffer: Buffer; contentType: 
 
 // ── Replicate: remove background ─────────────────────────────────────────────
 
-async function removeBackground(imageUrl: string): Promise<string> {
+async function removeBackground(buffer: Buffer, contentType: string): Promise<string> {
   const apiToken = process.env.REPLICATE_API_TOKEN?.trim();
   if (!apiToken) throw new Error("REPLICATE_API_TOKEN is not set");
 
   const replicate = new Replicate({ auth: apiToken });
 
-  // lucataco/remove-bg is a well-maintained background removal model
-  const output = await replicate.run("lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285d65c14d73e5bd9fb6666ca6d", {
-    input: { image: imageUrl },
+  // Pass as base64 data URI — avoids Replicate also hitting CDN 403
+  const base64 = buffer.toString("base64");
+  const dataUri = `data:${contentType};base64,${base64}`;
+
+  // 851-labs/background-remover is a deployment-style model (no version hash needed)
+  const output = await replicate.run("851-labs/background-remover", {
+    input: { image: dataUri },
   });
 
-  // output is a URL string or ReadableStream depending on SDK version
   if (typeof output === "string") return output;
   if (output instanceof URL) return output.href;
-
-  // Some SDK versions wrap as ReadableStream — convert to blob URL via buffer
   if (output && typeof (output as { url?: () => Promise<URL> }).url === "function") {
     const url = await (output as { url: () => Promise<URL> }).url();
     return url.href;
   }
+  const str = String(output);
+  if (str.startsWith("http")) return str;
 
   throw new Error(`Unexpected Replicate output type: ${typeof output}`);
 }
@@ -81,57 +101,57 @@ export async function POST(req: Request) {
 
   const steps: { step: string; status: "ok" | "error"; detail?: string }[] = [];
 
+  // Step 1 — Download original image
+  let imageBuffer: Buffer;
+  let imageContentType: string;
   try {
-    // Step 1 — Download original
+    const result = await fetchImageBuffer(imageUrl);
+    imageBuffer = result.buffer;
+    imageContentType = result.contentType;
     steps.push({ step: "download_original", status: "ok" });
-    let mirroredUrl: string | null = null;
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { buffer, contentType } = await fetchBuffer(imageUrl);
-        const ext = contentType.includes("png") ? "png" : "jpg";
-        mirroredUrl = await uploadToStorage(buffer, ext, contentType);
-        steps.push({ step: "mirror_to_storage", status: "ok", detail: mirroredUrl });
-      } catch (err) {
-        steps.push({ step: "mirror_to_storage", status: "error", detail: String(err) });
-      }
-    }
-
-    // Step 2 — Remove background via Replicate
-    // Pass our mirrored URL if available (guaranteed public), else original
-    const sourceForReplicate = mirroredUrl ?? imageUrl;
-    let removedBgReplicateUrl: string;
-    try {
-      removedBgReplicateUrl = await removeBackground(sourceForReplicate);
-      steps.push({ step: "remove_background", status: "ok", detail: removedBgReplicateUrl });
-    } catch (err) {
-      steps.push({ step: "remove_background", status: "error", detail: String(err) });
-      return NextResponse.json({ steps, mirroredUrl, removedUrl: null }, { status: 422 });
-    }
-
-    // Step 3 — Download Replicate output PNG and upload to our storage
-    let finalUrl: string = removedBgReplicateUrl;
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { buffer } = await fetchBuffer(removedBgReplicateUrl);
-        finalUrl = await uploadToStorage(buffer, "png", "image/png");
-        steps.push({ step: "upload_result", status: "ok", detail: finalUrl });
-      } catch (err) {
-        steps.push({ step: "upload_result", status: "error", detail: String(err) });
-        // Use Replicate CDN URL as fallback
-      }
-    }
-
-    return NextResponse.json({
-      steps,
-      originalUrl: imageUrl,
-      mirroredUrl,
-      removedUrl: finalUrl,
-    });
   } catch (err) {
-    return NextResponse.json(
-      { steps, error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+    steps.push({ step: "download_original", status: "error", detail: String(err) });
+    return NextResponse.json({ steps, error: String(err) }, { status: 422 });
   }
+
+  // Step 2 — Mirror original to Supabase Storage
+  let mirroredUrl: string | null = null;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const ext = imageContentType.includes("png") ? "png" : "jpg";
+      mirroredUrl = await uploadToStorage(imageBuffer, ext, imageContentType);
+      steps.push({ step: "mirror_to_storage", status: "ok", detail: mirroredUrl });
+    } catch (err) {
+      steps.push({ step: "mirror_to_storage", status: "error", detail: String(err) });
+    }
+  }
+
+  // Step 3 — Remove background via Replicate (buffer → base64)
+  let removedBgUrl: string;
+  try {
+    removedBgUrl = await removeBackground(imageBuffer, imageContentType);
+    steps.push({ step: "remove_background", status: "ok", detail: removedBgUrl });
+  } catch (err) {
+    steps.push({ step: "remove_background", status: "error", detail: String(err) });
+    return NextResponse.json({ steps, mirroredUrl, removedUrl: null }, { status: 422 });
+  }
+
+  // Step 4 — Download Replicate PNG and upload to our storage
+  let finalUrl: string = removedBgUrl;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { buffer } = await fetchImageBuffer(removedBgUrl);
+      finalUrl = await uploadToStorage(buffer, "png", "image/png");
+      steps.push({ step: "upload_result", status: "ok", detail: finalUrl });
+    } catch (err) {
+      steps.push({ step: "upload_result", status: "error", detail: String(err) });
+    }
+  }
+
+  return NextResponse.json({
+    steps,
+    originalUrl: imageUrl,
+    mirroredUrl,
+    removedUrl: finalUrl,
+  });
 }
