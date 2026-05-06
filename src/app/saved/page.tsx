@@ -118,21 +118,21 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
                 );
 
-                if (n === 1) return <div className="flex-1 overflow-hidden bg-white">{img(pieces[0])}</div>;
+                if (n === 1) return <div className="flex-1 overflow-hidden bg-white">{img(pieces[0], "p-2")}</div>;
 
                 if (n === 2) return (
                   <div className="flex-1 flex gap-px bg-gray-200">
-                    {pieces.slice(0, 2).map(p => cell(p))}
+                    {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
                   </div>
                 );
 
                 if (n === 3) return (
                   <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 58%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
                     </div>
-                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 40%" }}>
-                      {img(pieces[2], "p-2")}
+                    <div className="overflow-hidden bg-white" style={{ flex: "0 0 42%" }}>
+                      {img(pieces[2], "p-1.5")}
                     </div>
                   </>
                 );
@@ -140,35 +140,35 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                 if (n === 4) return (
                   <>
                     <div className="flex gap-px flex-1 bg-gray-200">
-                      {pieces.slice(0, 2).map(p => cell(p))}
+                      {pieces.slice(0, 2).map(p => cell(p, "p-2"))}
                     </div>
                     <div className="flex gap-px flex-1 bg-gray-200">
-                      {pieces.slice(2, 4).map(p => cell(p))}
+                      {pieces.slice(2, 4).map(p => cell(p, "p-2"))}
                     </div>
                   </>
                 );
 
                 if (n === 5) return (
                   <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 55%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p, "p-1.5"))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
-                      {pieces.slice(2, 5).map(p => cell(p, "p-2"))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 45%" }}>
+                      {pieces.slice(2, 5).map(p => cell(p, "p-1"))}
                     </div>
                   </>
                 );
 
                 if (n === 6) return (
                   <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
-                      {pieces.slice(0, 2).map(p => cell(p))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 36%" }}>
+                      {pieces.slice(0, 2).map(p => cell(p, "p-1.5"))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
-                      {pieces.slice(2, 4).map(p => cell(p))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 34%" }}>
+                      {pieces.slice(2, 4).map(p => cell(p, "p-1.5"))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 27%" }}>
-                      {pieces.slice(4, 6).map(p => cell(p, "p-2"))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 30%" }}>
+                      {pieces.slice(4, 6).map(p => cell(p, "p-1"))}
                     </div>
                   </>
                 );
