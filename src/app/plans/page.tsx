@@ -162,7 +162,7 @@ export default function PlansPage() {
           <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-4">
             Pricing
           </p>
-          <h1 className="font-display text-5xl md:text-6xl font-light text-[var(--foreground)] leading-[1.05] mb-5">
+          <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] leading-[1.05] mb-5">
             Choose your plan
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
@@ -202,7 +202,7 @@ export default function PlansPage() {
               {/* Price */}
               <div className="mb-8 pb-8 border-b border-current/10">
                 <div className="flex items-end gap-1.5">
-                  <span className={`font-display text-6xl font-light leading-none ${
+                  <span className={`text-6xl font-black leading-none ${
                     plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
                   }`}>
                     ${plan.price}
@@ -252,7 +252,7 @@ export default function PlansPage() {
             <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
               Compare
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)]">
+            <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)]">
               What&apos;s included
             </h2>
           </div>
@@ -334,7 +334,7 @@ export default function PlansPage() {
             <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-3">
               Questions
             </p>
-            <h2 className="font-display text-3xl md:text-4xl font-light text-[var(--foreground)]">
+            <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)]">
               Good to know
             </h2>
           </div>
@@ -348,7 +348,7 @@ export default function PlansPage() {
 
         {/* ── Bottom CTA ── */}
         <div className="mb-20 text-center">
-          <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-3">
+          <p className="text-2xl md:text-3xl font-bold text-[var(--foreground)] mb-3">
             Not sure which plan?
           </p>
           <p className="text-sm text-[var(--foreground-muted)] mb-8">

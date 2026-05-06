@@ -34,7 +34,7 @@ export default function Footer() {
             <div>
               <Link
                 href="/"
-                className="font-display text-2xl font-light tracking-[0.2em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
+                className="text-2xl font-black tracking-[0.2em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
               >
                 GOO
               </Link>
@@ -85,7 +85,7 @@ export default function Footer() {
             <div className="col-span-2">
               <Link
                 href="/"
-                className="font-display text-3xl font-light tracking-[0.2em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
+                className="text-3xl font-black tracking-[0.2em] text-[var(--foreground)] hover:opacity-70 transition-opacity duration-200"
               >
                 GOO
               </Link>

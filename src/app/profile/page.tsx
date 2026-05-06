@@ -197,7 +197,7 @@ export default function ProfilePage() {
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
               Profile
             </p>
-            <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)]">
+            <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)]">
               {user?.name ?? "Your profile."}
             </h1>
           </div>

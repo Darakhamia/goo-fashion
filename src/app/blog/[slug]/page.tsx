@@ -104,7 +104,7 @@ export default async function BlogPostPage({ params }: Props) {
         </div>
 
         {/* Title */}
-        <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)] leading-tight tracking-tight mb-6">
+        <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-tight tracking-tight mb-6">
           {post.title}
         </h1>
 
@@ -181,7 +181,7 @@ export default async function BlogPostPage({ params }: Props) {
                       {p.readTime} read
                     </span>
                   </div>
-                  <h3 className="font-display text-lg font-light text-[var(--foreground)] leading-snug group-hover:opacity-70 transition-opacity duration-200">
+                  <h3 className="text-lg font-medium text-[var(--foreground)] leading-snug group-hover:opacity-70 transition-opacity duration-200">
                     {p.title}
                   </h3>
                 </div>
