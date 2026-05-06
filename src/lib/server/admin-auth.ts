@@ -12,16 +12,20 @@ import { auth } from "@clerk/nextjs/server";
  *   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
  */
 export async function requireAdmin(): Promise<{ userId: string } | null> {
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId) return null;
 
+  // 1. Check env var allow-list (always valid)
   const raw = process.env.ADMIN_USER_IDS ?? "";
   const adminIds = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (adminIds.includes(userId)) return { userId };
 
-  if (adminIds.length === 0) return null;
-  if (!adminIds.includes(userId)) return null;
+  // 2. Check isAdmin flag from Clerk publicMetadata embedded in JWT claims
+  //    (set by super admin via the Users panel — no extra API call needed)
+  const meta = (sessionClaims?.metadata ?? sessionClaims?.publicMetadata) as { isAdmin?: boolean } | undefined;
+  if (meta?.isAdmin === true) return { userId };
 
-  return { userId };
+  return null;
 }
 
 /** Returns the super admin's Clerk user ID from SUPER_ADMIN_USER_ID env var. */

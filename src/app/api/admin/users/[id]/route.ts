@@ -104,6 +104,14 @@ export async function PATCH(
       });
     }
 
+    // Only super admin can grant or revoke admin access
+    if ("isAdmin" in body && !isSuperAdminId(admin.userId)) {
+      return NextResponse.json(
+        { error: "Only super admin can grant or revoke admin access." },
+        { status: 403 }
+      );
+    }
+
     // publicMetadata fields (plan, isAdmin) → updateUserMetadata (merge with existing)
     if ("plan" in body || "isAdmin" in body) {
       const current = await cc.users.getUser(id);
