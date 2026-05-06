@@ -88,10 +88,10 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
   return (
     <>
       <div className="bg-[var(--background)] flex flex-col h-full">
-        {/* Main image — AI render or product grid */}
-        <button onClick={() => setOpen(true)} className="block w-full text-left relative group overflow-hidden">
+        {/* Main image — fills all space above the footer */}
+        <button onClick={() => setOpen(true)} className="block w-full text-left relative group overflow-hidden flex-1 min-h-0">
           {look.generatedImage ? (
-            <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+            <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={look.generatedImage}
@@ -104,7 +104,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             </div>
           ) : pieces.length > 0 ? (
             /* Collage grid based on piece count */
-            <div className="aspect-[3/4] flex flex-col gap-px bg-gray-200">
+            <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
               {(() => {
                 const n = pieces.length;
                 const img = (piece: typeof pieces[0], pad = "p-3") => piece?.imageUrl ? (
@@ -178,7 +178,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
             </div>
           ) : (
             /* No pieces yet */
-            <div className="aspect-[3/4] bg-[var(--surface)] flex flex-col items-center justify-center gap-2">
+            <div className="absolute inset-0 bg-[var(--surface)] flex flex-col items-center justify-center gap-2">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="opacity-20">
                 <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -189,7 +189,7 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
         </button>
 
         {/* Footer */}
-        <div className="px-3 pt-2.5 pb-3 border-t border-[var(--border)] mt-auto">
+        <div className="shrink-0 px-3 pt-2.5 pb-3 border-t border-[var(--border)]">
           <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
@@ -625,7 +625,7 @@ export default function SavedPage() {
           myLooks.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {myLooks.map((look) => (
-                <div key={look.id} className="border-r border-b border-[var(--border)] flex flex-col">
+                <div key={look.id} className="border-r border-b border-[var(--border)] flex flex-col aspect-[3/5]">
                   <LookCard look={look} onDelete={() => deleteLook(look.id)} />
                 </div>
               ))}
