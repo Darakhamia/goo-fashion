@@ -124,6 +124,17 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/admin/brightdata",
+    label: "BrightData Import",
+    category: "imports",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 13V10L8 4L14 10V13H10V9.5H6V13H2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+        <circle cx="8" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/stockx",
     label: "StockX Import",
     category: "imports",
@@ -214,6 +225,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Users",
   "/admin/brands": "Brands",
   "/admin/email": "Email",
+  "/admin/brightdata": "BrightData Import",
   "/admin/stockx": "StockX Import",
   "/admin/farfetch": "Farfetch Import",
   "/admin/import": "URL Import",
