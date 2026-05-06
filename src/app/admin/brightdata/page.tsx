@@ -48,12 +48,11 @@ export default function CSVImportPage() {
     setParsing(true);
     try {
       const text = await file.text();
-      const formData = new FormData();
-      formData.append("csv", new Blob([text], { type: "text/csv" }), file.name);
 
       const res = await fetch("/api/admin/csv-import", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: text,
       });
       const data = await res.json();
       if (!res.ok) { setParseError(data.error ?? "Parse failed"); return; }
