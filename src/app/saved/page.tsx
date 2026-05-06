@@ -110,8 +110,11 @@ function LookCard({ look, onDelete }: { look: SavedLook; onDelete: () => void })
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={piece.imageUrl} alt={piece?.name ?? ""} className={`w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="font-mono text-[8px] uppercase text-[var(--foreground-subtle)]">{piece?.slot?.[0] ?? ""}</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-[#f0f0f0]">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="opacity-30 shrink-0">
+                      <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                      <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
                   </div>
                 );
                 const cell = (piece: typeof pieces[0], pad?: string) => (
