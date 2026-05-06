@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useAuth } from "@/lib/context/auth-context";
 
 const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const PAGE_SIZE = 25;
@@ -80,8 +79,14 @@ const filterBtnCls = (active: boolean) =>
   }`;
 
 export default function AdminUsersPage() {
-  const { user: currentUser } = useAuth();
-  const currentIsSuperAdmin = !!SUPER_ADMIN_ID && currentUser?.id === SUPER_ADMIN_ID;
+  const [currentIsSuperAdmin, setCurrentIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (d.isSuperAdmin) setCurrentIsSuperAdmin(true); })
+      .catch(() => {});
+  }, []);
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
