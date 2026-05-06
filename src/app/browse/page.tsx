@@ -602,7 +602,7 @@ export default function BrowsePage() {
       <div className="max-w-[1440px] mx-auto">
         {/* ── Page header ── */}
         <div className="px-6 md:px-12 pt-12 md:pt-16">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-bold text-[var(--foreground-subtle)] mb-4">
             Browse
           </p>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
@@ -610,7 +610,7 @@ export default function BrowsePage() {
               <h1 className="font-display text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
                 The Edit
               </h1>
-              <p className="mt-3 text-sm text-[var(--foreground-muted)] max-w-xs leading-relaxed">
+              <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
                 Curated pieces from the world's most forward-thinking brands.
               </p>
             </div>
@@ -674,7 +674,7 @@ export default function BrowsePage() {
                     window.history.replaceState({}, "", url.toString());
                   }
                 }}
-                className={`px-6 py-3.5 text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 border-b-2 -mb-px ${
+                className={`px-6 py-3.5 text-xs tracking-[0.14em] uppercase font-bold transition-colors duration-200 border-b-2 -mb-px ${
                   view === v
                     ? "border-[var(--foreground)] text-[var(--foreground)]"
                     : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -696,7 +696,7 @@ export default function BrowsePage() {
                 {/* Filter toggle */}
                 <button
                   onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
-                  className="flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase font-medium border border-[var(--foreground-muted)] text-[var(--foreground)] rounded-full px-4 py-2 hover:bg-[var(--fg-overlay-05)] transition-all duration-200"
+                  className="flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] text-[var(--foreground)] rounded-full px-4 py-2 hover:bg-[var(--fg-overlay-05)] transition-all duration-200"
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
                     <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -712,7 +712,7 @@ export default function BrowsePage() {
                 {/* Trending toggle */}
                 <button
                   onClick={() => { setFiltersOpen(false); setStylistOpen(true); }}
-                  className={`flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase font-medium border rounded-full px-4 py-2 transition-all duration-200 ${
+                  className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
                     stylistOpen
                       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                       : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -727,12 +727,12 @@ export default function BrowsePage() {
 
               {/* Sort */}
               <div className="relative flex items-center gap-2" ref={sortRef}>
-                <span className="hidden sm:block text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                <span className="hidden sm:block text-[9px] tracking-[0.14em] uppercase font-semibold text-[var(--foreground-muted)]">
                   Sort by:
                 </span>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
-                  className="flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 cursor-pointer"
+                  className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)] hover:text-[var(--foreground-muted)] transition-colors duration-200 cursor-pointer"
                 >
                   {sort === "featured" && "Featured"}
                   {sort === "price-asc" && "Price ↑"}
