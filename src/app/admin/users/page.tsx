@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useAuth } from "@/lib/context/auth-context";
 
 const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const PAGE_SIZE = 25;
@@ -79,6 +80,9 @@ const filterBtnCls = (active: boolean) =>
   }`;
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
+  const currentIsSuperAdmin = !!SUPER_ADMIN_ID && currentUser?.id === SUPER_ADMIN_ID;
+
   const [users, setUsers] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -522,6 +526,7 @@ export default function AdminUsersPage() {
       {selectedId && (
         <UserDrawer
           userId={selectedId}
+          currentIsSuperAdmin={currentIsSuperAdmin}
           onClose={() => setSelectedId(null)}
           onUpdated={handleUpdated}
           onDeleted={(id) => {
@@ -536,11 +541,13 @@ export default function AdminUsersPage() {
 
 function UserDrawer({
   userId,
+  currentIsSuperAdmin,
   onClose,
   onUpdated,
   onDeleted,
 }: {
   userId: string;
+  currentIsSuperAdmin: boolean;
   onClose: () => void;
   onUpdated: (u: UserRow) => void;
   onDeleted: (id: string) => void;
@@ -600,7 +607,7 @@ function UserDrawer({
       firstName !== (detail.firstName ?? "") ||
       lastName  !== (detail.lastName ?? "")  ||
       plan      !== detail.plan              ||
-      isAdmin   !== detail.isAdmin           ||
+      (currentIsSuperAdmin && isAdmin !== detail.isAdmin) ||
       banned    !== detail.banned
     );
 
@@ -612,8 +619,8 @@ function UserDrawer({
       const patch: Record<string, unknown> = {};
       if (firstName !== (detail.firstName ?? "")) patch.firstName = firstName;
       if (lastName  !== (detail.lastName ?? ""))  patch.lastName  = lastName;
-      if (plan      !== detail.plan)              patch.plan      = plan;
-      if (isAdmin   !== detail.isAdmin)           patch.isAdmin   = isAdmin;
+      if (plan      !== detail.plan)                             patch.plan    = plan;
+      if (currentIsSuperAdmin && isAdmin !== detail.isAdmin)  patch.isAdmin = isAdmin;
       if (banned    !== detail.banned)            patch.banned    = banned;
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
@@ -810,7 +817,23 @@ function UserDrawer({
             <div>
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Access</p>
               <div className="space-y-2">
-                <ToggleRow label="Admin"  description="Grants access to /admin surfaces." checked={isAdmin} onChange={setIsAdmin} />
+                {currentIsSuperAdmin && (
+                  <ToggleRow
+                    label="Admin"
+                    description="Grants access to /admin. Only super admin can change this."
+                    checked={isAdmin}
+                    onChange={setIsAdmin}
+                  />
+                )}
+                {!currentIsSuperAdmin && detail?.isAdmin && (
+                  <div className="px-3 py-2.5 border border-[var(--border)] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-[var(--foreground)]">Admin</p>
+                      <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
+                    </div>
+                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-500/10 px-2 py-1">Enabled</span>
+                  </div>
+                )}
                 <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
               </div>
             </div>
