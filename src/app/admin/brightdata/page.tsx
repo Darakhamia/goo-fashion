@@ -16,8 +16,10 @@ export interface CSVMappedRow {
   category: Category;
   gender?: "men" | "women" | "unisex";
   price: number;
+  priceOriginal: number;
   currency: string;
   imageUrl: string;
+  images: string[];
   referralUrl: string;
   colors: string[];
   material: string;
@@ -416,10 +418,17 @@ export default function CSVImportPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        {row.imageUrl
-                          // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={row.imageUrl} alt="" className="w-10 h-14 object-cover bg-[var(--surface)]" />
-                          : <div className="w-10 h-14 bg-[var(--surface)]" />}
+                        <div className="relative">
+                          {row.imageUrl
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={row.imageUrl} alt="" className="w-10 h-14 object-cover bg-[var(--surface)]" />
+                            : <div className="w-10 h-14 bg-[var(--surface)]" />}
+                          {row.images && row.images.length > 1 && (
+                            <span className="absolute bottom-0 right-0 text-[8px] bg-[var(--foreground)] text-[var(--background)] px-0.5 leading-tight">
+                              +{row.images.length - 1}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 max-w-[220px]">
                         <p className="text-[var(--foreground)] leading-snug line-clamp-2">{row.name || "—"}</p>

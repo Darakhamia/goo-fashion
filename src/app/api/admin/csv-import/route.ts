@@ -117,32 +117,67 @@ function resolve(row: Record<string, string>, ...candidates: string[]): string {
   return "";
 }
 
+// ── Strip trailing size/color suffix from product name ────────────────────────
+// Awin names often end with " - Color - Size" e.g. "Cap - Beige - One"
+
+const SIZE_SUFFIXES = /\s+-\s+(one\s*size|one|os|xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{1,3}(?:\.\d)?)$/i;
+
+function cleanName(raw: string): string {
+  return raw.replace(SIZE_SUFFIXES, "").trim();
+}
+
+// ── Collect all non-empty image URLs preserving quality order ─────────────────
+
+function collectImages(row: Record<string, string>): string[] {
+  // Priority: Original/Full merchant images first, then AWIN proxy (resized), then thumbs
+  const candidates = [
+    resolve(row, "alternate_image"),        // /Images/Models/Original/ — best quality
+    resolve(row, "merchant_image_url"),     // /Images/Models/Full/ — full size
+    resolve(row, "alternate_image_three"),  // additional angle
+    resolve(row, "alternate_image_four"),   // additional angle
+    resolve(row, "aw_image_url"),           // AWIN proxy 200×200 — reliable fallback
+    resolve(row, "large_image"),            // often empty in Awin feeds
+    resolve(row, "alternate_image_two"),    // usually a thumbnail
+    resolve(row, "merchant_thumb_url"),
+    resolve(row, "aw_thumb_url"),
+  ];
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const url of candidates) {
+    if (url && !seen.has(url)) { seen.add(url); result.push(url); }
+  }
+  return result;
+}
+
 // ── Map one raw CSV row → CSVMappedRow ────────────────────────────────────────
 
 function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const issues: string[] = [];
 
-  const name = resolve(row, "product_name", "name", "title", "product", "название");
+  const rawName = resolve(row, "product_name", "name", "title", "product", "название");
+  const name = cleanName(rawName);
   if (!name) issues.push("missing name");
 
   const merchant = resolve(row, "merchant_name", "brand_name", "brand", "manufacturer");
   const brand = resolve(row, "brand_name", "brand", "merchant_name", "manufacturer");
 
-  // Price: search_price is the main Awin price field
+  // Price: search_price is the main Awin field, always filled
   const priceRaw = resolve(row, "search_price", "store_price", "display_price", "base_price", "price", "цена");
   const price = priceRaw ? parseFloat(priceRaw.replace(/[^\d.]/g, "")) : 0;
   if (!price) issues.push("missing price");
 
+  // RRP / original price for discount display
+  const rrpRaw = resolve(row, "rrp_price", "product_price_old", "base_price");
+  const priceOriginal = rrpRaw ? parseFloat(rrpRaw.replace(/[^\d.]/g, "")) : 0;
+
   const currency = resolve(row, "currency", "валюта") || "GBP";
 
-  // Images: prefer large_image, fallback chain
-  const imageUrl = resolve(row,
-    "large_image", "merchant_image_url", "aw_image_url",
-    "alternate_image", "merchant_thumb_url", "aw_thumb_url",
-    "image_url", "image", "photo",
-  );
+  // Images: collect all available URLs, best quality first
+  const allImages = collectImages(row);
+  const imageUrl = allImages[0] ?? "";
 
-  // Referral: aw_deep_link is the tracked affiliate link
+  // Referral: aw_deep_link is the tracked affiliate link (preferred over direct merchant link)
   const referralUrl = resolve(row,
     "aw_deep_link", "merchant_deep_link",
     "referral_url", "affiliate_url", "url", "link",
@@ -150,10 +185,11 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
 
   // In-stock check
   const inStockRaw = resolve(row, "in_stock", "stock_status", "is_for_sale");
-  const isOutOfStock = inStockRaw === "0" || inStockRaw.toLowerCase() === "sold out" || inStockRaw.toLowerCase() === "out of stock";
+  const isOutOfStock = inStockRaw === "0"
+    || /sold.?out|out.?of.?stock/i.test(inStockRaw);
   if (isOutOfStock) issues.push("out of stock");
 
-  // Category + gender: prefer Awin category_name (most reliable), fallback to product name
+  // Category + gender from Awin category_name (most accurate source)
   const categoryRaw = resolve(row, "category_name", "merchant_category", "merchant_product_category_path", "product_type", "category");
   let category: Category;
   let gender: Gender | undefined;
@@ -166,12 +202,14 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     category = inferCategoryFromName(name);
   }
 
-  // Color
   const colorRaw = resolve(row, "colour", "color", "цвет");
   const colors = colorRaw ? [colorRaw] : [];
 
-  const material = resolve(row, "material", "composition", "specifications", "fabric");
-  const description = resolve(row, "description", "product_short_description", "desc");
+  // Description: prefer long description, fall back to short
+  const description = resolve(row, "description", "product_short_description", "keywords", "desc");
+
+  // Material from specifications field (Awin often puts fabric content there)
+  const material = resolve(row, "specifications", "material", "composition", "fabric");
 
   return {
     name,
@@ -180,8 +218,10 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     category,
     gender,
     price,
+    priceOriginal,
     currency,
     imageUrl,
+    images: allImages,
     referralUrl,
     colors,
     material,
@@ -251,12 +291,12 @@ export async function PUT(req: Request) {
         category: row.category,
         description: row.description || "",
         imageUrl: row.imageUrl,
-        images: row.imageUrl ? [row.imageUrl] : [],
+        images: row.images?.length ? row.images : (row.imageUrl ? [row.imageUrl] : []),
         colors: row.colors,
         sizes: [],
         material: row.material,
         priceMin: row.price,
-        priceMax: row.price,
+        priceMax: row.priceOriginal && row.priceOriginal > row.price ? row.priceOriginal : row.price,
         currency: row.currency,
         isNew: true,
         isSaved: false,
