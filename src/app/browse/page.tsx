@@ -607,7 +607,7 @@ export default function BrowsePage() {
           </p>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
             <div>
-              <h1 className="font-display text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
+              <h1 className="text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
                 The Edit
               </h1>
               <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
@@ -695,8 +695,12 @@ export default function BrowsePage() {
               <div className="flex items-center gap-2">
                 {/* Filter toggle */}
                 <button
-                  onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
-                  className="flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] text-[var(--foreground)] rounded-full px-4 py-2 hover:bg-[var(--fg-overlay-05)] transition-all duration-200"
+                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                  className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
+                    filtersOpen
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                  }`}
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
                     <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -769,6 +773,108 @@ export default function BrowsePage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* ── Inline horizontal filter strip ── */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                filtersOpen ? "max-h-32 opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="overflow-x-auto border-b border-[var(--border)] py-3">
+                <div className="flex items-center gap-2 min-w-max px-1">
+                  {/* Gender */}
+                  {GENDERS.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setSelectedGender(selectedGender === g ? null : g)}
+                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
+                        selectedGender === g
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >{g}</button>
+                  ))}
+
+                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
+
+                  {/* Categories (pieces only) */}
+                  {view === "pieces" && CATEGORIES.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => toggleCategory(c)}
+                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
+                        selectedCategories.includes(c)
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >{c}</button>
+                  ))}
+
+                  {/* Occasions (outfits only) */}
+                  {view === "outfits" && OCCASIONS.map((o) => (
+                    <button
+                      key={o}
+                      onClick={() => toggleOccasion(o)}
+                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
+                        selectedOccasions.includes(o)
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >{o}</button>
+                  ))}
+
+                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
+
+                  {/* Price ranges */}
+                  {PRICE_RANGES.map((r, idx) => (
+                    <button
+                      key={r.label}
+                      onClick={() => setSelectedPriceIdx(selectedPriceIdx === idx ? null : idx)}
+                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
+                        selectedPriceIdx === idx
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >{r.label}</button>
+                  ))}
+
+                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
+
+                  {/* Colors */}
+                  {colorGroups.map((cg) => (
+                    <button
+                      key={cg.id}
+                      onClick={() => toggleColorGroup(cg.id)}
+                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
+                        selectedColorGroupIds.includes(cg.id)
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
+                        style={
+                          cg.hexCode === "#multicolor"
+                            ? { background: "conic-gradient(red,orange,yellow,green,blue,violet,red)" }
+                            : { backgroundColor: cg.hexCode }
+                        }
+                      />
+                      {cg.name}
+                    </button>
+                  ))}
+
+                  {activeFiltersCount > 0 && (
+                    <>
+                      <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
+                      <button
+                        onClick={clearAll}
+                        className="shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+                      >Clear all</button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -961,48 +1067,6 @@ export default function BrowsePage() {
         browseContext={browseContext}
       />
 
-      {/* ── Filter overlay panel (all screen sizes) ── */}
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300 ${
-          filtersOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={() => setFiltersOpen(false)}
-      />
-      {/* Slide-in panel from the left */}
-      <div
-        className={`fixed top-16 left-0 bottom-0 z-50 w-72 flex flex-col bg-[var(--background)] border-r border-[var(--border)] shadow-2xl transition-transform duration-300 ease-in-out ${
-          filtersOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Panel header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-          <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground)]">
-            Filters
-          </span>
-          <button
-            onClick={() => setFiltersOpen(false)}
-            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 -mr-1"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-        {/* Scrollable filter content */}
-        <div className="flex-1 overflow-y-auto px-6 pt-5 pb-4">
-          {renderFilters()}
-        </div>
-        {/* Footer CTA */}
-        <div className="px-6 py-4 border-t border-[var(--border)] shrink-0">
-          <button
-            onClick={() => setFiltersOpen(false)}
-            className="w-full text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] py-3.5 hover:opacity-80 transition-opacity duration-200"
-          >
-            View {count} result{count !== 1 ? "s" : ""}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
