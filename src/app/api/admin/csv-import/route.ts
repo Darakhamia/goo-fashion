@@ -6,42 +6,69 @@ import { productToDb } from "@/lib/data/db";
 import type { Product, Category, Gender } from "@/lib/types";
 import type { CSVMappedRow } from "@/app/admin/brightdata/page";
 
-// ── Category inference ────────────────────────────────────────────────────────
+// ── AWIN category_name → { category, gender } ────────────────────────────────
 
-function inferCategory(text: string): Category {
+function parseAwinkCategory(raw: string): { category: Category; gender?: Gender } {
+  const t = raw.toLowerCase();
+
+  let gender: Gender | undefined;
+  if (/^(women|girls|ladies|femme)/.test(t)) gender = "women";
+  else if (/^(men|boys|homme)/.test(t)) gender = "men";
+  else if (/unisex/.test(t)) gender = "unisex";
+
+  let category: Category = "accessories";
+  if (/trouser|pant(?!y)/.test(t)) category = "bottoms";
+  else if (/footwear|shoe|boot|trainer|sneaker|sandal|loafer/.test(t)) category = "footwear";
+  else if (/\bshirt\b/.test(t)) category = "shirts";
+  else if (/knitwear|knit|sweater|jumper|cardigan/.test(t)) category = "knitwear";
+  else if (/jacket|coat|outerwear|parka|anorak/.test(t)) category = "outerwear";
+  else if (/\bshort\b/.test(t)) category = "shorts";
+  else if (/skirt/.test(t)) category = "skirts";
+  else if (/dress/.test(t)) category = "dresses";
+  else if (/suit|blazer/.test(t)) category = "blazers";
+  else if (/t-shirt|top\b|blouse|polo/.test(t)) category = "tops";
+  else if (/jeans|denim/.test(t)) category = "jeans";
+  else if (/bag|backpack|luggage|handbag/.test(t)) category = "bags";
+  else if (/swim|bikini|beachwear/.test(t)) category = "swimwear";
+  else if (/jumpsuit|playsuit|overall/.test(t)) category = "jumpsuits";
+
+  return { category, gender };
+}
+
+// ── Fallback category from product name ────────────────────────────────────────
+
+function inferCategoryFromName(text: string): Category {
   const t = text.toLowerCase();
-  if (/jacket|coat|parka|anorak|windbreaker|bomber|trench|cape|куртка|пальто/.test(t)) return "outerwear";
-  if (/blazer|блейзер/.test(t)) return "blazers";
-  if (/sweater|knit|кардиган|джемпер|свитер|трикотаж/.test(t)) return "knitwear";
-  if (/hoodie|sweatshirt|pullover|top\b|blouse|polo|футболка|топ/.test(t)) return "tops";
-  if (/\bshirt\b|рубашка/.test(t)) return "shirts";
-  if (/\bjeans?\b|denim(?! jacket)|джинсы/.test(t)) return "jeans";
-  if (/trouser|pant|legging|jogger|брюки|штаны/.test(t)) return "bottoms";
-  if (/\bshort\b|шорты/.test(t)) return "shorts";
-  if (/skirt|юбка/.test(t)) return "skirts";
-  if (/dress|gown|платье/.test(t)) return "dresses";
-  if (/jumpsuit|overall|комбинезон/.test(t)) return "jumpsuits";
-  if (/swimwear|bikini|купальник/.test(t)) return "swimwear";
-  if (/sneaker|trainer|boot|shoe|sandal|loafer|pump|slipper|кроссовки|ботинки|туфли/.test(t)) return "footwear";
-  if (/bag|backpack|tote|clutch|сумка|рюкзак/.test(t)) return "bags";
+  if (/jacket|coat|parka|anorak|windbreaker|bomber|trench/.test(t)) return "outerwear";
+  if (/blazer/.test(t)) return "blazers";
+  if (/sweater|knit|cardigan|jumper/.test(t)) return "knitwear";
+  if (/hoodie|sweatshirt|pullover|\btop\b|blouse|polo/.test(t)) return "tops";
+  if (/\bshirt\b/.test(t)) return "shirts";
+  if (/\bjeans?\b|denim(?! jacket)/.test(t)) return "jeans";
+  if (/trouser|pant|legging|jogger/.test(t)) return "bottoms";
+  if (/\bshort\b/.test(t)) return "shorts";
+  if (/skirt/.test(t)) return "skirts";
+  if (/dress|gown/.test(t)) return "dresses";
+  if (/jumpsuit|overall/.test(t)) return "jumpsuits";
+  if (/swimwear|bikini/.test(t)) return "swimwear";
+  if (/sneaker|trainer|boot|shoe|sandal|loafer|pump/.test(t)) return "footwear";
+  if (/\bbag\b|backpack|tote|clutch/.test(t)) return "bags";
   return "accessories";
 }
 
-function inferGender(val: string): Gender | undefined {
-  const t = val.toLowerCase().trim();
-  if (/^(women|woman|female|femme|w|f|женщ|женский)/.test(t)) return "women";
-  if (/^(men|man|male|homme|m|мужч|мужской)/.test(t)) return "men";
-  if (/unisex/.test(t)) return "unisex";
-  return undefined;
-}
-
-// ── Simple CSV parser (handles quoted fields) ─────────────────────────────────
+// ── Simple CSV parser (handles quoted fields, pipe separator fallback) ─────────
 
 function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   if (lines.length === 0) return { headers: [], rows: [] };
 
+  // Detect separator
+  const firstLine = lines.find((l) => l.trim()) ?? "";
+  const sep = firstLine.split("\t").length > firstLine.split(",").length ? "\t"
+    : firstLine.split("|").length > 10 ? "|" : ",";
+
   const parseRow = (line: string): string[] => {
+    if (sep !== ",") return line.split(sep).map((v) => v.trim().replace(/^"|"$/g, ""));
     const result: string[] = [];
     let cur = "";
     let inQuote = false;
@@ -61,7 +88,6 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
     return result;
   };
 
-  // Find first non-empty line as header
   let headerLine = 0;
   while (headerLine < lines.length && !lines[headerLine].trim()) headerLine++;
   if (headerLine >= lines.length) return { headers: [], rows: [] };
@@ -70,8 +96,7 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
   const dataRows: Record<string, string>[] = [];
 
   for (let i = headerLine + 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+    if (!lines[i].trim()) continue;
     const vals = parseRow(lines[i]);
     const row: Record<string, string> = {};
     headers.forEach((h, idx) => { row[h] = vals[idx] ?? ""; });
@@ -81,7 +106,7 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
   return { headers, rows: dataRows };
 }
 
-// ── Column name resolver ──────────────────────────────────────────────────────
+// ── Column resolver (case-insensitive) ────────────────────────────────────────
 
 function resolve(row: Record<string, string>, ...candidates: string[]): string {
   const keys = Object.keys(row);
@@ -92,55 +117,66 @@ function resolve(row: Record<string, string>, ...candidates: string[]): string {
   return "";
 }
 
-// ── Map one CSV row to our schema ─────────────────────────────────────────────
+// ── Map one raw CSV row → CSVMappedRow ────────────────────────────────────────
 
 function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const issues: string[] = [];
 
-  const name = resolve(row, "name", "product_name", "title", "product", "название", "наименование");
+  const name = resolve(row, "product_name", "name", "title", "product", "название");
   if (!name) issues.push("missing name");
 
-  const brand = resolve(row, "brand", "brand_name", "merchant_name", "manufacturer", "бренд", "марка");
+  const merchant = resolve(row, "merchant_name", "brand_name", "brand", "manufacturer");
+  const brand = resolve(row, "brand_name", "brand", "merchant_name", "manufacturer");
 
-  // Awin feed uses search_price / store_price; generic feeds use price
-  const priceRaw = resolve(row, "search_price", "store_price", "display_price", "base_price", "price", "цена", "стоимость");
-  const price = priceRaw ? parseFloat(priceRaw.replace(/[^\d.,]/g, "").replace(",", ".")) : 0;
+  // Price: search_price is the main Awin price field
+  const priceRaw = resolve(row, "search_price", "store_price", "display_price", "base_price", "price", "цена");
+  const price = priceRaw ? parseFloat(priceRaw.replace(/[^\d.]/g, "")) : 0;
   if (!price) issues.push("missing price");
 
   const currency = resolve(row, "currency", "валюта") || "GBP";
 
-  // Awin feed: merchant_image_url, aw_image_url, large_image; generic: image_url / image / photo
+  // Images: prefer large_image, fallback chain
   const imageUrl = resolve(row,
-    "large_image", "merchant_image_url", "aw_image_url", "merchant_thumb_url", "aw_thumb_url",
-    "image_url", "image", "photo", "img", "picture", "фото", "изображение",
+    "large_image", "merchant_image_url", "aw_image_url",
+    "alternate_image", "merchant_thumb_url", "aw_thumb_url",
+    "image_url", "image", "photo",
   );
 
-  // Awin feed: aw_deep_link (affiliate link), merchant_deep_link (direct)
-  const referralUrl = resolve(
-    row,
+  // Referral: aw_deep_link is the tracked affiliate link
+  const referralUrl = resolve(row,
     "aw_deep_link", "merchant_deep_link",
-    "referral_url", "affiliate_url", "affiliate_link", "referral_link",
-    "url", "link", "product_url", "ссылка", "реферальная_ссылка",
+    "referral_url", "affiliate_url", "url", "link",
   );
 
-  // Awin feed: category_name, merchant_category
-  const categoryRaw = resolve(row, "category_name", "merchant_category", "merchant_product_category_path", "category", "product_type", "категория");
-  const category: Category = categoryRaw
-    ? (inferCategory(categoryRaw) || inferCategory(name))
-    : inferCategory(name);
+  // In-stock check
+  const inStockRaw = resolve(row, "in_stock", "stock_status", "is_for_sale");
+  const isOutOfStock = inStockRaw === "0" || inStockRaw.toLowerCase() === "sold out" || inStockRaw.toLowerCase() === "out of stock";
+  if (isOutOfStock) issues.push("out of stock");
 
-  const genderRaw = resolve(row, "gender", "sex", "пол");
-  const gender = inferGender(genderRaw);
+  // Category + gender: prefer Awin category_name (most reliable), fallback to product name
+  const categoryRaw = resolve(row, "category_name", "merchant_category", "merchant_product_category_path", "product_type", "category");
+  let category: Category;
+  let gender: Gender | undefined;
 
-  const colorRaw = resolve(row, "color", "colour", "цвет");
+  if (categoryRaw) {
+    const parsed = parseAwinkCategory(categoryRaw);
+    category = parsed.category;
+    gender = parsed.gender;
+  } else {
+    category = inferCategoryFromName(name);
+  }
+
+  // Color
+  const colorRaw = resolve(row, "colour", "color", "цвет");
   const colors = colorRaw ? [colorRaw] : [];
 
-  const material = resolve(row, "material", "composition", "fabric", "материал", "состав");
-  const description = resolve(row, "description", "desc", "описание");
+  const material = resolve(row, "material", "composition", "specifications", "fabric");
+  const description = resolve(row, "description", "product_short_description", "desc");
 
   return {
     name,
     brand,
+    merchant,
     category,
     gender,
     price,
@@ -155,7 +191,7 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   };
 }
 
-// ── POST /api/admin/csv-import — parse & preview ──────────────────────────────
+// ── POST /api/admin/csv-import — parse CSV, return merchants summary + rows ───
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -168,10 +204,25 @@ export async function POST(req: Request) {
   if (!headers.length) return NextResponse.json({ error: "Could not parse CSV headers" }, { status: 400 });
 
   const rows = csvRows.map(mapCSVRow);
-  return NextResponse.json({ columns: headers, rows });
+
+  // Build merchants summary
+  const merchantMap = new Map<string, { count: number; validCount: number }>();
+  for (const row of rows) {
+    const m = row.merchant || "Unknown";
+    const existing = merchantMap.get(m) ?? { count: 0, validCount: 0 };
+    existing.count++;
+    if (row._valid) existing.validCount++;
+    merchantMap.set(m, existing);
+  }
+
+  const merchants = Array.from(merchantMap.entries())
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.count - a.count);
+
+  return NextResponse.json({ columns: headers, merchants, rows });
 }
 
-// ── PUT /api/admin/csv-import — import selected rows ─────────────────────────
+// ── PUT /api/admin/csv-import — import rows ───────────────────────────────────
 
 export async function PUT(req: Request) {
   const admin = await requireAdmin();
@@ -196,7 +247,7 @@ export async function PUT(req: Request) {
     try {
       const product: Partial<Product> = {
         name: row.name,
-        brand: row.brand as Product["brand"],
+        brand: (row.brand || row.merchant) as Product["brand"],
         category: row.category,
         description: row.description || "",
         imageUrl: row.imageUrl,
@@ -212,31 +263,22 @@ export async function PUT(req: Request) {
         gender: row.gender,
         styleKeywords: [],
         retailers: row.referralUrl
-          ? [
-              {
-                name: row.brand || "Store",
-                url: row.referralUrl,
-                price: row.price,
-                currency: row.currency,
-                availability: "in stock",
-                isOfficial: true,
-              },
-            ]
+          ? [{
+              name: row.brand || row.merchant || "Store",
+              url: row.referralUrl,
+              price: row.price,
+              currency: row.currency,
+              availability: "in stock",
+              isOfficial: true,
+            }]
           : [],
       };
 
-      const dbRow = {
-        ...productToDb(product),
-        source_url: row.referralUrl || null,
-      };
+      const dbRow = { ...productToDb(product), source_url: row.referralUrl || null };
 
       if (row.referralUrl) {
         const { data: existing } = await supabase
-          .from("products")
-          .select("id")
-          .eq("source_url", row.referralUrl)
-          .maybeSingle();
-
+          .from("products").select("id").eq("source_url", row.referralUrl).maybeSingle();
         if (existing?.id) {
           await supabase.from("products").update(dbRow).eq("id", existing.id);
         } else {
