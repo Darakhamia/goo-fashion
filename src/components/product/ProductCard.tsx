@@ -276,6 +276,16 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           );
         })()}
       </div>
+
+      {/* Add to outfit */}
+      <Link
+        href={`/builder?product=${product.id}`}
+        className="mt-2 w-full flex items-center justify-between border border-[var(--border)] hover:border-[var(--foreground)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-[9px] tracking-[0.14em] uppercase font-medium">Add to Outfit</span>
+        <span className="text-sm leading-none text-[var(--foreground-subtle)] group-hover/btn:text-[var(--foreground)] transition-colors">+</span>
+      </Link>
     </div>
   );
 }

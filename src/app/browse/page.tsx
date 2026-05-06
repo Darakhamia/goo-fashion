@@ -156,6 +156,8 @@ export default function BrowsePage() {
   const [sort, setSort] = useState<SortOption>("featured");
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -388,6 +390,19 @@ export default function BrowsePage() {
   const count =
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
+  // Reset to page 1 whenever filters/sort/view change
+  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedCategories, selectedOccasions, selectedGender, selectedPriceIdx, selectedColorGroupIds, aiOnly]);
+
+  const totalPages = Math.ceil(count / PAGE_SIZE);
+  const pagedItems = useMemo(
+    () => displayItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [displayItems, page, PAGE_SIZE]
+  );
+  const pagedOutfits = useMemo(
+    () => filteredOutfits.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredOutfits, page, PAGE_SIZE]
+  );
+
   /* Browse context passed to the AI Stylist — mirrors active filter state */
   const browseContext = useMemo(() => ({
     view,
@@ -587,16 +602,21 @@ export default function BrowsePage() {
       <div className="max-w-[1440px] mx-auto">
         {/* ── Page header ── */}
         <div className="px-6 md:px-12 pt-12 md:pt-16">
-          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
             Browse
           </p>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-            <h1 className="font-display text-4xl md:text-5xl font-light text-[var(--foreground)]">
-              The Edit
-            </h1>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+            <div>
+              <h1 className="font-display text-6xl md:text-8xl font-black uppercase text-[var(--foreground)] leading-none tracking-tight">
+                The Edit
+              </h1>
+              <p className="mt-3 text-sm text-[var(--foreground-muted)] max-w-xs leading-relaxed">
+                Curated pieces from the world's most forward-thinking brands.
+              </p>
+            </div>
 
             {/* Search */}
-            <div className="relative md:w-72">
+            <div className="relative md:w-[480px] mt-2">
               <input
                 type="text"
                 placeholder="Search outfits, brands, styles…"
@@ -672,16 +692,16 @@ export default function BrowsePage() {
           <main className="min-w-0 px-6 md:px-8 lg:px-10">
             {/* Top toolbar */}
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
-              <div className="flex items-center gap-3">
-                {/* Filter toggle — unified for all screen sizes */}
+              <div className="flex items-center gap-2">
+                {/* Filter toggle */}
                 <button
                   onClick={() => { setStylistOpen(false); setFiltersOpen(true); }}
-                  className="flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200 px-3 py-1.5"
+                  className="flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase font-medium border border-[var(--foreground-muted)] text-[var(--foreground)] rounded-full px-4 py-2 hover:bg-[var(--fg-overlay-05)] transition-all duration-200"
                 >
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
                     <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <span>Filters</span>
+                  <span>Filter</span>
                   {activeFiltersCount > 0 && (
                     <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
                       {activeFiltersCount}
@@ -689,38 +709,26 @@ export default function BrowsePage() {
                   )}
                 </button>
 
-                {/* AI Stylist trigger */}
+                {/* Trending toggle */}
                 <button
                   onClick={() => { setFiltersOpen(false); setStylistOpen(true); }}
-                  className={`flex items-center gap-2 text-[9px] tracking-[0.14em] uppercase font-medium border transition-all duration-200 px-3 py-1.5 ${
+                  className={`flex items-center gap-2 text-[10px] tracking-[0.12em] uppercase font-medium border rounded-full px-4 py-2 transition-all duration-200 ${
                     stylistOpen
-                      ? "border-[var(--foreground)] text-[var(--foreground)]"
-                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                   }`}
                 >
-                  <div className="w-3.5 h-3.5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-display text-[8px] italic leading-none shrink-0">
-                    G
-                  </div>
-                  <span>Stylist</span>
-                  {stylistOpen && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--foreground)] shrink-0" />
-                  )}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+                  </svg>
+                  <span>Trending</span>
                 </button>
-
-                <span className="text-[10px] text-[var(--foreground-subtle)] tracking-[0.06em]">
-                  {count} {view === "outfits" ? "outfits" : "pieces"}
-                  {searchQuery && (
-                    <span className="ml-1">
-                      for &ldquo;{searchQuery}&rdquo;
-                    </span>
-                  )}
-                </span>
               </div>
 
               {/* Sort */}
               <div className="relative flex items-center gap-2" ref={sortRef}>
                 <span className="hidden sm:block text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                  Sort:
+                  Sort by:
                 </span>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
@@ -863,7 +871,7 @@ export default function BrowsePage() {
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)] stagger-children">
-                    {filteredOutfits.map((outfit) => (
+                    {pagedOutfits.map((outfit) => (
                       <div
                         key={outfit.id}
                         className="border-r border-b border-[var(--border)] p-2 animate-fade-up"
@@ -877,7 +885,7 @@ export default function BrowsePage() {
                 )
               ) : displayItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)] stagger-children">
-                  {displayItems.map(({ product, forcedVariant, key }) => (
+                  {pagedItems.map(({ product, forcedVariant, key }) => (
                     <div
                       key={key}
                       className="border-r border-b border-[var(--border)] p-2 animate-fade-up"
@@ -888,6 +896,59 @@ export default function BrowsePage() {
                 </div>
               ) : (
                 <EmptyState onClear={clearAll} noun="pieces" />
+              )}
+
+              {/* ── Pagination ── */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-6 border-t border-[var(--border)] mt-6">
+                  <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of {count} {view === "outfits" ? "outfits" : "pieces"}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      disabled={page === 1}
+                      className="w-8 h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                    >
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
+                      let p: number;
+                      if (totalPages <= 7) {
+                        p = i + 1;
+                      } else if (page <= 4) {
+                        p = i < 5 ? i + 1 : i === 5 ? -1 : totalPages;
+                      } else if (page >= totalPages - 3) {
+                        p = i === 0 ? 1 : i === 1 ? -1 : totalPages - 6 + i;
+                      } else {
+                        p = i === 0 ? 1 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages : page + i - 3;
+                      }
+                      if (p === -1) {
+                        return <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
+                      }
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          className={`w-8 h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
+                            page === p
+                              ? "bg-[var(--foreground)] text-[var(--background)]"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      disabled={page === totalPages}
+                      className="w-8 h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                    >
+                      <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </main>
