@@ -12,6 +12,29 @@ import { useCurrency } from "@/lib/context/currency-context";
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
 
+const CATEGORY_TO_SLOT: Record<string, string> = {
+  outerwear:   "outerwear",
+  blazers:     "outerwear",
+  tops:        "top",
+  shirts:      "top",
+  knitwear:    "top",
+  bottoms:     "bottom",
+  jeans:       "bottom",
+  shorts:      "bottom",
+  skirts:      "bottom",
+  dresses:     "bottom",
+  jumpsuits:   "bottom",
+  footwear:    "shoes",
+  accessories: "accessories",
+  bags:        "accessories",
+  swimwear:    "accessories",
+};
+
+function buildOutfitUrl(product: Product): string {
+  const slot = CATEGORY_TO_SLOT[product.category] ?? "top";
+  return `/builder?${slot}=${product.id}`;
+}
+
 interface ProductCardProps {
   product: Product;
   showBrand?: boolean;
@@ -284,7 +307,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
       {/* Add to outfit */}
       <Link
-        href={`/builder?product=${product.id}`}
+        href={buildOutfitUrl(product)}
         className="mt-2 w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
         onClick={(e) => e.stopPropagation()}
       >
