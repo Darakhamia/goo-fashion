@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@/lib/context/auth-context";
 import { useTheme } from "@/lib/context/theme-context";
@@ -203,20 +204,25 @@ export default function ProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1.5 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] overflow-x-auto">
+          <div className="flex gap-0 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] overflow-x-auto">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-[var(--foreground)] text-[var(--background)] shadow-sm"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
+                className="relative px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full whitespace-nowrap z-10 transition-colors duration-200"
+                style={{ color: activeTab === tab.id ? "var(--background)" : "var(--foreground-muted)" }}
               >
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="profile-tab-pill"
+                    className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    style={{ zIndex: -1 }}
+                  />
+                )}
                 {tab.label}
                 {tab.id === "stylist" && stylistPersonalization && (
-                  <span className="ml-2 w-1.5 h-1.5 rounded-full bg-[var(--foreground)] inline-block align-middle" />
+                  <span className="ml-2 w-1.5 h-1.5 rounded-full bg-current inline-block align-middle" />
                 )}
               </button>
             ))}
