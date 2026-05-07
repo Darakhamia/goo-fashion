@@ -9,13 +9,21 @@ interface KeyStatus {
 }
 
 export default function SettingsPage() {
-  // ── Hero image state ──────────────────────────────────────────────────────
+  // ── Hero image state (dark) ───────────────────────────────────────────────
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [heroIsDefault, setHeroIsDefault] = useState(true);
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroError, setHeroError] = useState("");
   const [heroOk, setHeroOk] = useState(false);
   const heroInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Hero image state (light) ──────────────────────────────────────────────
+  const [heroLightUrl, setHeroLightUrl] = useState<string | null>(null);
+  const [heroLightIsDefault, setHeroLightIsDefault] = useState(true);
+  const [heroLightUploading, setHeroLightUploading] = useState(false);
+  const [heroLightError, setHeroLightError] = useState("");
+  const [heroLightOk, setHeroLightOk] = useState(false);
+  const heroLightInputRef = useRef<HTMLInputElement>(null);
 
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -46,8 +54,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/hero-image");
       if (!res.ok) return;
       const data = await res.json();
-      setHeroUrl(data.url);
-      setHeroIsDefault(data.isDefault);
+      setHeroUrl(data.dark.url);
+      setHeroIsDefault(data.dark.isDefault);
+      setHeroLightUrl(data.light.url);
+      setHeroLightIsDefault(data.light.isDefault);
     } catch { /* non-fatal */ }
   }
 
@@ -57,6 +67,7 @@ export default function SettingsPage() {
     setHeroOk(false);
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("variant", "dark");
     try {
       const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
       const data = await res.json();
@@ -73,11 +84,42 @@ export default function SettingsPage() {
   }
 
   async function resetHero() {
-    if (!confirm("Reset hero image to default?")) return;
+    if (!confirm("Reset dark hero image to default?")) return;
     try {
-      const res = await fetch("/api/admin/hero-image", { method: "DELETE" });
+      const res = await fetch("/api/admin/hero-image?variant=dark", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) { setHeroUrl(data.url); setHeroIsDefault(true); }
+    } catch { /* non-fatal */ }
+  }
+
+  async function uploadHeroLight(file: File) {
+    setHeroLightUploading(true);
+    setHeroLightError("");
+    setHeroLightOk(false);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("variant", "light");
+    try {
+      const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setHeroLightError(data.error ?? "Upload failed"); return; }
+      setHeroLightUrl(data.url);
+      setHeroLightIsDefault(false);
+      setHeroLightOk(true);
+      setTimeout(() => setHeroLightOk(false), 3000);
+    } catch {
+      setHeroLightError("Network error");
+    } finally {
+      setHeroLightUploading(false);
+    }
+  }
+
+  async function resetHeroLight() {
+    if (!confirm("Reset light hero image to default?")) return;
+    try {
+      const res = await fetch("/api/admin/hero-image?variant=light", { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) { setHeroLightUrl(data.url); setHeroLightIsDefault(true); }
     } catch { /* non-fatal */ }
   }
 
@@ -193,8 +235,8 @@ export default function SettingsPage() {
         Configure API keys and site appearance.
       </p>
 
-      {/* ── Hero Image section ── */}
-      <div className="border border-[var(--border)] bg-[var(--background)] mb-6">
+      {/* ── Hero Image — Dark theme ── */}
+      <div className="border border-[var(--border)] bg-[var(--background)] mb-4">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -203,24 +245,19 @@ export default function SettingsPage() {
               <circle cx="4.5" cy="5" r="1" stroke="currentColor" strokeWidth="1.1" />
             </svg>
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-              Hero Image
+              Hero Image — Dark theme
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Full-screen background image on the home page. Recommended: 2000×1400px or larger.
+            Full-screen background shown when dark mode is active. Recommended: 2000×1400px or larger.
           </p>
         </div>
 
         <div className="px-5 py-4">
-          {/* Preview */}
           {heroUrl && (
             <div className="mb-4 relative overflow-hidden border border-[var(--border)]" style={{ height: 160 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroUrl}
-                alt="Hero preview"
-                className="w-full h-full object-cover"
-              />
+              <img src={heroUrl} alt="Dark hero preview" className="w-full h-full object-cover" />
               {heroIsDefault && (
                 <span className="absolute top-2 left-2 text-[9px] tracking-[0.14em] uppercase bg-[var(--background)]/80 text-[var(--foreground-subtle)] px-2 py-1">
                   Default
@@ -257,6 +294,73 @@ export default function SettingsPage() {
           {!heroIsDefault && (
             <button
               onClick={resetHero}
+              className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
+            >
+              Reset to default
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Hero Image — Light theme ── */}
+      <div className="border border-[var(--border)] bg-[var(--background)] mb-6">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="2.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M1 8.5L4 6L6.5 8L9 6.5L13 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+              <circle cx="4.5" cy="5" r="1" stroke="currentColor" strokeWidth="1.1" />
+            </svg>
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+              Hero Image — Light theme
+            </p>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+            Full-screen background shown when light mode is active. Recommended: 2000×1400px or larger.
+          </p>
+        </div>
+
+        <div className="px-5 py-4">
+          {heroLightUrl && (
+            <div className="mb-4 relative overflow-hidden border border-[var(--border)]" style={{ height: 160 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroLightUrl} alt="Light hero preview" className="w-full h-full object-cover" />
+              {heroLightIsDefault && (
+                <span className="absolute top-2 left-2 text-[9px] tracking-[0.14em] uppercase bg-[var(--background)]/80 text-[var(--foreground-subtle)] px-2 py-1">
+                  Default
+                </span>
+              )}
+            </div>
+          )}
+
+          {heroLightError && <p className="text-[11px] text-red-500 mb-3">{heroLightError}</p>}
+          {heroLightOk && <p className="text-[11px] text-green-600 mb-3">Image updated — changes go live on next page load.</p>}
+
+          <input
+            ref={heroLightInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadHeroLight(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2">
+          <button
+            onClick={() => heroLightInputRef.current?.click()}
+            disabled={heroLightUploading}
+            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {heroLightUploading && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {heroLightUploading ? "Uploading…" : "Upload image"}
+          </button>
+          {!heroLightIsDefault && (
+            <button
+              onClick={resetHeroLight}
               className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
             >
               Reset to default

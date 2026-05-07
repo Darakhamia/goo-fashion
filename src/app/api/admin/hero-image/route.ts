@@ -3,9 +3,17 @@ import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
-const SETTING_KEY = "hero_image_url";
+const KEYS = {
+  dark: "hero_image_url",
+  light: "hero_image_url_light",
+} as const;
+
+type Variant = keyof typeof KEYS;
+
 const BUCKET = "site-assets";
-const DEFAULT_URL =
+const DEFAULT_DARK =
+  "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop";
+const DEFAULT_LIGHT =
   "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop";
 
 // GET /api/admin/hero-image
@@ -14,20 +22,34 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ url: DEFAULT_URL, isDefault: true });
+    return NextResponse.json({
+      dark: { url: DEFAULT_DARK, isDefault: true },
+      light: { url: DEFAULT_LIGHT, isDefault: true },
+    });
   }
 
-  const { data } = await supabase
+  const { data: rows } = await supabase
     .from("settings")
-    .select("value")
-    .eq("key", SETTING_KEY)
-    .maybeSingle();
+    .select("key, value")
+    .in("key", [KEYS.dark, KEYS.light]);
 
-  const url = (data as { value: string } | null)?.value ?? DEFAULT_URL;
-  return NextResponse.json({ url, isDefault: !data });
+  const byKey = Object.fromEntries(
+    (rows ?? []).map((r: { key: string; value: string }) => [r.key, r.value])
+  );
+
+  return NextResponse.json({
+    dark: {
+      url: byKey[KEYS.dark] ?? DEFAULT_DARK,
+      isDefault: !byKey[KEYS.dark],
+    },
+    light: {
+      url: byKey[KEYS.light] ?? DEFAULT_LIGHT,
+      isDefault: !byKey[KEYS.light],
+    },
+  });
 }
 
-// POST /api/admin/hero-image — multipart form with `file` field
+// POST /api/admin/hero-image — multipart form with `file` and optional `variant` (dark|light) fields
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,6 +70,10 @@ export async function POST(req: Request) {
   if (!file.type.startsWith("image/")) return NextResponse.json({ error: "Must be an image" }, { status: 400 });
   if (file.size > 15 * 1024 * 1024) return NextResponse.json({ error: "Max 15 MB" }, { status: 400 });
 
+  const rawVariant = formData.get("variant");
+  const variant: Variant = rawVariant === "light" ? "light" : "dark";
+  const settingKey = KEYS[variant];
+
   // Ensure bucket exists
   const { data: buckets } = await supabase.storage.listBuckets();
   if (!buckets?.find((b) => b.name === BUCKET)) {
@@ -58,7 +84,7 @@ export async function POST(req: Request) {
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const filename = `hero-${Date.now()}.${ext}`;
+  const filename = `hero-${variant}-${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error: uploadErr } = await supabase.storage
@@ -71,16 +97,16 @@ export async function POST(req: Request) {
 
   const { error: dbErr } = await supabase
     .from("settings")
-    .upsert({ key: SETTING_KEY, value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    .upsert({ key: settingKey, value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: "key" });
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
   revalidatePath("/");
-  return NextResponse.json({ ok: true, url: publicUrl });
+  return NextResponse.json({ ok: true, url: publicUrl, variant });
 }
 
-// DELETE /api/admin/hero-image — reset to default
-export async function DELETE() {
+// DELETE /api/admin/hero-image?variant=dark|light — reset to default
+export async function DELETE(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -88,7 +114,13 @@ export async function DELETE() {
     return NextResponse.json({ error: "Database not configured" }, { status: 501 });
   }
 
-  await supabase.from("settings").delete().eq("key", SETTING_KEY);
+  const { searchParams } = new URL(req.url);
+  const rawVariant = searchParams.get("variant");
+  const variant: Variant = rawVariant === "light" ? "light" : "dark";
+  const settingKey = KEYS[variant];
+  const defaultUrl = variant === "light" ? DEFAULT_LIGHT : DEFAULT_DARK;
+
+  await supabase.from("settings").delete().eq("key", settingKey);
   revalidatePath("/");
-  return NextResponse.json({ ok: true, url: DEFAULT_URL });
+  return NextResponse.json({ ok: true, url: defaultUrl, variant });
 }

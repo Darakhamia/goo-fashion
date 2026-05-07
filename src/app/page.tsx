@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import ProductCard from "@/components/product/ProductCard";
 import SectionLabel from "@/components/ui/SectionLabel";
+import HeroBackground from "@/components/ui/HeroBackground";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import OutfitCarousel from "@/components/outfit/OutfitCarousel";
@@ -10,25 +11,32 @@ import OutfitCarousel from "@/components/outfit/OutfitCarousel";
 const DEFAULT_HERO =
   "https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
-async function getHeroImageUrl(): Promise<string> {
-  if (!isSupabaseConfigured || !supabase) return DEFAULT_HERO;
+async function getHeroImages(): Promise<{ darkUrl: string; lightUrl: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { darkUrl: DEFAULT_HERO, lightUrl: DEFAULT_HERO };
+  }
   try {
-    const { data } = await supabase
+    const { data: rows } = await supabase
       .from("settings")
-      .select("value")
-      .eq("key", "hero_image_url")
-      .maybeSingle();
-    return (data as { value: string } | null)?.value ?? DEFAULT_HERO;
+      .select("key, value")
+      .in("key", ["hero_image_url", "hero_image_url_light"]);
+    const byKey = Object.fromEntries(
+      (rows ?? []).map((r: { key: string; value: string }) => [r.key, r.value])
+    );
+    return {
+      darkUrl: byKey["hero_image_url"] ?? DEFAULT_HERO,
+      lightUrl: byKey["hero_image_url_light"] ?? DEFAULT_HERO,
+    };
   } catch {
-    return DEFAULT_HERO;
+    return { darkUrl: DEFAULT_HERO, lightUrl: DEFAULT_HERO };
   }
 }
 
 export default async function HomePage() {
-  const [allProducts, allOutfits, heroImageUrl] = await Promise.all([
+  const [allProducts, allOutfits, heroImages] = await Promise.all([
     getAllProducts(),
     getAllOutfits(),
-    getHeroImageUrl(),
+    getHeroImages(),
   ]);
   const featuredOutfits = allOutfits.slice(0, 12);
   const featuredProducts = allProducts.slice(0, 4);
@@ -37,13 +45,7 @@ export default async function HomePage() {
     <>
       {/* ─── HERO ─── */}
       <section className="relative min-h-screen flex flex-col justify-end pb-20 md:pb-28 pt-32 rounded-2xl overflow-hidden mx-6 md:mx-12 mt-4">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              `url(${heroImageUrl})`,
-          }}
-        />
+        <HeroBackground darkUrl={heroImages.darkUrl} lightUrl={heroImages.lightUrl} />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/90 via-[#0A0A0A]/30 to-transparent" />
 
         {/* Floating pill tag */}
