@@ -79,12 +79,12 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       </div>
 
       {/* Main grid */}
-      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--border)]">
+      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8">
 
         {/* ── Left: Image gallery ── */}
         <div className="bg-[var(--background)]">
           {/* Main image */}
-          <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-[var(--surface)]">
             {mainImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -98,7 +98,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             )}
             {product.isNew && (
               <div className="absolute top-4 left-4">
-                <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
+                <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full px-3 py-1.5 block">
                   New
                 </span>
               </div>
@@ -107,13 +107,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Thumbnail strip — only when there are multiple images */}
           {displayImages.length > 1 && (
-            <div className="flex gap-px mt-px">
+            <div className="flex gap-2 mt-3">
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
                   onClick={() => goTo(i)}
-                  className={`flex-1 aspect-square overflow-hidden transition-opacity duration-150 ${
-                    i === activeIdx ? "opacity-100 ring-1 ring-inset ring-[var(--foreground)]" : "opacity-50 hover:opacity-80"
+                  className={`flex-1 aspect-square rounded-lg overflow-hidden transition-opacity duration-150 ${
+                    i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -125,7 +125,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         </div>
 
         {/* ── Right: Product info ── */}
-        <div className="bg-[var(--background)] px-6 md:px-10 py-8 md:py-12">
+        <div className="px-6 md:px-10 py-8 md:py-12 md:pl-2">
 
           {/* Brand + Name */}
           <div className="mb-6">
@@ -158,7 +158,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           <div className="mb-8">
             <button
               onClick={() => setStylistOpen(true)}
-              className="flex items-center gap-3 w-full border border-[var(--border-strong)] px-4 py-3 hover:border-[var(--foreground)] transition-colors duration-150 group"
+              className="flex items-center gap-3 w-full rounded-xl border border-[var(--border)] px-5 py-4 hover:border-[var(--foreground)] hover:shadow-sm transition-all duration-200 group"
             >
               <div className="w-6 h-6 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[11px] font-medium italic shrink-0">
                 G
@@ -231,7 +231,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
-                      className={`relative text-xs border px-3 py-1.5 transition-colors duration-200 ${
+                      className={`relative rounded-full px-4 py-1.5 text-xs border transition-all duration-200 ${
                         selectedColor === color
                           ? "border-[var(--foreground)] text-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -258,7 +258,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 {product.sizes.map((size) => (
                   <button
                     key={size}
-                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] w-10 h-10 flex items-center justify-center hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors duration-200"
+                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] rounded-lg w-11 h-11 flex items-center justify-center hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-all duration-200"
                   >
                     {size}
                   </button>
@@ -279,7 +279,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 </p>
               </div>
 
-              <div className="space-y-px">
+              <div className="space-y-2">
                 {[...product.retailers]
                   .sort((a, b) => a.price - b.price)
                   .map((retailer, i) => (
@@ -288,11 +288,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={retailer.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center justify-between gap-4 py-4 border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors duration-200 -mx-6 md:-mx-10 px-6 md:px-10"
+                      className="group flex items-center justify-between gap-4 p-4 border border-[var(--border)] rounded-xl hover:shadow-sm hover:border-[var(--foreground-muted)] transition-all duration-200"
                     >
                       <div className="flex items-center gap-3">
                         {i === 0 && (
-                          <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] px-2 py-1">
+                          <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] rounded-full px-2 py-1">
                             Best
                           </span>
                         )}
@@ -376,9 +376,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               Outfits with this piece
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
-              <div key={outfit.id} className="bg-[var(--background)] p-4">
+              <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 p-3">
                 <OutfitCard outfit={outfit} />
               </div>
             ))}
@@ -397,9 +397,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               You may also like
             </h2>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map((related) => (
-              <div key={related.id} className="bg-[var(--background)] p-4">
+              <div key={related.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 p-3">
                 <ProductCard product={related} />
               </div>
             ))}
