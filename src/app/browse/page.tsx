@@ -159,6 +159,7 @@ export default function BrowsePage() {
   const [sort, setSort] = useState<SortOption>("featured");
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -176,9 +177,15 @@ export default function BrowsePage() {
 
   useEffect(() => {
     if (!filtersOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setFiltersOpen(false); };
+    const handler = (e: KeyboardEvent | MouseEvent) => {
+      if (e instanceof KeyboardEvent && e.key === "Escape") { setFiltersOpen(false); return; }
+      if (e instanceof MouseEvent && filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFiltersOpen(false);
+      }
+    };
     document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    document.addEventListener("mousedown", handler);
+    return () => { document.removeEventListener("keydown", handler); document.removeEventListener("mousedown", handler); };
   }, [filtersOpen]);
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
@@ -665,25 +672,45 @@ export default function BrowsePage() {
             {/* Top toolbar */}
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
-                {/* Filter toggle */}
-                <button
-                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
-                    filtersOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span>Filter</span>
-                  {activeFiltersCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
+                {/* Filter toggle — wraps button + dropdown in a relative container */}
+                <div className="relative" ref={filterRef}>
+                  <button
+                    onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                    className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
+                      filtersOpen
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                      <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span>Filter</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Filter dropdown panel */}
+                  <AnimatePresence>
+                    {filtersOpen && (
+                      <motion.div
+                        key="filter-dropdown"
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                        transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        className="absolute left-0 top-full mt-2 z-50 w-72 bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden"
+                      >
+                        <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
+                          {renderFilters()}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Search toggle */}
                 <div className={`flex items-center border rounded-full transition-all duration-300 overflow-hidden ${
@@ -779,53 +806,6 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            {/* ── Right-side filter drawer (portal-like, fixed) ── */}
-            <AnimatePresence>
-              {filtersOpen && (
-                <>
-                  {/* Backdrop */}
-                  <motion.div
-                    key="filter-backdrop"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-                    onClick={() => setFiltersOpen(false)}
-                  />
-                  {/* Drawer */}
-                  <motion.div
-                    key="filter-drawer"
-                    initial={{ x: "100%" }}
-                    animate={{ x: 0 }}
-                    exit={{ x: "100%" }}
-                    transition={{ type: "spring", stiffness: 340, damping: 34 }}
-                    className="fixed top-0 right-0 h-full w-80 z-50 bg-[var(--background)] border-l border-[var(--border)] flex flex-col shadow-2xl"
-                  >
-                    {/* Drawer header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-                      <span className="text-[10px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">
-                        Filters{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
-                      </span>
-                      <button
-                        onClick={() => setFiltersOpen(false)}
-                        className="w-7 h-7 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                        aria-label="Close filters"
-                      >
-                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                          <path d="M1 1L10 10M10 1L1 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Drawer body — scrollable */}
-                    <div className="flex-1 overflow-y-auto px-5 py-2">
-                      {renderFilters()}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
 
             {/* Active filter chips */}
             {activeFiltersCount > 0 && (
