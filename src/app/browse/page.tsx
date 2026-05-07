@@ -174,6 +174,13 @@ export default function BrowsePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [sortOpen]);
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setFiltersOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [filtersOpen]);
+
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [catalogOutfits, setCatalogOutfits] = useState<Outfit[]>([]);
@@ -772,112 +779,52 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            {/* ── Inline horizontal filter strip ── */}
+            {/* ── Right-side filter drawer (portal-like, fixed) ── */}
             <AnimatePresence>
-            {filtersOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="overflow-x-auto border-b border-[var(--border)] py-3">
-                <div className="flex items-center gap-2 min-w-max px-1">
-                  {/* Gender */}
-                  {GENDERS.map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => setSelectedGender(selectedGender === g ? null : g)}
-                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
-                        selectedGender === g
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >{g}</button>
-                  ))}
-
-                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
-
-                  {/* Categories (pieces only) */}
-                  {view === "pieces" && CATEGORIES.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => toggleCategory(c)}
-                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
-                        selectedCategories.includes(c)
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >{c}</button>
-                  ))}
-
-                  {/* Occasions (outfits only) */}
-                  {view === "outfits" && OCCASIONS.map((o) => (
-                    <button
-                      key={o}
-                      onClick={() => toggleOccasion(o)}
-                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
-                        selectedOccasions.includes(o)
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >{o}</button>
-                  ))}
-
-                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
-
-                  {/* Price ranges */}
-                  {PRICE_RANGES.map((r, idx) => (
-                    <button
-                      key={r.label}
-                      onClick={() => setSelectedPriceIdx(selectedPriceIdx === idx ? null : idx)}
-                      className={`shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
-                        selectedPriceIdx === idx
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >{r.label}</button>
-                  ))}
-
-                  <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
-
-                  {/* Colors */}
-                  {colorGroups.map((cg) => (
-                    <button
-                      key={cg.id}
-                      onClick={() => toggleColorGroup(cg.id)}
-                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold border transition-all duration-150 rounded-full ${
-                        selectedColorGroupIds.includes(cg.id)
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
-                        style={
-                          cg.hexCode === "#multicolor"
-                            ? { background: "conic-gradient(red,orange,yellow,green,blue,violet,red)" }
-                            : { backgroundColor: cg.hexCode }
-                        }
-                      />
-                      {cg.name}
-                    </button>
-                  ))}
-
-                  {activeFiltersCount > 0 && (
-                    <>
-                      <div className="w-px h-5 bg-[var(--border-strong)] shrink-0 mx-1" />
+              {filtersOpen && (
+                <>
+                  {/* Backdrop */}
+                  <motion.div
+                    key="filter-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                    onClick={() => setFiltersOpen(false)}
+                  />
+                  {/* Drawer */}
+                  <motion.div
+                    key="filter-drawer"
+                    initial={{ x: "100%" }}
+                    animate={{ x: 0 }}
+                    exit={{ x: "100%" }}
+                    transition={{ type: "spring", stiffness: 340, damping: 34 }}
+                    className="fixed top-0 right-0 h-full w-80 z-50 bg-[var(--background)] border-l border-[var(--border)] flex flex-col shadow-2xl"
+                  >
+                    {/* Drawer header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+                      <span className="text-[10px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">
+                        Filters{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
+                      </span>
                       <button
-                        onClick={clearAll}
-                        className="shrink-0 px-3 py-1.5 text-[9px] tracking-[0.14em] uppercase font-bold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
-                      >Clear all</button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-            )}
+                        onClick={() => setFiltersOpen(false)}
+                        className="w-7 h-7 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                        aria-label="Close filters"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                          <path d="M1 1L10 10M10 1L1 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Drawer body — scrollable */}
+                    <div className="flex-1 overflow-y-auto px-5 py-2">
+                      {renderFilters()}
+                    </div>
+                  </motion.div>
+                </>
+              )}
             </AnimatePresence>
 
             {/* Active filter chips */}
