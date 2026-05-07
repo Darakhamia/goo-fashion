@@ -140,6 +140,54 @@ function ActiveChip({
   );
 }
 
+function FilterChip({
+  label,
+  active,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={onToggle}
+        className={`flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase font-bold border rounded-full px-3 py-2 transition-all duration-150 whitespace-nowrap ${
+          active || isOpen
+            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+        }`}
+      >
+        {label}
+        <svg
+          width="8" height="8" viewBox="0 0 8 8" fill="none"
+          className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        >
+          <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="absolute left-0 top-full mt-2 z-50 min-w-[180px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-2xl p-3"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ── Main page ── */
 
 export default function BrowsePage() {
@@ -159,7 +207,7 @@ export default function BrowsePage() {
   const [sort, setSort] = useState<SortOption>("featured");
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
+  const [openChip, setOpenChip] = useState<string | null>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -176,16 +224,10 @@ export default function BrowsePage() {
   }, [sortOpen]);
 
   useEffect(() => {
-    if (!filtersOpen) return;
-    const handler = (e: KeyboardEvent | MouseEvent) => {
-      if (e instanceof KeyboardEvent && e.key === "Escape") { setFiltersOpen(false); return; }
-      if (e instanceof MouseEvent && filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-      }
-    };
+    if (!filtersOpen) { setOpenChip(null); return; }
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpenChip(null); setFiltersOpen(false); } };
     document.addEventListener("keydown", handler);
-    document.addEventListener("mousedown", handler);
-    return () => { document.removeEventListener("keydown", handler); document.removeEventListener("mousedown", handler); };
+    return () => document.removeEventListener("keydown", handler);
   }, [filtersOpen]);
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
@@ -670,50 +712,141 @@ export default function BrowsePage() {
           {/* Main content */}
           <main className="min-w-0 px-6 md:px-8 lg:px-10">
             {/* Top toolbar */}
-            <div className="flex items-center justify-between py-4 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                {/* Filter toggle — wraps button + dropdown in a relative container */}
-                <div className="relative" ref={filterRef}>
-                  <button
-                    onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                    className={`flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
-                      filtersOpen
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                    }`}
-                  >
-                    <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                      <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    <span>Filter</span>
-                    {activeFiltersCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                        {activeFiltersCount}
-                      </span>
-                    )}
-                  </button>
+            <div className="flex items-center justify-between py-4 border-b border-[var(--border)] overflow-visible">
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-visible">
 
-                  {/* Filter dropdown panel */}
-                  <AnimatePresence>
-                    {filtersOpen && (
-                      <motion.div
-                        key="filter-dropdown"
-                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                        transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="absolute left-0 top-full mt-2 z-50 w-72 bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden"
+                {/* Filter toggle button */}
+                <button
+                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                  className={`shrink-0 flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
+                    filtersOpen
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                  }`}
+                >
+                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  <span>Filter</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Animated filter chips — slide in between Filter and Search */}
+                <AnimatePresence>
+                  {filtersOpen && (
+                    <motion.div
+                      key="filter-chips"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: "auto" }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="flex items-center gap-1.5 overflow-visible"
+                      style={{ minWidth: 0 }}
+                    >
+                      <FilterChip
+                        label={view === "pieces" ? "Brand" : "Occasion"}
+                        active={view === "pieces" ? selectedBrands.length > 0 : selectedOccasions.length > 0}
+                        isOpen={openChip === (view === "pieces" ? "brand" : "occasion")}
+                        onToggle={() => setOpenChip(c => c === (view === "pieces" ? "brand" : "occasion") ? null : (view === "pieces" ? "brand" : "occasion"))}
                       >
-                        <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
-                          {renderFilters()}
+                        {view === "pieces" ? (
+                          <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
+                            {BRANDS.map(b => (
+                              <FilterCheckbox key={b} checked={selectedBrands.includes(b)} onToggle={() => toggleBrand(b)} label={b} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-0.5">
+                            {OCCASIONS.map(o => (
+                              <FilterCheckbox key={o} checked={selectedOccasions.includes(o)} onToggle={() => toggleOccasion(o)} label={o} />
+                            ))}
+                          </div>
+                        )}
+                      </FilterChip>
+
+                      {view === "pieces" && (
+                        <FilterChip
+                          label="Category"
+                          active={selectedCategories.length > 0}
+                          isOpen={openChip === "category"}
+                          onToggle={() => setOpenChip(c => c === "category" ? null : "category")}
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            {CATEGORIES.map(c => (
+                              <FilterCheckbox key={c} checked={selectedCategories.includes(c)} onToggle={() => toggleCategory(c)} label={c} />
+                            ))}
+                          </div>
+                        </FilterChip>
+                      )}
+
+                      <FilterChip
+                        label="Gender"
+                        active={selectedGender !== null}
+                        isOpen={openChip === "gender"}
+                        onToggle={() => setOpenChip(c => c === "gender" ? null : "gender")}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          {GENDERS.map(g => (
+                            <FilterCheckbox key={g} checked={selectedGender === g} onToggle={() => setSelectedGender(selectedGender === g ? null : g)} label={g} />
+                          ))}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      </FilterChip>
+
+                      {view === "pieces" && (
+                        <FilterChip
+                          label="Color"
+                          active={selectedColorGroupIds.length > 0}
+                          isOpen={openChip === "color"}
+                          onToggle={() => setOpenChip(c => c === "color" ? null : "color")}
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            {colorGroups.map(cg => {
+                              const active = selectedColorGroupIds.includes(cg.id);
+                              return (
+                                <button key={cg.id} onClick={() => toggleColorGroup(cg.id)} className="flex items-center gap-2 w-full py-[4px] group text-left">
+                                  <div className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-all duration-150 ${active ? "border-[var(--foreground)] bg-[var(--foreground)]" : "border-[var(--border-strong)] group-hover:border-[var(--foreground)]"}`}>
+                                    {active && <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 2.5L2.5 4L6 1" stroke="var(--background)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                  </div>
+                                  <span className="w-3 h-3 rounded-full shrink-0 border border-white/15" style={cg.hexCode === "#multicolor" ? { background: "conic-gradient(red,orange,yellow,green,blue,violet,red)" } : { backgroundColor: cg.hexCode }} />
+                                  <span className={`text-xs capitalize ${active ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)]"}`}>{cg.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </FilterChip>
+                      )}
+
+                      <FilterChip
+                        label="Price"
+                        active={selectedPriceIdx !== null}
+                        isOpen={openChip === "price"}
+                        onToggle={() => setOpenChip(c => c === "price" ? null : "price")}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          {PRICE_RANGES.map((r, idx) => (
+                            <FilterCheckbox key={r.label} checked={selectedPriceIdx === idx} onToggle={() => setSelectedPriceIdx(selectedPriceIdx === idx ? null : idx)} label={r.label} />
+                          ))}
+                        </div>
+                      </FilterChip>
+
+                      {activeFiltersCount > 0 && (
+                        <button
+                          onClick={clearAll}
+                          className="shrink-0 text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors px-2 underline underline-offset-2"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Search toggle */}
-                <div className={`flex items-center border rounded-full transition-all duration-300 overflow-hidden ${
+                <div className={`shrink-0 flex items-center border rounded-full transition-all duration-300 overflow-hidden ${
                   searchOpen
                     ? "border-[var(--foreground)] bg-[var(--foreground)] pl-3 pr-1 py-1"
                     : "border-[var(--foreground-muted)] px-4 py-2 hover:bg-[var(--fg-overlay-05)]"
@@ -760,8 +893,8 @@ export default function BrowsePage() {
               </div>
 
               {/* Sort */}
-              <div className="relative flex items-center gap-2" ref={sortRef}>
-<button
+              <div className="relative flex items-center gap-2 shrink-0 ml-4" ref={sortRef}>
+                <button
                   onClick={() => setSortOpen((o) => !o)}
                   className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)] hover:text-[var(--foreground-muted)] transition-colors duration-200 cursor-pointer"
                 >
