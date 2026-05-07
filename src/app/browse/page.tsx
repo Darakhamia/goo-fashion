@@ -208,6 +208,7 @@ export default function BrowsePage() {
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
   const [openChip, setOpenChip] = useState<string | null>(null);
+  const [brandSearch, setBrandSearch] = useState("");
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -754,10 +755,30 @@ export default function BrowsePage() {
                         onToggle={() => setOpenChip(c => c === (view === "pieces" ? "brand" : "occasion") ? null : (view === "pieces" ? "brand" : "occasion"))}
                       >
                         {view === "pieces" ? (
-                          <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
-                            {BRANDS.map(b => (
-                              <FilterCheckbox key={b} checked={selectedBrands.includes(b)} onToggle={() => toggleBrand(b)} label={b} />
-                            ))}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 mb-1">
+                              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" />
+                                <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                              </svg>
+                              <input
+                                type="text"
+                                placeholder="Search brand…"
+                                value={brandSearch}
+                                onChange={e => setBrandSearch(e.target.value)}
+                                className="bg-transparent outline-none text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] w-full"
+                              />
+                              {brandSearch && (
+                                <button onClick={() => setBrandSearch("")} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto">
+                              {BRANDS.filter(b => b.toLowerCase().includes(brandSearch.toLowerCase())).map(b => (
+                                <FilterCheckbox key={b} checked={selectedBrands.includes(b)} onToggle={() => toggleBrand(b)} label={b} />
+                              ))}
+                            </div>
                           </div>
                         ) : (
                           <div className="flex flex-col gap-0.5">
