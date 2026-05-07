@@ -71,7 +71,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
           <>
             {outfit.isAIGenerated && (
               <div className="absolute top-3 left-3 z-10">
-                <span className="font-mono text-[8px] tracking-[0.14em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block">
+                <span className="font-mono text-[8px] tracking-[0.14em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block rounded-md">
                   AI · FLAT LAY
                 </span>
               </div>
@@ -104,7 +104,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
           <Link
             href={`/outfit/${outfit.id}`}
             tabIndex={isPeek ? -1 : 0}
-            className="block w-full text-center text-[10px] tracking-[0.14em] uppercase font-medium py-2.5 border border-white/30 text-white/60 bg-black/60 hover:border-white/60 hover:text-white/90 transition-all duration-200"
+            className="block w-full text-center text-[10px] tracking-[0.14em] uppercase font-medium py-2.5 border border-white/30 text-white/60 bg-black/60 hover:border-white/60 hover:text-white/90 transition-all duration-200 rounded-xl"
           >
             VIEW OUTFIT
           </Link>
@@ -150,7 +150,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={prev}
           aria-label="Previous outfit"
-          className="hidden md:flex absolute left-4 xl:left-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
+          className="hidden md:flex absolute left-4 xl:left-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200 rounded-xl"
           style={{ top: "37%" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -162,7 +162,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={next}
           aria-label="Next outfit"
-          className="hidden md:flex absolute right-4 xl:right-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
+          className="hidden md:flex absolute right-4 xl:right-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200 rounded-xl"
           style={{ top: "37%" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -212,7 +212,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={prev}
           aria-label="Previous outfit"
-          className="w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+          className="w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-xl"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -224,7 +224,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={next}
           aria-label="Next outfit"
-          className="w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+          className="w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-xl"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M6 3L11 8L6 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
