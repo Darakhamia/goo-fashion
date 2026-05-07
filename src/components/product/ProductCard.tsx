@@ -231,7 +231,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       </button>
 
       {/* ── Info block — every row has a fixed height so all cards align ── */}
-      <Link href={linkHref} className="block mt-2">
+      <Link href={linkHref} className="block mt-2 px-3">
         {/* Brand */}
         <div className="h-3.5 flex items-center overflow-hidden">
           {showBrand && (
@@ -248,7 +248,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </div>
         {/* Price */}
         <div className="h-4 mt-0.5 flex items-center overflow-hidden">
-          <p className="text-xs font-semibold text-[var(--foreground)] truncate">
+          <p className="font-mono text-xs font-normal text-[var(--foreground-muted)] truncate">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin)
               : `From ${formatPrice(displayPriceMin)}`}
@@ -257,7 +257,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       </Link>
 
       {/* Sizes — fixed height so cards with no sizes still reserve the row */}
-      <div className="h-6 mt-1.5 flex items-center overflow-hidden">
+      <div className="h-6 mt-1.5 px-3 flex items-center overflow-hidden">
         <div className="flex gap-1 overflow-hidden">
           {displaySizes.slice(0, 5).map((size) => (
             <span
@@ -271,7 +271,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       </div>
 
       {/* Colour count */}
-      <div className="h-4 mt-1 flex items-center">
+      <div className="h-4 mt-1 px-3 flex items-center">
         {hasSwatches && baseSwatch && (() => {
           const count = 1 + swatches!.filter(s => s.id !== product.id).length;
           return (
@@ -285,7 +285,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       {/* Add to outfit */}
       <Link
         href={`/builder?product=${product.id}`}
-        className="mt-2 w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
+        className="mt-2 mx-3 flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
