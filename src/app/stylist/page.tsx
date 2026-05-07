@@ -517,7 +517,7 @@ export default function StylistPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {generatedOutfits.map((outfit) => (
-                  <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
+                  <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                     <OutfitCard outfit={outfit} />
                   </div>
                 ))}

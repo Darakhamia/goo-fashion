@@ -39,7 +39,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
     >
       <Link href={`/outfit/${outfit.id}`} className="block">
         {/* Image */}
-        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden rounded-2xl ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
+        <div className="img-zoom relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
               <Image
@@ -104,7 +104,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block mt-3 space-y-1">
+        <Link href={`/outfit/${outfit.id}`} className="block px-3 pt-2.5 pb-3 border-t border-[var(--border)] space-y-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-xs font-medium text-[var(--foreground)] leading-snug">{outfit.name}</h3>
             {liked && (
