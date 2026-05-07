@@ -2242,7 +2242,7 @@ export default function BuilderPage() {
           onClick={() => { setShowStylePicker(false); setTryonStep(false); setUserPhotoDataUri(null); }}
         >
           <div
-            className="bg-[var(--background)] shadow-2xl w-full max-w-sm mx-4 animate-scale-in"
+            className="bg-[var(--background)] shadow-2xl w-full max-w-sm mx-4 animate-scale-in rounded-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -2279,16 +2279,16 @@ export default function BuilderPage() {
                   {/* Mannequin */}
                   <button
                     onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
-                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
                   >
-                    <div className="w-full aspect-square bg-[#111] flex items-center justify-center">
+                    <div className="w-full aspect-square bg-[var(--surface)] rounded-lg flex items-center justify-center text-[var(--foreground)]">
                       <svg width="32" height="48" viewBox="0 0 32 56" fill="none">
-                        <ellipse cx="16" cy="6" rx="5" ry="5" fill="#555" />
-                        <rect x="10" y="13" width="12" height="22" rx="2" fill="#555" />
-                        <rect x="4" y="13" width="6" height="16" rx="2" fill="#444" />
-                        <rect x="22" y="13" width="6" height="16" rx="2" fill="#444" />
-                        <rect x="10" y="36" width="5" height="18" rx="2" fill="#555" />
-                        <rect x="17" y="36" width="5" height="18" rx="2" fill="#555" />
+                        <ellipse cx="16" cy="6" rx="5" ry="5" fill="currentColor" opacity="0.6" />
+                        <rect x="10" y="13" width="12" height="22" rx="2" fill="currentColor" opacity="0.6" />
+                        <rect x="4" y="13" width="6" height="16" rx="2" fill="currentColor" opacity="0.45" />
+                        <rect x="22" y="13" width="6" height="16" rx="2" fill="currentColor" opacity="0.45" />
+                        <rect x="10" y="36" width="5" height="18" rx="2" fill="currentColor" opacity="0.6" />
+                        <rect x="17" y="36" width="5" height="18" rx="2" fill="currentColor" opacity="0.6" />
                       </svg>
                     </div>
                     <div className="text-center">
@@ -2300,14 +2300,14 @@ export default function BuilderPage() {
                   {/* Flat lay */}
                   <button
                     onClick={() => { setShowStylePicker(false); generateOutfit("flatlay"); }}
-                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
                   >
-                    <div className="w-full aspect-square bg-[#F8F7F4] border border-[var(--border)] flex items-center justify-center">
+                    <div className="w-full aspect-square bg-[var(--surface)] border border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--foreground)]">
                       <svg width="48" height="36" viewBox="0 0 56 40" fill="none">
-                        <rect x="4" y="4" width="20" height="14" rx="2" fill="#ccc" />
-                        <rect x="32" y="4" width="20" height="14" rx="2" fill="#bbb" />
-                        <rect x="4" y="24" width="20" height="12" rx="2" fill="#ddd" />
-                        <rect x="32" y="24" width="20" height="12" rx="2" fill="#c8c8c8" />
+                        <rect x="4" y="4" width="20" height="14" rx="2" fill="currentColor" opacity="0.5" />
+                        <rect x="32" y="4" width="20" height="14" rx="2" fill="currentColor" opacity="0.4" />
+                        <rect x="4" y="24" width="20" height="12" rx="2" fill="currentColor" opacity="0.6" />
+                        <rect x="32" y="24" width="20" height="12" rx="2" fill="currentColor" opacity="0.45" />
                       </svg>
                     </div>
                     <div className="text-center">
@@ -2321,7 +2321,7 @@ export default function BuilderPage() {
                 <div className="px-5 pb-5">
                   <button
                     onClick={() => setTryonStep(true)}
-                    className="group w-full flex items-center gap-4 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150"
+                    className="group w-full flex items-center gap-4 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
                   >
                     <div className="w-14 h-14 shrink-0 bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center">
                       <svg width="28" height="40" viewBox="0 0 28 48" fill="none">
@@ -2503,7 +2503,7 @@ export default function BuilderPage() {
       {/* ── Generating overlay ────────────────────────────────────────────────── */}
       {generating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 overflow-hidden animate-scale-in">
+          <div className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 overflow-hidden animate-scale-in rounded-2xl">
 
             {/* Indeterminate progress line at top */}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--surface)] overflow-hidden">
@@ -2567,7 +2567,7 @@ export default function BuilderPage() {
           onClick={() => setShowModal(false)}
         >
           <div
-            className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 animate-scale-in"
+            className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 animate-scale-in rounded-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]">
@@ -2629,7 +2629,7 @@ export default function BuilderPage() {
               {/* Save */}
               <button
                 onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
-                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 hover:opacity-80 transition-opacity shrink-0"
+                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0"
               >
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
