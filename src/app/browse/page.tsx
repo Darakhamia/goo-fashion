@@ -6,7 +6,6 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
-import { useLikes } from "@/lib/context/likes-context";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -275,8 +274,6 @@ export default function BrowsePage() {
   const [selectedPriceIdx, setSelectedPriceIdx] = useState<number | null>(null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
-  const [likedOnly, setLikedOnly] = useState(false);
-  const { likedProducts, likedOutfits } = useLikes();
 
   /* Accordion state */
   const [openSections, setOpenSections] = useState({
@@ -312,8 +309,7 @@ export default function BrowsePage() {
     selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
     (selectedPriceIdx !== null ? 1 : 0) +
-    (aiOnly ? 1 : 0) +
-    (likedOnly ? 1 : 0);
+    (aiOnly ? 1 : 0);
 
   const clearAll = () => {
     setSelectedBrands([]);
@@ -323,7 +319,6 @@ export default function BrowsePage() {
     setSelectedPriceIdx(null);
     setSelectedColorGroupIds([]);
     setAiOnly(false);
-    setLikedOnly(false);
     setSearchQuery("");
   };
 
@@ -361,8 +356,7 @@ export default function BrowsePage() {
           p.name.toLowerCase().includes(q) ||
           p.brand.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q)
-      )
-      .filter((p) => !likedOnly || likedProducts.includes(p.id));
+      );
 
     if (sort === "price-asc") r = [...r].sort((a, b) => a.priceMin - b.priceMin);
     else if (sort === "price-desc")
@@ -370,7 +364,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
+  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, selectedColorGroupIds, searchQuery, sort]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -393,15 +387,14 @@ export default function BrowsePage() {
           o.name.toLowerCase().includes(q) ||
           o.occasion.toLowerCase().includes(q) ||
           o.styleKeywords.some((k) => k.toLowerCase().includes(q))
-      )
-      .filter((o) => !likedOnly || likedOutfits.includes(o.id));
+      );
 
     if (sort === "price-asc")
       r = [...r].sort((a, b) => a.totalPriceMin - b.totalPriceMin);
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort, likedOnly, likedOutfits]);
+  }, [catalogOutfits, selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -723,26 +716,6 @@ export default function BrowsePage() {
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)] overflow-visible">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-visible">
 
-                {/* Liked toggle */}
-                <button
-                  onClick={() => setLikedOnly(v => !v)}
-                  className={`shrink-0 flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
-                    likedOnly
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      fill={likedOnly ? "currentColor" : "none"}
-                    />
-                  </svg>
-                  Liked
-                </button>
-
                 {/* Filter toggle button */}
                 <button
                   onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
@@ -944,11 +917,7 @@ export default function BrowsePage() {
               <div className="relative flex items-center gap-2 shrink-0 ml-4" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
-                  className={`flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
-                    sortOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
+                  className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)] hover:text-[var(--foreground-muted)] transition-colors duration-200 cursor-pointer"
                 >
                   {sort === "featured" && "Featured"}
                   {sort === "price-asc" && "Price ↑"}
