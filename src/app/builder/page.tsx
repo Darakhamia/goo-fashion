@@ -692,31 +692,31 @@ export default function BuilderPage() {
           {/* 3 panels row */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* ── LEFT PANEL: In this look (~280px) ────────────────────────── */}
-          <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 280 }}>
+          {/* ── LEFT PANEL: In this look (300px) ─────────────────────────── */}
+          <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 300 }}>
 
             {/* Header */}
-            <div className="px-4 pt-4 pb-3 shrink-0 border-b border-[var(--border)] flex items-center justify-between">
+            <div className="px-6 pt-6 pb-4 shrink-0 border-b border-[var(--border)] flex items-center justify-between">
               <div>
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-0.5">In this look</p>
-                <p className="font-display text-[20px] font-light text-[var(--foreground)]">
-                  {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "Empty"}
+                <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">In this look</p>
+                <p className="text-2xl font-bold text-[var(--foreground)]">
+                  {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={clearAll}
-                  className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors font-semibold"
                 >
                   Clear All
                 </button>
-                <button onClick={shareOutfit} className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors" title={copied ? "Copied!" : "Share look"}>
+                <button onClick={shareOutfit} className="w-7 h-7 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors" title={copied ? "Copied!" : "Share look"}>
                   {copied ? (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                       <path d="M3 8.5L6.5 12L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   ) : (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                       <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.3" />
                       <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.3" />
                       <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
@@ -728,8 +728,8 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Slot rows */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Slot cards */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
               {SLOTS.map(slot => {
                 const picked = selection[slot.id];
                 const variantId = variantOverrides[slot.id];
@@ -737,16 +737,33 @@ export default function BuilderPage() {
                 const colorKey = colorImageOverrides[slot.id];
                 const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
                 const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+
+                if (!picked) {
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                      className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]/50 p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--foreground-muted)] transition-colors text-left w-full"
+                    >
+                      <div className="w-16 h-20 rounded-lg bg-[var(--surface)] flex items-center justify-center shrink-0 text-[var(--foreground-subtle)] opacity-40">
+                        <SlotIcon id={slot.id} size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
+                        <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
+                      </div>
+                    </button>
+                  );
+                }
+
                 return (
-                  <button
+                  <div
                     key={slot.id}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-sm p-3 flex items-start gap-3 relative cursor-pointer hover:border-[var(--foreground-muted)] transition-colors"
                     onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                    className={`w-full grid grid-cols-[56px_1fr_auto] gap-2.5 px-3 py-2 items-center border-b border-[var(--border)] min-h-[76px] text-left transition-colors duration-150 hover:bg-[var(--surface)] ${
-                      activeSlot === slot.id ? "bg-[var(--surface)]" : ""
-                    }`}
                   >
                     {/* Thumbnail */}
-                    <div className="w-[56px] h-[64px] bg-white border border-[var(--border)] shrink-0 overflow-hidden flex items-center justify-center">
+                    <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center">
                       {displayImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img key={displayImage} src={displayImage} alt={picked!.name} className="swatch-img-enter w-full h-full object-contain" />
@@ -754,13 +771,24 @@ export default function BuilderPage() {
                         <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={slot.id} size={16} /></div>
                       )}
                     </div>
+                    {/* Remove button top-right */}
+                    <button
+                      onClick={e => clearSlot(slot.id, e)}
+                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
+                      aria-label={`Remove ${slot.label}`}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
                     {/* Info */}
-                    <div className="min-w-0">
-                      <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-0.5">{slot.label}</p>
+                    <div className="min-w-0 flex-1 pr-4">
+                      <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
                       {picked ? (
                         <>
-                          <p className="text-[12px] leading-snug text-[var(--foreground)] truncate">{picked.name}</p>
-                          <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5 truncate">{picked.brand}</p>
+                          <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{picked.name}</p>
+                          <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{picked.brand}</p>
+                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin)}</p>
                           {/* Variant colour swatches (separate products) */}
                           {(picked.variants?.length ?? 0) > 1 && (() => {
                             const variants = picked.variants!;
@@ -878,57 +906,43 @@ export default function BuilderPage() {
                         <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
                       )}
                     </div>
-                    {/* Price + remove */}
-                    <div className="shrink-0 text-right flex flex-col items-end gap-2">
-                      {picked && <p className="text-[12px] font-medium text-[var(--foreground)]">{formatPrice(picked.priceMin)}</p>}
-                      {picked && (
-                        <button
-                          onClick={e => clearSlot(slot.id, e)}
-                          className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                          aria-label={`Remove ${slot.label}`}
-                        >
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
 
             {/* Footer: Total + Share Look + Clear Look */}
-            <div className="shrink-0 border-t border-[var(--border)] px-3 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                  Total ({selectedCount} {selectedCount === 1 ? "item" : "items"})
-                </p>
-                <p className={`font-display font-light transition-all ${selectedCount > 0 ? "text-[18px] text-[var(--foreground)]" : "text-[16px] text-[var(--foreground-subtle)]"}`}>
+            <div className="shrink-0 border-t border-[var(--border)] px-6 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
+                <p className={`text-2xl font-bold transition-all ${selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>
                   {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={shareOutfit}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-8 border border-[var(--border-strong)] font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 1L14 7M14 7H10M14 7V3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M14 10v4a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <line x1="10.3" y1="5" x2="5.7" y2="7" stroke="currentColor" strokeWidth="1.3" />
+                    <line x1="5.7" y1="9" x2="10.3" y2="11" stroke="currentColor" strokeWidth="1.3" />
                   </svg>
-                  {copied ? "Copied!" : "Share Look"}
+                  {copied ? "Copied!" : "Share look"}
                 </button>
                 <button
                   onClick={clearAll}
                   disabled={selectedCount === 0}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-8 border border-[var(--border-strong)] font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
                     <path d="M3 6H13L12 14H4L3 6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
                     <path d="M1 3H15M6 3V2H10V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                   </svg>
-                  Clear Look
+                  Clear look
                 </button>
               </div>
             </div>
@@ -951,7 +965,7 @@ export default function BuilderPage() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search products, brands, or categories..."
-                  className="w-full h-10 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-9 pr-8 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                  className="w-full h-10 bg-[var(--surface)] rounded-xl border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-10 pr-8 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
                 />
                 {search && (
                   <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
@@ -964,19 +978,35 @@ export default function BuilderPage() {
             </div>
 
             {/* Category chips + sort/filter row */}
-            <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Category chips */}
-              <div className="flex items-center gap-1.5 flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-                {CATALOG_CHIPS.map(({ label, value }) => {
-                  const isActive = catalogCategory === value;
+            <div className="shrink-0 px-4 py-2 border-b border-[var(--border)] flex items-center justify-between gap-4">
+              {/* Category chips — scrollable, no scrollbar */}
+              <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {([
+                  { label: "All", value: null },
+                  { label: "Tops", value: "tops" },
+                  { label: "Outerwear", value: "outerwear" },
+                  { label: "Bottoms", value: "bottoms" },
+                  { label: "Shoes", value: "footwear" },
+                  { label: "Accessories", value: "accessories" },
+                  { label: "Bags", value: "bags" },
+                  { label: "New In", value: "new-in" },
+                ] as Array<{ label: string; value: string | null }>).map(({ label, value }) => {
+                  const isNewIn = value === "new-in";
+                  const isActive = isNewIn ? sortBy === "new-in" : catalogCategory === value;
                   return (
                     <button
                       key={label}
-                      onClick={() => setCatalogCategory(isActive ? null : value)}
-                      className={`shrink-0 px-3 py-1 rounded-full border font-mono text-[9px] tracking-[0.1em] uppercase whitespace-nowrap transition-all duration-150 ${
+                      onClick={() => {
+                        if (isNewIn) {
+                          setSortBy(sortBy === "new-in" ? "featured" : "new-in");
+                        } else {
+                          setCatalogCategory(isActive ? null : value);
+                        }
+                      }}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
                         isActive
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                       }`}
                     >
                       {label}
@@ -984,22 +1014,22 @@ export default function BuilderPage() {
                   );
                 })}
               </div>
-              {/* Sort select */}
-              <div className="shrink-0 flex items-center gap-1.5">
+              {/* Right controls: sort + grid/list toggle + filters */}
+              <div className="shrink-0 flex items-center gap-2">
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                  className="bg-transparent border border-[var(--border)] outline-none text-xs text-[var(--foreground)] px-2 py-1.5 cursor-pointer"
+                  className="bg-transparent border border-[var(--border)] rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--foreground)] outline-none cursor-pointer"
                 >
-                  <option value="featured">SORT | Featured</option>
-                  <option value="new-in">SORT | Newest</option>
-                  <option value="price-asc">SORT | Price ↑</option>
-                  <option value="price-desc">SORT | Price ↓</option>
+                  <option value="featured">Featured</option>
+                  <option value="new-in">New In</option>
+                  <option value="price-asc">Price ↑</option>
+                  <option value="price-desc">Price ↓</option>
                 </select>
                 {/* Filters toggle button */}
                 <button
                   onClick={() => setFiltersOpen(v => !v)}
-                  className={`relative flex items-center gap-1.5 px-3 py-1.5 border font-mono text-[9px] tracking-[0.12em] uppercase transition-all duration-150 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all ${
                     filtersOpen
                       ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                       : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1011,15 +1041,15 @@ export default function BuilderPage() {
                     <line x1="5" y1="10.5" x2="9" y2="10.5" />
                   </svg>
                   Filters
-                  {hasActiveFilters && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#c9a84c] absolute top-1 right-1" />
+                  {activeFilterCount > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 absolute top-1 right-1" />
                   )}
                 </button>
               </div>
             </div>
 
             {/* Product grid — 4 columns */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-3">
               {catalogProducts.length === 0 ? (
                 <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-4 px-8 bg-[var(--surface)]">
                   <div className="w-20 h-20 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
@@ -1039,7 +1069,7 @@ export default function BuilderPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-px bg-[var(--border)] p-px">
+                <div className="grid grid-cols-4 gap-3">
                     {expandedCatalogItems.map(item => {
                       const { product, forcedVariant } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1070,23 +1100,32 @@ export default function BuilderPage() {
                               selectProduct(product);
                             }
                           }}
-                          className={`group relative flex flex-col text-left cursor-pointer bg-[var(--background)] transition-all duration-150 ${
-                            isSelected ? "ring-2 ring-inset ring-[var(--foreground)]" : ""
+                          className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
+                            isSelected
+                              ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
+                              : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
                           }`}
                         >
                           {/* Image */}
-                          <div className="relative w-full aspect-[3/4] overflow-hidden bg-white">
+                          <div className="relative aspect-[3/4] bg-white overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={displayImage}
                               alt={product.name}
                               className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                             />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
+                            {!isSelected && (
+                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                  <line x1="5" y1="1" x2="5" y2="9" />
+                                  <line x1="1" y1="5" x2="9" y2="5" />
+                                </svg>
+                              </div>
+                            )}
                             {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                <svg width="7" height="6" viewBox="0 0 9 7" fill="none">
-                                  <path d="M1 3.5L3.5 6L8 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                <svg width="10" height="8" viewBox="0 0 12 10" fill="none">
+                                  <path d="M1.5 5L4.5 8L10.5 1.5" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               </div>
                             )}
@@ -1131,12 +1170,10 @@ export default function BuilderPage() {
                             )}
                           </div>
                           {/* Info */}
-                          <div className="px-2 pt-1.5 pb-2">
-                            <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug truncate">{product.name}</p>
-                            <div className="flex items-center justify-between mt-0.5 gap-1">
-                              <p className="text-[9px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                              <p className="font-mono text-[9px] text-[var(--foreground)] shrink-0">{formatPrice(product.priceMin)}</p>
-                            </div>
+                          <div className="p-2.5">
+                            <p className="text-[10px] text-[var(--foreground-subtle)] mb-0.5 truncate">{product.brand}</p>
+                            <p className="text-[11px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2 mb-1">{product.name}</p>
+                            <p className="text-[12px] font-bold text-[var(--foreground)]">{formatPrice(product.priceMin)}</p>
                             {hasVariants && (() => {
                               const variants = product.variants!;
                               const MAX = 5;
@@ -1228,42 +1265,45 @@ export default function BuilderPage() {
 
           {/* ── FILTERS PANEL: slides in from right (280px) ───────────────── */}
           <div
-            className="shrink-0 overflow-hidden border-l border-[var(--border)] bg-[var(--background)] transition-all duration-200 flex flex-col"
+            className="shrink-0 border-l border-[var(--border)] bg-[var(--background)] overflow-hidden transition-all duration-200 flex flex-col"
             style={{ width: filtersOpen ? 280 : 0 }}
           >
-            <div className="w-[280px] flex flex-col overflow-y-auto h-full">
+            <div className="w-[280px] flex flex-col h-full">
 
               {/* Header */}
-              <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground)]">Filters</p>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+                <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
                 <button
                   onClick={() => setFiltersOpen(false)}
-                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
-                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
 
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto">
+
               {/* CATEGORY */}
-              <div className="border-b border-[var(--border)] px-4 py-3">
-                <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-2">Category</p>
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
                 <select
                   value={catalogCategory ?? ""}
                   onChange={e => setCatalogCategory(e.target.value || null)}
-                  className="bg-transparent border border-[var(--border)] outline-none text-xs text-[var(--foreground)] px-3 py-2 w-full cursor-pointer"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
                 >
                   <option value="">All</option>
-                  {CATALOG_CHIPS.filter(c => c.value !== null).map(({ label, value }) => (
+                  {CATALOG_CHIPS.slice(1).map(({ label, value }) => (
                     <option key={label} value={value!}>{label}</option>
                   ))}
                 </select>
               </div>
 
               {/* PRICE */}
-              <div className="border-b border-[var(--border)] px-4 py-3">
-                <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-2">Price</p>
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
                   <span className="text-[11px] font-medium text-[var(--foreground)]">
@@ -1280,15 +1320,21 @@ export default function BuilderPage() {
                     const val = Number(e.target.value);
                     setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
                   }}
-                  className="w-full h-1 cursor-pointer mb-3"
+                  className="w-full cursor-pointer mb-3"
                   style={{ accentColor: "var(--foreground)" }}
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {PRICE_BUCKETS.map(({ label, max }) => (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {([
+                    { label: "All", max: null },
+                    { label: "<$200", max: 200 },
+                    { label: "<$500", max: 500 },
+                    { label: "<$1k", max: 1000 },
+                    { label: "<$2k", max: 2000 },
+                  ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
                     <button
                       key={label}
                       onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                      className={`px-2.5 py-1 rounded-full border font-mono text-[8px] tracking-[0.08em] uppercase transition-all ${
+                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
                         maxPrice === max
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1301,12 +1347,12 @@ export default function BuilderPage() {
               </div>
 
               {/* GENDER */}
-              <div className="border-b border-[var(--border)] px-4 py-3">
-                <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-2">Gender</p>
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
                 <select
                   value={selectedGender ?? ""}
                   onChange={e => setSelectedGender((e.target.value || null) as typeof selectedGender)}
-                  className="bg-transparent border border-[var(--border)] outline-none text-xs text-[var(--foreground)] px-3 py-2 w-full cursor-pointer"
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
                 >
                   <option value="">All</option>
                   <option value="men">Men</option>
@@ -1316,8 +1362,8 @@ export default function BuilderPage() {
               </div>
 
               {/* COLORS */}
-              <div className="border-b border-[var(--border)] px-4 py-3">
-                <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-2">Colors</p>
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
                 <div className="flex flex-wrap gap-2">
                   {(showAllColors ? availableColors : availableColors.slice(0, 6)).map(({ name, hex }) => {
                     const isActive = selectedColors.includes(name);
@@ -1326,7 +1372,7 @@ export default function BuilderPage() {
                         key={name}
                         title={name}
                         onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`w-6 h-6 rounded-full shrink-0 transition-all ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                        className={`w-7 h-7 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
                         style={{
                           background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
                           boxShadow: isActive
@@ -1349,16 +1395,16 @@ export default function BuilderPage() {
 
               {/* BRANDS */}
               {availableBrands.length > 0 && (
-                <div className="border-b border-[var(--border)] px-4 py-3">
-                  <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-2">Brands</p>
+                <div className="border-b border-[var(--border)] px-5 py-4">
+                  <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Brands</p>
                   {/* Brand search */}
-                  <div className="relative mb-2">
+                  <div className="relative mb-3">
                     <input
                       type="text"
                       value={brandSearch}
                       onChange={e => setBrandSearch(e.target.value)}
                       placeholder="Search brands…"
-                      className="w-full bg-[var(--surface)] border border-[var(--border)] px-2 py-1.5 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
                     />
                     {brandSearch && (
                       <button
@@ -1424,15 +1470,17 @@ export default function BuilderPage() {
 
               {/* Clear filters button — shown when active */}
               {hasActiveFilters && (
-                <div className="px-4 py-3 shrink-0 border-t border-[var(--border)] mt-auto sticky bottom-0 bg-[var(--background)]">
+                <div className="px-5 py-4">
                   <button
                     onClick={clearFilters}
-                    className="w-full py-2 border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] font-mono text-[9px] tracking-[0.14em] uppercase transition-colors"
+                    className="w-full mt-3 py-2 rounded-lg border border-[var(--border-strong)] text-[10px] tracking-[0.12em] uppercase font-bold text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
                   >
                     Clear filters
                   </button>
                 </div>
               )}
+
+              </div>{/* end scrollable content */}
 
             </div>
           </div>
@@ -1440,56 +1488,61 @@ export default function BuilderPage() {
           </div>{/* end 3 panels row */}
 
           {/* ── DESKTOP BOTTOM ACTION BAR ───────────────────────────────────── */}
-          <div className="shrink-0 h-[52px] border-t border-[var(--border)] bg-[var(--background)] flex items-center justify-between px-0">
-            {/* Left area matching left panel width */}
-            <div className="flex items-center px-5" style={{ width: 280 }}>
-              <p className="font-mono text-[11px] text-[var(--foreground-muted)]">
+          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] flex items-center">
+            {/* Left section matching left panel width */}
+            <div className="shrink-0 px-6 py-3 border-r border-[var(--border)]" style={{ width: 300 }}>
+              <p className={`text-[11px] text-[var(--foreground-muted)] ${selectedCount === 0 ? "italic" : ""}`}>
                 {selectedCount > 0
-                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} · ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
+                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} • ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
                   : "Add pieces to build your look"}
               </p>
             </div>
-            {/* Right area: Generate + Save + Shop the Look */}
-            <div className="flex items-center gap-2.5 px-5">
+            {/* Right section: Generate + Save + Shop the Look */}
+            <div className="flex-1 flex items-center justify-end gap-3 px-5 py-3">
               {/* Generate */}
-              {selectedCount >= 1 && (
-                <button
-                  onClick={openStylePicker}
-                  disabled={generating}
-                  className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-3 h-8 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  {generating ? (
-                    <>
-                      <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
-                      Generating…
-                    </>
-                  ) : (
-                    <>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                      Generate
-                    </>
-                  )}
-                </button>
-              )}
+              <button
+                onClick={openStylePicker}
+                disabled={generating || selectedCount === 0}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-strong)] text-[11px] font-semibold text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30"
+              >
+                {generating ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                    </svg>
+                    Generate
+                  </>
+                )}
+              </button>
               {/* Save */}
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
-                className={`font-mono text-[10px] tracking-[0.14em] uppercase px-3 h-8 border transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`px-4 py-2.5 rounded-xl border text-[11px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 ${
                   saved
                     ? "border-[var(--border)] text-[var(--foreground-muted)]"
                     : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                 }`}
               >
-                {saved ? "Saved ✓" : "Save"}
+                {saved ? (
+                  <>
+                    <svg width="11" height="9" viewBox="0 0 12 10" fill="none">
+                      <path d="M1.5 5L4.5 8L10.5 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Saved
+                  </>
+                ) : "Save"}
               </button>
               {saved && (
                 <Link
                   href="/saved?tab=looks"
-                  className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="text-[11px] font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   View →
                 </Link>
@@ -1498,18 +1551,13 @@ export default function BuilderPage() {
               <button
                 onClick={shopTheLook}
                 disabled={selectedCount === 0}
-                className={`flex items-center gap-3 h-[42px] px-5 font-mono text-[10px] tracking-[0.2em] uppercase transition-all duration-150 disabled:cursor-not-allowed ${
-                  selectedCount > 0
-                    ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
-                    : "bg-[var(--border)] text-[var(--foreground-subtle)]"
-                }`}
+                className="flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl text-[11px] font-bold hover:opacity-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {shopAdded ? (
                   <span>Added to Cart ✓</span>
                 ) : (
                   <>
-                    <span>Shop the Look</span>
-                    {selectedCount > 0 && <span>{formatPrice(totalPrice)}</span>}
+                    <span>Shop the look{selectedCount > 0 ? ` ${formatPrice(totalPrice)}` : ""}</span>
                     {selectedCount > 0 && <span>→</span>}
                   </>
                 )}
