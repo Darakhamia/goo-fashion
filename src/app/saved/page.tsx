@@ -192,7 +192,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
             <button
               onClick={handleDelete}
               title="Delete look"
-              className="shrink-0 h-7 w-7 flex items-center justify-center border border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400 transition-colors"
+              className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400 transition-colors"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -202,7 +202,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
           <div className="flex gap-1.5">
             <Link
               href={builderUrl}
-              className="flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+              className="flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               Edit
             </Link>
@@ -210,7 +210,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
               onClick={look.generatedImage ? handleShare : undefined}
               disabled={!look.generatedImage || shareState !== "idle"}
               title={shareState === "done" ? "Submitted for review" : "Share this look"}
-              className={`flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium border transition-colors disabled:cursor-default ${
+              className={`flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium rounded-lg border transition-colors disabled:cursor-default ${
                 !look.generatedImage
                   ? "border-[var(--border)] text-[var(--foreground-subtle)] opacity-25"
                   : shareState === "done"
@@ -231,7 +231,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
           onClick={() => setConfirmDelete(false)}
         >
           <div
-            className="bg-[var(--background)] border border-[var(--border)] p-6 max-w-xs w-full"
+            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 max-w-xs w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium text-[var(--foreground)] mb-1">Delete this look?</p>
@@ -239,13 +239,13 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
             <div className="flex gap-2">
               <button
                 onClick={() => { onDelete(); setConfirmDelete(false); }}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
               >
                 Yes
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 No
               </button>
@@ -261,7 +261,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
           onClick={() => setOpen(false)}
         >
           <div
-            className={`bg-[var(--background)] w-full overflow-hidden flex flex-col ${
+            className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl ${
               look.generatedImage ? "max-w-3xl" : "max-w-lg"
             }`}
             style={{ maxHeight: "90vh" }}
@@ -351,7 +351,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                       onClick={() => setOpen(false)}
                       className="group/item flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors"
                     >
-                      <div className="w-14 h-14 shrink-0 bg-[var(--surface)] overflow-hidden border border-[var(--border)]">
+                      <div className="w-14 h-14 shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg border border-[var(--border)]">
                         {imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -537,15 +537,15 @@ export default function SavedPage() {
         </div>
 
         {/* Toggle */}
-        <div className="flex gap-px bg-[var(--border)] mb-10 w-fit">
+        <div className="flex gap-1.5 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setView(t.id)}
-              className={`px-6 py-2.5 text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+              className={`px-5 py-2 text-xs tracking-[0.12em] uppercase font-medium rounded-full transition-all duration-200 ${
                 view === t.id
-                  ? "bg-[var(--foreground)] text-[var(--background)]"
-                  : "bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                  ? "bg-[var(--foreground)] text-[var(--background)] shadow-sm"
+                  : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
               }`}
             >
               {t.label} ({t.count})
@@ -556,15 +556,15 @@ export default function SavedPage() {
         {/* ── Outfits (liked) ── */}
         {view === "outfits" && (
           savedOutfits.length > 0 ? (
-            <div className="flex flex-wrap">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {savedOutfits.map((outfit) => (
-                <div key={outfit.id} className="w-1/2 md:w-1/4 lg:w-1/5 border-r border-b border-[var(--border)] bg-[var(--background)] p-3">
+                <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                   <OutfitCard outfit={outfit} />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="py-32 text-center">
+            <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No saved outfits yet
               </p>
@@ -573,7 +573,7 @@ export default function SavedPage() {
               </p>
               <Link
                 href="/browse"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity duration-200 inline-block"
               >
                 Browse Outfits
               </Link>
@@ -584,15 +584,15 @@ export default function SavedPage() {
         {/* ── Pieces (liked) ── */}
         {view === "pieces" && (
           savedProducts.length > 0 ? (
-            <div className="flex flex-wrap">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {savedProducts.map((product) => (
-                <div key={product.id} className="w-1/2 md:w-1/4 lg:w-1/5 border-r border-b border-[var(--border)] bg-[var(--background)] p-3">
+                <div key={product.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                   <ProductCard product={product} />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="py-32 text-center">
+            <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No saved pieces yet
               </p>
@@ -601,7 +601,7 @@ export default function SavedPage() {
               </p>
               <Link
                 href="/browse?view=pieces"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity duration-200 inline-block"
               >
                 Browse Pieces
               </Link>
@@ -612,15 +612,15 @@ export default function SavedPage() {
         {/* ── My Looks (builder-created) ── */}
         {view === "looks" && (
           myLooks.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
               {myLooks.map((look) => (
-                <div key={look.id} className="border-r border-b border-[var(--border)] flex flex-col aspect-[3/5]">
+                <div key={look.id} className="rounded-xl border border-[var(--border)] overflow-hidden flex flex-col aspect-[3/5] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                   <LookCard look={look} onDelete={() => deleteLook(look.id)} allProducts={allProducts} />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="py-32 text-center">
+            <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
                 No looks built yet
               </p>
@@ -629,7 +629,7 @@ export default function SavedPage() {
               </p>
               <Link
                 href="/builder"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity duration-200 inline-block"
               >
                 Open Builder
               </Link>
