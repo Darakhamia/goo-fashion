@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
@@ -615,7 +616,7 @@ export default function BrowsePage() {
           </div>
 
           {/* View tabs */}
-          <div className="flex border-b border-[var(--border)] mt-6">
+          <div className="flex gap-0 mt-6 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
             {(["pieces", "outfits"] as View[]).map((v) => (
               <button
                 key={v}
@@ -628,18 +629,22 @@ export default function BrowsePage() {
                     setSelectedColorGroupIds([]);
                     setAiOnly(false);
                     setSelectedPriceIdx(null);
-                    // Persist tab in URL so browser back restores it
                     const url = new URL(window.location.href);
                     url.searchParams.set("view", v);
                     window.history.replaceState({}, "", url.toString());
                   }
                 }}
-                className={`px-6 py-3.5 text-xs tracking-[0.14em] uppercase font-bold transition-colors duration-200 border-b-2 -mb-px ${
-                  view === v
-                    ? "border-[var(--foreground)] text-[var(--foreground)]"
-                    : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
+                className="relative px-6 py-2 text-xs tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
+                style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
               >
+                {view === v && (
+                  <motion.div
+                    layoutId="browse-tab-pill"
+                    className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    style={{ zIndex: -1 }}
+                  />
+                )}
                 {v}
               </button>
             ))}
@@ -937,7 +942,15 @@ export default function BrowsePage() {
 
 
             {/* Product / Outfit grid */}
-            <div className="mt-6 pb-16">
+            <AnimatePresence mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="mt-6 pb-16"
+            >
               {view === "outfits" && loadingOutfits ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -1044,7 +1057,8 @@ export default function BrowsePage() {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>

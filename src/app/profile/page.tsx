@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
+
 import { useAuth } from "@/lib/context/auth-context";
 import { useTheme } from "@/lib/context/theme-context";
 import Link from "next/link";
@@ -229,33 +230,42 @@ export default function ProfilePage() {
           </div>
 
           {/* Content */}
-          <div className="max-w-2xl pb-20">
-            {activeTab === "account" && (
-              <AccountTab user={user} clerkUser={clerkUser} theme={theme} toggleTheme={toggleTheme} />
-            )}
-            {activeTab === "plan" && (
-              <PlanTab currentPlan={user?.plan ?? "free"} />
-            )}
-            {activeTab === "stylist" && (
-              <StylistTab
-                personalization={stylistPersonalization}
-                onCustomize={() => setShowStylistModal(true)}
-                bodyType={bodyType}
-                setBodyType={setBodyType}
-                budget={budget}
-                setBudget={setBudget}
-                selectedColors={selectedColors}
-                setSelectedColors={setSelectedColors}
-                selectedStyles={selectedStyles}
-                setSelectedStyles={setSelectedStyles}
-                sizes={sizes}
-                setSizes={setSizes}
-                onSaveStyle={saveStylePreferences}
-                styleSaved={styleSaved}
-                styleSaving={styleSaving}
-              />
-            )}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="max-w-2xl pb-20"
+            >
+              {activeTab === "account" && (
+                <AccountTab user={user} clerkUser={clerkUser} theme={theme} toggleTheme={toggleTheme} />
+              )}
+              {activeTab === "plan" && (
+                <PlanTab currentPlan={user?.plan ?? "free"} />
+              )}
+              {activeTab === "stylist" && (
+                <StylistTab
+                  personalization={stylistPersonalization}
+                  onCustomize={() => setShowStylistModal(true)}
+                  bodyType={bodyType}
+                  setBodyType={setBodyType}
+                  budget={budget}
+                  setBudget={setBudget}
+                  selectedColors={selectedColors}
+                  setSelectedColors={setSelectedColors}
+                  selectedStyles={selectedStyles}
+                  setSelectedStyles={setSelectedStyles}
+                  sizes={sizes}
+                  setSizes={setSizes}
+                  onSaveStyle={saveStylePreferences}
+                  styleSaved={styleSaved}
+                  styleSaving={styleSaving}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
