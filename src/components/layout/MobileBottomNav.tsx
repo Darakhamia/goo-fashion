@@ -58,7 +58,7 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)] border-t border-[var(--border)] flex items-stretch h-14">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)] flex items-stretch h-14">
       {tabs.map(({ href, label, icon }) => {
         const active = pathname === href || (href !== "/" && pathname.startsWith(href));
         return (

@@ -152,7 +152,7 @@ export default function StylistPage() {
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
                 GOO will build the outfit around your context.
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {occasions.map((occ) => (
                   <button
                     key={occ.id}
@@ -160,8 +160,10 @@ export default function StylistPage() {
                       setForm((f) => ({ ...f, occasion: occ.id }));
                       next("style");
                     }}
-                    className={`bg-[var(--background)] p-6 text-left hover:bg-[var(--surface)] transition-colors duration-200 ${
-                      form.occasion === occ.id ? "ring-1 ring-inset ring-[var(--foreground)]" : ""
+                    className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                      form.occasion === occ.id
+                        ? "border-[var(--foreground)] bg-[var(--surface)]"
+                        : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
                     }`}
                   >
                     <p className="text-sm font-medium text-[var(--foreground)] mb-1">{occ.label}</p>
@@ -181,7 +183,7 @@ export default function StylistPage() {
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
                 Select all that feel right. You can choose multiple.
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {styleKeywords.map((style) => {
                   const selected = form.styles.includes(style.id);
                   return (
@@ -195,8 +197,10 @@ export default function StylistPage() {
                             : [...f.styles, style.id],
                         }))
                       }
-                      className={`p-5 text-left transition-colors duration-200 relative ${
-                        selected ? "bg-[var(--foreground)]" : "bg-[var(--background)] hover:bg-[var(--surface)]"
+                      className={`p-5 text-left rounded-xl border transition-all duration-200 relative ${
+                        selected
+                          ? "bg-[var(--foreground)] border-[var(--foreground)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
                       }`}
                     >
                       <p className={`text-sm font-medium ${selected ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
@@ -220,7 +224,7 @@ export default function StylistPage() {
                 <button
                   onClick={() => next("palette")}
                   disabled={form.styles.length === 0}
-                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -240,7 +244,7 @@ export default function StylistPage() {
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
                 What palette speaks to you right now? Choose one or several.
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {palettes.map((pal) => {
                   const selected = form.palette.includes(pal.id);
                   return (
@@ -252,13 +256,15 @@ export default function StylistPage() {
                           palette: selected ? f.palette.filter((p) => p !== pal.id) : [...f.palette, pal.id],
                         }))
                       }
-                      className={`bg-[var(--background)] p-5 text-left transition-colors duration-200 ${
-                        selected ? "ring-1 ring-inset ring-[var(--foreground)]" : "hover:bg-[var(--surface)]"
+                      className={`p-5 text-left rounded-xl border transition-all duration-200 ${
+                        selected
+                          ? "border-[var(--foreground)] bg-[var(--surface)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
                       }`}
                     >
                       <div className="flex gap-1.5 mb-3">
                         {pal.colors.map((color, i) => (
-                          <div key={i} className="w-5 h-5" style={{ backgroundColor: color }} />
+                          <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
                         ))}
                       </div>
                       <p className="text-sm font-medium text-[var(--foreground)]">{pal.label}</p>
@@ -270,7 +276,7 @@ export default function StylistPage() {
                 <button
                   onClick={() => next("fit")}
                   disabled={form.palette.length === 0}
-                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Continue
                 </button>
@@ -290,7 +296,7 @@ export default function StylistPage() {
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
                 Your preferred silhouette and fit.
               </p>
-              <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 gap-3">
                 {fitOptions.map((opt) => {
                   const selected = form.fit === opt.id;
                   return (
@@ -300,8 +306,10 @@ export default function StylistPage() {
                         setForm((f) => ({ ...f, fit: opt.id }));
                         next("season");
                       }}
-                      className={`bg-[var(--background)] p-6 text-left hover:bg-[var(--surface)] transition-colors duration-200 ${
-                        selected ? "ring-1 ring-inset ring-[var(--foreground)]" : ""
+                      className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                        selected
+                          ? "border-[var(--foreground)] bg-[var(--surface)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
                       }`}
                     >
                       <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
@@ -327,7 +335,7 @@ export default function StylistPage() {
               <p className="text-sm text-[var(--foreground-muted)] mb-10">
                 We&apos;ll tailor fabrics and layering for your climate.
               </p>
-              <div className="grid grid-cols-2 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 gap-3">
                 {seasonOptions.map((opt) => {
                   const selected = form.season === opt.id;
                   return (
@@ -337,8 +345,10 @@ export default function StylistPage() {
                         setForm((f) => ({ ...f, season: opt.id }));
                         next("budget");
                       }}
-                      className={`bg-[var(--background)] p-6 text-left hover:bg-[var(--surface)] transition-colors duration-200 ${
-                        selected ? "ring-1 ring-inset ring-[var(--foreground)]" : ""
+                      className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                        selected
+                          ? "border-[var(--foreground)] bg-[var(--surface)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
                       }`}
                     >
                       <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
@@ -365,7 +375,7 @@ export default function StylistPage() {
                 Total outfit budget. We&apos;ll find the best prices across all stores.
               </p>
 
-              <div className="border-b border-[var(--border)] pb-6 mb-8">
+              <div className="rounded-xl border border-[var(--border)] p-5 bg-[var(--surface)] mb-8">
                 <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
                   Selected range
                 </p>
@@ -374,15 +384,17 @@ export default function StylistPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {budgetPresets.map((preset) => {
                   const active = form.budgetMin === preset.min && form.budgetMax === preset.max;
                   return (
                     <button
                       key={preset.label}
                       onClick={() => setForm((f) => ({ ...f, budgetMin: preset.min, budgetMax: preset.max }))}
-                      className={`p-5 text-left transition-colors duration-200 ${
-                        active ? "bg-[var(--foreground)]" : "bg-[var(--background)] hover:bg-[var(--surface)]"
+                      className={`p-5 text-left rounded-xl border transition-all duration-200 ${
+                        active
+                          ? "bg-[var(--foreground)] border-[var(--foreground)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
                       }`}
                     >
                       <p className={`text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
@@ -399,7 +411,7 @@ export default function StylistPage() {
               <div className="mt-10">
                 <button
                   onClick={handleGenerate}
-                  className="font-mono w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 hover:opacity-80 transition-opacity duration-200"
+                  className="font-mono w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200"
                 >
                   Generate Outfit
                 </button>
@@ -443,9 +455,9 @@ export default function StylistPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {generatedOutfits.map((outfit) => (
-                  <div key={outfit.id} className="bg-[var(--background)] p-3">
+                  <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                     <OutfitCard outfit={outfit} />
                   </div>
                 ))}

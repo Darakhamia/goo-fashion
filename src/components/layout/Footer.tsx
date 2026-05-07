@@ -24,7 +24,7 @@ const footerLinks = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[var(--border)] mt-16 md:mt-32">
+    <footer className="border-t border-[var(--border)] mt-16 md:mt-32 bg-[var(--surface)]">
       <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-10 md:py-24">
 
         {/* Mobile layout */}

@@ -119,7 +119,7 @@ function Cross() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-[var(--border)]">
+    <div>
       <button
         className="w-full flex items-center justify-between py-5 text-left gap-6 group"
         onClick={() => setOpen(!open)}
@@ -171,22 +171,21 @@ export default function PlansPage() {
         </div>
 
         {/* ── Plan Cards ── */}
-        <div
-          className="grid grid-cols-1 md:grid-cols-3 mb-24 stagger-children"
-          style={{ gap: "1px", background: "var(--border)" }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-24 stagger-children">
           {PLANS.map((plan, i) => (
             <div
               key={plan.id}
-              className={`flex flex-col p-8 md:p-10 relative animate-fade-up ${
-                plan.highlighted ? "bg-[var(--foreground)]" : "bg-[var(--background)]"
+              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border animate-fade-up transition-all duration-200 ${
+                plan.highlighted
+                  ? "bg-[var(--foreground)] border-[var(--foreground)] shadow-lg"
+                  : "bg-[var(--background)] border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md"
               }`}
               style={{ animationDelay: `${i * 60}ms` }}
             >
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute top-6 right-6">
-                  <span className="font-mono text-[8px] tracking-[0.18em] uppercase font-semibold text-[var(--foreground)] bg-[var(--background)] px-2.5 py-1.5">
+                  <span className="font-mono text-[8px] tracking-[0.18em] uppercase font-semibold text-[var(--foreground)] bg-[var(--background)] px-2.5 py-1 rounded-full">
                     {plan.badge}
                   </span>
                 </div>
@@ -234,10 +233,10 @@ export default function PlansPage() {
               {/* CTA */}
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 text-center transition-opacity duration-200 hover:opacity-75 cursor-pointer ${
+                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center transition-all duration-200 hover:opacity-80 cursor-pointer ${
                   plan.highlighted
                     ? "bg-[var(--background)] text-[var(--foreground)]"
-                    : "border border-[var(--border-strong)] text-[var(--foreground)]"
+                    : "border border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--surface)]"
                 }`}
               >
                 {plan.cta}
@@ -258,19 +257,16 @@ export default function PlansPage() {
           </div>
 
           {/* Scrollable on mobile */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
             <div style={{ minWidth: 560 }}>
 
               {/* Column headers */}
-              <div
-                className="grid"
-                style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1px", background: "var(--border)", marginBottom: "1px" }}
-              >
-                <div className="bg-[var(--background)] py-3 px-4" />
-                {PLANS.map((plan) => (
+              <div className="grid border-b border-[var(--border)]" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
+                <div className="bg-[var(--surface)] py-3.5 px-4" />
+                {PLANS.map((plan, i) => (
                   <div
                     key={plan.id}
-                    className={`py-3 px-4 ${plan.highlighted ? "bg-[var(--foreground)]" : "bg-[var(--background)]"}`}
+                    className={`py-3.5 px-4 ${plan.highlighted ? "bg-[var(--foreground)]" : "bg-[var(--surface)]"} ${i < PLANS.length - 1 ? "border-r border-[var(--border)]" : ""}`}
                   >
                     <p className={`font-mono text-[10px] tracking-[0.16em] uppercase font-medium ${
                       plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
@@ -285,28 +281,23 @@ export default function PlansPage() {
               {COMPARISON.map((row, idx) => (
                 <div
                   key={row.label}
-                  className="grid"
-                  style={{
-                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                    gap: "1px",
-                    background: "var(--border)",
-                    marginBottom: idx < COMPARISON.length - 1 ? "1px" : 0,
-                  }}
+                  className={`grid ${idx < COMPARISON.length - 1 ? "border-b border-[var(--border)]" : ""}`}
+                  style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
                 >
                   {/* Label */}
-                  <div className={`py-3.5 px-4 ${idx % 2 === 0 ? "bg-[var(--background)]" : "bg-[var(--surface)]"}`}>
+                  <div className={`py-3.5 px-4 border-r border-[var(--border)] ${idx % 2 === 0 ? "bg-[var(--background)]" : "bg-[var(--surface)]"}`}>
                     <span className="text-xs text-[var(--foreground-muted)]">{row.label}</span>
                   </div>
 
                   {/* Values */}
-                  {(["basic", "pro", "premium"] as const).map((planId) => {
+                  {(["basic", "pro", "premium"] as const).map((planId, ci) => {
                     const val = row[planId];
                     const isHighlighted = planId === "pro";
                     const baseBg = idx % 2 === 0 ? "bg-[var(--background)]" : "bg-[var(--surface)]";
                     return (
                       <div
                         key={planId}
-                        className={`py-3.5 px-4 flex items-center ${
+                        className={`py-3.5 px-4 flex items-center ${ci < 2 ? "border-r border-[var(--border)]" : ""} ${
                           isHighlighted ? "bg-[var(--fg-overlay-05)]" : baseBg
                         }`}
                       >
@@ -339,9 +330,11 @@ export default function PlansPage() {
             </h2>
           </div>
 
-          <div className="border-t border-[var(--border)]">
+          <div className="rounded-2xl border border-[var(--border)] overflow-hidden divide-y divide-[var(--border)]">
             {FAQ_ITEMS.map((item) => (
-              <FaqItem key={item.q} q={item.q} a={item.a} />
+              <div key={item.q} className="px-6">
+                <FaqItem q={item.q} a={item.a} />
+              </div>
             ))}
           </div>
         </div>
@@ -356,7 +349,7 @@ export default function PlansPage() {
           </p>
           <button
             onClick={() => handleSelectPlan("basic")}
-            className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+            className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200 cursor-pointer"
           >
             Start Basic →
           </button>

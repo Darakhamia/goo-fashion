@@ -203,15 +203,15 @@ export default function ProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-0 border-b border-[var(--border)] mb-10 overflow-x-auto">
+          <div className="flex gap-1.5 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] overflow-x-auto">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 text-[10px] tracking-[0.16em] uppercase font-medium transition-colors duration-200 border-b-2 -mb-px whitespace-nowrap ${
+                className={`px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "border-[var(--foreground)] text-[var(--foreground)]"
-                    : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)] shadow-sm"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 }`}
               >
                 {tab.label}
@@ -306,7 +306,7 @@ function AccountTab({
       </div>
 
       {/* Plan badge */}
-      <div className="p-4 border border-[var(--border)] flex items-center justify-between">
+      <div className="p-4 border border-[var(--border)] rounded-xl flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-[var(--foreground)]" />
           <p className="text-xs text-[var(--foreground-muted)]">
@@ -327,7 +327,7 @@ function AccountTab({
         <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
           Appearance
         </p>
-        <div className="flex items-center justify-between p-5 border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors duration-200">
+        <div className="flex items-center justify-between p-5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors duration-200">
           <div>
             <p className="text-sm font-medium text-[var(--foreground)]">
               {theme === "dark" ? "Dark mode" : "Light mode"}
@@ -359,7 +359,7 @@ function AccountTab({
         </p>
         <button
           onClick={logout}
-          className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200"
+          className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200"
         >
           Sign out
         </button>
@@ -381,7 +381,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
         <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
           Current plan
         </p>
-        <div className="p-6 border border-[var(--foreground)]">
+        <div className="p-6 border border-[var(--foreground)] rounded-2xl">
           <div className="flex items-start justify-between mb-5">
             <div>
               <p className="text-2xl font-light text-[var(--foreground)] capitalize">
@@ -394,7 +394,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
             {currentPlan !== "premium" && (
               <Link
                 href="/plans"
-                className="text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity"
+                className="text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] rounded-xl px-5 py-2.5 hover:opacity-80 transition-opacity"
               >
                 Upgrade
               </Link>
@@ -434,7 +434,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
               Billing
             </p>
-            <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
               <div className="flex items-center justify-between px-5 py-4">
                 <p className="text-xs text-[var(--foreground-muted)]">Next payment</p>
                 <p className="text-xs font-medium text-[var(--foreground)]">
@@ -463,7 +463,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
               Billing history
             </p>
-            <div className="border border-[var(--border)] divide-y divide-[var(--border)]">
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
               {billingHistory.map((entry, i) => (
                 <div key={i} className="flex items-center justify-between px-5 py-4">
                   <div>
@@ -487,11 +487,11 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
             <div className="flex flex-col gap-3">
               <Link
                 href="/plans"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200 text-center"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200 text-center"
               >
                 Change plan
               </Link>
-              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground-muted)] transition-colors duration-200">
+              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground-muted)] transition-colors duration-200">
                 Cancel subscription
               </button>
             </div>
@@ -512,7 +512,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 const plan = PLANS[planId];
                 const isUpgrade = PLAN_ORDER.indexOf(planId) > PLAN_ORDER.indexOf(currentPlan);
                 return (
-                  <div key={planId} className="p-4 border border-[var(--border)]">
+                  <div key={planId} className="p-4 border border-[var(--border)] rounded-xl hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
                     <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
                     <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">${plan.price}/mo</p>
                     {isUpgrade && (
@@ -598,7 +598,7 @@ function StylistTab({
 
         {personalization ? (
           <div className="space-y-5">
-            <div className="p-5 border border-[var(--border)] space-y-4">
+            <div className="p-5 border border-[var(--border)] rounded-xl space-y-4">
               {personalization.nickname && (
                 <div>
                   <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">Name</p>
@@ -615,7 +615,7 @@ function StylistTab({
                   <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">Style goals</p>
                   <div className="flex flex-wrap gap-1.5">
                     {personalization.styleGoals.map((g) => (
-                      <span key={g} className="text-[10px] tracking-[0.08em] border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)]">
+                      <span key={g} className="text-[10px] tracking-[0.08em] border border-[var(--border)] rounded-full px-2.5 py-1 text-[var(--foreground-muted)]">
                         {g}
                       </span>
                     ))}
@@ -639,14 +639,14 @@ function StylistTab({
             </div>
             <button
               onClick={onCustomize}
-              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200"
+              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground)] transition-colors duration-200"
             >
               Edit personalization
             </button>
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="p-6 border border-dashed border-[var(--border)]">
+            <div className="p-6 border border-dashed border-[var(--border)] rounded-xl">
               <p className="text-sm font-medium text-[var(--foreground)] mb-2">Not yet personalized</p>
               <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
                 2 minutes. Makes every AI recommendation significantly more personal.
@@ -654,7 +654,7 @@ function StylistTab({
             </div>
             <button
               onClick={onCustomize}
-              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200"
+              className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] rounded-xl px-8 py-4 hover:opacity-80 transition-opacity duration-200"
             >
               Personalize AI Stylist →
             </button>
@@ -699,7 +699,7 @@ function StylistTab({
                   onClick={() => toggleColor(color.hex)}
                   title={color.name}
                   disabled={atMax}
-                  className={`group relative aspect-square transition-all duration-200 ${
+                  className={`group relative aspect-square rounded-full transition-all duration-200 ${
                     isSelected
                       ? "ring-2 ring-offset-2 ring-[var(--foreground)] ring-offset-[var(--background)] scale-105"
                       : atMax
@@ -734,7 +734,7 @@ function StylistTab({
               {selectedColors.map((hex) => {
                 const c = COLOR_PALETTE.find((x) => x.hex === hex);
                 return (
-                  <span key={hex} className="flex items-center gap-1.5 text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-1">
+                  <span key={hex} className="flex items-center gap-1.5 text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] rounded-full px-2 py-1">
                     <span className="w-2.5 h-2.5 shrink-0" style={{ backgroundColor: hex }} />
                     {c?.name}
                   </span>
@@ -757,7 +757,7 @@ function StylistTab({
               <button
                 key={kw}
                 onClick={() => toggleStyle(kw)}
-                className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border transition-all duration-200 ${
+                className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border rounded-full transition-all duration-200 ${
                   selectedStyles.includes(kw)
                     ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                     : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -774,13 +774,15 @@ function StylistTab({
           <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
             Body type
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {BODY_TYPES.map((bt) => (
               <button
                 key={bt.id}
                 onClick={() => setBodyType(bt.id)}
-                className={`p-5 text-left transition-colors duration-200 ${
-                  bodyType === bt.id ? "bg-[var(--foreground)]" : "bg-[var(--background)] hover:bg-[var(--surface)]"
+                className={`p-5 text-left transition-colors duration-200 rounded-xl border ${
+                  bodyType === bt.id
+                    ? "bg-[var(--foreground)] rounded-xl border-[var(--foreground)]"
+                    : "bg-[var(--background)] border-[var(--border)] hover:bg-[var(--surface)] hover:border-[var(--foreground-muted)]"
                 }`}
               >
                 <p className={`text-sm font-medium mb-0.5 ${bodyType === bt.id ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
@@ -817,7 +819,7 @@ function StylistTab({
                   value={sizes[field.key]}
                   placeholder={field.placeholder}
                   onChange={(e) => setSizes({ ...sizes, [field.key]: e.target.value })}
-                  className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
+                  className="w-full bg-transparent border border-[var(--border)] rounded-lg text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
                 />
               </div>
             ))}
@@ -834,7 +836,7 @@ function StylistTab({
               <button
                 key={b.label}
                 onClick={() => setBudget(b.label)}
-                className={`p-4 text-left border transition-all duration-200 ${
+                className={`p-4 text-left border rounded-xl transition-all duration-200 ${
                   budget === b.label
                     ? "border-[var(--foreground)] bg-[var(--foreground)]"
                     : "border-[var(--border)] hover:border-[var(--foreground)]"
@@ -856,7 +858,7 @@ function StylistTab({
           <button
             onClick={onSaveStyle}
             disabled={styleSaving}
-            className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 disabled:opacity-40"
+            className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] rounded-xl px-8 py-4 hover:opacity-80 transition-opacity duration-200 disabled:opacity-40"
           >
             {styleSaving ? "Saving..." : "Save style profile"}
           </button>

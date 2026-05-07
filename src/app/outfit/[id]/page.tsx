@@ -66,9 +66,9 @@ export default async function OutfitDetailPage({ params }: Props) {
         </div>
 
         {/* Main layout */}
-        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--border)]">
+        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {/* Left: Editorial Image */}
-          <div className="bg-[var(--background)]">
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)]">
             <div className="relative aspect-[3/4] overflow-hidden">
               {outfit.imageUrl ? (
                 <Image
@@ -88,7 +88,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               )}
               {outfit.isAIGenerated && (
                 <div className="absolute top-4 left-4">
-                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5 block">
+                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full block">
                     AI Generated
                   </span>
                 </div>
@@ -97,7 +97,7 @@ export default async function OutfitDetailPage({ params }: Props) {
           </div>
 
           {/* Right: Outfit Info + Items */}
-          <div className="bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
             {/* Header */}
             <div className="mb-8 md:mb-10">
               <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 capitalize">
@@ -139,7 +139,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               {outfit.styleKeywords.map((kw) => (
                 <span
                   key={kw}
-                  className="text-[9px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 capitalize"
+                  className="text-[9px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1.5 rounded-full capitalize"
                 >
                   {kw}
                 </span>
@@ -155,14 +155,14 @@ export default async function OutfitDetailPage({ params }: Props) {
                 Pieces in this outfit
               </p>
 
-              <div className="space-y-px">
+              <div className="space-y-2">
                 {outfit.items.map(({ product, role }) => (
                   <Link
                     key={product.id}
                     href={`/product/${product.id}`}
-                    className="group flex items-center gap-4 py-4 border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors duration-200 -mx-6 md:-mx-10 px-6 md:px-10"
+                    className="group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-sm bg-[var(--background)] hover:bg-[var(--surface)] transition-all duration-200"
                   >
-                    <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-[var(--surface)]">
+                    <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-[var(--surface)] rounded-lg">
                       <Image
                         src={product.imageUrl}
                         alt={product.name}
@@ -204,9 +204,9 @@ export default async function OutfitDetailPage({ params }: Props) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {relatedOutfits.map((related) => (
-                <div key={related.id} className="bg-[var(--background)] p-4">
+                <div key={related.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                   <OutfitCard outfit={related} />
                 </div>
               ))}

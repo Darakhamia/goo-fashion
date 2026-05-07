@@ -66,8 +66,8 @@ export default async function BlogPage() {
         </div>
 
         {/* Featured post */}
-        <Link href={`/blog/${featured.slug}`} className="group block mb-px">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--border)]">
+        <Link href={`/blog/${featured.slug}`} className="group block mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md transition-all duration-200">
             <div className="bg-[var(--background)] overflow-hidden">
               <div className="aspect-[4/3] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -81,7 +81,7 @@ export default async function BlogPage() {
             <div className="bg-[var(--background)] p-8 md:p-12 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-4 mb-6">
-                  <span className="text-[9px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] border border-[var(--border)] px-2.5 py-1">
+                  <span className="text-[9px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] border border-[var(--border)] px-2.5 py-1 rounded-full">
                     {featured.category}
                   </span>
                   <span className="text-[10px] text-[var(--foreground-subtle)]">
@@ -109,12 +109,12 @@ export default async function BlogPage() {
 
         {/* Post grid */}
         {rest.length > 0 && (
-          <div className="mt-px grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {rest.map((post) => (
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="group bg-[var(--background)] flex flex-col"
+                className="group bg-[var(--background)] flex flex-col rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
               >
                 <div className="overflow-hidden aspect-[3/2]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,29 +150,27 @@ export default async function BlogPage() {
         )}
 
         {/* Newsletter strip */}
-        <div className="mt-px bg-[var(--border)]">
-          <div className="bg-[var(--surface)] px-8 md:px-16 py-12 md:py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-            <div>
-              <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
-                Newsletter
-              </p>
-              <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)]">
-                Style notes, weekly.
-              </h2>
-              <p className="mt-2 text-sm text-[var(--foreground-muted)]">
-                One email. No spam. Unsubscribe anytime.
-              </p>
-            </div>
-            <div className="flex gap-0 w-full md:w-auto">
-              <input
-                type="email"
-                placeholder="your@email.com"
-                className="flex-1 md:w-64 px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors duration-200"
-              />
-              <button className="px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity duration-200 shrink-0">
-                Subscribe
-              </button>
-            </div>
+        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-8 md:px-16 py-12 md:py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+          <div>
+            <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+              Newsletter
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)]">
+              Style notes, weekly.
+            </h2>
+            <p className="mt-2 text-sm text-[var(--foreground-muted)]">
+              One email. No spam. Unsubscribe anytime.
+            </p>
+          </div>
+          <div className="flex gap-2 w-full md:w-auto">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              className="flex-1 md:w-64 px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors duration-200"
+            />
+            <button className="px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity duration-200 shrink-0">
+              Subscribe
+            </button>
           </div>
         </div>
 
