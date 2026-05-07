@@ -773,10 +773,14 @@ export default function BrowsePage() {
             </div>
 
             {/* ── Inline horizontal filter strip ── */}
-            <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                filtersOpen ? "max-h-32 opacity-100" : "max-h-0 opacity-0"
-              }`}
+            <AnimatePresence>
+            {filtersOpen && (
+            <motion.div
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
             >
               <div className="overflow-x-auto border-b border-[var(--border)] py-3">
                 <div className="flex items-center gap-2 min-w-max px-1">
@@ -872,71 +876,134 @@ export default function BrowsePage() {
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
+            )}
+            </AnimatePresence>
 
             {/* Active filter chips */}
             {activeFiltersCount > 0 && (
               <div className="flex items-center gap-2 flex-wrap pt-4">
+                <AnimatePresence>
                 {selectedBrands.map((brand) => (
-                  <ActiveChip
+                  <motion.div
                     key={brand}
-                    label={brand}
-                    onRemove={() => toggleBrand(brand)}
-                  />
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={brand}
+                      onRemove={() => toggleBrand(brand)}
+                    />
+                  </motion.div>
                 ))}
                 {selectedCategories.map((cat) => (
-                  <ActiveChip
+                  <motion.div
                     key={cat}
-                    label={cat}
-                    onRemove={() => toggleCategory(cat)}
-                  />
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={cat}
+                      onRemove={() => toggleCategory(cat)}
+                    />
+                  </motion.div>
                 ))}
                 {selectedOccasions.map((occ) => (
-                  <ActiveChip
+                  <motion.div
                     key={occ}
-                    label={occ}
-                    onRemove={() => toggleOccasion(occ)}
-                  />
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={occ}
+                      onRemove={() => toggleOccasion(occ)}
+                    />
+                  </motion.div>
                 ))}
                 {selectedGender && (
-                  <ActiveChip
-                    label={selectedGender}
-                    onRemove={() => setSelectedGender(null)}
-                  />
+                  <motion.div
+                    key="gender"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={selectedGender}
+                      onRemove={() => setSelectedGender(null)}
+                    />
+                  </motion.div>
                 )}
                 {selectedPriceIdx !== null && (
-                  <ActiveChip
-                    label={PRICE_RANGES[selectedPriceIdx].label}
-                    onRemove={() => setSelectedPriceIdx(null)}
-                  />
+                  <motion.div
+                    key="price"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip
+                      label={PRICE_RANGES[selectedPriceIdx].label}
+                      onRemove={() => setSelectedPriceIdx(null)}
+                    />
+                  </motion.div>
                 )}
                 {selectedColorGroupIds.map((id) => {
                   const cg = colorGroups.find((g) => g.id === id);
                   if (!cg) return null;
                   return (
-                    <button
+                    <motion.div
                       key={id}
-                      onClick={() => toggleColorGroup(id)}
-                      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 rounded-full"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ duration: 0.15 }}
+                      layout
                     >
-                      <span
-                        className="w-2.5 h-2.5 shrink-0"
-                        style={
-                          cg.hexCode === "#multicolor"
-                            ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
-                            : { backgroundColor: cg.hexCode }
-                        }
-                      />
-                      {cg.name}
-                      <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
-                        <path d="M1 1L6 6M6 1L1 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                      </svg>
-                    </button>
+                      <button
+                        onClick={() => toggleColorGroup(id)}
+                        className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 rounded-full"
+                      >
+                        <span
+                          className="w-2.5 h-2.5 shrink-0"
+                          style={
+                            cg.hexCode === "#multicolor"
+                              ? { background: "conic-gradient(red, orange, yellow, green, blue, violet, red)" }
+                              : { backgroundColor: cg.hexCode }
+                          }
+                        />
+                        {cg.name}
+                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
+                          <path d="M1 1L6 6M6 1L1 6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </motion.div>
                   );
                 })}
                 {aiOnly && (
-                  <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
+                  <motion.div
+                    key="aiOnly"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -977,30 +1044,42 @@ export default function BrowsePage() {
                 </div>
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children">
+                  <motion.div
+                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children"
+                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+                    initial="hidden"
+                    animate="show"
+                  >
                     {pagedOutfits.map((outfit) => (
-                      <div
+                      <motion.div
                         key={outfit.id}
-                        className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 animate-fade-up"
+                        className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                        variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                       >
                         <OutfitCard outfit={outfit} />
-                      </div>
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 ) : (
                   <EmptyState onClear={clearAll} noun="outfits" />
                 )
               ) : displayItems.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children">
+                <motion.div
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+                  initial="hidden"
+                  animate="show"
+                >
                   {pagedItems.map(({ product, forcedVariant, key }) => (
-                    <div
+                    <motion.div
                       key={key}
-                      className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 animate-fade-up"
+                      className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                      variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                     >
                       <ProductCard product={product} initialVariant={forcedVariant} />
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               ) : (
                 <EmptyState onClear={clearAll} noun="pieces" />
               )}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
@@ -171,16 +172,23 @@ export default function PlansPage() {
         </div>
 
         {/* ── Plan Cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-24 stagger-children">
-          {PLANS.map((plan, i) => (
-            <div
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-24"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+        >
+          {PLANS.map((plan) => (
+            <motion.div
               key={plan.id}
-              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border animate-fade-up transition-all duration-200 ${
+              variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border transition-all duration-200 ${
                 plan.highlighted
                   ? "bg-[var(--foreground)] border-[var(--foreground)] shadow-lg"
                   : "bg-[var(--background)] border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md"
               }`}
-              style={{ animationDelay: `${i * 60}ms` }}
             >
               {/* Badge */}
               {plan.badge && (
@@ -241,9 +249,9 @@ export default function PlansPage() {
               >
                 {plan.cta}
               </button>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* ── Comparison Table ── */}
         <div className="mb-24">
