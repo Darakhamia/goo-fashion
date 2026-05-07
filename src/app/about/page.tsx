@@ -59,7 +59,7 @@ export default function AboutPage() {
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed mb-10">
                 GOO combines artificial intelligence, outfit generation, and fashion discovery into one platform. Instead of jumping between multiple websites, you do everything in one place.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-[var(--border)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   {
                     number: "01",
@@ -82,7 +82,7 @@ export default function AboutPage() {
                     body: "See the full outfit rendered before committing — on a mannequin or as an editorial flat-lay.",
                   },
                 ].map((item) => (
-                  <div key={item.number} className="bg-[var(--background)] p-7">
+                  <div key={item.number} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
                     <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-4">
                       {item.number}
                     </p>
@@ -185,7 +185,7 @@ export default function AboutPage() {
               <div className="pt-6">
                 <a
                   href="mailto:anything@goo-fashion.com"
-                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all duration-200 inline-block"
+                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all duration-200 inline-block"
                 >
                   Get in touch →
                 </a>
@@ -210,13 +210,13 @@ export default function AboutPage() {
             <div className="flex items-center gap-4">
               <Link
                 href="/browse"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200"
               >
                 Start exploring
               </Link>
               <Link
                 href="/plans"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 hover:border-[var(--foreground)] transition-colors duration-200"
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:border-[var(--foreground)] transition-colors duration-200"
               >
                 See plans
               </Link>
