@@ -285,7 +285,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       {/* Add to outfit */}
       <Link
         href={`/builder?product=${product.id}`}
-        className="mt-2 mx-3 flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
+        className="mt-2 w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
