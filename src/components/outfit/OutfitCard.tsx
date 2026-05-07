@@ -39,7 +39,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
     >
       <Link href={`/outfit/${outfit.id}`} className="block">
         {/* Image */}
-        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
+        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden rounded-2xl ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
               <Image
