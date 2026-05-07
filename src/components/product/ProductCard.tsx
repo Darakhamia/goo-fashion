@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
@@ -138,8 +139,12 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     : null;
 
   return (
-    <div
+    <motion.div
       className="group relative block"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -286,7 +291,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
         <span className="text-base leading-none font-light text-[var(--foreground-muted)] group-hover/btn:text-[var(--foreground)] transition-colors">+</span>
       </Link>
-    </div>
+    </motion.div>
   );
 }
 

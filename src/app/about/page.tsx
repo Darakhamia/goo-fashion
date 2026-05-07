@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+"use client";
 
-export const metadata: Metadata = {
-  title: "About — GOO",
-  description: "GOO is an AI-powered fashion platform built to simplify the way people create outfits and discover clothing.",
-};
+import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function AboutPage() {
   return (
@@ -12,7 +9,12 @@ export default function AboutPage() {
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 pt-20 md:pt-32 pb-24 md:pb-32">
-        <div className="max-w-3xl animate-fade-up">
+        <motion.div
+          className="max-w-3xl"
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
             About
           </p>
@@ -22,7 +24,7 @@ export default function AboutPage() {
           <p className="text-lg md:text-xl text-[var(--foreground-muted)] leading-relaxed max-w-xl">
             GOO is an AI-powered fashion platform built to simplify the way people create outfits and discover clothing.
           </p>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Origin ─────────────────────────────────────────────────────────── */}
@@ -34,14 +36,20 @@ export default function AboutPage() {
                 The idea
               </p>
             </div>
-            <div className="space-y-5">
+            <motion.div
+              className="space-y-5"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
               <p className="text-2xl md:text-3xl font-light text-[var(--foreground)] leading-relaxed">
                 Finding what to wear shouldn&apos;t take hours of browsing through different websites, comparing items, and trying to imagine how everything fits together.
               </p>
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
                 We built GOO to solve this. One platform, one AI, everything you need to go from idea to outfit.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -59,7 +67,13 @@ export default function AboutPage() {
               <p className="text-base text-[var(--foreground-muted)] leading-relaxed mb-10">
                 GOO combines artificial intelligence, outfit generation, and fashion discovery into one platform. Instead of jumping between multiple websites, you do everything in one place.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <motion.div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: "-60px" }}
+                variants={{ show: { transition: { staggerChildren: 0.09 } } }}
+              >
                 {[
                   {
                     number: "01",
@@ -82,15 +96,20 @@ export default function AboutPage() {
                     body: "See the full outfit rendered before committing — on a mannequin or as an editorial flat-lay.",
                   },
                 ].map((item) => (
-                  <div key={item.number} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
+                  <motion.div
+                    key={item.number}
+                    variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200"
+                  >
                     <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-4">
                       {item.number}
                     </p>
                     <p className="text-sm font-medium text-[var(--foreground)] mb-2">{item.title}</p>
                     <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{item.body}</p>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
@@ -149,7 +168,13 @@ export default function AboutPage() {
       {/* ── Mission ────────────────────────────────────────────────────────── */}
       <section className="border-t border-[var(--border)]">
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-20 md:py-28">
-          <div className="max-w-2xl mx-auto text-center">
+          <motion.div
+            className="max-w-2xl mx-auto text-center"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
             <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)] mb-8">
               Our mission
             </p>
@@ -159,7 +184,7 @@ export default function AboutPage() {
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed max-w-lg mx-auto">
               Our mission is to make it easier for everyone to create outfits, experiment with fashion, and feel confident in what they wear. With AI, this becomes possible.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
