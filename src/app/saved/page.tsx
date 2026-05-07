@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
@@ -559,6 +559,16 @@ export default function SavedPage() {
           ))}
         </div>
 
+        {/* ── Tab content ── */}
+        <AnimatePresence mode="wait">
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18 }}
+        >
+
         {/* ── Outfits (liked) ── */}
         {view === "outfits" && (
           savedOutfits.length > 0 ? (
@@ -642,6 +652,9 @@ export default function SavedPage() {
             </div>
           )
         )}
+
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
