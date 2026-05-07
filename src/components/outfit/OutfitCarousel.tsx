@@ -63,7 +63,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
       <Link
         href={`/outfit/${outfit.id}`}
         tabIndex={isPeek ? -1 : 0}
-        className={`block relative overflow-hidden aspect-[3/4] bg-[var(--surface)] ${
+        className={`block relative overflow-hidden aspect-[3/4] bg-[var(--surface)] rounded-2xl ${
           !isPeek ? "ring-1 ring-[var(--border-strong)]" : ""
         }`}
       >
