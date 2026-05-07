@@ -214,7 +214,7 @@ export default function SettingsPage() {
         <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
           Settings
         </h1>
-        <div className="mt-6 border border-[var(--border)] px-5 py-4">
+        <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
             Access denied. Your account is not in the admin allowlist.
           </p>
@@ -236,7 +236,7 @@ export default function SettingsPage() {
       </p>
 
       {/* ── Hero Image — Dark theme ── */}
-      <div className="border border-[var(--border)] bg-[var(--background)] mb-4">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-4">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -255,7 +255,7 @@ export default function SettingsPage() {
 
         <div className="px-5 py-4">
           {heroUrl && (
-            <div className="mb-4 relative overflow-hidden border border-[var(--border)]" style={{ height: 160 }}>
+            <div className="mb-4 relative overflow-hidden rounded-xl border border-[var(--border)]" style={{ height: 160 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={heroUrl} alt="Dark hero preview" className="w-full h-full object-cover" />
               {heroIsDefault && (
@@ -303,7 +303,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Hero Image — Light theme ── */}
-      <div className="border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -322,7 +322,7 @@ export default function SettingsPage() {
 
         <div className="px-5 py-4">
           {heroLightUrl && (
-            <div className="mb-4 relative overflow-hidden border border-[var(--border)]" style={{ height: 160 }}>
+            <div className="mb-4 relative overflow-hidden rounded-xl border border-[var(--border)]" style={{ height: 160 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={heroLightUrl} alt="Light hero preview" className="w-full h-full object-cover" />
               {heroLightIsDefault && (

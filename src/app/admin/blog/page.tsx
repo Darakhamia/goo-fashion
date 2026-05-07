@@ -48,7 +48,7 @@ const COMMON_CATEGORIES = [
 ];
 
 const inputCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
@@ -301,7 +301,7 @@ export default function AdminBlogPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={openAiModal}
-            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)]"
+            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
@@ -312,7 +312,7 @@ export default function AdminBlogPage() {
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
@@ -496,7 +496,7 @@ export default function AdminBlogPage() {
       {showAiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div
-            className="border border-[var(--border)] w-full max-w-md"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-md"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
@@ -540,14 +540,14 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleAiGenerate}
                 disabled={!aiUrl.trim() || aiLoading}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {aiLoading ? "Generating..." : "Generate post"}
               </button>
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiLoading}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40"
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-40 rounded-lg"
               >
                 Cancel
               </button>
@@ -560,7 +560,7 @@ export default function AdminBlogPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
           <div
-            className="border border-[var(--border)] w-full max-w-3xl flex flex-col"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
@@ -615,7 +615,7 @@ export default function AdminBlogPage() {
                   className={inputCls}
                 />
                 {form.coverImageUrl && (
-                  <div className="mt-2 relative w-full max-w-xs aspect-[4/3] overflow-hidden border border-[var(--border)]">
+                  <div className="mt-2 relative w-full max-w-xs aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={form.coverImageUrl}
@@ -861,7 +861,7 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving
                   ? "Saving..."
@@ -873,7 +873,7 @@ export default function AdminBlogPage() {
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
               >
                 Cancel
               </button>

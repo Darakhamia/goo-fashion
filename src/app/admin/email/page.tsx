@@ -303,7 +303,7 @@ export default function AdminEmailPage() {
               />
 
               {/* Format guide */}
-              <div className="mt-2 border border-[var(--border)] divide-y divide-[var(--border)]">
+              <div className="mt-2 rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
                 <div className="px-3 py-2 flex items-center justify-between">
                   <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Формат текста</p>
                   <p className="text-[10px] text-[var(--foreground-subtle)]">пишешь → так отображается в письме</p>
@@ -342,7 +342,7 @@ export default function AdminEmailPage() {
             </button>
 
             {showPreview && previewHtml && (
-              <div className="mt-4 border border-[var(--border)] overflow-hidden">
+              <div className="mt-4 rounded-xl border border-[var(--border)] overflow-hidden">
                 <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
@@ -431,7 +431,7 @@ export default function AdminEmailPage() {
         </div>
 
         {/* ── Right: templates ── */}
-        <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
               Templates
@@ -500,7 +500,7 @@ export default function AdminEmailPage() {
       {/* AI Write modal */}
       {showAiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="border border-[var(--border)] w-full max-w-md" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] w-full max-w-md" style={{ background: "var(--background)" }}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
                 <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
@@ -516,7 +516,7 @@ export default function AdminEmailPage() {
             </div>
             <div className="px-5 py-4 space-y-3">
               {subject && (
-                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 border border-[var(--border)] bg-[var(--surface)]">
+                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                   Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
                 </div>
               )}
@@ -541,7 +541,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleAiWrite}
                 disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 rounded-lg"
               >
                 {aiWriting
                   ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
@@ -550,7 +550,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiWriting}
-                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
               >
                 Cancel
               </button>
@@ -563,7 +563,7 @@ export default function AdminEmailPage() {
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div
-            className="border border-[var(--border)] w-full max-w-sm"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-sm"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
@@ -599,13 +599,13 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleSaveTemplate}
                 disabled={!templateName.trim() || savingTemplate}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity rounded-lg"
               >
                 {savingTemplate ? "Saving…" : "Save template"}
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
               >
                 Cancel
               </button>

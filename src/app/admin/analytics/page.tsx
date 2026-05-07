@@ -46,7 +46,7 @@ function StatCard({
   label: string; value?: string; delta?: { label: string; positive: boolean }; sub?: string; loading?: boolean;
 }) {
   return (
-    <div className="border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+    <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
       <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
       {loading ? (
         <Skeleton h={8} />
@@ -208,7 +208,7 @@ export default function AdminAnalyticsPage() {
 
       {/* Traffic chart */}
       <Section title="Traffic Over Time">
-        <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
           {loading && <Skeleton h={65} />}
           {!loading && data && <TrafficChart data={data} />}
         </div>
@@ -239,13 +239,13 @@ export default function AdminAnalyticsPage() {
       {/* Devices + Browsers + Countries */}
       <Section title="Audience">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
+          <div className="rounded-xl border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
             {loading ? <Skeleton h={36} /> : <DevicePie items={data?.devices ?? []} />}
           </div>
-          <div className="border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
+          <div className="rounded-xl border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
             {loading ? <Skeleton h={36} /> : <BrowserPie items={data?.browsers ?? []} />}
           </div>
-          <div className="border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
+          <div className="rounded-xl border border-[var(--border)] p-6" style={{ background: "var(--background)", minHeight: 160 }}>
             <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Top Countries</p>
             {loading ? <Skeleton h={24} /> : <CountriesChart items={data?.countries ?? []} />}
           </div>

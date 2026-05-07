@@ -64,9 +64,9 @@ const defaultForm: OutfitFormState = {
 };
 
 const inputCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const selectCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
 const labelCls = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
@@ -392,7 +392,7 @@ export default function AdminOutfitsPage() {
         {adminTab === "outfits" && (
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -436,7 +436,7 @@ export default function AdminOutfitsPage() {
           ) : pendingLooks.length === 0 ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
           ) : (
-            <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+            <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
               {pendingLooks.map((look, idx) => (
                 <div
                   key={look.id}
@@ -446,7 +446,7 @@ export default function AdminOutfitsPage() {
                   }`}
                 >
                   {/* Thumbnail */}
-                  <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+                  <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--surface)] rounded-xl border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={look.generated_image} alt="Look" className="w-full h-full object-cover" />
                   </div>
@@ -454,7 +454,7 @@ export default function AdminOutfitsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       {look.generated_style && (
-                        <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5">
+                        <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 rounded-md">
                           {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
                         </span>
                       )}
@@ -490,7 +490,7 @@ export default function AdminOutfitsPage() {
           onClick={() => setSelectedLook(null)}
         >
           <div
-            className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)]"
+            className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)] rounded-2xl overflow-hidden"
             style={{ maxHeight: "90vh" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -498,7 +498,7 @@ export default function AdminOutfitsPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div className="flex items-center gap-3">
                 {selectedLook.generated_style && (
-                  <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5">
+                  <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 rounded-md">
                     {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On You" : "AI"}
                   </span>
                 )}
@@ -537,7 +537,7 @@ export default function AdminOutfitsPage() {
               <div className="flex-1 flex flex-col border-l border-[var(--border)] overflow-y-auto divide-y divide-[var(--border)]">
                 {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
                   <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-12 h-12 shrink-0 bg-[var(--surface)] border border-[var(--border)] overflow-hidden">
+                    <div className="w-12 h-12 shrink-0 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden">
                       {piece.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
@@ -608,7 +608,7 @@ export default function AdminOutfitsPage() {
       </div>
 
       {/* Table */}
-      <div className="border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border)]">
@@ -701,7 +701,7 @@ export default function AdminOutfitsPage() {
                       {outfit.styleKeywords.slice(0, 2).map((kw) => (
                         <span
                           key={kw}
-                          className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 leading-none"
+                          className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 leading-none rounded-md"
                         >
                           {kw}
                         </span>
@@ -743,7 +743,7 @@ export default function AdminOutfitsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
           <div
-            className="border border-[var(--border)] w-full max-w-5xl flex flex-col"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Modal header */}
@@ -1124,13 +1124,13 @@ export default function AdminOutfitsPage() {
                   <button
                     onClick={handleSave}
                     disabled={!form.name.trim() || saving}
-                    className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                   >
                     {saving ? "Saving..." : editingId ? "Save Changes" : "Create Outfit"}
                   </button>
                   <button
                     onClick={closeModal}
-                    className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                    className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
                   >
                     Cancel
                   </button>
