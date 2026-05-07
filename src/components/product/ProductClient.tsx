@@ -399,7 +399,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map((related) => (
-              <div key={related.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 p-3">
+              <div key={related.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                 <ProductCard product={related} />
               </div>
             ))}
