@@ -378,7 +378,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
-              <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 p-3">
+              <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                 <OutfitCard outfit={outfit} />
               </div>
             ))}
