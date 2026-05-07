@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
@@ -537,17 +538,22 @@ export default function SavedPage() {
         </div>
 
         {/* Toggle */}
-        <div className="flex gap-1.5 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
+        <div className="flex gap-0 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setView(t.id)}
-              className={`px-5 py-2 text-xs tracking-[0.12em] uppercase font-medium rounded-full transition-all duration-200 ${
-                view === t.id
-                  ? "bg-[var(--foreground)] text-[var(--background)] shadow-sm"
-                  : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-              }`}
+              className="relative px-5 py-2 text-xs tracking-[0.12em] uppercase font-medium rounded-full z-10 transition-colors duration-200"
+              style={{ color: view === t.id ? "var(--background)" : "var(--foreground-muted)" }}
             >
+              {view === t.id && (
+                <motion.div
+                  layoutId="saved-tab-pill"
+                  className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  style={{ zIndex: -1 }}
+                />
+              )}
               {t.label} ({t.count})
             </button>
           ))}
