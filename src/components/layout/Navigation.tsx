@@ -125,12 +125,12 @@ export default function Navigation() {
               </svg>
             </button>
             {currencyOpen && (
-              <div className="absolute top-full right-0 mt-2 w-36 border border-[var(--border)] bg-[var(--background)] shadow-lg z-50 py-1">
+              <div className="absolute top-full right-0 mt-2 w-36 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-lg z-50 py-1.5 overflow-hidden">
                 {CURRENCIES.map((c) => (
                   <button
                     key={c.code}
                     onClick={() => { setCurrency(c.code); setCurrencyOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] ${
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] rounded-lg mx-0 ${
                       currency === c.code
                         ? "text-[var(--foreground)]"
                         : "text-[var(--foreground-muted)]"
@@ -301,8 +301,8 @@ export default function Navigation() {
           {/* Drawer */}
           <div
             ref={cartDrawerRef}
-            className="fixed top-0 right-0 h-full w-full max-w-[360px] z-50 bg-[var(--background)] border-l border-[var(--border-strong)] flex flex-col animate-slide-in-right"
-            style={{ boxShadow: "-20px 0 60px rgba(0,0,0,0.12)" }}
+            className="fixed top-3 right-3 bottom-3 w-full max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
+            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
           >
             {/* Drawer header */}
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
@@ -340,14 +340,14 @@ export default function Navigation() {
                   </p>
                 </div>
               ) : (
-                <ul className="divide-y divide-[var(--border)]">
+                <ul className="flex flex-col gap-2 p-3">
                   {cartItems.map(item => (
-                    <li key={item.id} className="flex gap-3 px-4 py-3 items-start">
+                    <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
                       {/* Thumbnail — links to product page */}
                       <Link
                         href={`/product/${item.id}`}
                         onClick={() => setCartOpen(false)}
-                        className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden hover:opacity-80 transition-opacity"
+                        className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg hover:opacity-80 transition-opacity"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
