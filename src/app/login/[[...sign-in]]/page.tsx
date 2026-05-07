@@ -31,7 +31,6 @@ export default function LoginPage() {
           },
         }}
         redirectUrl="/"
-        signUpUrl="/register"
       />
     </div>
   );

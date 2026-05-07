@@ -13,8 +13,7 @@ export function FloatingStylist() {
   // Hide on admin/auth pages
   const isHidden =
     pathname.startsWith("/admin") ||
-    pathname === "/login" ||
-    pathname === "/register";
+    pathname === "/login";
 
   useEffect(() => {
     if (isOpen && products.length === 0) {

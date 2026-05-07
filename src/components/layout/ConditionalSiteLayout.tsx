@@ -22,7 +22,6 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   const isBarePage =
     pathname.startsWith("/admin") ||
     pathname === "/login" ||
-    pathname === "/register" ||
     pathname === "/coming-soon";
 
   const isBuilder = pathname === "/builder";
