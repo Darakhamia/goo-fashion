@@ -124,7 +124,7 @@ function ActiveChip({
   return (
     <button
       onClick={onRemove}
-      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 capitalize"
+      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 capitalize rounded-full"
     >
       {label}
       <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
@@ -611,10 +611,11 @@ export default function BrowsePage() {
             <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
               Curated pieces from the world's most forward-thinking brands.
             </p>
+            <div className="mt-6 border-t border-[var(--border)]" />
           </div>
 
           {/* View tabs */}
-          <div className="flex border-b border-[var(--border)]">
+          <div className="flex border-b border-[var(--border)] mt-6">
             {(["pieces", "outfits"] as View[]).map((v) => (
               <button
                 key={v}
@@ -740,7 +741,7 @@ export default function BrowsePage() {
                   </svg>
                 </button>
                 {sortOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
                     {(
                       [
                         { value: "featured", label: "Featured" },
@@ -752,7 +753,7 @@ export default function BrowsePage() {
                       <button
                         key={opt.value}
                         onClick={() => { setSort(opt.value); setSortOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-[9px] tracking-[0.14em] uppercase transition-colors duration-150 ${
+                        className={`w-full text-left px-4 py-2.5 text-[9px] tracking-[0.14em] uppercase transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl ${
                           sort === opt.value
                             ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                             : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -911,7 +912,7 @@ export default function BrowsePage() {
                     <button
                       key={id}
                       onClick={() => toggleColorGroup(id)}
-                      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 rounded-full"
                     >
                       <span
                         className="w-2.5 h-2.5 shrink-0"
@@ -938,10 +939,10 @@ export default function BrowsePage() {
             {/* Product / Outfit grid */}
             <div className="mt-6 pb-16">
               {view === "outfits" && loadingOutfits ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="border-r border-b border-[var(--border)] p-2">
-                      <div className="animate-pulse">
+                    <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+                      <div className="animate-pulse p-2">
                         <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
                         <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
                         <div className="bg-[var(--surface)] h-3 w-1/2" />
@@ -950,10 +951,10 @@ export default function BrowsePage() {
                   ))}
                 </div>
               ) : view === "pieces" && loadingProducts ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="border-r border-b border-[var(--border)] p-2">
-                      <div className="animate-pulse">
+                    <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+                      <div className="animate-pulse p-2">
                         <div className="bg-[var(--surface)] aspect-[3/4] w-full mb-3" />
                         <div className="bg-[var(--surface)] h-3 w-3/4 mb-2" />
                         <div className="bg-[var(--surface)] h-3 w-1/2" />
@@ -963,11 +964,11 @@ export default function BrowsePage() {
                 </div>
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)] stagger-children">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children">
                     {pagedOutfits.map((outfit) => (
                       <div
                         key={outfit.id}
-                        className="border-r border-b border-[var(--border)] p-2 animate-fade-up"
+                        className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 animate-fade-up"
                       >
                         <OutfitCard outfit={outfit} />
                       </div>
@@ -977,11 +978,11 @@ export default function BrowsePage() {
                   <EmptyState onClear={clearAll} noun="outfits" />
                 )
               ) : displayItems.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 border-t border-l border-[var(--border)] stagger-children">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children">
                   {pagedItems.map(({ product, forcedVariant, key }) => (
                     <div
                       key={key}
-                      className="border-r border-b border-[var(--border)] p-2 animate-fade-up"
+                      className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200 animate-fade-up"
                     >
                       <ProductCard product={product} initialVariant={forcedVariant} />
                     </div>
@@ -1025,7 +1026,7 @@ export default function BrowsePage() {
                           onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                           className={`w-8 h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
                             page === p
-                              ? "bg-[var(--foreground)] text-[var(--background)]"
+                              ? "bg-[var(--foreground)] text-[var(--background)] rounded-lg"
                               : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                           }`}
                         >
@@ -1069,7 +1070,7 @@ function EmptyState({
   noun: string;
 }) {
   return (
-    <div className="py-24 text-center">
+    <div className="py-24 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)] mx-2">
       <p className="text-xl font-semibold text-[var(--foreground)] mb-2">
         No {noun} found
       </p>

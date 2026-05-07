@@ -36,7 +36,7 @@ export default async function HomePage() {
   return (
     <>
       {/* ─── HERO ─── */}
-      <section className="relative min-h-screen flex flex-col justify-end pb-20 md:pb-28 pt-32">
+      <section className="relative min-h-screen flex flex-col justify-end pb-20 md:pb-28 pt-32 rounded-2xl overflow-hidden mx-6 md:mx-12 mt-4">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -45,6 +45,11 @@ export default async function HomePage() {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/90 via-[#0A0A0A]/30 to-transparent" />
+
+        {/* Floating pill tag */}
+        <div className="absolute top-6 right-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-2 text-[11px] text-white/80 font-medium tracking-wide z-10">
+          AI-Powered Styling
+        </div>
 
         <div className="relative z-10 max-w-[1440px] mx-auto px-6 md:px-12 w-full">
           <div className="max-w-2xl">
@@ -64,13 +69,13 @@ export default async function HomePage() {
             <div className="flex flex-col sm:flex-row items-start gap-4">
               <Link
                 href="/stylist"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[#0A0A0A] bg-white px-8 py-4 hover:bg-white/90 transition-colors duration-200"
+                className="bg-white text-black rounded-xl px-8 py-3.5 text-sm font-bold hover:bg-white/90 transition-all"
               >
                 Generate Outfit
               </Link>
               <Link
                 href="/browse"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-white border border-white/30 px-8 py-4 hover:border-white/70 transition-colors duration-200"
+                className="border border-white/40 text-white rounded-xl px-8 py-3.5 text-sm font-semibold hover:border-white/80 transition-all"
               >
                 Browse
               </Link>
@@ -80,13 +85,13 @@ export default async function HomePage() {
       </section>
 
       {/* ─── OUTFITS CAROUSEL ─── */}
-      <div className="max-w-[1440px] mx-auto md:pt-20">
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12 mt-16 md:mt-24">
         <OutfitCarousel outfits={featuredOutfits} />
       </div>
 
       {/* ─── AI STYLIST CTA BAND ─── */}
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32">
-        <div className="relative border border-[var(--border)] overflow-hidden">
+        <div className="relative bg-[var(--surface)] rounded-2xl overflow-hidden border border-[var(--border)]">
           <div
             className="absolute inset-0 bg-cover bg-center opacity-15"
             style={{
@@ -99,7 +104,7 @@ export default async function HomePage() {
               <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
                 AI Stylist
               </p>
-              <h2 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight">
+              <h2 className="text-3xl md:text-5xl font-black uppercase text-[var(--foreground)] leading-tight">
                 Your stylist. Always on.
                 <br />
                 <em>Always personal.</em>
@@ -112,7 +117,7 @@ export default async function HomePage() {
             <div className="flex flex-col gap-3 shrink-0">
               <Link
                 href="/stylist"
-                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 hover:opacity-80 transition-opacity duration-200 text-center"
+                className="bg-[var(--foreground)] text-[var(--background)] rounded-xl px-8 py-3.5 text-sm font-bold hover:opacity-90 transition-all text-center"
               >
                 Start with AI
               </Link>
@@ -145,16 +150,16 @@ export default async function HomePage() {
           />
 
           {/* Mobile: horizontal swipe row; Desktop: 4-column grid */}
-          <div className="mt-10 md:grid md:grid-cols-4 md:gap-px md:bg-[var(--border)] hidden md:grid">
+          <div className="mt-10 hidden md:grid md:grid-cols-4 gap-4">
             {featuredProducts.map((product) => (
-              <div key={product.id} className="bg-[var(--background)] p-4">
+              <div key={product.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
                 <ProductCard product={product} />
               </div>
             ))}
           </div>
           <div className="mt-6 flex gap-3 overflow-x-auto md:hidden" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
             {featuredProducts.map((product) => (
-              <div key={product.id} className="shrink-0 w-[62vw] max-w-[260px] bg-[var(--background)] border border-[var(--border)] p-3">
+              <div key={product.id} className="shrink-0 w-[62vw] max-w-[260px] rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
                 <ProductCard product={product} />
               </div>
             ))}
@@ -163,7 +168,7 @@ export default async function HomePage() {
       )}
 
       {/* ─── BRAND MARQUEE ─── */}
-      <section className="mt-24 md:mt-32 border-t border-b border-[var(--border)] py-4 overflow-hidden">
+      <section className="mt-24 md:mt-32 border-t border-b border-[var(--border)] py-6 overflow-hidden">
         <div
           className="flex gap-14 whitespace-nowrap"
           style={{ animation: "marquee 40s linear infinite" }}
@@ -185,11 +190,11 @@ export default async function HomePage() {
             ])
             .flat()
             .map((brand, i) => (
-              <span
-                key={i}
-                className="text-[11px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)]"
-              >
-                {brand}
+              <span key={i} className="inline-flex items-center gap-2">
+                <span className="text-[11px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)]">
+                  {brand}
+                </span>
+                <span className="text-[var(--foreground-subtle)]/30 mx-2">·</span>
               </span>
             ))}
         </div>
@@ -199,7 +204,7 @@ export default async function HomePage() {
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32">
         <SectionLabel label="How it works" heading="Style, simplified." />
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {[
             {
               step: "01",
@@ -217,12 +222,12 @@ export default async function HomePage() {
               body: "Each item is price-compared across 50+ retailers. You choose where to buy.",
             },
           ].map((item) => (
-            <div key={item.step} className="bg-[var(--background)] p-8 md:p-10 flex flex-col gap-6">
-              <span className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+            <div key={item.step} className="bg-[var(--surface)] rounded-2xl p-8 md:p-10 flex flex-col gap-5 border border-[var(--border)] hover:border-[var(--foreground-muted)] transition-colors duration-200">
+              <div className="w-10 h-10 rounded-full bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[11px] font-bold tracking-[0.1em] text-[var(--foreground-subtle)]">
                 {item.step}
-              </span>
+              </div>
               <div>
-                <h3 className="text-xl font-semibold text-[var(--foreground)] mb-2">
+                <h3 className="text-lg font-bold text-[var(--foreground)] mb-2">
                   {item.title}
                 </h3>
                 <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
@@ -238,10 +243,10 @@ export default async function HomePage() {
       <section className="max-w-[1440px] mx-auto px-6 md:px-12 mt-24 md:mt-32 mb-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+            <p className="text-[10px] tracking-[0.22em] uppercase font-bold text-[var(--foreground-subtle)] mb-2">
               Plans
             </p>
-            <h2 className="text-2xl md:text-3xl font-bold uppercase text-[var(--foreground)]">
+            <h2 className="text-2xl md:text-3xl font-black uppercase text-[var(--foreground)]">
               Free to start. Better as you grow.
             </h2>
           </div>
@@ -253,7 +258,7 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--border)]">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { plan: "Free", price: "$0", note: "3 AI outfits / month" },
             { plan: "Plus", price: "$18", note: "Unlimited AI · Full builder" },
@@ -262,26 +267,30 @@ export default async function HomePage() {
             <Link
               key={item.plan}
               href="/plans"
-              className="bg-[var(--background)] px-8 py-6 flex items-center justify-between group hover:bg-[var(--surface)] transition-colors duration-200"
+              className={
+                i === 1
+                  ? "bg-[var(--foreground)] text-[var(--background)] rounded-2xl px-8 py-7 flex items-center justify-between group hover:shadow-md border border-[var(--foreground)] transition-all duration-200"
+                  : "bg-[var(--background)] rounded-2xl px-8 py-7 flex items-center justify-between group hover:shadow-md hover:border-[var(--foreground-muted)] border border-[var(--border)] transition-all duration-200"
+              }
             >
               <div>
-                <p className="text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">
+                <p className={`text-[10px] tracking-[0.14em] uppercase font-medium mb-1 ${i === 1 ? "text-white/60" : "text-[var(--foreground-subtle)]"}`}>
                   {item.plan}
                 </p>
-                <p className="text-xl font-bold text-[var(--foreground)]">
+                <p className={`text-xl font-bold ${i === 1 ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
                   {item.price}
-                  <span className="text-xs font-sans text-[var(--foreground-muted)] ml-1">
+                  <span className={`text-xs font-sans ml-1 ${i === 1 ? "text-white/60" : "text-[var(--foreground-muted)]"}`}>
                     / mo
                   </span>
                 </p>
-                <p className="text-xs text-[var(--foreground-muted)] mt-1">{item.note}</p>
+                <p className={`text-xs mt-1 ${i === 1 ? "text-white/60" : "text-[var(--foreground-muted)]"}`}>{item.note}</p>
               </div>
               <svg
                 width="16"
                 height="16"
                 viewBox="0 0 16 16"
                 fill="none"
-                className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors duration-200"
+                className={`transition-colors duration-200 ${i === 1 ? "text-white/60 group-hover:text-white" : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)]"}`}
               >
                 <path
                   d="M3 8H13M9 4L13 8L9 12"
