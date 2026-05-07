@@ -226,12 +226,17 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
       </div>
 
       {/* ── Delete confirmation modal ── */}
+      <AnimatePresence>
       {confirmDelete && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={() => setConfirmDelete(false)}
         >
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.15 }}
             className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 max-w-xs w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -251,17 +256,27 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                 No
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       {/* ── Look preview modal ── */}
+      <AnimatePresence>
       {open && (
-        <div
+        <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
           onClick={() => setOpen(false)}
         >
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 12 }}
+            transition={{ duration: 0.2 }}
             className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl ${
               look.generatedImage ? "max-w-3xl" : "max-w-lg"
             }`}
@@ -443,9 +458,10 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                 </div>
               </div>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </>
   );
 }
@@ -572,13 +588,22 @@ export default function SavedPage() {
         {/* ── Outfits (liked) ── */}
         {view === "outfits" && (
           savedOutfits.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            <motion.div
+              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+              initial="hidden"
+              animate="show"
+            >
               {savedOutfits.map((outfit) => (
-                <div key={outfit.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
+                <motion.div
+                  key={outfit.id}
+                  className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                  variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                >
                   <OutfitCard outfit={outfit} />
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
@@ -600,13 +625,22 @@ export default function SavedPage() {
         {/* ── Pieces (liked) ── */}
         {view === "pieces" && (
           savedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            <motion.div
+              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+              initial="hidden"
+              animate="show"
+            >
               {savedProducts.map((product) => (
-                <div key={product.id} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
+                <motion.div
+                  key={product.id}
+                  className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                  variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                >
                   <ProductCard product={product} />
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
@@ -628,13 +662,22 @@ export default function SavedPage() {
         {/* ── My Looks (builder-created) ── */}
         {view === "looks" && (
           myLooks.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            <motion.div
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+              initial="hidden"
+              animate="show"
+            >
               {myLooks.map((look) => (
-                <div key={look.id} className="rounded-xl border border-[var(--border)] overflow-hidden flex flex-col aspect-[3/5] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200">
+                <motion.div
+                  key={look.id}
+                  className="rounded-xl border border-[var(--border)] overflow-hidden flex flex-col aspect-[3/5] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                  variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                >
                   <LookCard look={look} onDelete={() => deleteLook(look.id)} allProducts={allProducts} />
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="py-20 px-8 text-center bg-[var(--surface)] rounded-2xl border border-[var(--border)]">
               <p className="text-2xl font-bold text-[var(--foreground)] mb-3">
