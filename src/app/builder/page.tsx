@@ -140,6 +140,8 @@ export default function BuilderPage() {
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
   const [brandSearch, setBrandSearch] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "new-in" | "price-asc" | "price-desc">("featured");
+  const [sortDropOpen, setSortDropOpen] = useState(false);
+  const sortDropRef = useRef<HTMLDivElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "color", "gender", "sort"]));
@@ -185,6 +187,16 @@ export default function BuilderPage() {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [openSwatchPopup]);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    if (!sortDropOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortDropRef.current && !sortDropRef.current.contains(e.target as Node)) setSortDropOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [sortDropOpen]);
 
   // Reset mobile product scroll to start when category changes
   useEffect(() => {
@@ -1013,19 +1025,63 @@ export default function BuilderPage() {
                     </button>
                   );
                 })}
+
+                {/* Liked chip */}
+                <button
+                  onClick={() => setLikedOnly(v => !v)}
+                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                    likedOnly
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+                  </svg>
+                  Liked
+                </button>
               </div>
               {/* Right controls: sort + grid/list toggle + filters */}
               <div className="shrink-0 flex items-center gap-2">
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                  className="bg-transparent border border-[var(--border)] rounded-lg px-3 py-1.5 text-[11px] font-medium text-[var(--foreground)] outline-none cursor-pointer"
-                >
-                  <option value="featured">Featured</option>
-                  <option value="new-in">New In</option>
-                  <option value="price-asc">Price ↑</option>
-                  <option value="price-desc">Price ↓</option>
-                </select>
+                <div className="relative" ref={sortDropRef}>
+                  <button
+                    onClick={() => setSortDropOpen(v => !v)}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all duration-150 ${
+                      sortDropOpen
+                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {sortBy === "featured" && "Featured"}
+                    {sortBy === "new-in" && "New In"}
+                    {sortBy === "price-asc" && "Price ↑"}
+                    {sortBy === "price-desc" && "Price ↓"}
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortDropOpen ? "rotate-180" : ""}`}>
+                      <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {sortDropOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
+                      {([
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price ↑" },
+                        { value: "price-desc", label: "Price ↓" },
+                      ] as { value: typeof sortBy; label: string }[]).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSortBy(opt.value); setSortDropOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-[10px] tracking-[0.12em] uppercase transition-colors duration-150 ${
+                            sortBy === opt.value
+                              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {/* Filters toggle button */}
                 <button
                   onClick={() => setFiltersOpen(v => !v)}
