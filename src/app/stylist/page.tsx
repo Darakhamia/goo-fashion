@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import { outfits } from "@/lib/data/outfits";
@@ -101,6 +102,10 @@ export default function StylistPage() {
   const totalSteps = steps.length - 1;
   const progress = (stepIndex / totalSteps) * 100;
 
+  const prevStepIndex = useRef(stepIndex);
+  const direction = stepIndex >= prevStepIndex.current ? 1 : -1;
+  useEffect(() => { prevStepIndex.current = stepIndex; }, [stepIndex]);
+
   const handleGenerate = () => {
     setIsGenerating(true);
     setTimeout(() => {
@@ -143,281 +148,331 @@ export default function StylistPage() {
             </div>
           </div>
 
-          {/* ── OCCASION ── */}
-          {currentStep === "occasion" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                What&apos;s the occasion?
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                GOO will build the outfit around your context.
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {occasions.map((occ) => (
+          <AnimatePresence mode="wait" custom={direction}>
+            {/* ── OCCASION ── */}
+            {currentStep === "occasion" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  What&apos;s the occasion?
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  GOO will build the outfit around your context.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {occasions.map((occ) => (
+                    <button
+                      key={occ.id}
+                      onClick={() => {
+                        setForm((f) => ({ ...f, occasion: occ.id }));
+                        next("style");
+                      }}
+                      className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                        form.occasion === occ.id
+                          ? "border-[var(--foreground)] bg-[var(--surface)]"
+                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-[var(--foreground)] mb-1">{occ.label}</p>
+                      <p className="text-xs text-[var(--foreground-muted)]">{occ.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── STYLE ── */}
+            {currentStep === "style" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  Your aesthetic.
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  Select all that feel right. You can choose multiple.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {styleKeywords.map((style) => {
+                    const selected = form.styles.includes(style.id);
+                    return (
+                      <button
+                        key={style.id}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            styles: selected
+                              ? f.styles.filter((s) => s !== style.id)
+                              : [...f.styles, style.id],
+                          }))
+                        }
+                        className={`p-5 text-left rounded-xl border transition-all duration-200 relative ${
+                          selected
+                            ? "bg-[var(--foreground)] border-[var(--foreground)]"
+                            : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
+                        }`}
+                      >
+                        <p className={`text-sm font-medium ${selected ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                          {style.label}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${selected ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                          {style.description}
+                        </p>
+                        {selected && (
+                          <span className="absolute top-3 right-3 text-[var(--background)]">
+                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-8 flex gap-4">
                   <button
-                    key={occ.id}
-                    onClick={() => {
-                      setForm((f) => ({ ...f, occasion: occ.id }));
-                      next("style");
-                    }}
-                    className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
-                      form.occasion === occ.id
-                        ? "border-[var(--foreground)] bg-[var(--surface)]"
-                        : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
-                    }`}
+                    onClick={() => next("palette")}
+                    disabled={form.styles.length === 0}
+                    className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    <p className="text-sm font-medium text-[var(--foreground)] mb-1">{occ.label}</p>
-                    <p className="text-xs text-[var(--foreground-muted)]">{occ.description}</p>
+                    Continue
                   </button>
-                ))}
-              </div>
-            </div>
-          )}
+                  <button onClick={() => next("palette")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                    Skip
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-          {/* ── STYLE ── */}
-          {currentStep === "style" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                Your aesthetic.
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                Select all that feel right. You can choose multiple.
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {styleKeywords.map((style) => {
-                  const selected = form.styles.includes(style.id);
-                  return (
-                    <button
-                      key={style.id}
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          styles: selected
-                            ? f.styles.filter((s) => s !== style.id)
-                            : [...f.styles, style.id],
-                        }))
-                      }
-                      className={`p-5 text-left rounded-xl border transition-all duration-200 relative ${
-                        selected
-                          ? "bg-[var(--foreground)] border-[var(--foreground)]"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
-                      }`}
-                    >
-                      <p className={`text-sm font-medium ${selected ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
-                        {style.label}
-                      </p>
-                      <p className={`text-xs mt-0.5 ${selected ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
-                        {style.description}
-                      </p>
-                      {selected && (
-                        <span className="absolute top-3 right-3 text-[var(--background)]">
-                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-8 flex gap-4">
-                <button
-                  onClick={() => next("palette")}
-                  disabled={form.styles.length === 0}
-                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Continue
-                </button>
-                <button onClick={() => next("palette")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── PALETTE ── */}
-          {currentStep === "palette" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                Your color world.
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                What palette speaks to you right now? Choose one or several.
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {palettes.map((pal) => {
-                  const selected = form.palette.includes(pal.id);
-                  return (
-                    <button
-                      key={pal.id}
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          palette: selected ? f.palette.filter((p) => p !== pal.id) : [...f.palette, pal.id],
-                        }))
-                      }
-                      className={`p-5 text-left rounded-xl border transition-all duration-200 ${
-                        selected
-                          ? "border-[var(--foreground)] bg-[var(--surface)]"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
-                      }`}
-                    >
-                      <div className="flex gap-1.5 mb-3">
-                        {pal.colors.map((color, i) => (
-                          <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
-                        ))}
-                      </div>
-                      <p className="text-sm font-medium text-[var(--foreground)]">{pal.label}</p>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-8 flex gap-4">
-                <button
-                  onClick={() => next("fit")}
-                  disabled={form.palette.length === 0}
-                  className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Continue
-                </button>
-                <button onClick={() => next("fit")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── FIT ── */}
-          {currentStep === "fit" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                How do you like to wear clothes?
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                Your preferred silhouette and fit.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {fitOptions.map((opt) => {
-                  const selected = form.fit === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setForm((f) => ({ ...f, fit: opt.id }));
-                        next("season");
-                      }}
-                      className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
-                        selected
-                          ? "border-[var(--foreground)] bg-[var(--surface)]"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
-                      }`}
-                    >
-                      <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
-                      <p className="text-xs text-[var(--foreground-muted)]">{opt.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-8">
-                <button onClick={() => next("season")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── SEASON ── */}
-          {currentStep === "season" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                What&apos;s the season?
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                We&apos;ll tailor fabrics and layering for your climate.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {seasonOptions.map((opt) => {
-                  const selected = form.season === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setForm((f) => ({ ...f, season: opt.id }));
-                        next("budget");
-                      }}
-                      className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
-                        selected
-                          ? "border-[var(--foreground)] bg-[var(--surface)]"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
-                      }`}
-                    >
-                      <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
-                      <p className="text-xs text-[var(--foreground-muted)]">{opt.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-8">
-                <button onClick={() => next("budget")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── BUDGET ── */}
-          {currentStep === "budget" && (
-            <div className="max-w-2xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
-                What&apos;s your budget?
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] mb-10">
-                Total outfit budget. We&apos;ll find the best prices across all stores.
-              </p>
-
-              <div className="rounded-xl border border-[var(--border)] p-5 bg-[var(--surface)] mb-8">
-                <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
-                  Selected range
+            {/* ── PALETTE ── */}
+            {currentStep === "palette" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  Your color world.
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  What palette speaks to you right now? Choose one or several.
                 </p>
-                <p className="text-3xl font-bold text-[var(--foreground)]">
-                  {formatPrice(form.budgetMin)} — {formatPrice(form.budgetMax)}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {palettes.map((pal) => {
+                    const selected = form.palette.includes(pal.id);
+                    return (
+                      <button
+                        key={pal.id}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            palette: selected ? f.palette.filter((p) => p !== pal.id) : [...f.palette, pal.id],
+                          }))
+                        }
+                        className={`p-5 text-left rounded-xl border transition-all duration-200 ${
+                          selected
+                            ? "border-[var(--foreground)] bg-[var(--surface)]"
+                            : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
+                        }`}
+                      >
+                        <div className="flex gap-1.5 mb-3">
+                          {pal.colors.map((color, i) => (
+                            <div key={i} className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
+                          ))}
+                        </div>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{pal.label}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-8 flex gap-4">
+                  <button
+                    onClick={() => next("fit")}
+                    disabled={form.palette.length === 0}
+                    className="font-mono text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-3.5 rounded-xl hover:opacity-80 transition-opacity duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Continue
+                  </button>
+                  <button onClick={() => next("fit")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                    Skip
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── FIT ── */}
+            {currentStep === "fit" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  How do you like to wear clothes?
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  Your preferred silhouette and fit.
                 </p>
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {fitOptions.map((opt) => {
+                    const selected = form.fit === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => {
+                          setForm((f) => ({ ...f, fit: opt.id }));
+                          next("season");
+                        }}
+                        className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                          selected
+                            ? "border-[var(--foreground)] bg-[var(--surface)]"
+                            : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
+                        <p className="text-xs text-[var(--foreground-muted)]">{opt.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-8">
+                  <button onClick={() => next("season")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                    Skip
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {budgetPresets.map((preset) => {
-                  const active = form.budgetMin === preset.min && form.budgetMax === preset.max;
-                  return (
-                    <button
-                      key={preset.label}
-                      onClick={() => setForm((f) => ({ ...f, budgetMin: preset.min, budgetMax: preset.max }))}
-                      className={`p-5 text-left rounded-xl border transition-all duration-200 ${
-                        active
-                          ? "bg-[var(--foreground)] border-[var(--foreground)]"
-                          : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
-                      }`}
-                    >
-                      <p className={`text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
-                        {preset.label}
-                      </p>
-                      <p className={`font-mono text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
-                        {formatPrice(preset.min)}–{formatPrice(preset.max)}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+            {/* ── SEASON ── */}
+            {currentStep === "season" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  What&apos;s the season?
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  We&apos;ll tailor fabrics and layering for your climate.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {seasonOptions.map((opt) => {
+                    const selected = form.season === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => {
+                          setForm((f) => ({ ...f, season: opt.id }));
+                          next("budget");
+                        }}
+                        className={`p-6 text-left rounded-xl border transition-all duration-200 hover:shadow-sm ${
+                          selected
+                            ? "border-[var(--foreground)] bg-[var(--surface)]"
+                            : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-[var(--foreground)] mb-1">{opt.label}</p>
+                        <p className="text-xs text-[var(--foreground-muted)]">{opt.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-8">
+                  <button onClick={() => next("budget")} className="font-mono text-xs tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200">
+                    Skip
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-              <div className="mt-10">
-                <button
-                  onClick={handleGenerate}
-                  className="font-mono w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200"
-                >
-                  Generate Outfit
-                </button>
-              </div>
-            </div>
-          )}
+            {/* ── BUDGET ── */}
+            {currentStep === "budget" && (
+              <motion.div
+                key={currentStep}
+                className="max-w-2xl mx-auto"
+                custom={direction}
+                initial={{ opacity: 0, x: direction * 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -direction * 40 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)] mb-3">
+                  What&apos;s your budget?
+                </h1>
+                <p className="text-sm text-[var(--foreground-muted)] mb-10">
+                  Total outfit budget. We&apos;ll find the best prices across all stores.
+                </p>
+
+                <div className="rounded-xl border border-[var(--border)] p-5 bg-[var(--surface)] mb-8">
+                  <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-2">
+                    Selected range
+                  </p>
+                  <p className="text-3xl font-bold text-[var(--foreground)]">
+                    {formatPrice(form.budgetMin)} — {formatPrice(form.budgetMax)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {budgetPresets.map((preset) => {
+                    const active = form.budgetMin === preset.min && form.budgetMax === preset.max;
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => setForm((f) => ({ ...f, budgetMin: preset.min, budgetMax: preset.max }))}
+                        className={`p-5 text-left rounded-xl border transition-all duration-200 ${
+                          active
+                            ? "bg-[var(--foreground)] border-[var(--foreground)]"
+                            : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:shadow-sm"
+                        }`}
+                      >
+                        <p className={`text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                          {preset.label}
+                        </p>
+                        <p className={`font-mono text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                          {formatPrice(preset.min)}–{formatPrice(preset.max)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-10">
+                  <button
+                    onClick={handleGenerate}
+                    className="font-mono w-full md:w-auto text-xs tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-12 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200"
+                  >
+                    Generate Outfit
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       ) : (
         /* ─── RESULT ─── */
@@ -428,7 +483,12 @@ export default function StylistPage() {
               <p className="font-mono text-sm text-[var(--foreground-muted)] tracking-[0.06em]">Building your outfit…</p>
             </div>
           ) : (
-            <>
+            <motion.div
+              key="result"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
               <div className="pt-12 md:pt-16 mb-12">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -478,7 +538,7 @@ export default function StylistPage() {
                   Start over
                 </button>
               </div>
-            </>
+            </motion.div>
           )}
         </div>
       )}

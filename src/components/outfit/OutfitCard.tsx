@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
@@ -29,7 +30,13 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
   };
 
   return (
-    <div className="group relative block">
+    <motion.div
+      className="group relative block"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
       <Link href={`/outfit/${outfit.id}`} className="block">
         {/* Image */}
         <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
@@ -116,6 +123,6 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
           </p>
         </Link>
       )}
-    </div>
+    </motion.div>
   );
 }
