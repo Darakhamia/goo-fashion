@@ -210,7 +210,7 @@ export default function CSVImportPage() {
           {parseError && <p className="text-xs text-red-400">{parseError}</p>}
 
           {/* Supported columns reference */}
-          <div className="border border-[var(--border)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
+          <div className="rounded-xl border border-[var(--border)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
             <p className="text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Supported feed columns</p>
             <div className="grid grid-cols-2 gap-x-8 gap-y-0.5 font-mono mt-1">
               <span><span className="text-[var(--foreground)]">product_name</span> → name</span>
@@ -256,7 +256,7 @@ export default function CSVImportPage() {
             </div>
           </div>
 
-          <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
             {merchants.map((m, i) => {
               const isSelected = selectedMerchants.has(m.name);
               return (
@@ -319,7 +319,7 @@ export default function CSVImportPage() {
             <button
               onClick={applyMerchantFilter}
               disabled={!selectedMerchants.size}
-              className="px-6 py-2.5 bg-[var(--foreground)] text-[var(--background)] text-[10px] tracking-[0.16em] uppercase hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+              className="px-6 py-2.5 bg-[var(--foreground)] text-[var(--background)] text-[10px] tracking-[0.16em] uppercase hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity rounded-lg"
             >
               Preview {selValid > 0 ? `${selValid.toLocaleString()} products →` : "→"}
             </button>
@@ -366,7 +366,7 @@ export default function CSVImportPage() {
                 <button
                   onClick={handleImport}
                   disabled={importing}
-                  className="flex items-center gap-2 px-5 py-2 bg-[var(--foreground)] text-[var(--background)] text-[10px] tracking-[0.14em] uppercase hover:opacity-80 disabled:opacity-40 transition-opacity"
+                  className="flex items-center gap-2 px-5 py-2 bg-[var(--foreground)] text-[var(--background)] text-[10px] tracking-[0.14em] uppercase hover:opacity-80 disabled:opacity-40 transition-opacity rounded-lg"
                 >
                   {importing ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Importing…</>
@@ -380,7 +380,7 @@ export default function CSVImportPage() {
 
           {parseError && <p className="text-xs text-red-400">{parseError}</p>}
 
-          <div className="border border-[var(--border)] overflow-x-auto">
+          <div className="rounded-xl border border-[var(--border)] overflow-x-auto">
             <table className="w-full text-xs min-w-[900px]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--background)]">

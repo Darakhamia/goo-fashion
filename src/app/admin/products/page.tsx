@@ -146,9 +146,9 @@ interface GroupModalState {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const inputCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const selectCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 const sectionCls = "border-t border-[var(--border)] pt-4 mt-1";
@@ -257,7 +257,7 @@ function ImageList({
               )}
             </div>
             {url && uploading !== i && (
-              <div className="relative w-12 h-16 border border-[var(--border)] overflow-hidden shrink-0">
+              <div className="relative w-12 h-16 border border-[var(--border)] rounded-md overflow-hidden shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
@@ -315,7 +315,7 @@ function RetailerList({
   return (
     <div className="flex flex-col gap-3">
       {retailers.map((r, i) => (
-        <div key={i} className="border border-[var(--border)] p-3 flex flex-col gap-2 relative">
+        <div key={i} className="border border-[var(--border)] rounded-xl p-3 flex flex-col gap-2 relative">
           <button
             type="button"
             onClick={() => remove(i)}
@@ -461,7 +461,7 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
       <div
-        className="border border-amber-400 p-6 md:p-8 max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+        className="border border-amber-400 rounded-2xl p-6 md:p-8 max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto"
         style={{ background: "var(--background)" }}
       >
         {/* Header */}
@@ -481,7 +481,7 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
         </div>
 
         {/* Option 1: Auto */}
-        <div className="border border-[var(--border)] p-4 mb-4">
+        <div className="border border-[var(--border)] rounded-xl p-4 mb-4">
           <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 1 — Try automatically</p>
           <p className="text-xs text-[var(--foreground-muted)] mb-3">
             Works if your Supabase project has the <code className="font-mono text-[11px]">run_sql</code> RPC function enabled.
@@ -496,7 +496,7 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
         </div>
 
         {/* Option 2: Manual */}
-        <div className="border border-[var(--border)] p-4 mb-4">
+        <div className="border border-[var(--border)] rounded-xl p-4 mb-4">
           <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 2 — Run SQL manually</p>
           <p className="text-xs text-[var(--foreground-muted)] mb-2">
             Go to <strong>supabase.com → your project → SQL Editor</strong>, paste and run:
@@ -528,13 +528,13 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
           <button
             onClick={handleVerify}
             disabled={verifying || verifyResult === "ok"}
-            className="flex-1 border border-[var(--foreground)] text-[var(--foreground)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 border border-[var(--foreground)] text-[var(--foreground)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
           >
             {verifying ? "Checking…" : "Verify migration"}
           </button>
           <button
             onClick={onClose}
-            className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
           >
             Close
           </button>
@@ -1148,7 +1148,7 @@ export default function AdminProductsPage() {
     <div>
       {/* DB status banner */}
       {dbConfigured === false && (
-        <div className="mb-4 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+        <div className="mb-4 border border-amber-300 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
           <strong>Database not configured.</strong> Products are in-memory only.
           Add <code className="font-mono">SUPABASE_URL</code> and{" "}
           <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel env vars to persist.
@@ -1178,13 +1178,13 @@ export default function AdminProductsPage() {
             onClick={handleSeed}
             disabled={seeding || !dbConfigured}
             title={dbConfigured ? "Seed default catalog" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {seeding ? "Seeding…" : "Seed catalog"}
           </button>
           <button
             onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1193,7 +1193,7 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -1222,7 +1222,7 @@ export default function AdminProductsPage() {
             <button
               key={cat.value}
               onClick={() => setFilterCategory((prev) => (prev === cat.value ? "" : cat.value))}
-              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
+              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
                 filterCategory === cat.value
                   ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                   : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1238,7 +1238,7 @@ export default function AdminProductsPage() {
           {/* New chip */}
           <button
             onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
-            className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${
+            className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
               filterNew === true
                 ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                 : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1261,14 +1261,14 @@ export default function AdminProductsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
           <span className="text-xs text-[var(--foreground)]">
             {selectedIds.size} selected
           </span>
           {selectedIds.size >= 2 && (
             <button
               onClick={openGroupModal}
-              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -1280,7 +1280,7 @@ export default function AdminProductsPage() {
           )}
           <button
             onClick={handleBulkDelete}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1297,13 +1297,13 @@ export default function AdminProductsPage() {
       )}
 
       {/* Table */}
-      <div className="border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
         {loading ? (
           <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--border)]">
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
                 {/* Checkbox */}
                 <th className="px-3 py-3 w-10">
                   <input
@@ -1474,7 +1474,7 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] max-w-5xl w-full mx-4 max-h-[94vh] flex flex-col"
+            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[94vh] flex flex-col overflow-hidden"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
@@ -1555,7 +1555,7 @@ export default function AdminProductsPage() {
                           autoComplete="off"
                         />
                         {brandDropdownOpen && (
-                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg">
+                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] rounded-xl bg-[var(--background)] max-h-48 overflow-y-auto shadow-lg">
                             {(() => {
                               const q = form.brand.toLowerCase().trim();
                               const filtered = suggestedBrands.filter((b) => b.toLowerCase().includes(q));
@@ -1837,7 +1837,7 @@ export default function AdminProductsPage() {
                             const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
                             if (matches.length === 0) return null;
                             return (
-                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--background)" }}>
+                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--background)" }}>
                                 {matches.map((mp) => (
                                   <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0">
                                     {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />}
@@ -1889,13 +1889,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               >
                 Cancel
               </button>
@@ -1908,7 +1908,7 @@ export default function AdminProductsPage() {
       {cropProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div
-            className="border border-[var(--border)] p-6 md:p-8 max-w-xl w-full mx-4 max-h-[95vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-xl w-full mx-4 max-h-[95vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             {/* Заголовок с кнопкой сброса */}
@@ -1956,7 +1956,7 @@ export default function AdminProductsPage() {
       {groupModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] p-6 md:p-8 max-w-lg w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-lg w-full mx-4 max-h-[92vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between mb-5">
@@ -1985,7 +1985,7 @@ export default function AdminProductsPage() {
                 return (
                   <div
                     key={entry.id}
-                    className={`border p-3 flex items-center gap-3 transition-colors ${
+                    className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${
                       entry.isPrimary ? "border-[var(--foreground)]" : "border-[var(--border)]"
                     }`}
                   >
@@ -2046,7 +2046,7 @@ export default function AdminProductsPage() {
                             })),
                           }))
                         }
-                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border transition-colors ${
+                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border rounded-md transition-colors ${
                           entry.isPrimary
                             ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                             : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2068,13 +2068,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleGroupSave}
                 disabled={grouping || !dbConfigured}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
               </button>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               >
                 Cancel
               </button>
@@ -2087,7 +2087,7 @@ export default function AdminProductsPage() {
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between mb-6">
@@ -2127,7 +2127,7 @@ export default function AdminProductsPage() {
                   <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleFileUpload} className="hidden" />
                   <button
                     onClick={() => csvInputRef.current?.click()}
-                    className="border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                    className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
                   >
                     Upload CSV file
                   </button>
@@ -2158,7 +2158,7 @@ export default function AdminProductsPage() {
             {importError && <p className="text-xs text-red-500 mb-3">{importError}</p>}
 
             {importPreview.length > 0 && (
-              <div className="mb-4 border border-[var(--border)] max-h-44 overflow-y-auto">
+              <div className="mb-4 border border-[var(--border)] rounded-xl max-h-44 overflow-y-auto">
                 <p className="px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)] border-b border-[var(--border)]">
                   {importPreview.length} products to import
                 </p>
@@ -2174,14 +2174,14 @@ export default function AdminProductsPage() {
             <div className="flex gap-3">
               <button
                 onClick={parseImport}
-                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               >
                 Preview
               </button>
               <button
                 onClick={handleImport}
                 disabled={!importPreview.length || importing}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {importing ? "Importing…" : `Import ${importPreview.length ? importPreview.length + " " : ""}Products`}
               </button>
@@ -2201,7 +2201,7 @@ export default function AdminProductsPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-[100] px-5 py-3 text-sm border ${
+          className={`fixed bottom-6 right-6 z-[100] px-5 py-3 text-sm border rounded-xl ${
             toast.type === "ok"
               ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
               : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300"

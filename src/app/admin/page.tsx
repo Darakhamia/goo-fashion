@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 interface StatsPayload {
   generatedAt: string;
@@ -60,6 +61,16 @@ function initials(first: string | null, last: string | null, email: string | nul
   if (email)  return email.slice(0, 2).toUpperCase();
   return "—";
 }
+
+const STAT_ACCENTS = ["bg-blue-500", "bg-purple-500", "bg-emerald-500", "bg-amber-500"];
+
+const staggerContainer = {
+  animate: { transition: { staggerChildren: 0.06 } },
+};
+const fadeUp = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<StatsPayload | null>(null);
@@ -125,7 +136,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
@@ -133,39 +144,58 @@ export default function AdminDashboardPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 border border-red-500/40 bg-red-500/5 text-red-600 text-xs px-4 py-3">
+        <div className="mb-6 border border-red-500/40 bg-red-500/5 text-red-600 text-xs px-4 py-3 rounded-xl">
           {error}
         </div>
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
         {(loading && !data ? Array.from({ length: 4 }) : statCards).map((card, i) => {
           const c = card as typeof statCards[number] | undefined;
           return (
-            <div
+            <motion.div
               key={c?.label ?? i}
-              className="border border-[var(--border)] p-6"
+              variants={fadeUp}
+              className="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-all duration-200"
               style={{ background: "var(--background)" }}
             >
+              {/* Color accent strip */}
+              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${STAT_ACCENTS[i]}`} />
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                   {c?.label ?? "—"}
                 </span>
               </div>
-              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-2">
+              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-3">
                 {c?.value ?? "—"}
               </p>
-              <p className={`text-[10px] tracking-wide ${c?.delta.positive ? "text-emerald-600" : "text-red-500"}`}>
-                {c?.delta.label ?? "\u00A0"}
+              {/* Delta pill */}
+              <div className="mb-1">
+                {c ? (
+                  <span className={`inline-flex items-center text-[9px] tracking-[0.1em] uppercase font-medium px-2 py-1 rounded-full ${
+                    c.delta.positive
+                      ? "bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
+                      : "bg-red-500/12 text-red-500 border border-red-500/20"
+                  }`}>
+                    {c.delta.label}
+                  </span>
+                ) : (
+                  <span className="inline-block h-5 w-24 rounded-full bg-[var(--border)] animate-pulse" />
+                )}
+              </div>
+              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-1">
+                {c?.sub ?? " "}
               </p>
-              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">
-                {c?.sub ?? "\u00A0"}
-              </p>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Service health */}
       <div className="mb-10">
@@ -176,11 +206,13 @@ export default function AdminDashboardPage() {
             return (
               <div
                 key={k}
-                className="border border-[var(--border)] px-4 py-3 flex items-center gap-3"
+                className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center gap-3 hover:border-[var(--border-strong)] transition-colors"
                 style={{ background: "var(--background)" }}
               >
                 <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${h.ok ? "bg-emerald-500" : "bg-red-500"}`}
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    h.ok ? "bg-emerald-500" : "bg-red-500 animate-pulse"
+                  }`}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)] capitalize">{k}</p>
@@ -190,7 +222,7 @@ export default function AdminDashboardPage() {
             );
           })}
           {!data && Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="border border-[var(--border)] px-4 py-3 h-12 animate-pulse" style={{ background: "var(--background)" }} />
+            <div key={i} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--background)" }} />
           ))}
         </div>
       </div>
@@ -205,38 +237,40 @@ export default function AdminDashboardPage() {
               View all →
             </Link>
           </div>
-          <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
             {data?.recent.signups.length === 0 && (
               <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No signups yet</div>
             )}
-            {data?.recent.signups.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] last:border-0">
-                {u.imageUrl ? (
-                  <Image src={u.imageUrl} alt="" width={28} height={28} className="rounded-full object-cover w-7 h-7" />
-                ) : (
-                  <div className="w-7 h-7 flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)]">
-                    {initials(u.firstName, u.lastName, u.email)}
+            <div className="divide-y divide-[var(--border)]">
+              {data?.recent.signups.map((u) => (
+                <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors">
+                  {u.imageUrl ? (
+                    <Image src={u.imageUrl} alt="" width={28} height={28} className="rounded-full object-cover w-7 h-7 flex-shrink-0" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)] flex-shrink-0">
+                      {initials(u.firstName, u.lastName, u.email)}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-[var(--foreground)] truncate">
+                      {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id}
+                    </p>
+                    <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[var(--foreground)] truncate">
-                    {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id}
-                  </p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
+                  <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-md ${
+                    u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : u.plan === "pro" ? "bg-amber-400/15 text-amber-600 border border-amber-400/30"
+                    : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
+                    : "border border-[var(--border)] text-[var(--foreground-muted)]"
+                  }`}>
+                    {u.plan}
+                  </span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
+                    {fmtRelative(u.createdAt)}
+                  </span>
                 </div>
-                <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${
-                  u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--background)]"
-                  : u.plan === "pro" ? "bg-amber-400/15 text-amber-600 border border-amber-400/30"
-                  : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
-                  : "border border-[var(--border)] text-[var(--foreground-muted)]"
-                }`}>
-                  {u.plan}
-                </span>
-                <span className="text-[10px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
-                  {fmtRelative(u.createdAt)}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
@@ -248,23 +282,25 @@ export default function AdminDashboardPage() {
               View all →
             </Link>
           </div>
-          <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
             {data?.recent.outfits.length === 0 && (
               <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No outfits yet</div>
             )}
-            {data?.recent.outfits.map((o) => (
-              <div key={o.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] last:border-0">
-                <div className="relative w-10 h-12 bg-[var(--surface)] overflow-hidden flex-shrink-0">
-                  {o.image_url ? (
-                    <Image src={o.image_url} alt="" fill className="object-cover" sizes="40px" />
-                  ) : null}
+            <div className="divide-y divide-[var(--border)]">
+              {data?.recent.outfits.map((o) => (
+                <div key={o.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors">
+                  <div className="relative w-10 h-12 bg-[var(--surface)] overflow-hidden flex-shrink-0 rounded-lg">
+                    {o.image_url ? (
+                      <Image src={o.image_url} alt="" fill className="object-cover" sizes="40px" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-[var(--foreground)] truncate">{o.name}</p>
+                    <p className="text-[10px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[var(--foreground)] truncate">{o.name}</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
       </div>
@@ -278,24 +314,24 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
 
-        <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--border)]">
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[var(--border)]">
               {data?.recent.products.length === 0 && (
                 <tr><td colSpan={4} className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No products yet</td></tr>
               )}
               {data?.recent.products.map((p) => (
-                <tr key={p.id} className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
+                <tr key={p.id} className="hover:bg-[var(--surface)] transition-colors">
                   <td className="px-4 py-3">
-                    <div className="relative w-8 h-10 overflow-hidden flex-shrink-0">
+                    <div className="relative w-8 h-10 overflow-hidden flex-shrink-0 rounded-md">
                       {p.image_url ? (
                         <Image src={p.image_url} alt={p.name} fill className="object-cover" sizes="32px" />
                       ) : null}
@@ -330,7 +366,7 @@ export default function AdminDashboardPage() {
             <Link
               key={a.href}
               href={a.href}
-              className="inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+              className="inline-flex items-center gap-2 border border-[var(--border)] rounded-xl px-5 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />

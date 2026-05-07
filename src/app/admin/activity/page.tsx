@@ -186,7 +186,7 @@ export default function AdminActivityPage() {
       )}
 
       {/* Timeline */}
-      <div className="border border-[var(--border)]">
+      <div className="rounded-xl border border-[var(--border)]">
         {loading && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
         )}

@@ -25,7 +25,7 @@ insert into public.brands (name) values
 on conflict (name) do nothing;`;
 
 const inputCls =
-  "border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
 
 export default function AdminBrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -190,7 +190,7 @@ export default function AdminBrandsPage() {
       )}
 
       {/* Add brand */}
-      <div className="mb-8 border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+      <div className="mb-8 rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
         <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Add brand</p>
         <div className="flex gap-2">
           <input
@@ -223,7 +223,7 @@ export default function AdminBrandsPage() {
       </div>
 
       {/* Brand list */}
-      <div className="border border-[var(--border)]" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
         {loading ? (
           <div className="px-6 py-12 text-center text-xs text-[var(--foreground-muted)] tracking-wide">
             Loading…
@@ -260,7 +260,7 @@ export default function AdminBrandsPage() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide shadow-lg ${
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide shadow-lg rounded-xl ${
           toast.type === "ok"
             ? "bg-[var(--foreground)] text-[var(--background)]"
             : "bg-red-600 text-white"

@@ -69,10 +69,10 @@ function fmtRelative(ts: number | null | undefined) {
 }
 
 const inputCls =
-  "bg-transparent border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
+  "bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 
 const filterBtnCls = (active: boolean) =>
-  `text-[9px] tracking-[0.14em] uppercase px-3 py-2.5 border transition-colors duration-200 capitalize ${
+  `text-[9px] tracking-[0.14em] uppercase px-3 py-2.5 border rounded-full transition-colors duration-200 capitalize ${
     active
       ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
@@ -262,7 +262,7 @@ export default function AdminUsersPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -278,7 +278,7 @@ export default function AdminUsersPage() {
           { label: "Free",    value: stats.free,    note: "accounts" },
           { label: "Banned",  value: stats.banned,  note: "suspended" },
         ].map((s) => (
-          <div key={s.label} className="bg-[var(--background)] border border-[var(--border)] p-5">
+          <div key={s.label} className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-5">
             <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{s.label}</p>
             <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value}</p>
             <p className="text-[10px] text-[var(--foreground-muted)] mt-1">{s.note}</p>
@@ -329,7 +329,7 @@ export default function AdminUsersPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 border border-[var(--border)] bg-[var(--surface)] px-4 py-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl bg-[var(--surface)] px-4 py-3 mb-4">
           <span className="text-xs text-[var(--foreground-muted)]">
             {selected.size} selected
           </span>
@@ -337,14 +337,14 @@ export default function AdminUsersPage() {
           <button
             onClick={() => bulkBan(true)}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             Ban
           </button>
           <button
             onClick={() => bulkBan(false)}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             Unban
           </button>
@@ -353,14 +353,14 @@ export default function AdminUsersPage() {
             <select
               value={bulkPlan}
               onChange={(e) => setBulkPlan(e.target.value as typeof PLAN_OPTIONS[number])}
-              className="text-[9px] tracking-[0.1em] uppercase bg-transparent border border-[var(--border)] px-2 py-2 text-[var(--foreground)] outline-none"
+              className="text-[9px] tracking-[0.1em] uppercase bg-transparent border border-[var(--border)] rounded-lg px-2 py-2 text-[var(--foreground)] outline-none"
             >
               {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
             <button
               onClick={bulkSetPlan}
               disabled={bulkLoading}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
             >
               Apply
             </button>
@@ -369,7 +369,7 @@ export default function AdminUsersPage() {
           <button
             onClick={bulkDelete}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-red-500/40 px-3 py-2 text-red-500 hover:bg-red-500/5 transition-colors disabled:opacity-40"
+            className="text-[9px] tracking-[0.14em] uppercase border border-red-500/40 rounded-lg px-3 py-2 text-red-500 hover:bg-red-500/5 transition-colors disabled:opacity-40"
           >
             Delete
           </button>
@@ -383,10 +383,10 @@ export default function AdminUsersPage() {
       )}
 
       {/* Table */}
-      <div className="border border-[var(--border)]">
+      <div className="rounded-xl border border-[var(--border)] overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
               {/* Checkbox select-all */}
               <th className="px-4 py-3 w-10">
                 <input
@@ -513,14 +513,14 @@ export default function AdminUsersPage() {
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ← Prev
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next →
             </button>
@@ -740,13 +740,13 @@ function UserDrawer({
               {!stats ? (
                 <div className="grid grid-cols-2 gap-2">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="border border-[var(--border)] p-3 animate-pulse h-14" />
+                    <div key={i} className="border border-[var(--border)] rounded-xl p-3 animate-pulse h-14" />
                   ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {/* AI Stylist today */}
-                  <div className="border border-[var(--border)] p-3">
+                  <div className="border border-[var(--border)] rounded-xl p-3">
                     <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist today</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">
                       {stats.stylistMsgToday}
@@ -762,21 +762,21 @@ function UserDrawer({
                   </div>
 
                   {/* AI Stylist all-time */}
-                  <div className="border border-[var(--border)] p-3">
+                  <div className="border border-[var(--border)] rounded-xl p-3">
                     <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist total</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
                     <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
                   </div>
 
                   {/* Images generated */}
-                  <div className="border border-[var(--border)] p-3">
+                  <div className="border border-[var(--border)] rounded-xl p-3">
                     <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">AI images</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
                     <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">generated</p>
                   </div>
 
                   {/* Looks published */}
-                  <div className="border border-[var(--border)] p-3">
+                  <div className="border border-[var(--border)] rounded-xl p-3">
                     <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Looks</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
                     <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">published</p>
@@ -807,7 +807,7 @@ function UserDrawer({
                     key={p}
                     type="button"
                     onClick={() => setPlan(p)}
-                    className={`text-[10px] tracking-[0.14em] uppercase px-3 py-2 border transition-colors capitalize ${
+                    className={`text-[10px] tracking-[0.14em] uppercase px-3 py-2 border rounded-lg transition-colors capitalize ${
                       plan === p
                         ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                         : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
@@ -831,7 +831,7 @@ function UserDrawer({
                   />
                 )}
                 {!currentIsSuperAdmin && detail?.isAdmin && (
-                  <div className="px-3 py-2.5 border border-[var(--border)] flex items-center justify-between">
+                  <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
                       <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
@@ -856,7 +856,7 @@ function UserDrawer({
               <div className="flex gap-2 ml-auto">
                 <button
                   onClick={onClose}
-                  className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
+                  className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
                 >
                   Cancel
                 </button>
@@ -864,7 +864,7 @@ function UserDrawer({
                   <button
                     onClick={save}
                     disabled={!hasChanges || saving}
-                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 hover:opacity-80 transition-opacity disabled:opacity-40"
+                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
                   >
                     {saving ? "Saving…" : "Save changes"}
                   </button>
@@ -904,7 +904,7 @@ function ToggleRow({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between px-3 py-2.5 border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors text-left"
+      className="w-full flex items-center justify-between px-3 py-2.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors text-left"
     >
       <div>
         <p className={`text-xs ${danger && checked ? "text-red-500" : "text-[var(--foreground)]"}`}>{label}</p>
