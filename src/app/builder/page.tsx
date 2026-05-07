@@ -993,8 +993,34 @@ export default function BuilderPage() {
             <div className="shrink-0 px-4 py-2 border-b border-[var(--border)] flex items-center justify-between gap-4">
               {/* Category chips — scrollable, no scrollbar */}
               <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {/* All chip */}
+                <button
+                  onClick={() => { setCatalogCategory(null); setLikedOnly(false); }}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                    catalogCategory === null && !likedOnly
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  All
+                </button>
+
+                {/* Liked chip — right after All */}
+                <button
+                  onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
+                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                    likedOnly
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+                  </svg>
+                  Liked
+                </button>
+
                 {([
-                  { label: "All", value: null },
                   { label: "Tops", value: "tops" },
                   { label: "Outerwear", value: "outerwear" },
                   { label: "Bottoms", value: "bottoms" },
@@ -1026,20 +1052,6 @@ export default function BuilderPage() {
                   );
                 })}
 
-                {/* Liked chip */}
-                <button
-                  onClick={() => setLikedOnly(v => !v)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                    likedOnly
-                      ? "bg-[var(--foreground)] text-[var(--background)]"
-                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
-                  </svg>
-                  Liked
-                </button>
               </div>
               {/* Right controls: sort + grid/list toggle + filters */}
               <div className="shrink-0 flex items-center gap-2">
@@ -1341,6 +1353,31 @@ export default function BuilderPage() {
 
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto">
+
+              {/* LIKED */}
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Saved</p>
+                <button
+                  onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                    likedOnly
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-[11px] font-semibold">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+                    </svg>
+                    My Liked Items
+                  </span>
+                  {likedOnly && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              </div>
 
               {/* CATEGORY */}
               <div className="border-b border-[var(--border)] px-5 py-4">
