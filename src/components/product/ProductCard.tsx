@@ -163,7 +163,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   return (
     <motion.div
-      className="group relative block"
+      className="group relative block overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
@@ -173,7 +173,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     >
       <Link href={linkHref} className="block">
         {/* ── Image container ─────────────────────────────────────────── */}
-        <div className="relative bg-white overflow-hidden aspect-[3/4]">
+        <div className="relative bg-white overflow-hidden aspect-[3/4] rounded-t-xl">
 
           {/* Image strip — all frames in a flex row, CSS transition slides to active frame */}
           <div
