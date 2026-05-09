@@ -34,19 +34,22 @@ export function FloatingStylist() {
         className={`hidden md:flex fixed bottom-8 right-6 z-40 items-center justify-center border transition-all duration-300 ${
           isOpen
             ? "w-10 h-10 rounded-full bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)] shadow-lg"
-            : "h-10 rounded-full px-4 gap-2 bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] shadow-[0_0_0_0_rgba(255,255,255,0)] hover:border-[var(--foreground)] hover:shadow-[0_0_22px_8px_rgba(255,255,255,0.09)]"
+            : "rounded-2xl px-5 py-3 gap-3 bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] hover:border-[var(--foreground)] hover:shadow-[0_0_28px_10px_rgba(255,255,255,0.08)] shadow-[0_0_0_0_rgba(255,255,255,0)]"
         }`}
       >
         {isOpen ? (
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M2 2L12 12M12 2L2 12" />
           </svg>
         ) : (
           <>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="font-mono text-[9px] tracking-[0.14em] uppercase">AI Stylist</span>
+            <div className="flex flex-col items-start">
+              <span className="font-mono text-[10px] tracking-[0.16em] uppercase font-medium leading-tight">AI Stylist</span>
+              <span className="text-[10px] tracking-wide text-[var(--foreground)] opacity-50 leading-tight mt-0.5">Build your perfect look</span>
+            </div>
           </>
         )}
       </button>
