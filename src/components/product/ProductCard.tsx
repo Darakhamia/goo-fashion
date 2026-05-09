@@ -30,6 +30,24 @@ const CATEGORY_TO_SLOT: Record<string, string> = {
   swimwear:    "accessories",
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  outerwear:   "Outerwear",
+  tops:        "Top",
+  shirts:      "Shirt",
+  bottoms:     "Bottom",
+  jeans:       "Jeans",
+  shorts:      "Shorts",
+  skirts:      "Skirt",
+  footwear:    "Footwear",
+  accessories: "Accessory",
+  bags:        "Bag",
+  dresses:     "Dress",
+  jumpsuits:   "Jumpsuit",
+  knitwear:    "Knitwear",
+  blazers:     "Blazer",
+  swimwear:    "Swimwear",
+};
+
 function buildOutfitUrl(product: Product): string {
   const slot = CATEGORY_TO_SLOT[product.category] ?? "top";
   return `/builder?${slot}=${product.id}`;
@@ -262,8 +280,8 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
               {product.brand}
             </p>
           )}
-          {/* Name */}
-          <h3 className="text-sm font-bold text-[var(--foreground)] truncate mt-1 group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
+          {/* Name — wraps up to 2 lines */}
+          <h3 className="text-sm font-bold text-[var(--foreground)] line-clamp-2 mt-1 leading-snug group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
             {displayName}
           </h3>
           {/* Price */}
@@ -277,36 +295,70 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         {/* Divider */}
         <div className="mx-3 mt-2.5 border-t border-[var(--border)]" />
 
-        {/* Sizes */}
-        <div className="h-6 mt-2 px-3 flex items-center overflow-hidden">
-          <div className="flex gap-1 overflow-hidden">
-            {displaySizes.slice(0, 5).map((size) => (
-              <span
-                key={size}
-                className="text-[9px] tracking-[0.08em] font-medium border border-[var(--border)] text-[var(--foreground-muted)] px-1.5 py-0.5 shrink-0"
-              >
-                {size}
-              </span>
-            ))}
-          </div>
+        {/* Metadata */}
+        <div className="px-3 pt-2.5 pb-0 flex-1">
+          {displaySizes.length > 0 ? (
+            <>
+              {/* Sizes label + chips */}
+              <p className="text-[10px] text-[var(--foreground-muted)] mb-1.5">Sizes</p>
+              <div className="flex gap-1 overflow-hidden flex-wrap max-h-[26px]">
+                {displaySizes.slice(0, 5).map((size) => (
+                  <span
+                    key={size}
+                    className="text-[10px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] px-2 py-1 shrink-0"
+                  >
+                    {size}
+                  </span>
+                ))}
+              </div>
+              {/* Colors */}
+              {hasSwatches && baseSwatch && (() => {
+                const count = 1 + swatches!.filter(s => s.id !== product.id).length;
+                return (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 2 A6 6 0 0 1 14 8 L8 8 Z" fill="#EF4444"/>
+                      <path d="M14 8 A6 6 0 0 1 8 14 L8 8 Z" fill="#22C55E"/>
+                      <path d="M8 14 A6 6 0 0 1 2 8 L8 8 Z" fill="#3B82F6"/>
+                      <path d="M2 8 A6 6 0 0 1 8 2 L8 8 Z" fill="#EAB308"/>
+                    </svg>
+                    <span className="text-[11px] font-medium text-[var(--foreground-subtle)]">
+                      {count} {count === 1 ? "color" : "colors"}
+                    </span>
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <>
+              {/* Category row */}
+              <div className="flex items-center gap-2 border border-[var(--border)] px-2.5 py-1.5 mb-1.5">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--foreground-muted)] shrink-0">
+                  <path d="M9.5 2H14V6.5L8 12.5C7.2 13.3 5.9 13.3 5.1 12.5L3.5 10.9C2.7 10.1 2.7 8.8 3.5 8L9.5 2Z"/>
+                  <circle cx="11.5" cy="4.5" r="0.8" fill="currentColor" stroke="none"/>
+                </svg>
+                <span className="text-[10px] text-[var(--foreground-muted)] truncate">
+                  {CATEGORY_LABELS[product.category] ?? product.category}
+                </span>
+              </div>
+              {/* Size / color info row */}
+              <div className="flex items-center gap-2 border border-[var(--border)] px-2.5 py-1.5">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-[var(--foreground-muted)] shrink-0">
+                  <circle cx="8" cy="8" r="6"/>
+                  <circle cx="8" cy="8" r="2.5"/>
+                </svg>
+                <span className="text-[10px] text-[var(--foreground-muted)] truncate">
+                  {displaySizes.length === 1 ? displaySizes[0] : "One size"} · No color variants
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Colour count */}
-        <div className="h-5 mt-1 px-3 flex items-center">
-          {hasSwatches && baseSwatch && (() => {
-            const count = 1 + swatches!.filter(s => s.id !== product.id).length;
-            return (
-              <span className="text-[11px] leading-none font-medium text-[var(--foreground-subtle)]">
-                {count} {count === 1 ? "color" : "colors"}
-              </span>
-            );
-          })()}
-        </div>
-
-        {/* Add to outfit */}
+        {/* Add to outfit — with side margins, not full-width */}
         <Link
           href={buildOutfitUrl(product)}
-          className="mt-auto w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2.5 group/btn"
+          className="mt-auto mx-3 mb-3 flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2.5 group/btn"
           onClick={(e) => e.stopPropagation()}
         >
           <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
