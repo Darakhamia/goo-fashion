@@ -31,7 +31,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative block"
+      className="group relative block overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
@@ -39,7 +39,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
     >
       <Link href={`/outfit/${outfit.id}`} className="block">
         {/* Image */}
-        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden rounded-2xl ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
+        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden rounded-t-xl ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
               <Image
@@ -104,9 +104,9 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block mt-3 space-y-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-xs font-medium text-[var(--foreground)] leading-snug">{outfit.name}</h3>
+        <Link href={`/outfit/${outfit.id}`} className="block mt-3 space-y-1 px-3 overflow-hidden">
+          <div className="flex items-start justify-between gap-2 overflow-hidden">
+            <h3 className="text-xs font-medium text-[var(--foreground)] leading-snug truncate min-w-0">{outfit.name}</h3>
             {liked && (
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="shrink-0 mt-0.5 text-[var(--foreground)]">
                 <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" />
