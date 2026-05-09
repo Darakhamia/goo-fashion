@@ -31,10 +31,10 @@ export function FloatingStylist() {
       <button
         onClick={() => setIsOpen(v => !v)}
         aria-label="Open AI Stylist"
-        className={`hidden md:flex fixed bottom-20 right-6 z-40 items-center justify-center shadow-lg border transition-all duration-200 ${
+        className={`hidden md:flex fixed bottom-8 right-6 z-40 items-center justify-center border transition-all duration-300 ${
           isOpen
-            ? "w-10 h-10 rounded-full bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-            : "h-10 rounded-full px-4 gap-2 bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] hover:border-[var(--foreground)]"
+            ? "w-10 h-10 rounded-full bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)] shadow-lg"
+            : "h-10 rounded-full px-4 gap-2 bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] shadow-[0_0_0_0_rgba(255,255,255,0)] hover:border-[var(--foreground)] hover:shadow-[0_0_22px_8px_rgba(255,255,255,0.09)]"
         }`}
       >
         {isOpen ? (
