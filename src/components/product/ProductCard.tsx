@@ -163,7 +163,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   return (
     <motion.div
-      className="group relative block overflow-hidden"
+      className="group relative flex flex-col overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
@@ -253,67 +253,66 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </svg>
       </button>
 
-      {/* ── Info block — every row has a fixed height so all cards align ── */}
-      <Link href={linkHref} className="block mt-2 px-3">
-        {/* Brand */}
-        <div className="h-3.5 flex items-center overflow-hidden">
+      {/* ── Info block ── */}
+      <div className="flex flex-col flex-1">
+        <Link href={linkHref} className="block px-3 pt-2.5">
+          {/* Brand */}
           {showBrand && (
-            <p className="text-[9px] tracking-[0.16em] uppercase font-semibold text-[var(--foreground-subtle)] truncate">
+            <p className="text-[9px] tracking-[0.15em] uppercase font-semibold text-[var(--foreground-subtle)] truncate">
               {product.brand}
             </p>
           )}
-        </div>
-        {/* Name */}
-        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
-          <h3 className="text-xs font-semibold text-[var(--foreground)] leading-none group-hover:text-[var(--foreground-muted)] transition-colors duration-200 truncate w-full">
+          {/* Name */}
+          <h3 className="text-sm font-bold text-[var(--foreground)] truncate mt-1 group-hover:text-[var(--foreground-muted)] transition-colors duration-200">
             {displayName}
           </h3>
-        </div>
-        {/* Price */}
-        <div className="h-4 mt-0.5 flex items-center overflow-hidden">
-          <p className="font-mono text-xs font-normal text-[var(--foreground-muted)] truncate">
+          {/* Price */}
+          <p className="font-mono text-sm font-medium text-[var(--foreground)] mt-1.5 truncate">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin)
               : `From ${formatPrice(displayPriceMin)}`}
           </p>
+        </Link>
+
+        {/* Divider */}
+        <div className="mx-3 mt-2.5 border-t border-[var(--border)]" />
+
+        {/* Sizes */}
+        <div className="h-6 mt-2 px-3 flex items-center overflow-hidden">
+          <div className="flex gap-1 overflow-hidden">
+            {displaySizes.slice(0, 5).map((size) => (
+              <span
+                key={size}
+                className="text-[9px] tracking-[0.08em] font-medium border border-[var(--border)] text-[var(--foreground-muted)] px-1.5 py-0.5 shrink-0"
+              >
+                {size}
+              </span>
+            ))}
+          </div>
         </div>
-      </Link>
 
-      {/* Sizes — fixed height so cards with no sizes still reserve the row */}
-      <div className="h-6 mt-1.5 px-3 flex items-center overflow-hidden">
-        <div className="flex gap-1 overflow-hidden">
-          {displaySizes.slice(0, 5).map((size) => (
-            <span
-              key={size}
-              className="text-[9px] tracking-[0.08em] font-medium border border-[var(--border)] text-[var(--foreground-muted)] px-1.5 py-0.5 shrink-0"
-            >
-              {size}
-            </span>
-          ))}
+        {/* Colour count */}
+        <div className="h-5 mt-1 px-3 flex items-center">
+          {hasSwatches && baseSwatch && (() => {
+            const count = 1 + swatches!.filter(s => s.id !== product.id).length;
+            return (
+              <span className="text-[11px] leading-none font-medium text-[var(--foreground-subtle)]">
+                {count} {count === 1 ? "color" : "colors"}
+              </span>
+            );
+          })()}
         </div>
-      </div>
 
-      {/* Colour count */}
-      <div className="h-4 mt-1 px-3 flex items-center">
-        {hasSwatches && baseSwatch && (() => {
-          const count = 1 + swatches!.filter(s => s.id !== product.id).length;
-          return (
-            <span className="text-[11px] leading-none font-medium text-[var(--foreground-subtle)]">
-              {count} {count === 1 ? "color" : "colors"}
-            </span>
-          );
-        })()}
+        {/* Add to outfit */}
+        <Link
+          href={buildOutfitUrl(product)}
+          className="mt-auto w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2.5 group/btn"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
+          <span className="text-base leading-none font-light text-[var(--foreground-muted)] group-hover/btn:text-[var(--foreground)] transition-colors">+</span>
+        </Link>
       </div>
-
-      {/* Add to outfit */}
-      <Link
-        href={buildOutfitUrl(product)}
-        className="mt-2 w-full flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-3 py-2 group/btn"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span className="text-[9px] tracking-[0.16em] uppercase font-bold">Add to Outfit</span>
-        <span className="text-base leading-none font-light text-[var(--foreground-muted)] group-hover/btn:text-[var(--foreground)] transition-colors">+</span>
-      </Link>
     </motion.div>
   );
 }
