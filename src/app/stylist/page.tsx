@@ -810,7 +810,7 @@ export default function StylistPage() {
                       key={outfit.id}
                       variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
                       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                      className="rounded-t-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
                     >
                       <OutfitCard outfit={outfit} />
                     </motion.div>
