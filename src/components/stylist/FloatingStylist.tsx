@@ -43,12 +43,12 @@ export function FloatingStylist() {
           </svg>
         ) : (
           <>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-90">
+              <path d="M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z" />
             </svg>
-            <div className="flex flex-col items-start">
-              <span className="font-mono text-[10px] tracking-[0.16em] uppercase font-medium leading-tight">AI Stylist</span>
-              <span className="text-[10px] tracking-wide text-[var(--foreground)] opacity-50 leading-tight mt-0.5">Build your perfect look</span>
+            <div className="flex flex-col items-start gap-0">
+              <span className="font-sans text-[11px] tracking-[0.18em] uppercase font-bold leading-none">AI Stylist</span>
+              <span className="font-sans text-[9.5px] tracking-[0.04em] text-[var(--foreground)] opacity-55 leading-none mt-[3px]">Build your perfect look</span>
             </div>
           </>
         )}
