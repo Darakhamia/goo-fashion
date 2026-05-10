@@ -33,7 +33,7 @@ export default function Navigation() {
 
   const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
-  const showWhiteText = isHero && !scrolled;
+  const showWhiteText = isHero && !scrolled && theme === "dark";
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
@@ -71,7 +71,9 @@ export default function Navigation() {
   const headerBg = scrolled
     ? "bg-[var(--bg-overlay-95)] backdrop-blur-sm border-b border-[var(--border)]"
     : isHero
-    ? "bg-gradient-to-b from-black/60 via-black/20 to-transparent"
+    ? theme === "dark"
+      ? "bg-gradient-to-b from-black/60 via-black/20 to-transparent"
+      : "bg-transparent"
     : "bg-[var(--background)] border-b border-[var(--border)]";
 
   const logoColor = showWhiteText ? "text-white" : "text-[var(--foreground)]";
