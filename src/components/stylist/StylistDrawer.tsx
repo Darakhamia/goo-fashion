@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
@@ -149,6 +149,27 @@ export function StylistDrawer({
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const chatThreadRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const chipsDrag = useRef({ active: false, startX: 0, scrollLeft: 0 });
+
+  const onChipsMouseDown = useCallback((e: React.MouseEvent) => {
+    const el = chipsRef.current;
+    if (!el) return;
+    chipsDrag.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    el.style.cursor = "grabbing";
+  }, []);
+
+  const onChipsMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = chipsRef.current;
+    if (!el || !chipsDrag.current.active) return;
+    e.preventDefault();
+    el.scrollLeft = chipsDrag.current.scrollLeft - (e.pageX - el.offsetLeft - chipsDrag.current.startX);
+  }, []);
+
+  const onChipsMouseUp = useCallback(() => {
+    chipsDrag.current.active = false;
+    if (chipsRef.current) chipsRef.current.style.cursor = "grab";
+  }, []);
 
   const contextId = focusProduct?.id ?? "";
 
@@ -618,13 +639,21 @@ export function StylistDrawer({
           </div>
 
           {/* Quick-reply chips */}
-          <div className="px-4 pb-2.5 shrink-0 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div
+            ref={chipsRef}
+            className="px-4 py-3 shrink-0 flex gap-2 overflow-x-auto select-none"
+            style={{ scrollbarWidth: "none", cursor: "grab" }}
+            onMouseDown={onChipsMouseDown}
+            onMouseMove={onChipsMouseMove}
+            onMouseUp={onChipsMouseUp}
+            onMouseLeave={onChipsMouseUp}
+          >
             {quickReplies.map(reply => (
               <button
                 key={reply}
-                onClick={() => sendMessage(reply)}
+                onClick={() => !chipsDrag.current.active && sendMessage(reply)}
                 disabled={chatLoading}
-                className="shrink-0 px-3 py-1 rounded-full border border-[var(--border-strong)] font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="shrink-0 px-3.5 py-1.5 rounded-full border border-[var(--border-strong)] text-[10px] tracking-wide text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {reply}
               </button>
@@ -632,7 +661,7 @@ export function StylistDrawer({
           </div>
 
           {/* Composer */}
-          <div className="px-4 pb-4 shrink-0 border-t border-[var(--border)] pt-3">
+          <div className="px-4 pb-4 pt-2 shrink-0 border-t border-[var(--border)]">
             <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-colors duration-150 ${
               chatLoading ? "border-[var(--border)] opacity-60" : "border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
             }`}>
@@ -657,9 +686,6 @@ export function StylistDrawer({
                 </svg>
               </button>
             </div>
-            <p className="mt-1.5 font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
-              Press Enter to send
-            </p>
           </div>
         </>
       )}
