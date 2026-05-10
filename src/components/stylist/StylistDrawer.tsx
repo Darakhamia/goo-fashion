@@ -367,24 +367,25 @@ export function StylistDrawer({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[13px] font-medium italic">
+          <div className="w-9 h-9 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[14px] font-bold">
             G
           </div>
           <div>
-            <p className="text-[13px] font-medium text-[var(--foreground)]">Stylist</p>
-            <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
-              ● Online
+            <p className="text-[13px] font-semibold text-[var(--foreground)]">Stylist</p>
+            <p className="text-[10px] text-[var(--foreground-subtle)] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Online
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* New chat button */}
           <button
             onClick={startNewChat}
             title="New chat"
-            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
             aria-label="New chat"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
@@ -396,10 +397,10 @@ export function StylistDrawer({
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
             title={view === "history" ? "Back to chat" : "Chat history"}
             aria-label={view === "history" ? "Back to chat" : "Chat history"}
-            className={`transition-colors ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
               view === "history"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
             }`}
           >
             {view === "history" ? (
@@ -415,8 +416,8 @@ export function StylistDrawer({
           </button>
           <button
             onClick={onClose}
-            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors text-xl leading-none"
             aria-label="Close stylist"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all text-lg leading-none"
           >
             ×
           </button>
@@ -473,7 +474,7 @@ export function StylistDrawer({
                   <button
                     key={i}
                     onClick={() => loadSession(s)}
-                    className="w-full text-left px-3 py-3 border border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors group"
+                    className="w-full text-left px-3 py-3 rounded-xl border border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors group"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] transition-colors">
@@ -514,12 +515,12 @@ export function StylistDrawer({
               >
                 {/* Bubble */}
                 <div
-                  className={`max-w-[88%] px-3.5 py-2.5 text-[12px] leading-relaxed ${
+                  className={`max-w-[88%] px-4 py-2.5 text-[12px] leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-[var(--foreground)] text-[var(--background)] rounded-xl rounded-br-sm"
+                      ? "bg-[var(--foreground)] text-[var(--background)] rounded-2xl rounded-br-sm"
                       : msg.isError
-                      ? "bg-red-500/8 border border-red-400/30 text-[var(--foreground)] rounded-xl rounded-bl-sm"
-                      : "bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-xl rounded-bl-sm"
+                      ? "bg-red-500/8 border border-red-400/30 text-[var(--foreground)] rounded-2xl rounded-bl-sm"
+                      : "bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl rounded-bl-sm"
                   }`}
                 >
                   {msg.text}
@@ -533,7 +534,7 @@ export function StylistDrawer({
                         const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
                         const cardInner = (
                           <>
-                            <div className="w-[72px] aspect-[3/4] overflow-hidden bg-[var(--surface)] border border-[var(--border)] group-hover:border-[var(--foreground)] transition-colors relative">
+                            <div className="w-[72px] aspect-[3/4] overflow-hidden bg-[var(--surface)] border border-[var(--border)] group-hover:border-[var(--foreground)] transition-colors relative rounded-xl">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={product.imageUrl}
@@ -586,7 +587,7 @@ export function StylistDrawer({
                       return slots.size >= 2 ? (
                         <Link
                           href={url}
-                          className="inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
+                          className="inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
                         >
                           <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
                             <path d="M2 2H10V10M2 10L10 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -603,7 +604,7 @@ export function StylistDrawer({
             {/* Typing indicator */}
             {chatLoading && (
               <div className="flex items-start">
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
+                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
                   {[0, 150, 300].map(delay => (
                     <span
                       key={delay}
@@ -631,8 +632,8 @@ export function StylistDrawer({
           </div>
 
           {/* Composer */}
-          <div className="px-4 pb-3 shrink-0 border-t border-[var(--border)] pt-3">
-            <div className={`flex items-center border transition-colors duration-150 ${
+          <div className="px-4 pb-4 shrink-0 border-t border-[var(--border)] pt-3">
+            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-colors duration-150 ${
               chatLoading ? "border-[var(--border)] opacity-60" : "border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
             }`}>
               <input
@@ -640,28 +641,25 @@ export function StylistDrawer({
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(chatInput); } }}
-                placeholder="Message stylist…"
+                placeholder="Ask your stylist…"
                 maxLength={500}
                 disabled={chatLoading}
-                className="flex-1 h-10 bg-transparent outline-none px-3 text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
+                className="flex-1 h-8 bg-transparent outline-none text-base md:text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => sendMessage(chatInput)}
                 disabled={!chatInput.trim() || chatLoading}
-                className="w-10 h-10 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
                 aria-label="Send"
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] shrink-0 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-80"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M14 8L2 2L5 8L2 14L14 8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M14 8L2 2L5 8L2 14L14 8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 </svg>
               </button>
             </div>
-
-            <div className="mt-1.5">
-              <p className="font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
-                ⏎ to send
-              </p>
-            </div>
+            <p className="mt-1.5 font-mono text-[8px] tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">
+              Press Enter to send
+            </p>
           </div>
         </>
       )}
