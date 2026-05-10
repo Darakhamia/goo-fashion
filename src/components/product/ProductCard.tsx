@@ -232,7 +232,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     >
       <Link href={linkHref} className="block">
         {/* ── Image container ─────────────────────────────────────────── */}
-        <div className="relative bg-[#f0f0f0] overflow-hidden aspect-[3/4]">
+        <div className="relative bg-[#f0f0f0] overflow-hidden aspect-[3/4] rounded-t-xl">
 
           <div
             className="absolute inset-0 flex"
