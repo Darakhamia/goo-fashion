@@ -335,7 +335,7 @@ export function StylistDrawer({
 
   const positionClasses = position === "absolute"
     ? "absolute top-0 right-0 bottom-0 z-20 w-full md:w-[380px]"
-    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-16 md:bottom-0 md:left-auto md:right-0 md:w-[380px] md:h-auto md:rounded-none";
+    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-[72px] md:bottom-4 md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
 
   const quickReplies = QUICK_REPLIES[surface];
 
@@ -355,8 +355,8 @@ export function StylistDrawer({
         />
       )}
     <div
-      className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border-t-0 md:border-l md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
-      style={{ boxShadow: position === "fixed" ? "0 -8px 40px rgba(0,0,0,0.18), -20px 0 60px rgba(0,0,0,0.08)" : undefined }}
+      className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
+      style={{ boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined }}
     >
       {/* Mobile drag handle */}
       {position === "fixed" && (
