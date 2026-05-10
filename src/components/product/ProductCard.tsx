@@ -232,7 +232,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     >
       <Link href={linkHref} className="block">
         {/* ── Image container ─────────────────────────────────────────── */}
-        <div className="relative bg-[#111111] overflow-hidden aspect-[3/4] rounded-t-2xl">
+        <div className="relative bg-[#f0f0f0] overflow-hidden aspect-[3/4] rounded-t-2xl">
 
           <div
             className="absolute inset-0 flex"
@@ -320,12 +320,12 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
               {product.brand}
             </p>
           )}
-          {/* Name — allow up to 2 lines */}
-          <h3 className="text-base font-bold text-[var(--foreground)] line-clamp-2 mt-1 leading-snug">
+          {/* Name */}
+          <h3 className="text-base font-bold text-[var(--foreground)] truncate mt-1 leading-snug">
             {displayName}
           </h3>
           {/* Price */}
-          <p className="text-base font-bold text-[var(--foreground)] mt-1.5">
+          <p className="font-mono text-base font-bold text-[var(--foreground)] mt-1.5">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin)
               : `From ${formatPrice(displayPriceMin)}`}
@@ -337,7 +337,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
         {hasSizes ? (
           /* ── Sizes + colors layout ── */
-          <div className="px-4 mt-3 flex flex-col gap-2">
+          <div className="px-4 mt-3 flex flex-col gap-2 min-h-[72px]">
             <div>
               <p className="text-[10px] text-[var(--foreground-subtle)] mb-1.5">Sizes</p>
               <div className="flex flex-wrap gap-1">
@@ -363,7 +363,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           </div>
         ) : (
           /* ── Accessory-style info layout ── */
-          <div className="px-4 mt-3 flex flex-col gap-1.5">
+          <div className="px-4 mt-3 flex flex-col gap-1.5 min-h-[72px]">
             <div className="flex items-center gap-2 border border-[var(--border)] rounded-lg px-2.5 py-1.5">
               <TagIcon />
               <span className="text-[11px] text-[var(--foreground-muted)]">{categoryLabel}</span>
@@ -412,7 +412,7 @@ function CroppedImage({
         src={src}
         alt={alt}
         fill
-        className="object-contain"
+        className="object-cover"
         sizes={sizes}
       />
     );
