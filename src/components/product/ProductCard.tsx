@@ -325,7 +325,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             {displayName}
           </h3>
           {/* Price */}
-          <p className="font-mono text-base font-bold text-[var(--foreground)] mt-1.5">
+          <p className="font-mono text-sm font-medium text-[var(--foreground-muted)] mt-1.5">
             {displayPriceMin === displayPriceMax
               ? formatPrice(displayPriceMin)
               : `From ${formatPrice(displayPriceMin)}`}
