@@ -356,7 +356,7 @@ export function StylistDrawer({
 
   const positionClasses = position === "absolute"
     ? "absolute top-0 right-0 bottom-0 z-20 w-full md:w-[380px]"
-    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-[72px] md:bottom-4 md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
+    : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58vh] rounded-t-2xl md:top-[72px] md:bottom-[88px] md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
 
   const quickReplies = QUICK_REPLIES[surface];
 

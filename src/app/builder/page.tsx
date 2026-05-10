@@ -1613,14 +1613,29 @@ export default function BuilderPage() {
                   </>
                 )}
               </button>
-              {/* Save */}
+              {/* Shop the Look — secondary */}
+              <button
+                onClick={shopTheLook}
+                disabled={selectedCount === 0}
+                className="flex items-center gap-2 border border-[var(--border-strong)] text-[var(--foreground-muted)] px-4 py-2.5 rounded-xl text-[11px] font-semibold hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {shopAdded ? (
+                  <span>Added ✓</span>
+                ) : (
+                  <>
+                    <span>Shop{selectedCount > 0 ? ` ${formatPrice(totalPrice)}` : " the look"}</span>
+                    {selectedCount > 0 && <span>→</span>}
+                  </>
+                )}
+              </button>
+              {/* Save — primary */}
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
-                className={`px-4 py-2.5 rounded-xl border text-[11px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 ${
                   saved
-                    ? "border-[var(--border)] text-[var(--foreground-muted)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    ? "bg-[var(--foreground)]/70 text-[var(--background)]"
+                    : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
                 }`}
               >
                 {saved ? (
@@ -1640,21 +1655,6 @@ export default function BuilderPage() {
                   View →
                 </Link>
               )}
-              {/* Shop the Look CTA */}
-              <button
-                onClick={shopTheLook}
-                disabled={selectedCount === 0}
-                className="flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl text-[11px] font-bold hover:opacity-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {shopAdded ? (
-                  <span>Added to Cart ✓</span>
-                ) : (
-                  <>
-                    <span>Shop the look{selectedCount > 0 ? ` ${formatPrice(totalPrice)}` : ""}</span>
-                    {selectedCount > 0 && <span>→</span>}
-                  </>
-                )}
-              </button>
             </div>
           </div>
 
