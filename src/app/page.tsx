@@ -156,14 +156,14 @@ export default async function HomePage() {
           {/* Mobile: horizontal swipe row; Desktop: 4-column grid */}
           <div className="mt-10 hidden md:grid md:grid-cols-4 gap-4">
             {featuredProducts.map((product) => (
-              <div key={product.id} className="rounded-xl overflow-hidden bg-[var(--background)] hover:shadow-md transition-all duration-200">
+              <div key={product.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
                 <ProductCard product={product} />
               </div>
             ))}
           </div>
           <div className="mt-6 flex gap-3 overflow-x-auto md:hidden" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
             {featuredProducts.map((product) => (
-              <div key={product.id} className="shrink-0 w-[62vw] max-w-[260px] rounded-xl overflow-hidden bg-[var(--background)]">
+              <div key={product.id} className="shrink-0 w-[62vw] max-w-[260px] rounded-xl bg-[var(--background)]">
                 <ProductCard product={product} />
               </div>
             ))}
