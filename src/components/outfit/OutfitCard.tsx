@@ -117,10 +117,10 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
           <Link
             href={`/outfit/${outfit.id}`}
-            className="flex items-center justify-between bg-[var(--foreground)] text-[var(--background)] rounded-xl px-4 py-3 hover:opacity-90 transition-opacity duration-200"
+            className="flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-4 py-2.5 rounded-xl group/btn"
           >
-            <span className="text-[10px] tracking-[0.18em] uppercase font-bold">View Outfit</span>
-            <span className="text-base font-light leading-none">→</span>
+            <span className="text-[9px] tracking-[0.16em] uppercase font-bold">View Outfit</span>
+            <span className="text-base leading-none font-light text-[var(--foreground-muted)] group-hover/btn:text-[var(--foreground)] transition-colors">→</span>
           </Link>
         </div>
       )}
