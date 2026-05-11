@@ -378,7 +378,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
-              <div key={outfit.id} className="rounded-xl overflow-hidden bg-[var(--background)] hover:shadow-md transition-all duration-200">
+              <div key={outfit.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
                 <OutfitCard outfit={outfit} />
               </div>
             ))}
@@ -399,7 +399,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map((related) => (
-              <div key={related.id} className="rounded-xl overflow-hidden bg-[var(--background)] hover:shadow-md transition-all duration-200">
+              <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
                 <ProductCard product={related} />
               </div>
             ))}
