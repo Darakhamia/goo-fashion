@@ -31,13 +31,13 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative block overflow-hidden rounded-xl border border-[var(--border)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
-      <Link href={`/outfit/${outfit.id}`} className="block">
+      <Link href={`/outfit/${outfit.id}`} className="block relative">
         {/* Image */}
         <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
           {outfit.imageUrl ? (
@@ -57,41 +57,34 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
             />
           )}
 
-          {/* AI / Community Badge */}
+          {/* AI / Community Badges — horizontal row */}
           {(outfit.isAIGenerated || outfit.source === "community") && (
-            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+            <div className="absolute top-3 left-3 z-10 flex flex-row gap-1.5 flex-wrap">
               {outfit.isAIGenerated && (
-                <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2 py-1 block rounded-md">
+                <span className="text-[9px] tracking-[0.14em] uppercase font-bold bg-[var(--foreground)] text-[var(--background)] px-2.5 py-1 rounded-md">
                   AI
                 </span>
               )}
               {outfit.source === "community" && (
-                <span className="text-[8px] tracking-[0.16em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-2 py-1 block rounded-md">
+                <span className="text-[9px] tracking-[0.14em] uppercase font-bold border border-[var(--border-strong)] bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2.5 py-1 rounded-md">
                   Community
                 </span>
               )}
             </div>
           )}
 
-          {/* Hover Overlay */}
+          {/* Hover overlay */}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
-
-          {/* Hover Label */}
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-            <span className="text-[9px] tracking-[0.18em] uppercase font-medium bg-[var(--bg-overlay-95)] backdrop-blur-sm text-[var(--foreground)] px-3 py-1.5">
-              View Outfit
-            </span>
-          </div>
         </div>
       </Link>
 
-      {/* Like Button */}
+      {/* Like Button — always visible, circular */}
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
-        className="absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-[var(--surface)] border border-[var(--border)] rounded-full shadow-sm hover:border-[var(--foreground-muted)] transition-colors duration-200"
       >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
           <path
             d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
             stroke="currentColor"
@@ -104,24 +97,32 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block mt-3 space-y-1 px-3 overflow-hidden">
-          <div className="flex items-start justify-between gap-2 overflow-hidden">
-            <h3 className="text-xs font-medium text-[var(--foreground)] leading-snug truncate min-w-0">{outfit.name}</h3>
-            {liked && (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="shrink-0 mt-0.5 text-[var(--foreground)]">
-                <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" />
-              </svg>
-            )}
-          </div>
-          <p className="font-mono text-[10px] text-[var(--foreground-muted)]">
-            {outfit.items.length} pieces
-            <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
-            {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
-          </p>
-          <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)]">
-            {outfit.occasion}
-          </p>
-        </Link>
+        <div className="flex flex-col gap-3 p-4 pt-3">
+          <Link href={`/outfit/${outfit.id}`} className="block">
+            <h3 className="text-xl font-bold text-[var(--foreground)] leading-tight">
+              {outfit.name}
+            </h3>
+            <p className="text-sm text-[var(--foreground-muted)] mt-1.5">
+              {outfit.items.length} pieces
+              <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
+              {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
+            </p>
+          </Link>
+
+          {outfit.occasion && (
+            <span className="self-start text-[9px] tracking-[0.14em] uppercase font-semibold border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1 rounded-full">
+              {outfit.occasion}
+            </span>
+          )}
+
+          <Link
+            href={`/outfit/${outfit.id}`}
+            className="flex items-center justify-between bg-[var(--foreground)] text-[var(--background)] rounded-xl px-4 py-3 hover:opacity-90 transition-opacity duration-200"
+          >
+            <span className="text-[10px] tracking-[0.18em] uppercase font-bold">View Outfit</span>
+            <span className="text-base font-light leading-none">→</span>
+          </Link>
+        </div>
       )}
     </motion.div>
   );
