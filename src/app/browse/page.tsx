@@ -1134,7 +1134,7 @@ export default function BrowsePage() {
                     {pagedOutfits.map((outfit) => (
                       <motion.div
                         key={outfit.id}
-                        className="rounded-t-xl border border-[var(--border)] overflow-hidden bg-[var(--background)] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
+                        className="rounded-xl overflow-hidden bg-[var(--background)] hover:shadow-md transition-all duration-200"
                         variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                       >
                         <OutfitCard outfit={outfit} />

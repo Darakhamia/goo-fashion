@@ -31,7 +31,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative block overflow-hidden rounded-xl"
+      className="group relative block overflow-hidden rounded-xl border border-[var(--border)]"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
