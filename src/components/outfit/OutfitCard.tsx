@@ -99,10 +99,10 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       {!compact && (
         <div className="flex flex-col gap-3 p-4 pt-3">
           <Link href={`/outfit/${outfit.id}`} className="block">
-            <h3 className="text-xl font-bold text-[var(--foreground)] leading-tight">
+            <h3 className="text-base font-bold text-[var(--foreground)] truncate mt-1 leading-snug">
               {outfit.name}
             </h3>
-            <p className="text-sm text-[var(--foreground-muted)] mt-1.5">
+            <p className="font-mono text-sm font-medium text-[var(--foreground-muted)] mt-1.5">
               {outfit.items.length} pieces
               <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
               {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
