@@ -520,35 +520,39 @@ export default function BrowsePage() {
           </div>
         </div>
 
-        {/* ── Grid layout ── */}
-        <div className="flex">
-          {/* ── FILTER SIDEBAR ── */}
+        {/* ── FILTER SIDEBAR OVERLAY ── */}
+        {filtersOpen && (
           <div
-            className="shrink-0 border-r border-[var(--border)] bg-[var(--background)] overflow-hidden transition-all duration-200 flex flex-col"
-            style={{ width: filtersOpen ? 280 : 0 }}
-          >
-            <div className="w-[280px] flex flex-col h-full">
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-                <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
-                <button
-                  onClick={() => setFiltersOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
-                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-              {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto">
-                {renderFilters()}
-              </div>
-            </div>
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            onClick={() => setFiltersOpen(false)}
+          />
+        )}
+        <div
+          className={`fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col transition-transform duration-200 ${
+            filtersOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+            <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
+            <button
+              onClick={() => setFiltersOpen(false)}
+              className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+                <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {renderFilters()}
+          </div>
+        </div>
 
-          {/* Main content */}
-          <main className="min-w-0 flex-1 px-6 md:px-8 lg:px-10">
+        {/* Main content */}
+        <div>
+          <main className="px-6 md:px-8 lg:px-10">
             {/* Top toolbar */}
             <div className="flex items-center justify-between py-4 border-b border-[var(--border)] overflow-visible">
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-visible">
