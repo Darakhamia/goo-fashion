@@ -3,6 +3,13 @@ import Replicate from "replicate";
 import { requirePlan } from "@/lib/server/require-plan";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
+import { getPrompt } from "@/lib/server/get-prompt";
+import {
+  DEFAULT_IMAGE_FIDELITY,
+  DEFAULT_IMAGE_MANNEQUIN,
+  DEFAULT_IMAGE_FLATLAY,
+  DEFAULT_IMAGE_TRYON,
+} from "@/lib/server/prompt-defaults";
 
 type Style = "mannequin" | "flatlay" | "tryon";
 
@@ -92,8 +99,8 @@ async function fetchAsDataUri(
   return { ok: false, url, reason: "all fetch attempts failed" };
 }
 
-function buildPrompt(pieces: SlotProduct[], style: Style): string {
-  const itemsList = pieces
+function buildItemsList(pieces: SlotProduct[]): string {
+  return pieces
     .map((p, i) => {
       const color = p.colorName ?? (p.colors?.length ? p.colors[0] : "");
       const colorStr = color ? `${color} ` : "";
@@ -101,51 +108,24 @@ function buildPrompt(pieces: SlotProduct[], style: Style): string {
       return `(${i + 1}) ${p.slot}: ${colorStr}${p.name} by ${p.brand}${material}`;
     })
     .join("; ");
+}
 
-  // Fidelity block — logos and branding must survive.
-  const fidelity = [
-    "CRITICAL FIDELITY: Reproduce every garment EXACTLY as shown in the corresponding reference image.",
-    "Match silhouette, cut, fabric texture, drape, color, pattern, print, stitching, buttons, zippers, and hardware precisely.",
-    "LOGOS AND BRANDING: Preserve ALL logos, wordmarks, graphic prints, text, and emblems EXACTLY as they appear in the reference images — do not simplify, replace, blur, or omit any logo or text. If a logo is on the chest, it must appear on the chest. If there is a brand name on the shoe, it must be legible.",
-    "Do not invent, substitute, restyle, or add any item not in the references.",
-  ].join(" ");
+async function buildPrompt(pieces: SlotProduct[], style: Style): Promise<string> {
+  const itemsList = buildItemsList(pieces);
 
-  if (style === "tryon") {
-    return [
-      "Fashion studio try-on photograph.",
-      "PERSON: The FIRST reference image shows the subject. Reproduce this exact person — their face, facial features, skin tone, hair colour, hair length, body shape, and proportions precisely. Do NOT alter, idealise, composite, or replace the person with a model.",
-      "OUTFIT: Dress this exact person in the following items, taken from the remaining reference images:",
-      itemsList + ".",
-      "Garment layering: outerwear worn over top; bottom on legs; shoes on feet; bags on shoulder or crossbody — never floating.",
-      fidelity,
-      "POSE: Simple, confident standing studio pose — feet shoulder-width apart, arms relaxed at sides (or one hand lightly in pocket). Full body visible head to toe. Natural, not stiff.",
-      "BACKGROUND: Pure white seamless studio infinity cove — floor and wall blend into one unbroken white plane. No props, no texture, no gradient. Only a soft contact shadow directly beneath the feet.",
-      "LIGHTING: Soft diffused frontal studio strobe, perfectly even, no harsh shadows. Natural skin-tone rendering.",
-      "Square 1:1 frame. Full body centered. Photorealistic, ultra-sharp focus, luxury fashion editorial quality.",
-    ].join(" ");
-  }
+  const [fidelity, mannequin, flatlay, tryon] = await Promise.all([
+    getPrompt("prompt_image_fidelity", DEFAULT_IMAGE_FIDELITY),
+    getPrompt("prompt_image_mannequin", DEFAULT_IMAGE_MANNEQUIN),
+    getPrompt("prompt_image_flatlay", DEFAULT_IMAGE_FLATLAY),
+    getPrompt("prompt_image_tryon", DEFAULT_IMAGE_TRYON),
+  ]);
 
-  if (style === "mannequin") {
-    return [
-      "Luxury fashion ecommerce photograph. Full-body shot of a faceless matte black mannequin (sleek, no facial features) wearing the following outfit, head to toe:",
-      itemsList + ".",
-      "Garment layering: outerwear is worn over the top (open or unzipped to reveal the top underneath); bottom worn on the legs; shoes on the feet; bags on the shoulder or crossbody — never floating.",
-      fidelity,
-      "BACKGROUND: Pure clean white seamless studio infinity cove — floor and wall blend into a single unbroken white. No props, no texture, no gradient, no shadow on the wall. Only a soft natural contact shadow directly beneath the mannequin's feet on the floor.",
-      "Lighting: soft diffused frontal studio light, no harsh shadows. The focus is entirely on the clothes.",
-      "Framing: full-body centered front view, entire figure head to toe visible with even breathing room on all sides. Square 1:1 frame. Photorealistic, sharp focus.",
-    ].join(" ");
-  }
+  const fill = (tpl: string) =>
+    tpl.replace("{{items}}", itemsList).replace("{{fidelity}}", fidelity);
 
-  return [
-    "Editorial fashion flat-lay photograph for a luxury magazine cover.",
-    `Arrange these clothing items and accessories on a pure white surface, viewed from directly overhead (top-down 90° shot): ${itemsList}.`,
-    "Composition: lay the pieces out as if a person is wearing the outfit — hat/cap at the top, top/shirt centered below, outerwear overlapping the top (slightly open), trousers/skirt below the top along the vertical center axis (can be folded at the knee for editorial rhythm), shoes at the bottom pointing downward. Bags and accessories rest naturally at the sides. Allow organic overlaps between adjacent pieces (jacket hem over shirt, shoe toe over trouser cuff) — this creates visual flow. NOT a grid, NOT items in separate corners.",
-    fidelity,
-    "BACKGROUND: Absolutely pure white — no texture, no paper grain, no shadows on the background itself. Each item casts only its own soft, sharp-edged drop shadow directly beneath it, giving a clean floating effect. The shadows are the only visual element besides the clothes.",
-    "Lighting: bright overhead studio strobe, perfectly even white exposure. Colors must be completely true-to-life.",
-    "Square 1:1 frame. Top-down overhead view. Photorealistic, ultra-sharp focus, luxury fashion editorial quality.",
-  ].join(" ");
+  if (style === "tryon")    return fill(tryon);
+  if (style === "mannequin") return fill(mannequin);
+  return fill(flatlay);
 }
 
 export async function POST(req: Request) {
@@ -207,7 +187,7 @@ export async function POST(req: Request) {
     console.warn("[generate-outfit] failed to fetch reference images:", failedUrls);
   }
 
-  const prompt = buildPrompt(pieces, style);
+  const prompt = await buildPrompt(pieces, style);
 
   try {
     const replicate = new Replicate({ auth: apiToken });

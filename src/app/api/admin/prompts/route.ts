@@ -6,6 +6,10 @@ import {
   DEFAULT_BLOG_USER_PROMPT,
   DEFAULT_EMAIL_PROMPT,
   DEFAULT_STYLIST_PROMPT,
+  DEFAULT_IMAGE_FIDELITY,
+  DEFAULT_IMAGE_MANNEQUIN,
+  DEFAULT_IMAGE_FLATLAY,
+  DEFAULT_IMAGE_TRYON,
 } from "@/lib/server/prompt-defaults";
 
 export const PROMPT_META: Record<string, { label: string; description: string; default: string }> = {
@@ -13,21 +17,49 @@ export const PROMPT_META: Record<string, { label: string; description: string; d
     label: "Blog — System",
     description: "Системный промт для генерации статей блога. Задаёт роль и формат вывода.",
     default: DEFAULT_BLOG_SYSTEM_PROMPT,
+    category: "content",
   },
   prompt_blog_user: {
     label: "Blog — User",
     description: "Пользовательский промт для блога. Используй {{url}} и {{content}} — они будут заменены при генерации.",
     default: DEFAULT_BLOG_USER_PROMPT,
+    category: "content",
   },
   prompt_email: {
     label: "Email — AI Write",
     description: "Промт для AI-генерации тела письма. Используй {{subject}} и {{brief}}.",
     default: DEFAULT_EMAIL_PROMPT,
+    category: "content",
   },
   prompt_stylist: {
     label: "AI Stylist — System",
     description: "Системный промт стилиста. Используй {{personalization}}, {{catalog}}, {{outfit_context}} — они подставляются динамически.",
     default: DEFAULT_STYLIST_PROMPT,
+    category: "stylist",
+  },
+  prompt_image_fidelity: {
+    label: "Image — Fidelity block",
+    description: "Блок точности воспроизведения одежды. Вставляется через {{fidelity}} в каждый стиль генерации.",
+    default: DEFAULT_IMAGE_FIDELITY,
+    category: "image",
+  },
+  prompt_image_mannequin: {
+    label: "Image — Mannequin",
+    description: "Промт для генерации на манекене. Используй {{items}} и {{fidelity}}.",
+    default: DEFAULT_IMAGE_MANNEQUIN,
+    category: "image",
+  },
+  prompt_image_flatlay: {
+    label: "Image — Flatlay",
+    description: "Промт для раскладки на полу/поверхности. Используй {{items}} и {{fidelity}}.",
+    default: DEFAULT_IMAGE_FLATLAY,
+    category: "image",
+  },
+  prompt_image_tryon: {
+    label: "Image — Try-on",
+    description: "Промт для примерки на человеке. Используй {{items}} и {{fidelity}}.",
+    default: DEFAULT_IMAGE_TRYON,
+    category: "image",
   },
 };
 
