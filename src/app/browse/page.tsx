@@ -721,7 +721,7 @@ export default function BrowsePage() {
                 {/* Filter toggle button */}
                 <button
                   onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`shrink-0 flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold border rounded-full px-4 py-2 transition-all duration-200 ${
+                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
                     filtersOpen
                       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                       : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -869,50 +869,44 @@ export default function BrowsePage() {
                 </AnimatePresence>
 
                 {/* Search toggle */}
-                <div className={`shrink-0 flex items-center border rounded-full transition-all duration-300 overflow-hidden ${
-                  searchOpen
-                    ? "border-[var(--foreground)] bg-[var(--foreground)] pl-3 pr-1 py-1"
-                    : "border-[var(--foreground-muted)] px-4 py-2 hover:bg-[var(--fg-overlay-05)]"
-                }`}>
-                  {!searchOpen ? (
+                {!searchOpen ? (
+                  <button
+                    onClick={() => {
+                      setSearchOpen(true);
+                      setTimeout(() => searchInputRef.current?.focus(), 50);
+                    }}
+                    className="shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all duration-200"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                      <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span>Search</span>
+                  </button>
+                ) : (
+                  <div className="shrink-0 flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 transition-all duration-200">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                      <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 w-40"
+                    />
                     <button
-                      onClick={() => {
-                        setSearchOpen(true);
-                        setTimeout(() => searchInputRef.current?.focus(), 50);
-                      }}
-                      className="flex items-center gap-2 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)]"
+                      onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                      className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
                     >
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                        <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                        <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                        <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
                       </svg>
-                      <span>Search</span>
                     </button>
-                  ) : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--background)]">
-                        <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                        <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                      </svg>
-                      <input
-                        ref={searchInputRef}
-                        type="text"
-                        placeholder="Search…"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-transparent outline-none text-[var(--background)] placeholder:text-[var(--background)]/50 text-xs mx-2 w-40"
-                      />
-                      <button
-                        onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                        className="w-6 h-6 rounded-full bg-[var(--background)]/20 hover:bg-[var(--background)]/30 flex items-center justify-center shrink-0 transition-colors"
-                      >
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                          <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="var(--background)" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Sort */}
