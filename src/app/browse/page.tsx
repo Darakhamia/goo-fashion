@@ -686,6 +686,8 @@ export default function BrowsePage() {
                     setSelectedColorGroupIds([]);
                     setAiOnly(false);
                     setSelectedPriceIdx(null);
+                    setSearchQuery("");
+                    setSearchOpen(false);
                     const url = new URL(window.location.href);
                     url.searchParams.set("view", v);
                     window.history.replaceState({}, "", url.toString());
