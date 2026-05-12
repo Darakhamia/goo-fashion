@@ -17,12 +17,6 @@ const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
 ];
 const GENDERS: Gender[] = ["women", "men", "unisex"];
-const PRICE_RANGES = [
-  { label: "Under $200", min: 0, max: 200 },
-  { label: "$200 – $500", min: 200, max: 500 },
-  { label: "$500 – $1,000", min: 500, max: 1000 },
-  { label: "Over $1,000", min: 1000, max: Infinity },
-];
 
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 1,  name: "White",      hexCode: "#ffffff", sortOrder: 1 },
@@ -194,9 +188,12 @@ export default function BrowsePage() {
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
   const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
-  const [selectedPriceIdx, setSelectedPriceIdx] = useState<number | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
+  const [brandSearch, setBrandSearch] = useState("");
+  const [showAllBrands, setShowAllBrands] = useState(false);
+  const [showAllColors, setShowAllColors] = useState(false);
 
   /* Togglers */
   const toggleBrand = (b: string) =>
@@ -219,7 +216,7 @@ export default function BrowsePage() {
     selectedOccasions.length +
     selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
-    (selectedPriceIdx !== null ? 1 : 0) +
+    (maxPrice !== null ? 1 : 0) +
     (aiOnly ? 1 : 0);
 
   const clearAll = () => {
@@ -227,7 +224,7 @@ export default function BrowsePage() {
     setSelectedCategories([]);
     setSelectedOccasions([]);
     setSelectedGender(null);
-    setSelectedPriceIdx(null);
+    setMaxPrice(null);
     setSelectedColorGroupIds([]);
     setAiOnly(false);
     setSearchQuery("");
@@ -252,9 +249,7 @@ export default function BrowsePage() {
       )
       .filter(
         (p) =>
-          selectedPriceIdx === null ||
-          (p.priceMin >= PRICE_RANGES[selectedPriceIdx].min &&
-            p.priceMin < PRICE_RANGES[selectedPriceIdx].max)
+          maxPrice === null || p.priceMin <= maxPrice
       )
       .filter(
         (p) =>
@@ -275,7 +270,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedCategories, selectedGender, selectedPriceIdx, selectedColorGroupIds, searchQuery, sort]);
+  }, [products, selectedBrands, selectedCategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -288,9 +283,7 @@ export default function BrowsePage() {
       .filter((o) => !aiOnly || o.isAIGenerated)
       .filter(
         (o) =>
-          selectedPriceIdx === null ||
-          (o.totalPriceMin >= PRICE_RANGES[selectedPriceIdx].min &&
-            o.totalPriceMin < PRICE_RANGES[selectedPriceIdx].max)
+          maxPrice === null || o.totalPriceMin <= maxPrice
       )
       .filter(
         (o) =>
@@ -305,7 +298,7 @@ export default function BrowsePage() {
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedOccasions, aiOnly, selectedPriceIdx, searchQuery, sort]);
+  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -362,7 +355,7 @@ export default function BrowsePage() {
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
   // Reset to page 1 whenever filters/sort/view change
-  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedCategories, selectedOccasions, selectedGender, selectedPriceIdx, selectedColorGroupIds, aiOnly]);
+  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedCategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly]);
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
   const pagedItems = useMemo(
@@ -382,85 +375,229 @@ export default function BrowsePage() {
     brands: selectedBrands.length ? selectedBrands : undefined,
     occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
     gender: selectedGender ?? undefined,
-    priceLabel: selectedPriceIdx !== null ? PRICE_RANGES[selectedPriceIdx].label : undefined,
+    priceLabel: maxPrice !== null ? `<$${maxPrice.toLocaleString()}` : undefined,
     visibleCount: count,
-  }), [view, searchQuery, selectedCategories, selectedBrands, selectedOccasions, selectedGender, selectedPriceIdx, count]);
+  }), [view, searchQuery, selectedCategories, selectedBrands, selectedOccasions, selectedGender, maxPrice, count]);
 
-  /* Sidebar filter content rendered as a function to get fresh JSX in both desktop + mobile */
+  const filteredBrandsForSearch = BRANDS.filter(
+    (b) => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())
+  );
+
+  /* Sidebar filter content — matches builder style exactly */
   const renderFilters = () => (
     <div>
       {view === "outfits" ? (
         <>
+          {/* OCCASION */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Occasion</p>
-            <div className="flex flex-col">
+            <select
+              value={selectedOccasions[0] ?? ""}
+              onChange={(e) => setSelectedOccasions(e.target.value ? [e.target.value as Occasion] : [])}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
+            >
+              <option value="">All</option>
               {OCCASIONS.map((occ) => (
-                <FilterCheckbox key={occ} checked={selectedOccasions.includes(occ)} onToggle={() => toggleOccasion(occ)} label={occ} />
+                <option key={occ} value={occ}>{occ.charAt(0).toUpperCase() + occ.slice(1)}</option>
               ))}
-            </div>
+            </select>
           </div>
+          {/* AI ONLY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Curated by AI</p>
-            <FilterCheckbox checked={aiOnly} onToggle={() => setAiOnly(!aiOnly)} label="AI outfits only" />
+            <button
+              onClick={() => setAiOnly((v) => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                aiOnly
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[11px] font-semibold">AI outfits only</span>
+              {aiOnly && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
           </div>
         </>
       ) : (
         <>
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Designer</p>
-            <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto">
-              {BRANDS.map((brand) => (
-                <FilterCheckbox key={brand} checked={selectedBrands.includes(brand)} onToggle={() => toggleBrand(brand)} label={brand} />
-              ))}
-            </div>
-          </div>
+          {/* CATEGORY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-            <div className="flex flex-col">
+            <select
+              value={selectedCategories[0] ?? ""}
+              onChange={(e) => setSelectedCategories(e.target.value ? [e.target.value as Category] : [])}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
+            >
+              <option value="">All</option>
               {CATEGORIES.map((cat) => (
-                <FilterCheckbox key={cat} checked={selectedCategories.includes(cat)} onToggle={() => toggleCategory(cat)} label={cat} />
+                <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
               ))}
-            </div>
+            </select>
           </div>
+          {/* GENDER */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
-            <div className="flex flex-col">
-              {GENDERS.map((g) => (
-                <FilterCheckbox key={g} checked={selectedGender === g} onToggle={() => setSelectedGender(selectedGender === g ? null : g)} label={g} />
-              ))}
-            </div>
+            <select
+              value={selectedGender ?? ""}
+              onChange={(e) => setSelectedGender((e.target.value || null) as Gender | null)}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
+            >
+              <option value="">All</option>
+              <option value="women">Women</option>
+              <option value="men">Men</option>
+              <option value="unisex">Unisex</option>
+            </select>
           </div>
+          {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Color</p>
-            <div className="flex flex-col">
-              {colorGroups.map((cg) => {
-                const active = selectedColorGroupIds.includes(cg.id);
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
+            <div className="flex flex-wrap gap-2">
+              {(showAllColors ? colorGroups : colorGroups.slice(0, 6)).map((cg) => {
+                const isActive = selectedColorGroupIds.includes(cg.id);
                 return (
-                  <button key={cg.id} onClick={() => toggleColorGroup(cg.id)} className="flex items-center gap-2.5 w-full py-[5px] group text-left">
-                    <div className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-all duration-150 ${active ? "border-[var(--foreground)] bg-[var(--foreground)]" : "border-[var(--border-strong)] group-hover:border-[var(--foreground)]"}`}>
-                      {active && <svg width="7" height="5" viewBox="0 0 7 5" fill="none"><path d="M1 2.5L2.5 4L6 1" stroke="var(--background)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                    </div>
-                    <span className="w-3.5 h-3.5 shrink-0 border border-[rgba(0,0,0,0.15)]" style={cg.hexCode === "#multicolor" ? { background: "conic-gradient(red,orange,yellow,green,blue,violet,red)" } : { backgroundColor: cg.hexCode }} />
-                    <span className={`text-xs uppercase tracking-[0.08em] transition-colors duration-200 ${active ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)]"}`}>{cg.name}</span>
-                  </button>
+                  <button
+                    key={cg.id}
+                    title={cg.name}
+                    onClick={() => toggleColorGroup(cg.id)}
+                    className={`w-7 h-7 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                    style={{
+                      background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
+                      boxShadow: isActive
+                        ? "0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                        : "inset 0 0 0 1px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.06)",
+                    }}
+                  />
                 );
               })}
             </div>
+            {colorGroups.length > 6 && (
+              <button
+                onClick={() => setShowAllColors((v) => !v)}
+                className="mt-2 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+              >
+                {showAllColors ? "Show less" : `Show ${colorGroups.length - 6} more`}
+              </button>
+            )}
+          </div>
+          {/* DESIGNER / BRANDS */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Designer</p>
+            <div className="relative mb-3">
+              <input
+                type="text"
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                placeholder="Search brands…"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+              />
+              {brandSearch && (
+                <button
+                  onClick={() => setBrandSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                >
+                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M1 1L9 9M9 1L1 9" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {filteredBrandsForSearch.slice(0, showAllBrands ? undefined : 8).map((brand) => {
+                const isActive = selectedBrands.includes(brand);
+                return (
+                  <label key={brand} className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-[var(--surface)] transition-colors">
+                    <div
+                      className={`flex items-center justify-center shrink-0 border transition-colors ${
+                        isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
+                      }`}
+                      style={{ width: 14, height: 14 }}
+                    >
+                      {isActive && (
+                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => toggleBrand(brand)}
+                      className={`text-[11px] truncate text-left ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}
+                    >
+                      {brand}
+                    </button>
+                  </label>
+                );
+              })}
+              {filteredBrandsForSearch.length === 0 && (
+                <p className="px-1 py-2 text-[11px] text-[var(--foreground-subtle)]">No brands found</p>
+              )}
+            </div>
+            {filteredBrandsForSearch.length > 8 && (
+              <button
+                onClick={() => setShowAllBrands((v) => !v)}
+                className="mt-1.5 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+              >
+                {showAllBrands ? "Show less" : `Show ${filteredBrandsForSearch.length - 8} more`}
+              </button>
+            )}
           </div>
         </>
       )}
+      {/* PRICE */}
       <div className="border-b border-[var(--border)] px-5 py-4">
         <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
-        <div className="flex flex-col">
-          {PRICE_RANGES.map((range, idx) => (
-            <FilterCheckbox key={range.label} checked={selectedPriceIdx === idx} onToggle={() => setSelectedPriceIdx(selectedPriceIdx === idx ? null : idx)} label={range.label} />
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
+          <span className="text-[11px] font-medium text-[var(--foreground)]">
+            {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={2000}
+          step={50}
+          value={maxPrice ?? 2000}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+          }}
+          className="w-full cursor-pointer mb-3"
+          style={{ accentColor: "var(--foreground)" }}
+        />
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {([
+            { label: "All", max: null },
+            { label: "<$200", max: 200 },
+            { label: "<$500", max: 500 },
+            { label: "<$1k", max: 1000 },
+            { label: "<$2k", max: 2000 },
+          ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
+            <button
+              key={label}
+              onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+              className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                maxPrice === max
+                  ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {label}
+            </button>
           ))}
         </div>
       </div>
+      {/* CLEAR FILTERS */}
       {activeFiltersCount > 0 && (
         <div className="px-5 py-4">
-          <button onClick={clearAll} className="w-full text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2">
-            Clear all filters
+          <button
+            onClick={clearAll}
+            className="w-full py-2 rounded-lg border border-[var(--border-strong)] text-[10px] tracking-[0.12em] uppercase font-bold text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+          >
+            Clear filters
           </button>
         </div>
       )}
@@ -523,12 +660,12 @@ export default function BrowsePage() {
         {/* ── FILTER SIDEBAR OVERLAY ── */}
         {filtersOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 top-16 z-40 bg-black/20"
             onClick={() => setFiltersOpen(false)}
           />
         )}
         <div
-          className={`fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col transition-transform duration-200 ${
+          className={`fixed left-0 top-16 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col transition-transform duration-200 ${
             filtersOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -731,7 +868,7 @@ export default function BrowsePage() {
                     />
                   </motion.div>
                 )}
-                {selectedPriceIdx !== null && (
+                {maxPrice !== null && (
                   <motion.div
                     key="price"
                     initial={{ opacity: 0, scale: 0.85 }}
@@ -741,8 +878,8 @@ export default function BrowsePage() {
                     layout
                   >
                     <ActiveChip
-                      label={PRICE_RANGES[selectedPriceIdx].label}
-                      onRemove={() => setSelectedPriceIdx(null)}
+                      label={maxPrice < 2000 ? `<$${maxPrice.toLocaleString()}` : "<$2k"}
+                      onRemove={() => setMaxPrice(null)}
                     />
                   </motion.div>
                 )}
