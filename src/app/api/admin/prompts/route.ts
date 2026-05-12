@@ -12,7 +12,7 @@ import {
   DEFAULT_IMAGE_TRYON,
 } from "@/lib/server/prompt-defaults";
 
-export const PROMPT_META: Record<string, { label: string; description: string; default: string }> = {
+export const PROMPT_META: Record<string, { label: string; description: string; default: string; category: string }> = {
   prompt_blog_system: {
     label: "Blog — System",
     description: "Системный промт для генерации статей блога. Задаёт роль и формат вывода.",
