@@ -12,7 +12,6 @@ import {
 } from "@/lib/server/prompt-defaults";
 
 type Style = "mannequin" | "flatlay" | "tryon";
-type GenModel = "nano-banana-2" | "gpt-image-2";
 
 interface SlotProduct {
   slot: string;
@@ -152,7 +151,6 @@ export async function POST(req: Request) {
   const pieces = body.pieces as SlotProduct[];
   const style: Style =
     body.style === "flatlay" ? "flatlay" : body.style === "tryon" ? "tryon" : "mannequin";
-  const genModel: GenModel = body.model === "gpt-image-2" ? "gpt-image-2" : "nano-banana-2";
 
   // For try-on: caller supplies the user's photo as a base64 data-URI.
   // It becomes the first reference so the model knows whose body to dress.
@@ -210,37 +208,23 @@ export async function POST(req: Request) {
 
   try {
     const replicate = new Replicate({ auth: apiToken });
-    let output: unknown;
 
-    if (genModel === "gpt-image-2") {
-      // GPT Image 1 via Replicate — text-to-image, no multi-reference support
-      output = await replicate.run("openai/gpt-image-2", {
-        input: {
-          prompt,
-          quality: "high",
-          size: "1024x1024",
-          output_format: "jpg",
-          n: 1,
-        },
-      });
-    } else {
-      output = await replicate.run("google/nano-banana-2", {
-        input: {
-          prompt,
-          ...(imageInput.length > 0 && { image_input: imageInput }),
-          aspect_ratio: "1:1",
-          resolution: "1K",
-          output_format: "jpg",
-        },
-      });
-    }
+    const output = await replicate.run("google/nano-banana-2", {
+      input: {
+        prompt,
+        ...(imageInput.length > 0 && { image_input: imageInput }),
+        aspect_ratio: "1:1",
+        resolution: "1K",
+        output_format: "jpg",
+      },
+    });
 
     const imageUrl = Array.isArray(output)
       ? extractUrl(output[0])
       : extractUrl(output);
 
     if (!imageUrl) {
-      console.error(`[${genModel}] unexpected output shape:`, output);
+      console.error("[nano-banana-2] unexpected output shape:", output);
       return NextResponse.json(
         {
           error: "No image returned from Replicate.",
@@ -278,10 +262,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       imageUrl: persistedUrl,
       prompt,
-      model: genModel,
+      model: "nano-banana-2",
       style,
-      referencesUsed: genModel === "nano-banana-2" ? imageInput.length : 0,
-      referencesFailed: genModel === "nano-banana-2" ? failedUrls.length : 0,
+      referencesUsed: imageInput.length,
+      referencesFailed: failedUrls.length,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
