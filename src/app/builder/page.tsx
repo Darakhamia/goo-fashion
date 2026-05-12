@@ -715,29 +715,7 @@ export default function BuilderPage() {
                   {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={clearAll}
-                  className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors font-semibold"
-                >
-                  Clear All
-                </button>
-                <button onClick={shareOutfit} className="w-7 h-7 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors" title={copied ? "Copied!" : "Share look"}>
-                  {copied ? (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8.5L6.5 12L13 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.3" />
-                      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.3" />
-                      <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
-                      <line x1="10.3" y1="5" x2="5.7" y2="7" stroke="currentColor" strokeWidth="1.3" />
-                      <line x1="5.7" y1="9" x2="10.3" y2="11" stroke="currentColor" strokeWidth="1.3" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+            </div>
             </div>
 
             {/* Slot cards */}
@@ -1238,10 +1216,10 @@ export default function BuilderPage() {
                             )}
                           </div>
                           {/* Info */}
-                          <div className="p-2.5">
-                            <p className="text-[10px] text-[var(--foreground-subtle)] mb-0.5 truncate">{product.brand}</p>
-                            <p className="text-[11px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2 mb-1">{product.name}</p>
-                            <p className="text-[12px] font-bold text-[var(--foreground)]">{formatPrice(product.priceMin)}</p>
+                          <div className="px-3 pt-3 pb-3.5">
+                            <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
+                            <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{product.name}</p>
+                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin)}</p>
                             {hasVariants && (() => {
                               const variants = product.variants!;
                               const MAX = 5;
@@ -2024,8 +2002,9 @@ export default function BuilderPage() {
                         </div>
                         {/* Info */}
                         <div className="pt-1.5">
-                          <p className="text-[10px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                          <p className="font-mono text-[9px] text-[var(--foreground-muted)] mt-0.5">{formatPrice(product.priceMin)}</p>
+                          <p className="text-[10px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
+                          <p className="text-[9px] text-[var(--foreground-muted)] truncate mt-0.5">{product.name}</p>
+                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(product.priceMin)}</p>
                         </div>
                       </div>
                     );
