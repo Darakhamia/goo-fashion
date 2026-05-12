@@ -176,6 +176,7 @@ export default function BuilderPage() {
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
   const [tryonStep, setTryonStep] = useState(false);
   const [userPhotoDataUri, setUserPhotoDataUri] = useState<string | null>(null);
+  const [genModel, setGenModel] = useState<"nano-banana-2" | "gpt-image-2">("nano-banana-2");
   // Tracks the localStorage id of the look we've already persisted in this session,
   // so repeated Generate/Save calls update the same saved look instead of creating duplicates.
   const [persistedLookId, setPersistedLookId] = useState<string | null>(null);
@@ -660,6 +661,7 @@ export default function BuilderPage() {
         body: JSON.stringify({
           pieces,
           style,
+          model: genModel,
           ...(style === "tryon" && photoUri ? { userPhotoDataUri: photoUri } : {}),
         }),
       });
@@ -2436,9 +2438,35 @@ export default function BuilderPage() {
                   </button>
                 </div>
 
-                <p className="px-5 pb-4 font-mono text-[8px] text-[var(--foreground-subtle)] text-center">
-                  Product images sent as references · 1K resolution · Nano Banana 2
-                </p>
+                <div className="px-5 pb-4 flex flex-col items-center gap-2.5">
+                  <div className="flex items-center bg-[var(--surface)] border border-[var(--border)] rounded-full p-0.5 gap-0.5">
+                    <button
+                      onClick={() => setGenModel("nano-banana-2")}
+                      className={`px-3 py-1 rounded-full font-mono text-[8px] tracking-[0.12em] uppercase transition-all ${
+                        genModel === "nano-banana-2"
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      Nano Banana 2
+                    </button>
+                    <button
+                      onClick={() => setGenModel("gpt-image-2")}
+                      className={`px-3 py-1 rounded-full font-mono text-[8px] tracking-[0.12em] uppercase transition-all ${
+                        genModel === "gpt-image-2"
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      GPT Image 2
+                    </button>
+                  </div>
+                  <p className="font-mono text-[8px] text-[var(--foreground-subtle)] text-center">
+                    {genModel === "nano-banana-2"
+                      ? "Product images sent as references · 1K resolution"
+                      : "Text-to-image · No product references"}
+                  </p>
+                </div>
               </>
             )}
 

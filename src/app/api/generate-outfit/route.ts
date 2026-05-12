@@ -12,6 +12,7 @@ import {
 } from "@/lib/server/prompt-defaults";
 
 type Style = "mannequin" | "flatlay" | "tryon";
+type GenModel = "nano-banana-2" | "gpt-image-2";
 
 interface SlotProduct {
   slot: string;
@@ -151,6 +152,7 @@ export async function POST(req: Request) {
   const pieces = body.pieces as SlotProduct[];
   const style: Style =
     body.style === "flatlay" ? "flatlay" : body.style === "tryon" ? "tryon" : "mannequin";
+  const genModel: GenModel = body.model === "gpt-image-2" ? "gpt-image-2" : "nano-banana-2";
 
   // For try-on: caller supplies the user's photo as a base64 data-URI.
   // It becomes the first reference so the model knows whose body to dress.
@@ -189,52 +191,63 @@ export async function POST(req: Request) {
 
   const prompt = await buildPrompt(pieces, style);
 
+  // Replicate v1 SDK returns a FileOutput (or array) with .url() method.
+  // Older models return string or string[]. Handle all shapes.
+  const extractUrl = (item: unknown): string | undefined => {
+    if (!item) return undefined;
+    if (typeof item === "string") return item;
+    const maybe = item as { url?: unknown };
+    if (typeof maybe.url === "function") {
+      const v = (maybe.url as () => unknown)();
+      if (typeof v === "string") return v;
+      if (v && typeof (v as { toString?: () => string }).toString === "function") {
+        return (v as { toString: () => string }).toString();
+      }
+    }
+    if (typeof maybe.url === "string") return maybe.url;
+    return undefined;
+  };
+
   try {
     const replicate = new Replicate({ auth: apiToken });
+    let output: unknown;
 
-    const output = await replicate.run("google/nano-banana-2", {
-      input: {
-        prompt,
-        ...(imageInput.length > 0 && { image_input: imageInput }),
-        aspect_ratio: "1:1",
-        resolution: "1K",
-        output_format: "jpg",
-      },
-    });
-
-    // Replicate v1 SDK returns a FileOutput (or array) with .url() method.
-    // Older models return string or string[]. Handle all shapes.
-    const extractUrl = (item: unknown): string | undefined => {
-      if (!item) return undefined;
-      if (typeof item === "string") return item;
-      const maybe = item as { url?: unknown };
-      if (typeof maybe.url === "function") {
-        const v = (maybe.url as () => unknown)();
-        if (typeof v === "string") return v;
-        if (v && typeof (v as { toString?: () => string }).toString === "function") {
-          return (v as { toString: () => string }).toString();
-        }
-      }
-      if (typeof maybe.url === "string") return maybe.url;
-      return undefined;
-    };
+    if (genModel === "gpt-image-2") {
+      // GPT Image 1 via Replicate — text-to-image, no multi-reference support
+      output = await replicate.run("openai/gpt-image-2", {
+        input: {
+          prompt,
+          quality: "high",
+          size: "1024x1024",
+          output_format: "jpg",
+          n: 1,
+        },
+      });
+    } else {
+      output = await replicate.run("google/nano-banana-2", {
+        input: {
+          prompt,
+          ...(imageInput.length > 0 && { image_input: imageInput }),
+          aspect_ratio: "1:1",
+          resolution: "1K",
+          output_format: "jpg",
+        },
+      });
+    }
 
     const imageUrl = Array.isArray(output)
       ? extractUrl(output[0])
       : extractUrl(output);
 
     if (!imageUrl) {
-      console.error("[nano-banana-2] unexpected output shape:", output);
+      console.error(`[${genModel}] unexpected output shape:`, output);
       return NextResponse.json(
         {
           error: "No image returned from Replicate.",
           debug: {
             outputType: typeof output,
             isArray: Array.isArray(output),
-            keys:
-              output && typeof output === "object"
-                ? Object.keys(output as object)
-                : null,
+            keys: output && typeof output === "object" ? Object.keys(output as object) : null,
           },
         },
         { status: 500 }
@@ -242,8 +255,6 @@ export async function POST(req: Request) {
     }
 
     // ── Persist to Supabase Storage so the URL doesn't expire after 1 h ──────
-    // Fallback: if Supabase is not configured or the upload fails, return the
-    // temporary Replicate URL unchanged so the feature still works.
     let persistedUrl = imageUrl;
     if (isSupabaseConfigured) {
       try {
@@ -267,10 +278,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       imageUrl: persistedUrl,
       prompt,
-      model: "nano-banana-2",
+      model: genModel,
       style,
-      referencesUsed: imageInput.length,
-      referencesFailed: failedUrls.length,
+      referencesUsed: genModel === "nano-banana-2" ? imageInput.length : 0,
+      referencesFailed: genModel === "nano-banana-2" ? failedUrls.length : 0,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
