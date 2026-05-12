@@ -1100,7 +1100,7 @@ export default function BrowsePage() {
               className="mt-6 pb-16"
             >
               {view === "outfits" && loadingOutfits ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
                       <div className="animate-pulse p-2">
@@ -1112,7 +1112,7 @@ export default function BrowsePage() {
                   ))}
                 </div>
               ) : view === "pieces" && loadingProducts ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
                       <div className="animate-pulse p-2">
@@ -1126,7 +1126,7 @@ export default function BrowsePage() {
               ) : view === "outfits" ? (
                 filteredOutfits.length > 0 ? (
                   <motion.div
-                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children"
+                    className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
                     variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
                     initial="hidden"
                     animate="show"
@@ -1146,7 +1146,7 @@ export default function BrowsePage() {
                 )
               ) : displayItems.length > 0 ? (
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 stagger-children"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
                   variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
                   initial="hidden"
                   animate="show"
