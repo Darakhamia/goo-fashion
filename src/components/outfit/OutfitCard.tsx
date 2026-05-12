@@ -15,6 +15,25 @@ interface OutfitCardProps {
   compact?: boolean;
 }
 
+function SparkleIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 0 L9.2 6.8 L16 8 L9.2 9.2 L8 16 L6.8 9.2 L0 8 L6.8 6.8 Z" />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="6" cy="5" r="2.5" />
+      <path d="M1 14c0-2.761 2.239-5 5-5s5 2.239 5 5" strokeLinecap="round" />
+      <circle cx="12" cy="5.5" r="2" />
+      <path d="M14.5 14c0-2.209-1.119-4-3.5-4.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function OutfitCard({ outfit, size = "default", compact = false }: OutfitCardProps) {
   const { isOutfitLiked, toggleOutfitLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
@@ -22,10 +41,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
   const liked = isOutfitLiked(outfit.id);
 
   const handleLike = () => {
-    if (!isLoggedIn) {
-      login("", "");
-      return;
-    }
+    if (!isLoggedIn) { login("", ""); return; }
     toggleOutfitLike(outfit.id);
   };
 
@@ -38,8 +54,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
       <Link href={`/outfit/${outfit.id}`} className="block relative">
-        {/* Image */}
-        <div className={`img-zoom relative bg-[var(--surface)] overflow-hidden ${size === "large" ? "aspect-[3/4]" : "aspect-[3/4]"}`}>
+        <div className="img-zoom relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
               <Image
@@ -57,34 +72,43 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
             />
           )}
 
-          {/* AI / Community Badges — horizontal row */}
+          {/* AI / Community badges — icon pills that expand on hover */}
           {(outfit.isAIGenerated || outfit.source === "community") && (
-            <div className="absolute top-3 left-3 z-10 flex flex-row gap-1.5 flex-wrap">
+            <div className="absolute top-3 left-3 z-10 flex flex-row gap-1.5">
               {outfit.isAIGenerated && (
-                <span className="text-[9px] tracking-[0.14em] uppercase font-bold bg-[var(--foreground)] text-[var(--background)] px-2.5 py-1 rounded-md">
-                  AI
-                </span>
+                <div className="group/ai inline-flex items-center bg-[var(--foreground)] text-[var(--background)] rounded-full px-2 py-1.5 overflow-hidden">
+                  <SparkleIcon />
+                  <span className="max-w-0 overflow-hidden group-hover/ai:max-w-[24px] transition-all duration-300 ease-out">
+                    <span className="pl-1.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
+                      AI
+                    </span>
+                  </span>
+                </div>
               )}
               {outfit.source === "community" && (
-                <span className="text-[9px] tracking-[0.14em] uppercase font-bold border border-[var(--border-strong)] bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] px-2.5 py-1 rounded-md">
-                  Community
-                </span>
+                <div className="group/cm inline-flex items-center border border-[var(--border-strong)] bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full px-2 py-1.5 overflow-hidden">
+                  <PeopleIcon />
+                  <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[72px] transition-all duration-300 ease-out">
+                    <span className="pl-1.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
+                      Community
+                    </span>
+                  </span>
+                </div>
               )}
             </div>
           )}
 
-          {/* Hover overlay */}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
         </div>
       </Link>
 
-      {/* Like Button — always visible, circular */}
+      {/* Like button */}
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
-        className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center bg-[var(--surface)] border border-[var(--border)] rounded-full shadow-sm hover:border-[var(--foreground-muted)] transition-colors duration-200"
+        className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
       >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <path
             d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
             stroke="currentColor"
@@ -97,32 +121,14 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <div className="flex flex-col gap-3 p-4 pt-3">
-          <Link href={`/outfit/${outfit.id}`} className="block">
-            <h3 className="text-base font-bold text-[var(--foreground)] truncate mt-1 leading-snug">
-              {outfit.name}
-            </h3>
-            <p className="font-mono text-sm font-medium text-[var(--foreground-muted)] mt-1.5">
-              {outfit.items.length} pieces
-              <span className="mx-1.5 text-[var(--foreground-subtle)]">·</span>
-              {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
-            </p>
-          </Link>
-
-          {outfit.occasion && (
-            <span className="self-start text-[9px] tracking-[0.14em] uppercase font-semibold border border-[var(--border)] text-[var(--foreground-muted)] px-3 py-1 rounded-full">
-              {outfit.occasion}
-            </span>
-          )}
-
-          <Link
-            href={`/outfit/${outfit.id}`}
-            className="flex items-center justify-between border border-[var(--border-strong)] hover:border-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] text-[var(--foreground)] transition-all duration-200 px-4 py-2.5 rounded-xl group/btn"
-          >
-            <span className="text-[9px] tracking-[0.16em] uppercase font-bold">View Outfit</span>
-            <span className="text-base leading-none font-light text-[var(--foreground-muted)] group-hover/btn:text-[var(--foreground)] transition-colors">→</span>
-          </Link>
-        </div>
+        <Link href={`/outfit/${outfit.id}`} className="block px-4 pt-3 pb-4">
+          <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
+            {outfit.name}
+          </h3>
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-0.5">
+            {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
+          </p>
+        </Link>
       )}
     </motion.div>
   );
