@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Fraunces, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { LikesProvider } from "@/lib/context/likes-context";
 import { AuthProvider } from "@/lib/context/auth-context";
@@ -10,23 +10,9 @@ import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  style: ["normal", "italic"],
-  axes: ["opsz"],
-});
-
 const interTight = Inter_Tight({
   subsets: ["latin"],
   variable: "--font-inter-tight",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
   display: "swap",
 });
 
@@ -55,7 +41,7 @@ export default function RootLayout({
       <html
         lang="en"
         suppressHydrationWarning
-        className={`dark ${fraunces.variable} ${interTight.variable} ${jetbrainsMono.variable}`}
+        className={`dark ${interTight.variable}`}
       >
         <head>
           {/* Inline script prevents flash of wrong theme on load */}

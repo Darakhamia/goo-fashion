@@ -4,7 +4,7 @@
   /* Font families — injected by next/font/google as CSS variables on <html> */
   --font-body:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
   --font-display: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
-  --font-mono:    var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+  --font-mono:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
 
   /* Light mode colors */
   --background: #F4F2EE;
@@ -301,7 +301,7 @@ body {
 .blog-prose { line-height: 1.75; }
 .blog-prose > * + * { margin-top: 1.15em; }
 .blog-prose h2 {
-  font-family: var(--font-inter-tight), serif;
+  font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.75rem;
   line-height: 1.25;
@@ -311,7 +311,7 @@ body {
   color: var(--foreground);
 }
 .blog-prose h3 {
-  font-family: var(--font-inter-tight), serif;
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.25rem;
   line-height: 1.3;
@@ -349,7 +349,7 @@ body {
   margin: 2em 0;
 }
 .blog-prose code {
-  font-family: var(--font-jetbrains), monospace;
+  font-family: var(--font-body);
   font-size: 0.9em;
   background: var(--surface);
   padding: 0.15em 0.4em;
