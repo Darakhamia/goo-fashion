@@ -148,6 +148,16 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/admin/prompts",
+    label: "Prompts",
+    category: "system",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 4H14M2 7H10M2 10H12M2 13H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/activity",
     label: "Activity",
     category: "data",
@@ -181,6 +191,7 @@ const pageTitles: Record<string, string> = {
   "/admin/email": "Email",
   "/admin/brightdata": "Import",
   "/admin/settings": "Settings",
+  "/admin/prompts": "Prompts",
   "/admin/activity": "Activity",
 };
 
