@@ -236,6 +236,15 @@ function CroppedImage({
   if (!cropData) {
     return <Image src={src} alt={alt} fill className="object-cover" sizes={sizes} quality={100} />;
   }
+
+  // cropData zooms into a fraction of the image (e.g. width=0.3 → 3.3× zoom).
+  // Scale the sizes hint so Next.js fetches a high-enough resolution image
+  // instead of upscaling a small one, which causes pixelation.
+  const scale = Math.max(1 / cropData.width, 1 / cropData.height);
+  const scaledSizes = sizes
+    ? sizes.replace(/(\d+)vw/g, (_, n) => `${Math.min(Math.round(Number(n) * scale), 100)}vw`)
+    : "100vw";
+
   return (
     <div
       style={{
@@ -252,7 +261,7 @@ function CroppedImage({
         fill
         quality={100}
         className="object-cover"
-        sizes={sizes}
+        sizes={scaledSizes}
         style={{ objectPosition: `${cropData.focalX * 100}% ${cropData.focalY * 100}%` }}
       />
     </div>
