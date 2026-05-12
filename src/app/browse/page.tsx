@@ -632,7 +632,7 @@ export default function BrowsePage() {
                     setSelectedOccasions([]);
                     setSelectedColorGroupIds([]);
                     setAiOnly(false);
-                    setSelectedPriceIdx(null);
+                    setMaxPrice(null);
                     setSearchQuery("");
                     setSearchOpen(false);
                     const url = new URL(window.location.href);
