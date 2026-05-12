@@ -193,7 +193,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       </button>
 
       {/* Info */}
-      <Link href={linkHref} className="block px-4 pt-3 pb-4">
+      <Link href={linkHref} className="block px-5 pt-4 pb-5">
         {showBrand && (
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {product.brand}

@@ -589,7 +589,7 @@ export default function SavedPage() {
         {view === "outfits" && (
           savedOutfits.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
               variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
               initial="hidden"
               animate="show"
@@ -626,7 +626,7 @@ export default function SavedPage() {
         {view === "pieces" && (
           savedProducts.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
               variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
               initial="hidden"
               animate="show"
@@ -663,7 +663,7 @@ export default function SavedPage() {
         {view === "looks" && (
           myLooks.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
               variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
               initial="hidden"
               animate="show"

@@ -15,14 +15,6 @@ interface OutfitCardProps {
   compact?: boolean;
 }
 
-function SparkleIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-      <path d="M8 0 L9.2 6.8 L16 8 L9.2 9.2 L8 16 L6.8 9.2 L0 8 L6.8 6.8 Z" />
-    </svg>
-  );
-}
-
 function PeopleIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -72,29 +64,19 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
             />
           )}
 
-          {/* AI / Community badges — icon pills that expand on hover */}
-          {(outfit.isAIGenerated || outfit.source === "community") && (
-            <div className="absolute top-3 left-3 z-10 flex flex-row gap-1.5">
-              {outfit.isAIGenerated && (
-                <div className="group/ai inline-flex items-center bg-[var(--foreground)] text-[var(--background)] rounded-full px-2 py-1.5 overflow-hidden">
-                  <SparkleIcon />
-                  <span className="max-w-0 overflow-hidden group-hover/ai:max-w-[24px] transition-all duration-300 ease-out">
-                    <span className="pl-1.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
-                      AI
-                    </span>
-                  </span>
-                </div>
-              )}
-              {outfit.source === "community" && (
-                <div className="group/cm inline-flex items-center border border-[var(--border-strong)] bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full px-2 py-1.5 overflow-hidden">
+          {/* Community badge — perfect circle, expands to pill on hover */}
+          {outfit.source === "community" && (
+            <div className="absolute top-3 left-3 z-10">
+              <div className="group/cm inline-flex items-center border border-[var(--border-strong)] bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full overflow-hidden h-7">
+                <span className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                   <PeopleIcon />
-                  <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[72px] transition-all duration-300 ease-out">
-                    <span className="pl-1.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
-                      Community
-                    </span>
+                </span>
+                <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[80px] transition-all duration-300 ease-out">
+                  <span className="pr-2.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
+                    Community
                   </span>
-                </div>
-              )}
+                </span>
+              </div>
             </div>
           )}
 
@@ -121,11 +103,11 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block px-4 pt-3 pb-4">
+        <Link href={`/outfit/${outfit.id}`} className="block px-5 pt-4 pb-5">
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {outfit.name}
           </h3>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-0.5">
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
             {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
           </p>
         </Link>
