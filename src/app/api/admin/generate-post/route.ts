@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
+import { getPrompt } from "@/lib/server/get-prompt";
+import { DEFAULT_BLOG_SYSTEM_PROMPT, DEFAULT_BLOG_USER_PROMPT } from "@/lib/server/prompt-defaults";
 
 function slugify(s: string): string {
   return s
@@ -56,26 +58,14 @@ export async function POST(req: Request) {
 
     const client = new OpenAI({ apiKey });
 
-    const systemPrompt = `You are a fashion blog writer for GOO — a smart, minimal fashion discovery app.
-Write engaging, concise fashion blog posts in a modern editorial tone.
-Always respond with valid JSON only, no markdown, no code blocks.`;
+    const [systemPrompt, userPromptTemplate] = await Promise.all([
+      getPrompt("prompt_blog_system", DEFAULT_BLOG_SYSTEM_PROMPT),
+      getPrompt("prompt_blog_user", DEFAULT_BLOG_USER_PROMPT),
+    ]);
 
-    const userPrompt = `Here is content scraped from this URL: ${url}
-
----
-${pageText}
----
-
-Based on this content, write a GOO fashion blog post. Return a JSON object with these fields:
-- title: string (catchy, editorial, 6-10 words)
-- excerpt: string (1-2 sentences teaser, max 200 chars)
-- body: string (500-800 words, HTML format with <p>, <h2>, <ul>/<li> tags. Engaging, fashion-forward. Mention specific items, trends, or styling tips from the source.)
-- category: string (one of: "Trends", "Style Guide", "Brands", "Smart Shopping", "How-to", "News", "AI Stylist")
-- metaTitle: string (SEO title, max 60 chars)
-- metaDescription: string (SEO description, max 155 chars)
-- slug: string (URL-friendly, e.g. "spring-2025-color-trends")
-
-Keep the tone minimal, sophisticated, and practical. Write as if for a design-conscious millennial audience.`;
+    const userPrompt = userPromptTemplate
+      .replace("{{url}}", url)
+      .replace("{{content}}", pageText);
 
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
