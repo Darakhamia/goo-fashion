@@ -234,7 +234,7 @@ function CroppedImage({
   sizes?: string;
 }) {
   if (!cropData) {
-    return <Image src={src} alt={alt} fill className="object-cover" sizes={sizes} />;
+    return <Image src={src} alt={alt} fill className="object-cover" sizes={sizes} quality={90} />;
   }
   return (
     <div
@@ -250,6 +250,7 @@ function CroppedImage({
         src={src}
         alt={alt}
         fill
+        quality={90}
         className="object-cover"
         sizes={sizes}
         style={{ objectPosition: `${cropData.focalX * 100}% ${cropData.focalY * 100}%` }}
