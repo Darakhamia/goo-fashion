@@ -12,7 +12,7 @@ import {
 } from "@/lib/server/prompt-defaults";
 
 type Style = "mannequin" | "flatlay" | "tryon";
-type GenModel = "nano-banana-2" | "gpt-image-1";
+type GenModel = "nano-banana-2" | "gpt-image-2";
 
 interface SlotProduct {
   slot: string;
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
   const pieces = body.pieces as SlotProduct[];
   const style: Style =
     body.style === "flatlay" ? "flatlay" : body.style === "tryon" ? "tryon" : "mannequin";
-  const genModel: GenModel = body.model === "gpt-image-1" ? "gpt-image-1" : "nano-banana-2";
+  const genModel: GenModel = body.model === "gpt-image-2" ? "gpt-image-2" : "nano-banana-2";
 
   // For try-on: caller supplies the user's photo as a base64 data-URI.
   // It becomes the first reference so the model knows whose body to dress.
@@ -212,9 +212,9 @@ export async function POST(req: Request) {
     const replicate = new Replicate({ auth: apiToken });
     let output: unknown;
 
-    if (genModel === "gpt-image-1") {
+    if (genModel === "gpt-image-2") {
       // GPT Image 1 via Replicate — text-to-image, no multi-reference support
-      output = await replicate.run("openai/gpt-image-1", {
+      output = await replicate.run("openai/gpt-image-2", {
         input: {
           prompt,
           quality: "high",
