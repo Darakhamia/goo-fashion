@@ -79,30 +79,32 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       </div>
 
       {/* Main grid */}
-      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-8">
+      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
 
         {/* ── Left: Image gallery ── */}
-        <div className="bg-[var(--background)]">
+        <div>
           {/* Main image */}
-          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-[var(--surface)]">
-            {mainImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={mainImage}
-                alt={product.name}
-                className="w-full h-full object-cover transition-opacity duration-[260ms] ease-in-out"
-                style={{ opacity: imgVisible ? 1 : 0 }}
-              />
-            ) : (
-              <div className="w-full h-full bg-[var(--surface)]" />
-            )}
-            {product.isNew && (
-              <div className="absolute top-4 left-4">
-                <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full px-3 py-1.5 block">
-                  New
-                </span>
-              </div>
-            )}
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)]">
+            <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+              {mainImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mainImage}
+                  alt={product.name}
+                  className="w-full h-full object-contain transition-opacity duration-[260ms] ease-in-out"
+                  style={{ opacity: imgVisible ? 1 : 0 }}
+                />
+              ) : (
+                <div className="w-full h-full bg-[var(--surface)]" />
+              )}
+              {product.isNew && (
+                <div className="absolute top-4 left-4">
+                  <span className="text-[9px] tracking-[0.16em] uppercase font-medium bg-[var(--bg-overlay-90)] backdrop-blur-sm text-[var(--foreground)] rounded-full px-3 py-1.5 block">
+                    New
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Thumbnail strip — only when there are multiple images */}
@@ -117,7 +119,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={`${product.name} ${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt={`${product.name} ${i + 1}`} className="w-full h-full object-contain" />
                 </button>
               ))}
             </div>
@@ -125,7 +127,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         </div>
 
         {/* ── Right: Product info ── */}
-        <div className="px-6 md:px-10 py-8 md:py-12 md:pl-2">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-6 md:px-10 py-8 md:py-12 flex flex-col">
 
           {/* Brand + Name */}
           <div className="mb-6">
