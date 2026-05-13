@@ -117,7 +117,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     >
       <Link href={linkHref} className="block">
         {/* Image */}
-        <div className="relative bg-[#f0f0f0] overflow-hidden aspect-[3/4]">
+        <div className="relative bg-white overflow-hidden aspect-[3/4]">
           <div
             className="absolute inset-0 flex"
             style={{
@@ -136,7 +136,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
                   src={src}
                   alt={product.name}
                   cropData={activeVariant ? undefined : product.cropData}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
               </div>
             ))}
@@ -234,7 +234,7 @@ function CroppedImage({
   sizes?: string;
 }) {
   if (!cropData) {
-    return <Image src={src} alt={alt} fill className="object-cover" sizes={sizes} quality={100} />;
+    return <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} quality={100} />;
   }
 
   // cropData zooms into a fraction of the image (e.g. width=0.3 → 3.3× zoom).
