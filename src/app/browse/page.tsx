@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
@@ -104,6 +104,120 @@ function ActiveChip({
         />
       </svg>
     </button>
+  );
+}
+
+function FilterSelect<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T | "";
+  options: { value: T; label: string }[];
+  onChange: (v: T | "") => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const currentLabel = options.find((o) => o.value === value)?.label ?? "All";
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, close]);
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 border transition-all duration-150 text-xs text-left ${
+          open
+            ? "border-[var(--foreground)] bg-[var(--surface)]"
+            : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)]"
+        }`}
+      >
+        <span
+          className={`capitalize font-medium tracking-wide ${
+            value ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"
+          }`}
+        >
+          {currentLabel}
+        </span>
+        <motion.svg
+          width="10"
+          height="6"
+          viewBox="0 0 10 6"
+          fill="none"
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="shrink-0 text-[var(--foreground-muted)]"
+        >
+          <path
+            d="M1 1L5 5L9 1"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </motion.svg>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scaleY: 0.94 }}
+            animate={{ opacity: 1, y: 0, scaleY: 1 }}
+            exit={{ opacity: 0, y: -6, scaleY: 0.94 }}
+            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ transformOrigin: "top" }}
+            className="absolute top-full left-0 right-0 z-50 mt-1 bg-[var(--background)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.10)] overflow-hidden"
+          >
+            {/* All option */}
+            <button
+              onClick={() => { onChange(""); close(); }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 text-xs transition-colors duration-100 ${
+                value === ""
+                  ? "bg-[var(--foreground)] text-[var(--background)]"
+                  : "text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="capitalize font-medium">All</span>
+              {value === "" && (
+                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                  <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+            {options.map((opt, i) => (
+              <motion.button
+                key={opt.value}
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.12, delay: i * 0.03 }}
+                onClick={() => { onChange(opt.value); close(); }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-xs transition-colors duration-100 border-t border-[var(--border)] ${
+                  value === opt.value
+                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : "text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <span className="capitalize font-medium">{opt.label}</span>
+                {value === opt.value && (
+                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                    <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -391,16 +505,11 @@ export default function BrowsePage() {
           {/* OCCASION */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Occasion</p>
-            <select
+            <FilterSelect<Occasion>
               value={selectedOccasions[0] ?? ""}
-              onChange={(e) => setSelectedOccasions(e.target.value ? [e.target.value as Occasion] : [])}
-              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
-            >
-              <option value="">All</option>
-              {OCCASIONS.map((occ) => (
-                <option key={occ} value={occ}>{occ.charAt(0).toUpperCase() + occ.slice(1)}</option>
-              ))}
-            </select>
+              options={OCCASIONS.map((occ) => ({ value: occ, label: occ.charAt(0).toUpperCase() + occ.slice(1) }))}
+              onChange={(v) => setSelectedOccasions(v ? [v] : [])}
+            />
           </div>
           {/* AI ONLY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
@@ -427,30 +536,24 @@ export default function BrowsePage() {
           {/* CATEGORY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-            <select
+            <FilterSelect<Category>
               value={selectedCategories[0] ?? ""}
-              onChange={(e) => setSelectedCategories(e.target.value ? [e.target.value as Category] : [])}
-              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
-            >
-              <option value="">All</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-              ))}
-            </select>
+              options={CATEGORIES.map((cat) => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) }))}
+              onChange={(v) => setSelectedCategories(v ? [v] : [])}
+            />
           </div>
           {/* GENDER */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
-            <select
+            <FilterSelect<Gender>
               value={selectedGender ?? ""}
-              onChange={(e) => setSelectedGender((e.target.value || null) as Gender | null)}
-              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
-            >
-              <option value="">All</option>
-              <option value="women">Women</option>
-              <option value="men">Men</option>
-              <option value="unisex">Unisex</option>
-            </select>
+              options={[
+                { value: "women" as Gender, label: "Women" },
+                { value: "men" as Gender, label: "Men" },
+                { value: "unisex" as Gender, label: "Unisex" },
+              ]}
+              onChange={(v) => setSelectedGender((v || null) as Gender | null)}
+            />
           </div>
           {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
@@ -658,34 +761,51 @@ export default function BrowsePage() {
         </div>
 
         {/* ── FILTER SIDEBAR OVERLAY ── */}
-        {filtersOpen && (
-          <div
-            className="fixed inset-0 top-16 z-40 bg-black/20"
-            onClick={() => setFiltersOpen(false)}
-          />
-        )}
-        <div
-          className={`fixed left-0 top-16 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col transition-transform duration-200 ${
-            filtersOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-            <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
-            <button
+        <AnimatePresence>
+          {filtersOpen && (
+            <motion.div
+              key="filter-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 top-16 z-40 bg-black/20"
               onClick={() => setFiltersOpen(false)}
-              className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {filtersOpen && (
+            <motion.div
+              key="filter-sidebar"
+              initial={{ x: -280, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -280, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
+              className="fixed left-0 top-16 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col"
             >
-              <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
-                <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
-            {renderFilters()}
-          </div>
-        </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+                <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
+                <motion.button
+                  onClick={() => setFiltersOpen(false)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+                    <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </motion.button>
+              </div>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto">
+                {renderFilters()}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Main content */}
         <div>
