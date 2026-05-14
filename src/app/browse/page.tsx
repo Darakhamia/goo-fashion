@@ -135,7 +135,7 @@ function FilterSelect<T extends string>({
     <div ref={ref} className="relative w-full">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 border transition-all duration-150 text-xs text-left ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 text-xs text-left ${
           open
             ? "border-[var(--foreground)] bg-[var(--surface)]"
             : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)]"
@@ -175,7 +175,7 @@ function FilterSelect<T extends string>({
             exit={{ opacity: 0, y: -6, scaleY: 0.94 }}
             transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
             style={{ transformOrigin: "top" }}
-            className="absolute top-full left-0 right-0 z-50 mt-1 bg-[var(--background)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.10)] overflow-hidden"
+            className="absolute top-full left-0 right-0 z-50 mt-1 bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.10)] overflow-hidden"
           >
             {/* All option */}
             <button
