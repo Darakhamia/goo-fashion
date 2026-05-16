@@ -1643,7 +1643,7 @@ export default function BuilderPage() {
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
           {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[#0f0f0f]">
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-black border-b border-white/10">
             <Link
               href="/"
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
