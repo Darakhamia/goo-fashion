@@ -9,7 +9,7 @@ export default function MobileBottomNav() {
   const tabs = [
     {
       href: "/builder",
-      label: "Outfit",
+      label: "Builder",
       icon: (active: boolean) => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path

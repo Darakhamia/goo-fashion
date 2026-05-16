@@ -1684,266 +1684,158 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          {/* 1. Hero canvas */}
-          <div className="relative min-h-0 bg-[#0f0f0f] overflow-hidden" style={{ flex: "0 0 34%" }}>
+          {/* BUILD YOUR OUTFIT — slot list */}
+          <div className="shrink-0 overflow-y-auto bg-[var(--background)]">
 
-            {/* Outfit silhouette figure */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative h-full" style={{ width: 230 }}>
-
-                {/* Main stacked figure */}
-                <div className="absolute inset-y-4 left-0 flex flex-col" style={{ width: 185 }}>
-                  {FIGURE_SLOTS.map(({ id, label, flex }) => {
-                    const picked = selection[id];
-                    const variantId = variantOverrides[id];
-                    const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                    const colorKey = colorImageOverrides[id];
-                    const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-                    const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => { setActiveSlot(id); setCatalogCategory(id); }}
-                        style={{ flex }}
-                        className={`relative overflow-hidden transition-all ${
-                          activeSlot === id ? "ring-1 ring-inset ring-white/30 z-10" : ""
-                        }`}
-                      >
-                        {!picked && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-                            <div className="text-white/15"><SlotIcon id={id} size={13} /></div>
-                            <p className="font-mono text-[7px] tracking-[0.1em] uppercase text-white/15">{label}</p>
-                          </div>
-                        )}
-                        {displayImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={displayImage}
-                            alt={picked!.name}
-                            className={`absolute inset-0 w-full h-full ${
-                              id === "shoes" ? "object-contain p-2" : "object-contain"
-                            }`}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Accessories — two floating mini panels */}
-                <div className="absolute right-0 flex flex-col gap-2" style={{ top: "50%", transform: "translateY(-50%)" }}>
-                  {(["accessories", "accessories2"] as SlotId[]).map(id => {
-                    const picked = selection[id];
-                    const displayImage = picked?.imageUrl;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => { setActiveSlot(id); setCatalogCategory("accessories"); }}
-                        className={`relative overflow-hidden border transition-all ${
-                          activeSlot === id ? "border-white/30 ring-1 ring-white/20" : "border-white/10"
-                        }`}
-                        style={{ width: 38, height: 46 }}
-                      >
-                        {!picked && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-white/15"><SlotIcon id={id} size={9} /></div>
-                          </div>
-                        )}
-                        {displayImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={displayImage} alt={picked!.name} className="absolute inset-0 w-full h-full object-contain p-1" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* Title */}
+            <div className="px-4 pt-4 pb-3 border-b border-[var(--border)]">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Build your outfit</p>
+              <p className="text-[13px] text-[var(--foreground-subtle)] mt-0.5">Create your perfect look</p>
             </div>
 
-            {/* Left colour panel — slides in when active item has colour variants */}
-            {(() => {
-              const activeProduct = selection[activeSlot];
-              const variants = activeProduct?.variants ?? [];
-              const colorImgKeys = Object.keys(activeProduct?.colorImages ?? {});
-              const useVariants = variants.length > 1;
-              const useColorImages = !useVariants && colorImgKeys.length > 1;
-              const hasColors = useVariants || useColorImages;
-
-              type SwatchEntry = { id: string; hex: string | null; name: string; imgUrl?: string; isVariant: boolean };
-              const colors: SwatchEntry[] = useVariants
-                ? variants.map(v => ({ id: v.id, hex: v.colorHex, name: v.colorName, isVariant: true }))
-                : colorImgKeys.map(k => ({ id: k, hex: null, name: k, imgUrl: activeProduct!.colorImages![k]?.[0], isVariant: false }));
-
-              const activeId = useVariants
-                ? (variantOverrides[activeSlot] ?? activeProduct?.id ?? "")
-                : (colorImageOverrides[activeSlot] ?? colorImgKeys[0] ?? "");
+            {/* Slot rows */}
+            {SLOTS.map(slot => {
+              const picked = selection[slot.id];
+              const variantId = variantOverrides[slot.id];
+              const activeVariant = picked?.variants?.find(v => v.id === variantId);
+              const colorKey = colorImageOverrides[slot.id];
+              const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+              const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+              const slotLabel = slot.label === "Acc 1" ? "Accessories" : slot.label === "Acc 2" ? "Accessories 2" : slot.label;
+              const isActive = activeSlot === slot.id;
 
               return (
-                <div
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col rounded-[22px] transition-all duration-300 ease-out ${
-                    hasColors && activeProduct ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
+                <button
+                  key={slot.id}
+                  onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                  className={`w-full flex items-center justify-between px-4 border-b border-[var(--border)] transition-colors ${
+                    isActive ? "bg-[var(--surface)]" : "active:bg-[var(--surface)]/50"
                   }`}
-                  style={{ background: "rgba(38,38,38,0.92)", boxShadow: "0 2px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.07)", width: 56, maxHeight: "calc(100% - 32px)" }}
+                  style={{ minHeight: 56 }}
                 >
-                  <div
-                    className="flex flex-col items-center gap-2 overflow-y-auto overflow-x-hidden py-3 px-2"
-                    style={{ scrollbarWidth: "none", touchAction: "pan-y", overscrollBehavior: "contain" }}
-                  >
-                    {colors.map(color => {
-                      const isActive = color.id === activeId;
-                      return (
+                  <span className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium ${
+                    picked ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
+                  }`}>
+                    {slotLabel}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {picked ? (
+                      <>
+                        {displayImage && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={displayImage} alt={picked.name} className="w-10 h-14 object-contain" />
+                        )}
                         <button
-                          key={color.id}
-                          title={color.name}
-                          onClick={() => {
-                            if (color.isVariant) {
-                              const swatch = variants.find(v => v.id === color.id);
-                              if (swatch) selectVariant(activeSlot, swatch);
-                            } else {
-                              setColorImageOverrides(prev => ({ ...prev, [activeSlot]: color.id }));
-                            }
-                          }}
-                          className={`relative w-8 h-8 rounded-full shrink-0 transition-all duration-200 ${isActive ? "scale-110" : "opacity-55 active:opacity-80 active:scale-105"}`}
-                          style={{
-                            background: color.hex === "#multicolor"
-                              ? "conic-gradient(red,orange,yellow,green,blue,violet,red)"
-                              : color.hex
-                              ? color.hex
-                              : color.imgUrl
-                              ? `url(${color.imgUrl}) center/cover`
-                              : "#555",
-                            boxShadow: isActive
-                              ? "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 2px #c9a84c, 0 0 0 3.5px rgba(201,168,76,0.25)"
-                              : "inset 0 0 0 1px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.10)",
-                          }}
+                          onClick={e => clearSlot(slot.id, e)}
+                          className="w-6 h-6 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                          aria-label={`Remove ${slotLabel}`}
                         >
-                          {isActive && (
-                            <svg className="absolute inset-0 m-auto w-3.5 h-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 16 16" fill="none">
-                              <path d="M3 8.5L6.5 12L13 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
+                          <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
                         </button>
-                      );
-                    })}
+                      </>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full border border-dashed border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-subtle)]">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M6 2V10M2 6H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
-                </div>
+                </button>
               );
-            })()}
+            })}
 
-          </div>
-
-          {/* Price + Clear + Generate bar */}
-          <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-1.5 bg-[#0f0f0f] border-t border-white/5">
-            <div>
-              <p className="text-white/40 text-[9px] mb-0.5 font-mono tracking-[0.12em] uppercase">Total price</p>
-              <div className="flex items-center gap-1.5">
-                <p className={`font-light leading-none transition-all ${
-                  selectedCount > 0 ? "text-[20px] text-white" : "text-[16px] text-white/30"
+            {/* Total + Clear all + Generate */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</span>
+                <span className={`text-[20px] font-bold leading-none transition-all ${
+                  selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
                 }`}>
                   {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                </p>
-                {selectedCount > 0 && (
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white/35 shrink-0">
-                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                )}
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Clear — gray when empty, red when items added */}
-              <button
-                onClick={selectedCount > 0 ? clearAll : undefined}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap border transition-all active:scale-95 ${
-                  selectedCount > 0
-                    ? "text-red-400 border-red-400/40 bg-red-400/10 hover:bg-red-400/20 cursor-pointer"
-                    : "text-white/20 border-white/10 bg-transparent cursor-default"
-                }`}
-              >
-                Clear
-              </button>
-            {selectedCount >= 1 && (
-              <button
-                onClick={openStylePicker}
-                disabled={generating}
-                className="flex items-center gap-2 bg-white/10 border border-white/15 text-white/90 px-4 py-2 rounded-full text-[12px] font-medium whitespace-nowrap transition-all hover:bg-white/15 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {generating ? (
-                  <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                      stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                  </svg>
+              <div className="flex items-center gap-2">
+                {selectedCount >= 1 && (
+                  <button
+                    onClick={openStylePicker}
+                    disabled={generating}
+                    className="flex items-center gap-1.5 border border-[var(--border-strong)] rounded-full px-3 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {generating ? (
+                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
+                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {generating ? "Generating…" : "Generate"}
+                  </button>
                 )}
-                {generating ? "Generating…" : "Generate"}
-              </button>
-            )}
+                <button
+                  onClick={clearAll}
+                  disabled={selectedCount === 0}
+                  className="text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Clear all
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* 2. Bottom sheet panel */}
-          <div className="relative flex flex-col bg-[var(--background)] min-h-0 flex-1">
+          {/* Bottom panel — filters + products */}
+          <div className="flex-1 min-h-0 flex flex-col bg-[var(--background)]">
 
-            {/* Drag handle */}
-            <div className="flex justify-center pt-2 pb-0 shrink-0">
-              <div className="w-8 h-[3px] rounded-full bg-[var(--border-strong)]" />
-            </div>
-
-            {/* Filters toolbar */}
-            <div className="shrink-0 px-4 py-2 border-b border-[var(--border)]">
+            {/* Filters + category chips in one scrollable row */}
+            <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               <button
                 onClick={() => setMobileFiltersOpen(true)}
-                className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full border text-[12px] font-medium transition-all active:scale-95 ${
+                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full border text-[11px] font-medium transition-all active:scale-95 mr-1 ${
                   hasActiveFilters
                     ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                     : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
                 }`}
               >
-                <svg width="13" height="10" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <svg width="12" height="9" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                   <line x1="1" y1="1.5" x2="13" y2="1.5" />
                   <line x1="3" y1="5.5" x2="11" y2="5.5" />
                   <line x1="5" y1="9.5" x2="9" y2="9.5" />
                 </svg>
-                Filters
-                {activeFilterCount > 0 && <span className="text-[10px] opacity-80">· {activeFilterCount}</span>}
+                Filters{activeFilterCount > 0 && <span className="text-[10px] opacity-80"> · {activeFilterCount}</span>}
               </button>
-            </div>
-
-            {/* Category tabs */}
-            <div className="shrink-0 flex gap-4 px-4 overflow-x-auto border-b border-[var(--border)]" style={{ scrollbarWidth: "none" }}>
               {MOBILE_CHIPS.map(({ label, value }) => {
                 const isActive = catalogCategory === value && !likedOnly;
                 return (
                   <button
                     key={label}
                     onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
-                    className={`shrink-0 pb-2 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all whitespace-nowrap ${
+                    className={`shrink-0 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? "border-[var(--foreground)] text-[var(--foreground)]"
-                        : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                        ? "bg-[var(--foreground)] text-[var(--background)]"
+                        : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
                     }`}
                   >
                     {label}
                   </button>
                 );
               })}
-              {/* Liked tab */}
               <button
                 onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
-                className={`shrink-0 pb-2 pt-1 font-medium text-[13px] border-b-2 -mb-px transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   likedOnly
-                    ? "border-[var(--foreground)] text-[var(--foreground)]"
-                    : "border-transparent text-[var(--foreground-subtle)] hover:text-[var(--foreground)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
                 }`}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill={likedOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 13.5C8 13.5 1.5 9.5 1.5 5.5C1.5 3.57 3.07 2 5 2C6.19 2 7.24 2.61 8 3.5C8.76 2.61 9.81 2 11 2C12.93 2 14.5 3.57 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" />
                 </svg>
                 Liked
               </button>
             </div>
-
 
             {/* Horizontal product scroll */}
             <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
@@ -1990,7 +1882,6 @@ export default function BuilderPage() {
                             alt={product.name}
                             className="absolute inset-0 w-full h-full object-contain"
                           />
-                          {/* Selected indicator */}
                           {isSelected && (
                             <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
                               <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
