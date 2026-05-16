@@ -1643,10 +1643,10 @@ export default function BuilderPage() {
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
           {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-black border-b border-white/10">
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[var(--background)] border-b border-[var(--border)]">
             <Link
               href="/"
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors active:scale-95"
+              className="w-9 h-9 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--surface-hover,var(--surface))] transition-colors active:scale-95"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1658,8 +1658,8 @@ export default function BuilderPage() {
                 onClick={toggleStylist}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
                   stylistOpen
-                    ? "bg-white text-black border-white"
-                    : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
+                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
                 }`}
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -1672,8 +1672,8 @@ export default function BuilderPage() {
                 disabled={selectedCount === 0}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] tracking-[0.1em] uppercase font-medium leading-none transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                   saved
-                    ? "bg-white/20 text-white border-white/40"
-                    : "bg-white/10 text-white/70 border-white/20 hover:bg-white/15"
+                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
                 }`}
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
