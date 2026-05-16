@@ -1868,8 +1868,10 @@ export default function BuilderPage() {
                           tabIndex={0}
                           onClick={() => selectProduct(product)}
                           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
-                          className={`relative overflow-hidden bg-white cursor-pointer transition-all ${
-                            isSelected ? "ring-1 ring-[#c9a84c]" : ""
+                          className={`relative overflow-hidden bg-white cursor-pointer transition-all rounded-xl border ${
+                            isSelected
+                              ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
+                              : "border-[var(--border)]"
                           }`}
                           style={{ width: 108, height: 120 }}
                         >
