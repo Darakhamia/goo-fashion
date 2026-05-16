@@ -1684,14 +1684,8 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          {/* BUILD YOUR OUTFIT — slot list */}
+          {/* Slot list */}
           <div className="shrink-0 overflow-y-auto bg-[var(--background)]">
-
-            {/* Title */}
-            <div className="px-4 pt-4 pb-3 border-b border-[var(--border)]">
-              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Build your outfit</p>
-              <p className="text-[13px] text-[var(--foreground-subtle)] mt-0.5">Create your perfect look</p>
-            </div>
 
             {/* Slot rows */}
             {SLOTS.map(slot => {
@@ -1711,13 +1705,16 @@ export default function BuilderPage() {
                   className={`w-full flex items-center justify-between px-4 border-b border-[var(--border)] transition-colors ${
                     isActive ? "bg-[var(--surface)]" : "active:bg-[var(--surface)]/50"
                   }`}
-                  style={{ minHeight: 56 }}
+                  style={{ minHeight: 48 }}
                 >
-                  <span className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium ${
+                  <div className={`flex items-center gap-2.5 ${
                     picked ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
                   }`}>
-                    {slotLabel}
-                  </span>
+                    <SlotIcon id={slot.id} size={14} />
+                    <span className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium">
+                      {slotLabel}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     {picked ? (
                       <>
