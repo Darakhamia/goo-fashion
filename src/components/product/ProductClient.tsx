@@ -84,8 +84,8 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
         {/* ── Left: Image gallery ── */}
         <div>
           {/* Main image */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)]">
-            <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
+            <div className="relative aspect-[3/4] overflow-hidden bg-white">
               {mainImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -95,7 +95,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   style={{ opacity: imgVisible ? 1 : 0 }}
                 />
               ) : (
-                <div className="w-full h-full bg-[var(--surface)]" />
+                <div className="w-full h-full bg-white" />
               )}
               {product.isNew && (
                 <div className="absolute top-4 left-4">
@@ -114,7 +114,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 <button
                   key={`${img}-${i}`}
                   onClick={() => goTo(i)}
-                  className={`flex-1 aspect-square rounded-lg overflow-hidden transition-opacity duration-150 ${
+                  className={`flex-1 aspect-square rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
                 >
