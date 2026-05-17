@@ -1733,7 +1733,7 @@ export default function BuilderPage() {
                 );
 
                 if (n === 1) return (
-                  <div className="absolute inset-0">{cell(items[0], "s0", "p-3")}</div>
+                  <div className="absolute inset-0 flex">{cell(items[0], "s0", "p-3")}</div>
                 );
 
                 if (n === 2) return (
