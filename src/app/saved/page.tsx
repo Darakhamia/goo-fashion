@@ -110,59 +110,90 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
               </span>
             </div>
           ) : pieces.length > 0 ? (
-            /* Collage grid: upper-body (outerwear/top) = big row, lower-body = small row */
+            /* Collage grid — same layout as OutfitCollage and builder preview */
             <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
               {(() => {
-                const img = (piece: typeof pieces[0], pad = "p-2") => piece?.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={piece.imageUrl} alt={piece?.name ?? ""} className={`w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-[#f0f0f0]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="opacity-30 shrink-0">
-                      <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" />
-                      <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                );
-                const cell = (piece: typeof pieces[0], pad?: string) => (
-                  <div key={piece?.slot} className="flex-1 overflow-hidden bg-white">{img(piece, pad)}</div>
-                );
+                const frames = pieces.slice(0, 6);
+                const n = frames.length;
 
-                const UPPER_SLOTS = new Set(["outerwear", "top"]);
-                const upper = pieces.filter(p => UPPER_SLOTS.has(p.slot));
-                const lower = pieces.filter(p => !UPPER_SLOTS.has(p.slot));
-
-                // Safety: if slot-aware split leaves upper empty but we have items,
-                // treat first 1-2 items as upper and the rest as lower
-                const displayUpper = upper.length > 0 ? upper : pieces.slice(0, Math.min(2, pieces.length));
-                const displayLower = upper.length > 0 ? lower : pieces.slice(displayUpper.length);
-
-                // Single row (all upper or all lower)
-                if (displayLower.length === 0) return (
-                  <div className="flex-1 flex gap-px bg-gray-200">
-                    {displayUpper.map(p => cell(p, "p-2"))}
-                  </div>
-                );
-                if (displayUpper.length === 0) return (
-                  <div className="flex-1 flex gap-px bg-gray-200">
-                    {displayLower.map(p => cell(p, displayLower.length >= 4 ? "p-1" : "p-1.5"))}
+                const cell = (piece: typeof pieces[0], key: string, pad = "p-2") => (
+                  <div key={key} className="relative overflow-hidden flex-1 bg-white">
+                    {piece.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={piece.imageUrl} alt={piece.name ?? ""} className={`absolute inset-0 w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-[#f0f0f0]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="opacity-30">
+                          <rect x="3" y="3" width="18" height="18" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
                 );
 
-                // Two-row layout: upper (big) + lower (small)
-                // Proportions match the design: big top hero, small bottom strip
-                const upperPct = displayLower.length >= 4 ? "55%" : displayLower.length >= 3 ? "60%" : "65%";
-                const lowerPad = displayLower.length >= 4 ? "p-1" : displayLower.length >= 3 ? "p-1.5" : "p-2";
-                const upperPad = displayLower.length >= 4 ? "p-2" : "p-2.5";
+                if (n === 1) return (
+                  <div className="absolute inset-0 flex">{cell(frames[0], "f0", "p-3")}</div>
+                );
+
+                if (n === 2) return (
+                  <div className="absolute inset-0 flex gap-px bg-gray-200">
+                    {frames.map((f, i) => cell(f, `f${i}`))}
+                  </div>
+                );
+
+                if (n === 3) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
+                      {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
+                    </div>
+                    <div className="relative overflow-hidden flex-1 bg-white">
+                      {frames[2].imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={frames[2].imageUrl} alt={frames[2].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-2 group-hover:scale-[1.03] transition-transform duration-500" />
+                      )}
+                    </div>
+                  </div>
+                );
+
+                if (n === 4) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px flex-1 bg-gray-200">
+                      {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
+                    </div>
+                    <div className="flex gap-px flex-1 bg-gray-200">
+                      {frames.slice(2, 4).map((f, i) => cell(f, `f${i + 2}`))}
+                    </div>
+                  </div>
+                );
+
+                if (n === 5) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
+                      {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
+                    </div>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
+                      {frames.slice(2, 5).map((f, i) => cell(f, `f${i + 2}`, "p-1.5"))}
+                    </div>
+                  </div>
+                );
+
+                // 6 pieces
                 return (
-                  <>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: `0 0 ${upperPct}` }}>
-                      {displayUpper.map(p => cell(p, upperPad))}
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
+                      {frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}
                     </div>
-                    <div className="flex gap-px bg-gray-200" style={{ flex: "1 1 0", minHeight: 0 }}>
-                      {displayLower.map(p => cell(p, lowerPad))}
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
+                      {frames.slice(2, 5).map((f, i) => cell(f, `f${i + 2}`, "p-1.5"))}
                     </div>
-                  </>
+                    <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
+                      {frames[5].imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={frames[5].imageUrl} alt={frames[5].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-1.5 group-hover:scale-[1.03] transition-transform duration-500" />
+                      )}
+                    </div>
+                  </div>
                 );
               })()}
             </div>
