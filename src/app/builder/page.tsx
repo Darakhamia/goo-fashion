@@ -1715,7 +1715,7 @@ export default function BuilderPage() {
                 const n = items.length;
 
                 const cell = (item: { slotId: string; name: string; imageUrl?: string }, key: string, pad = "p-2") => (
-                  <div key={key} className="relative overflow-hidden flex-1 bg-[var(--surface)]">
+                  <div key={key} className="relative overflow-hidden flex-1 bg-white">
                     {item.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt={item.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
@@ -1737,17 +1737,17 @@ export default function BuilderPage() {
                 );
 
                 if (n === 2) return (
-                  <div className="absolute inset-0 flex gap-px bg-[var(--border)]">
+                  <div className="absolute inset-0 flex gap-px bg-gray-200">
                     {items.map((s, i) => cell(s, `s${i}`))}
                   </div>
                 );
 
                 if (n === 3) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
-                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 60%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="relative overflow-hidden flex-1 bg-[var(--surface)]">
+                    <div className="relative overflow-hidden flex-1 bg-white">
                       {items[2].imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[2].imageUrl} alt={items[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />
@@ -1760,36 +1760,36 @@ export default function BuilderPage() {
                 );
 
                 if (n === 4) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
-                    <div className="flex gap-px flex-1 bg-[var(--border)]">
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px flex-1 bg-gray-200">
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px flex-1 bg-[var(--border)]">
+                    <div className="flex gap-px flex-1 bg-gray-200">
                       {items.slice(2, 4).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
                   </div>
                 );
 
                 if (n === 5) return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
-                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 57%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 43%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>
                       {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
                   </div>
                 );
 
                 return (
-                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
-                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 40%" }}>
+                  <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 40%" }}>
                       {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
                     </div>
-                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 33%" }}>
+                    <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 33%" }}>
                       {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
                     </div>
-                    <div className="relative overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 27%" }}>
+                    <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
                       {items[5].imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[5].imageUrl} alt={items[5].name} className="absolute inset-0 w-full h-full object-contain p-2" />
