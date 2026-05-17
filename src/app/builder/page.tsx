@@ -1705,7 +1705,7 @@ export default function BuilderPage() {
                   .map(slot => {
                     const picked = selection[slot.id]!;
                     const variantId = variantOverrides[slot.id];
-                    const activeVariant = picked.variants?.find((v: { id: string; imageUrl?: string }) => v.id === variantId);
+                    const activeVariant = picked.variants?.find(v => v.id === variantId);
                     const colorKey = colorImageOverrides[slot.id];
                     const colorImgUrl = colorKey && picked.colorImages?.[colorKey]?.[0];
                     const imageUrl = colorImgUrl || activeVariant?.imageUrl || picked.imageUrl;
