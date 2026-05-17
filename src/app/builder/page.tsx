@@ -1684,65 +1684,124 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          {/* Slot list */}
-          <div className="shrink-0 overflow-y-auto bg-[var(--background)]">
+          {/* Mobile collage preview */}
+          <div className="shrink-0 bg-[var(--background)]">
 
-            {/* Slot rows */}
-            {SLOTS.map(slot => {
-              const picked = selection[slot.id];
-              const variantId = variantOverrides[slot.id];
-              const activeVariant = picked?.variants?.find(v => v.id === variantId);
-              const colorKey = colorImageOverrides[slot.id];
-              const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-              const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
-              const slotLabel = slot.label === "Acc 1" ? "Accessories" : slot.label === "Acc 2" ? "Accessories 2" : slot.label;
-              const isActive = activeSlot === slot.id;
+            {/* Collage canvas */}
+            <div className="relative mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ height: 200 }}>
+              {selectedCount === 0 ? (
+                <div className="absolute inset-0 border border-dashed border-[var(--border-strong)] rounded-xl flex flex-col items-center justify-center gap-2">
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-[var(--foreground-subtle)]">
+                    <rect x="2" y="2" width="11" height="11" rx="1.5" />
+                    <rect x="15" y="2" width="11" height="11" rx="1.5" />
+                    <rect x="2" y="15" width="11" height="11" rx="1.5" />
+                    <rect x="15" y="15" width="11" height="11" rx="1.5" />
+                  </svg>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] tracking-[0.12em] uppercase font-mono">Add items to build your look</span>
+                </div>
+              ) : (() => {
+                const items = SLOTS
+                  .filter(slot => selection[slot.id])
+                  .map(slot => {
+                    const picked = selection[slot.id]!;
+                    const variantId = variantOverrides[slot.id];
+                    const activeVariant = picked.variants?.find((v: { id: string; imageUrl?: string }) => v.id === variantId);
+                    const colorKey = colorImageOverrides[slot.id];
+                    const colorImgUrl = colorKey && picked.colorImages?.[colorKey]?.[0];
+                    const imageUrl = colorImgUrl || activeVariant?.imageUrl || picked.imageUrl;
+                    return { slotId: slot.id, name: picked.name, imageUrl };
+                  });
 
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                  className={`w-full flex items-center justify-between px-4 border-b border-[var(--border)] transition-colors ${
-                    isActive ? "bg-[var(--surface)]" : "active:bg-[var(--surface)]/50"
-                  }`}
-                  style={{ minHeight: 48 }}
-                >
-                  <div className={`flex items-center gap-2.5 ${
-                    picked ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
-                  }`}>
-                    <SlotIcon id={slot.id} size={14} />
-                    <span className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium">
-                      {slotLabel}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {picked ? (
-                      <>
-                        {displayImage && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={displayImage} alt={picked.name} className="w-10 h-14 object-contain" />
-                        )}
-                        <button
-                          onClick={e => clearSlot(slot.id, e)}
-                          className="w-6 h-6 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                          aria-label={`Remove ${slotLabel}`}
-                        >
-                          <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full border border-dashed border-[var(--border-strong)] flex items-center justify-center text-[var(--foreground-subtle)]">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M6 2V10M2 6H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                        </svg>
-                      </div>
+                const n = items.length;
+
+                const cell = (item: { slotId: string; name: string; imageUrl?: string }, key: string, pad = "p-2") => (
+                  <div key={key} className="relative overflow-hidden flex-1 bg-[var(--surface)]">
+                    {item.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.imageUrl} alt={item.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
                     )}
+                    <button
+                      onClick={() => clearSlot(item.slotId as SlotId)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10"
+                      aria-label={`Remove ${item.name}`}
+                    >
+                      <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
                   </div>
-                </button>
-              );
-            })}
+                );
+
+                if (n === 1) return (
+                  <div className="absolute inset-0">{cell(items[0], "s0", "p-3")}</div>
+                );
+
+                if (n === 2) return (
+                  <div className="absolute inset-0 flex gap-px bg-[var(--border)]">
+                    {items.map((s, i) => cell(s, `s${i}`))}
+                  </div>
+                );
+
+                if (n === 3) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
+                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 60%" }}>
+                      {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
+                    </div>
+                    <div className="relative overflow-hidden flex-1 bg-[var(--surface)]">
+                      {items[2].imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={items[2].imageUrl} alt={items[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                      )}
+                      <button onClick={() => clearSlot(items[2].slotId as SlotId)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[2].name}`}>
+                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+
+                if (n === 4) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
+                    <div className="flex gap-px flex-1 bg-[var(--border)]">
+                      {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
+                    </div>
+                    <div className="flex gap-px flex-1 bg-[var(--border)]">
+                      {items.slice(2, 4).map((s, i) => cell(s, `s${i + 2}`))}
+                    </div>
+                  </div>
+                );
+
+                if (n === 5) return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
+                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 57%" }}>
+                      {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
+                    </div>
+                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 43%" }}>
+                      {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <div className="absolute inset-0 flex flex-col gap-px bg-[var(--border)]">
+                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 40%" }}>
+                      {items.slice(0, 2).map((s, i) => cell(s, `s${i}`))}
+                    </div>
+                    <div className="flex gap-px bg-[var(--border)]" style={{ flex: "0 0 33%" }}>
+                      {items.slice(2, 5).map((s, i) => cell(s, `s${i + 2}`))}
+                    </div>
+                    <div className="relative overflow-hidden bg-[var(--surface)]" style={{ flex: "0 0 27%" }}>
+                      {items[5].imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={items[5].imageUrl} alt={items[5].name} className="absolute inset-0 w-full h-full object-contain p-2" />
+                      )}
+                      <button onClick={() => clearSlot(items[5].slotId as SlotId)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[5].name}`}>
+                        <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* Total + Clear all + Generate */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
