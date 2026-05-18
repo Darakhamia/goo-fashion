@@ -228,6 +228,13 @@ export default function BrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchExpandedWidth, setSearchExpandedWidth] = useState(220);
+  useEffect(() => {
+    const update = () => setSearchExpandedWidth(window.innerWidth < 480 ? 140 : 220);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   const [stylistOpen, setStylistOpen] = useState(false);
 
   // Restore tab from URL on mount (survives browser back navigation)
@@ -861,7 +868,7 @@ export default function BrowsePage() {
                       <motion.div
                         key="search-input"
                         initial={{ opacity: 0, width: 80, scale: 0.96 }}
-                        animate={{ opacity: 1, width: 220, scale: 1 }}
+                        animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
                         exit={{ opacity: 0, width: 80, scale: 0.96 }}
                         transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                         className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
