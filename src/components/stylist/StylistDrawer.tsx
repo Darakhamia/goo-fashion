@@ -149,6 +149,18 @@ export function StylistDrawer({
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const chatThreadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch("/api/stylist/usage")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.remaining !== undefined) setRemaining(data.remaining as number | null);
+        if (data.limit !== undefined) setDailyLimit(data.limit as number | null);
+      })
+      .catch(() => {});
+  }, [isOpen]);
   const chipsRef = useRef<HTMLDivElement>(null);
   const chipsDrag = useRef({ active: false, startX: 0, scrollLeft: 0 });
 
