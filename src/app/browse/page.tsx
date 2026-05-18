@@ -900,15 +900,24 @@ export default function BrowsePage() {
               </div>
 
               {/* Sort */}
-              <div className="relative flex items-center gap-2 shrink-0 ml-4" ref={sortRef}>
+              <div className="relative flex items-center shrink-0 ml-2" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
-                  className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase font-bold text-[var(--foreground)] hover:text-[var(--foreground-muted)] transition-colors duration-200 cursor-pointer"
+                  className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                    sortOpen
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                  }`}
                 >
-                  {sort === "featured" && "Featured"}
-                  {sort === "price-asc" && "Price ↑"}
-                  {sort === "price-desc" && "Price ↓"}
-                  {sort === "newest" && "Newest"}
+                  <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
+                    <path d="M1 1.5H10M2.5 5H8.5M4 8.5H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  <span>
+                    {sort === "featured" && "Featured"}
+                    {sort === "price-asc" && "Price ↑"}
+                    {sort === "price-desc" && "Price ↓"}
+                    {sort === "newest" && "Newest"}
+                  </span>
                   <svg
                     width="8"
                     height="8"
@@ -920,7 +929,7 @@ export default function BrowsePage() {
                   </svg>
                 </button>
                 {sortOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 z-50 min-w-[140px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden">
                     {(
                       [
                         { value: "featured", label: "Featured" },
@@ -932,13 +941,18 @@ export default function BrowsePage() {
                       <button
                         key={opt.value}
                         onClick={() => { setSort(opt.value); setSortOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-[9px] tracking-[0.14em] uppercase transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl ${
+                        className={`w-full text-left px-5 py-3 text-[10px] tracking-[0.14em] uppercase font-bold transition-colors duration-150 flex items-center justify-between gap-3 ${
                           sort === opt.value
                             ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                             : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                         }`}
                       >
                         {opt.label}
+                        {sort === opt.value && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
                       </button>
                     ))}
                   </div>
