@@ -203,7 +203,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={`/product/${swatch.id}`}
                       title={swatch.colorName}
                       aria-label={`View in ${swatch.colorName}`}
-                      className={`w-7 h-7 transition-all duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
+                      className={`w-7 h-7 rounded-full transition-all duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
                       style={{
                         backgroundColor: swatch.colorHex,
                         boxShadow: isCurrent
