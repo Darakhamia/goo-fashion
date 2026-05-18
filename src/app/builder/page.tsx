@@ -153,6 +153,7 @@ export default function BuilderPage() {
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
+  const [colorPickerProduct, setColorPickerProduct] = useState<Product | null>(null);
 
   const [shopAdded, setShopAdded] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
@@ -398,50 +399,57 @@ export default function BuilderPage() {
     const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
     if (matchingSlots.length === 0) return;
 
+    // Determine target slot using current selection (before state update)
+    const alreadyInSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+
+    if (alreadyInSlot) {
+      // Toggle off
+      setSelection(prev => {
+        const next = { ...prev };
+        delete next[alreadyInSlot.id];
+        updateURL(next);
+        return next;
+      });
+      setVariantOverrides(vo => { const n = { ...vo }; delete n[alreadyInSlot.id]; return n; });
+      setColorImageOverrides(co => { const n = { ...co }; delete n[alreadyInSlot.id]; return n; });
+      setActiveSlot(alreadyInSlot.id);
+      setSaved(false);
+      setGeneratedImage(null);
+      return;
+    }
+
+    // Find first empty slot, or fall back to first slot
+    const emptySlot = matchingSlots.find(s => !selection[s.id]) ?? matchingSlots[0];
+
     setSelection(prev => {
-      const next = { ...prev };
-
-      // Toggle off if already selected in any matching slot
-      for (const slot of matchingSlots) {
-        if (next[slot.id]?.id === product.id) {
-          delete next[slot.id];
-          setVariantOverrides(vo => { const n = { ...vo }; delete n[slot.id]; return n; });
-          setColorImageOverrides(co => { const n = { ...co }; delete n[slot.id]; return n; });
-          updateURL(next);
-          setActiveSlot(slot.id);
-          return next;
-        }
-      }
-
-      // Find first empty slot, or fall back to first slot
-      const emptySlot = matchingSlots.find(s => !next[s.id]) ?? matchingSlots[0];
-      next[emptySlot.id] = product;
-      setVariantOverrides(vo => {
-        const n = { ...vo };
-        const previewVariantId = catalogPreviews[product.id];
-        if (previewVariantId) n[emptySlot.id] = previewVariantId;
-        else delete n[emptySlot.id];
-        return n;
-      });
-      // Carry the catalogColorPreview into the left panel when adding to look
-      setColorImageOverrides(co => {
-        const colorKey = catalogColorPreviews[product.id];
-        if (colorKey) return { ...co, [emptySlot.id]: colorKey };
-        const n = { ...co }; delete n[emptySlot.id]; return n;
-      });
+      const next = { ...prev, [emptySlot.id]: product };
       updateURL(next);
-      setActiveSlot(emptySlot.id);
-      // Auto-open color picker on mobile when product has multiple color variants
-      const hasMultipleColors =
-        Object.keys(product.colorImages ?? {}).length > 1 ||
-        (product.variants?.length ?? 0) > 1;
-      if (hasMultipleColors) {
-        setColorPickerSlot(emptySlot.id);
-      }
       return next;
     });
+    setVariantOverrides(vo => {
+      const n = { ...vo };
+      const previewVariantId = catalogPreviews[product.id];
+      if (previewVariantId) n[emptySlot.id] = previewVariantId;
+      else delete n[emptySlot.id];
+      return n;
+    });
+    setColorImageOverrides(co => {
+      const colorKey = catalogColorPreviews[product.id];
+      if (colorKey) return { ...co, [emptySlot.id]: colorKey };
+      const n = { ...co }; delete n[emptySlot.id]; return n;
+    });
+    setActiveSlot(emptySlot.id);
     setSaved(false);
     setGeneratedImage(null);
+
+    // Open color picker if product has multiple color options
+    const hasMultipleColors =
+      Object.keys(product.colorImages ?? {}).length > 1 ||
+      (product.variants?.length ?? 0) > 1;
+    if (hasMultipleColors) {
+      setColorPickerProduct(product);
+      setColorPickerSlot(emptySlot.id);
+    }
   };
 
   const selectVariant = (slotId: SlotId, swatch: ProductSwatch) => {
@@ -1938,6 +1946,7 @@ export default function BuilderPage() {
                               Object.keys(product.colorImages ?? {}).length > 1 ||
                               (product.variants?.length ?? 0) > 1;
                             if (isSelected && selectedSlot && hasMultipleColors) {
+                              setColorPickerProduct(product);
                               setColorPickerSlot(selectedSlot.id);
                             } else {
                               selectProduct(product);
@@ -2292,8 +2301,8 @@ export default function BuilderPage() {
 
 
       {/* ── MOBILE COLOR PICKER SHEET ─────────────────────────────────────── */}
-      {colorPickerSlot && selection[colorPickerSlot] && (() => {
-        const slotProduct = selection[colorPickerSlot]!;
+      {colorPickerSlot && colorPickerProduct && (() => {
+        const slotProduct = colorPickerProduct;
 
         // Build unified list of color options from both variants and colorImages
         const variantSwatches = slotProduct.variants ?? [];
@@ -2311,10 +2320,10 @@ export default function BuilderPage() {
           : activeColorKey;
 
         return (
-          <div className="md:hidden fixed inset-0 z-[65] flex flex-col justify-end">
+          <div className="fixed inset-0 z-[65] flex flex-col justify-end">
             <div
               className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setColorPickerSlot(null)}
+              onClick={() => { setColorPickerSlot(null); setColorPickerProduct(null); }}
             />
             <div className="relative bg-[var(--background)] rounded-t-2xl px-5 pb-10 pt-4 animate-slide-up">
               {/* Handle */}
@@ -2334,7 +2343,7 @@ export default function BuilderPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setColorPickerSlot(null)}
+                  onClick={() => { setColorPickerSlot(null); setColorPickerProduct(null); }}
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors active:scale-95 shrink-0 ml-3"
                   aria-label="Close color picker"
                 >
