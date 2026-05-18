@@ -432,7 +432,10 @@ export default function BuilderPage() {
       updateURL(next);
       setActiveSlot(emptySlot.id);
       // Auto-open color picker on mobile when product has multiple color variants
-      if (Object.keys(product.colorImages ?? {}).length > 1) {
+      const hasMultipleColors =
+        Object.keys(product.colorImages ?? {}).length > 1 ||
+        (product.variants?.length ?? 0) > 1;
+      if (hasMultipleColors) {
         setColorPickerSlot(emptySlot.id);
       }
       return next;
@@ -1931,8 +1934,10 @@ export default function BuilderPage() {
                           role="button"
                           tabIndex={0}
                           onClick={() => {
-                            const colorKeys = Object.keys(product.colorImages ?? {});
-                            if (isSelected && selectedSlot && colorKeys.length > 1) {
+                            const hasMultipleColors =
+                              Object.keys(product.colorImages ?? {}).length > 1 ||
+                              (product.variants?.length ?? 0) > 1;
+                            if (isSelected && selectedSlot && hasMultipleColors) {
                               setColorPickerSlot(selectedSlot.id);
                             } else {
                               selectProduct(product);
@@ -1959,15 +1964,23 @@ export default function BuilderPage() {
                               </svg>
                             </div>
                           )}
-                          {isSelected && Object.keys(product.colorImages ?? {}).length > 1 && (
+                          {isSelected && ((product.variants?.length ?? 0) > 1 || Object.keys(product.colorImages ?? {}).length > 1) && (
                             <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 pointer-events-none">
-                              {Object.keys(product.colorImages!).slice(0, 3).map(c => {
-                                const img = product.colorImages![c]?.[0];
-                                return img ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img key={c} src={img} alt={c} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60" />
-                                ) : null;
-                              })}
+                              {(product.variants?.length ?? 0) > 1
+                                ? product.variants!.slice(0, 3).map(sw => sw.imageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img key={sw.id} src={sw.imageUrl} alt={sw.colorName} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60 bg-white" />
+                                  ) : (
+                                    <span key={sw.id} className="w-3.5 h-3.5 rounded-sm border border-white/60" style={{ background: sw.colorHex }} />
+                                  ))
+                                : Object.keys(product.colorImages!).slice(0, 3).map(c => {
+                                    const img = product.colorImages![c]?.[0];
+                                    return img ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img key={c} src={img} alt={c} className="w-3.5 h-3.5 rounded-sm object-cover border border-white/60" />
+                                    ) : null;
+                                  })
+                              }
                             </div>
                           )}
                         </div>
@@ -2281,8 +2294,22 @@ export default function BuilderPage() {
       {/* ── MOBILE COLOR PICKER SHEET ─────────────────────────────────────── */}
       {colorPickerSlot && selection[colorPickerSlot] && (() => {
         const slotProduct = selection[colorPickerSlot]!;
-        const colorKeys = Object.keys(slotProduct.colorImages ?? {});
-        const currentColor = colorImageOverrides[colorPickerSlot] ?? colorKeys[0];
+
+        // Build unified list of color options from both variants and colorImages
+        const variantSwatches = slotProduct.variants ?? [];
+        const colorImageKeys = Object.keys(slotProduct.colorImages ?? {});
+        const useVariants = variantSwatches.length > 1;
+        const useColorImages = colorImageKeys.length > 1;
+
+        // Current selections
+        const activeVariantId = variantOverrides[colorPickerSlot] ?? slotProduct.id;
+        const activeColorKey = colorImageOverrides[colorPickerSlot] ?? colorImageKeys[0];
+
+        // Active display name shown in header
+        const activeLabel = useVariants
+          ? (variantSwatches.find(s => s.id === activeVariantId)?.colorName ?? slotProduct.name)
+          : activeColorKey;
+
         return (
           <div className="md:hidden fixed inset-0 z-[65] flex flex-col justify-end">
             <div
@@ -2299,7 +2326,12 @@ export default function BuilderPage() {
                 <div>
                   <p className="text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] font-mono">{slotProduct.brand}</p>
                   <p className="text-[16px] font-semibold text-[var(--foreground)] mt-0.5">{slotProduct.name}</p>
-                  <p className="text-[14px] font-bold text-[var(--foreground)] mt-1">{formatPrice(slotProduct.priceMin)}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[14px] font-bold text-[var(--foreground)]">{formatPrice(slotProduct.priceMin)}</p>
+                    {activeLabel && (
+                      <span className="text-[11px] text-[var(--foreground-muted)] bg-[var(--surface)] px-2 py-0.5 rounded-full">{activeLabel}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setColorPickerSlot(null)}
@@ -2311,42 +2343,88 @@ export default function BuilderPage() {
                   </svg>
                 </button>
               </div>
-              {/* Color swatches */}
-              <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                {colorKeys.map(color => {
-                  const img = slotProduct.colorImages![color]?.[0];
-                  const isActive = currentColor === color;
-                  return (
-                    <button
-                      key={color}
-                      onClick={() => {
-                        setColorImageOverrides(prev => ({ ...prev, [colorPickerSlot]: color }));
-                        setSaved(false);
-                      }}
-                      className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
-                    >
-                      <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-all ${
-                        isActive ? "border-[var(--foreground)]" : "border-transparent"
-                      }`}>
-                        {img && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={img} alt={color} className="w-full h-full object-contain p-1" />
-                        )}
-                        {isActive && (
-                          <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
-                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                              <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <span className={`text-[10px] leading-tight text-center max-w-[72px] truncate transition-colors ${
-                        isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
-                      }`}>{color}</span>
-                    </button>
-                  );
-                })}
-              </div>
+
+              {/* Variant swatches (separate product entries per color) */}
+              {useVariants && (
+                <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {variantSwatches.map(swatch => {
+                    const isActive = activeVariantId === swatch.id;
+                    return (
+                      <button
+                        key={swatch.id}
+                        onClick={() => {
+                          selectVariant(colorPickerSlot, swatch);
+                        }}
+                        className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+                      >
+                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-all ${
+                          isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
+                        }`}>
+                          {swatch.imageUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={swatch.imageUrl} alt={swatch.colorName} className="w-full h-full object-contain p-1" />
+                          )}
+                          {!swatch.imageUrl && (
+                            <div
+                              className="w-full h-full"
+                              style={{ background: swatch.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : swatch.colorHex }}
+                            />
+                          )}
+                          {isActive && (
+                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
+                              <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`text-[10px] leading-tight text-center w-[72px] truncate transition-colors ${
+                          isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
+                        }`}>{swatch.colorName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* colorImages swatches (multiple colorways within same product) */}
+              {useColorImages && (
+                <div className={`flex gap-3 overflow-x-auto pb-1 ${useVariants ? "mt-3 pt-3 border-t border-[var(--border)]" : ""}`} style={{ scrollbarWidth: "none" }}>
+                  {colorImageKeys.map(color => {
+                    const img = slotProduct.colorImages![color]?.[0];
+                    const isActive = activeColorKey === color;
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          setColorImageOverrides(prev => ({ ...prev, [colorPickerSlot]: color }));
+                          setSaved(false);
+                        }}
+                        className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+                      >
+                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-all ${
+                          isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
+                        }`}>
+                          {img && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={img} alt={color} className="w-full h-full object-contain p-1" />
+                          )}
+                          {isActive && (
+                            <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#c9a84c] flex items-center justify-center pointer-events-none">
+                              <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5.5L4 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <span className={`text-[10px] leading-tight text-center w-[72px] truncate transition-colors ${
+                          isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"
+                        }`}>{color}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
