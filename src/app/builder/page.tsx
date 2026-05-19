@@ -188,12 +188,14 @@ const CATEGORY_GROUPS = [
       { label: "Hats", value: "accessories" },
       { label: "Belts", value: "accessories" },
       { label: "Sunglasses", value: "accessories" },
-      { label: "Scarves", value: "accessories" },
       { label: "Watches", value: "accessories" },
-      { label: "Jewelry", value: "accessories" },
     ],
   },
 ];
+
+const SUBCAT_LABEL_TO_VALUE: Record<string, string> = Object.fromEntries(
+  CATEGORY_GROUPS.flatMap(g => g.items.map(i => [i.label, i.value]))
+);
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
@@ -390,7 +392,10 @@ export default function BuilderPage() {
   // ── Filtered product list for the right-panel catalog ────────────────────
 
   const filterByCategory = (list: Product[], cat: string | null, subs: string[] = []) => {
-    if (subs.length > 0) return list.filter(p => subs.includes(p.category));
+    if (subs.length > 0) {
+      const vals = [...new Set(subs.map(l => SUBCAT_LABEL_TO_VALUE[l]).filter(Boolean))];
+      return list.filter(p => vals.includes(p.category));
+    }
     if (!cat) return list;
     const slot = SLOTS.find(s => s.id === cat);
     if (slot) return list.filter(p => slot.categories.includes(p.category));
@@ -1496,7 +1501,7 @@ export default function BuilderPage() {
                     {selectedSubcategories.length === 0 && !catalogCategory
                       ? "All"
                       : selectedSubcategories.length === 1
-                        ? (CATEGORY_GROUPS.flatMap(g => g.items).find(i => i.value === selectedSubcategories[0])?.label ?? "All")
+                        ? selectedSubcategories[0]
                         : `${selectedSubcategories.length} selected`}
                   </span>
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
@@ -1518,9 +1523,10 @@ export default function BuilderPage() {
                     </button>
                     {CATEGORY_GROUPS.map(group => {
                       const grpOpen = expandedCategoryGroups.has(group.id);
+                      const grpLabels = group.items.map(i => i.label);
                       const grpUniqueVals = [...new Set(group.items.map(i => i.value))];
-                      const grpActive = grpUniqueVals.some(v => selectedSubcategories.includes(v));
-                      const grpViewAllChecked = grpUniqueVals.every(v => selectedSubcategories.includes(v));
+                      const grpActive = grpLabels.some(l => selectedSubcategories.includes(l));
+                      const grpViewAllChecked = grpLabels.every(l => selectedSubcategories.includes(l));
                       return (
                         <div key={group.id} className="border-t border-[var(--border)]">
                           <button
@@ -1544,8 +1550,8 @@ export default function BuilderPage() {
                                   setCatalogCategory(null);
                                   setSelectedSubcategories(prev =>
                                     grpViewAllChecked
-                                      ? prev.filter(v => !grpUniqueVals.includes(v))
-                                      : [...new Set([...prev, ...grpUniqueVals])]
+                                      ? prev.filter(l => !grpLabels.includes(l))
+                                      : [...new Set([...prev, ...grpLabels])]
                                   );
                                 }}
                                 className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
@@ -1556,11 +1562,11 @@ export default function BuilderPage() {
                                 </div>
                               </button>
                               {group.items.map(item => {
-                                const isChk = selectedSubcategories.includes(item.value);
+                                const isChk = selectedSubcategories.includes(item.label);
                                 return (
                                   <button
                                     key={item.label}
-                                    onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(v => v !== item.value) : [...prev, item.value]); }}
+                                    onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(l => l !== item.label) : [...prev, item.label]); }}
                                     className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                                   >
                                     <span className={`text-[12px] ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
@@ -2369,9 +2375,10 @@ export default function BuilderPage() {
                   {/* Group rows */}
                   {CATEGORY_GROUPS.map(group => {
                     const isOpen = expandedCategoryGroups.has(group.id);
+                    const groupLabels = group.items.map(i => i.label);
                     const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
-                    const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
-                    const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
+                    const groupActive = groupLabels.some(l => selectedSubcategories.includes(l));
+                    const viewAllChecked = groupLabels.every(l => selectedSubcategories.includes(l));
                     return (
                       <div key={group.id} className="border-t border-[var(--border)]">
                         <button
@@ -2395,8 +2402,8 @@ export default function BuilderPage() {
                               setCatalogCategory(null);
                               setSelectedSubcategories(prev =>
                                 viewAllChecked
-                                  ? prev.filter(v => !groupUniqueValues.includes(v))
-                                  : [...new Set([...prev, ...groupUniqueValues])]
+                                  ? prev.filter(l => !groupLabels.includes(l))
+                                  : [...new Set([...prev, ...groupLabels])]
                               );
                             }}
                             className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
@@ -2415,14 +2422,14 @@ export default function BuilderPage() {
                           </button>
                           {/* Subcategory items */}
                           {group.items.map(item => {
-                            const isChecked = selectedSubcategories.includes(item.value);
+                            const isChecked = selectedSubcategories.includes(item.label);
                             return (
                               <button
                                 key={item.label}
                                 onClick={() => {
                                   setCatalogCategory(null);
                                   setSelectedSubcategories(prev =>
-                                    isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
+                                    isChecked ? prev.filter(l => l !== item.label) : [...prev, item.label]
                                   );
                                 }}
                                 className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
