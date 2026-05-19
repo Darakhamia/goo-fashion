@@ -124,10 +124,8 @@ const CATEGORY_GROUPS = [
     ),
     items: [
       { label: "T-Shirts", value: "tops" },
-      { label: "Hoodies", value: "tops" },
-      { label: "Sweatshirts", value: "tops" },
+      { label: "Hoodies & Sweatshirts", value: "tops" },
       { label: "Shirts", value: "shirts" },
-      { label: "Knitwear", value: "knitwear" },
     ],
   },
   {
@@ -172,9 +170,8 @@ const CATEGORY_GROUPS = [
     ),
     items: [
       { label: "Sneakers", value: "footwear" },
-      { label: "Boots", value: "footwear" },
       { label: "Sandals", value: "footwear" },
-      { label: "Loafers", value: "footwear" },
+      { label: "Boots", value: "footwear" },
     ],
   },
   {
