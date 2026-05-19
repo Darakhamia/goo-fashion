@@ -1212,7 +1212,7 @@ export default function BuilderPage() {
                                           }
                                         }}
                                         style={{ transitionDelay: `${idx * 25}ms` }}
-                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border transition-all duration-200 ${
+                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border rounded-full transition-all duration-200 ${
                                           isActive
                                             ? "border-white scale-110 shadow-md"
                                             : "border-white/50 hover:border-white hover:scale-105"
@@ -1255,7 +1255,7 @@ export default function BuilderPage() {
                                           setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
                                           if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                         }}
-                                        className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                        className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                         style={{
                                           background: swatch.colorHex === "#multicolor"
                                             ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
@@ -1270,7 +1270,7 @@ export default function BuilderPage() {
                                   {hidden > 0 && (
                                     <button
                                       onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                      className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                      className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
                                       style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                     >
                                       <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1298,7 +1298,7 @@ export default function BuilderPage() {
                                               if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                               setOpenSwatchPopup(null);
                                             }}
-                                            className={`w-3.5 h-3.5 shrink-0 transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                            className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                             style={{
                                               background: swatch.colorHex === "#multicolor"
                                                 ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
@@ -2320,7 +2320,7 @@ export default function BuilderPage() {
           : activeColorKey;
 
         return (
-          <div className="fixed inset-0 z-[65] flex flex-col justify-end">
+          <div className="md:hidden fixed inset-0 z-[65] flex flex-col justify-end">
             <div
               className="absolute inset-0 bg-black/50 backdrop-blur-sm"
               onClick={() => { setColorPickerSlot(null); setColorPickerProduct(null); }}
