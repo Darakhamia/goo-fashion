@@ -1507,134 +1507,78 @@ export default function BuilderPage() {
                   </svg>
                 </button>
                 {!collapsedSections.has("category") && (
-                <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
-                {/* All row */}
-                <button
-                  onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
-                >
-                  <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
-                  {selectedSubcategories.length === 0 && !catalogCategory && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-                {/* Group rows */}
-                {CATEGORY_GROUPS.map(group => {
-                  const isOpen = expandedCategoryGroups.has(group.id);
-                  const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
-                  const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
-                  const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
-                  return (
-                    <div key={group.id} className="border-t border-[var(--border)]">
-                      <button
-                        onClick={() => setExpandedCategoryGroups(prev => {
-                          const next = new Set(prev);
-                          next.has(group.id) ? next.delete(group.id) : next.add(group.id);
-                          return next;
-                        })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
-                      >
-                        <span className={`shrink-0 ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
-                        <span className={`flex-1 text-left text-[12px] font-semibold ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
-                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-                          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                      {selectedSubcategories.length === 0 && !catalogCategory && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </button>
-                      {isOpen && (<>
-                {/* All row */}
-                <button
-                  onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
-                  className="w-full flex items-center justify-between px-5 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
-                >
-                  <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
-                  {selectedSubcategories.length === 0 && !catalogCategory && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
-                {/* Group rows */}
-                {CATEGORY_GROUPS.map(group => {
-                  const isOpen = expandedCategoryGroups.has(group.id);
-                  const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
-                  const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
-                  const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
-                  return (
-                    <div key={group.id} className="border-t border-[var(--border)]">
-                      <button
-                        onClick={() => setExpandedCategoryGroups(prev => {
-                          const next = new Set(prev);
-                          next.has(group.id) ? next.delete(group.id) : next.add(group.id);
-                          return next;
-                        })}
-                        className="w-full flex items-center gap-2.5 px-5 py-3 hover:bg-[var(--surface)] transition-colors"
-                      >
-                        <span className={`shrink-0 ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
-                        <span className={`flex-1 text-left text-[12px] font-semibold ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
-                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-                          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                      {isOpen && (<>
-                        {/* View all row */}
-                        <button
-                          onClick={() => {
-                            setCatalogCategory(null);
-                            setSelectedSubcategories(prev =>
-                              viewAllChecked
-                                ? prev.filter(v => !groupUniqueValues.includes(v))
-                                : [...new Set([...prev, ...groupUniqueValues])]
-                            );
-                          }}
-                          className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
-                        >
-                          <span className={`text-[12px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
-                          <div
-                            className="shrink-0 flex items-center justify-center border transition-colors"
-                            style={{ width: 16, height: 16, borderRadius: "50%", background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                      )}
+                    </button>
+                    {CATEGORY_GROUPS.map(group => {
+                      const grpOpen = expandedCategoryGroups.has(group.id);
+                      const grpUniqueVals = [...new Set(group.items.map(i => i.value))];
+                      const grpActive = grpUniqueVals.some(v => selectedSubcategories.includes(v));
+                      const grpViewAllChecked = grpUniqueVals.every(v => selectedSubcategories.includes(v));
+                      return (
+                        <div key={group.id} className="border-t border-[var(--border)]">
+                          <button
+                            onClick={() => setExpandedCategoryGroups(prev => {
+                              const next = new Set(prev);
+                              next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                              return next;
+                            })}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
                           >
-                            {viewAllChecked && (
-                              <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                                <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
-                        {/* Subcategory items */}
-                        {group.items.map(item => {
-                          const isChecked = selectedSubcategories.includes(item.value);
-                          return (
-                            <button
-                              key={item.label}
-                              onClick={() => {
-                                setCatalogCategory(null);
-                                setSelectedSubcategories(prev =>
-                                  isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
-                                );
-                              }}
-                              className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
-                            >
-                              <span className={`text-[12px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                              <div
-                                className="shrink-0 flex items-center justify-center border transition-colors"
-                                style={{ width: 16, height: 16, borderRadius: "50%", background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                            <span className={`shrink-0 ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
+                            <span className={`flex-1 text-left text-[12px] font-semibold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
+                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
+                              <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          {grpOpen && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setCatalogCategory(null);
+                                  setSelectedSubcategories(prev =>
+                                    grpViewAllChecked
+                                      ? prev.filter(v => !grpUniqueVals.includes(v))
+                                      : [...new Set([...prev, ...grpUniqueVals])]
+                                  );
+                                }}
+                                className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                               >
-                                {isChecked && (
-                                  <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                                    <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </>)}
-                    </div>
-                  );
-                })}
-                </div>
+                                <span className={`text-[12px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                                <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                                  {grpViewAllChecked && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                </div>
+                              </button>
+                              {group.items.map(item => {
+                                const isChk = selectedSubcategories.includes(item.value);
+                                return (
+                                  <button
+                                    key={item.label}
+                                    onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(v => v !== item.value) : [...prev, item.value]); }}
+                                    className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                  >
+                                    <span className={`text-[12px] ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                                    <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                                      {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
