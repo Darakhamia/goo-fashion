@@ -806,7 +806,7 @@ export default function BuilderPage() {
                                 {visible.map(sw => (
                                   <button key={sw.id} title={sw.colorName}
                                     onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                    className={`w-4 h-4 shrink-0 transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                    className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                     style={{
                                       background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                       boxShadow: (variantId ?? picked.id) === sw.id
@@ -818,7 +818,7 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
                                     style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
                                     <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -836,7 +836,7 @@ export default function BuilderPage() {
                                     {variants.map(sw => (
                                       <button key={sw.id} title={sw.colorName}
                                         onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
-                                        className={`w-4 h-4 shrink-0 transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                        className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                         style={{
                                           background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                           boxShadow: (variantId ?? picked.id) === sw.id
@@ -865,7 +865,7 @@ export default function BuilderPage() {
                                   return (
                                     <button key={color} title={color}
                                       onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
-                                      className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                      className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
                                     >
                                       {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
                                     </button>
@@ -874,7 +874,7 @@ export default function BuilderPage() {
                                 {hidden > 0 && (
                                   <button
                                     onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
                                     style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
                                   >
                                     <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -895,7 +895,7 @@ export default function BuilderPage() {
                                       return (
                                         <button key={color} title={color}
                                           onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
-                                          className={`relative w-4 h-4 overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                          className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
                                         >
                                           {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
                                         </button>
