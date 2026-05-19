@@ -1634,7 +1634,8 @@ export default function BuilderPage() {
                     </div>
                   );
                 })}
-                </div>)}
+                </div>
+                )}
               </div>
 
               {/* PRICE */}
