@@ -266,6 +266,7 @@ export default function BuilderPage() {
   const [shopAdded, setShopAdded] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
   const [showAllBrands, setShowAllBrands] = useState(false);
+  const [genderDropOpen, setGenderDropOpen] = useState(false);
 
   const { likedProducts } = useLikes();
   const { addManyToCart } = useCart();
@@ -1484,17 +1485,64 @@ export default function BuilderPage() {
               </div>
 
               {/* CATEGORY */}
-              <div className="border-b border-[var(--border)]">
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
                 <button
                   onClick={() => toggleSection("category")}
-                  className="w-full flex items-center justify-between px-5 pt-4 pb-3 hover:opacity-70 transition-opacity"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                    !collapsedSections.has("category")
+                      ? "border-[var(--foreground)] text-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
                 >
-                  <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">Category</p>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
+                  <span className="text-[12px] font-semibold">
+                    {selectedSubcategories.length === 0 && !catalogCategory
+                      ? "All"
+                      : selectedSubcategories.length === 1
+                        ? (CATEGORY_GROUPS.flatMap(g => g.items).find(i => i.value === selectedSubcategories[0])?.label ?? "All")
+                        : `${selectedSubcategories.length} selected`}
+                  </span>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
                     <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
-                {!collapsedSections.has("category") && (<>
+                {!collapsedSections.has("category") && (
+                <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                {/* All row */}
+                <button
+                  onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                >
+                  <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                  {selectedSubcategories.length === 0 && !catalogCategory && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                {/* Group rows */}
+                {CATEGORY_GROUPS.map(group => {
+                  const isOpen = expandedCategoryGroups.has(group.id);
+                  const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
+                  const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
+                  const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
+                  return (
+                    <div key={group.id} className="border-t border-[var(--border)]">
+                      <button
+                        onClick={() => setExpandedCategoryGroups(prev => {
+                          const next = new Set(prev);
+                          next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                          return next;
+                        })}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                      >
+                        <span className={`shrink-0 ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
+                        <span className={`flex-1 text-left text-[12px] font-semibold ${groupActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
+                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
+                          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      {isOpen && (<>
                 {/* All row */}
                 <button
                   onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
@@ -1586,7 +1634,7 @@ export default function BuilderPage() {
                     </div>
                   );
                 })}
-                </>)}
+                </div>)}
               </div>
 
               {/* PRICE */}
@@ -1637,16 +1685,43 @@ export default function BuilderPage() {
               {/* GENDER */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
-                <select
-                  value={selectedGender ?? ""}
-                  onChange={e => setSelectedGender((e.target.value || null) as typeof selectedGender)}
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] outline-none cursor-pointer"
+                <button
+                  onClick={() => setGenderDropOpen(v => !v)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                    genderDropOpen
+                      ? "border-[var(--foreground)] text-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
                 >
-                  <option value="">All</option>
-                  <option value="men">Men</option>
-                  <option value="women">Women</option>
-                  <option value="unisex">Unisex</option>
-                </select>
+                  <span className="text-[12px] font-semibold capitalize">
+                    {selectedGender === null ? "All" : selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}
+                  </span>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {genderDropOpen && (
+                  <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                    {([null, "men", "women", "unisex"] as (typeof selectedGender)[]).map(g => {
+                      const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
+                      const isActive = selectedGender === g;
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => { setSelectedGender(g); setGenderDropOpen(false); }}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${g !== null ? "border-t border-[var(--border)]" : ""}`}
+                        >
+                          <span className={`text-[12px] font-medium ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{label}</span>
+                          {isActive && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* COLORS */}
