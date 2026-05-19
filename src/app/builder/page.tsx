@@ -1533,10 +1533,10 @@ export default function BuilderPage() {
                           }}
                           className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
                         >
-                          <span className={`text-[12px] font-semibold ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                          <span className={`text-[12px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
                           <div
                             className="shrink-0 flex items-center justify-center border transition-colors"
-                            style={{ width: 16, height: 16, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                            style={{ width: 16, height: 16, borderRadius: "50%", background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
                           >
                             {viewAllChecked && (
                               <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
@@ -1562,7 +1562,7 @@ export default function BuilderPage() {
                               <span className={`text-[12px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                               <div
                                 className="shrink-0 flex items-center justify-center border transition-colors"
-                                style={{ width: 16, height: 16, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                                style={{ width: 16, height: 16, borderRadius: "50%", background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
                               >
                                 {isChecked && (
                                   <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
@@ -2374,10 +2374,10 @@ export default function BuilderPage() {
                             }}
                             className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
                           >
-                            <span className={`text-[14px] font-semibold ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                            <span className={`text-[14px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
                             <div
                               className="shrink-0 flex items-center justify-center border transition-colors"
-                              style={{ width: 20, height: 20, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                              style={{ width: 20, height: 20, borderRadius: "50%", background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
                             >
                               {viewAllChecked && (
                                 <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
@@ -2403,7 +2403,7 @@ export default function BuilderPage() {
                                 <span className={`text-[14px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                                 <div
                                   className="shrink-0 flex items-center justify-center border transition-colors"
-                                  style={{ width: 20, height: 20, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                                  style={{ width: 20, height: 20, borderRadius: "50%", background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
                                 >
                                   {isChecked && (
                                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
