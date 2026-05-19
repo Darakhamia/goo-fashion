@@ -1485,7 +1485,16 @@ export default function BuilderPage() {
 
               {/* CATEGORY */}
               <div className="border-b border-[var(--border)]">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] px-5 pt-4 pb-3">Category</p>
+                <button
+                  onClick={() => toggleSection("category")}
+                  className="w-full flex items-center justify-between px-5 pt-4 pb-3 hover:opacity-70 transition-opacity"
+                >
+                  <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">Category</p>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {!collapsedSections.has("category") && (<>
                 {/* All row */}
                 <button
                   onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
@@ -1577,6 +1586,7 @@ export default function BuilderPage() {
                     </div>
                   );
                 })}
+                </>)}
               </div>
 
               {/* PRICE */}
