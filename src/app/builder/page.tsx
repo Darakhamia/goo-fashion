@@ -104,7 +104,12 @@ const CATEGORY_GROUPS = [
       </svg>
     ),
     items: [
-      { label: "Jackets & Coats", value: "outerwear" },
+      { label: "Jackets", value: "outerwear" },
+      { label: "Coats", value: "outerwear" },
+      { label: "Parkas", value: "outerwear" },
+      { label: "Vests", value: "outerwear" },
+      { label: "Bomber Jackets", value: "outerwear" },
+      { label: "Raincoats", value: "outerwear" },
       { label: "Blazers", value: "blazers" },
     ],
   },
@@ -118,7 +123,9 @@ const CATEGORY_GROUPS = [
       </svg>
     ),
     items: [
-      { label: "Tops", value: "tops" },
+      { label: "T-Shirts", value: "tops" },
+      { label: "Hoodies", value: "tops" },
+      { label: "Sweatshirts", value: "tops" },
       { label: "Shirts", value: "shirts" },
       { label: "Knitwear", value: "knitwear" },
     ],
@@ -164,7 +171,10 @@ const CATEGORY_GROUPS = [
       </svg>
     ),
     items: [
-      { label: "Sneakers & Shoes", value: "footwear" },
+      { label: "Sneakers", value: "footwear" },
+      { label: "Boots", value: "footwear" },
+      { label: "Sandals", value: "footwear" },
+      { label: "Loafers", value: "footwear" },
     ],
   },
   {
@@ -177,9 +187,13 @@ const CATEGORY_GROUPS = [
       </svg>
     ),
     items: [
-      { label: "Accessories", value: "accessories" },
       { label: "Bags", value: "bags" },
-      { label: "Swimwear", value: "swimwear" },
+      { label: "Hats", value: "accessories" },
+      { label: "Belts", value: "accessories" },
+      { label: "Sunglasses", value: "accessories" },
+      { label: "Scarves", value: "accessories" },
+      { label: "Watches", value: "accessories" },
+      { label: "Jewelry", value: "accessories" },
     ],
   },
 ];
@@ -1487,7 +1501,9 @@ export default function BuilderPage() {
                 {/* Group rows */}
                 {CATEGORY_GROUPS.map(group => {
                   const isOpen = expandedCategoryGroups.has(group.id);
-                  const groupActive = group.items.some(i => selectedSubcategories.includes(i.value));
+                  const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
+                  const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
+                  const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
                   return (
                     <div key={group.id} className="border-t border-[var(--border)]">
                       <button
@@ -1504,33 +1520,60 @@ export default function BuilderPage() {
                           <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
-                      {isOpen && group.items.map(item => {
-                        const isChecked = selectedSubcategories.includes(item.value);
-                        return (
-                          <button
-                            key={item.value}
-                            onClick={() => {
-                              setCatalogCategory(null);
-                              setSelectedSubcategories(prev =>
-                                isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
-                              );
-                            }}
-                            className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                      {isOpen && (<>
+                        {/* View all row */}
+                        <button
+                          onClick={() => {
+                            setCatalogCategory(null);
+                            setSelectedSubcategories(prev =>
+                              viewAllChecked
+                                ? prev.filter(v => !groupUniqueValues.includes(v))
+                                : [...new Set([...prev, ...groupUniqueValues])]
+                            );
+                          }}
+                          className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                        >
+                          <span className={`text-[12px] font-semibold ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                          <div
+                            className="shrink-0 flex items-center justify-center border transition-colors"
+                            style={{ width: 16, height: 16, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
                           >
-                            <span className={`text-[12px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                            <div
-                              className="shrink-0 flex items-center justify-center border transition-colors"
-                              style={{ width: 16, height: 16, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                            {viewAllChecked && (
+                              <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                        {/* Subcategory items */}
+                        {group.items.map(item => {
+                          const isChecked = selectedSubcategories.includes(item.value);
+                          return (
+                            <button
+                              key={item.label}
+                              onClick={() => {
+                                setCatalogCategory(null);
+                                setSelectedSubcategories(prev =>
+                                  isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
+                                );
+                              }}
+                              className="w-full flex items-center justify-between pl-11 pr-5 py-2.5 hover:bg-[var(--surface)] transition-colors"
                             >
-                              {isChecked && (
-                                <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
+                              <span className={`text-[12px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                              <div
+                                className="shrink-0 flex items-center justify-center border transition-colors"
+                                style={{ width: 16, height: 16, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                              >
+                                {isChecked && (
+                                  <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
+                                    <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </>)}
                     </div>
                   );
                 })}
@@ -2299,7 +2342,9 @@ export default function BuilderPage() {
                   {/* Group rows */}
                   {CATEGORY_GROUPS.map(group => {
                     const isOpen = expandedCategoryGroups.has(group.id);
-                    const groupActive = group.items.some(i => selectedSubcategories.includes(i.value));
+                    const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
+                    const groupActive = groupUniqueValues.some(v => selectedSubcategories.includes(v));
+                    const viewAllChecked = groupUniqueValues.every(v => selectedSubcategories.includes(v));
                     return (
                       <div key={group.id} className="border-t border-[var(--border)]">
                         <button
@@ -2316,33 +2361,60 @@ export default function BuilderPage() {
                             <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
-                        {isOpen && group.items.map(item => {
-                          const isChecked = selectedSubcategories.includes(item.value);
-                          return (
-                            <button
-                              key={item.value}
-                              onClick={() => {
-                                setCatalogCategory(null);
-                                setSelectedSubcategories(prev =>
-                                  isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
-                                );
-                              }}
-                              className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                        {isOpen && (<>
+                          {/* View all row */}
+                          <button
+                            onClick={() => {
+                              setCatalogCategory(null);
+                              setSelectedSubcategories(prev =>
+                                viewAllChecked
+                                  ? prev.filter(v => !groupUniqueValues.includes(v))
+                                  : [...new Set([...prev, ...groupUniqueValues])]
+                              );
+                            }}
+                            className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                          >
+                            <span className={`text-[14px] font-semibold ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                            <div
+                              className="shrink-0 flex items-center justify-center border transition-colors"
+                              style={{ width: 20, height: 20, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
                             >
-                              <span className={`text-[14px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                              <div
-                                className="shrink-0 flex items-center justify-center border transition-colors"
-                                style={{ width: 20, height: 20, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                              {viewAllChecked && (
+                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          </button>
+                          {/* Subcategory items */}
+                          {group.items.map(item => {
+                            const isChecked = selectedSubcategories.includes(item.value);
+                            return (
+                              <button
+                                key={item.label}
+                                onClick={() => {
+                                  setCatalogCategory(null);
+                                  setSelectedSubcategories(prev =>
+                                    isChecked ? prev.filter(v => v !== item.value) : [...prev, item.value]
+                                  );
+                                }}
+                                className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
                               >
-                                {isChecked && (
-                                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                                    <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
+                                <span className={`text-[14px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                                <div
+                                  className="shrink-0 flex items-center justify-center border transition-colors"
+                                  style={{ width: 20, height: 20, background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                                >
+                                  {isChecked && (
+                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                      <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </>)}
                       </div>
                     );
                   })}
