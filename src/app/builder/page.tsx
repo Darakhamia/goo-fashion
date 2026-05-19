@@ -1569,7 +1569,7 @@ export default function BuilderPage() {
                                     onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(l => l !== item.label) : [...prev, item.label]); }}
                                     className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                                   >
-                                    <span className={`text-[12px] ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                                    <span className={`text-[12px] font-medium ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                                     <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                                       {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </div>
@@ -1588,46 +1588,65 @@ export default function BuilderPage() {
               {/* PRICE */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
-                  <span className="text-[11px] font-medium text-[var(--foreground)]">
-                    {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                <button
+                  onClick={() => toggleSection("price")}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                    !collapsedSections.has("price")
+                      ? "border-[var(--foreground)] text-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <span className="text-[12px] font-semibold">
+                    {maxPrice === null || maxPrice >= 2000 ? "All" : `< $${maxPrice.toLocaleString()}`}
                   </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={2000}
-                  step={50}
-                  value={maxPrice ?? 2000}
-                  onChange={e => {
-                    const val = Number(e.target.value);
-                    setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
-                  }}
-                  className="w-full cursor-pointer mb-3"
-                  style={{ accentColor: "var(--foreground)" }}
-                />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {([
-                    { label: "All", max: null },
-                    { label: "<$200", max: 200 },
-                    { label: "<$500", max: 500 },
-                    { label: "<$1k", max: 1000 },
-                    { label: "<$2k", max: 2000 },
-                  ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
-                    <button
-                      key={label}
-                      onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                      className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
-                        maxPrice === max
-                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {!collapsedSections.has("price") && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
+                      <span className="text-[11px] font-medium text-[var(--foreground)]">
+                        {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2000}
+                      step={50}
+                      value={maxPrice ?? 2000}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                      }}
+                      className="w-full cursor-pointer mb-3"
+                      style={{ accentColor: "var(--foreground)" }}
+                    />
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {([
+                        { label: "All", max: null },
+                        { label: "<$200", max: 200 },
+                        { label: "<$500", max: 500 },
+                        { label: "<$1k", max: 1000 },
+                        { label: "<$2k", max: 2000 },
+                      ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
+                        <button
+                          key={label}
+                          onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                          className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                            maxPrice === max
+                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* GENDER */}
@@ -2434,7 +2453,7 @@ export default function BuilderPage() {
                                 }}
                                 className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
                               >
-                                <span className={`text-[14px] ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                                <span className={`text-[14px] font-medium ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                                 <div
                                   className="shrink-0 flex items-center justify-center border transition-colors"
                                   style={{ width: 20, height: 20, borderRadius: "50%", background: isChecked ? "var(--foreground)" : "transparent", borderColor: isChecked ? "var(--foreground)" : "var(--border-strong)" }}
