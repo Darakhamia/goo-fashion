@@ -331,7 +331,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
             exit={{ opacity: 0, scale: 0.94, y: 12 }}
             transition={{ duration: 0.2 }}
             className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl max-w-3xl`}
-            style={{ maxHeight: "90vh" }}
+            style={{ height: "min(90vh, 560px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -456,9 +456,9 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
               </div>
             ) : (
               /* ── No generated image: collage left, pieces list right ── */
-              <div className="flex overflow-hidden">
-                {/* Left: piece collage — aspect-[3/4] so everything fits, absolute inset so % flex-basis works */}
-                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden" style={{ aspectRatio: "3/4" }}>
+              <div className="flex min-h-0 flex-1">
+                {/* Left: piece collage — absolute inset-0 fills the fixed-height modal body */}
+                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden">
                   <div className="absolute inset-0 bg-gray-200 flex flex-col gap-px">
                     {(() => {
                       const n = pieces.length;
