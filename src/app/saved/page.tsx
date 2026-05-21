@@ -335,9 +335,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 12 }}
             transition={{ duration: 0.2 }}
-            className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl ${
-              look.generatedImage ? "max-w-3xl" : "max-w-lg"
-            }`}
+            className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl max-w-3xl`}
             style={{ maxHeight: "90vh" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -455,64 +453,87 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                 </div>
               </div>
             ) : (
-              /* ── No generated image: collage with clickable pieces + names ── */
-              <div className="overflow-y-auto">
-                <div className="aspect-[3/4] flex flex-col gap-px bg-gray-200">
+              /* ── No generated image: collage left, pieces list right (same layout as generated) ── */
+              <div className="flex min-h-0 flex-1">
+                {/* Left: piece collage */}
+                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden bg-gray-200 flex flex-col gap-px">
                   {(() => {
                     const n = pieces.length;
-
-                    const cellLink = (piece: typeof pieces[0], pad = "p-3") => (
-                      <Link
-                        key={piece.slot}
-                        href={`/product/${piece.productId}`}
-                        onClick={() => setOpen(false)}
-                        className="flex-1 flex flex-col overflow-hidden bg-white group/item min-w-0"
-                      >
-                        <div className="flex-1 overflow-hidden">
-                          {piece.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={piece.imageUrl} alt={piece.name} className={`w-full h-full object-contain ${pad} group-hover/item:scale-105 transition-transform duration-300`} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="font-mono text-[8px] uppercase text-[var(--border-strong)] capitalize">{piece.slot}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="shrink-0 px-2 py-1.5 border-t border-[var(--border)] bg-[var(--surface)]">
-                          <p className="text-[10px] leading-tight text-[var(--foreground)] truncate">{piece.name}</p>
-                        </div>
-                      </Link>
+                    const cell = (piece: typeof pieces[0], pad = "p-3") => (
+                      <div key={piece.slot} className="flex-1 overflow-hidden bg-white min-w-0 min-h-0">
+                        {piece.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={piece.imageUrl} alt={piece.name} className={`w-full h-full object-contain ${pad}`} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="font-mono text-[8px] uppercase text-[var(--border-strong)] capitalize">{piece.slot}</span>
+                          </div>
+                        )}
+                      </div>
                     );
-
-                    if (n === 0) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces</p></div>;
-                    if (n === 1) return <>{cellLink(pieces[0])}</>;
-                    if (n === 2) return <div className="flex-1 flex gap-px">{pieces.slice(0, 2).map(p => cellLink(p))}</div>;
+                    if (n === 0) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[9px] uppercase text-gray-400">No pieces</p></div>;
+                    if (n === 1) return <div className="flex-1 flex">{cell(pieces[0], "p-6")}</div>;
+                    if (n === 2) return <div className="flex-1 flex gap-px">{pieces.slice(0, 2).map(p => cell(p))}</div>;
                     if (n === 3) return (
-                      <>
-                        <div className="flex gap-px" style={{ flex: "0 0 60%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
-                        <div className="flex" style={{ flex: "0 0 40%" }}>{cellLink(pieces[2], "p-2")}</div>
-                      </>
+                      <div className="flex-1 flex flex-col gap-px">
+                        <div className="flex gap-px" style={{ flex: "0 0 60%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                        <div className="flex" style={{ flex: "0 0 40%" }}>{cell(pieces[2], "p-2")}</div>
+                      </div>
                     );
                     if (n === 4) return (
-                      <>
-                        <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cellLink(p))}</div>
-                        <div className="flex gap-px flex-1">{pieces.slice(2, 4).map(p => cellLink(p))}</div>
-                      </>
+                      <div className="flex-1 flex flex-col gap-px">
+                        <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cell(p))}</div>
+                        <div className="flex gap-px flex-1">{pieces.slice(2, 4).map(p => cell(p))}</div>
+                      </div>
                     );
                     if (n === 5) return (
-                      <>
-                        <div className="flex gap-px" style={{ flex: "0 0 57%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
-                        <div className="flex gap-px" style={{ flex: "0 0 43%" }}>{pieces.slice(2, 5).map(p => cellLink(p, "p-2"))}</div>
-                      </>
+                      <div className="flex-1 flex flex-col gap-px">
+                        <div className="flex gap-px" style={{ flex: "0 0 57%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                        <div className="flex gap-px" style={{ flex: "0 0 43%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
+                      </div>
                     );
                     return (
-                      <>
-                        <div className="flex gap-px" style={{ flex: "0 0 40%" }}>{pieces.slice(0, 2).map(p => cellLink(p))}</div>
-                        <div className="flex gap-px" style={{ flex: "0 0 33%" }}>{pieces.slice(2, 5).map(p => cellLink(p, "p-2"))}</div>
-                        <div className="flex" style={{ flex: "0 0 27%" }}>{cellLink(pieces[5], "p-2")}</div>
-                      </>
+                      <div className="flex-1 flex flex-col gap-px">
+                        <div className="flex gap-px" style={{ flex: "0 0 40%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                        <div className="flex gap-px" style={{ flex: "0 0 33%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
+                        <div className="flex" style={{ flex: "0 0 27%" }}>{cell(pieces[5], "p-2")}</div>
+                      </div>
                     );
                   })()}
+                </div>
+
+                {/* Right: pieces list */}
+                <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+                  {pieces.length > 0 ? pieces.map(({ slot, imageUrl, name, productId }) => (
+                    <Link
+                      key={slot}
+                      href={`/product/${productId}`}
+                      onClick={() => setOpen(false)}
+                      className="group/item flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <div className="w-14 h-14 shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg border border-[var(--border)]">
+                        {imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imageUrl} alt={name} className="w-full h-full object-contain p-1 group-hover/item:scale-105 transition-transform duration-200" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="font-mono text-[8px] text-[var(--border-strong)]">{slot[0].toUpperCase()}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{slot}</p>
+                        <p className="text-xs text-[var(--foreground)] truncate">{name}</p>
+                      </div>
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)] group-hover/item:text-[var(--foreground)] transition-colors">
+                        <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </Link>
+                  )) : (
+                    <div className="flex items-center justify-center h-full py-12">
+                      <p className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
