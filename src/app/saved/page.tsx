@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -36,7 +36,6 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
   const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(look.name || "My Look");
-  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const commitName = () => {
     const trimmed = nameValue.trim() || "My Look";
@@ -232,7 +231,6 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
         <div className="px-5 pt-4 pb-5">
           {editingName ? (
             <input
-              ref={nameInputRef}
               type="text"
               value={nameValue}
               onChange={e => setNameValue(e.target.value)}
