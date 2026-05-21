@@ -455,53 +455,55 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                 </div>
               </div>
             ) : (
-              /* ── No generated image: collage left, pieces list right (same layout as generated) ── */
-              <div className="flex min-h-0 flex-1">
-                {/* Left: piece collage */}
-                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden bg-gray-200 flex flex-col gap-px">
-                  {(() => {
-                    const n = pieces.length;
-                    const cell = (piece: typeof pieces[0], pad = "p-3") => (
-                      <div key={piece.slot} className="flex-1 overflow-hidden bg-white min-w-0 min-h-0">
-                        {piece.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={piece.imageUrl} alt={piece.name} className={`w-full h-full object-contain ${pad}`} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-mono text-[8px] uppercase text-[var(--border-strong)] capitalize">{piece.slot}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                    if (n === 0) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[9px] uppercase text-gray-400">No pieces</p></div>;
-                    if (n === 1) return <div className="flex-1 flex">{cell(pieces[0], "p-6")}</div>;
-                    if (n === 2) return <div className="flex-1 flex gap-px">{pieces.slice(0, 2).map(p => cell(p))}</div>;
-                    if (n === 3) return (
-                      <div className="flex-1 flex flex-col gap-px">
-                        <div className="flex gap-px" style={{ flex: "0 0 60%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
-                        <div className="flex" style={{ flex: "0 0 40%" }}>{cell(pieces[2], "p-2")}</div>
-                      </div>
-                    );
-                    if (n === 4) return (
-                      <div className="flex-1 flex flex-col gap-px">
-                        <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cell(p))}</div>
-                        <div className="flex gap-px flex-1">{pieces.slice(2, 4).map(p => cell(p))}</div>
-                      </div>
-                    );
-                    if (n === 5) return (
-                      <div className="flex-1 flex flex-col gap-px">
-                        <div className="flex gap-px" style={{ flex: "0 0 57%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
-                        <div className="flex gap-px" style={{ flex: "0 0 43%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
-                      </div>
-                    );
-                    return (
-                      <div className="flex-1 flex flex-col gap-px">
-                        <div className="flex gap-px" style={{ flex: "0 0 40%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
-                        <div className="flex gap-px" style={{ flex: "0 0 33%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
-                        <div className="flex" style={{ flex: "0 0 27%" }}>{cell(pieces[5], "p-2")}</div>
-                      </div>
-                    );
-                  })()}
+              /* ── No generated image: collage left, pieces list right ── */
+              <div className="flex overflow-hidden">
+                {/* Left: piece collage — aspect-[3/4] so everything fits, absolute inset so % flex-basis works */}
+                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden" style={{ aspectRatio: "3/4" }}>
+                  <div className="absolute inset-0 bg-gray-200 flex flex-col gap-px">
+                    {(() => {
+                      const n = pieces.length;
+                      const cell = (piece: typeof pieces[0], pad = "p-3") => (
+                        <div key={piece.slot} className="relative flex-1 overflow-hidden bg-white min-w-0">
+                          {piece.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={piece.imageUrl} alt={piece.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="font-mono text-[8px] uppercase text-gray-400 capitalize">{piece.slot}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                      if (n === 0) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[9px] uppercase text-gray-400">No pieces</p></div>;
+                      if (n === 1) return cell(pieces[0], "p-8");
+                      if (n === 2) return <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cell(p))}</div>;
+                      if (n === 3) return (
+                        <>
+                          <div className="flex gap-px" style={{ flex: "0 0 60%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                          <div className="flex" style={{ flex: "0 0 40%" }}>{cell(pieces[2], "p-2")}</div>
+                        </>
+                      );
+                      if (n === 4) return (
+                        <>
+                          <div className="flex gap-px flex-1">{pieces.slice(0, 2).map(p => cell(p))}</div>
+                          <div className="flex gap-px flex-1">{pieces.slice(2, 4).map(p => cell(p))}</div>
+                        </>
+                      );
+                      if (n === 5) return (
+                        <>
+                          <div className="flex gap-px" style={{ flex: "0 0 57%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                          <div className="flex gap-px" style={{ flex: "0 0 43%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
+                        </>
+                      );
+                      return (
+                        <>
+                          <div className="flex gap-px" style={{ flex: "0 0 40%" }}>{pieces.slice(0, 2).map(p => cell(p))}</div>
+                          <div className="flex gap-px" style={{ flex: "0 0 33%" }}>{pieces.slice(2, 5).map(p => cell(p, "p-2"))}</div>
+                          <div className="flex" style={{ flex: "0 0 27%" }}>{cell(pieces[5], "p-2")}</div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Right: pieces list */}
