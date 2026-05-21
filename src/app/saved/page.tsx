@@ -17,6 +17,7 @@ type View = "outfits" | "pieces" | "looks";
 interface SavedLook {
   id: string;
   savedAt: string;
+  name?: string;
   pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
   totalPrice: number;
   styleKeywords: string[];
@@ -219,11 +220,11 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
         {/* Info */}
         <div className="px-5 pt-4 pb-5">
           <p className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
-            {formatPrice(look.totalPrice)}
+            {look.name || "My Look"}
           </p>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-[13px] text-[var(--foreground-muted)] truncate flex-1 min-w-0">
-              {look.styleKeywords.slice(0, 2).join(" · ")}
+              {formatPrice(look.totalPrice)}
             </p>
             <div className="flex items-center gap-3 shrink-0">
               <Link
