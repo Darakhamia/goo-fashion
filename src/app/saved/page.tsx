@@ -94,9 +94,9 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
 
   return (
     <>
-      <div className="bg-[var(--background)] flex flex-col h-full">
-        {/* Main image — fills all space above the footer */}
-        <button onClick={() => setOpen(true)} className="block w-full text-left relative group overflow-hidden flex-1 min-h-0">
+      <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+        {/* Main image — click opens detail modal */}
+        <button onClick={() => setOpen(true)} className="block w-full text-left relative overflow-hidden aspect-[3/4]">
           {look.generatedImage ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -207,31 +207,29 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
               <span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)] opacity-50">Empty look</span>
             </div>
           )}
+          <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
         </button>
 
-        {/* Footer */}
-        <div className="shrink-0 px-3 pt-2.5 pb-3 border-t border-[var(--border)]">
-          <div className="flex items-start justify-between gap-2 mb-2.5">
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[var(--foreground)] leading-none">
-                {formatPrice(look.totalPrice)}
-              </p>
-              <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1.5 truncate min-h-[12px]">
-                {look.styleKeywords.slice(0, 3).join(" · ")}
-              </p>
-              <p className="text-[9px] text-[var(--foreground-subtle)] mt-1">{date}</p>
-            </div>
-            <button
-              onClick={handleDelete}
-              title="Delete look"
-              className="shrink-0 h-7 w-7 flex items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground-subtle)] hover:border-red-400 hover:text-red-400 transition-colors"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex gap-1.5">
+        {/* Delete button */}
+        <button
+          onClick={handleDelete}
+          title="Delete look"
+          className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {/* Info */}
+        <div className="px-5 pt-4 pb-5">
+          <p className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
+            {formatPrice(look.totalPrice)}
+          </p>
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
+            {look.styleKeywords.slice(0, 3).join(" · ")}
+          </p>
+          <div className="flex gap-1.5 mt-3">
             <Link
               href={builderUrl}
               className="flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
@@ -702,7 +700,6 @@ export default function SavedPage() {
               {myLooks.map((look) => (
                 <motion.div
                   key={look.id}
-                  className="rounded-xl border border-[var(--border)] overflow-hidden flex flex-col aspect-[3/5] hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
                   variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                 >
                   <LookCard look={look} onDelete={() => deleteLook(look.id)} allProducts={allProducts} />
