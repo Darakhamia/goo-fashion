@@ -286,6 +286,8 @@ export default function BuilderPage() {
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalLookName, setModalLookName] = useState("");
+  const [modalLookDescription, setModalLookDescription] = useState("");
+  const [pendingLookDescription, setPendingLookDescription] = useState("");
   const [showModalDetails, setShowModalDetails] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
@@ -641,7 +643,18 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string } = {}) => {
+  const buildDescription = () => {
+    const styleLabel = activeStyle === "mannequin" ? "mannequin" : activeStyle === "flatlay" ? "flat lay" : "on-model";
+    const kw = styleKeywords.slice(0, 5);
+    const kwStr = kw.length > 0 ? kw.join(", ") : "";
+    const count = selectedCount;
+    let desc = `${count}-piece look`;
+    if (kwStr) desc += ` — ${kwStr}`;
+    desc += `. Presented as a ${styleLabel}.`;
+    return desc;
+  };
+
+  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string } = {}) => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -680,6 +693,7 @@ export default function BuilderPage() {
                 totalPrice,
                 styleKeywords,
                 ...(extra.name !== undefined && { name: extra.name }),
+                ...(extra.description !== undefined && { description: extra.description }),
                 // null explicitly clears the stored image; undefined means "don't touch"
                 ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage ?? null }),
                 ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
@@ -692,6 +706,7 @@ export default function BuilderPage() {
           id: savedId,
           savedAt: new Date().toISOString(),
           name: extra.name || `Outfit ${existing.length + 1}`,
+          ...(extra.description && { description: extra.description }),
           pieces,
           totalPrice,
           styleKeywords,
@@ -721,11 +736,13 @@ export default function BuilderPage() {
     if (!isLoggedIn) { login("", ""); return; }
     try {
       const urlEditId = new URLSearchParams(window.location.search).get("editId");
-      const existing: { id: string; name?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      const existing: { id: string; name?: string; description?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
+      setPendingLookDescription(existingLook?.description || buildDescription());
     } catch {
       setPendingLookName("Outfit 1");
+      setPendingLookDescription(buildDescription());
     }
     setShowNameModal(true);
   };
@@ -735,9 +752,10 @@ export default function BuilderPage() {
   };
 
   const confirmSave = () => {
-    persistLook({ generatedImage: generatedImage, generatedStyle: activeStyle, name: pendingLookName.trim() || "My Look" });
+    persistLook({ generatedImage: generatedImage, generatedStyle: activeStyle, name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined });
     setSaved(true);
     setShowNameModal(false);
+    router.push("/saved?tab=looks");
   };
 
   const openStylePicker = () => {
@@ -816,9 +834,13 @@ export default function BuilderPage() {
         try {
           const ex: unknown[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
           const urlEditId = new URLSearchParams(window.location.search).get("editId");
-          const existingLook = urlEditId ? (ex as { id: string; name?: string }[]).find(o => o.id === urlEditId) : null;
+          const existingLook = urlEditId ? (ex as { id: string; name?: string; description?: string }[]).find(o => o.id === urlEditId) : null;
           setModalLookName(existingLook?.name || `Outfit ${ex.length + 1}`);
-        } catch { setModalLookName("Outfit 1"); }
+          setModalLookDescription(existingLook?.description || buildDescription());
+        } catch {
+          setModalLookName("Outfit 1");
+          setModalLookDescription(buildDescription());
+        }
         setShowModalDetails(false);
         setShowModal(true);
         // Auto-save the look with its generated image so it's not lost when the modal closes
@@ -2346,16 +2368,28 @@ export default function BuilderPage() {
               )}
             </div>
 
-            {/* Name input + actions */}
+            {/* Name input + description + actions */}
             <div className="shrink-0 px-5 pt-4 pb-6 border-t border-[var(--border)]">
-              <input
-                type="text"
-                value={pendingLookName}
-                onChange={e => setPendingLookName(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
-                className="w-full text-[20px] font-bold bg-transparent outline-none border-b border-[var(--border-strong)] pb-2 mb-5 text-[var(--foreground)] placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground)] transition-colors"
-                placeholder="Name your look…"
-                autoFocus
+              <div className="flex items-center gap-1.5 mb-1">
+                <input
+                  type="text"
+                  value={pendingLookName}
+                  onChange={e => setPendingLookName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
+                  className="flex-1 min-w-0 text-[20px] font-bold bg-transparent outline-none border-b border-[var(--border-strong)] pb-1 text-[var(--foreground)] placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground)] transition-colors"
+                  placeholder="Name your look…"
+                  autoFocus
+                />
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0 mb-0.5 text-[var(--foreground-subtle)]">
+                  <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <textarea
+                value={pendingLookDescription}
+                onChange={e => setPendingLookDescription(e.target.value)}
+                rows={2}
+                className="w-full mt-3 mb-5 text-[12px] text-[var(--foreground-muted)] bg-transparent outline-none resize-none border-b border-dashed border-[var(--border)] pb-1 leading-relaxed placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground-muted)] transition-colors"
+                placeholder="Describe this look…"
               />
               <div className="flex gap-2">
                 <button
@@ -3222,13 +3256,18 @@ export default function BuilderPage() {
           >
             {/* Header — editable name */}
             <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border)] shrink-0">
-              <input
-                type="text"
-                value={modalLookName}
-                onChange={e => setModalLookName(e.target.value)}
-                className="flex-1 min-w-0 text-[15px] font-semibold bg-transparent outline-none text-[var(--foreground)] border-b border-transparent focus:border-[var(--border-strong)] transition-colors pb-0.5 placeholder-[var(--foreground-subtle)]"
-                placeholder="Name your look…"
-              />
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={modalLookName}
+                  onChange={e => setModalLookName(e.target.value)}
+                  className="flex-1 min-w-0 text-[15px] font-semibold bg-transparent outline-none text-[var(--foreground)] border-b border-[var(--border)] focus:border-[var(--foreground)] transition-colors pb-0.5 placeholder-[var(--foreground-subtle)]"
+                  placeholder="Name your look…"
+                />
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
+                  <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
               <div className="flex items-center gap-2.5 shrink-0">
                 <button
                   onClick={() => { setShowModal(false); openStylePicker(); }}
@@ -3285,6 +3324,14 @@ export default function BuilderPage() {
               </button>
               {showModalDetails && (
                 <div className="px-5 pb-4 border-t border-[var(--border)]">
+                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5 mt-3">Description</p>
+                  <textarea
+                    value={modalLookDescription}
+                    onChange={e => setModalLookDescription(e.target.value)}
+                    rows={3}
+                    className="w-full text-[12px] text-[var(--foreground-muted)] bg-transparent outline-none resize-none border-b border-dashed border-[var(--border)] pb-1 leading-relaxed placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground-muted)] transition-colors"
+                    placeholder="Describe this look…"
+                  />
                   <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-2 mt-3">Style tags</p>
                   {styleKeywords.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
@@ -3312,7 +3359,7 @@ export default function BuilderPage() {
               </p>
               <button
                 onClick={() => {
-                  persistLook({ name: modalLookName });
+                  persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined });
                   setSaved(true);
                   setShowModal(false);
                   router.push("/saved?tab=looks");
