@@ -577,17 +577,22 @@ export default function SavedPage() {
         .then((r) => r.json())
         .then((apiLooks: SavedLook[]) => {
           if (!Array.isArray(apiLooks)) return;
-          // Merge: prefer localStorage name/description since Supabase may not
-          // have look_name/look_description columns yet
           try {
             const raw = localStorage.getItem("goo-saved-outfits");
             const local: SavedLook[] = raw ? JSON.parse(raw) : [];
             const localById = new Map(local.map((l) => [l.id, l]));
-            setMyLooks(apiLooks.map((a) => ({
-              ...a,
-              name: a.name ?? localById.get(a.id)?.name,
-              description: a.description ?? localById.get(a.id)?.description,
-            })));
+            const apiIds = new Set(apiLooks.map((a) => a.id));
+            // Merge API looks (prefer local name/description) + any local-only looks
+            // that haven't synced to Supabase yet
+            const merged = [
+              ...apiLooks.map((a) => ({
+                ...a,
+                name: a.name ?? localById.get(a.id)?.name,
+                description: a.description ?? localById.get(a.id)?.description,
+              })),
+              ...local.filter((l) => !apiIds.has(l.id)),
+            ].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+            setMyLooks(merged);
           } catch {
             setMyLooks(apiLooks);
           }
