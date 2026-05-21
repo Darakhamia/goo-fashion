@@ -248,11 +248,6 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
               {look.name || "My Look"}
             </button>
           )}
-          {look.description && (
-            <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5 line-clamp-2 leading-snug">
-              {look.description}
-            </p>
-          )}
           <div className="flex items-center gap-2 mt-1">
             <p className="text-[13px] text-[var(--foreground-muted)] truncate flex-1 min-w-0">
               {formatPrice(look.totalPrice)}
