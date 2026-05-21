@@ -285,6 +285,8 @@ export default function BuilderPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalLookName, setModalLookName] = useState("");
+  const [showModalDetails, setShowModalDetails] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
   const [tryonStep, setTryonStep] = useState(false);
@@ -811,6 +813,13 @@ export default function BuilderPage() {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
+        try {
+          const ex: unknown[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+          const urlEditId = new URLSearchParams(window.location.search).get("editId");
+          const existingLook = urlEditId ? (ex as { id: string; name?: string }[]).find(o => o.id === urlEditId) : null;
+          setModalLookName(existingLook?.name || `Outfit ${ex.length + 1}`);
+        } catch { setModalLookName("Outfit 1"); }
+        setShowModalDetails(false);
         setShowModal(true);
         // Auto-save the look with its generated image so it's not lost when the modal closes
         persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
@@ -3200,78 +3209,117 @@ export default function BuilderPage() {
         </div>
       )}
 
-      {/* ── Generated image modal (preserved exactly) ──────────────────────── */}
+      {/* ── Generated image modal ────────────────────────────────────────────── */}
       {showModal && generatedImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="relative bg-[var(--background)] shadow-2xl max-w-xl w-full mx-4 animate-scale-in rounded-2xl overflow-hidden"
+            className="relative bg-[var(--background)] shadow-2xl max-w-sm w-full mx-4 animate-scale-in rounded-2xl overflow-hidden flex flex-col"
+            style={{ maxHeight: "92dvh" }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]">
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                  AI Generated Look
-                </p>
-                <p className="font-mono text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                  {activeStyle === "mannequin" ? "Mannequin" : activeStyle === "flatlay" ? "Flat lay" : "On You"} · {selectedCount} pieces
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Regenerate */}
+            {/* Header — editable name */}
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--border)] shrink-0">
+              <input
+                type="text"
+                value={modalLookName}
+                onChange={e => setModalLookName(e.target.value)}
+                className="flex-1 min-w-0 text-[15px] font-semibold bg-transparent outline-none text-[var(--foreground)] border-b border-transparent focus:border-[var(--border-strong)] transition-colors pb-0.5 placeholder-[var(--foreground-subtle)]"
+                placeholder="Name your look…"
+              />
+              <div className="flex items-center gap-2.5 shrink-0">
                 <button
                   onClick={() => { setShowModal(false); openStylePicker(); }}
-                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="font-mono flex items-center gap-1 text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                     <path d="M10 6A4 4 0 1 1 6 2M6 2L9 1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Regenerate
+                  Regen
                 </button>
-                {/* Download */}
                 <a
                   href={generatedImage}
                   download="goo-outfit.png"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="font-mono flex items-center gap-1 text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                     <path d="M6 1V8M3 6L6 9L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M1 10H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  Download
+                  Save file
                 </a>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <button onClick={() => setShowModal(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                  <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
                     <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
             </div>
 
+            {/* Image */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={generatedImage}
               alt="AI generated outfit"
-              className="w-full aspect-square object-cover"
+              className="w-full object-cover flex-1 min-h-0"
+              style={{ aspectRatio: "3/4" }}
             />
 
-            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-4">
-              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
-                AI-generated image based on selected pieces. May not reflect exact products.
-              </p>
-              {/* Save */}
+            {/* Collapsible details */}
+            <div className="shrink-0 border-t border-[var(--border)]">
               <button
-                onClick={() => { saveOutfit(); setShowModal(false); router.push("/saved"); }}
+                onClick={() => setShowModalDetails(v => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <span>Details</span>
+                <svg
+                  width="10" height="10" viewBox="0 0 10 10" fill="none"
+                  className={`transition-transform duration-200 ${showModalDetails ? "rotate-180" : ""}`}
+                >
+                  <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {showModalDetails && (
+                <div className="px-5 pb-4 border-t border-[var(--border)]">
+                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-2 mt-3">Style tags</p>
+                  {styleKeywords.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {styleKeywords.map(kw => (
+                        <span key={kw} className="text-[9px] tracking-[0.1em] uppercase px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--foreground-muted)]">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[var(--foreground-subtle)]">No tags</p>
+                  )}
+                  <p className="font-mono text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mt-3 mb-1">Summary</p>
+                  <p className="text-[12px] text-[var(--foreground-muted)]">
+                    {selectedCount} piece{selectedCount !== 1 ? "s" : ""} · {formatPrice(totalPrice)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer — save */}
+            <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-4 shrink-0">
+              <p className="font-mono text-[9px] text-[var(--foreground-subtle)] leading-relaxed">
+                May not reflect exact products.
+              </p>
+              <button
+                onClick={() => {
+                  persistLook({ name: modalLookName });
+                  setSaved(true);
+                  setShowModal(false);
+                  router.push("/saved?tab=looks");
+                }}
                 className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0"
               >
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5">
                   <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
                 </svg>
                 Save
