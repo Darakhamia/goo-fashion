@@ -22,6 +22,7 @@ export async function GET() {
   const looks = (data ?? []).map((r) => ({
     id: r.id,
     savedAt: r.saved_at,
+    name: r.look_name ?? undefined,
     pieces: r.pieces,
     totalPrice: r.total_price,
     styleKeywords: r.style_keywords,
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
       id: body.id,
       user_id: userId,
       saved_at: body.savedAt ?? new Date().toISOString(),
+      look_name: body.name ?? null,
       pieces: body.pieces,
       total_price: body.totalPrice ?? null,
       style_keywords: body.styleKeywords ?? [],

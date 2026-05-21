@@ -259,6 +259,8 @@ export default function BuilderPage() {
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [pendingLookName, setPendingLookName] = useState("");
   const [colorPickerSlot, setColorPickerSlot] = useState<SlotId | null>(null);
   const [colorPickerProduct, setColorPickerProduct] = useState<Product | null>(null);
 
@@ -636,7 +638,7 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string } = {}) => {
+  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string } = {}) => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -674,6 +676,7 @@ export default function BuilderPage() {
                 pieces: mergedPieces,
                 totalPrice,
                 styleKeywords,
+                ...(extra.name !== undefined && { name: extra.name }),
                 // null explicitly clears the stored image; undefined means "don't touch"
                 ...(extra.generatedImage !== undefined && { generatedImage: extra.generatedImage ?? null }),
                 ...(extra.generatedStyle !== undefined && { generatedStyle: extra.generatedStyle }),
@@ -685,6 +688,7 @@ export default function BuilderPage() {
         const outfit = {
           id: savedId,
           savedAt: new Date().toISOString(),
+          name: extra.name || `Outfit ${existing.length + 1}`,
           pieces,
           totalPrice,
           styleKeywords,
@@ -711,24 +715,26 @@ export default function BuilderPage() {
   };
 
   const saveOutfit = () => {
-    if (!isLoggedIn) {
-      login("", "");
-      return;
+    if (!isLoggedIn) { login("", ""); return; }
+    try {
+      const urlEditId = new URLSearchParams(window.location.search).get("editId");
+      const existing: { id: string; name?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
+      setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
+    } catch {
+      setPendingLookName("Outfit 1");
     }
-    // Pass current generatedImage — if null (edited since last generation), clears stored image
-    persistLook({ generatedImage: generatedImage });
-    setSaved(true);
-    setShowSaveModal(true);
+    setShowNameModal(true);
   };
 
   const handleMobileSave = () => {
-    if (!isLoggedIn) {
-      login("", "");
-      return;
-    }
-    persistLook({ generatedImage: generatedImage });
+    saveOutfit();
+  };
+
+  const confirmSave = () => {
+    persistLook({ generatedImage: generatedImage, name: pendingLookName.trim() || "My Look" });
     setSaved(true);
-    setShowSavedPopup(true);
+    setShowNameModal(false);
   };
 
   const openStylePicker = () => {
@@ -2256,6 +2262,112 @@ export default function BuilderPage() {
       </div>
 
       {/* ── MOBILE SAVE MODAL ─────────────────────────────────────────────── */}
+      {/* ── NAME & SAVE MODAL (desktop + mobile) ─────────────────────────── */}
+      <AnimatePresence>
+      {showNameModal && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowNameModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl overflow-hidden w-full max-w-sm flex flex-col"
+            style={{ maxHeight: "90dvh" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Look preview */}
+            <div className="relative overflow-hidden bg-[var(--surface)]" style={{ aspectRatio: "3/4" }}>
+              {generatedImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={generatedImage} alt="Look preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                  {(() => {
+                    const frames = SLOTS
+                      .filter(s => selection[s.id] != null)
+                      .map(s => {
+                        const p = selection[s.id]!;
+                        const variantId = variantOverrides[s.id];
+                        const activeVariant = variantId ? p.variants?.find(v => v.id === variantId) : null;
+                        const colorKey = colorImageOverrides[s.id];
+                        const colorImgUrl = colorKey && p.colorImages?.[colorKey]?.[0];
+                        return { imageUrl: colorImgUrl || activeVariant?.imageUrl || p.imageUrl, name: p.name };
+                      });
+                    const n = frames.length;
+                    const cell = (f: { imageUrl?: string; name: string }, key: string, pad = "p-2") => (
+                      <div key={key} className="relative overflow-hidden flex-1 bg-white">
+                        {f.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={f.imageUrl} alt={f.name} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
+                        )}
+                      </div>
+                    );
+                    if (n === 0) return <div className="absolute inset-0 flex items-center justify-center"><span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces selected</span></div>;
+                    if (n === 1) return <div className="absolute inset-0 flex">{cell(frames[0], "f0", "p-4")}</div>;
+                    if (n === 2) return <div className="absolute inset-0 flex gap-px bg-gray-200">{frames.map((f, i) => cell(f, `f${i}`))}</div>;
+                    if (n === 3) return (
+                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 60%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                        <div className="relative overflow-hidden flex-1 bg-white">{frames[2].imageUrl && <img src={frames[2].imageUrl} alt={frames[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />}</div>
+                      </div>
+                    );
+                    if (n === 4) return (
+                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                        <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                        <div className="flex gap-px flex-1 bg-gray-200">{frames.slice(2, 4).map((f, i) => cell(f, `f${i+2}`))}</div>
+                      </div>
+                    );
+                    return (
+                      <div className="absolute inset-0 flex flex-col gap-px bg-gray-200">
+                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 57%" }}>{frames.slice(0, 2).map((f, i) => cell(f, `f${i}`))}</div>
+                        <div className="flex gap-px bg-gray-200" style={{ flex: "0 0 43%" }}>{frames.slice(2).map((f, i) => cell(f, `f${i+2}`, "p-1.5"))}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {generatedImage && generatedStyle && (
+                <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+                  {generatedStyle === "flatlay" ? "Flat lay" : generatedStyle === "tryon" ? "On You" : "AI"}
+                </span>
+              )}
+            </div>
+
+            {/* Name input + actions */}
+            <div className="shrink-0 px-5 pt-4 pb-6 border-t border-[var(--border)]">
+              <input
+                type="text"
+                value={pendingLookName}
+                onChange={e => setPendingLookName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && pendingLookName.trim()) confirmSave(); }}
+                className="w-full text-[20px] font-bold bg-transparent outline-none border-b border-[var(--border-strong)] pb-2 mb-5 text-[var(--foreground)] placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground)] transition-colors"
+                placeholder="Name your look…"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowNameModal(false)}
+                  className="flex-1 h-11 border border-[var(--border)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSave}
+                  disabled={!pendingLookName.trim()}
+                  className="flex-1 h-11 bg-[var(--foreground)] text-[var(--background)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+                >
+                  Save look
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      </AnimatePresence>
+
       {showSaveModal && (
         <div className="md:hidden fixed inset-0 z-[60] flex items-end justify-center">
           {/* Backdrop */}
