@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -29,11 +29,21 @@ interface SavedLook {
 const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories", "accessories2"];
 
 // ── Builder outfit card ───────────────────────────────────────────────────────
-function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: () => void; allProducts: Product[] }) {
+function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; onDelete: () => void; onRename: (id: string, name: string) => void; allProducts: Product[] }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { formatPrice } = useCurrency();
   const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(look.name || "My Look");
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const commitName = () => {
+    const trimmed = nameValue.trim() || "My Look";
+    setNameValue(trimmed);
+    setEditingName(false);
+    if (trimmed !== (look.name || "My Look")) onRename(look.id, trimmed);
+  };
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -220,9 +230,26 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
 
         {/* Info */}
         <div className="px-5 pt-4 pb-5">
-          <p className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
-            {look.name || "My Look"}
-          </p>
+          {editingName ? (
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={nameValue}
+              onChange={e => setNameValue(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commitName(); } if (e.key === "Escape") { setNameValue(look.name || "My Look"); setEditingName(false); } }}
+              className="w-full text-[15px] font-semibold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
+              autoFocus
+            />
+          ) : (
+            <button
+              onClick={() => { setNameValue(look.name || "My Look"); setEditingName(true); }}
+              className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug w-full text-left hover:opacity-70 transition-opacity"
+              title="Click to rename"
+            >
+              {look.name || "My Look"}
+            </button>
+          )}
           {look.description && (
             <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5 line-clamp-2 leading-snug">
               {look.description}
@@ -565,6 +592,18 @@ export default function SavedPage() {
     });
   };
 
+  const renameLook = (id: string, name: string) => {
+    setMyLooks((prev) => {
+      const next = prev.map((l) => l.id === id ? { ...l, name } : l);
+      try { localStorage.setItem("goo-saved-outfits", JSON.stringify(next)); } catch {}
+      if (user) {
+        const look = next.find((l) => l.id === id);
+        if (look) fetch("/api/user/looks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(look) }).catch(() => {});
+      }
+      return next;
+    });
+  };
+
   const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
   const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
@@ -706,7 +745,7 @@ export default function SavedPage() {
                   key={look.id}
                   variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                 >
-                  <LookCard look={look} onDelete={() => deleteLook(look.id)} allProducts={allProducts} />
+                  <LookCard look={look} onDelete={() => deleteLook(look.id)} onRename={renameLook} allProducts={allProducts} />
                 </motion.div>
               ))}
             </motion.div>
