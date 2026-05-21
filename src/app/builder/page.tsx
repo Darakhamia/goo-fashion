@@ -701,7 +701,8 @@ export default function BuilderPage() {
             : o
         );
       } else {
-        savedId = `outfit-${Date.now()}`;
+        // Reuse targetId (editId) so we upsert the correct Supabase record
+        savedId = targetId || `outfit-${Date.now()}`;
         const outfit = {
           id: savedId,
           savedAt: new Date().toISOString(),
@@ -713,7 +714,8 @@ export default function BuilderPage() {
           ...(extra.generatedImage && { generatedImage: extra.generatedImage }),
           ...(extra.generatedStyle && { generatedStyle: extra.generatedStyle }),
         };
-        updated = [outfit, ...existing].slice(0, 50);
+        // Replace any stale entry with the same id, then prepend
+        updated = [outfit, ...existing.filter((o) => o.id !== savedId)].slice(0, 50);
       }
       localStorage.setItem("goo-saved-outfits", JSON.stringify(updated));
       setPersistedLookId(savedId);
@@ -752,7 +754,7 @@ export default function BuilderPage() {
   };
 
   const confirmSave = () => {
-    persistLook({ generatedImage: generatedImage, generatedStyle: activeStyle, name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined });
+    persistLook({ name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined });
     setSaved(true);
     setShowNameModal(false);
     router.push("/saved?tab=looks");

@@ -571,23 +571,33 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (!isLoaded) return;
+    // Always load from localStorage immediately (has the latest names)
+    try {
+      const raw = localStorage.getItem("goo-saved-outfits");
+      if (raw) setMyLooks(JSON.parse(raw));
+    } catch {}
+
     if (user) {
       fetch("/api/user/looks")
         .then((r) => r.json())
-        .then((d) => { if (Array.isArray(d)) setMyLooks(d); })
-        .catch(() => {
+        .then((apiLooks: SavedLook[]) => {
+          if (!Array.isArray(apiLooks)) return;
+          // Merge: prefer localStorage name/description since Supabase may not
+          // have look_name/look_description columns yet
           try {
             const raw = localStorage.getItem("goo-saved-outfits");
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            if (raw) setMyLooks(JSON.parse(raw));
-          } catch {}
-        });
-    } else {
-      try {
-        const raw = localStorage.getItem("goo-saved-outfits");
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (raw) setMyLooks(JSON.parse(raw));
-      } catch {}
+            const local: SavedLook[] = raw ? JSON.parse(raw) : [];
+            const localById = new Map(local.map((l) => [l.id, l]));
+            setMyLooks(apiLooks.map((a) => ({
+              ...a,
+              name: a.name ?? localById.get(a.id)?.name,
+              description: a.description ?? localById.get(a.id)?.description,
+            })));
+          } catch {
+            setMyLooks(apiLooks);
+          }
+        })
+        .catch(() => {});
     }
   }, [isLoaded, user]);
 
