@@ -82,11 +82,6 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
       })
       .join("&");
 
-  const date = new Date(look.savedAt).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDelete(true);
@@ -96,14 +91,14 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
     <>
       <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {/* Main image — click opens detail modal */}
-        <button onClick={() => setOpen(true)} className="block w-full text-left relative overflow-hidden aspect-[3/4]">
+        <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden aspect-[3/4]">
           {look.generatedImage ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={look.generatedImage}
                 alt="Generated look"
-                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                className="w-full h-full object-cover"
               />
               <span className="absolute top-2.5 left-2.5 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
                 {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
@@ -120,7 +115,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                   <div key={key} className="relative overflow-hidden flex-1 bg-white">
                     {piece.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={piece.imageUrl} alt={piece.name ?? ""} className={`absolute inset-0 w-full h-full object-contain ${pad} group-hover:scale-[1.03] transition-transform duration-500`} />
+                      <img src={piece.imageUrl} alt={piece.name ?? ""} className={`absolute inset-0 w-full h-full object-contain ${pad}`} />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center bg-[#f0f0f0]">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="opacity-30">
@@ -150,7 +145,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                     <div className="relative overflow-hidden flex-1 bg-white">
                       {frames[2].imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={frames[2].imageUrl} alt={frames[2].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-2 group-hover:scale-[1.03] transition-transform duration-500" />
+                        <img src={frames[2].imageUrl} alt={frames[2].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-2" />
                       )}
                     </div>
                   </div>
@@ -190,7 +185,7 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
                     <div className="relative overflow-hidden bg-white" style={{ flex: "0 0 27%" }}>
                       {frames[5].imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={frames[5].imageUrl} alt={frames[5].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-1.5 group-hover:scale-[1.03] transition-transform duration-500" />
+                        <img src={frames[5].imageUrl} alt={frames[5].name ?? ""} className="absolute inset-0 w-full h-full object-contain p-1.5" />
                       )}
                     </div>
                   </div>
