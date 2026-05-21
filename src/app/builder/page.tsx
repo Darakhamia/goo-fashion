@@ -733,7 +733,7 @@ export default function BuilderPage() {
   };
 
   const confirmSave = () => {
-    persistLook({ generatedImage: generatedImage, name: pendingLookName.trim() || "My Look" });
+    persistLook({ generatedImage: generatedImage, generatedStyle: activeStyle, name: pendingLookName.trim() || "My Look" });
     setSaved(true);
     setShowNameModal(false);
   };
@@ -2330,9 +2330,9 @@ export default function BuilderPage() {
                   })()}
                 </div>
               )}
-              {generatedImage && generatedStyle && (
+              {generatedImage && (
                 <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
-                  {generatedStyle === "flatlay" ? "Flat lay" : generatedStyle === "tryon" ? "On You" : "AI"}
+                  {activeStyle === "flatlay" ? "Flat lay" : activeStyle === "tryon" ? "On You" : "AI"}
                 </span>
               )}
             </div>
