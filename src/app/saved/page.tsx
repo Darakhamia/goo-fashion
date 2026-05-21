@@ -221,30 +221,32 @@ function LookCard({ look, onDelete, allProducts }: { look: SavedLook; onDelete: 
           <p className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {formatPrice(look.totalPrice)}
           </p>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
-            {look.styleKeywords.slice(0, 3).join(" · ")}
-          </p>
-          <div className="flex gap-1.5 mt-3">
-            <Link
-              href={builderUrl}
-              className="flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              Edit
-            </Link>
-            <button
-              onClick={look.generatedImage ? handleShare : undefined}
-              disabled={!look.generatedImage || shareState !== "idle"}
-              title={shareState === "done" ? "Submitted for review" : "Share this look"}
-              className={`flex-1 h-7 flex items-center justify-center text-[9px] tracking-[0.1em] uppercase font-medium rounded-lg border transition-colors disabled:cursor-default ${
-                !look.generatedImage
-                  ? "border-[var(--border)] text-[var(--foreground-subtle)] opacity-25"
-                  : shareState === "done"
-                  ? "border-green-500/40 text-green-500 bg-green-500/5"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]"
-              }`}
-            >
-              {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
-            </button>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[13px] text-[var(--foreground-muted)] truncate flex-1 min-w-0">
+              {look.styleKeywords.slice(0, 2).join(" · ")}
+            </p>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link
+                href={builderUrl}
+                className="text-[11px] tracking-[0.1em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={look.generatedImage ? handleShare : undefined}
+                disabled={!look.generatedImage || shareState !== "idle"}
+                title={shareState === "done" ? "Submitted for review" : "Share this look"}
+                className={`text-[11px] tracking-[0.1em] uppercase font-medium transition-colors disabled:cursor-default ${
+                  !look.generatedImage
+                    ? "text-[var(--foreground-subtle)] opacity-30"
+                    : shareState === "done"
+                    ? "text-green-500"
+                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
