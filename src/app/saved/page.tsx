@@ -341,15 +341,22 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
           >
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-              <div>
-                <p className="text-[13px] font-medium text-[var(--foreground)]">
-                  {formatPrice(look.totalPrice)}
+              <div className="flex-1 min-w-0 mr-4">
+                <input
+                  type="text"
+                  value={nameValue}
+                  onChange={e => setNameValue(e.target.value)}
+                  onBlur={commitName}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") { e.preventDefault(); commitName(); }
+                    if (e.key === "Escape") { setNameValue(look.name || "My Look"); }
+                  }}
+                  className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-transparent hover:border-[var(--border)] focus:border-[var(--foreground)] transition-colors pb-0.5 text-[var(--foreground)] leading-snug"
+                  placeholder="Name your look…"
+                />
+                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
+                  {formatPrice(look.totalPrice)}{look.styleKeywords.length > 0 ? " · " + look.styleKeywords.slice(0, 3).join(" · ") : ""}
                 </p>
-                {look.styleKeywords.length > 0 && (
-                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
-                    {look.styleKeywords.slice(0, 3).join(" · ")}
-                  </p>
-                )}
               </div>
               <div className="flex items-center gap-4">
                 <Link
