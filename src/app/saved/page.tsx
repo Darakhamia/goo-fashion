@@ -35,12 +35,14 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
   const { formatPrice } = useCurrency();
   const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
   const [editingName, setEditingName] = useState(false);
+  const [modalEditingName, setModalEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(look.name || "My Look");
 
   const commitName = () => {
     const trimmed = nameValue.trim() || "My Look";
     setNameValue(trimmed);
     setEditingName(false);
+    setModalEditingName(false);
     if (trimmed !== (look.name || "My Look")) onRename(look.id, trimmed);
   };
 
@@ -323,7 +325,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          onClick={() => setOpen(false)}
+          onClick={() => { setOpen(false); setModalEditingName(false); }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 12 }}
@@ -337,7 +339,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div className="flex-1 min-w-0 mr-4">
-                {editingName ? (
+                {modalEditingName ? (
                   <input
                     type="text"
                     value={nameValue}
@@ -345,17 +347,17 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                     onBlur={commitName}
                     onKeyDown={e => {
                       if (e.key === "Enter") { e.preventDefault(); commitName(); }
-                      if (e.key === "Escape") { setNameValue(look.name || "My Look"); setEditingName(false); }
+                      if (e.key === "Escape") { setNameValue(look.name || "My Look"); setModalEditingName(false); }
                     }}
                     className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
-                    placeholder="Name your look…"
+                    placeholder="Название лука…"
                     autoFocus
                   />
                 ) : (
                   <button
-                    onClick={() => { setNameValue(look.name || "My Look"); setEditingName(true); }}
+                    onClick={(e) => { e.stopPropagation(); setNameValue(nameValue); setModalEditingName(true); }}
                     className="flex items-center gap-2 group/rename max-w-full"
-                    title="Rename"
+                    title="Переименовать"
                   >
                     <span className="text-[17px] font-bold text-[var(--foreground)] leading-snug truncate">
                       {nameValue}
@@ -396,7 +398,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                   )
                 )}
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); setModalEditingName(false); }}
                   className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
