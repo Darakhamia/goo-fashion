@@ -824,7 +824,7 @@ export default function BrowsePage() {
                 {/* Filter toggle button */}
                 <button
                   onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
                     filtersOpen
                       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                       : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -833,7 +833,7 @@ export default function BrowsePage() {
                   <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
                     <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <span>Filter</span>
+                  <span className="hidden sm:inline">Filter</span>
                   {activeFiltersCount > 0 && (
                     <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
                       {activeFiltersCount}
@@ -856,13 +856,13 @@ export default function BrowsePage() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.92 }}
                         transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                        className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
                       >
                         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                           <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
                           <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                         </svg>
-                        <span>Search</span>
+                        <span className="hidden sm:inline">Search</span>
                       </motion.button>
                     ) : (
                       <motion.div
@@ -903,7 +903,7 @@ export default function BrowsePage() {
               <div className="relative flex items-center shrink-0 ml-2" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
-                  className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                  className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
                     sortOpen
                       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                       : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -912,12 +912,19 @@ export default function BrowsePage() {
                   <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
                     <path d="M1 1.5H10M2.5 5H8.5M4 8.5H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  <span>
+                  <span className="hidden sm:inline">
                     {sort === "featured" && "Featured"}
                     {sort === "price-asc" && "Price ↑"}
                     {sort === "price-desc" && "Price ↓"}
                     {sort === "newest" && "Newest"}
                   </span>
+                  {sort !== "featured" && (
+                    <span className="sm:hidden text-[9px]">
+                      {sort === "price-asc" && "↑"}
+                      {sort === "price-desc" && "↓"}
+                      {sort === "newest" && "New"}
+                    </span>
+                  )}
                   <svg
                     width="8"
                     height="8"
