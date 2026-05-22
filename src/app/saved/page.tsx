@@ -337,18 +337,37 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div className="flex-1 min-w-0 mr-4">
-                <input
-                  type="text"
-                  value={nameValue}
-                  onChange={e => setNameValue(e.target.value)}
-                  onBlur={commitName}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") { e.preventDefault(); commitName(); }
-                    if (e.key === "Escape") { setNameValue(look.name || "My Look"); }
-                  }}
-                  className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-transparent hover:border-[var(--border)] focus:border-[var(--foreground)] transition-colors pb-0.5 text-[var(--foreground)] leading-snug"
-                  placeholder="Name your look…"
-                />
+                {editingName ? (
+                  <input
+                    type="text"
+                    value={nameValue}
+                    onChange={e => setNameValue(e.target.value)}
+                    onBlur={commitName}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") { e.preventDefault(); commitName(); }
+                      if (e.key === "Escape") { setNameValue(look.name || "My Look"); setEditingName(false); }
+                    }}
+                    className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
+                    placeholder="Name your look…"
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    onClick={() => { setNameValue(look.name || "My Look"); setEditingName(true); }}
+                    className="flex items-center gap-2 group/rename max-w-full"
+                    title="Rename"
+                  >
+                    <span className="text-[17px] font-bold text-[var(--foreground)] leading-snug truncate">
+                      {nameValue}
+                    </span>
+                    <svg
+                      width="11" height="11" viewBox="0 0 16 16" fill="currentColor"
+                      className="shrink-0 text-[var(--foreground-subtle)] opacity-40 group-hover/rename:opacity-90 transition-opacity"
+                    >
+                      <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
+                    </svg>
+                  </button>
+                )}
                 <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
                   {formatPrice(look.totalPrice)}{look.styleKeywords.length > 0 ? " · " + look.styleKeywords.slice(0, 3).join(" · ") : ""}
                 </p>
