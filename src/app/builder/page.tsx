@@ -394,6 +394,23 @@ export default function BuilderPage() {
       setSelection(restored);
       if (Object.keys(restoredVariants).length > 0) setVariantOverrides(restoredVariants);
     }
+
+    // Restore generated image from the saved look so that if items are changed
+    // (which calls setGeneratedImage(null)), the save will correctly clear it.
+    const editId = params.get("editId");
+    if (editId) {
+      try {
+        const existing: { id: string; generatedImage?: string | null; generatedStyle?: string }[] =
+          JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+        const existing_look = existing.find(o => o.id === editId);
+        if (existing_look?.generatedImage) {
+          setGeneratedImage(existing_look.generatedImage);
+          if (existing_look.generatedStyle) {
+            setActiveStyle(existing_look.generatedStyle as "mannequin" | "flatlay" | "tryon");
+          }
+        }
+      } catch {}
+    }
   }, [products]);
 
   // ── Filtered product list for the right-panel catalog ────────────────────
@@ -754,7 +771,7 @@ export default function BuilderPage() {
   };
 
   const confirmSave = () => {
-    persistLook({ name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined });
+    persistLook({ name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined, generatedImage: generatedImage });
     setSaved(true);
     setShowNameModal(false);
     router.push("/saved?tab=looks");
@@ -3361,7 +3378,7 @@ export default function BuilderPage() {
               </p>
               <button
                 onClick={() => {
-                  persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined });
+                  persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage });
                   setSaved(true);
                   setShowModal(false);
                   router.push("/saved?tab=looks");
