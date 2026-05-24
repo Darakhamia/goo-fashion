@@ -1612,12 +1612,13 @@ export default function BuilderPage() {
                                       : [...new Set([...prev, ...grpLabels])]
                                   );
                                 }}
-                                className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                style={{ width: "calc(100% - 32px)" }}
                               >
-                                <span className={`text-[12px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
-                                <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
-                                  {grpViewAllChecked && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 14, height: 14, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                                  {grpViewAllChecked && <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                 </div>
+                                <span className={`text-[12px] font-semibold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
                               </button>
                               {group.items.map(item => {
                                 const isChk = selectedSubcategories.includes(item.label);
@@ -1625,7 +1626,7 @@ export default function BuilderPage() {
                                   <button
                                     key={item.label}
                                     onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(l => l !== item.label) : [...prev, item.label]); }}
-                                    className="w-full flex items-center justify-between pl-10 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                    className="w-full flex items-center justify-between pl-8 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                                   >
                                     <span className={`text-[12px] font-medium ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                                     <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
@@ -2591,7 +2592,7 @@ export default function BuilderPage() {
                           </svg>
                         </button>
                         {isOpen && (<>
-                          {/* View all row */}
+                          {/* View all — card style with left checkbox */}
                           <button
                             onClick={() => {
                               setCatalogCategory(null);
@@ -2601,19 +2602,20 @@ export default function BuilderPage() {
                                   : [...new Set([...prev, ...groupLabels])]
                               );
                             }}
-                            className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                            className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                            style={{ width: "calc(100% - 32px)" }}
                           >
-                            <span className={`text-[14px] font-semibold italic underline underline-offset-2 decoration-[var(--border-strong)] ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
                             <div
                               className="shrink-0 flex items-center justify-center border transition-colors"
-                              style={{ width: 20, height: 20, borderRadius: "50%", background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
+                              style={{ width: 16, height: 16, background: viewAllChecked ? "var(--foreground)" : "transparent", borderColor: viewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}
                             >
                               {viewAllChecked && (
-                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
                                   <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               )}
                             </div>
+                            <span className={`text-[14px] font-semibold italic ${viewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
                           </button>
                           {/* Subcategory items */}
                           {group.items.map(item => {
@@ -2627,7 +2629,7 @@ export default function BuilderPage() {
                                     isChecked ? prev.filter(l => l !== item.label) : [...prev, item.label]
                                   );
                                 }}
-                                className="w-full flex items-center justify-between border-t border-[var(--border)] pl-12 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
+                                className="w-full flex items-center justify-between border-t border-[var(--border)] pl-10 pr-4 py-3.5 hover:bg-[var(--surface)] transition-colors active:bg-[var(--surface)]"
                               >
                                 <span className={`text-[14px] font-medium ${isChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
                                 <div
