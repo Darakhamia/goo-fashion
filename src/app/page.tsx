@@ -18,7 +18,6 @@ async function getData() {
   ]);
   return {
     bentoProducts: allProducts.slice(0, 6),
-    heroOutfits: allOutfits.slice(0, 24),
     featuredOutfits: allOutfits.slice(0, 6),
     bentoOutfit: allOutfits[0] ?? null,
   };
@@ -373,12 +372,12 @@ function FeaturesBento({
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { bentoProducts, heroOutfits, featuredOutfits, bentoOutfit } = await getData();
+  const { bentoProducts, featuredOutfits, bentoOutfit } = await getData();
 
   return (
     <>
       {/* ── HERO ── */}
-      <HeroSection outfits={heroOutfits} />
+      <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
       <Section soft>

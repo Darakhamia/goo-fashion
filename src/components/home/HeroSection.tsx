@@ -1,84 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
-import Floating, { FloatingElement } from "@/components/ui/parallax-floating";
+import { motion } from "motion/react";
 import { GooeyText } from "@/components/ui/gooey-text-morphing";
-import type { Outfit } from "@/lib/types";
+import { EtherealShadow } from "@/components/ui/etheral-shadow";
 
-interface HeroSectionProps {
-  outfits: Outfit[];
-}
+export function HeroSection() {
+  const [mounted, setMounted] = useState(false);
 
-const SLOTS = [
-  { depth: 0.6,  className: "top-[2%]    left-[5%]",   w: 210, h: 260 },
-  { depth: 1.2,  className: "top-[5%]    right-[5%]",  w: 200, h: 250 },
-  { depth: 0.8,  className: "top-[37%]   left-[3%]",   w: 220, h: 275 },
-  { depth: 1.5,  className: "top-[36%]   right-[3%]",  w: 210, h: 260 },
-  { depth: 1.0,  className: "top-[70%]   left-[5%]",   w: 210, h: 260 },
-  { depth: 0.7,  className: "top-[67%]   right-[5%]",  w: 220, h: 275 },
-  { depth: 1.8,  className: "top-[2%]    left-[35%]",  w: 130, h: 165 },
-  { depth: 1.3,  className: "bottom-[2%] left-[39%]",  w: 130, h: 165 },
-];
-
-export function HeroSection({ outfits }: HeroSectionProps) {
-  const [epoch, setEpoch] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setEpoch((e) => e + 1), 30_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const getOutfit = (slotIndex: number) => {
-    if (!outfits.length) return null;
-    return outfits[(slotIndex + epoch * SLOTS.length) % outfits.length];
-  };
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Parallax floating outfit images — desktop only */}
-      <div className="hidden md:block">
-      <Floating sensitivity={-0.8} easingFactor={0.04}>
-        {SLOTS.map((slot, i) => {
-          const outfit = getOutfit(i);
-          return (
-            <FloatingElement key={i} depth={slot.depth} className={slot.className}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${i}-${epoch}`}
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  className="rounded-2xl overflow-hidden"
-                  style={{ width: slot.w, height: slot.h }}
-                >
-                  {outfit?.imageUrl ? (
-                    <Image
-                      src={outfit.imageUrl}
-                      alt={outfit.name ?? ""}
-                      width={slot.w}
-                      height={slot.h}
-                      className="object-cover w-full h-full opacity-70 hover:opacity-90 transition-opacity duration-300"
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-full bg-[var(--border)] opacity-40"
-                      style={{ width: slot.w, height: slot.h }}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </FloatingElement>
-          );
-        })}
-      </Floating>
-      </div>
+      {/* Ethereal shadow background */}
+      {mounted && (
+        <div className="absolute inset-0 z-0">
+          <EtherealShadow
+            color="rgba(0, 0, 0, 0.13)"
+            animation={{ scale: 55, speed: 65 }}
+            noise={{ opacity: 0.5, scale: 1.1 }}
+            sizing="fill"
+          />
+        </div>
+      )}
 
       {/* Center content */}
-      <div className="relative z-10 flex flex-col items-center gap-8 px-6">
+      <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
         <GooeyText
           texts={["Outfits", "Looks", "Style", "Fits"]}
           morphTime={1}
@@ -108,7 +56,7 @@ export function HeroSection({ outfits }: HeroSectionProps) {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5">
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10">
         <span className="text-[9px] tracking-[0.3em] uppercase text-[var(--foreground-subtle)]">
           scroll
         </span>
