@@ -505,7 +505,7 @@ export default function CSVImportPage() {
             </ul>
           )}
           <div className="flex gap-3 pt-1">
-            <a href="/admin/products" className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-5 py-2 hover:opacity-80 transition-opacity">
+            <a href="/goo-studio/products" className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-5 py-2 hover:opacity-80 transition-opacity">
               View products
             </a>
             <button onClick={reset} className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] px-5 py-2 hover:bg-[var(--surface)] transition-colors text-[var(--foreground)]">

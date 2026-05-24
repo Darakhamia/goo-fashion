@@ -825,7 +825,7 @@ function UserDrawer({
                 {currentIsSuperAdmin && (
                   <ToggleRow
                     label="Admin"
-                    description="Grants access to /admin. Only super admin can change this."
+                    description="Grants access to /goo-studio. Only super admin can change this."
                     checked={isAdmin}
                     onChange={setIsAdmin}
                   />

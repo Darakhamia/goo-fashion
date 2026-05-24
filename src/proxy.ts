@@ -6,7 +6,7 @@ const isProtectedRoute = createRouteMatcher([
   "/profile(.*)",
   "/saved(.*)",
   "/stylist(.*)",
-  "/admin(.*)",
+  "/goo-studio(.*)",
 ]);
 
 const COMING_SOON = process.env.COMING_SOON === "true";

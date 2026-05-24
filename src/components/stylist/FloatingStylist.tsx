@@ -12,7 +12,7 @@ export function FloatingStylist() {
 
   // Hide on admin/auth pages
   const isHidden =
-    pathname.startsWith("/admin") ||
+    pathname.startsWith("/goo-studio") ||
     pathname === "/login";
 
   useEffect(() => {

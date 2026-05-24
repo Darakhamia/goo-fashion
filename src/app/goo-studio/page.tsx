@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Signups</h2>
-            <Link href="/admin/users" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/users" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -278,7 +278,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Outfits</h2>
-            <Link href="/admin/outfits" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/outfits" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Products</h2>
-          <Link href="/admin/products" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+          <Link href="/goo-studio/products" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
             View all →
           </Link>
         </div>
@@ -358,10 +358,10 @@ export default function AdminDashboardPage() {
         <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">Quick Actions</h2>
         <div className="flex gap-3 flex-wrap">
           {[
-            { href: "/admin/products", label: "Add Product" },
-            { href: "/admin/outfits",  label: "Add Outfit" },
-            { href: "/admin/users",    label: "Manage Users" },
-            { href: "/admin/settings", label: "Settings" },
+            { href: "/goo-studio/products", label: "Add Product" },
+            { href: "/goo-studio/outfits",  label: "Add Outfit" },
+            { href: "/goo-studio/users",    label: "Manage Users" },
+            { href: "/goo-studio/settings", label: "Settings" },
           ].map((a) => (
             <Link
               key={a.href}
