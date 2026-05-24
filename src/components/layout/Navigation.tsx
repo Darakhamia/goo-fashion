@@ -93,7 +93,7 @@ export default function Navigation() {
         <Link
           href="/"
           style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 700 }}
-          className={`text-2xl tracking-[0.2em] hover:opacity-70 transition-opacity duration-200 ${logoColor}`}
+          className={`text-[26px] tracking-[0.22em] hover:opacity-70 transition-opacity duration-200 ${logoColor}`}
         >
           GOO
         </Link>

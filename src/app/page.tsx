@@ -19,9 +19,9 @@ async function getData() {
     getAllOutfits(),
   ]);
   return {
-    bentoProducts: allProducts.slice(0, 6),
+    bentoProducts: allProducts.slice(0, 12),
     featuredOutfits: allOutfits.slice(0, 6),
-    bentoOutfit: allOutfits[0] ?? null,
+    bentoOutfits: allOutfits.slice(0, 5),
   };
 }
 
@@ -100,7 +100,7 @@ function Lede({
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { bentoProducts, featuredOutfits, bentoOutfit } = await getData();
+  const { bentoProducts, featuredOutfits, bentoOutfits } = await getData();
 
   return (
     <>
@@ -180,7 +180,7 @@ export default async function HomePage() {
           <Kicker>Features</Kicker>
           <SectionH2>Everything you need to create better outfits.</SectionH2>
         </FadeInView>
-        <FeaturesBento products={bentoProducts} outfit={bentoOutfit} />
+        <FeaturesBento products={bentoProducts} outfits={bentoOutfits} />
       </Section>
 
       {/* ── AI STYLIST ── */}
