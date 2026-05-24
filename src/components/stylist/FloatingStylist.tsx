@@ -31,10 +31,10 @@ export function FloatingStylist() {
       <button
         onClick={() => setIsOpen(v => !v)}
         aria-label="Open AI Stylist"
-        className={`hidden md:flex fixed bottom-20 right-6 z-40 items-center justify-center border transition-all duration-300 ${
+        className={`hidden md:flex fixed bottom-6 right-6 z-40 items-center justify-center transition-all duration-300 ${
           isOpen
-            ? "w-10 h-10 rounded-full bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)] shadow-lg"
-            : "rounded-full px-5 py-3 gap-3 bg-[var(--background)] text-[var(--foreground)] border-[var(--border-strong)] hover:border-[var(--foreground)] hover:shadow-[0_0_28px_10px_rgba(255,255,255,0.08)] shadow-[0_0_0_0_rgba(255,255,255,0)]"
+            ? "w-10 h-10 rounded-full bg-[var(--foreground)] text-[var(--background)] shadow-lg"
+            : "rounded-2xl pl-3.5 pr-5 py-3 gap-3 bg-[var(--foreground)] text-[var(--background)] shadow-[0_8px_32px_rgba(0,0,0,0.18)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.24)] hover:scale-[1.02]"
         }`}
       >
         {isOpen ? (
@@ -43,12 +43,16 @@ export function FloatingStylist() {
           </svg>
         ) : (
           <>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 opacity-90">
-              <path d="M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z" />
-            </svg>
-            <div className="flex flex-col items-start gap-0">
-              <span className="font-sans text-[11px] tracking-[0.18em] uppercase font-bold leading-none">AI Stylist</span>
-              <span className="font-sans text-[9.5px] tracking-[0.04em] text-[var(--foreground)] opacity-55 leading-none mt-[3px]">Build your perfect look</span>
+            {/* Avatar with online dot */}
+            <div className="relative shrink-0">
+              <div className="w-7 h-7 rounded-full bg-[var(--background)]/15 flex items-center justify-center text-[12px] font-bold">
+                G
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 border-[1.5px] border-[var(--foreground)]" />
+            </div>
+            <div className="flex flex-col items-start gap-[3px]">
+              <span className="text-[12px] font-semibold tracking-[-0.01em] leading-none">AI Stylist</span>
+              <span className="text-[10px] leading-none" style={{ opacity: 0.45 }}>Build your perfect look</span>
             </div>
           </>
         )}
