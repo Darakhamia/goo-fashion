@@ -1,29 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { GooeyText } from "@/components/ui/gooey-text-morphing";
 import { EtherealShadow } from "@/components/ui/etheral-shadow";
 
 export function HeroSection() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
-
   return (
     <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Ethereal shadow background */}
-      {mounted && (
-        <div className="absolute inset-0 z-0">
-          <EtherealShadow
-            color="rgba(0, 0, 0, 0.13)"
-            animation={{ scale: 55, speed: 65 }}
-            noise={{ opacity: 0.5, scale: 1.1 }}
-            sizing="fill"
-          />
-        </div>
-      )}
+      {/* Ethereal gradient blob background — CSS-only, GPU-composited */}
+      <div className="absolute inset-0 z-0">
+        <EtherealShadow color="rgba(0, 0, 0, 0.11)" />
+      </div>
 
       {/* Center content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
