@@ -13,14 +13,14 @@ interface HeroSectionProps {
 }
 
 const SLOTS = [
-  { depth: 0.6,  className: "top-[4%]   left-[2%]",    w: 210, h: 270 },
-  { depth: 1.2,  className: "top-[8%]   right-[3%]",   w: 190, h: 250 },
-  { depth: 0.8,  className: "top-[38%]  left-[0%]",    w: 230, h: 296 },
-  { depth: 1.5,  className: "top-[34%]  right-[2%]",   w: 196, h: 256 },
-  { depth: 1.0,  className: "top-[65%]  left-[5%]",    w: 208, h: 268 },
-  { depth: 0.7,  className: "top-[62%]  right-[4%]",   w: 220, h: 280 },
-  { depth: 1.8,  className: "top-[1%]   left-[36%]",   w: 140, h: 180 },
-  { depth: 1.3,  className: "bottom-[1%] left-[40%]",  w: 152, h: 196 },
+  { depth: 0.6,  className: "top-[5%]    left-[6%]",   w: 260, h: 340 },
+  { depth: 1.2,  className: "top-[8%]    right-[6%]",  w: 240, h: 316 },
+  { depth: 0.8,  className: "top-[36%]   left-[4%]",   w: 280, h: 360 },
+  { depth: 1.5,  className: "top-[33%]   right-[4%]",  w: 248, h: 320 },
+  { depth: 1.0,  className: "top-[64%]   left-[8%]",   w: 256, h: 328 },
+  { depth: 0.7,  className: "top-[60%]   right-[6%]",  w: 264, h: 340 },
+  { depth: 1.8,  className: "top-[2%]    left-[34%]",  w: 168, h: 216 },
+  { depth: 1.3,  className: "bottom-[2%] left-[38%]",  w: 180, h: 232 },
 ];
 
 export function HeroSection({ outfits }: HeroSectionProps) {
@@ -106,7 +106,7 @@ export function HeroSection({ outfits }: HeroSectionProps) {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5">
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5">
         <span className="text-[9px] tracking-[0.3em] uppercase text-[var(--foreground-subtle)]">
           scroll
         </span>

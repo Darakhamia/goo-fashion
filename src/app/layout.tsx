@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Inter_Tight } from "next/font/google";
+import { Inter_Tight, Poppins } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { LikesProvider } from "@/lib/context/likes-context";
 import { AuthProvider } from "@/lib/context/auth-context";
@@ -13,6 +13,13 @@ import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 const interTight = Inter_Tight({
   subsets: ["latin"],
   variable: "--font-inter-tight",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -41,7 +48,7 @@ export default function RootLayout({
       <html
         lang="en"
         suppressHydrationWarning
-        className={`dark ${interTight.variable}`}
+        className={`dark ${interTight.variable} ${poppins.variable}`}
       >
         <head>
           {/* Inline script prevents flash of wrong theme on load */}
