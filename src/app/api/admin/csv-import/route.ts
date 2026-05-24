@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb } from "@/lib/data/db";
 import type { Product, Category, Gender } from "@/lib/types";
-import type { CSVMappedRow } from "@/app/admin/brightdata/page";
+import type { CSVMappedRow } from "@/app/goo-studio/brightdata/page";
 
 // ── AWIN category_name → { category, gender } ────────────────────────────────
 

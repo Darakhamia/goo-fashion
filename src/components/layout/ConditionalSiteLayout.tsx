@@ -20,7 +20,7 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   const [products, setProducts] = useState<Product[]>([]);
 
   const isBarePage =
-    pathname.startsWith("/admin") ||
+    pathname.startsWith("/goo-studio") ||
     pathname === "/login" ||
     pathname === "/coming-soon";
 

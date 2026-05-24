@@ -182,7 +182,7 @@ export default function ImportPage() {
 
             <div className="flex flex-col gap-2 shrink-0">
               <Link
-                href={`/admin/products`}
+                href={`/goo-studio/products`}
                 className="text-[10px] tracking-[0.12em] uppercase bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 hover:opacity-80 transition-opacity whitespace-nowrap"
               >
                 Review in Products
@@ -270,7 +270,7 @@ export default function ImportPage() {
                     <td className="px-4 py-3 text-right">
                       {job.result_product_id && (
                         <Link
-                          href={`/admin/products`}
+                          href={`/goo-studio/products`}
                           className="text-[10px] uppercase tracking-[0.1em] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
                         >
                           View draft

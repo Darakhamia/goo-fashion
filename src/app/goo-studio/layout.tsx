@@ -30,7 +30,7 @@ const NAV_CATEGORIES = [
 
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/admin",
+    href: "/goo-studio",
     label: "Dashboard",
     category: "overview",
     icon: (
@@ -43,7 +43,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/products",
+    href: "/goo-studio/products",
     label: "Products",
     category: "catalog",
     icon: (
@@ -56,7 +56,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/outfits",
+    href: "/goo-studio/outfits",
     label: "Outfits",
     category: "catalog",
     icon: (
@@ -69,7 +69,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/brands",
+    href: "/goo-studio/brands",
     label: "Brands",
     category: "catalog",
     icon: (
@@ -79,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/blog",
+    href: "/goo-studio/blog",
     label: "Blog",
     category: "content",
     icon: (
@@ -90,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/analytics",
+    href: "/goo-studio/analytics",
     label: "Analytics",
     category: "data",
     icon: (
@@ -101,7 +101,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/users",
+    href: "/goo-studio/users",
     label: "Users",
     category: "users",
     icon: (
@@ -114,7 +114,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/email",
+    href: "/goo-studio/email",
     label: "Email",
     category: "users",
     icon: (
@@ -125,7 +125,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/brightdata",
+    href: "/goo-studio/brightdata",
     label: "Import",
     category: "imports",
     icon: (
@@ -137,7 +137,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/settings",
+    href: "/goo-studio/settings",
     label: "Settings",
     category: "system",
     icon: (
@@ -148,7 +148,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/prompts",
+    href: "/goo-studio/prompts",
     label: "Prompts",
     category: "system",
     icon: (
@@ -158,7 +158,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/admin/activity",
+    href: "/goo-studio/activity",
     label: "Activity",
     category: "data",
     superAdminOnly: true,
@@ -181,18 +181,18 @@ const darkVars: React.CSSProperties = {
 } as React.CSSProperties;
 
 const pageTitles: Record<string, string> = {
-  "/admin": "Dashboard",
-  "/admin/products": "Products",
-  "/admin/outfits": "Outfits",
-  "/admin/blog": "Blog",
-  "/admin/analytics": "Analytics",
-  "/admin/users": "Users",
-  "/admin/brands": "Brands",
-  "/admin/email": "Email",
-  "/admin/brightdata": "Import",
-  "/admin/settings": "Settings",
-  "/admin/prompts": "Prompts",
-  "/admin/activity": "Activity",
+  "/goo-studio": "Dashboard",
+  "/goo-studio/products": "Products",
+  "/goo-studio/outfits": "Outfits",
+  "/goo-studio/blog": "Blog",
+  "/goo-studio/analytics": "Analytics",
+  "/goo-studio/users": "Users",
+  "/goo-studio/brands": "Brands",
+  "/goo-studio/email": "Email",
+  "/goo-studio/brightdata": "Import",
+  "/goo-studio/settings": "Settings",
+  "/goo-studio/prompts": "Prompts",
+  "/goo-studio/activity": "Activity",
 };
 
 function GripIcon() {
@@ -383,8 +383,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="flex flex-col gap-0.5 px-2">
                   {items.map((item) => {
                     const isActive =
-                      item.href === "/admin"
-                        ? pathname === "/admin"
+                      item.href === "/goo-studio"
+                        ? pathname === "/goo-studio"
                         : pathname.startsWith(item.href);
                     return (
                       <Link

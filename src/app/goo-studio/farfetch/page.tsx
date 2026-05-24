@@ -446,7 +446,7 @@ export default function FarfetchImportPage() {
             <div className="border border-emerald-500/30 bg-emerald-500/5 px-5 py-5 flex flex-col gap-3">
               <p className="text-emerald-400 text-sm font-medium">Imported — {name} · {brand}</p>
               <div className="flex gap-3">
-                <a href="/admin/products" className="text-xs tracking-[0.12em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 hover:opacity-80 transition-opacity">Go to Products</a>
+                <a href="/goo-studio/products" className="text-xs tracking-[0.12em] uppercase bg-[var(--foreground)] text-[var(--background)] px-4 py-2 hover:opacity-80 transition-opacity">Go to Products</a>
                 <button onClick={reset} className="text-xs tracking-[0.12em] uppercase border border-[var(--border)] px-4 py-2 hover:bg-[var(--surface)] transition-colors">Import another</button>
               </div>
             </div>

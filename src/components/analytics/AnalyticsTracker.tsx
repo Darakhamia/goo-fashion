@@ -15,7 +15,7 @@ import {
 // Paths we never track (admin surfaces, API routes).
 function shouldSkip(path: string): boolean {
   return (
-    path.startsWith("/admin") ||
+    path.startsWith("/goo-studio") ||
     path.startsWith("/api/")  ||
     path === "/robots.txt"    ||
     path === "/sitemap.xml"
