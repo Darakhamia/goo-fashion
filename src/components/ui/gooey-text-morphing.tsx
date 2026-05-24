@@ -7,6 +7,7 @@ interface GooeyTextProps {
   texts: string[];
   morphTime?: number;
   cooldownTime?: number;
+  firstTextCooldown?: number;
   className?: string;
   textClassName?: string;
 }
@@ -15,6 +16,7 @@ export function GooeyText({
   texts,
   morphTime = 1,
   cooldownTime = 0.25,
+  firstTextCooldown,
   className,
   textClassName,
 }: GooeyTextProps) {
@@ -55,7 +57,9 @@ export function GooeyText({
       let fraction = morph / morphTime;
 
       if (fraction > 1) {
-        cooldown = cooldownTime;
+        // When textIndex wraps to last position, text2 becomes texts[0] — use firstTextCooldown
+        const isFirstText = textIndex === texts.length - 1;
+        cooldown = isFirstText && firstTextCooldown != null ? firstTextCooldown : cooldownTime;
         fraction = 1;
       }
 
@@ -88,7 +92,7 @@ export function GooeyText({
     animationId = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(animationId);
-  }, [texts, morphTime, cooldownTime]);
+  }, [texts, morphTime, cooldownTime, firstTextCooldown]);
 
   return (
     <div className={cn("relative", className)}>

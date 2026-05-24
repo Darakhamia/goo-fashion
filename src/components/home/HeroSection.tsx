@@ -28,9 +28,10 @@ export function HeroSection() {
       {/* Center content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
         <GooeyText
-          texts={["Outfits", "Looks", "Style", "Fits"]}
+          texts={["GOO", "Outfits", "Looks", "Style", "Fits"]}
           morphTime={1}
           cooldownTime={0.35}
+          firstTextCooldown={2.2}
           className="h-[76px] md:h-[120px] lg:h-[148px] w-full"
           textClassName="text-[64px] md:text-[100px] lg:text-[128px]"
         />

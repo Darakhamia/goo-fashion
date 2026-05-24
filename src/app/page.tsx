@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import FadeInView from "@/components/ui/FadeInView";
+import { Layers, ScanSearch, ShoppingBag, Sparkles } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
 import { AIStylistChat } from "@/components/home/AIStylistChat";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
@@ -381,54 +382,63 @@ export default async function HomePage() {
 
       {/* ── HOW IT WORKS ── */}
       <Section soft>
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <div>
             <Kicker>How it works</Kicker>
             <SectionH2>Four steps to a finished look.</SectionH2>
           </div>
           <Link
             href="/builder"
-            className="bg-[var(--foreground)] text-[var(--background)] rounded-xl px-6 py-3 text-sm font-bold hover:opacity-90 transition-all shrink-0 text-center"
+            className="text-sm font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
           >
-            Try the builder
+            Try the builder →
           </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        </FadeInView>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--border)] rounded-3xl overflow-hidden">
           {[
             {
-              n: "01",
+              n: "01", icon: <ShoppingBag size={18} strokeWidth={1.5} />,
               title: "Choose items",
-              body: "Pick clothes, shoes and accessories from the GOO catalog — hundreds of premium brands.",
+              body: "Browse hundreds of premium brands and pick clothes, shoes and accessories.",
             },
             {
-              n: "02",
+              n: "02", icon: <Layers size={18} strokeWidth={1.5} />,
               title: "Build your look",
-              body: "Add items into outfit slots and create a combination that actually works.",
+              body: "Drop items into outfit slots and craft combinations that actually work.",
             },
             {
-              n: "03",
+              n: "03", icon: <Sparkles size={18} strokeWidth={1.5} />,
               title: "Generate a preview",
-              body: "Visualize your outfit as a full-body look with AI before you buy anything.",
+              body: "Visualize the full-body look with AI — before you spend a single dollar.",
             },
             {
-              n: "04",
+              n: "04", icon: <ScanSearch size={18} strokeWidth={1.5} />,
               title: "Shop the products",
-              body: "Open product links and buy each piece from the original store at the best price.",
+              body: "Open direct links and buy each piece from the original store at the best price.",
             },
           ].map((step, i) => (
             <FadeInView
               key={step.n}
-              delay={i * 0.07}
-              className="bg-[var(--background)] rounded-2xl p-8 border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors duration-200 flex flex-col gap-10"
+              delay={i * 0.08}
+              className="relative bg-[var(--surface)] p-8 flex flex-col gap-6 overflow-hidden group hover:bg-[var(--background)] transition-colors duration-300"
             >
-              <p className="text-5xl font-bold tracking-[-0.04em] text-[var(--border-strong)] leading-none select-none">
+              {/* Watermark number */}
+              <span className="absolute -right-3 -top-4 text-[120px] font-black tracking-[-0.06em] leading-none text-[var(--border)] select-none pointer-events-none transition-colors duration-300 group-hover:text-[var(--border-strong)]">
                 {step.n}
-              </p>
-              <div>
-                <h3 className="text-[18px] font-semibold text-[var(--foreground)] mb-2">
+              </span>
+
+              {/* Icon badge */}
+              <div className="relative z-10 w-10 h-10 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] group-hover:border-[var(--foreground-muted)] transition-colors duration-300">
+                {step.icon}
+              </div>
+
+              {/* Text */}
+              <div className="relative z-10">
+                <h3 className="text-[16px] font-semibold text-[var(--foreground)] mb-2 leading-snug">
                   {step.title}
                 </h3>
-                <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+                <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed">
                   {step.body}
                 </p>
               </div>
