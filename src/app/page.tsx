@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import FadeInView from "@/components/ui/FadeInView";
-import HeroProductCycle from "@/components/home/HeroProductCycle";
 import { GooeyText } from "@/components/ui/gooey-text-morphing";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import type { Product, Outfit } from "@/lib/types";
@@ -17,7 +16,6 @@ async function getData() {
     getAllOutfits(),
   ]);
   return {
-    heroProducts: allProducts.slice(0, 8),
     bentoProducts: allProducts.slice(0, 6),
     featuredOutfits: allOutfits.slice(0, 6),
     bentoOutfit: allOutfits[0] ?? null,
@@ -450,10 +448,7 @@ function AIStylistMockup() {
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { heroProducts, bentoProducts, featuredOutfits, bentoOutfit } =
-    await getData();
-
-  const totalPrice = heroProducts.reduce((s, p) => s + (p.priceMin || 0), 0);
+  const { bentoProducts, featuredOutfits, bentoOutfit } = await getData();
 
   const brands = [
     "Acne Studios",
@@ -473,42 +468,25 @@ export default async function HomePage() {
   return (
     <>
       {/* ── HERO ── */}
-      <section className="bg-[var(--background)] pt-16 pb-24 md:pt-24 md:pb-32">
-        <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
-            <FadeInView>
-              <GooeyText
-                texts={["Outfits", "Looks", "Style", "Fits"]}
-                morphTime={1}
-                cooldownTime={0.35}
-                className="h-[72px] md:h-[90px] w-full mb-1"
-                textClassName="text-[64px] md:text-[80px]"
-              />
-              <h1 className="text-3xl md:text-4xl lg:text-[44px] font-medium tracking-[-0.03em] text-[var(--foreground-muted)] leading-[1.1] mb-6">
-                built with AI.
-              </h1>
-              <p className="text-base md:text-[17px] leading-relaxed text-[var(--foreground-muted)] max-w-md mb-9">
-                Discover pieces from premium brands, combine them into full looks, and generate AI outfit previews — all in one place.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  href="/builder"
-                  className="bg-[var(--foreground)] text-[var(--background)] rounded-xl px-7 py-3.5 text-sm font-bold hover:opacity-90 transition-all text-center"
-                >
-                  Start building an outfit
-                </Link>
-                <Link
-                  href="/stylist"
-                  className="border border-[var(--border-strong)] text-[var(--foreground)] rounded-xl px-7 py-3.5 text-sm font-semibold hover:border-[var(--foreground)] transition-all text-center"
-                >
-                  Try AI Stylist
-                </Link>
-              </div>
-            </FadeInView>
+      <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
+        <GooeyText
+          texts={["Outfits", "Looks", "Style", "Fits"]}
+          morphTime={1}
+          cooldownTime={0.35}
+          className="w-full h-[120px] md:h-[180px] lg:h-[220px]"
+          textClassName="text-[90px] md:text-[140px] lg:text-[170px]"
+        />
 
-            <FadeInView delay={0.12}>
-              <HeroProductCycle products={heroProducts} totalPrice={totalPrice} />
-            </FadeInView>
+        {/* Scroll indicator */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+          <span className="text-[10px] tracking-[0.28em] uppercase text-[var(--foreground-subtle)]">
+            scroll
+          </span>
+          <div className="animate-scroll-hint text-[var(--foreground-subtle)]">
+            <svg width="14" height="22" viewBox="0 0 14 22" fill="none">
+              <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M2 10L7 16L12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
         </div>
       </section>
