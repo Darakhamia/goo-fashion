@@ -68,6 +68,7 @@ export function GooeyText({
 
     function animate() {
       animationId = requestAnimationFrame(animate);
+      if (document.hidden) return; // pause when tab is not visible
       const newTime = new Date();
       const shouldIncrementIndex = cooldown > 0;
       const dt = (newTime.getTime() - time.getTime()) / 1000;
