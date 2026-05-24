@@ -1,137 +1,72 @@
 'use client';
 
-import React, { useRef, useId, useEffect, CSSProperties } from 'react';
-import { animate, useMotionValue, AnimationPlaybackControls } from 'framer-motion';
-
-interface AnimationConfig {
-  scale: number;
-  speed: number;
-}
-
-interface NoiseConfig {
-  opacity: number;
-  scale: number;
-}
+import { CSSProperties } from 'react';
 
 interface EtherealShadowProps {
-  sizing?: 'fill' | 'stretch';
   color?: string;
-  animation?: AnimationConfig;
-  noise?: NoiseConfig;
   style?: CSSProperties;
   className?: string;
 }
 
-function mapRange(value: number, fromLow: number, fromHigh: number, toLow: number, toHigh: number): number {
-  if (fromLow === fromHigh) return toLow;
-  return toLow + ((value - fromLow) / (fromHigh - fromLow)) * (toHigh - toLow);
-}
-
-export function EtherealShadow({
-  sizing = 'fill',
-  color = 'rgba(0, 0, 0, 0.12)',
-  animation,
-  noise,
-  style,
-  className,
-}: EtherealShadowProps) {
-  const rawId = useId().replace(/:/g, '');
-  const id = `ethereal-${rawId}`;
-  const animationEnabled = !!animation && animation.scale > 0;
-  const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
-  const hueRotateMotionValue = useMotionValue(180);
-  const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
-
-  const displacementScale = animation ? mapRange(animation.scale, 1, 100, 20, 100) : 0;
-  const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
-
-  useEffect(() => {
-    if (feColorMatrixRef.current && animationEnabled) {
-      if (hueRotateAnimation.current) hueRotateAnimation.current.stop();
-      hueRotateMotionValue.set(0);
-      hueRotateAnimation.current = animate(hueRotateMotionValue, 360, {
-        duration: animationDuration / 25,
-        repeat: Infinity,
-        repeatType: 'loop',
-        repeatDelay: 0,
-        ease: 'linear',
-        delay: 0,
-        onUpdate: (value: number) => {
-          if (feColorMatrixRef.current) {
-            feColorMatrixRef.current.setAttribute('values', String(value));
-          }
-        },
-      });
-      return () => { hueRotateAnimation.current?.stop(); };
-    }
-  }, [animationEnabled, animationDuration, hueRotateMotionValue]);
-
+export function EtherealShadow({ color = 'rgba(0,0,0,0.18)', style, className }: EtherealShadowProps) {
   return (
     <div
       className={className}
-      style={{ overflow: 'hidden', position: 'relative', width: '100%', height: '100%', ...style }}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...style }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: -displacementScale,
-          filter: animationEnabled ? `url(#${id}) blur(8px)` : 'none',
-        }}
-      >
-        {animationEnabled && (
-          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-            <defs>
-              <filter id={id}>
-                <feTurbulence
-                  result="undulation"
-                  numOctaves="2"
-                  baseFrequency={`${mapRange(animation!.scale, 0, 100, 0.001, 0.0005)},${mapRange(animation!.scale, 0, 100, 0.004, 0.002)}`}
-                  seed="0"
-                  type="turbulence"
-                />
-                <feColorMatrix
-                  ref={feColorMatrixRef}
-                  in="undulation"
-                  type="hueRotate"
-                  values="180"
-                />
-                <feColorMatrix
-                  in="dist"
-                  result="circulation"
-                  type="matrix"
-                  values="4 0 0 0 1  4 0 0 0 1  4 0 0 0 1  1 0 0 0 0"
-                />
-                <feDisplacementMap in="SourceGraphic" in2="circulation" scale={displacementScale} result="dist" />
-                <feDisplacementMap in="dist" in2="undulation" scale={displacementScale} result="output" />
-              </filter>
-            </defs>
-          </svg>
-        )}
-        <div
-          style={{
-            backgroundColor: color,
-            maskImage: `url('https://framerusercontent.com/images/ceBGguIpUU8luwByxuQz79t7To.png')`,
-            maskSize: sizing === 'stretch' ? '100% 100%' : 'cover',
-            maskRepeat: 'no-repeat',
-            maskPosition: 'center',
-            width: '100%',
-            height: '100%',
-          }}
-        />
-      </div>
+      <style>{`
+        @keyframes eth-drift1 {
+          0%,100% { transform: translate(0%, 0%) scale(1); }
+          33%      { transform: translate(6%, -8%) scale(1.08); }
+          66%      { transform: translate(-5%, 6%) scale(0.94); }
+        }
+        @keyframes eth-drift2 {
+          0%,100% { transform: translate(0%, 0%) scale(1); }
+          40%      { transform: translate(-8%, 7%) scale(1.1); }
+          75%      { transform: translate(5%, -5%) scale(0.92); }
+        }
+        @keyframes eth-drift3 {
+          0%,100% { transform: translate(0%, 0%) scale(1); }
+          50%      { transform: translate(7%, 9%) scale(1.06); }
+        }
+        .eth-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(72px);
+          will-change: transform;
+          background: var(--eth-color);
+        }
+        .eth-blob-1 {
+          width: 55%; height: 60%;
+          top: 10%; left: 15%;
+          animation: eth-drift1 14s ease-in-out infinite;
+        }
+        .eth-blob-2 {
+          width: 45%; height: 50%;
+          top: 30%; left: 45%;
+          opacity: 0.7;
+          animation: eth-drift2 18s ease-in-out infinite;
+        }
+        .eth-blob-3 {
+          width: 40%; height: 45%;
+          top: 5%; left: 50%;
+          opacity: 0.5;
+          animation: eth-drift3 22s ease-in-out infinite;
+        }
+        .eth-blob-4 {
+          width: 50%; height: 55%;
+          top: 45%; left: 5%;
+          opacity: 0.6;
+          animation: eth-drift1 20s ease-in-out infinite reverse;
+        }
+      `}</style>
 
-      {noise && noise.opacity > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: `url("https://framerusercontent.com/images/g0QcWrxr87K0ufOxIUFBakwYA8.png")`,
-            backgroundSize: noise.scale * 200,
-            backgroundRepeat: 'repeat',
-            opacity: noise.opacity / 2,
-          }}
-        />
-      )}
+      <div style={{ '--eth-color': color } as CSSProperties}>
+        <div className="eth-blob eth-blob-1" />
+        <div className="eth-blob eth-blob-2" />
+        <div className="eth-blob eth-blob-3" />
+        <div className="eth-blob eth-blob-4" />
+      </div>
     </div>
   );
 }
