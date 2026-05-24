@@ -1127,7 +1127,7 @@ export default function BuilderPage() {
           <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--background)]">
 
             {/* Search bar */}
-            <div className="shrink-0 px-4 pt-3 pb-2 border-b border-[var(--border)]">
+            <div className="shrink-0 px-4 py-2.5 border-b border-[var(--border)]">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -1153,7 +1153,7 @@ export default function BuilderPage() {
             </div>
 
             {/* Category chips + sort/filter row */}
-            <div className="shrink-0 px-4 py-2 border-b border-[var(--border)] flex items-center justify-between gap-4">
+            <div className="shrink-0 px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between gap-4">
               {/* Category chips — scrollable, no scrollbar */}
               <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                 {/* All chip */}
