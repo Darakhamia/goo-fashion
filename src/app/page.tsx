@@ -7,7 +7,7 @@ import FadeInView from "@/components/ui/FadeInView";
 import { Layers, ScanSearch, ShoppingBag, Sparkles } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
 import { AIStylistChat } from "@/components/home/AIStylistChat";
-import { FeaturesBento } from "@/components/home/FeaturesBento";
+import FeaturesBento from "@/components/home/FeaturesBento";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import type { Outfit } from "@/lib/types";
 
