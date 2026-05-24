@@ -4,16 +4,13 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
-import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
+import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
 
-const CATEGORIES: Category[] = [
-  "outerwear", "tops", "bottoms", "knitwear", "dresses", "footwear", "accessories",
-];
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
 ];
@@ -34,6 +31,111 @@ const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 12, name: "Blue",       hexCode: "#1a47a0", sortOrder: 12 },
   { id: 13, name: "Beige",      hexCode: "#d4c5a9", sortOrder: 13 },
 ];
+
+const BROWSE_CATEGORY_GROUPS = [
+  {
+    id: "outerwear",
+    label: "Outerwear",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+    ),
+    items: [
+      { label: "Jackets", value: "outerwear" },
+      { label: "Coats", value: "outerwear" },
+      { label: "Parkas", value: "outerwear" },
+      { label: "Vests", value: "outerwear" },
+      { label: "Bomber Jackets", value: "outerwear" },
+      { label: "Raincoats", value: "outerwear" },
+      { label: "Blazers", value: "blazers" },
+    ],
+  },
+  {
+    id: "tops",
+    label: "Tops",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      </svg>
+    ),
+    items: [
+      { label: "T-Shirts", value: "tops" },
+      { label: "Hoodies & Sweatshirts", value: "tops" },
+      { label: "Shirts", value: "shirts" },
+      { label: "Knitwear", value: "knitwear" },
+    ],
+  },
+  {
+    id: "bottoms",
+    label: "Bottoms",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M4 2H12L13 8H9L8 14H8L7 8H3L4 2Z"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      </svg>
+    ),
+    items: [
+      { label: "Pants", value: "bottoms" },
+      { label: "Jeans", value: "jeans" },
+      { label: "Shorts", value: "shorts" },
+      { label: "Skirts", value: "skirts" },
+    ],
+  },
+  {
+    id: "dresses",
+    label: "Dresses",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M6 2H10M8 2V5M5 5C5 5 4 7 3 9C2 11 2 14 2 14H14C14 14 14 11 13 9C12 7 11 5 11 5C10.5 6 9.5 7 8 7C6.5 7 5.5 6 5 5Z"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+    ),
+    items: [
+      { label: "Dresses", value: "dresses" },
+      { label: "Jumpsuits", value: "jumpsuits" },
+    ],
+  },
+  {
+    id: "footwear",
+    label: "Footwear",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 11.5C2 11.5 4 10 7 10C9 10 10 11 11 11H13.5C13.5 11 14 11 14 12V13H2V11.5Z"
+          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+        <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      </svg>
+    ),
+    items: [
+      { label: "Sneakers", value: "footwear" },
+      { label: "Sandals", value: "footwear" },
+      { label: "Boots", value: "footwear" },
+    ],
+  },
+  {
+    id: "accessories",
+    label: "Accessories",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
+        <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
+      </svg>
+    ),
+    items: [
+      { label: "Bags", value: "bags" },
+      { label: "Hats", value: "accessories" },
+      { label: "Belts", value: "accessories" },
+      { label: "Sunglasses", value: "accessories" },
+      { label: "Watches", value: "accessories" },
+    ],
+  },
+];
+
+const BROWSE_SUBCAT_TO_VALUE: Record<string, string> = Object.fromEntries(
+  BROWSE_CATEGORY_GROUPS.flatMap(g => g.items.map(i => [i.label, i.value]))
+);
 
 function ActiveChip({
   label,
@@ -147,10 +249,10 @@ export default function BrowsePage() {
 
   /* Filters */
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
+  const [expandedCategoryGroups, setExpandedCategoryGroups] = useState<Set<string>>(new Set());
   const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
-  const [categoryOpen, setCategoryOpen] = useState(false);
   const [genderOpen, setGenderOpen] = useState(false);
   const [occasionOpen, setOccasionOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
@@ -164,10 +266,8 @@ export default function BrowsePage() {
   /* Togglers */
   const toggleBrand = (b: string) =>
     setSelectedBrands((p) => (p.includes(b) ? p.filter((x) => x !== b) : [...p, b]));
-  const toggleCategory = (c: Category) =>
-    setSelectedCategories((p) =>
-      p.includes(c) ? p.filter((x) => x !== c) : [...p, c]
-    );
+  const toggleSubcategory = (label: string) =>
+    setSelectedSubcategories(p => p.includes(label) ? p.filter(x => x !== label) : [...p, label]);
   const toggleOccasion = (o: Occasion) =>
     setSelectedOccasions((p) =>
       p.includes(o) ? p.filter((x) => x !== o) : [...p, o]
@@ -178,7 +278,7 @@ export default function BrowsePage() {
 
   const activeFiltersCount =
     selectedBrands.length +
-    selectedCategories.length +
+    selectedSubcategories.length +
     selectedOccasions.length +
     selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
@@ -188,7 +288,8 @@ export default function BrowsePage() {
 
   const clearAll = () => {
     setSelectedBrands([]);
-    setSelectedCategories([]);
+    setSelectedSubcategories([]);
+    setExpandedCategoryGroups(new Set());
     setSelectedOccasions([]);
     setSelectedGender(null);
     setMaxPrice(null);
@@ -203,11 +304,11 @@ export default function BrowsePage() {
     const q = searchQuery.toLowerCase();
     let r = products
       .filter((p) => !selectedBrands.length || selectedBrands.includes(p.brand))
-      .filter(
-        (p) =>
-          !selectedCategories.length ||
-          selectedCategories.includes(p.category as Category)
-      )
+      .filter((p) => {
+        if (!selectedSubcategories.length) return true;
+        const vals = [...new Set(selectedSubcategories.map(l => BROWSE_SUBCAT_TO_VALUE[l]).filter(Boolean))];
+        return vals.includes(p.category);
+      })
       .filter(
         (p) =>
           !selectedGender ||
@@ -239,7 +340,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedCategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
+  }, [products, selectedBrands, selectedSubcategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -324,7 +425,7 @@ export default function BrowsePage() {
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
   // Reset to page 1 whenever filters/sort/view change
-  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedCategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly]);
+  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly]);
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
   const pagedItems = useMemo(
@@ -340,13 +441,13 @@ export default function BrowsePage() {
   const browseContext = useMemo(() => ({
     view,
     searchQuery: searchQuery || undefined,
-    categories: selectedCategories.length ? (selectedCategories as string[]) : undefined,
+    categories: selectedSubcategories.length ? selectedSubcategories : undefined,
     brands: selectedBrands.length ? selectedBrands : undefined,
     occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
     gender: selectedGender ?? undefined,
     priceLabel: maxPrice !== null ? `<$${maxPrice.toLocaleString()}` : undefined,
     visibleCount: count,
-  }), [view, searchQuery, selectedCategories, selectedBrands, selectedOccasions, selectedGender, maxPrice, count]);
+  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedOccasions, selectedGender, maxPrice, count]);
 
   const filteredBrandsForSearch = BRANDS.filter(
     (b) => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())
@@ -452,47 +553,78 @@ export default function BrowsePage() {
           {/* CATEGORY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-            <button
-              onClick={() => setCategoryOpen(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                categoryOpen || selectedCategories.length > 0
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <span className="text-[12px] font-semibold capitalize">
-                {selectedCategories.length === 0 ? "All" : selectedCategories.length === 1 ? selectedCategories[0] : `${selectedCategories.length} selected`}
-              </span>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
-                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {categoryOpen && (
-              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setSelectedCategories([])}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
-                >
-                  <span className={`text-[12px] font-medium ${selectedCategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
-                  {selectedCategories.length === 0 && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  )}
-                </button>
-                {CATEGORIES.map((cat) => {
-                  const isChk = selectedCategories.includes(cat);
-                  return (
-                    <button key={cat} onClick={() => toggleCategory(cat)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 border-t border-[var(--border)] transition-colors hover:bg-[var(--surface)]"
+            <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+              {/* All */}
+              <button
+                onClick={() => setSelectedSubcategories([])}
+                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+              >
+                <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                {selectedSubcategories.length === 0 && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                )}
+              </button>
+              {BROWSE_CATEGORY_GROUPS.map(group => {
+                const grpOpen = expandedCategoryGroups.has(group.id);
+                const grpLabels = group.items.map(i => i.label);
+                const grpViewAllChecked = grpLabels.every(l => selectedSubcategories.includes(l));
+                const grpActive = grpLabels.some(l => selectedSubcategories.includes(l));
+                return (
+                  <div key={group.id} className="border-t border-[var(--border)]">
+                    {/* Group header */}
+                    <button
+                      onClick={() => setExpandedCategoryGroups(prev => {
+                        const next = new Set(prev);
+                        next.has(group.id) ? next.delete(group.id) : next.add(group.id);
+                        return next;
+                      })}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
                     >
-                      <span className={`text-[12px] font-medium capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{cat}</span>
-                      <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
-                        {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                      </div>
+                      <span className={`shrink-0 ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
+                      <span className={`flex-1 text-left text-[12px] font-semibold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
+                        <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </button>
-                  );
-                })}
-              </div>
-            )}
+                    {grpOpen && (
+                      <>
+                        {/* View all — card style with left checkbox */}
+                        <button
+                          onClick={() => setSelectedSubcategories(prev =>
+                            grpViewAllChecked
+                              ? prev.filter(l => !grpLabels.includes(l))
+                              : [...new Set([...prev, ...grpLabels])]
+                          )}
+                          className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                          style={{ width: "calc(100% - 32px)" }}
+                        >
+                          <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 14, height: 14, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                            {grpViewAllChecked && <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          </div>
+                          <span className={`text-[12px] font-semibold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                        </button>
+                        {/* Sub-items */}
+                        {group.items.map(item => {
+                          const isChk = selectedSubcategories.includes(item.label);
+                          return (
+                            <button
+                              key={item.label}
+                              onClick={() => toggleSubcategory(item.label)}
+                              className="w-full flex items-center justify-between pl-8 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                            >
+                              <span className={`text-[12px] font-medium ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
+                              <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                                {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {/* GENDER */}
           <div className="border-b border-[var(--border)] px-5 py-4">
@@ -719,7 +851,7 @@ export default function BrowsePage() {
                   if (v !== view) {
                     setView(v);
                     setSelectedBrands([]);
-                    setSelectedCategories([]);
+                    setSelectedSubcategories([]);
                     setSelectedOccasions([]);
                     setSelectedColorGroupIds([]);
                     setAiOnly(false);
@@ -968,9 +1100,9 @@ export default function BrowsePage() {
                     />
                   </motion.div>
                 ))}
-                {selectedCategories.map((cat) => (
+                {selectedSubcategories.map((sub) => (
                   <motion.div
-                    key={cat}
+                    key={sub}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.85 }}
@@ -978,8 +1110,8 @@ export default function BrowsePage() {
                     layout
                   >
                     <ActiveChip
-                      label={cat}
-                      onRemove={() => toggleCategory(cat)}
+                      label={sub}
+                      onRemove={() => toggleSubcategory(sub)}
                     />
                   </motion.div>
                 ))}
