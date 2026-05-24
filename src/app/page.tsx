@@ -5,6 +5,7 @@ import Image from "next/image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import FadeInView from "@/components/ui/FadeInView";
 import HeroProductCycle from "@/components/home/HeroProductCycle";
+import { GooeyText } from "@/components/ui/gooey-text-morphing";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import type { Product, Outfit } from "@/lib/types";
 
@@ -476,11 +477,15 @@ export default async function HomePage() {
         <div className="max-w-[1280px] mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
             <FadeInView>
-              <h1 className="text-5xl md:text-6xl lg:text-[68px] font-bold tracking-[-0.04em] text-[var(--foreground)] leading-[1.02] mb-6">
-                Build outfits.{" "}
-                <span className="text-[var(--foreground-muted)] font-medium">
-                  Visualize with AI.
-                </span>
+              <GooeyText
+                texts={["Outfits", "Looks", "Style", "Fits"]}
+                morphTime={1}
+                cooldownTime={0.35}
+                className="h-[72px] md:h-[90px] w-full mb-1"
+                textClassName="text-[64px] md:text-[80px]"
+              />
+              <h1 className="text-3xl md:text-4xl lg:text-[44px] font-medium tracking-[-0.03em] text-[var(--foreground-muted)] leading-[1.1] mb-6">
+                built with AI.
               </h1>
               <p className="text-base md:text-[17px] leading-relaxed text-[var(--foreground-muted)] max-w-md mb-9">
                 Discover pieces from premium brands, combine them into full looks, and generate AI outfit previews — all in one place.
