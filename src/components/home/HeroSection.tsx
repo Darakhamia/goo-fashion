@@ -13,14 +13,14 @@ interface HeroSectionProps {
 }
 
 const SLOTS = [
-  { depth: 0.6,  className: "top-[5%]    left-[6%]",   w: 260, h: 340 },
-  { depth: 1.2,  className: "top-[8%]    right-[6%]",  w: 240, h: 316 },
-  { depth: 0.8,  className: "top-[36%]   left-[4%]",   w: 280, h: 360 },
-  { depth: 1.5,  className: "top-[33%]   right-[4%]",  w: 248, h: 320 },
-  { depth: 1.0,  className: "top-[64%]   left-[8%]",   w: 256, h: 328 },
-  { depth: 0.7,  className: "top-[60%]   right-[6%]",  w: 264, h: 340 },
-  { depth: 1.8,  className: "top-[2%]    left-[34%]",  w: 168, h: 216 },
-  { depth: 1.3,  className: "bottom-[2%] left-[38%]",  w: 180, h: 232 },
+  { depth: 0.6,  className: "top-[2%]    left-[5%]",   w: 210, h: 260 },
+  { depth: 1.2,  className: "top-[5%]    right-[5%]",  w: 200, h: 250 },
+  { depth: 0.8,  className: "top-[37%]   left-[3%]",   w: 220, h: 275 },
+  { depth: 1.5,  className: "top-[36%]   right-[3%]",  w: 210, h: 260 },
+  { depth: 1.0,  className: "top-[70%]   left-[5%]",   w: 210, h: 260 },
+  { depth: 0.7,  className: "top-[67%]   right-[5%]",  w: 220, h: 275 },
+  { depth: 1.8,  className: "top-[2%]    left-[35%]",  w: 130, h: 165 },
+  { depth: 1.3,  className: "bottom-[2%] left-[39%]",  w: 130, h: 165 },
 ];
 
 export function HeroSection({ outfits }: HeroSectionProps) {
@@ -38,7 +38,8 @@ export function HeroSection({ outfits }: HeroSectionProps) {
 
   return (
     <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Parallax floating outfit images */}
+      {/* Parallax floating outfit images — desktop only */}
+      <div className="hidden md:block">
       <Floating sensitivity={-0.8} easingFactor={0.04}>
         {SLOTS.map((slot, i) => {
           const outfit = getOutfit(i);
@@ -74,6 +75,7 @@ export function HeroSection({ outfits }: HeroSectionProps) {
           );
         })}
       </Floating>
+      </div>
 
       {/* Center content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-6">
@@ -81,8 +83,8 @@ export function HeroSection({ outfits }: HeroSectionProps) {
           texts={["Outfits", "Looks", "Style", "Fits"]}
           morphTime={1}
           cooldownTime={0.35}
-          className="h-[64px] md:h-[96px] lg:h-[116px] w-full"
-          textClassName="text-[52px] md:text-[80px] lg:text-[96px]"
+          className="h-[76px] md:h-[120px] lg:h-[148px] w-full"
+          textClassName="text-[64px] md:text-[100px] lg:text-[128px]"
         />
 
         {/* CTA */}
@@ -106,7 +108,7 @@ export function HeroSection({ outfits }: HeroSectionProps) {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5">
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5">
         <span className="text-[9px] tracking-[0.3em] uppercase text-[var(--foreground-subtle)]">
           scroll
         </span>
