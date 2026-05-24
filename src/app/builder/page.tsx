@@ -893,14 +893,15 @@ export default function BuilderPage() {
           {/* ── LEFT PANEL: In this look (300px) ─────────────────────────── */}
           <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 300 }}>
 
-            {/* Header */}
-            <div className="px-6 pt-6 pb-4 shrink-0 border-b border-[var(--border)] flex items-center justify-between">
-              <div>
-                <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">In this look</p>
-                <p className="text-2xl font-bold text-[var(--foreground)]">
-                  {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
-                </p>
-              </div>
+            {/* Header row 1 — aligned with center-panel search bar (h-[60px]) */}
+            <div className="px-6 h-[60px] shrink-0 border-b border-[var(--border)] flex items-center">
+              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">In this look</p>
+            </div>
+            {/* Header row 2 — aligned with center-panel category chips (h-[50px]) */}
+            <div className="px-6 h-[50px] shrink-0 border-b border-[var(--border)] flex items-center">
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
+              </p>
             </div>
 
             {/* Slot cards */}
@@ -1126,9 +1127,9 @@ export default function BuilderPage() {
           {/* ── CENTER PANEL: Search + chips + product grid (flex-1) ─────── */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--background)]">
 
-            {/* Search bar */}
-            <div className="shrink-0 px-4 py-2.5 border-b border-[var(--border)]">
-              <div className="relative">
+            {/* Search bar — h-[60px] aligns with left-panel row 1 */}
+            <div className="shrink-0 px-4 h-[60px] border-b border-[var(--border)] flex items-center">
+              <div className="relative w-full">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
@@ -1152,8 +1153,8 @@ export default function BuilderPage() {
               </div>
             </div>
 
-            {/* Category chips + sort/filter row */}
-            <div className="shrink-0 px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between gap-4">
+            {/* Category chips + sort/filter row — h-[50px] aligns with left-panel row 2 */}
+            <div className="shrink-0 px-4 h-[50px] border-b border-[var(--border)] flex items-center justify-between gap-4">
               {/* Category chips — scrollable, no scrollbar */}
               <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                 {/* All chip */}
@@ -1502,8 +1503,8 @@ export default function BuilderPage() {
           >
             <div className="w-[280px] flex flex-col h-full">
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+              {/* Header — h-[60px] aligns with center-panel search bar */}
+              <div className="flex items-center justify-between px-5 h-[60px] border-b border-[var(--border)] shrink-0">
                 <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
                 <button
                   onClick={() => setFiltersOpen(false)}
