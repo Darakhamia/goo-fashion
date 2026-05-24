@@ -6,6 +6,7 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { Category, ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
+import { useLikes } from "@/lib/context/likes-context";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -34,54 +35,6 @@ const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 13, name: "Beige",      hexCode: "#d4c5a9", sortOrder: 13 },
 ];
 
-/* ── Reusable filter UI atoms ── */
-
-function FilterCheckbox({
-  checked,
-  onToggle,
-  label,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onToggle}
-      className="flex items-center gap-2.5 w-full py-[5px] group text-left"
-    >
-      <div
-        className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-all duration-150 ${
-          checked
-            ? "border-[var(--foreground)] bg-[var(--foreground)]"
-            : "border-[var(--border-strong)] group-hover:border-[var(--foreground)]"
-        }`}
-      >
-        {checked && (
-          <svg width="7" height="5" viewBox="0 0 7 5" fill="none">
-            <path
-              d="M1 2.5L2.5 4L6 1"
-              stroke="var(--background)"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-      </div>
-      <span
-        className={`text-xs capitalize transition-colors duration-200 ${
-          checked
-            ? "text-[var(--foreground)] font-medium"
-            : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)]"
-        }`}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
 function ActiveChip({
   label,
   onRemove,
@@ -104,66 +57,6 @@ function ActiveChip({
         />
       </svg>
     </button>
-  );
-}
-
-function FilterSection({
-  title,
-  options,
-  selectedValues,
-  onToggle,
-}: {
-  title: string;
-  options: { value: string; label: string }[];
-  selectedValues: string[];
-  onToggle: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-[var(--border)]">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4"
-      >
-        <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">
-          {title}
-          {selectedValues.length > 0 && (
-            <span className="ml-1.5 text-[var(--foreground)]">· {selectedValues.length}</span>
-          )}
-        </span>
-        <svg
-          width="10" height="6" viewBox="0 0 10 6" fill="none"
-          className={`shrink-0 text-[var(--foreground-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        >
-          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {open && (
-        <div className="pb-3">
-          {options.map(opt => {
-            const checked = selectedValues.includes(opt.value);
-            return (
-              <button
-                key={opt.value}
-                onClick={() => onToggle(opt.value)}
-                className="w-full flex items-center justify-between px-5 py-2 hover:bg-[var(--surface)] transition-colors"
-              >
-                <span className={`text-[12px] capitalize ${checked ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>
-                  {opt.label}
-                </span>
-                <div className={`w-[14px] h-[14px] border flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)]"}`}>
-                  {checked && (
-                    <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -196,6 +89,8 @@ export default function BrowsePage() {
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [likedOnly, setLikedOnly] = useState(false);
+  const { likedProducts } = useLikes();
 
   useEffect(() => {
     if (!sortOpen) return;
@@ -255,6 +150,10 @@ export default function BrowsePage() {
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
   const [selectedOccasions, setSelectedOccasions] = useState<Occasion[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [occasionOpen, setOccasionOpen] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
@@ -284,7 +183,8 @@ export default function BrowsePage() {
     selectedColorGroupIds.length +
     (selectedGender !== null ? 1 : 0) +
     (maxPrice !== null ? 1 : 0) +
-    (aiOnly ? 1 : 0);
+    (aiOnly ? 1 : 0) +
+    (likedOnly ? 1 : 0);
 
   const clearAll = () => {
     setSelectedBrands([]);
@@ -294,6 +194,7 @@ export default function BrowsePage() {
     setMaxPrice(null);
     setSelectedColorGroupIds([]);
     setAiOnly(false);
+    setLikedOnly(false);
     setSearchQuery("");
   };
 
@@ -329,7 +230,8 @@ export default function BrowsePage() {
           p.name.toLowerCase().includes(q) ||
           p.brand.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q)
-      );
+      )
+      .filter((p) => !likedOnly || likedProducts.includes(p.id));
 
     if (sort === "price-asc") r = [...r].sort((a, b) => a.priceMin - b.priceMin);
     else if (sort === "price-desc")
@@ -337,7 +239,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedCategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort]);
+  }, [products, selectedBrands, selectedCategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -453,50 +355,183 @@ export default function BrowsePage() {
   /* Sidebar filter content — matches builder style exactly */
   const renderFilters = () => (
     <div>
+      {/* SAVED / LIKED */}
+      <div className="border-b border-[var(--border)] px-5 py-4">
+        <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Saved</p>
+        <button
+          onClick={() => setLikedOnly((v) => !v)}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+            likedOnly
+              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+          }`}
+        >
+          <span className="flex items-center gap-2 text-[11px] font-semibold">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+            </svg>
+            My Liked Items
+          </span>
+          {likedOnly && (
+            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+      </div>
+
       {view === "outfits" ? (
         <>
           {/* OCCASION */}
-          <FilterSection
-            title="Occasion"
-            options={OCCASIONS.map(occ => ({ value: occ, label: occ.charAt(0).toUpperCase() + occ.slice(1) }))}
-            selectedValues={selectedOccasions}
-            onToggle={v => toggleOccasion(v as Occasion)}
-          />
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Occasion</p>
+            <button
+              onClick={() => setOccasionOpen(v => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                occasionOpen || selectedOccasions.length > 0
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[12px] font-semibold capitalize">
+                {selectedOccasions.length === 0 ? "All" : selectedOccasions.length === 1 ? selectedOccasions[0] : `${selectedOccasions.length} selected`}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${occasionOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {occasionOpen && (
+              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setSelectedOccasions([])}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                >
+                  <span className={`text-[12px] font-medium ${selectedOccasions.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                  {selectedOccasions.length === 0 && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                </button>
+                {OCCASIONS.map((occ, i) => {
+                  const isChk = selectedOccasions.includes(occ);
+                  return (
+                    <button key={occ} onClick={() => toggleOccasion(occ)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${i >= 0 ? "border-t border-[var(--border)]" : ""}`}
+                    >
+                      <span className={`text-[12px] font-medium capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{occ}</span>
+                      <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                        {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {/* AI ONLY */}
-          <div className="border-b border-[var(--border)]">
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Curated by AI</p>
             <button
               onClick={() => setAiOnly((v) => !v)}
-              className="w-full flex items-center justify-between px-5 py-4"
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                aiOnly
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
             >
-              <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">
-                Curated by AI
-              </span>
-              <div className={`w-[14px] h-[14px] border flex items-center justify-center shrink-0 transition-colors ${aiOnly ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)]"}`}>
-                {aiOnly && (
-                  <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </div>
+              <span className="text-[11px] font-semibold">AI outfits only</span>
+              {aiOnly && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </button>
           </div>
         </>
       ) : (
         <>
           {/* CATEGORY */}
-          <FilterSection
-            title="Category"
-            options={CATEGORIES.map(cat => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) }))}
-            selectedValues={selectedCategories}
-            onToggle={v => toggleCategory(v as Category)}
-          />
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
+            <button
+              onClick={() => setCategoryOpen(v => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                categoryOpen || selectedCategories.length > 0
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[12px] font-semibold capitalize">
+                {selectedCategories.length === 0 ? "All" : selectedCategories.length === 1 ? selectedCategories[0] : `${selectedCategories.length} selected`}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {categoryOpen && (
+              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setSelectedCategories([])}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                >
+                  <span className={`text-[12px] font-medium ${selectedCategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                  {selectedCategories.length === 0 && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                </button>
+                {CATEGORIES.map((cat) => {
+                  const isChk = selectedCategories.includes(cat);
+                  return (
+                    <button key={cat} onClick={() => toggleCategory(cat)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 border-t border-[var(--border)] transition-colors hover:bg-[var(--surface)]"
+                    >
+                      <span className={`text-[12px] font-medium capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{cat}</span>
+                      <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                        {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {/* GENDER */}
-          <FilterSection
-            title="Gender"
-            options={GENDERS.map(g => ({ value: g, label: g.charAt(0).toUpperCase() + g.slice(1) }))}
-            selectedValues={selectedGender ? [selectedGender] : []}
-            onToggle={v => setSelectedGender(prev => prev === v ? null : v as Gender)}
-          />
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
+            <button
+              onClick={() => setGenderOpen(v => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                genderOpen || selectedGender
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[12px] font-semibold capitalize">
+                {selectedGender === null ? "All" : selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {genderOpen && (
+              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g, i) => {
+                  const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
+                  const isActive = selectedGender === g;
+                  return (
+                    <button key={label}
+                      onClick={() => { setSelectedGender(g); setGenderOpen(false); }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
+                    >
+                      <span className={`text-[12px] font-medium ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{label}</span>
+                      {isActive && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
@@ -554,26 +589,18 @@ export default function BrowsePage() {
               {filteredBrandsForSearch.slice(0, showAllBrands ? undefined : 8).map((brand) => {
                 const isActive = selectedBrands.includes(brand);
                 return (
-                  <label key={brand} className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-[var(--surface)] transition-colors">
-                    <div
-                      className={`flex items-center justify-center shrink-0 border transition-colors ${
-                        isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
-                      }`}
-                      style={{ width: 14, height: 14 }}
-                    >
-                      {isActive && (
-                        <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => toggleBrand(brand)}
-                      className={`text-[11px] truncate text-left ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}
-                    >
+                  <button
+                    key={brand}
+                    onClick={() => toggleBrand(brand)}
+                    className="w-full flex items-center justify-between px-1 py-2 hover:bg-[var(--surface)] transition-colors"
+                  >
+                    <span className={`text-[11px] truncate text-left ${isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>
                       {brand}
-                    </button>
-                  </label>
+                    </span>
+                    <div className="shrink-0 flex items-center justify-center border transition-colors ml-2" style={{ width: 16, height: 16, borderRadius: "50%", background: isActive ? "var(--foreground)" : "transparent", borderColor: isActive ? "var(--foreground)" : "var(--border-strong)" }}>
+                      {isActive && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </div>
+                  </button>
                 );
               })}
               {filteredBrandsForSearch.length === 0 && (
@@ -594,46 +621,65 @@ export default function BrowsePage() {
       {/* PRICE */}
       <div className="border-b border-[var(--border)] px-5 py-4">
         <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
-          <span className="text-[11px] font-medium text-[var(--foreground)]">
-            {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+        <button
+          onClick={() => setPriceOpen(v => !v)}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+            priceOpen || maxPrice !== null
+              ? "border-[var(--foreground)] text-[var(--foreground)]"
+              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+          }`}
+        >
+          <span className="text-[12px] font-semibold">
+            {maxPrice === null || maxPrice >= 2000 ? "All" : `< $${maxPrice.toLocaleString()}`}
           </span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={2000}
-          step={50}
-          value={maxPrice ?? 2000}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
-          }}
-          className="w-full cursor-pointer mb-3"
-          style={{ accentColor: "var(--foreground)" }}
-        />
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {([
-            { label: "All", max: null },
-            { label: "<$200", max: 200 },
-            { label: "<$500", max: 500 },
-            { label: "<$1k", max: 1000 },
-            { label: "<$2k", max: 2000 },
-          ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
-            <button
-              key={label}
-              onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-              className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
-                maxPrice === max
-                  ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
+            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {priceOpen && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
+              <span className="text-[11px] font-medium text-[var(--foreground)]">
+                {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={2000}
+              step={50}
+              value={maxPrice ?? 2000}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+              }}
+              className="w-full cursor-pointer mb-3"
+              style={{ accentColor: "var(--foreground)" }}
+            />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {([
+                { label: "All", max: null },
+                { label: "<$200", max: 200 },
+                { label: "<$500", max: 500 },
+                { label: "<$1k", max: 1000 },
+                { label: "<$2k", max: 2000 },
+              ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
+                <button
+                  key={label}
+                  onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                  className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                    maxPrice === max
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       {/* CLEAR FILTERS */}
       {activeFiltersCount > 0 && (
