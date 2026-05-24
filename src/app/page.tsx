@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import FadeInView from "@/components/ui/FadeInView";
-import { GooeyText } from "@/components/ui/gooey-text-morphing";
+import { HeroSection } from "@/components/home/HeroSection";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import type { Product, Outfit } from "@/lib/types";
 
@@ -17,6 +17,7 @@ async function getData() {
   ]);
   return {
     bentoProducts: allProducts.slice(0, 6),
+    heroOutfits: allOutfits.slice(0, 24),
     featuredOutfits: allOutfits.slice(0, 6),
     bentoOutfit: allOutfits[0] ?? null,
   };
@@ -448,7 +449,7 @@ function AIStylistMockup() {
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { bentoProducts, featuredOutfits, bentoOutfit } = await getData();
+  const { bentoProducts, heroOutfits, featuredOutfits, bentoOutfit } = await getData();
 
   const brands = [
     "Acne Studios",
@@ -468,28 +469,7 @@ export default async function HomePage() {
   return (
     <>
       {/* ── HERO ── */}
-      <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
-        <GooeyText
-          texts={["Outfits", "Looks", "Style", "Fits"]}
-          morphTime={1}
-          cooldownTime={0.35}
-          className="w-full h-[120px] md:h-[180px] lg:h-[220px]"
-          textClassName="text-[90px] md:text-[140px] lg:text-[170px]"
-        />
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
-          <span className="text-[10px] tracking-[0.28em] uppercase text-[var(--foreground-subtle)]">
-            scroll
-          </span>
-          <div className="animate-scroll-hint text-[var(--foreground-subtle)]">
-            <svg width="14" height="22" viewBox="0 0 14 22" fill="none">
-              <line x1="7" y1="0" x2="7" y2="14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <path d="M2 10L7 16L12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </div>
-      </section>
+      <HeroSection outfits={heroOutfits} />
 
       {/* ── BRAND MARQUEE ── */}
       <section className="border-y border-[var(--border)] py-5 overflow-hidden bg-[var(--background)]">
