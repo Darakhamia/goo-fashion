@@ -5,6 +5,7 @@ import Image from "next/image";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import FadeInView from "@/components/ui/FadeInView";
 import { HeroSection } from "@/components/home/HeroSection";
+import { AIStylistChat } from "@/components/home/AIStylistChat";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import type { Product, Outfit } from "@/lib/types";
 
@@ -368,83 +369,6 @@ function FeaturesBento({
   );
 }
 
-// ── AI STYLIST CHAT MOCKUP ────────────────────────────────────────────────────
-
-function AIStylistMockup() {
-  return (
-    <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] overflow-hidden">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--border)]">
-        <div className="relative">
-          <div className="w-9 h-9 rounded-full bg-[var(--foreground)] flex items-center justify-center text-[var(--background)] text-sm font-bold">
-            G
-          </div>
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-[var(--surface)]" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">AI Stylist</p>
-          <p className="text-[12px] text-[var(--foreground-muted)]">Online · ready to help</p>
-        </div>
-      </div>
-
-      <div className="px-6 py-5 flex flex-col gap-3">
-        <div className="flex">
-          <div className="bg-[var(--background)] px-4 py-3 rounded-2xl rounded-tl-sm text-[13px] max-w-[85%] text-[var(--foreground)] leading-relaxed">
-            Hey! Tell me the occasion, your style and budget — I&apos;ll build a complete outfit.
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="bg-[var(--foreground)] text-[var(--background)] px-4 py-3 rounded-2xl rounded-tr-sm text-[13px] max-w-[80%] leading-relaxed">
-            Gallery opening. Black &amp; cream, minimal. Under $600.
-          </div>
-        </div>
-        <div className="flex">
-          <div className="bg-[var(--background)] px-4 py-3 rounded-2xl rounded-tl-sm text-[13px] max-w-[85%] text-[var(--foreground)] leading-relaxed">
-            Perfect. Starting with a longline wool coat in matte black, paired with cream wide-leg trousers.
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="bg-[var(--foreground)] text-[var(--background)] px-4 py-3 rounded-2xl rounded-tr-sm text-[13px] max-w-[80%] leading-relaxed">
-            What about shoes and accessories?
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex">
-            <div className="bg-[var(--background)] px-4 py-3 rounded-2xl rounded-tl-sm text-[13px] max-w-[85%] text-[var(--foreground)] leading-relaxed">
-              Square-toe leather mule and oval metal sunglasses. Total: ~$580. Want to adjust anything?
-            </div>
-          </div>
-          <div className="flex gap-2 ml-1 flex-wrap">
-            {["Coat · $310", "Trousers · $180", "Mule · $90"].map((label) => (
-              <div
-                key={label}
-                className="px-3 py-2 rounded-xl bg-[var(--background)] border border-[var(--border)] text-[11px] font-medium text-[var(--foreground-muted)]"
-              >
-                {label}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2 flex-wrap mt-1">
-          {["Warmer", "Sharper", "Try a heel", "Add a bag"].map((tag) => (
-            <span
-              key={tag}
-              className="px-3 py-1.5 rounded-full bg-[var(--background)] border border-[var(--border)] text-[11px] text-[var(--foreground-muted)] cursor-pointer hover:border-[var(--foreground-muted)] transition-colors"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="px-6 pb-6">
-        <div className="h-11 border border-[var(--border)] rounded-full px-4 flex items-center justify-between bg-[var(--background)]">
-          <span className="text-[13px] text-[var(--foreground-subtle)]">Message AI Stylist…</span>
-          <span className="text-[11px] text-[var(--foreground-subtle)]">⏎</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
@@ -525,33 +449,18 @@ export default async function HomePage() {
 
       {/* ── AI STYLIST ── */}
       <Section soft>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-20 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-20 items-center">
           <FadeInView>
             <Kicker>AI Stylist</Kicker>
             <SectionH2>
               Not sure what to wear?{" "}
               <span className="text-[var(--foreground-muted)] font-medium">
-                Ask the AI.
+                Just ask.
               </span>
             </SectionH2>
-            <Lede>
-              Tell GOO what you need — style, occasion, weather, budget or preferred brands. The AI Stylist suggests outfit ideas, explains combinations and helps you improve your look.
-            </Lede>
-            <div className="mt-8 flex flex-wrap gap-2">
-              {[
-                "A minimal outfit for a summer evening.",
-                "Style these sneakers with casual clothes.",
-                "Black-and-white outfit under $300.",
-                "Make this outfit look more premium.",
-              ].map((prompt) => (
-                <div
-                  key={prompt}
-                  className="px-4 py-2.5 rounded-full bg-[var(--background)] border border-[var(--border)] text-[13px] text-[var(--foreground)]"
-                >
-                  &ldquo;{prompt}&rdquo;
-                </div>
-              ))}
-            </div>
+            <p className="mt-4 text-[var(--foreground-muted)] text-lg leading-relaxed max-w-sm">
+              Describe your occasion and budget — GOO builds the complete outfit.
+            </p>
             <Link
               href="/stylist"
               className="mt-8 inline-block bg-[var(--foreground)] text-[var(--background)] rounded-xl px-7 py-3.5 text-sm font-bold hover:opacity-90 transition-all"
@@ -560,7 +469,7 @@ export default async function HomePage() {
             </Link>
           </FadeInView>
           <FadeInView delay={0.1}>
-            <AIStylistMockup />
+            <AIStylistChat />
           </FadeInView>
         </div>
       </Section>
