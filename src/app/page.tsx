@@ -451,45 +451,10 @@ function AIStylistMockup() {
 export default async function HomePage() {
   const { bentoProducts, heroOutfits, featuredOutfits, bentoOutfit } = await getData();
 
-  const brands = [
-    "Acne Studios",
-    "Balenciaga",
-    "Fear of God",
-    "Toteme",
-    "Lemaire",
-    "The Row",
-    "Jil Sander",
-    "Maison Margiela",
-    "A.P.C.",
-    "COS",
-    "Arket",
-    "Massimo Dutti",
-  ];
-
   return (
     <>
       {/* ── HERO ── */}
       <HeroSection outfits={heroOutfits} />
-
-      {/* ── BRAND MARQUEE ── */}
-      <section className="border-y border-[var(--border)] py-5 overflow-hidden bg-[var(--background)]">
-        <div
-          className="flex gap-14 whitespace-nowrap"
-          style={{ animation: "marquee 40s linear infinite" }}
-        >
-          {Array(2)
-            .fill(brands)
-            .flat()
-            .map((brand, i) => (
-              <span key={i} className="inline-flex items-center">
-                <span className="text-[11px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)]">
-                  {brand}
-                </span>
-                <span className="text-[var(--border-strong)] mx-6 text-[8px]">·</span>
-              </span>
-            ))}
-        </div>
-      </section>
 
       {/* ── HOW IT WORKS ── */}
       <Section soft>
