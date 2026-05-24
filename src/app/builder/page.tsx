@@ -894,7 +894,7 @@ export default function BuilderPage() {
           <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 300 }}>
 
             {/* Header row 1 — aligned with center-panel search bar (h-[60px]) */}
-            <div className="px-6 h-[60px] shrink-0 border-b border-[var(--border)] flex items-center">
+            <div className="px-6 h-[60px] shrink-0 flex items-center">
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">In this look</p>
             </div>
             {/* Header row 2 — aligned with center-panel category chips (h-[50px]) */}
