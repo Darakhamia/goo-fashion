@@ -2,18 +2,17 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const isProtectedRoute = createRouteMatcher([
-  "/profile(.*)",
-  "/saved(.*)",
-  "/stylist(.*)",
-  "/goo-studio(.*)",
-]);
-
+const ADMIN_PATH = "/goo-studio";
 const COMING_SOON = process.env.COMING_SOON === "true";
 const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
 const COOKIE_NAME = "goo_preview";
 
-// Routes that are always accessible even in coming-soon mode
+const isProtectedRoute = createRouteMatcher([
+  "/profile(.*)",
+  "/saved(.*)",
+  "/stylist(.*)",
+]);
+
 const isPublicRoute = createRouteMatcher([
   "/coming-soon(.*)",
   "/api/unlock(.*)",
@@ -21,12 +20,46 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
+  const { pathname } = req.nextUrl;
+
+  // Block direct /admin access — redirect to home silently
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   if (COMING_SOON) {
     const bypassCookie = req.cookies.get(COOKIE_NAME);
     const hasBypass = bypassCookie?.value === BYPASS_KEY;
 
     if (!hasBypass && !isPublicRoute(req)) {
       return NextResponse.redirect(new URL("/coming-soon", req.url));
+    }
+  }
+
+  // Protect the secret admin panel — must be logged in AND be an admin
+  if (pathname === ADMIN_PATH || pathname.startsWith(ADMIN_PATH + "/")) {
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("redirect_url", req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const adminIds = (process.env.ADMIN_USER_IDS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const isAdminById = adminIds.includes(userId);
+
+    const meta = (
+      sessionClaims?.metadata ?? sessionClaims?.publicMetadata
+    ) as { isAdmin?: boolean } | undefined;
+    const isAdminByMeta = meta?.isAdmin === true;
+
+    if (!isAdminById && !isAdminByMeta) {
+      return NextResponse.redirect(new URL("/", req.url));
     }
   }
 
