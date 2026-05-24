@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
@@ -107,116 +107,62 @@ function ActiveChip({
   );
 }
 
-function FilterSelect<T extends string>({
-  value,
+function FilterSection({
+  title,
   options,
-  onChange,
+  selectedValues,
+  onToggle,
 }: {
-  value: T | "";
-  options: { value: T; label: string }[];
-  onChange: (v: T | "") => void;
+  title: string;
+  options: { value: string; label: string }[];
+  selectedValues: string[];
+  onToggle: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const currentLabel = options.find((o) => o.value === value)?.label ?? "All";
-
-  const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, close]);
-
   return (
-    <div ref={ref} className="relative w-full">
+    <div className="border-b border-[var(--border)]">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 text-xs text-left ${
-          open
-            ? "border-[var(--foreground)] bg-[var(--surface)]"
-            : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)]"
-        }`}
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4"
       >
-        <span
-          className={`capitalize font-medium tracking-wide ${
-            value ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"
-          }`}
-        >
-          {currentLabel}
+        <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">
+          {title}
+          {selectedValues.length > 0 && (
+            <span className="ml-1.5 text-[var(--foreground)]">· {selectedValues.length}</span>
+          )}
         </span>
-        <motion.svg
-          width="10"
-          height="6"
-          viewBox="0 0 10 6"
-          fill="none"
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="shrink-0 text-[var(--foreground-muted)]"
+        <svg
+          width="10" height="6" viewBox="0 0 10 6" fill="none"
+          className={`shrink-0 text-[var(--foreground-muted)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         >
-          <path
-            d="M1 1L5 5L9 1"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </motion.svg>
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scaleY: 0.94 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            exit={{ opacity: 0, y: -6, scaleY: 0.94 }}
-            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-            style={{ transformOrigin: "top" }}
-            className="absolute top-full left-0 right-0 z-50 mt-1 bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.10)] overflow-hidden"
-          >
-            {/* All option */}
-            <button
-              onClick={() => { onChange(""); close(); }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 text-xs transition-colors duration-100 ${
-                value === ""
-                  ? "bg-[var(--foreground)] text-[var(--background)]"
-                  : "text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <span className="capitalize font-medium">All</span>
-              {value === "" && (
-                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                  <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
-            {options.map((opt, i) => (
-              <motion.button
+      {open && (
+        <div className="pb-3">
+          {options.map(opt => {
+            const checked = selectedValues.includes(opt.value);
+            return (
+              <button
                 key={opt.value}
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.12, delay: i * 0.03 }}
-                onClick={() => { onChange(opt.value); close(); }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 text-xs transition-colors duration-100 border-t border-[var(--border)] ${
-                  value === opt.value
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] hover:text-[var(--foreground)]"
-                }`}
+                onClick={() => onToggle(opt.value)}
+                className="w-full flex items-center justify-between px-5 py-2 hover:bg-[var(--surface)] transition-colors"
               >
-                <span className="capitalize font-medium">{opt.label}</span>
-                {value === opt.value && (
-                  <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                    <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <span className={`text-[12px] capitalize ${checked ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>
+                  {opt.label}
+                </span>
+                <div className={`w-[14px] h-[14px] border flex items-center justify-center shrink-0 transition-colors ${checked ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)]"}`}>
+                  {checked && (
+                    <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -510,58 +456,47 @@ export default function BrowsePage() {
       {view === "outfits" ? (
         <>
           {/* OCCASION */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Occasion</p>
-            <FilterSelect<Occasion>
-              value={selectedOccasions[0] ?? ""}
-              options={OCCASIONS.map((occ) => ({ value: occ, label: occ.charAt(0).toUpperCase() + occ.slice(1) }))}
-              onChange={(v) => setSelectedOccasions(v ? [v] : [])}
-            />
-          </div>
+          <FilterSection
+            title="Occasion"
+            options={OCCASIONS.map(occ => ({ value: occ, label: occ.charAt(0).toUpperCase() + occ.slice(1) }))}
+            selectedValues={selectedOccasions}
+            onToggle={v => toggleOccasion(v as Occasion)}
+          />
           {/* AI ONLY */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Curated by AI</p>
+          <div className="border-b border-[var(--border)]">
             <button
               onClick={() => setAiOnly((v) => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                aiOnly
-                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
+              className="w-full flex items-center justify-between px-5 py-4"
             >
-              <span className="text-[11px] font-semibold">AI outfits only</span>
-              {aiOnly && (
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
+              <span className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)]">
+                Curated by AI
+              </span>
+              <div className={`w-[14px] h-[14px] border flex items-center justify-center shrink-0 transition-colors ${aiOnly ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)]"}`}>
+                {aiOnly && (
+                  <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
             </button>
           </div>
         </>
       ) : (
         <>
           {/* CATEGORY */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-            <FilterSelect<Category>
-              value={selectedCategories[0] ?? ""}
-              options={CATEGORIES.map((cat) => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) }))}
-              onChange={(v) => setSelectedCategories(v ? [v] : [])}
-            />
-          </div>
+          <FilterSection
+            title="Category"
+            options={CATEGORIES.map(cat => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) }))}
+            selectedValues={selectedCategories}
+            onToggle={v => toggleCategory(v as Category)}
+          />
           {/* GENDER */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
-            <FilterSelect<Gender>
-              value={selectedGender ?? ""}
-              options={[
-                { value: "women" as Gender, label: "Women" },
-                { value: "men" as Gender, label: "Men" },
-                { value: "unisex" as Gender, label: "Unisex" },
-              ]}
-              onChange={(v) => setSelectedGender((v || null) as Gender | null)}
-            />
-          </div>
+          <FilterSection
+            title="Gender"
+            options={GENDERS.map(g => ({ value: g, label: g.charAt(0).toUpperCase() + g.slice(1) }))}
+            selectedValues={selectedGender ? [selectedGender] : []}
+            onToggle={v => setSelectedGender(prev => prev === v ? null : v as Gender)}
+          />
           {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
