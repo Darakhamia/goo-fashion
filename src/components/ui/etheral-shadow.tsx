@@ -1,151 +1,83 @@
 'use client';
 
-import { useRef, useId, useEffect, CSSProperties } from 'react';
-import { animate, useMotionValue, AnimationPlaybackControls } from 'framer-motion';
-
-interface AnimationConfig {
-  scale: number;
-  speed: number;
-}
-
-interface NoiseConfig {
-  opacity: number;
-  scale: number;
-}
+import { CSSProperties } from 'react';
 
 interface EtherealShadowProps {
-  sizing?: 'fill' | 'stretch';
-  color?: string;
-  animation?: AnimationConfig;
-  noise?: NoiseConfig;
   style?: CSSProperties;
   className?: string;
 }
 
-function mapRange(value: number, fromLow: number, fromHigh: number, toLow: number, toHigh: number): number {
-  if (fromLow === fromHigh) return toLow;
-  return toLow + ((value - fromLow) / (fromHigh - fromLow)) * (toHigh - toLow);
-}
-
-export function EtherealShadow({
-  sizing = 'fill',
-  color = 'rgba(0, 0, 0, 0.12)',
-  animation,
-  noise,
-  style,
-  className,
-}: EtherealShadowProps) {
-  const rawId = useId().replace(/:/g, '');
-  const id = `ethereal-${rawId}`;
-  const animationEnabled = !!animation && animation.scale > 0;
-  const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
-  const hueRotateMotionValue = useMotionValue(180);
-  const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
-  // Throttle DOM writes to ~15fps
-  const lastWriteRef = useRef(0);
-
-  const displacementScale = animation ? mapRange(animation.scale, 1, 100, 20, 80) : 0;
-  const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
-
-  useEffect(() => {
-    if (feColorMatrixRef.current && animationEnabled) {
-      if (hueRotateAnimation.current) hueRotateAnimation.current.stop();
-      hueRotateMotionValue.set(0);
-      hueRotateAnimation.current = animate(hueRotateMotionValue, 360, {
-        duration: animationDuration / 25,
-        repeat: Infinity,
-        repeatType: 'loop',
-        repeatDelay: 0,
-        ease: 'linear',
-        delay: 0,
-        onUpdate: (value: number) => {
-          const now = performance.now();
-          if (now - lastWriteRef.current < 66) return; // ~15fps cap
-          lastWriteRef.current = now;
-          if (feColorMatrixRef.current) {
-            feColorMatrixRef.current.setAttribute('values', String(value));
-          }
-        },
-      });
-      return () => { hueRotateAnimation.current?.stop(); };
-    }
-  }, [animationEnabled, animationDuration, hueRotateMotionValue]);
-
+/*
+ * Pure CSS animated background — no SVG filters, no JS, no rAF.
+ * Only `transform` and `opacity` are animated, both GPU-composited.
+ * Replaces the expensive feTurbulence + feDisplacementMap approach.
+ */
+export function EtherealShadow({ style, className }: EtherealShadowProps) {
   return (
     <div
       className={className}
-      style={{
-        overflow: 'hidden',
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        willChange: 'transform',
-        ...style,
-      }}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...style }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: -displacementScale,
-          filter: animationEnabled ? `url(#${id}) blur(5px)` : 'none',
-          willChange: 'filter',
-          contain: 'layout style',
-        }}
-      >
-        {animationEnabled && (
-          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-            <defs>
-              <filter id={id}>
-                <feTurbulence
-                  result="undulation"
-                  numOctaves="1"
-                  baseFrequency={`${mapRange(animation!.scale, 0, 100, 0.001, 0.0005)},${mapRange(animation!.scale, 0, 100, 0.004, 0.002)}`}
-                  seed="0"
-                  type="turbulence"
-                />
-                <feColorMatrix
-                  ref={feColorMatrixRef}
-                  in="undulation"
-                  type="hueRotate"
-                  values="180"
-                />
-                <feColorMatrix
-                  in="dist"
-                  result="circulation"
-                  type="matrix"
-                  values="4 0 0 0 1  4 0 0 0 1  4 0 0 0 1  1 0 0 0 0"
-                />
-                <feDisplacementMap in="SourceGraphic" in2="circulation" scale={displacementScale} result="dist" />
-                <feDisplacementMap in="dist" in2="undulation" scale={displacementScale} result="output" />
-              </filter>
-            </defs>
-          </svg>
-        )}
-        <div
-          style={{
-            backgroundColor: color,
-            maskImage: `url('https://framerusercontent.com/images/ceBGguIpUU8luwByxuQz79t7To.png')`,
-            maskSize: sizing === 'stretch' ? '100% 100%' : 'cover',
-            maskRepeat: 'no-repeat',
-            maskPosition: 'center',
-            width: '100%',
-            height: '100%',
-          }}
-        />
-      </div>
+      <style>{`
+        @keyframes eth-a {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%      { transform: translate(7%,-10%) scale(1.07); }
+          66%      { transform: translate(-6%,8%) scale(0.95); }
+        }
+        @keyframes eth-b {
+          0%,100% { transform: translate(0,0) scale(1); }
+          40%      { transform: translate(-9%,8%) scale(1.09); }
+          75%      { transform: translate(6%,-6%) scale(0.93); }
+        }
+        @keyframes eth-c {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%      { transform: translate(8%,10%) scale(1.05); }
+        }
+        .eth-wrap { position:absolute; inset:0; pointer-events:none; }
+        .eth-blob {
+          position: absolute;
+          border-radius: 50%;
+          will-change: transform;
+          filter: blur(80px);
+          background: radial-gradient(ellipse at center, rgba(0,0,0,0.14) 0%, transparent 70%);
+        }
+        .eth-b1 {
+          width:70%; height:65%;
+          top:5%; left:10%;
+          animation: eth-a 20s ease-in-out infinite;
+        }
+        .eth-b2 {
+          width:55%; height:60%;
+          top:25%; left:38%;
+          opacity:.75;
+          animation: eth-b 26s ease-in-out infinite;
+        }
+        .eth-b3 {
+          width:50%; height:55%;
+          bottom:0%; left:5%;
+          opacity:.6;
+          animation: eth-c 30s ease-in-out infinite;
+        }
+        /* Static grain texture — no animation, no GPU cost */
+        .eth-grain {
+          position: absolute;
+          inset: 0;
+          background-image:
+            radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px);
+          background-size: 3px 3px;
+          pointer-events: none;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .eth-blob { animation: none !important; }
+        }
+      `}</style>
 
-      {noise && noise.opacity > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: `url("https://framerusercontent.com/images/g0QcWrxr87K0ufOxIUFBakwYA8.png")`,
-            backgroundSize: noise.scale * 200,
-            backgroundRepeat: 'repeat',
-            opacity: noise.opacity / 2,
-          }}
-        />
-      )}
+      <div className="eth-wrap">
+        <div className="eth-blob eth-b1" />
+        <div className="eth-blob eth-b2" />
+        <div className="eth-blob eth-b3" />
+        <div className="eth-grain" />
+      </div>
     </div>
   );
 }

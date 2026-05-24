@@ -8,14 +8,9 @@ import { EtherealShadow } from "@/components/ui/etheral-shadow";
 export function HeroSection() {
   return (
     <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Ethereal shadow background */}
+      {/* Background — CSS blobs only, no SVG filter */}
       <div className="absolute inset-0 z-0">
-        <EtherealShadow
-          color="rgba(0, 0, 0, 0.14)"
-          animation={{ scale: 50, speed: 60 }}
-          noise={{ opacity: 0.5, scale: 1.1 }}
-          sizing="fill"
-        />
+        <EtherealShadow />
       </div>
 
       {/* Center content */}
