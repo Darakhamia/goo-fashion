@@ -13,14 +13,14 @@ interface HeroSectionProps {
 }
 
 const SLOTS = [
-  { depth: 0.6,  className: "top-[6%]  left-[4%]",   w: 128, h: 168 },
-  { depth: 1.2,  className: "top-[12%] right-[6%]",  w: 112, h: 148 },
-  { depth: 0.8,  className: "top-[42%] left-[2%]",   w: 140, h: 180 },
-  { depth: 1.5,  className: "top-[38%] right-[4%]",  w: 108, h: 140 },
-  { depth: 1.0,  className: "top-[68%] left-[8%]",   w: 120, h: 156 },
-  { depth: 0.7,  className: "top-[65%] right-[7%]",  w: 132, h: 160 },
-  { depth: 1.8,  className: "top-[3%]  left-[38%]",  w: 88,  h: 108 },
-  { depth: 1.3,  className: "bottom-[4%] left-[42%]",w: 96,  h: 116 },
+  { depth: 0.6,  className: "top-[4%]   left-[2%]",    w: 210, h: 270 },
+  { depth: 1.2,  className: "top-[8%]   right-[3%]",   w: 190, h: 250 },
+  { depth: 0.8,  className: "top-[38%]  left-[0%]",    w: 230, h: 296 },
+  { depth: 1.5,  className: "top-[34%]  right-[2%]",   w: 196, h: 256 },
+  { depth: 1.0,  className: "top-[65%]  left-[5%]",    w: 208, h: 268 },
+  { depth: 0.7,  className: "top-[62%]  right-[4%]",   w: 220, h: 280 },
+  { depth: 1.8,  className: "top-[1%]   left-[36%]",   w: 140, h: 180 },
+  { depth: 1.3,  className: "bottom-[1%] left-[40%]",  w: 152, h: 196 },
 ];
 
 export function HeroSection({ outfits }: HeroSectionProps) {
