@@ -18,8 +18,6 @@ const STYLIST_CHIPS = [
   { label: "Date night", icon: "♡" },
 ];
 
-// ── Shared slide-up animation ──────────────────────────────────────────────────
-
 function FadeCard({
   children,
   delay = 0,
@@ -42,23 +40,22 @@ function FadeCard({
   );
 }
 
-// ── Step label used in all three panels ────────────────────────────────────────
-
 function StepLabel({ n, label, light }: { n: string; label: string; light?: boolean }) {
   return (
-    <p className={`text-[10px] tracking-[0.22em] uppercase font-medium flex items-center gap-3 mb-4 ${light ? "text-white/40" : "text-[var(--foreground-subtle)]"}`}>
+    <p
+      className={`text-[10px] tracking-[0.22em] uppercase font-medium flex items-center gap-3 mb-4 ${
+        light ? "text-white/40" : "text-[var(--foreground-subtle)]"
+      }`}
+    >
       <span className={light ? "text-white/40" : "text-[var(--foreground-muted)]"}>{n}</span>
       {label}
     </p>
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
-
 export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
   const [idx, setIdx] = useState(0);
 
-  // Auto-cycle outfits every 5 seconds
   useEffect(() => {
     if (outfits.length < 2) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % outfits.length), 5000);
@@ -67,20 +64,17 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
 
   const outfit = outfits[idx] ?? null;
   const items = outfit?.items ?? [];
-
-  // Up to 4 item thumbnails shown in the left column
   const thumbItems = items.slice(0, 4);
-  // Full item list for the "Shop" panel (up to 4)
   const shopItems = items.slice(0, 4);
   const total = outfit?.totalPriceMin ?? 0;
 
   return (
-    <div className="mt-14 grid grid-cols-12 gap-4 md:gap-5">
+    <div className="mt-14 grid grid-cols-12 gap-4 md:gap-5 md:h-[700px] md:items-stretch">
 
-      {/* ── PANEL 1: AI Outfit Preview (large, left) ── */}
+      {/* ── PANEL 1: AI Outfit Preview ── */}
       <FadeCard
         delay={0}
-        className="col-span-12 md:col-span-8 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col min-h-[560px] overflow-hidden"
+        className="col-span-12 md:col-span-7 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col min-h-[560px] md:min-h-0 overflow-hidden"
       >
         <StepLabel n="01" label="AI Outfit Preview" />
 
@@ -91,40 +85,36 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
           Generate photoreal previews of your selected items on a realistic model.
         </p>
 
-        {/* Content row: item thumbs | model image */}
+        {/* Content row: item thumbs | outfit image */}
         <div className="flex-1 flex gap-4 min-h-0">
 
-          {/* Left: item thumbnails */}
+          {/* Left column: item thumbnails — fixed height prevents layout jumps */}
           <div className="flex flex-col gap-2 shrink-0 w-[80px]">
-            <AnimatePresence mode="wait">
-              {Array.from({ length: 4 }, (_, i) => {
-                const item = thumbItems[i];
-                return (
-                  <motion.div
-                    key={`${idx}-${i}`}
-                    className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] overflow-hidden shrink-0"
-                    initial={{ opacity: 0, scale: 0.88 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.92 }}
-                    transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}
-                  >
-                    {item?.product.imageUrl ? (
-                      <Image
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
-                        width={80}
-                        height={80}
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[var(--border)]" />
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+            {Array.from({ length: 4 }, (_, i) => {
+              const item = thumbItems[i];
+              return (
+                <motion.div
+                  key={`${idx}-${i}`}
+                  className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] overflow-hidden shrink-0"
+                  initial={{ opacity: 0, scale: 0.88 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}
+                >
+                  {item?.product.imageUrl ? (
+                    <Image
+                      src={item.product.imageUrl}
+                      alt={item.product.name}
+                      width={80}
+                      height={80}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[var(--border)]" />
+                  )}
+                </motion.div>
+              );
+            })}
 
-            {/* Add item pulse */}
             <motion.div
               className="w-[80px] h-[80px] rounded-2xl border border-dashed border-[var(--border-strong)] flex items-center justify-center shrink-0"
               animate={{ opacity: [0.5, 1, 0.5] }}
@@ -151,9 +141,8 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
                     alt={outfit.name}
                     fill
                     className="object-cover object-top"
-                    sizes="(max-width: 768px) 70vw, 35vw"
+                    sizes="(max-width: 768px) 70vw, 38vw"
                   />
-                  {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                 </motion.div>
               ) : (
@@ -183,11 +172,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
                     key={i}
                     onClick={() => setIdx(i)}
                     className="rounded-full bg-white transition-all"
-                    style={{
-                      width: i === idx ? 20 : 6,
-                      height: 6,
-                      opacity: i === idx ? 1 : 0.4,
-                    }}
+                    style={{ width: i === idx ? 20 : 6, height: 6, opacity: i === idx ? 1 : 0.4 }}
                   />
                 ))}
               </div>
@@ -232,13 +217,13 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         </Link>
       </FadeCard>
 
-      {/* ── Right column: two stacked cards ── */}
-      <div className="col-span-12 md:col-span-4 flex flex-col gap-4 md:gap-5">
+      {/* ── Right column ── */}
+      <div className="col-span-12 md:col-span-5 flex flex-col gap-4 md:gap-5">
 
         {/* ── PANEL 2: AI Stylist ── */}
         <FadeCard
           delay={0.07}
-          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-1"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
         >
           <StepLabel n="02" label="AI Stylist" />
 
@@ -267,35 +252,36 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
             </Link>
           </div>
 
-          {/* Chips */}
-          <div className="flex flex-wrap gap-2">
+          {/* Chips — nowrap, guaranteed single row */}
+          <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             {STYLIST_CHIPS.map((chip) => (
               <Link
                 key={chip.label}
                 href="/stylist"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] text-[12px] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] text-[11px] whitespace-nowrap text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
-                <span className="text-[10px]">{chip.icon}</span>
+                <span className="text-[9px]">{chip.icon}</span>
                 {chip.label}
               </Link>
             ))}
           </div>
         </FadeCard>
 
-        {/* ── PANEL 3: Build & Shop ── */}
+        {/* ── PANEL 3: Build & Shop — always-dark bg, no theme inversion ── */}
         <FadeCard
           delay={0.13}
-          className="bg-[var(--foreground)] rounded-3xl p-7 flex flex-col flex-1"
+          className="rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
+          style={{ background: "#111" }}
         >
           <StepLabel n="03" label="Build & Shop" light />
 
           <h3 className="text-xl font-bold text-white leading-tight mb-2">
             Everything in one place.<br />
-            <span className="font-normal text-white/70">Build, save, and shop your look.</span>
+            <span className="font-normal text-white/60">Build, save, and shop your look.</span>
           </h3>
 
-          {/* Items */}
-          <div className="flex-1 mt-4 flex flex-col gap-2">
+          {/* Items list — stable height via flex-1 container */}
+          <div className="flex-1 mt-4 flex flex-col gap-2 min-h-0 overflow-hidden">
             <AnimatePresence mode="wait">
               {shopItems.length > 0 ? (
                 shopItems.map((item, i) => (
@@ -330,12 +316,8 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
                   </motion.div>
                 ))
               ) : (
-                /* Placeholder rows when no outfit is loaded */
                 Array.from({ length: 3 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="h-[52px] rounded-xl bg-white/[0.06] border border-white/[0.06]"
-                  />
+                  <div key={i} className="h-[52px] rounded-xl bg-white/[0.06] border border-white/[0.06]" />
                 ))
               )}
             </AnimatePresence>
@@ -343,8 +325,8 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
 
           {/* Shop this look button */}
           <Link
-            href={outfit ? `/builder` : "/builder"}
-            className="mt-4 flex items-center justify-between bg-white text-[var(--foreground)] rounded-2xl px-4 py-3.5 hover:opacity-90 transition-opacity shrink-0 group"
+            href="/builder"
+            className="mt-4 flex items-center justify-between bg-white text-[#111] rounded-2xl px-4 py-3.5 hover:opacity-90 transition-opacity shrink-0"
           >
             <div className="flex items-center gap-2">
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -359,7 +341,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={idx}
-                    className="text-[12px] font-semibold text-[var(--foreground-muted)]"
+                    className="text-[12px] font-semibold text-[#111]/50"
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
