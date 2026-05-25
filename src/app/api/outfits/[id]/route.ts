@@ -70,6 +70,10 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+
+  // Clear FK reference in pending_looks before deleting the outfit
+  await supabase!.from("pending_looks").update({ outfit_id: null }).eq("outfit_id", id);
+
   const { error } = await supabase!.from("outfits").delete().eq("id", id);
 
   if (error) {
