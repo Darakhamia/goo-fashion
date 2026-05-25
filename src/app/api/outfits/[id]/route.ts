@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { updateOutfit, deleteOutfit, outfitToDb, toggleOutfitHomepageFeatured } from "@/lib/data/db";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { updateOutfit, outfitToDb, toggleOutfitHomepageFeatured } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
 export async function PUT(
@@ -70,10 +70,11 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const ok = await deleteOutfit(id);
+  const { error } = await supabase!.from("outfits").delete().eq("id", id);
 
-  if (!ok) {
-    return NextResponse.json({ error: "Failed to delete outfit." }, { status: 500 });
+  if (error) {
+    console.error("[api] deleteOutfit:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   revalidatePath("/");
