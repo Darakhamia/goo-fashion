@@ -58,7 +58,15 @@ export default function CSVImportPage() {
     setParseError("");
     setParsing(true);
     try {
-      const text = await file.text();
+      let text: string;
+      const isGzip = file.name.endsWith(".gz") || file.name.endsWith(".csv.gz");
+      if (isGzip) {
+        const ds = new DecompressionStream("gzip");
+        const decompressed = file.stream().pipeThrough(ds);
+        text = await new Response(decompressed).text();
+      } else {
+        text = await file.text();
+      }
       const res = await fetch("/api/admin/csv-import", {
         method: "POST",
         headers: { "Content-Type": "text/plain; charset=utf-8" },
@@ -190,13 +198,13 @@ export default function CSVImportPage() {
             ) : (
               <>
                 <p className="text-sm text-[var(--foreground-muted)]">Drop CSV file here or click to browse</p>
-                <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide uppercase">.csv files only</p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide uppercase">.csv or .csv.gz files</p>
               </>
             )}
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.gz,text/csv,application/gzip"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
             />
