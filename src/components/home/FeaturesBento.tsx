@@ -218,12 +218,12 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
       </FadeCard>
 
       {/* ── Right column ── */}
-      <div className="col-span-12 md:col-span-5 flex flex-col gap-4 md:gap-5">
+      <div className="col-span-12 md:col-span-5 flex flex-col gap-5 md:gap-6">
 
         {/* ── PANEL 2: AI Stylist ── */}
         <FadeCard
           delay={0.07}
-          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-[4] min-h-[260px] md:min-h-0"
         >
           <StepLabel n="02" label="AI Stylist" />
 
@@ -270,7 +270,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         {/* ── PANEL 3: Build & Shop — always-dark bg, no theme inversion ── */}
         <FadeCard
           delay={0.13}
-          className="bg-[#111] rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
+          className="bg-[#111] rounded-3xl p-7 flex flex-col flex-[6] min-h-[320px] md:min-h-0"
         >
           <StepLabel n="03" label="Build & Shop" light />
 
