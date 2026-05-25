@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { updateOutfit, deleteOutfit, outfitToDb } from "@/lib/data/db";
+import { updateOutfit, deleteOutfit, outfitToDb, toggleOutfitHomepageFeatured } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
 export async function PUT(
@@ -29,6 +29,30 @@ export async function PUT(
 
   revalidatePath("/");
   return NextResponse.json(outfit);
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!isSupabaseConfigured) {
+    return NextResponse.json({ error: "Database not configured." }, { status: 501 });
+  }
+
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const body = await req.json();
+
+  if (typeof body.isHomepageFeatured === "boolean") {
+    const ok = await toggleOutfitHomepageFeatured(id, body.isHomepageFeatured);
+    if (!ok) return NextResponse.json({ error: "Failed to update." }, { status: 500 });
+    revalidatePath("/");
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: "Unknown patch operation." }, { status: 400 });
 }
 
 export async function DELETE(

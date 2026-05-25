@@ -2,276 +2,144 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
-import type { Product, Outfit } from "@/lib/types";
+import type { Outfit } from "@/lib/types";
 
 interface FeaturesBentoProps {
-  products: Product[];
   outfits: Outfit[];
 }
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
-const cardV = (delay: number) => ({
-  initial: { opacity: 0, y: 28 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-60px" },
-  transition: { duration: 0.45, delay, ease: EASE },
-});
-
-// ── Chat conversations for AI Stylist ─────────────────────────────────────────
-
-const CHAT_CONVOS = [
-  [
-    { isUser: true,  text: "Something minimal for a gallery opening." },
-    { isUser: false, text: "Longline coat + cream trousers. Shoes too?" },
-    { isUser: true,  text: "Yes — and a bag." },
-    { isUser: false, text: "Square-toe mule + leather tote. ~$620." },
-  ],
-  [
-    { isUser: true,  text: "Smart casual dinner, autumn vibes." },
-    { isUser: false, text: "Tailored blazer + dark jeans + white shirt." },
-    { isUser: true,  text: "Any shoe options?" },
-    { isUser: false, text: "Chelsea boots. Clean and versatile. ~$480." },
-  ],
-  [
-    { isUser: true,  text: "Weekend look — comfy but stylish." },
-    { isUser: false, text: "Oversized knit + straight trousers + sneakers." },
-    { isUser: true,  text: "Colour palette?" },
-    { isUser: false, text: "Cream, camel and white. Effortless. ~$390." },
-  ],
+const STYLIST_CHIPS = [
+  { label: "Smart casual looks", icon: "✦" },
+  { label: "Summer outfits", icon: "✦" },
+  { label: "Date night", icon: "♡" },
 ];
 
-function TypingDots() {
+// ── Shared slide-up animation ──────────────────────────────────────────────────
+
+function FadeCard({
+  children,
+  delay = 0,
+  className = "",
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
   return (
-    <div className="flex items-center gap-1 px-4 py-2.5 bg-[var(--background)] rounded-2xl rounded-tl-sm self-start">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-[var(--foreground-muted)] block"
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-        />
-      ))}
-    </div>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.45, delay, ease: EASE }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
-function AIStylistChatLoop() {
-  const [convIdx, setConvIdx] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(0);
-  const [typing, setTyping] = useState(false);
+// ── Step label used in all three panels ────────────────────────────────────────
 
-  const conv = CHAT_CONVOS[convIdx];
-
-  useEffect(() => {
-    if (typing) {
-      const isNextUser = conv[visibleCount]?.isUser ?? false;
-      const t = setTimeout(() => {
-        setVisibleCount((n) => n + 1);
-        setTyping(false);
-      }, isNextUser ? 350 : 950);
-      return () => clearTimeout(t);
-    }
-
-    if (visibleCount < conv.length) {
-      const prevIsUser = visibleCount > 0 ? conv[visibleCount - 1].isUser : null;
-      const delay = visibleCount === 0 ? 1000 : prevIsUser ? 550 : 750;
-      const t = setTimeout(() => setTyping(true), delay);
-      return () => clearTimeout(t);
-    }
-
-    // All shown — pause then next conversation
-    const t = setTimeout(() => {
-      setVisibleCount(0);
-      setTyping(false);
-      setConvIdx((i) => (i + 1) % CHAT_CONVOS.length);
-    }, 2600);
-    return () => clearTimeout(t);
-  }, [typing, visibleCount, conv]);
-
-  const messages = conv.slice(0, visibleCount);
-  const showTyping = typing && visibleCount < conv.length && !(conv[visibleCount]?.isUser);
-
+function StepLabel({ n, label, light }: { n: string; label: string; light?: boolean }) {
   return (
-    <div className="flex-1 flex flex-col justify-end gap-2 overflow-hidden">
-      <AnimatePresence mode="popLayout">
-        {messages.map((msg, i) => (
-          <motion.div
-            key={`${convIdx}-${i}`}
-            initial={{ opacity: 0, y: 10, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            transition={{ duration: 0.25, ease: EASE }}
-            className={
-              msg.isUser
-                ? "self-end bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 rounded-2xl rounded-tr-sm text-[13px] max-w-[88%] leading-snug"
-                : "self-start bg-[var(--background)] px-4 py-2.5 rounded-2xl rounded-tl-sm text-[13px] max-w-[90%] text-[var(--foreground)] leading-snug"
-            }
-          >
-            {msg.text}
-          </motion.div>
-        ))}
-
-        {showTyping && (
-          <motion.div
-            key="typing"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <TypingDots />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Input bar */}
-      <div className="h-10 border border-[var(--border)] rounded-full px-4 flex items-center justify-between mt-2 shrink-0">
-        <span className="text-[12px] text-[var(--foreground-subtle)]">Message AI Stylist…</span>
-        <span className="text-[11px] text-[var(--foreground-subtle)]">⏎</span>
-      </div>
-    </div>
+    <p className={`text-[10px] tracking-[0.22em] uppercase font-medium flex items-center gap-3 mb-4 ${light ? "text-white/40" : "text-[var(--foreground-subtle)]"}`}>
+      <span className={light ? "text-white/40" : "text-[var(--foreground-muted)]"}>{n}</span>
+      {label}
+    </p>
   );
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function FeaturesBento({ products, outfits }: FeaturesBentoProps) {
-  const [outfitIdx, setOutfitIdx] = useState(0);
-  const [catalogPage, setCatalogPage] = useState(0);
+export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
+  const [idx, setIdx] = useState(0);
 
-  // Cycle outfits in Preview + Shop the Look
+  // Auto-cycle outfits every 5 seconds
   useEffect(() => {
     if (outfits.length < 2) return;
-    const t = setInterval(() => setOutfitIdx((i) => (i + 1) % outfits.length), 5000);
+    const t = setInterval(() => setIdx((i) => (i + 1) % outfits.length), 5000);
     return () => clearInterval(t);
   }, [outfits.length]);
 
-  // Cycle product catalog pages
-  useEffect(() => {
-    if (products.length <= 6) return;
-    const pages = Math.ceil(products.length / 6);
-    const t = setInterval(() => setCatalogPage((p) => (p + 1) % pages), 3500);
-    return () => clearInterval(t);
-  }, [products.length]);
+  const outfit = outfits[idx] ?? null;
+  const items = outfit?.items ?? [];
 
-  const currentOutfit = outfits[outfitIdx] ?? null;
-  const outfitProds = currentOutfit?.items.map((it) => it.product) ?? [];
-  // Fill preview grid to 6, using fallback products for empty slots
-  const previewGrid = Array.from({ length: 6 }, (_, i) => outfitProds[i] ?? products[i] ?? null);
-
-  const catalogProds = products.slice(catalogPage * 6, catalogPage * 6 + 6);
-
-  // Builder: use a different outfit to vary from preview
-  const builderOutfit = outfits[1] ?? outfits[0] ?? null;
-  const builderItems = builderOutfit?.items.slice(0, 3) ?? [];
-  const builderFallback = products.slice(3, 6);
-
-  // Shop: real products from current outfit
-  const shopItems = currentOutfit?.items.slice(0, 3) ?? [];
-  const shopProds = shopItems.length > 0
-    ? shopItems.map((it) => it.product)
-    : products.slice(0, 3);
-  const shopTotal = currentOutfit?.totalPriceMin
-    ?? shopProds.reduce((s, p) => s + (p?.priceMin ?? 0), 0);
+  // Up to 4 item thumbnails shown in the left column
+  const thumbItems = items.slice(0, 4);
+  // Full item list for the "Shop" panel (up to 4)
+  const shopItems = items.slice(0, 4);
+  const total = outfit?.totalPriceMin ?? 0;
 
   return (
     <div className="mt-14 grid grid-cols-12 gap-4 md:gap-5">
 
-      {/* ── 1. AI Outfit Preview (dark, col-span-8) ── */}
-      <motion.div
-        className="col-span-12 md:col-span-8 bg-[var(--foreground)] rounded-3xl p-8 flex flex-col min-h-[440px] overflow-hidden transition-shadow hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
-        {...cardV(0)}
+      {/* ── PANEL 1: AI Outfit Preview (large, left) ── */}
+      <FadeCard
+        delay={0}
+        className="col-span-12 md:col-span-8 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col min-h-[560px] overflow-hidden"
       >
-        {/* Header */}
-        <div className="mb-5">
-          <p className="text-[10px] tracking-[0.22em] uppercase font-semibold text-white/40 mb-3">
-            Signature feature
-          </p>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-2xl md:text-[30px] font-bold text-white leading-tight mb-2">
-                AI Outfit Preview
-              </h3>
-              <p className="text-sm text-white/55 max-w-sm leading-relaxed">
-                Generate realistic visuals of how your selected items look together — before you spend a cent.
-              </p>
-            </div>
-            {/* Cycling outfit name */}
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={outfitIdx}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.28 }}
-                className="hidden md:block shrink-0 mt-1 px-3 py-1.5 rounded-full border border-white/15 text-[10px] text-white/45 font-medium"
-              >
-                {currentOutfit?.name ?? "–"}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-        </div>
+        <StepLabel n="01" label="AI Outfit Preview" />
 
-        {/* Content row */}
-        <div className="flex-1 flex items-center gap-5">
-          {/* Left panel — real outfit products */}
-          <div className="flex-1 bg-white/[0.06] rounded-2xl p-4 border border-white/[0.08] self-stretch flex flex-col">
-            <p className="text-[9px] tracking-[0.15em] uppercase text-white/35 mb-3 shrink-0">
-              Selected items
-            </p>
-            <div className="flex-1 grid grid-cols-3 gap-2 content-start">
-              <AnimatePresence mode="wait">
-                {previewGrid.map((prod, i) => (
+        <h3 className="text-2xl md:text-[28px] font-bold text-[var(--foreground)] leading-tight mb-2">
+          See your look<br />come to life.
+        </h3>
+        <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed max-w-xs mb-6">
+          Generate photoreal previews of your selected items on a realistic model.
+        </p>
+
+        {/* Content row: item thumbs | model image */}
+        <div className="flex-1 flex gap-4 min-h-0">
+
+          {/* Left: item thumbnails */}
+          <div className="flex flex-col gap-2 shrink-0 w-[80px]">
+            <AnimatePresence mode="wait">
+              {Array.from({ length: 4 }, (_, i) => {
+                const item = thumbItems[i];
+                return (
                   <motion.div
-                    key={`${outfitIdx}-${i}`}
-                    className="aspect-square rounded-lg bg-white/[0.07] overflow-hidden"
+                    key={`${idx}-${i}`}
+                    className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] overflow-hidden shrink-0"
                     initial={{ opacity: 0, scale: 0.88 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.92 }}
-                    transition={{ duration: 0.3, delay: i * 0.03, ease: EASE }}
+                    transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}
                   >
-                    {prod?.imageUrl ? (
+                    {item?.product.imageUrl ? (
                       <Image
-                        src={prod.imageUrl}
-                        alt={prod.name ?? ""}
-                        width={60}
-                        height={60}
-                        className="object-cover w-full h-full opacity-80"
+                        src={item.product.imageUrl}
+                        alt={item.product.name}
+                        width={80}
+                        height={80}
+                        className="object-cover w-full h-full"
                       />
                     ) : (
-                      <div className="w-full h-full bg-white/10" />
+                      <div className="w-full h-full bg-[var(--border)]" />
                     )}
                   </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+                );
+              })}
+            </AnimatePresence>
+
+            {/* Add item pulse */}
+            <motion.div
+              className="w-[80px] h-[80px] rounded-2xl border border-dashed border-[var(--border-strong)] flex items-center justify-center shrink-0"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <span className="text-[20px] font-light text-[var(--foreground-subtle)] leading-none">+</span>
+            </motion.div>
           </div>
 
-          {/* Animated arrow */}
-          <motion.div
-            className="flex flex-col items-center gap-1.5 shrink-0"
-            animate={{ x: [0, 4, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8H13M9 4L13 8L9 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-[8px] text-white/25 uppercase tracking-widest">AI</p>
-          </motion.div>
-
-          {/* Right panel — cycling outfit image */}
-          <div className="flex-1 rounded-2xl overflow-hidden relative self-stretch bg-[var(--surface)]">
-            <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-[var(--background)] border border-[var(--border)] text-[9px] font-semibold text-[var(--foreground)]">
-              <span className="animate-pulse">✦</span> AI Preview
-            </span>
+          {/* Right: outfit image */}
+          <div className="flex-1 rounded-2xl overflow-hidden relative bg-[var(--background)] border border-[var(--border)]">
             <AnimatePresence mode="wait">
-              {currentOutfit?.imageUrl ? (
+              {outfit?.imageUrl ? (
                 <motion.div
-                  key={outfitIdx}
+                  key={idx}
                   className="absolute inset-0"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -279,268 +147,241 @@ export default function FeaturesBento({ products, outfits }: FeaturesBentoProps)
                   transition={{ duration: 0.5 }}
                 >
                   <Image
-                    src={currentOutfit.imageUrl}
-                    alt={currentOutfit.name ?? ""}
+                    src={outfit.imageUrl}
+                    alt={outfit.name}
                     fill
-                    className="object-cover"
-                    sizes="20vw"
+                    className="object-cover object-top"
+                    sizes="(max-width: 768px) 70vw, 35vw"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 pt-8">
-                    <p className="text-white text-[11px] font-semibold truncate">{currentOutfit.name}</p>
-                  </div>
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                 </motion.div>
               ) : (
-                <div key="empty" className="absolute inset-0 bg-[repeating-linear-gradient(135deg,#D4CEC2_0px,#D4CEC2_7px,rgba(10,10,10,0.06)_7px,rgba(10,10,10,0.06)_8px)]" />
+                <div
+                  key="empty"
+                  className="absolute inset-0 bg-[repeating-linear-gradient(135deg,#e8e3da_0px,#e8e3da_7px,rgba(0,0,0,0.04)_7px,rgba(0,0,0,0.04)_8px)]"
+                />
               )}
             </AnimatePresence>
-            {/* Progress dots */}
+
+            {/* AI Preview badge */}
+            <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full bg-[var(--background)]/90 border border-[var(--border)] text-[9px] font-semibold text-[var(--foreground)] backdrop-blur-sm">
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                ✦
+              </motion.span>
+              {" "}AI Preview
+            </span>
+
+            {/* Navigation dots */}
             {outfits.length > 1 && (
-              <div className="absolute bottom-3 right-3 flex gap-1 z-10">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                 {outfits.map((_, i) => (
-                  <motion.div
+                  <button
                     key={i}
-                    className="rounded-full bg-white"
-                    animate={{ width: i === outfitIdx ? 12 : 6, opacity: i === outfitIdx ? 1 : 0.3 }}
-                    style={{ height: 6 }}
-                    transition={{ duration: 0.3 }}
+                    onClick={() => setIdx(i)}
+                    className="rounded-full bg-white transition-all"
+                    style={{
+                      width: i === idx ? 20 : 6,
+                      height: 6,
+                      opacity: i === idx ? 1 : 0.4,
+                    }}
                   />
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      </motion.div>
 
-      {/* ── 2. AI Stylist (light, animated chat) ── */}
-      <motion.div
-        className="col-span-12 md:col-span-4 bg-[var(--surface)] rounded-3xl p-7 flex flex-col min-h-[440px] border border-[var(--border)] overflow-hidden cursor-pointer"
-        {...cardV(0.07)}
-        whileHover={{ scale: 1.012 }}
-        transition={{ duration: 0.22, ease: EASE }}
-      >
-        <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[var(--foreground-subtle)] mb-3">
-          Chat-powered
-        </p>
-        <h3 className="text-xl font-bold text-[var(--foreground)] mb-1">AI Stylist</h3>
-        <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed mb-5">
-          Ask for outfit ideas, combinations and styling advice.
-        </p>
-        <AIStylistChatLoop />
-      </motion.div>
-
-      {/* ── 3. Outfit Builder — item list ── */}
-      <motion.div
-        className="col-span-12 md:col-span-4 bg-[var(--surface)] rounded-3xl p-7 flex flex-col border border-[var(--border)] min-h-[340px] overflow-hidden cursor-pointer"
-        {...cardV(0.13)}
-        whileHover={{ scale: 1.012 }}
-        transition={{ duration: 0.22, ease: EASE }}
-      >
-        <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[var(--foreground-subtle)] mb-3">
-          Manual control
-        </p>
-        <h3 className="text-xl font-bold text-[var(--foreground)] mb-1">Outfit Builder</h3>
-        <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed">
-          Create complete looks using real items from real brands.
-        </p>
-
-        <div className="flex-1 mt-5 flex flex-col gap-2">
-          {(builderItems.length > 0 ? builderItems.map((it) => it.product) : builderFallback).map(
-            (prod, i) =>
-              prod && (
-                <motion.div
-                  key={prod.id ?? i}
-                  className="flex items-center gap-3 bg-[var(--background)] rounded-xl px-3 py-2.5 border border-[var(--border)]"
-                  initial={{ opacity: 0, x: -14 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.35, delay: 0.08 + i * 0.1, ease: EASE }}
+            {/* Prev / Next arrows */}
+            {outfits.length > 1 && (
+              <div className="absolute bottom-3 right-3 flex gap-1.5 z-10">
+                <button
+                  onClick={() => setIdx((i) => (i - 1 + outfits.length) % outfits.length)}
+                  className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center hover:bg-white/30 transition-colors"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-[var(--surface)] overflow-hidden shrink-0 border border-[var(--border)]">
-                    {prod.imageUrl && (
-                      <Image
-                        src={prod.imageUrl}
-                        alt={prod.name}
-                        width={40}
-                        height={40}
-                        className="object-cover w-full h-full"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wide mb-0.5">
-                      {prod.category}
-                    </p>
-                    <p className="text-[12px] font-medium text-[var(--foreground)] truncate">{prod.name}</p>
-                  </div>
-                  <p className="text-[12px] font-semibold text-[var(--foreground)] shrink-0">
-                    ${prod.priceMin.toLocaleString()}
-                  </p>
-                </motion.div>
-              )
-          )}
-
-          {/* Add item pulse */}
-          <motion.div
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)]"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.4, delay: 0.45 }}
-          >
-            <motion.div
-              className="w-5 h-5 rounded-full border border-dashed border-[var(--foreground-subtle)] flex items-center justify-center shrink-0"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <span className="text-[10px] font-bold leading-none">+</span>
-            </motion.div>
-            <span className="text-[12px]">Add another item…</span>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* ── 4. Product Catalog — cycling grid ── */}
-      <motion.div
-        className="col-span-12 md:col-span-4 bg-[var(--surface)] rounded-3xl p-7 flex flex-col border border-[var(--border)] min-h-[340px] overflow-hidden cursor-pointer"
-        {...cardV(0.18)}
-        whileHover={{ scale: 1.012 }}
-        transition={{ duration: 0.22, ease: EASE }}
-      >
-        <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[var(--foreground-subtle)] mb-3">
-          Multi-brand
-        </p>
-        <h3 className="text-xl font-bold text-[var(--foreground)] mb-1">Product Catalog</h3>
-        <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed">
-          Explore items from hundreds of brands and online stores.
-        </p>
-
-        <div className="flex-1 mt-5 bg-[var(--background)] rounded-2xl p-3 overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={catalogPage}
-              className="grid grid-cols-3 gap-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.35, ease: EASE }}
-            >
-              {Array.from({ length: 6 }, (_, i) => catalogProds[i] ?? null).map((prod, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="aspect-square rounded-xl bg-[var(--surface)] border border-[var(--border)] overflow-hidden">
-                    {prod?.imageUrl && (
-                      <Image
-                        src={prod.imageUrl}
-                        alt={prod.name ?? ""}
-                        width={60}
-                        height={60}
-                        className="object-cover w-full h-full"
-                      />
-                    )}
-                  </div>
-                  {prod?.brand && (
-                    <p className="text-[9px] text-[var(--foreground-subtle)] truncate px-0.5 leading-none">
-                      {prod.brand}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </motion.div>
-
-      {/* ── 5. Shop the Look (dark) — with thumbnails ── */}
-      <motion.div
-        className="col-span-12 md:col-span-4 bg-[var(--foreground)] rounded-3xl p-7 flex flex-col min-h-[340px] overflow-hidden transition-shadow hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
-        {...cardV(0.24)}
-      >
-        <p className="text-[10px] tracking-[0.22em] uppercase font-semibold text-white/40 mb-3">
-          One-click shopping
-        </p>
-        <h3 className="text-xl font-bold text-white mb-1">Shop the Look</h3>
-        <p className="text-[13px] text-white/55 leading-relaxed">
-          Open every product link in one clean flow.
-        </p>
-
-        <div className="flex-1 mt-5 flex flex-col justify-end gap-2">
-          <AnimatePresence mode="wait">
-            {shopProds.map((prod, i) =>
-              prod ? (
-                <motion.div
-                  key={`${outfitIdx}-${i}`}
-                  className="flex items-center gap-3 bg-white/[0.07] rounded-xl px-3 py-2.5 border border-white/[0.07]"
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.3, delay: i * 0.06, ease: EASE }}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M6 2L3 5L6 8" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setIdx((i) => (i + 1) % outfits.length)}
+                  className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center hover:bg-white/30 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-white/10 overflow-hidden shrink-0">
-                    {prod.imageUrl && (
-                      <Image
-                        src={prod.imageUrl}
-                        alt={prod.name}
-                        width={36}
-                        height={36}
-                        className="object-cover w-full h-full"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-white truncate">{prod.name}</p>
-                    <p className="text-[10px] text-white/40">{prod.brand}</p>
-                  </div>
-                  <p className="text-[13px] font-bold text-white shrink-0">${prod.priceMin.toLocaleString()}</p>
-                </motion.div>
-              ) : null
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M4 2L7 5L4 8" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
+        </div>
 
-          {/* Total */}
-          <div className="flex items-center justify-between px-3 py-2.5 bg-white/[0.05] rounded-xl border border-white/[0.06]">
-            <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Total from</p>
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={outfitIdx}
-                  className="text-[15px] font-bold text-white"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  ${shopTotal.toLocaleString()}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-            <div className="flex gap-1">
-              {outfits.length > 1 && outfits.map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="rounded-full bg-white"
-                  animate={{ width: i === outfitIdx ? 12 : 6, opacity: i === outfitIdx ? 0.8 : 0.2 }}
-                  style={{ height: 6 }}
-                  transition={{ duration: 0.3 }}
-                />
-              ))}
-            </div>
+        {/* Generate Preview button */}
+        <Link
+          href="/builder"
+          className="mt-5 flex items-center justify-center gap-2 bg-[var(--foreground)] text-[var(--background)] rounded-2xl py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shrink-0"
+        >
+          <motion.span
+            animate={{ rotate: [0, 20, -20, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            ✦
+          </motion.span>
+          Generate Preview
+        </Link>
+      </FadeCard>
+
+      {/* ── Right column: two stacked cards ── */}
+      <div className="col-span-12 md:col-span-4 flex flex-col gap-4 md:gap-5">
+
+        {/* ── PANEL 2: AI Stylist ── */}
+        <FadeCard
+          delay={0.07}
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-1"
+        >
+          <StepLabel n="02" label="AI Stylist" />
+
+          <h3 className="text-xl md:text-2xl font-bold text-[var(--foreground)] leading-tight mb-2">
+            Ask for ideas.<br />Get styled instantly.
+          </h3>
+          <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed mb-5">
+            Chat with your AI stylist to get outfit ideas, combinations, and personalized advice.
+          </p>
+
+          {/* Input */}
+          <div className="relative mb-3">
+            <input
+              readOnly
+              value=""
+              placeholder="Ask your AI stylist…"
+              className="w-full h-11 rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-4 pr-12 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none"
+            />
+            <Link
+              href="/stylist"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--foreground)] flex items-center justify-center hover:opacity-90 transition-opacity"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 10L10 2M10 2H4M10 2V8" stroke="var(--background)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
           </div>
 
-          {/* Open all button */}
-          <motion.div
-            className="bg-white text-[var(--foreground)] rounded-xl px-4 py-3 flex justify-between items-center"
-            whileHover={{ scale: 1.02 }}
-            transition={{ duration: 0.18 }}
-          >
-            <span className="text-[13px] font-bold">Open all products</span>
-            <motion.span animate={{ x: [0, 3, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 7H12M8 3L12 7L8 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </motion.span>
-          </motion.div>
-        </div>
-      </motion.div>
+          {/* Chips */}
+          <div className="flex flex-wrap gap-2">
+            {STYLIST_CHIPS.map((chip) => (
+              <Link
+                key={chip.label}
+                href="/stylist"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] text-[12px] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <span className="text-[10px]">{chip.icon}</span>
+                {chip.label}
+              </Link>
+            ))}
+          </div>
+        </FadeCard>
 
+        {/* ── PANEL 3: Build & Shop ── */}
+        <FadeCard
+          delay={0.13}
+          className="bg-[var(--foreground)] rounded-3xl p-7 flex flex-col flex-1"
+        >
+          <StepLabel n="03" label="Build & Shop" light />
+
+          <h3 className="text-xl font-bold text-white leading-tight mb-2">
+            Everything in one place.<br />
+            <span className="font-normal text-white/70">Build, save, and shop your look.</span>
+          </h3>
+
+          {/* Items */}
+          <div className="flex-1 mt-4 flex flex-col gap-2">
+            <AnimatePresence mode="wait">
+              {shopItems.length > 0 ? (
+                shopItems.map((item, i) => (
+                  <motion.div
+                    key={`${idx}-${i}`}
+                    className="flex items-center gap-3 bg-white/[0.07] rounded-xl px-3 py-2.5 border border-white/[0.07]"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.28, delay: i * 0.05, ease: EASE }}
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-white/10 overflow-hidden shrink-0">
+                      {item.product.imageUrl && (
+                        <Image
+                          src={item.product.imageUrl}
+                          alt={item.product.name}
+                          width={36}
+                          height={36}
+                          className="object-cover w-full h-full"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-white truncate leading-snug">
+                        {item.product.name}
+                      </p>
+                      <p className="text-[10px] text-white/45">{item.product.brand}</p>
+                    </div>
+                    <p className="text-[13px] font-bold text-white shrink-0">
+                      ${item.product.priceMin.toLocaleString()}
+                    </p>
+                  </motion.div>
+                ))
+              ) : (
+                /* Placeholder rows when no outfit is loaded */
+                Array.from({ length: 3 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="h-[52px] rounded-xl bg-white/[0.06] border border-white/[0.06]"
+                  />
+                ))
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Shop this look button */}
+          <Link
+            href={outfit ? `/builder` : "/builder"}
+            className="mt-4 flex items-center justify-between bg-white text-[var(--foreground)] rounded-2xl px-4 py-3.5 hover:opacity-90 transition-opacity shrink-0 group"
+          >
+            <div className="flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M2 2.5H3.5L5.5 10H11L12.5 5H4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="6" cy="12.5" r="0.8" fill="currentColor" />
+                <circle cx="10.5" cy="12.5" r="0.8" fill="currentColor" />
+              </svg>
+              <span className="text-[13px] font-bold">Shop this look</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {total > 0 && (
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={idx}
+                    className="text-[12px] font-semibold text-[var(--foreground-muted)]"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.22 }}
+                  >
+                    from ${total.toLocaleString()}
+                  </motion.span>
+                </AnimatePresence>
+              )}
+              <motion.span
+                animate={{ x: [0, 3, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 7H12M8 3L12 7L8 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </motion.span>
+            </div>
+          </Link>
+        </FadeCard>
+
+      </div>
     </div>
   );
 }

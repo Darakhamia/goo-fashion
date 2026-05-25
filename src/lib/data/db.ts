@@ -281,6 +281,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     isSaved: row.is_saved ?? false,
     season: (row.season ?? "all") as Outfit["season"],
     source: (row.source === "community" ? "community" : null),
+    isHomepageFeatured: row.is_homepage_featured ?? false,
   };
 }
 
@@ -463,6 +464,67 @@ export async function getOutfitsByProductId(productIds: string | string[]): Prom
   const ids = Array.isArray(productIds) ? productIds : [productIds];
   const all = await getAllOutfits();
   return all.filter((outfit) => outfit.items.some((item) => ids.includes(item.product.id)));
+}
+
+export async function toggleOutfitHomepageFeatured(
+  id: string,
+  featured: boolean
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return false;
+  const { error } = await supabase
+    .from("outfits")
+    .update({ is_homepage_featured: featured })
+    .eq("id", id);
+  if (error) {
+    console.error("[db] toggleOutfitHomepageFeatured:", error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function getFeaturedOutfits(): Promise<Outfit[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    return staticOutfits.slice(0, 3);
+  }
+
+  const { data, error } = await supabase
+    .from("outfits")
+    .select("*")
+    .eq("is_homepage_featured", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[db] getFeaturedOutfits:", error.message);
+    return staticOutfits.slice(0, 3);
+  }
+
+  const rows = (data ?? []) as DbOutfit[];
+
+  // Fallback: if nothing is marked featured, return the 3 most recent outfits
+  if (rows.length === 0) {
+    const all = await getAllOutfits();
+    return all.slice(0, 3);
+  }
+
+  const productIds = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id)))];
+  const productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const BATCH = 200;
+    for (let i = 0; i < productIds.length; i += BATCH) {
+      const batch = productIds.slice(i, i + BATCH);
+      const { data: prodData } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", batch);
+      if (prodData) {
+        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+          productMap.set(p.id, p);
+        }
+      }
+    }
+  }
+
+  return rows.map((r) => dbToOutfit(r, productMap));
 }
 
 export async function deleteOutfit(id: string): Promise<boolean> {

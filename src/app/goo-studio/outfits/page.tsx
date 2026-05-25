@@ -89,6 +89,7 @@ export default function AdminOutfitsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [featuringId, setFeaturingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
@@ -306,6 +307,25 @@ export default function AdminOutfitsPage() {
       setOutfits((prev) => [newOutfit, ...prev]);
     }
     closeModal();
+  };
+
+  const handleToggleFeatured = async (outfit: Outfit) => {
+    setFeaturingId(outfit.id);
+    const next = !outfit.isHomepageFeatured;
+    try {
+      const res = await fetch(`/api/outfits/${outfit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHomepageFeatured: next }),
+      });
+      if (res.ok || res.status === 501) {
+        setOutfits((prev) =>
+          prev.map((o) => (o.id === outfit.id ? { ...o, isHomepageFeatured: next } : o))
+        );
+      }
+    } finally {
+      setFeaturingId(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -612,12 +632,12 @@ export default function AdminOutfitsPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              {["Image", "Name", "Occasion", "Season", "Items", "Price Range", "Keywords", "Actions"].map((h, i) => (
+              {["Image", "Name", "Occasion", "Season", "Items", "Price Range", "Keywords", "Homepage", "Actions"].map((h, i) => (
                 <th
                   key={h}
                   className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
-                    i === 7 ? " text-right" : ""
-                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
+                    i === 8 ? " text-right" : ""
+                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}${i === 7 ? " hidden md:table-cell" : ""}`}
                 >
                   {h}
                 </th>
@@ -707,6 +727,26 @@ export default function AdminOutfitsPage() {
                         </span>
                       ))}
                     </div>
+                  </td>
+                  {/* Homepage featured */}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <button
+                      onClick={() => handleToggleFeatured(outfit)}
+                      disabled={featuringId === outfit.id}
+                      title={outfit.isHomepageFeatured ? "Remove from homepage" : "Feature on homepage"}
+                      className="p-1 transition-colors disabled:opacity-40"
+                      aria-label="Toggle homepage featured"
+                    >
+                      {outfit.isHomepageFeatured ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" fill="#f59e0b" stroke="#f59e0b" strokeWidth="1" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--foreground-subtle)] hover:text-amber-400">
+                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
                   </td>
                   {/* Actions */}
                   <td className="px-4 py-3">

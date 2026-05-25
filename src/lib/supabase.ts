@@ -45,6 +45,7 @@ export type DbOutfit = {
   season: string;
   created_at: string;
   source?: string | null;
+  is_homepage_featured?: boolean | null;
 };
 
 export type DbBlogPost = {
