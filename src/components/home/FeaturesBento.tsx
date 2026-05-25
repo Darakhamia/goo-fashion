@@ -243,7 +243,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
               className="w-full h-11 rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-4 pr-12 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none"
             />
             <Link
-              href="/stylist"
+              href="/builder"
               className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--foreground)] flex items-center justify-center hover:opacity-90 transition-opacity"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -257,7 +257,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
             {STYLIST_CHIPS.map((chip) => (
               <Link
                 key={chip.label}
-                href="/stylist"
+                href="/builder"
                 className="inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] text-[11px] whitespace-nowrap text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <span className="text-[9px]">{chip.icon}</span>

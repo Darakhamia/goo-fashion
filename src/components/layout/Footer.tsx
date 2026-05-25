@@ -6,7 +6,6 @@ const footerLinks = {
   Platform: [
     { label: "Browse",     href: "/browse" },
     { label: "Builder",    href: "/builder" },
-    { label: "AI Stylist", href: "/stylist" },
     { label: "Saved",      href: "/saved" },
     { label: "Plans",      href: "/plans" },
     { label: "Profile",    href: "/profile" },
