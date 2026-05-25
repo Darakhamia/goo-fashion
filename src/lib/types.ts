@@ -195,6 +195,7 @@ export interface Outfit {
   isSaved: boolean;
   season: "all" | "spring" | "summer" | "autumn" | "winter";
   source?: "community" | null;
+  isHomepageFeatured?: boolean;
 }
 
 export interface UserProfile {

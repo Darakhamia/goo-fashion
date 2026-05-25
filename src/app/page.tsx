@@ -8,20 +8,19 @@ import { Layers, ScanSearch, ShoppingBag, Sparkles } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
 import { AIStylistChat } from "@/components/home/AIStylistChat";
 import FeaturesBento from "@/components/home/FeaturesBento";
-import { getAllOutfits, getAllProducts } from "@/lib/data/db";
+import { getAllOutfits, getFeaturedOutfits } from "@/lib/data/db";
 import type { Outfit } from "@/lib/types";
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 
 async function getData() {
-  const [allProducts, allOutfits] = await Promise.all([
-    getAllProducts(),
+  const [allOutfits, featuredForBento] = await Promise.all([
     getAllOutfits(),
+    getFeaturedOutfits(),
   ]);
   return {
-    bentoProducts: allProducts.slice(0, 12),
     featuredOutfits: allOutfits.slice(0, 6),
-    bentoOutfits: allOutfits.slice(0, 5),
+    bentoFeaturedOutfits: featuredForBento,
   };
 }
 
@@ -100,7 +99,7 @@ function Lede({
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { bentoProducts, featuredOutfits, bentoOutfits } = await getData();
+  const { featuredOutfits, bentoFeaturedOutfits } = await getData();
 
   return (
     <>
@@ -180,7 +179,7 @@ export default async function HomePage() {
           <Kicker>Features</Kicker>
           <SectionH2>Everything you need to create better outfits.</SectionH2>
         </FadeInView>
-        <FeaturesBento products={bentoProducts} outfits={bentoOutfits} />
+        <FeaturesBento outfits={bentoFeaturedOutfits} />
       </Section>
 
       {/* ── AI STYLIST ── */}

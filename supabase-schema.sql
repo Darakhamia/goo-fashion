@@ -151,21 +151,25 @@ create index if not exists products_color_group_ids_idx
 -- ============================================================
 
 create table if not exists public.outfits (
-  id              text        primary key default gen_random_uuid()::text,
-  name            text        not null default '',
-  description     text        not null default '',
-  occasion        text        not null default 'casual',
-  image_url       text        not null default '',
-  items           jsonb       not null default '[]',
-  total_price_min numeric     not null default 0,
-  total_price_max numeric     not null default 0,
-  currency        text        not null default 'USD',
-  style_keywords  text[]      not null default '{}',
-  is_ai_generated boolean     not null default false,
-  is_saved        boolean     not null default false,
-  season          text        not null default 'all',
-  created_at      timestamptz not null default now()
+  id                   text        primary key default gen_random_uuid()::text,
+  name                 text        not null default '',
+  description          text        not null default '',
+  occasion             text        not null default 'casual',
+  image_url            text        not null default '',
+  items                jsonb       not null default '[]',
+  total_price_min      numeric     not null default 0,
+  total_price_max      numeric     not null default 0,
+  currency             text        not null default 'USD',
+  style_keywords       text[]      not null default '{}',
+  is_ai_generated      boolean     not null default false,
+  is_saved             boolean     not null default false,
+  season               text        not null default 'all',
+  is_homepage_featured boolean     not null default false,
+  created_at           timestamptz not null default now()
 );
+
+-- Migration for existing installations:
+-- alter table public.outfits add column if not exists is_homepage_featured boolean not null default false;
 
 alter table public.outfits enable row level security;
 
