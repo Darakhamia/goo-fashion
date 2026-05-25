@@ -1,11 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Image from "next/image";
 import FadeInView from "@/components/ui/FadeInView";
 import { Layers, ScanSearch, ShoppingBag, Sparkles } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
-import { AIStylistChat } from "@/components/home/AIStylistChat";
 import FeaturesBento from "@/components/home/FeaturesBento";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
 import { getAllOutfits, getFeaturedOutfits } from "@/lib/data/db";
@@ -76,8 +74,6 @@ export default async function HomePage() {
 
   // Outfit examples: up to 9 so carousel has 3 full pages
   const carouselOutfits = allOutfits.slice(0, 9);
-  // CTA mosaic: first 4 outfits with images
-  const mosaicOutfits = allOutfits.filter((o) => o.imageUrl).slice(0, 4);
 
   return (
     <>
@@ -155,33 +151,6 @@ export default async function HomePage() {
         <FeaturesBento outfits={bentoFeaturedOutfits} />
       </Section>
 
-      {/* ── AI STYLIST ── */}
-      <Section soft>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-20 items-center">
-          <FadeInView>
-            <Kicker>AI Stylist</Kicker>
-            <SectionH2>
-              Not sure what to wear?{" "}
-              <span className="text-[var(--foreground-muted)] font-medium">
-                Just ask.
-              </span>
-            </SectionH2>
-            <p className="mt-4 text-[var(--foreground-muted)] text-lg leading-relaxed max-w-sm">
-              Describe your occasion and budget — GOO builds the complete outfit.
-            </p>
-            <Link
-              href="/stylist"
-              className="mt-8 inline-block bg-[var(--foreground)] text-[var(--background)] rounded-xl px-7 py-3.5 text-sm font-bold hover:opacity-90 transition-all"
-            >
-              Try AI Stylist
-            </Link>
-          </FadeInView>
-          <FadeInView delay={0.1}>
-            <AIStylistChat />
-          </FadeInView>
-        </div>
-      </Section>
-
       {/* ── OUTFIT EXAMPLES ── */}
       <Section>
         <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
@@ -208,65 +177,6 @@ export default async function HomePage() {
         )}
       </Section>
 
-      {/* ── CTA ── */}
-      <section className="py-12 bg-[var(--surface)]">
-        <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-        <FadeInView>
-          <div
-            className="rounded-3xl overflow-hidden grid md:grid-cols-[1fr_380px] min-h-[360px]"
-            style={{ background: "var(--background)", border: "1px solid var(--border)" }}
-          >
-            {/* Left: editorial statement */}
-            <div
-              className="p-10 md:p-16 flex flex-col justify-between"
-              style={{ background: "#111" }}
-            >
-              <div>
-                <p className="text-4xl md:text-5xl font-bold tracking-[-0.04em] leading-[1.04] text-white mb-5">
-                  Поехали.
-                </p>
-                <p className="text-[16px] text-white/55 leading-relaxed max-w-xs">
-                  Browse real products, build outfits, preview the look — then shop everything in one tap.
-                </p>
-              </div>
-              <div className="mt-10">
-                <Link
-                  href="/builder"
-                  className="inline-flex items-center gap-3 bg-white text-[#111] rounded-xl px-8 py-4 text-[15px] font-bold hover:opacity-90 transition-all"
-                >
-                  Build a look
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 7H12M8 3L12 7L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </Link>
-              </div>
-            </div>
-
-            {/* Right: outfit image mosaic — hidden on mobile */}
-            {mosaicOutfits.length >= 2 && (
-              <div className="hidden md:grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
-                {Array.from({ length: 4 }, (_, i) => {
-                  const outfit = mosaicOutfits[i];
-                  return (
-                    <div key={i} className="relative overflow-hidden" style={{ background: "var(--surface)" }}>
-                      {outfit?.imageUrl && (
-                        <Image
-                          src={outfit.imageUrl}
-                          alt={outfit.name}
-                          fill
-                          className="object-cover object-top transition-transform duration-700 hover:scale-105"
-                          sizes="190px"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </FadeInView>
-        </div>
-      </section>
     </>
   );
 }
