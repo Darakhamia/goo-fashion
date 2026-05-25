@@ -209,7 +209,8 @@ export default async function HomePage() {
       </Section>
 
       {/* ── CTA ── */}
-      <Section soft className="pb-8">
+      <section className="py-12 bg-[var(--surface)]">
+        <div className="max-w-[1280px] mx-auto px-6 md:px-12">
         <FadeInView>
           <div
             className="rounded-3xl overflow-hidden grid md:grid-cols-[1fr_380px] min-h-[360px]"
@@ -221,28 +222,22 @@ export default async function HomePage() {
               style={{ background: "#111" }}
             >
               <div>
-                <p className="text-[11px] tracking-[0.22em] uppercase font-medium text-white/35 mb-6">
-                  GOO — AI Fashion
+                <p className="text-4xl md:text-5xl font-bold tracking-[-0.04em] leading-[1.04] text-white mb-5">
+                  Поехали.
                 </p>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.04em] leading-[1.04] text-white mb-5">
-                  Your style.<br />Perfected<br />by AI.
-                </h2>
                 <p className="text-[16px] text-white/55 leading-relaxed max-w-xs">
                   Browse real products, build outfits, preview the look — then shop everything in one tap.
                 </p>
               </div>
-              <div className="mt-10 flex flex-col sm:flex-row gap-3">
+              <div className="mt-10">
                 <Link
                   href="/builder"
-                  className="bg-white text-[#111] rounded-xl px-7 py-3.5 text-sm font-bold hover:opacity-90 transition-all text-center"
+                  className="inline-flex items-center gap-3 bg-white text-[#111] rounded-xl px-8 py-4 text-[15px] font-bold hover:opacity-90 transition-all"
                 >
                   Build a look
-                </Link>
-                <Link
-                  href="/browse"
-                  className="border border-white/20 text-white rounded-xl px-7 py-3.5 text-sm font-semibold hover:border-white/40 transition-all text-center"
-                >
-                  Browse outfits
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 7H12M8 3L12 7L8 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </Link>
               </div>
             </div>
@@ -270,7 +265,8 @@ export default async function HomePage() {
             )}
           </div>
         </FadeInView>
-      </Section>
+        </div>
+      </section>
     </>
   );
 }
