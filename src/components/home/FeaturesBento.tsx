@@ -270,8 +270,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         {/* ── PANEL 3: Build & Shop — always-dark bg, no theme inversion ── */}
         <FadeCard
           delay={0.13}
-          className="rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
-          style={{ background: "#111" }}
+          className="bg-[#111] rounded-3xl p-7 flex flex-col flex-1 min-h-[280px] md:min-h-0"
         >
           <StepLabel n="03" label="Build & Shop" light />
 
