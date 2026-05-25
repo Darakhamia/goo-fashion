@@ -13,6 +13,15 @@ function isWithinLastWeek(dateStr?: string): boolean {
   return Date.now() - new Date(dateStr).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function dbToProduct(row: DbProduct): Product {
   return {
     id: row.id,
@@ -161,7 +170,8 @@ export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
   }
 
   const all = allData.map(dbToProduct);
-  return skipGrouping ? all : groupVariants(all);
+  const grouped = skipGrouping ? all : groupVariants(all);
+  return shuffleArray(grouped);
 }
 
 /**
@@ -247,7 +257,7 @@ export async function getProductsByCategory(category: string): Promise<Product[]
     .eq("category", category)
     .order("created_at", { ascending: false });
   if (error) return [];
-  return groupVariants((data as DbProduct[]).map(dbToProduct));
+  return shuffleArray(groupVariants((data as DbProduct[]).map(dbToProduct)));
 }
 
 // ============================================================
