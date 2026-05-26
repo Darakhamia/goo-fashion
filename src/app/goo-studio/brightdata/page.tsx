@@ -22,6 +22,7 @@ export interface CSVMappedRow {
   images: string[];
   referralUrl: string;
   colors: string[];
+  sizes: string[];
   material: string;
   description: string;
   _valid: boolean;
@@ -219,18 +220,24 @@ export default function CSVImportPage() {
 
           {/* Supported columns reference */}
           <div className="rounded-xl border border-[var(--border)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
-            <p className="text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Supported feed columns</p>
+            <p className="text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Supported Awin feed columns</p>
             <div className="grid grid-cols-2 gap-x-8 gap-y-0.5 font-mono mt-1">
+              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → affiliate link <span className="text-red-400">*required*</span></span>
               <span><span className="text-[var(--foreground)]">product_name</span> → name</span>
-              <span><span className="text-[var(--foreground)]">brand_name</span> / merchant_name → brand</span>
-              <span><span className="text-[var(--foreground)]">search_price</span> / store_price → price</span>
-              <span><span className="text-[var(--foreground)]">currency</span> → currency</span>
-              <span><span className="text-[var(--foreground)]">large_image</span> / merchant_image_url → image</span>
-              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → referral link</span>
+              <span><span className="text-[var(--foreground)]">search_price</span> / display_price → price</span>
+              <span><span className="text-[var(--foreground)]">display_price</span> → currency symbol (£€$…)</span>
+              <span><span className="text-[var(--foreground)]">currency</span> → ISO currency code</span>
+              <span><span className="text-[var(--foreground)]">rrp_price</span> → original price (for discount)</span>
+              <span><span className="text-[var(--foreground)]">aw_image_url</span> → primary image (Awin proxy)</span>
+              <span><span className="text-[var(--foreground)]">alternate_image</span> → additional images</span>
               <span><span className="text-[var(--foreground)]">category_name</span> → category + gender</span>
+              <span><span className="text-[var(--foreground)]">fashion_suitable_for</span> → gender override</span>
+              <span><span className="text-[var(--foreground)]">fashion_size</span> → available sizes</span>
               <span><span className="text-[var(--foreground)]">colour</span> → color</span>
+              <span><span className="text-[var(--foreground)]">description</span> → product description</span>
+              <span><span className="text-[var(--foreground)]">specifications</span> → material / fabric</span>
+              <span><span className="text-[var(--foreground)]">brand_name</span> / merchant_name → brand</span>
               <span><span className="text-[var(--foreground)]">in_stock</span> → filters out sold out</span>
-              <span><span className="text-[var(--foreground)]">merchant_name</span> → merchant filter</span>
             </div>
           </div>
         </div>
@@ -399,6 +406,7 @@ export default function CSVImportPage() {
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Category</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Gender</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Price</th>
+                  <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Sizes</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Link</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Status</th>
                 </tr>
@@ -462,13 +470,27 @@ export default function CSVImportPage() {
                       <td className="px-3 py-2 text-[var(--foreground-muted)] whitespace-nowrap text-[10px]">
                         {row.gender ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-[var(--foreground)] whitespace-nowrap font-mono text-[10px]">
-                        {row.price > 0 ? `${row.price} ${row.currency}` : "—"}
+                      <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">
+                        {row.price > 0 ? (
+                          <span className="text-[var(--foreground)]">
+                            {row.price} <span className="text-[var(--foreground-muted)]">{row.currency}</span>
+                          </span>
+                        ) : "—"}
+                        {row.priceOriginal > row.price && (
+                          <span className="ml-1 text-[var(--foreground-subtle)] line-through">
+                            {row.priceOriginal}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-[var(--foreground-muted)] text-[10px] max-w-[100px]">
+                        {row.sizes?.length
+                          ? <span className="truncate block">{row.sizes.slice(0, 4).join(", ")}{row.sizes.length > 4 ? "…" : ""}</span>
+                          : <span className="text-[var(--foreground-subtle)]">—</span>}
                       </td>
                       <td className="px-3 py-2">
                         {row.referralUrl
-                          ? <span className="text-[9px] text-emerald-500">✓ link</span>
-                          : <span className="text-[9px] text-[var(--foreground-subtle)]">—</span>}
+                          ? <span className="text-[9px] text-emerald-500">✓ awin</span>
+                          : <span className="text-[9px] text-red-400">no link</span>}
                       </td>
                       <td className="px-3 py-2">
                         {row._valid ? (
