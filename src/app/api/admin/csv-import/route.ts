@@ -243,6 +243,35 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   };
 }
 
+// ── Fetch live USD exchange rates (base: USD), with hardcoded fallback ────────
+
+const RATE_FALLBACK: Record<string, number> = {
+  GBP: 0.74, EUR: 0.85, UAH: 44, CZK: 21, JPY: 157, TRY: 45,
+};
+
+async function fetchUsdRates(): Promise<Record<string, number>> {
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD", {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: { result: string; rates: Record<string, number> } = await res.json();
+    if (data.result !== "success") throw new Error("bad result");
+    return data.rates;
+  } catch {
+    return RATE_FALLBACK;
+  }
+}
+
+// rates[currency] = how many units of that currency equal 1 USD
+// e.g. GBP: 0.74 → 1 USD = 0.74 GBP → 1 GBP = 1/0.74 ≈ 1.35 USD
+function toUsd(amount: number, currency: string, rates: Record<string, number>): number {
+  if (!amount || !currency || currency.toUpperCase() === "USD") return amount;
+  const rate = rates[currency.toUpperCase()];
+  if (!rate || rate <= 0) return amount;
+  return Math.round((amount / rate) * 100) / 100;
+}
+
 // ── POST /api/admin/csv-import — parse CSV, return merchants summary + rows ───
 
 export async function POST(req: Request) {
@@ -255,7 +284,19 @@ export async function POST(req: Request) {
   const { headers, rows: csvRows } = parseCSV(text);
   if (!headers.length) return NextResponse.json({ error: "Could not parse CSV headers" }, { status: 400 });
 
-  const rows = csvRows.map(mapCSVRow);
+  // Fetch rates once so preview prices already appear in USD
+  const usdRates = await fetchUsdRates();
+
+  const rows = csvRows.map((r) => {
+    const mapped = mapCSVRow(r);
+    const src = (mapped.currency || "GBP").toUpperCase();
+    if (src !== "USD") {
+      mapped.price         = toUsd(mapped.price, src, usdRates);
+      mapped.priceOriginal = mapped.priceOriginal ? toUsd(mapped.priceOriginal, src, usdRates) : 0;
+      mapped.currency      = "USD";
+    }
+    return mapped;
+  });
 
   // Build merchants summary
   const merchantMap = new Map<string, { count: number; validCount: number }>();
@@ -293,10 +334,18 @@ export async function PUT(req: Request) {
   let skipped = 0;
   const errors: { name: string; error: string }[] = [];
 
+  // Fetch live rates once for the whole batch
+  const usdRates = await fetchUsdRates();
+
   for (const row of toImport) {
     if (!row._valid || !row.name) { skipped++; continue; }
 
     try {
+      // Convert prices from source currency (e.g. GBP, EUR) to USD
+      const sourceCurrency = (row.currency || "GBP").toUpperCase();
+      const priceUsd = toUsd(row.price, sourceCurrency, usdRates);
+      const priceOriginalUsd = row.priceOriginal ? toUsd(row.priceOriginal, sourceCurrency, usdRates) : 0;
+
       const product: Partial<Product> = {
         name: row.name,
         brand: (row.brand || row.merchant) as Product["brand"],
@@ -307,9 +356,9 @@ export async function PUT(req: Request) {
         colors: row.colors,
         sizes: [],
         material: row.material,
-        priceMin: row.price,
-        priceMax: row.priceOriginal && row.priceOriginal > row.price ? row.priceOriginal : row.price,
-        currency: row.currency,
+        priceMin: priceUsd,
+        priceMax: priceOriginalUsd && priceOriginalUsd > priceUsd ? priceOriginalUsd : priceUsd,
+        currency: "USD",
         isNew: true,
         isSaved: false,
         gender: row.gender,
@@ -318,8 +367,8 @@ export async function PUT(req: Request) {
           ? [{
               name: row.brand || row.merchant || "Store",
               url: row.referralUrl,
-              price: row.price,
-              currency: row.currency,
+              price: priceUsd,
+              currency: "USD",
               availability: "in stock",
               isOfficial: true,
             }]
