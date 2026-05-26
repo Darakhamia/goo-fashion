@@ -148,6 +148,35 @@ export default function CSVImportPage() {
   const PREVIEW_LIMIT = 200;
   const displayRows = showAll ? previewRows : previewRows.slice(0, PREVIEW_LIMIT);
 
+  // Compute how many products will be created after grouping by color variant
+  const groupStats = React.useMemo(() => {
+    const getBaseProductName = (name: string) => name.replace(/\s+-\s+[\w/]+$/, "").trim();
+    const colorKeyOf = (r: CSVMappedRow) => {
+      const base = getBaseProductName(r.name).toLowerCase();
+      const brand = (r.brand || r.merchant || "").toLowerCase();
+      const color = (r.colors[0] || "").toLowerCase();
+      return `${brand}::${base}::${color}`;
+    };
+    const baseKeyOf = (r: CSVMappedRow) => {
+      const base = getBaseProductName(r.name).toLowerCase();
+      const brand = (r.brand || r.merchant || "").toLowerCase();
+      return `${brand}::${base}`;
+    };
+    const valid = Array.from(selected).map((i) => previewRows[i]).filter(Boolean);
+    const colorKeys = new Set(valid.map(colorKeyOf));
+    const baseColorCounts = new Map<string, Set<string>>();
+    for (const r of valid) {
+      const bk = baseKeyOf(r);
+      const ck = colorKeyOf(r);
+      const s = baseColorCounts.get(bk) ?? new Set<string>();
+      s.add(ck);
+      baseColorCounts.set(bk, s);
+    }
+    let variantBases = 0;
+    for (const [, s] of baseColorCounts) { if (s.size > 1) variantBases++; }
+    return { products: colorKeys.size, variantBases };
+  }, [selected, previewRows]);
+
   // ── Selected merchants stats ────────────────────────────────────────────────
   const selMerchantStats = merchants.filter((m) => selectedMerchants.has(m.name));
   const selTotal = selMerchantStats.reduce((s, m) => s + m.count, 0);
@@ -354,6 +383,12 @@ export default function CSVImportPage() {
                   <> · <span className="text-[var(--foreground-subtle)]">{(previewRows.length - validCount).toLocaleString()} skipped</span></>
                 )}
                 {" · "}{selected.size.toLocaleString()} selected
+                {selected.size > 0 && (
+                  <> · <span className="text-[var(--foreground)]">{groupStats.products.toLocaleString()} products</span>
+                  {groupStats.variantBases > 0 && (
+                    <span className="text-[var(--foreground-muted)]"> ({groupStats.variantBases} multi-color)</span>
+                  )}</>
+                )}
               </span>
               <button
                 onClick={() => setSelected(new Set<number>(previewRows.map((r, i) => r._valid ? i : -1).filter((i): i is number => i >= 0)))}
@@ -386,7 +421,7 @@ export default function CSVImportPage() {
                   {importing ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Importing…</>
                   ) : (
-                    `Import ${selected.size.toLocaleString()} product${selected.size !== 1 ? "s" : ""}`
+                    `Import ${groupStats.products.toLocaleString()} product${groupStats.products !== 1 ? "s" : ""}`
                   )}
                 </button>
               )}
