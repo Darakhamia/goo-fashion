@@ -22,6 +22,7 @@ export interface CSVMappedRow {
   images: string[];
   referralUrl: string;
   colors: string[];
+  sizes: string[];
   material: string;
   description: string;
   _valid: boolean;
@@ -147,6 +148,35 @@ export default function CSVImportPage() {
   const PREVIEW_LIMIT = 200;
   const displayRows = showAll ? previewRows : previewRows.slice(0, PREVIEW_LIMIT);
 
+  // Compute how many products will be created after grouping by color variant
+  const groupStats = React.useMemo(() => {
+    const getBaseProductName = (name: string) => name.replace(/\s+-\s+[\w/]+$/, "").trim();
+    const colorKeyOf = (r: CSVMappedRow) => {
+      const base = getBaseProductName(r.name).toLowerCase();
+      const brand = (r.brand || r.merchant || "").toLowerCase();
+      const color = (r.colors[0] || "").toLowerCase();
+      return `${brand}::${base}::${color}`;
+    };
+    const baseKeyOf = (r: CSVMappedRow) => {
+      const base = getBaseProductName(r.name).toLowerCase();
+      const brand = (r.brand || r.merchant || "").toLowerCase();
+      return `${brand}::${base}`;
+    };
+    const valid = Array.from(selected).map((i) => previewRows[i]).filter(Boolean);
+    const colorKeys = new Set(valid.map(colorKeyOf));
+    const baseColorCounts = new Map<string, Set<string>>();
+    for (const r of valid) {
+      const bk = baseKeyOf(r);
+      const ck = colorKeyOf(r);
+      const s = baseColorCounts.get(bk) ?? new Set<string>();
+      s.add(ck);
+      baseColorCounts.set(bk, s);
+    }
+    let variantBases = 0;
+    for (const [, s] of baseColorCounts) { if (s.size > 1) variantBases++; }
+    return { products: colorKeys.size, variantBases };
+  }, [selected, previewRows]);
+
   // ── Selected merchants stats ────────────────────────────────────────────────
   const selMerchantStats = merchants.filter((m) => selectedMerchants.has(m.name));
   const selTotal = selMerchantStats.reduce((s, m) => s + m.count, 0);
@@ -219,18 +249,24 @@ export default function CSVImportPage() {
 
           {/* Supported columns reference */}
           <div className="rounded-xl border border-[var(--border)] p-4 text-[10px] text-[var(--foreground-muted)] space-y-2">
-            <p className="text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Supported feed columns</p>
+            <p className="text-[9px] tracking-[0.2em] uppercase text-[var(--foreground-subtle)]">Supported Awin feed columns</p>
             <div className="grid grid-cols-2 gap-x-8 gap-y-0.5 font-mono mt-1">
+              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → affiliate link <span className="text-red-400">*required*</span></span>
               <span><span className="text-[var(--foreground)]">product_name</span> → name</span>
-              <span><span className="text-[var(--foreground)]">brand_name</span> / merchant_name → brand</span>
-              <span><span className="text-[var(--foreground)]">search_price</span> / store_price → price</span>
-              <span><span className="text-[var(--foreground)]">currency</span> → currency</span>
-              <span><span className="text-[var(--foreground)]">large_image</span> / merchant_image_url → image</span>
-              <span><span className="text-[var(--foreground)]">aw_deep_link</span> → referral link</span>
+              <span><span className="text-[var(--foreground)]">search_price</span> / display_price → price</span>
+              <span><span className="text-[var(--foreground)]">display_price</span> → currency symbol (£€$…)</span>
+              <span><span className="text-[var(--foreground)]">currency</span> → ISO currency code</span>
+              <span><span className="text-[var(--foreground)]">rrp_price</span> → original price (for discount)</span>
+              <span><span className="text-[var(--foreground)]">aw_image_url</span> → primary image (Awin proxy)</span>
+              <span><span className="text-[var(--foreground)]">alternate_image</span> → additional images</span>
               <span><span className="text-[var(--foreground)]">category_name</span> → category + gender</span>
+              <span><span className="text-[var(--foreground)]">fashion_suitable_for</span> → gender override</span>
+              <span><span className="text-[var(--foreground)]">fashion_size</span> → available sizes</span>
               <span><span className="text-[var(--foreground)]">colour</span> → color</span>
+              <span><span className="text-[var(--foreground)]">description</span> → product description</span>
+              <span><span className="text-[var(--foreground)]">specifications</span> → material / fabric</span>
+              <span><span className="text-[var(--foreground)]">brand_name</span> / merchant_name → brand</span>
               <span><span className="text-[var(--foreground)]">in_stock</span> → filters out sold out</span>
-              <span><span className="text-[var(--foreground)]">merchant_name</span> → merchant filter</span>
             </div>
           </div>
         </div>
@@ -347,6 +383,12 @@ export default function CSVImportPage() {
                   <> · <span className="text-[var(--foreground-subtle)]">{(previewRows.length - validCount).toLocaleString()} skipped</span></>
                 )}
                 {" · "}{selected.size.toLocaleString()} selected
+                {selected.size > 0 && (
+                  <> · <span className="text-[var(--foreground)]">{groupStats.products.toLocaleString()} products</span>
+                  {groupStats.variantBases > 0 && (
+                    <span className="text-[var(--foreground-muted)]"> ({groupStats.variantBases} multi-color)</span>
+                  )}</>
+                )}
               </span>
               <button
                 onClick={() => setSelected(new Set<number>(previewRows.map((r, i) => r._valid ? i : -1).filter((i): i is number => i >= 0)))}
@@ -379,7 +421,7 @@ export default function CSVImportPage() {
                   {importing ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Importing…</>
                   ) : (
-                    `Import ${selected.size.toLocaleString()} product${selected.size !== 1 ? "s" : ""}`
+                    `Import ${groupStats.products.toLocaleString()} product${groupStats.products !== 1 ? "s" : ""}`
                   )}
                 </button>
               )}
@@ -399,6 +441,7 @@ export default function CSVImportPage() {
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Category</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Gender</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Price</th>
+                  <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Sizes</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Link</th>
                   <th className="px-3 py-2.5 text-left text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] font-normal">Status</th>
                 </tr>
@@ -462,13 +505,27 @@ export default function CSVImportPage() {
                       <td className="px-3 py-2 text-[var(--foreground-muted)] whitespace-nowrap text-[10px]">
                         {row.gender ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-[var(--foreground)] whitespace-nowrap font-mono text-[10px]">
-                        {row.price > 0 ? `${row.price} ${row.currency}` : "—"}
+                      <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">
+                        {row.price > 0 ? (
+                          <span className="text-[var(--foreground)]">
+                            {row.price} <span className="text-[var(--foreground-muted)]">{row.currency}</span>
+                          </span>
+                        ) : "—"}
+                        {row.priceOriginal > row.price && (
+                          <span className="ml-1 text-[var(--foreground-subtle)] line-through">
+                            {row.priceOriginal}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-[var(--foreground-muted)] text-[10px] max-w-[100px]">
+                        {row.sizes?.length
+                          ? <span className="truncate block">{row.sizes.slice(0, 4).join(", ")}{row.sizes.length > 4 ? "…" : ""}</span>
+                          : <span className="text-[var(--foreground-subtle)]">—</span>}
                       </td>
                       <td className="px-3 py-2">
                         {row.referralUrl
-                          ? <span className="text-[9px] text-emerald-500">✓ link</span>
-                          : <span className="text-[9px] text-[var(--foreground-subtle)]">—</span>}
+                          ? <span className="text-[9px] text-emerald-500">✓ awin</span>
+                          : <span className="text-[9px] text-red-400">no link</span>}
                       </td>
                       <td className="px-3 py-2">
                         {row._valid ? (
