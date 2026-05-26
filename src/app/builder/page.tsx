@@ -273,7 +273,7 @@ export default function BuilderPage() {
   const { likedProducts } = useLikes();
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, convertToUsd } = useCurrency();
   const { isOpen: stylistOpen, toggle: toggleStylist, close: closeStylist } = useStylist();
   const router = useRouter();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -335,9 +335,13 @@ export default function BuilderPage() {
     )) as StyleKeyword[],
   [selection]);
 
+  // Normalize each product to USD so the total is consistent across mixed currencies
   const totalPrice = useMemo(() =>
-    Object.values(selection).reduce((sum, p) => sum + (p?.priceMin ?? 0), 0),
-  [selection]);
+    Object.values(selection).reduce(
+      (sum, p) => sum + (p ? convertToUsd((p as Product).priceMin, (p as Product).currency || "USD") : 0),
+      0,
+    ),
+  [selection, convertToUsd]);
 
   const selectedCount = Object.values(selection).filter(Boolean).length;
 
@@ -964,7 +968,7 @@ export default function BuilderPage() {
                         <>
                           <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{picked.name}</p>
                           <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{picked.brand}</p>
-                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin)}</p>
+                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin, picked.currency)}</p>
                           {/* Variant colour swatches (separate products) */}
                           {(picked.variants?.length ?? 0) > 1 && (() => {
                             const variants = picked.variants!;
@@ -1406,7 +1410,7 @@ export default function BuilderPage() {
                           <div className="px-3 pt-3 pb-3.5">
                             <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
                             <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{product.name}</p>
-                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin)}</p>
+                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
                             {hasVariants && (() => {
                               const variants = product.variants!;
                               const MAX = 5;
@@ -2300,7 +2304,7 @@ export default function BuilderPage() {
                         <div className="pt-1.5">
                           <p className="text-[10px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
                           <p className="text-[9px] text-[var(--foreground-muted)] truncate mt-0.5">{product.name}</p>
-                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(product.priceMin)}</p>
+                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(product.priceMin, product.currency)}</p>
                         </div>
                       </div>
                     );
@@ -2837,7 +2841,7 @@ export default function BuilderPage() {
                   <p className="text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] font-mono">{slotProduct.brand}</p>
                   <p className="text-[16px] font-semibold text-[var(--foreground)] mt-0.5">{slotProduct.name}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-[14px] font-bold text-[var(--foreground)]">{formatPrice(slotProduct.priceMin)}</p>
+                    <p className="text-[14px] font-bold text-[var(--foreground)]">{formatPrice(slotProduct.priceMin, slotProduct.currency)}</p>
                     {activeLabel && (
                       <span className="text-[11px] text-[var(--foreground-muted)] bg-[var(--surface)] px-2 py-0.5 rounded-full">{activeLabel}</span>
                     )}

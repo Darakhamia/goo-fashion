@@ -142,7 +142,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Price */}
           <div className="mb-8 pb-8 border-b border-[var(--border)]">
             <p className="text-2xl font-bold text-[var(--foreground)]">
-              From {formatPrice(lowestPrice)}
+              From {formatPrice(lowestPrice, product.currency)}
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Price varies by retailer · All prices include tax
@@ -325,7 +325,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                         )}
                         <div className="text-right">
                           <p className="text-sm text-[var(--foreground)] font-medium">
-                            {formatPrice(retailer.price)}
+                            {formatPrice(retailer.price, retailer.currency)}
                           </p>
                           <p className={`text-[9px] tracking-[0.1em] mt-0.5 ${
                             retailer.availability === "in stock"

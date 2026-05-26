@@ -29,14 +29,18 @@ export default function Navigation() {
   const { likedOutfits, likedProducts } = useLikes();
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
-  const { currency, setCurrency, formatPrice } = useCurrency();
+  const { currency, setCurrency, formatPrice, convertToUsd } = useCurrency();
 
   const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
   const showWhiteText = isHero && !scrolled && theme === "dark";
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
-  const cartTotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+  // Normalize each item to USD first, then formatPrice (no sourceCurrency needed — already USD)
+  const cartTotalUsd = cartItems.reduce(
+    (sum, item) => sum + convertToUsd(item.price, item.currency || "USD"),
+    0,
+  );
 
   // Close cart drawer on click outside
   useEffect(() => {
@@ -372,7 +376,7 @@ export default function Navigation() {
                           {item.brand}
                         </p>
                         <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">
-                          {formatPrice(item.price)}
+                          {formatPrice(item.price, item.currency)}
                         </p>
                       </div>
                       {/* Remove */}
@@ -399,7 +403,7 @@ export default function Navigation() {
                     Estimated total
                   </p>
                   <p className="text-[20px] font-bold text-[var(--foreground)]">
-                    {formatPrice(cartTotal)}
+                    {formatPrice(cartTotalUsd)}
                   </p>
                 </div>
                 <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">

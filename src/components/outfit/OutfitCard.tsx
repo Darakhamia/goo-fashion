@@ -109,7 +109,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
             {outfit.name}
           </h3>
           <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
-            {formatPrice(outfit.totalPriceMin)}–{formatPrice(outfit.totalPriceMax)}
+            {formatPrice(outfit.totalPriceMin, outfit.currency)}–{formatPrice(outfit.totalPriceMax, outfit.currency)}
           </p>
         </Link>
       )}

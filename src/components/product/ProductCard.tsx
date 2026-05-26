@@ -205,8 +205,8 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         <div className="flex items-baseline gap-1.5 mt-2">
           <p className="text-[14px] font-medium text-[var(--foreground)]">
             {displayPriceMin === displayPriceMax
-              ? formatPrice(displayPriceMin)
-              : `${formatPrice(displayPriceMin)}–${formatPrice(displayPriceMax)}`}
+              ? formatPrice(displayPriceMin, product.currency)
+              : `${formatPrice(displayPriceMin, product.currency)}–${formatPrice(displayPriceMax, product.currency)}`}
           </p>
           {colorCount > 1 && (
             <>
