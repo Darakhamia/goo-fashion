@@ -29,9 +29,27 @@ export const CURRENCIES: CurrencyInfo[] = [
 ];
 
 // ── Format helper ──────────────────────────────────────────────────────────
-export function applyFormat(usdAmount: number, currency: CurrencyCode, rates: Record<string, number>): string {
+// amount     – price in sourceCurrency (default "USD")
+// currency   – target display currency
+// rates      – USD-based rates: rates["GBP"] = 0.74 means 1 USD = 0.74 GBP
+export function applyFormat(
+  amount: number,
+  currency: CurrencyCode,
+  rates: Record<string, number>,
+  sourceCurrency = "USD",
+): string {
   const info = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
-  const rate  = currency === "USD" ? 1 : (rates[currency] ?? 1);
+
+  // Step 1: convert source → USD
+  let usdAmount = amount;
+  const src = sourceCurrency.toUpperCase();
+  if (src !== "USD") {
+    const srcRate = rates[src];
+    if (srcRate && srcRate > 0) usdAmount = amount / srcRate;
+  }
+
+  // Step 2: convert USD → target
+  const rate = currency === "USD" ? 1 : (rates[currency] ?? 1);
   const value = Math.round(usdAmount * rate);
   const numStr = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
   return info.position === "prefix"
@@ -55,15 +73,19 @@ const FALLBACK_RATES: Record<string, number> = {
 interface CurrencyContextValue {
   currency: CurrencyCode;
   setCurrency: (c: CurrencyCode) => void;
-  formatPrice: (usdAmount: number) => string;
+  /** Format a price for display. Pass sourceCurrency when the amount is not in USD. */
+  formatPrice: (amount: number, sourceCurrency?: string) => string;
+  /** Normalize any amount to USD using current rates (useful for summing mixed-currency totals). */
+  convertToUsd: (amount: number, sourceCurrency: string) => number;
   ratesLoading: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
-  currency:     "USD",
-  setCurrency:  () => {},
-  formatPrice:  (n) => `$${n.toLocaleString()}`,
-  ratesLoading: false,
+  currency:      "USD",
+  setCurrency:   () => {},
+  formatPrice:   (n) => `$${n.toLocaleString()}`,
+  convertToUsd:  (n) => n,
+  ratesLoading:  false,
 });
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -117,13 +139,25 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(CURRENCY_KEY, c); } catch { /* ignore */ }
   }, []);
 
+  const convertToUsd = useCallback(
+    (amount: number, sourceCurrency: string): number => {
+      const src = sourceCurrency.toUpperCase();
+      if (src === "USD") return amount;
+      const srcRate = rates[src];
+      if (!srcRate || srcRate <= 0) return amount;
+      return amount / srcRate;
+    },
+    [rates],
+  );
+
   const formatPrice = useCallback(
-    (usdAmount: number) => applyFormat(usdAmount, currency, rates),
+    (amount: number, sourceCurrency?: string) =>
+      applyFormat(amount, currency, rates, sourceCurrency ?? "USD"),
     [currency, rates],
   );
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, ratesLoading }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, ratesLoading }}>
       {children}
     </CurrencyContext.Provider>
   );

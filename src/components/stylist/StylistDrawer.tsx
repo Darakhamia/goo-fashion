@@ -586,7 +586,7 @@ export function StylistDrawer({
                               {product.brand}
                             </p>
                             <p className="font-mono text-[9px] text-[var(--foreground)] truncate w-full text-left leading-tight mt-0.5">
-                              {formatPrice(product.priceMin)}
+                              {formatPrice(product.priceMin, product.currency)}
                             </p>
                           </>
                         );
