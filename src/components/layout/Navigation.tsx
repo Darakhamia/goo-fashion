@@ -193,6 +193,24 @@ export default function Navigation() {
             )}
           </Link>
 
+          {/* AI Stylist */}
+          <button
+            onClick={toggleStylist}
+            aria-label="Open AI Stylist"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
+              stylistOpen
+                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                : showWhiteText
+                ? "bg-white/10 text-white border-white/30 hover:bg-white/20"
+                : "bg-[var(--surface)] text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+            </svg>
+            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+          </button>
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}

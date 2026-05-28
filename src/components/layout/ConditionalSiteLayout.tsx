@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import { FloatingStylist } from "@/components/stylist/FloatingStylist";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { StylistProvider, useStylist } from "@/lib/context/stylist-context";
 import type { Product } from "@/lib/types";
@@ -49,19 +48,15 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
           <Footer />
         </div>
       )}
-      <FloatingStylist />
-
-      {/* Mobile stylist drawer — skip on builder page (builder manages its own with outfit context) */}
+      {/* Stylist drawer — skip on builder page (builder manages its own with outfit context) */}
       {!isBuilder && (
-        <div className="md:hidden">
-          <StylistDrawer
-            isOpen={isOpen}
-            onClose={close}
-            surface="browse"
-            products={products}
-            position="fixed"
-          />
-        </div>
+        <StylistDrawer
+          isOpen={isOpen}
+          onClose={close}
+          surface="browse"
+          products={products}
+          position="fixed"
+        />
       )}
 
       <MobileBottomNav />
