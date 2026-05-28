@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { StylistProvider, useStylist } from "@/lib/context/stylist-context";
+import PageTransition from "@/components/ui/PageTransition";
 import type { Product } from "@/lib/types";
 
 interface ConditionalSiteLayoutProps {
@@ -41,7 +42,9 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   return (
     <>
       <Navigation />
-      <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>{children}</main>
+      <main className={!isBuilder ? "md:pb-0 pb-14" : ""}>
+        <PageTransition>{children}</PageTransition>
+      </main>
       {/* Footer: hidden entirely on builder */}
       {!isBuilder && (
         <div className="pb-14 md:pb-0">

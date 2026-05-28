@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/* Semantic tokens for shadcn-compatible components — map to project CSS vars */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--border-strong);
+  --color-primary: var(--foreground);
+  --color-primary-foreground: var(--background);
+  --color-secondary: var(--surface);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--foreground-muted);
+  --color-accent: var(--surface);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+}
+
 :root {
   /* Font families — injected by next/font/google as CSS variables on <html> */
   --font-body:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
