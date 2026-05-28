@@ -14,9 +14,16 @@ function isWithinLastWeek(dateStr?: string): boolean {
 }
 
 function shuffleArray<T>(arr: T[]): T[] {
+  let s = 0x4a3f2e1d;
+  const rng = () => {
+    s = (s ^ (s << 13)) >>> 0;
+    s = (s ^ (s >> 17)) >>> 0;
+    s = (s ^ (s << 5)) >>> 0;
+    return s / 0x100000000;
+  };
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
