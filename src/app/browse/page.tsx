@@ -1247,7 +1247,7 @@ export default function BrowsePage() {
                 filteredOutfits.length > 0 ? (
                   <motion.div
                     className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
-                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+                    variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
                     initial="hidden"
                     animate="show"
                   >
@@ -1255,7 +1255,7 @@ export default function BrowsePage() {
                       <motion.div
                         key={outfit.id}
                         className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
-                        variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                        variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
                       >
                         <OutfitCard outfit={outfit} />
                       </motion.div>
@@ -1267,7 +1267,7 @@ export default function BrowsePage() {
               ) : displayItems.length > 0 ? (
                 <motion.div
                   className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 stagger-children"
-                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
                   initial="hidden"
                   animate="show"
                 >
@@ -1275,7 +1275,7 @@ export default function BrowsePage() {
                     <motion.div
                       key={key}
                       className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
-                      variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                      variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
                     >
                       <ProductCard product={product} initialVariant={forcedVariant} />
                     </motion.div>

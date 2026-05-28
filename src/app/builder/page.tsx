@@ -1306,7 +1306,12 @@ export default function BuilderPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-3">
+                <motion.div
+                  className="grid grid-cols-4 gap-3"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+                  initial="hidden"
+                  animate="show"
+                >
                     {expandedCatalogItems.map(item => {
                       const { product, forcedVariant } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
@@ -1326,7 +1331,7 @@ export default function BuilderPage() {
                       const hasVariants = (product.variants?.length ?? 0) > 1;
 
                       return (
-                        <div
+                        <motion.div
                           key={item.key}
                           role="button"
                           tabIndex={0}
@@ -1337,6 +1342,7 @@ export default function BuilderPage() {
                               selectProduct(product);
                             }
                           }}
+                          variants={{ hidden: { opacity: 0, y: 12, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.7 } } }}
                           className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
                             isSelected
                               ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
@@ -1492,10 +1498,10 @@ export default function BuilderPage() {
                               );
                             })()}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
-                </div>
+                </motion.div>
               )}
             </div>
           </div>

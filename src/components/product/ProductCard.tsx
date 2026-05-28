@@ -108,10 +108,10 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   return (
     <motion.div
       className="group relative flex flex-col overflow-hidden rounded-xl bg-[var(--surface)] border border-[var(--border)]"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{ type: 'spring', bounce: 0.2, duration: 0.8 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
