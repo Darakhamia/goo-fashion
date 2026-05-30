@@ -140,14 +140,34 @@ function boostAwinkImageUrl(url: string): string {
   return url.replace(/w=\d+/, "w=800").replace(/h=\d+/, "h=800");
 }
 
+// ── Parse JSON array field safely ─────────────────────────────────────────────
+
+function parseJsonArray(raw: string): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("[")) return [];
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+  } catch { /* ignore */ }
+  return [];
+}
+
 // ── Collect all non-empty image URLs preserving quality order ─────────────────
 
 function collectImages(row: Record<string, string>): string[] {
   const awImage = boostAwinkImageUrl(resolve(row, "aw_image_url"));
   const awThumb = boostAwinkImageUrl(resolve(row, "aw_thumb_url"));
 
+  // Farfetch format: main_image + all_images JSON array
+  const mainImage = resolve(row, "main_image");
+  const allImagesRaw = resolve(row, "all_images");
+  const allImagesParsed = parseJsonArray(allImagesRaw);
+
   const candidates = [
+    mainImage,
     awImage,
+    ...allImagesParsed,
     resolve(row, "alternate_image"),
     resolve(row, "merchant_image_url"),
     resolve(row, "alternate_image_three"),
@@ -189,7 +209,7 @@ function extractCurrencyFromDisplay(raw: string): string {
   return "";
 }
 
-// ── Parse price handling "49.99" and European "49,99" formats ─────────────────
+// ── Parse price handling "49.99", European "49,99", and thousands-sep "1.267" ──
 
 function parsePrice(raw: string): number {
   if (!raw) return 0;
@@ -202,9 +222,17 @@ function parsePrice(raw: string): number {
     // European decimal: "1.234,99" → "1234.99"
     normalized = stripped.replace(/\./g, "").replace(",", ".");
   } else {
-    normalized = stripped.replace(/,/g, "");
+    // Check for European thousands separator: "1.267" (exactly 3 digits after single dot)
+    const thousandsSep = /^(\d{1,3})\.(\d{3})$/.test(stripped);
+    if (thousandsSep) {
+      normalized = stripped.replace(/\./g, "");
+    } else {
+      normalized = stripped.replace(/,/g, "");
+    }
   }
-  return parseFloat(normalized) || 0;
+  const val = parseFloat(normalized) || 0;
+  // Sanity check: prices above 500,000 are scraper artifacts
+  return val > 500_000 ? 0 : val;
 }
 
 // ── Map color name → hex for variant swatches ────────────────────────────────
@@ -238,8 +266,17 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const merchant = resolve(row, "merchant_name", "brand_name", "brand", "manufacturer");
   const brand = resolve(row, "brand_name", "brand", "merchant_name", "manufacturer");
 
-  // Price: search_price is the main Awin field (always numeric)
-  const priceRaw = resolve(row, "search_price", "store_price", "display_price", "base_price", "price", "цена");
+  // Farfetch: extract brand from available_sizes when brand column is empty
+  // Sizes look like ["Brand Name | M", "Brand Name | S"]
+  const brandFallback = brand || (() => {
+    const sizesRaw = resolve(row, "available_sizes");
+    const first = parseJsonArray(sizesRaw)[0] ?? "";
+    const pipe = first.indexOf("|");
+    return pipe > 0 ? first.slice(0, pipe).trim() : "";
+  })();
+
+  // Price: Farfetch uses current_price; AWIN uses search_price
+  const priceRaw = resolve(row, "current_price", "search_price", "store_price", "display_price", "base_price", "price", "цена");
   const price = parsePrice(priceRaw);
   if (!price) issues.push("missing price");
 
@@ -261,8 +298,8 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const allImages = collectImages(row);
   const imageUrl = allImages[0] ?? "";
 
-  // Affiliate link: ONLY aw_deep_link — no fallback to direct merchant URLs
-  const referralUrl = resolve(row, "aw_deep_link");
+  // Affiliate link: AWIN uses aw_deep_link; Farfetch scraper provides product_url
+  const referralUrl = resolve(row, "aw_deep_link", "product_url");
   if (!referralUrl) issues.push("no affiliate link");
 
   // In-stock check
@@ -286,6 +323,13 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     category = inferCategoryFromName(name);
   }
 
+  // Farfetch: infer gender from input_url (e.g. /men/ or /women/)
+  const inputUrl = resolve(row, "input_url");
+  if (inputUrl && !gender) {
+    if (/\/women\//.test(inputUrl)) gender = "women";
+    else if (/\/men\//.test(inputUrl)) gender = "men";
+  }
+
   // fashion_suitable_for (or Fashion:suitable_for) overrides gender
   const suitableFor = resolve(row,
     "fashion_suitable_for", "fashion:suitable_for", "suitable_for", "gender",
@@ -303,21 +347,30 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     if (fashionType) category = inferCategoryFromName(fashionType);
   }
 
-  const colorRaw = resolve(row, "colour", "color", "цвет");
-  const colors = colorRaw ? [colorRaw] : [];
+  const colorRaw = resolve(row, "colour", "color", "description", "цвет");
+  // Skip if description looks like actual text rather than a color word
+  const isColorWord = colorRaw && colorRaw.split(/\s+/).length <= 4 && !/[.,]/.test(colorRaw);
+  const colors = isColorWord ? [colorRaw] : [];
 
-  // Sizes: from fashion feed field or standard size columns
-  const fashionSizeRaw = resolve(row,
-    "fashion_size", "fashion:size", "sizes", "available_sizes", "size",
-  );
-  const sizes = fashionSizeRaw
-    ? fashionSizeRaw.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
-    : [];
+  // Sizes: Farfetch available_sizes is a JSON array ["Brand | M", "Brand | S"]
+  const availableSizesRaw = resolve(row, "available_sizes");
+  let sizes: string[] = [];
+  const jsonSizes = parseJsonArray(availableSizesRaw);
+  if (jsonSizes.length > 0) {
+    sizes = jsonSizes.map((s) => {
+      const pipe = s.lastIndexOf("|");
+      return pipe >= 0 ? s.slice(pipe + 1).trim() : s.trim();
+    }).filter(Boolean);
+  } else {
+    const fashionSizeRaw = resolve(row, "fashion_size", "fashion:size", "sizes", "size");
+    sizes = fashionSizeRaw
+      ? fashionSizeRaw.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
+      : [];
+  }
 
-  // Description: prefer long description, fall back to short or keywords
-  const description = resolve(row,
-    "description", "product_short_description", "keywords", "desc",
-  );
+  // Description: Farfetch description is often just a color word — skip those
+  const descRaw = resolve(row, "description", "product_short_description", "keywords", "desc");
+  const description = (descRaw && descRaw.split(/\s+/).length > 4) ? descRaw : "";
 
   // Material from specifications (Awin often puts fabric content there)
   const material = resolve(row,
@@ -326,8 +379,8 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
 
   return {
     name,
-    brand,
-    merchant,
+    brand: brandFallback,
+    merchant: merchant || brandFallback,
     category,
     gender,
     price,
