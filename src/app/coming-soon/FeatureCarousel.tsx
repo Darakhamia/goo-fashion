@@ -64,7 +64,7 @@ function EmailForm() {
         ) : (
           <>
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              type="email" value={email} onChange={(e: { target: { value: string } }) => setEmail(e.target.value)}
               placeholder="ENTER YOUR EMAIL" required
               className="flex-1 bg-transparent px-5 py-3.5 text-[11px] text-white placeholder:text-white/20 tracking-[0.1em] outline-none"
             />
@@ -103,12 +103,12 @@ function Slide01() {
             transition: "box-shadow 0.4s ease, border-color 0.4s ease",
             animation: `cardReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
           }}
-          onMouseEnter={e => {
+          onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
             const el = e.currentTarget as HTMLDivElement;
             el.style.boxShadow = "0 0 35px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.1)";
             el.style.borderColor = "rgba(255,255,255,0.16)";
           }}
-          onMouseLeave={e => {
+          onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
             const el = e.currentTarget as HTMLDivElement;
             el.style.boxShadow = "0 0 0 0 transparent";
             el.style.borderColor = "rgba(255,255,255,0.09)";
@@ -244,13 +244,13 @@ function Slide03() {
               aspectRatio: "1.15",
               animation: `cardReveal 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.05}s`,
             }}
-            onMouseEnter={e => {
+            onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
               const el = e.currentTarget as HTMLDivElement;
               el.style.background = "rgba(255,255,255,0.055)";
               el.style.borderColor = "rgba(255,255,255,0.18)";
               el.style.boxShadow = "0 0 30px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)";
             }}
-            onMouseLeave={e => {
+            onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
               const el = e.currentTarget as HTMLDivElement;
               el.style.background = "rgba(255,255,255,0.03)";
               el.style.borderColor = "rgba(255,255,255,0.09)";
