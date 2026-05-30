@@ -1,63 +1,137 @@
+"use client";
+
+import { useState } from "react";
 import FeatureCarousel from "./FeatureCarousel";
 
-export const metadata = {
-  title: "Coming Soon — GOO",
-  description: "Something new is on the way. GOO — AI-powered personal styling.",
-};
+const FEATURES = [
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.22 4.22l2.12 2.12M13.66 13.66l2.12 2.12M13.66 6.34l2.12-2.12M4.22 15.78l2.12-2.12" />
+        <circle cx="10" cy="10" r="2.5" />
+      </svg>
+    ),
+    title: "AI STYLIST",
+    body: "Your personal stylist. On demand.",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="10" cy="10" r="7" />
+        <circle cx="10" cy="10" r="3" />
+        <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
+      </svg>
+    ),
+    title: "BEST PRICE",
+    body: "Scanned across 50+ retailers.",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 3L13 8H18L14 11L15.5 16L10 13L4.5 16L6 11L2 8H7L10 3Z" />
+      </svg>
+    ),
+    title: "ONE CLICK",
+    body: "Buy the whole fit. Instantly.",
+  },
+];
 
 export default function ComingSoonPage() {
+  const [slideIdx, setSlideIdx] = useState(0);
+
   return (
-    <main className="min-h-screen bg-[#0A0A0A] flex flex-col">
-      {/* Header */}
-      <header className="px-8 md:px-14 pt-10 shrink-0">
-        <span className="text-[11px] tracking-[0.28em] uppercase font-medium text-white/30">
-          GOO
-        </span>
-      </header>
-
-      {/* Body */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-12 lg:gap-0 px-8 md:px-14 py-14 lg:py-0">
-
-        {/* Left — hero text */}
-        <div className="flex flex-col justify-center lg:pr-16 lg:w-1/2 lg:py-20">
-          <p className="text-[10px] tracking-[0.24em] uppercase font-medium text-white/25 mb-8">
-            Coming Soon
-          </p>
-          <h1
-            className="text-[clamp(3.5rem,8vw,7.5rem)] font-black text-white leading-[0.9] tracking-tight mb-8"
-          >
-            Dress like
-            <br />
-            <em>you think.</em>
-          </h1>
-          <p className="text-sm text-white/40 leading-relaxed max-w-xs">
-            AI builds complete outfits around your style, body, and budget.
-            Premium brands, price-compared.
-          </p>
-
-          {/* Divider */}
-          <div className="mt-12 w-12 h-px bg-white/10" />
-
-          <p className="mt-5 text-[10px] tracking-[0.2em] uppercase text-white/20">
-            Launching 2026
-          </p>
-        </div>
-
-        {/* Right — carousel */}
-        <div className="lg:w-1/2 flex flex-col justify-center lg:border-l lg:border-white/[0.06] lg:pl-16 lg:py-20">
-          <FeatureCarousel />
+    <main className="min-h-screen h-screen bg-[#080808] flex flex-col overflow-hidden" style={{ fontFamily: "var(--font-poppins), sans-serif" }}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-8 md:px-12 lg:px-16 pt-8 shrink-0">
+        <span className="text-[12px] tracking-[0.32em] uppercase font-bold text-white">GOO</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] tracking-[0.22em] text-white/25 font-mono tabular-nums">
+            {String(slideIdx + 1).padStart(2, "0")}
+          </span>
+          <div className="w-8 h-px bg-white/20" />
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="px-8 md:px-14 pb-8 shrink-0 flex items-center justify-between">
-        <p className="text-[10px] tracking-[0.14em] uppercase text-white/15">
-          © 2026 GOO
-        </p>
-        <p className="text-[10px] tracking-[0.14em] uppercase text-white/15">
-          AI · Fashion · Personal Style
-        </p>
-      </footer>
+      {/* Body */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 px-8 md:px-12 lg:px-0 pb-8 lg:pb-0">
+
+        {/* ── LEFT PANEL ── */}
+        <div className="lg:w-[42%] flex flex-col justify-between lg:px-16 lg:py-10 shrink-0">
+          <div className="flex flex-col">
+            {/* Launching label */}
+            <div className="flex items-center gap-2 mb-6 mt-6 lg:mt-0"
+              style={{ animation: "fadeUp 0.6s ease both 0.1s" }}>
+              <p className="text-[10px] tracking-[0.26em] uppercase font-medium text-white/30">Launching 2026</p>
+              <span className="w-1 h-1 rounded-full bg-white/30" />
+            </div>
+
+            {/* Headline */}
+            <h1
+              className="font-black text-white uppercase leading-[0.88] tracking-[-0.02em] mb-6"
+              style={{
+                fontSize: "clamp(3rem, 6.5vw, 6.5rem)",
+                animation: "fadeUp 0.7s ease both 0.2s",
+              }}
+            >
+              Built<br />Different.<br />Made to<br />Fit.
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              className="text-[11px] text-white/35 leading-relaxed max-w-[280px] uppercase tracking-[0.06em] mb-8"
+              style={{ animation: "fadeUp 0.7s ease both 0.35s" }}
+            >
+              AI builds complete outfits around your style, body, and budget. Premium brands.
+              Best price. No bullshit.
+            </p>
+
+            {/* Features */}
+            <div className="flex flex-col gap-0" style={{ animation: "fadeUp 0.7s ease both 0.45s" }}>
+              {FEATURES.map((f, i) => (
+                <div
+                  key={f.title}
+                  className="flex items-start gap-4 py-4 border-t border-white/[0.06]"
+                  style={{ animationDelay: `${0.5 + i * 0.08}s` }}
+                >
+                  <div className="w-9 h-9 border border-white/10 flex items-center justify-center text-white/40 shrink-0 mt-0.5">
+                    {f.icon}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black text-white tracking-[0.1em] uppercase leading-tight">{f.title}</p>
+                    <p className="text-[11px] text-white/30 mt-0.5">{f.body}</p>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t border-white/[0.06]" />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between mt-8 lg:mt-0 shrink-0">
+            <p className="text-[9px] tracking-[0.16em] uppercase text-white/15">© 2026 GOO</p>
+            <p className="text-[9px] tracking-[0.12em] uppercase text-white/15">AI · Fashion · Personal Style</p>
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL ── */}
+        <div
+          className="flex-1 border-l border-white/[0.05] lg:px-12 lg:py-10 flex flex-col min-h-0 mt-8 lg:mt-0"
+          style={{ animation: "fadeIn 0.8s ease both 0.3s" }}
+        >
+          <FeatureCarousel onSlideChange={setSlideIdx} />
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
     </main>
   );
 }
