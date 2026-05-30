@@ -459,26 +459,26 @@ export default function BrowsePage() {
   /* Sidebar filter content — matches builder style exactly */
   const renderFilters = () => (
     <div>
-      {/* SAVED / LIKED */}
+      {/* MY LIKED ITEMS */}
       <div className="border-b border-[var(--border)] px-5 py-4">
-        <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Saved</p>
         <button
           onClick={() => setLikedOnly((v) => !v)}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+          className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 transition-all duration-200 group ${
             likedOnly
               ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              : "border-[var(--border-strong)] text-[var(--foreground)] hover:border-[var(--foreground)]"
           }`}
+          style={likedOnly ? {} : { boxShadow: "0 0 0 0 transparent" }}
         >
-          <span className="flex items-center gap-2 text-[11px] font-semibold">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-              <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+          <span className="flex items-center gap-3">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+              <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.5" fill={likedOnly ? "currentColor" : "none"} />
             </svg>
-            My Liked Items
+            <span className="text-[14px] font-black tracking-wide">My Liked Items</span>
           </span>
           {likedOnly && (
-            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="13" height="10" viewBox="0 0 10 8" fill="none" className="shrink-0">
+              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </button>
@@ -912,7 +912,7 @@ export default function BrowsePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 top-16 z-40 bg-black/20"
+              className="fixed inset-0 z-40 bg-black/20"
               onClick={() => setFiltersOpen(false)}
             />
           )}
@@ -926,7 +926,7 @@ export default function BrowsePage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -280, opacity: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
-              className="fixed left-0 top-16 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col"
+              className="fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
