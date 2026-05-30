@@ -123,18 +123,27 @@ export default function Navigation() {
           <button
             onClick={toggleStylist}
             aria-label="Open AI Stylist"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
+            className={`group relative flex items-center gap-2 px-4 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
               stylistOpen
                 ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                 : showWhiteText
-                ? "bg-white/10 text-white border-white/30 hover:bg-white/20"
-                : "bg-[var(--surface)] text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                ? "bg-white/10 text-white border-white/30 hover:bg-white/[0.15] hover:border-white/60"
+                : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] hover:border-[var(--foreground)]"
             }`}
+            style={!stylistOpen ? { boxShadow: "none" } : undefined}
+            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 18px rgba(255,255,255,0.18), 0 0 6px rgba(255,255,255,0.1)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
           >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            {/* glow blob on hover */}
+            <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: "radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.08) 0%, transparent 70%)" }} />
+            <svg
+              width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none"
+              className="relative z-10 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.7)]"
+            >
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+            <span className="relative z-10 text-[10px] tracking-[0.13em] uppercase font-bold leading-none">AI Stylist</span>
           </button>
 
           {/* Profile dropdown */}
@@ -143,12 +152,12 @@ export default function Navigation() {
               <button
                 onClick={() => { setProfileOpen(v => !v); setCurrencySubmenu(false); }}
                 aria-label="Profile menu"
-                className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${
                   profileOpen
-                    ? "border-[var(--foreground)] text-[var(--foreground)]"
+                    ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
                     : showWhiteText
-                    ? "border-white/30 text-white/70 hover:border-white hover:text-white"
-                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    ? "border-white/40 text-white/70 hover:border-white hover:text-white hover:bg-white/10"
+                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
                 }`}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -310,18 +319,18 @@ export default function Navigation() {
           <button
             onClick={toggleStylist}
             aria-label="Open AI Stylist"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 ${
+            className={`group relative flex items-center gap-2 px-3.5 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
               stylistOpen
                 ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                 : showWhiteText
-                ? "bg-white/10 text-white border-white/30 hover:bg-white/20"
-                : "bg-[var(--surface)] text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                ? "bg-white/10 text-white border-white/30"
+                : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]"
             }`}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none" className="relative z-10">
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+            <span className="relative z-10 text-[10px] tracking-[0.13em] uppercase font-bold leading-none">AI Stylist</span>
           </button>
           <SignedIn>
             <Link href="/profile" aria-label="Profile"
