@@ -1610,12 +1610,12 @@ export default function BuilderPage() {
                                       : [...new Set([...prev, ...grpLabels])]
                                   );
                                 }}
-                                className="w-full flex items-center justify-between px-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                className="w-full flex items-center justify-between pl-6 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                               >
                                 <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-40"}`}>View all</span>
-                                {grpViewAllChecked && (
-                                  <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                )}
+                                <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "rgba(255,255,255,0.25)" }}>
+                                  {grpViewAllChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                </div>
                               </button>
                               {group.items.map(item => {
                                 const isChk = selectedSubcategories.includes(item.label);
@@ -1625,7 +1625,7 @@ export default function BuilderPage() {
                                     onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(l => l !== item.label) : [...prev, item.label]); }}
                                     className={`w-full flex items-center justify-between pl-6 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
                                   >
-                                    <span className={`text-[14px] font-semibold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-75"}`}>{item.label}</span>
+                                    <span className={`text-[14px] font-semibold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)]"}`}>{item.label}</span>
                                     <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "rgba(255,255,255,0.25)" }}>
                                       {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </div>
