@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const SLIDES = [
   { id: "01", label: "ITEMS" },
@@ -20,6 +20,34 @@ const ITEMS = [
   { n: "03", cat: "SNEAKERS", brand: "BALENCIAGA", img: "/cs/sneakers.png" },
 ];
 
+const AUTOPLAY_MS = 4500;
+
+/* ── Glow card wrapper ─────────────────────────────────────────── */
+function GlowCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl overflow-hidden transition-all duration-500 ${className}`}
+      style={{
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 0 0 0 rgba(255,255,255,0)",
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow =
+          "0 0 40px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)";
+        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.14)";
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 0 rgba(255,255,255,0)";
+        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)";
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ── Email form ────────────────────────────────────────────────── */
 function EmailForm() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -41,209 +69,312 @@ function EmailForm() {
   };
 
   return (
-    <div className="border border-white/10 bg-white/[0.02] p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
-      <div className="shrink-0">
-        <p className="text-[9px] tracking-[0.22em] uppercase text-white/30 mb-1">Be the first to know</p>
-        <p className="text-[15px] md:text-[18px] font-black text-white uppercase tracking-tight leading-tight">
-          Get notified<br className="hidden md:block" /> when we launch.
-        </p>
-      </div>
-      <form onSubmit={submit} className="flex-1 flex items-center border border-white/15 bg-black">
-        {state === "done" ? (
-          <p className="flex-1 px-5 py-4 text-[12px] text-white/60 tracking-[0.1em] uppercase">You&apos;re on the list ✓</p>
-        ) : (
-          <>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-              className="flex-1 bg-transparent px-5 py-4 text-[12px] text-white placeholder:text-white/25 tracking-[0.06em] outline-none"
-            />
-            <button
-              type="submit"
-              disabled={state === "loading"}
-              className="px-5 py-4 text-white/60 hover:text-white transition-colors disabled:opacity-40"
-            >
-              {state === "loading" ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" className="animate-spin" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="8" cy="8" r="6" strokeOpacity="0.3" />
-                  <path d="M8 2a6 6 0 0 1 6 6" strokeLinecap="round" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 8h12M9 3l5 5-5 5" />
-                </svg>
-              )}
-            </button>
-          </>
+    <GlowCard>
+      <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="shrink-0">
+          <p className="text-[8px] tracking-[0.26em] uppercase text-white/25 mb-1">Be the first to know</p>
+          <p className="text-[14px] font-black text-white uppercase tracking-tight leading-tight">
+            Get notified when<br className="hidden sm:block" /> we launch.
+          </p>
+        </div>
+        <form onSubmit={submit} className="flex-1 flex items-center rounded-xl overflow-hidden"
+          style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.4)" }}>
+          {state === "done" ? (
+            <p className="flex-1 px-5 py-3.5 text-[11px] text-white/50 tracking-[0.12em] uppercase">
+              You&apos;re on the list ✓
+            </p>
+          ) : (
+            <>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                className="flex-1 bg-transparent px-5 py-3.5 text-[12px] text-white placeholder:text-white/20 tracking-[0.06em] outline-none"
+              />
+              <button
+                type="submit"
+                disabled={state === "loading"}
+                className="px-5 py-3.5 text-white/50 hover:text-white transition-colors disabled:opacity-30"
+              >
+                {state === "loading" ? (
+                  <svg width="14" height="14" viewBox="0 0 14 14" className="animate-spin" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="7" cy="7" r="5" strokeOpacity="0.25" />
+                    <path d="M7 2a5 5 0 0 1 5 5" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1.5 7h11M8 2.5l5 4.5-5 4.5" />
+                  </svg>
+                )}
+              </button>
+            </>
+          )}
+        </form>
+        {state === "error" && (
+          <p className="text-[10px] text-red-400/70 tracking-wide shrink-0">Try again.</p>
         )}
-      </form>
-      {state === "error" && <p className="text-[10px] text-red-400/80 tracking-wide">Something went wrong. Try again.</p>}
-    </div>
+      </div>
+    </GlowCard>
   );
 }
 
+/* ── Slide 01: Items ───────────────────────────────────────────── */
 function Slide01() {
   return (
-    <div className="flex-1 flex flex-col gap-3 overflow-hidden">
-      <div className="grid grid-cols-3 gap-3 flex-1">
-        {ITEMS.map((item) => (
-          <div key={item.n} className="relative border border-white/8 bg-white/[0.02] overflow-hidden flex flex-col">
-            <div className="absolute top-3 left-3 z-10">
-              <span className="text-[9px] tracking-[0.18em] text-white/30 font-mono">{item.n}</span>
-            </div>
+    <div className="flex-1 grid grid-cols-3 gap-3 min-h-0">
+      {ITEMS.map((item, i) => (
+        <GlowCard key={item.n} className="flex flex-col" >
+          <div className="relative flex-1 min-h-0 overflow-hidden">
+            <span
+              className="absolute top-3 left-3 z-10 text-[8px] tracking-[0.2em] text-white/30 font-mono"
+              style={{ textShadow: "0 0 8px rgba(255,255,255,0.4)" }}
+            >
+              {item.n}
+            </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt={item.cat} className="flex-1 w-full object-cover object-center min-h-0" />
-            <div className="p-3 shrink-0">
-              <p className="text-[11px] font-black text-white tracking-wide uppercase">{item.cat}</p>
-              <p className="text-[9px] text-white/35 tracking-[0.1em] uppercase mt-0.5">{item.brand}</p>
-            </div>
+            <img
+              src={item.img}
+              alt={item.cat}
+              className="w-full h-full object-cover object-center"
+              style={{
+                animation: `imgReveal 0.7s cubic-bezier(0.16,1,0.3,1) both ${i * 0.08}s`,
+              }}
+            />
           </div>
-        ))}
-      </div>
+          <div className="px-3.5 py-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-[11px] font-black text-white tracking-[0.08em] uppercase leading-tight">{item.cat}</p>
+            <p className="text-[8px] text-white/30 tracking-[0.1em] uppercase mt-0.5 leading-tight truncate">{item.brand}</p>
+          </div>
+        </GlowCard>
+      ))}
     </div>
   );
 }
 
+/* ── Slide 02: Outfit ──────────────────────────────────────────── */
 function Slide02() {
   return (
-    <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden min-h-0">
+    <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
       {/* Item list */}
-      <div className="flex flex-col gap-2">
-        <p className="text-[9px] tracking-[0.2em] uppercase text-white/25 mb-1">01 / ITEMS</p>
-        {ITEMS.map((item) => (
-          <div key={item.n} className="border border-white/8 bg-white/[0.02] flex items-center gap-3 p-3 flex-1 min-h-0">
-            <span className="text-[9px] font-mono text-white/25 shrink-0">{item.n}</span>
+      <div className="flex flex-col gap-2.5">
+        <p className="text-[8px] tracking-[0.24em] uppercase text-white/20 mb-0.5">Selected items</p>
+        {ITEMS.map((item, i) => (
+          <GlowCard key={item.n} className="flex items-center gap-3 p-3 flex-1 min-h-0">
+            <span className="text-[8px] font-mono text-white/20 shrink-0 w-4">{item.n}</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt={item.cat} className="h-full max-h-16 w-12 object-cover object-center shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[11px] font-black text-white uppercase tracking-wide leading-tight">{item.cat}</p>
-              <p className="text-[9px] text-white/35 uppercase tracking-[0.08em] mt-0.5 leading-tight">{item.brand}</p>
+            <img
+              src={item.img}
+              alt={item.cat}
+              className="w-10 shrink-0 object-cover object-center"
+              style={{
+                height: "52px",
+                borderRadius: "6px",
+                animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${i * 0.07}s`,
+              }}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black text-white uppercase tracking-wide leading-tight">{item.cat}</p>
+              <p className="text-[8px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
             </div>
-            <div className="ml-auto shrink-0 w-6 h-6 border border-white/20 flex items-center justify-center">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-white/40">
-                <path d="M5 2v6M2 5h6" />
+            <div className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ border: "1px solid rgba(255,255,255,0.15)" }}>
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-white/35">
+                <path d="M4 1v6M1 4h6" />
               </svg>
             </div>
-          </div>
+          </GlowCard>
         ))}
       </div>
 
       {/* Complete look */}
-      <div className="border border-white/8 bg-white/[0.02] flex flex-col overflow-hidden">
-        <div className="px-3 py-2 border-b border-white/6 flex items-center gap-1.5 shrink-0">
-          <span className="text-[9px] tracking-[0.18em] uppercase text-white/40 font-black">Complete Look</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+      <GlowCard className="flex flex-col">
+        <div className="px-3.5 py-2.5 flex items-center gap-2 shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <span className="text-[8px] tracking-[0.2em] uppercase text-white/50 font-black">Complete Look</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-white/50"
+            style={{ boxShadow: "0 0 6px rgba(255,255,255,0.6)" }} />
         </div>
         <div className="flex-1 relative overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/cs/outfit.png" alt="Complete look" className="absolute inset-0 w-full h-full object-contain object-center" />
+          <img
+            src="/cs/outfit.png"
+            alt="Complete look"
+            className="absolute inset-0 w-full h-full object-contain object-center"
+            style={{ animation: "imgReveal 0.8s cubic-bezier(0.16,1,0.3,1) both 0.1s" }}
+          />
         </div>
-      </div>
+      </GlowCard>
     </div>
   );
 }
 
+/* ── Slide 03: Brands ──────────────────────────────────────────── */
 function Slide03() {
   return (
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="flex items-end justify-between mb-4 shrink-0">
         <div>
-          <p className="text-[9px] tracking-[0.2em] uppercase text-white/25 mb-1">Premium Brands</p>
-          <p className="text-[20px] md:text-[24px] font-black text-white uppercase tracking-tight leading-none">
+          <p className="text-[8px] tracking-[0.24em] uppercase text-white/20 mb-1.5">Premium Brands</p>
+          <p className="text-[18px] md:text-[22px] font-black text-white uppercase tracking-[-0.01em] leading-tight">
             50+ Premium Brands.<br />One Place.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="w-8 h-8 border border-white/15 flex items-center justify-center text-white/40 hover:text-white hover:border-white/40 transition-colors">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2L3 5l3 3" />
-            </svg>
-          </button>
-          <button className="w-8 h-8 border border-white/40 flex items-center justify-center text-white hover:border-white transition-colors">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 2l3 3-3 3" />
-            </svg>
-          </button>
-        </div>
       </div>
       <div className="grid grid-cols-4 gap-2 flex-1 content-start">
-        {BRANDS.map((brand) => (
-          <div key={brand} className="border border-white/8 bg-white/[0.02] flex items-center justify-center p-3 aspect-[4/3]">
-            <span className="text-[9px] md:text-[10px] font-black tracking-[0.1em] text-white/55 text-center uppercase leading-tight">
+        {BRANDS.map((brand, i) => (
+          <GlowCard
+            key={brand}
+            className="flex items-center justify-center p-3"
+            style={{ aspectRatio: "4/3", animation: `fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.04}s` } as never}
+          >
+            <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-white/50 text-center uppercase leading-tight">
               {brand}
             </span>
-          </div>
+          </GlowCard>
         ))}
       </div>
     </div>
   );
 }
 
+/* ── Main carousel ─────────────────────────────────────────────── */
 export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (idx: number) => void }) {
   const [active, setActive] = useState(0);
-  const [dir, setDir] = useState<1 | -1>(1);
-  const [animating, setAnimating] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [progress, setProgress] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const go = useCallback((idx: number) => {
-    if (idx === active || animating) return;
-    setDir(idx > active ? 1 : -1);
-    setAnimating(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setActive(idx);
-      onSlideChange?.(idx);
-      setAnimating(false);
-    }, 320);
-  }, [active, animating, onSlideChange]);
+  const go = useCallback((idx: number, resetTimer = true) => {
+    setActive(idx);
+    onSlideChange?.(idx);
+    if (resetTimer) {
+      setProgress(0);
+    }
+  }, [onSlideChange]);
 
-  const slideStyle = {
-    opacity: animating ? 0 : 1,
-    transform: animating ? `translateX(${dir * 40}px)` : "translateX(0)",
-    transition: "opacity 0.32s ease, transform 0.32s ease",
+  // Auto-play + progress bar
+  useEffect(() => {
+    const startTimers = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (progressRef.current) clearInterval(progressRef.current);
+
+      setProgress(0);
+      const step = 100 / (AUTOPLAY_MS / 50);
+
+      progressRef.current = setInterval(() => {
+        setProgress(p => Math.min(p + step, 100));
+      }, 50);
+
+      intervalRef.current = setInterval(() => {
+        setActive(prev => {
+          const next = (prev + 1) % SLIDES.length;
+          onSlideChange?.(next);
+          return next;
+        });
+        setProgress(0);
+      }, AUTOPLAY_MS);
+    };
+
+    startTimers();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (progressRef.current) clearInterval(progressRef.current);
+    };
+  }, [onSlideChange]);
+
+  const handleGo = (idx: number) => {
+    go(idx);
+    // restart timers by clearing + effect will NOT restart — do it manually
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (progressRef.current) clearInterval(progressRef.current);
+    setProgress(0);
+
+    const step = 100 / (AUTOPLAY_MS / 50);
+    progressRef.current = setInterval(() => {
+      setProgress(p => Math.min(p + step, 100));
+    }, 50);
+    intervalRef.current = setInterval(() => {
+      setActive(prev => {
+        const next = (prev + 1) % SLIDES.length;
+        onSlideChange?.(next);
+        return next;
+      });
+      setProgress(0);
+    }, AUTOPLAY_MS);
   };
 
   return (
-    <div className="h-full flex flex-col gap-4">
-      {/* Slide content */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={slideStyle}>
-        {active === 0 && <Slide01 />}
-        {active === 1 && <Slide02 />}
-        {active === 2 && <Slide03 />}
-      </div>
+    <>
+      <style>{`
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(32px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes imgReveal {
+          from { opacity: 0; transform: scale(1.04); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
 
-      {/* Email form */}
-      <div className="shrink-0">
-        <EmailForm />
-      </div>
+      <div className="h-full flex flex-col gap-4">
+        {/* Slide content — keyed to re-animate on change */}
+        <div
+          key={active}
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          style={{ animation: "slideInRight 0.55s cubic-bezier(0.16,1,0.3,1) both" }}
+        >
+          {active === 0 && <Slide01 />}
+          {active === 1 && <Slide02 />}
+          {active === 2 && <Slide03 />}
+        </div>
 
-      {/* Tab nav */}
-      <div className="shrink-0 flex items-center gap-0 border-t border-white/[0.06] pt-4">
-        {SLIDES.map((slide, i) => (
-          <button
-            key={slide.id}
-            onClick={() => go(i)}
-            className="flex items-center gap-3 group pr-6"
-          >
-            <div
-              className="h-px transition-all duration-400 shrink-0"
-              style={{
-                width: i === active ? 28 : 18,
-                background: i === active ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.12)",
-              }}
-            />
-            <span
-              className="text-[9px] tracking-[0.18em] uppercase font-medium transition-colors duration-300"
-              style={{ color: i === active ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)" }}
+        {/* Email */}
+        <div className="shrink-0">
+          <EmailForm />
+        </div>
+
+        {/* Tab nav + progress */}
+        <div className="shrink-0 flex items-center gap-0 pt-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {SLIDES.map((slide, i) => (
+            <button
+              key={slide.id}
+              onClick={() => handleGo(i)}
+              className="flex flex-col gap-2 pr-8 group"
             >
-              {slide.id} / {slide.label}
-            </span>
-          </button>
-        ))}
+              {/* Progress bar */}
+              <div className="h-px relative overflow-hidden" style={{ width: i === active ? 36 : 20, background: "rgba(255,255,255,0.1)", transition: "width 0.4s ease" }}>
+                {i === active && (
+                  <div
+                    className="absolute inset-y-0 left-0"
+                    style={{
+                      width: `${progress}%`,
+                      background: "rgba(255,255,255,0.7)",
+                      boxShadow: "0 0 6px rgba(255,255,255,0.5)",
+                      transition: "width 0.05s linear",
+                    }}
+                  />
+                )}
+              </div>
+              <span
+                className="text-[8px] tracking-[0.2em] uppercase font-medium transition-all duration-400"
+                style={{
+                  color: i === active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.18)",
+                  textShadow: i === active ? "0 0 12px rgba(255,255,255,0.3)" : "none",
+                }}
+              >
+                {slide.id} / {slide.label}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
