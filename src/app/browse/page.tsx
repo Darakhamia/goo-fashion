@@ -460,16 +460,16 @@ export default function BrowsePage() {
   const renderFilters = () => (
     <div>
       {/* MY LIKED ITEMS */}
-      <div className="border-b border-[var(--border)] px-5 py-3">
+      <div className="border-b border-[var(--border)] px-5 py-4">
         <button
           onClick={() => setLikedOnly((v) => !v)}
-          className={`w-full flex items-center justify-between py-2 transition-opacity group ${likedOnly ? "opacity-100" : "opacity-70 hover:opacity-100"}`}
+          className={`w-full flex items-center justify-between transition-opacity group ${likedOnly ? "opacity-100" : "opacity-70 hover:opacity-100"}`}
         >
-          <span className="flex items-center gap-3">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="shrink-0">
+          <span className="flex items-center gap-2.5">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
               <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.5" fill={likedOnly ? "currentColor" : "none"} />
             </svg>
-            <span className={`text-[14px] font-bold ${likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground)]"}`}>My Liked Items</span>
+            <span className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: likedOnly ? "0 0 14px rgba(255,255,255,0.4)" : "none" }}>My Liked Items</span>
           </span>
           <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="shrink-0 opacity-50">
             <path d="M1 1L6 6L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -922,7 +922,7 @@ export default function BrowsePage() {
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-                <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
+                <p className="text-[15px] tracking-[0.14em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.3)" }}>Filters</p>
                 <motion.button
                   onClick={() => setFiltersOpen(false)}
                   whileHover={{ scale: 1.1 }}
