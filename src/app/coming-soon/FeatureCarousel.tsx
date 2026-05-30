@@ -145,30 +145,37 @@ function Slide02() {
         {ITEMS.map((item, i) => (
           <div
             key={item.n}
-            className="flex items-center gap-3.5 px-4 flex-1 min-h-0 overflow-hidden"
+            className="flex-1 min-h-0 overflow-hidden relative"
             style={{
               borderRadius: 16,
-              background: "rgba(255,255,255,0.03)",
+              background: "#080808",
               border: "1px solid rgba(255,255,255,0.09)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
               animation: `cardReveal 0.55s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
             }}
           >
-            <span className="text-[8px] font-mono text-white/22 shrink-0 w-4">{item.n}</span>
+            {/* Number badge */}
+            <span className="absolute top-3 left-3.5 z-10 text-[8px] font-mono text-white/25">{item.n}</span>
+            {/* Product image — fills most of card */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt={item.cat}
-              className="shrink-0 object-cover object-center"
+            <img
+              src={item.img}
+              alt={item.cat}
+              className="w-full object-contain object-center"
               style={{
-                width: 52, height: 68, borderRadius: 10,
+                height: "calc(100% - 44px)",
                 animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s`,
               }}
             />
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-black text-white uppercase tracking-[0.06em] leading-tight">{item.cat}</p>
-              <p className="text-[9px] text-white/28 uppercase tracking-[0.08em] mt-1 leading-tight truncate">{item.brand}</p>
+            {/* Label strip at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 px-3.5 py-2.5"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              <p className="text-[11px] font-black text-white uppercase tracking-[0.07em] leading-tight">{item.cat}</p>
+              <p className="text-[8px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
             </div>
-            <div className="shrink-0 w-6 h-6 flex items-center justify-center"
-              style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.16)" }}>
+            {/* Plus button */}
+            <div className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center shrink-0"
+              style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)" }}>
               <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
                 <path d="M4.5 1.5v6M1.5 4.5h6"/>
               </svg>
@@ -182,7 +189,7 @@ function Slide02() {
         className="flex flex-col overflow-hidden"
         style={{
           borderRadius: 18,
-          background: "#0f0f0f",
+          background: "#080808",
           border: "1px solid rgba(255,255,255,0.09)",
           animation: "cardReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0.15s",
         }}
