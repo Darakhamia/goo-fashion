@@ -15,9 +15,9 @@ const BRANDS = [
 ];
 
 const ITEMS = [
-  { n: "01", cat: "HOODIE", brand: "ENFANTS RICHES DÉPRIMÉS", img: "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=600&q=80" },
-  { n: "02", cat: "JEANS", brand: "STRIPE BAGGY DENIM", img: "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=600&q=80" },
-  { n: "03", cat: "SNEAKERS", brand: "TECH RUNNER", img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80" },
+  { n: "01", cat: "HOODIE", brand: "ENFANTS RICHES DÉPRIMÉS", img: "/cs/hoodie.png" },
+  { n: "02", cat: "JEANS", brand: "STRIPE BAGGY DENIM", img: "/cs/jeans.png" },
+  { n: "03", cat: "SNEAKERS", brand: "BALENCIAGA", img: "/cs/sneakers.png" },
 ];
 
 function EmailForm() {
@@ -138,15 +138,8 @@ function Slide02() {
           <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
         </div>
         <div className="flex-1 relative overflow-hidden">
-          {/* Stacked outfit preview */}
-          <div className="absolute inset-0 flex flex-col">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ITEMS[0].img} alt="hoodie" className="flex-1 w-full object-cover object-top" style={{ objectPosition: "center 20%" }} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ITEMS[1].img} alt="jeans" className="flex-1 w-full object-cover object-center" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ITEMS[2].img} alt="sneakers" className="flex-1 w-full object-cover object-bottom" style={{ objectPosition: "center 80%" }} />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/cs/outfit.png" alt="Complete look" className="absolute inset-0 w-full h-full object-contain object-center" />
         </div>
       </div>
     </div>

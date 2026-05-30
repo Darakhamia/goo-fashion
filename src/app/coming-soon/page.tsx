@@ -5,32 +5,17 @@ import FeatureCarousel from "./FeatureCarousel";
 
 const FEATURES = [
   {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.22 4.22l2.12 2.12M13.66 13.66l2.12 2.12M13.66 6.34l2.12-2.12M4.22 15.78l2.12-2.12" />
-        <circle cx="10" cy="10" r="2.5" />
-      </svg>
-    ),
+    icon: "/cs/icon-stylist.png",
     title: "AI STYLIST",
     body: "Your personal stylist. On demand.",
   },
   {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="10" cy="10" r="7" />
-        <circle cx="10" cy="10" r="3" />
-        <path d="M10 3v2M10 15v2M3 10h2M15 10h2" />
-      </svg>
-    ),
+    icon: "/cs/icon-price.png",
     title: "BEST PRICE",
     body: "Scanned across 50+ retailers.",
   },
   {
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 3L13 8H18L14 11L15.5 16L10 13L4.5 16L6 11L2 8H7L10 3Z" />
-      </svg>
-    ),
+    icon: "/cs/icon-click.png",
     title: "ONE CLICK",
     body: "Buy the whole fit. Instantly.",
   },
@@ -93,8 +78,9 @@ export default function ComingSoonPage() {
                   className="flex items-start gap-4 py-4 border-t border-white/[0.06]"
                   style={{ animationDelay: `${0.5 + i * 0.08}s` }}
                 >
-                  <div className="w-9 h-9 border border-white/10 flex items-center justify-center text-white/40 shrink-0 mt-0.5">
-                    {f.icon}
+                  <div className="w-10 h-10 shrink-0 mt-0.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={f.icon} alt={f.title} className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <p className="text-[11px] font-black text-white tracking-[0.1em] uppercase leading-tight">{f.title}</p>
