@@ -607,10 +607,10 @@ export default function BrowsePage() {
                               ? prev.filter(l => !grpLabels.includes(l))
                               : [...new Set([...prev, ...grpLabels])]
                           )}
-                          className="w-full flex items-center justify-between pl-6 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                          className="w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
                         >
-                          <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-40"}`}>View all</span>
-                          <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "rgba(255,255,255,0.25)" }}>
+                          <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
+                          <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
                             {grpViewAllChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
                         </button>
@@ -621,10 +621,10 @@ export default function BrowsePage() {
                             <button
                               key={item.label}
                               onClick={() => toggleSubcategory(item.label)}
-                              className={`w-full flex items-center justify-between pl-6 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
+                              className={`w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
                             >
-                              <span className={`text-[14px] font-semibold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)]"}`}>{item.label}</span>
-                              <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "rgba(255,255,255,0.25)" }}>
+                              <span className={`text-[14px] font-semibold transition-opacity ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-60"}`}>{item.label}</span>
+                              <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
                                 {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                               </div>
                             </button>
