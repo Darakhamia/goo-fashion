@@ -461,7 +461,7 @@ export default function BrowsePage() {
     <div>
       {/* SAVED / LIKED */}
       <div className="border-b border-[var(--border)] px-5 py-4">
-        <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Saved</p>
+        <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Saved</p>
         <button
           onClick={() => setLikedOnly((v) => !v)}
           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -488,16 +488,16 @@ export default function BrowsePage() {
         <>
           {/* OCCASION */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Occasion</p>
+            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Occasion</p>
             <button
               onClick={() => setOccasionOpen(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition-all duration-150 ${
                 occasionOpen || selectedOccasions.length > 0
                   ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground)] opacity-55 hover:opacity-100 hover:border-[var(--foreground)]"
               }`}
             >
-              <span className="text-[12px] font-semibold capitalize">
+              <span className="text-[13px] font-bold capitalize">
                 {selectedOccasions.length === 0 ? "All" : selectedOccasions.length === 1 ? selectedOccasions[0] : `${selectedOccasions.length} selected`}
               </span>
               <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${occasionOpen ? "rotate-180" : ""}`}>
@@ -505,12 +505,12 @@ export default function BrowsePage() {
               </svg>
             </button>
             {occasionOpen && (
-              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
                 <button
                   onClick={() => setSelectedOccasions([])}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
                 >
-                  <span className={`text-[12px] font-medium ${selectedOccasions.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                  <span className={`text-[14px] font-bold ${selectedOccasions.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
                   {selectedOccasions.length === 0 && (
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   )}
@@ -519,9 +519,9 @@ export default function BrowsePage() {
                   const isChk = selectedOccasions.includes(occ);
                   return (
                     <button key={occ} onClick={() => toggleOccasion(occ)}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${i >= 0 ? "border-t border-[var(--border)]" : ""}`}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i >= 0 ? "border-t border-[var(--border)]" : ""}`}
                     >
-                      <span className={`text-[12px] font-medium capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{occ}</span>
+                      <span className={`text-[14px] font-bold capitalize ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{occ}</span>
                       <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                         {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                       </div>
@@ -533,7 +533,7 @@ export default function BrowsePage() {
           </div>
           {/* AI ONLY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Curated by AI</p>
+            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
             <button
               onClick={() => setAiOnly((v) => !v)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -559,8 +559,8 @@ export default function BrowsePage() {
               onClick={() => setCategoryOpen(v => !v)}
               className="w-full flex items-center justify-between mb-0 group"
             >
-              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Category</p>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Category</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
                 <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -569,11 +569,11 @@ export default function BrowsePage() {
               {/* All */}
               <button
                 onClick={() => setSelectedSubcategories([])}
-                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
               >
-                <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                <span className={`text-[14px] font-bold ${selectedSubcategories.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
                 {selectedSubcategories.length === 0 && (
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 )}
               </button>
               {BROWSE_CATEGORY_GROUPS.map(group => {
@@ -590,12 +590,12 @@ export default function BrowsePage() {
                         next.has(group.id) ? next.delete(group.id) : next.add(group.id);
                         return next;
                       })}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
                     >
-                      <span className={`shrink-0 ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
-                      <span className={`flex-1 text-left text-[12px] font-semibold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
-                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
-                        <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      <span className={`shrink-0 text-base ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.icon}</span>
+                      <span className={`flex-1 text-left text-[14px] font-bold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.label}</span>
+                      <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] opacity-50 transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
+                        <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </button>
                     {grpOpen && (
@@ -607,13 +607,13 @@ export default function BrowsePage() {
                               ? prev.filter(l => !grpLabels.includes(l))
                               : [...new Set([...prev, ...grpLabels])]
                           )}
-                          className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                          className="mx-4 mb-1 mt-1 flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                           style={{ width: "calc(100% - 32px)" }}
                         >
-                          <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 14, height: 14, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
-                            {grpViewAllChecked && <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                            {grpViewAllChecked && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
-                          <span className={`text-[12px] font-semibold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                          <span className={`text-[13px] font-bold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
                         </button>
                         {/* Sub-items */}
                         {group.items.map(item => {
@@ -622,10 +622,10 @@ export default function BrowsePage() {
                             <button
                               key={item.label}
                               onClick={() => toggleSubcategory(item.label)}
-                              className="w-full flex items-center justify-between pl-8 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                              className="w-full flex items-center justify-between pl-9 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                             >
-                              <span className={`text-[12px] font-medium ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                              <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                              <span className={`text-[13px] font-semibold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}>{item.label}</span>
+                              <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 18, height: 18, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                                 {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                               </div>
                             </button>
@@ -645,10 +645,10 @@ export default function BrowsePage() {
               onClick={() => setGenderOpen(v => !v)}
               className="w-full flex items-center justify-between group"
             >
-              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
-                Gender{selectedGender !== null && <span className="ml-2 text-[9px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+                Gender{selectedGender !== null && <span className="ml-2 text-[10px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
               </p>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
                 <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -660,11 +660,11 @@ export default function BrowsePage() {
                   return (
                     <button key={label}
                       onClick={() => { setSelectedGender(g); setGenderOpen(false); }}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
                     >
-                      <span className={`text-[12px] font-medium ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{label}</span>
+                      <span className={`text-[14px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{label}</span>
                       {isActive && (
-                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                       )}
                     </button>
                   );
@@ -678,13 +678,13 @@ export default function BrowsePage() {
               onClick={() => setColorsOpen(v => !v)}
               className="w-full flex items-center justify-between group"
             >
-              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Colors</p>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${colorsOpen ? "rotate-180" : ""}`}>
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Colors</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${colorsOpen ? "rotate-180" : ""}`}>
                 <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             {colorsOpen && (<>
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex flex-wrap gap-2.5 mt-3">
               {(showAllColors ? colorGroups : colorGroups.slice(0, 6)).map((cg) => {
                 const isActive = selectedColorGroupIds.includes(cg.id);
                 return (
@@ -692,7 +692,7 @@ export default function BrowsePage() {
                     key={cg.id}
                     title={cg.name}
                     onClick={() => toggleColorGroup(cg.id)}
-                    className={`w-7 h-7 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                    className={`w-9 h-9 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
                     style={{
                       background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
                       boxShadow: isActive
@@ -706,7 +706,7 @@ export default function BrowsePage() {
             {colorGroups.length > 6 && (
               <button
                 onClick={() => setShowAllColors((v) => !v)}
-                className="mt-2 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+                className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
               >
                 {showAllColors ? "Show less" : `Show ${colorGroups.length - 6} more`}
               </button>
@@ -719,8 +719,8 @@ export default function BrowsePage() {
               onClick={() => setBrandsOpen(v => !v)}
               className="w-full flex items-center justify-between group"
             >
-              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Designer</p>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${brandsOpen ? "rotate-180" : ""}`}>
+              <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Designer</p>
+              <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${brandsOpen ? "rotate-180" : ""}`}>
                 <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -731,7 +731,7 @@ export default function BrowsePage() {
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
                 placeholder="Search brands…"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
               />
               {brandSearch && (
                 <button
@@ -751,25 +751,25 @@ export default function BrowsePage() {
                   <button
                     key={brand}
                     onClick={() => toggleBrand(brand)}
-                    className="w-full flex items-center justify-between px-1 py-2 hover:bg-[var(--surface)] transition-colors"
+                    className="w-full flex items-center justify-between px-1 py-2.5 hover:bg-[var(--surface)] rounded-lg transition-colors"
                   >
-                    <span className={`text-[11px] truncate text-left ${isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>
+                    <span className={`text-[13px] truncate text-left font-semibold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}>
                       {brand}
                     </span>
-                    <div className="shrink-0 flex items-center justify-center border transition-colors ml-2" style={{ width: 16, height: 16, borderRadius: "50%", background: isActive ? "var(--foreground)" : "transparent", borderColor: isActive ? "var(--foreground)" : "var(--border-strong)" }}>
+                    <div className="shrink-0 flex items-center justify-center border transition-colors ml-2" style={{ width: 18, height: 18, borderRadius: "50%", background: isActive ? "var(--foreground)" : "transparent", borderColor: isActive ? "var(--foreground)" : "var(--border-strong)" }}>
                       {isActive && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                     </div>
                   </button>
                 );
               })}
               {filteredBrandsForSearch.length === 0 && (
-                <p className="px-1 py-2 text-[11px] text-[var(--foreground-subtle)]">No brands found</p>
+                <p className="px-1 py-2 text-[13px] text-[var(--foreground)] opacity-40">No brands found</p>
               )}
             </div>
             {filteredBrandsForSearch.length > 8 && (
               <button
                 onClick={() => setShowAllBrands((v) => !v)}
-                className="mt-1.5 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+                className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
               >
                 {showAllBrands ? "Show less" : `Show ${filteredBrandsForSearch.length - 8} more`}
               </button>
@@ -784,18 +784,18 @@ export default function BrowsePage() {
           onClick={() => setPriceOpen(v => !v)}
           className="w-full flex items-center justify-between group"
         >
-          <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
-            Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[9px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
+          <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+            Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[10px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
           </p>
-          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
+          <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
             <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {priceOpen && (
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
-              <span className="text-[11px] font-medium text-[var(--foreground)]">
+              <span className="text-[12px] font-semibold text-[var(--foreground)] opacity-40">$0</span>
+              <span className="text-[13px] font-bold text-[var(--foreground)]">
                 {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
               </span>
             </div>
@@ -823,7 +823,7 @@ export default function BrowsePage() {
                 <button
                   key={label}
                   onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                  className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
                     maxPrice === max
                       ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                       : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"

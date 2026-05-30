@@ -1531,7 +1531,7 @@ export default function BuilderPage() {
 
               {/* LIKED */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Saved</p>
+                <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Saved</p>
                 <button
                   onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -1557,7 +1557,7 @@ export default function BuilderPage() {
               {/* CATEGORY */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between group">
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
                     Category{(selectedSubcategories.length > 0 || catalogCategory) && <span className="ml-2 text-[9px] font-semibold opacity-60">{selectedSubcategories.length === 1 ? `— ${selectedSubcategories[0]}` : selectedSubcategories.length > 1 ? `— ${selectedSubcategories.length} selected` : ""}</span>}
                   </p>
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
@@ -1568,9 +1568,9 @@ export default function BuilderPage() {
                   <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
                     <button
                       onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
                     >
-                      <span className={`text-[12px] font-medium ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>All</span>
+                      <span className={`text-[14px] font-bold ${selectedSubcategories.length === 0 && !catalogCategory ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
                       {selectedSubcategories.length === 0 && !catalogCategory && (
                         <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                           <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1591,12 +1591,12 @@ export default function BuilderPage() {
                               next.has(group.id) ? next.delete(group.id) : next.add(group.id);
                               return next;
                             })}
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
                           >
-                            <span className={`shrink-0 ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.icon}</span>
-                            <span className={`flex-1 text-left text-[12px] font-semibold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{group.label}</span>
-                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground-subtle)] transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
-                              <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                            <span className={`shrink-0 text-base ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.icon}</span>
+                            <span className={`flex-1 text-left text-[14px] font-bold ${grpActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{group.label}</span>
+                            <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] opacity-50 transition-transform duration-200 ${grpOpen ? "rotate-180" : ""}`}>
+                              <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
                           {grpOpen && (
@@ -1610,13 +1610,13 @@ export default function BuilderPage() {
                                       : [...new Set([...prev, ...grpLabels])]
                                   );
                                 }}
-                                className="mx-4 mb-1 mt-1 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                className="mx-4 mb-1 mt-1 flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                                 style={{ width: "calc(100% - 32px)" }}
                               >
-                                <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 14, height: 14, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
-                                  {grpViewAllChecked && <svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                                  {grpViewAllChecked && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                 </div>
-                                <span className={`text-[12px] font-semibold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>View all</span>
+                                <span className={`text-[13px] font-bold italic ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
                               </button>
                               {group.items.map(item => {
                                 const isChk = selectedSubcategories.includes(item.label);
@@ -1624,10 +1624,10 @@ export default function BuilderPage() {
                                   <button
                                     key={item.label}
                                     onClick={() => { setCatalogCategory(null); setSelectedSubcategories(prev => isChk ? prev.filter(l => l !== item.label) : [...prev, item.label]); }}
-                                    className="w-full flex items-center justify-between pl-8 pr-4 py-2.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                                    className="w-full flex items-center justify-between pl-9 pr-4 py-3 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
                                   >
-                                    <span className={`text-[12px] font-medium ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{item.label}</span>
-                                    <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 16, height: 16, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                                    <span className={`text-[13px] font-semibold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}>{item.label}</span>
+                                    <div className="shrink-0 flex items-center justify-center border transition-colors" style={{ width: 18, height: 18, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                                       {isChk && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </div>
                                   </button>
@@ -1645,7 +1645,7 @@ export default function BuilderPage() {
               {/* PRICE */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between group">
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
                     Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[9px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
                   </p>
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
@@ -1655,8 +1655,8 @@ export default function BuilderPage() {
                 {!collapsedSections.has("price") && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
-                      <span className="text-[11px] font-medium text-[var(--foreground)]">
+                      <span className="text-[12px] font-semibold text-[var(--foreground)] opacity-40">$0</span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">
                         {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
                       </span>
                     </div>
@@ -1684,7 +1684,7 @@ export default function BuilderPage() {
                         <button
                           key={label}
                           onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                          className={`px-2.5 py-1 rounded-full border text-[10px] font-semibold transition-all ${
+                          className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
                             maxPrice === max
                               ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                               : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1701,7 +1701,7 @@ export default function BuilderPage() {
               {/* GENDER */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => setGenderDropOpen(v => !v)} className="w-full flex items-center justify-between group">
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
                     Gender{selectedGender !== null && <span className="ml-2 text-[9px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
                   </p>
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
@@ -1717,9 +1717,9 @@ export default function BuilderPage() {
                         <button
                           key={label}
                           onClick={() => { setSelectedGender(g); setGenderDropOpen(false); }}
-                          className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--surface)] ${g !== null ? "border-t border-[var(--border)]" : ""}`}
+                          className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors hover:bg-[var(--surface)] ${g !== null ? "border-t border-[var(--border)]" : ""}`}
                         >
-                          <span className={`text-[12px] font-medium ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}>{label}</span>
+                          <span className={`text-[14px] font-bold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{label}</span>
                           {isActive && (
                             <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                               <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1735,13 +1735,13 @@ export default function BuilderPage() {
               {/* COLORS */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between group">
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Colors</p>
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Colors</p>
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("color") ? "" : "rotate-180"}`}>
                     <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {!collapsedSections.has("color") && (<>
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-2.5 mt-3">
                   {(showAllColors ? availableColors : availableColors.slice(0, 6)).map(({ name, hex }) => {
                     const isActive = selectedColors.includes(name);
                     return (
@@ -1749,7 +1749,7 @@ export default function BuilderPage() {
                         key={name}
                         title={name}
                         onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`w-7 h-7 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                        className={`w-9 h-9 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
                         style={{
                           background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
                           boxShadow: isActive
@@ -1763,7 +1763,7 @@ export default function BuilderPage() {
                 {availableColors.length > 6 && (
                   <button
                     onClick={() => setShowAllColors(v => !v)}
-                    className="mt-2 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+                    className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
                   >
                     {showAllColors ? "Show less" : `Show ${availableColors.length - 6} more`}
                   </button>
@@ -1775,7 +1775,7 @@ export default function BuilderPage() {
               {availableBrands.length > 0 && (
                 <div className="border-b border-[var(--border)] px-5 py-4">
                   <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between group">
-                    <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Brands</p>
+                    <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Brands</p>
                     <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("brand") ? "" : "rotate-180"}`}>
                       <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -1788,7 +1788,7 @@ export default function BuilderPage() {
                       value={brandSearch}
                       onChange={e => setBrandSearch(e.target.value)}
                       placeholder="Search brands…"
-                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-xs text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
                     />
                     {brandSearch && (
                       <button
@@ -1811,23 +1811,23 @@ export default function BuilderPage() {
                         return (
                           <label
                             key={brand}
-                            className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-[var(--surface)] transition-colors"
+                            className="flex items-center gap-2.5 px-1 py-2.5 cursor-pointer hover:bg-[var(--surface)] rounded-lg transition-colors"
                           >
                             <div
                               className={`flex items-center justify-center shrink-0 border transition-colors ${
                                 isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
                               }`}
-                              style={{ width: 14, height: 14 }}
+                              style={{ width: 16, height: 16 }}
                             >
                               {isActive && (
-                                <svg width="8" height="6" viewBox="0 0 10 8" fill="none">
+                                <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
                                   <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               )}
                             </div>
                             <button
                               onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                              className={`text-[11px] truncate text-left ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"}`}
+                              className={`text-[13px] font-semibold truncate text-left ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}
                             >
                               {brand}
                             </button>
@@ -1835,14 +1835,14 @@ export default function BuilderPage() {
                         );
                       })}
                     {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length === 0 && (
-                      <p className="px-1 py-2 text-[11px] text-[var(--foreground-subtle)]">No brands found</p>
+                      <p className="px-1 py-2 text-[13px] text-[var(--foreground)] opacity-40">No brands found</p>
                     )}
                   </div>
                   {/* Show more brands */}
                   {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length > 8 && (
                     <button
                       onClick={() => setShowAllBrands(v => !v)}
-                      className="mt-1.5 text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-2"
+                      className="mt-2 text-[12px] font-semibold text-[var(--foreground)] opacity-50 hover:opacity-100 transition-opacity underline underline-offset-2"
                     >
                       {showAllBrands
                         ? "Show less"
