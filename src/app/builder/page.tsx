@@ -1531,7 +1531,7 @@ export default function BuilderPage() {
 
               {/* LIKED */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Saved</p>
+                <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Saved</p>
                 <button
                   onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -1556,28 +1556,16 @@ export default function BuilderPage() {
 
               {/* CATEGORY */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-                <button
-                  onClick={() => toggleSection("category")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                    !collapsedSections.has("category")
-                      ? "border-[var(--foreground)] text-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <span className="text-[12px] font-semibold">
-                    {selectedSubcategories.length === 0 && !catalogCategory
-                      ? "All"
-                      : selectedSubcategories.length === 1
-                        ? selectedSubcategories[0]
-                        : `${selectedSubcategories.length} selected`}
-                  </span>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
-                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <button onClick={() => toggleSection("category")} className="w-full flex items-center justify-between group">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                    Category{(selectedSubcategories.length > 0 || catalogCategory) && <span className="ml-2 text-[9px] font-semibold opacity-60">{selectedSubcategories.length === 1 ? `— ${selectedSubcategories[0]}` : selectedSubcategories.length > 1 ? `— ${selectedSubcategories.length} selected` : ""}</span>}
+                  </p>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {!collapsedSections.has("category") && (
-                  <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                  <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
                     <button
                       onClick={() => { setCatalogCategory(null); setSelectedSubcategories([]); }}
                       className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
@@ -1656,20 +1644,12 @@ export default function BuilderPage() {
 
               {/* PRICE */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
-                <button
-                  onClick={() => toggleSection("price")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                    !collapsedSections.has("price")
-                      ? "border-[var(--foreground)] text-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <span className="text-[12px] font-semibold">
-                    {maxPrice === null || maxPrice >= 2000 ? "All" : `< $${maxPrice.toLocaleString()}`}
-                  </span>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
-                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between group">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                    Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[9px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
+                  </p>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {!collapsedSections.has("price") && (
@@ -1720,24 +1700,16 @@ export default function BuilderPage() {
 
               {/* GENDER */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
-                <button
-                  onClick={() => setGenderDropOpen(v => !v)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                    genderDropOpen
-                      ? "border-[var(--foreground)] text-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <span className="text-[12px] font-semibold capitalize">
-                    {selectedGender === null ? "All" : selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}
-                  </span>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
-                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <button onClick={() => setGenderDropOpen(v => !v)} className="w-full flex items-center justify-between group">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                    Gender{selectedGender !== null && <span className="ml-2 text-[9px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
+                  </p>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {genderDropOpen && (
-                  <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+                  <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
                     {([null, "men", "women", "unisex"] as (typeof selectedGender)[]).map(g => {
                       const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
                       const isActive = selectedGender === g;
@@ -1762,8 +1734,14 @@ export default function BuilderPage() {
 
               {/* COLORS */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
-                <div className="flex flex-wrap gap-2">
+                <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between group">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Colors</p>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("color") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {!collapsedSections.has("color") && (<>
+                <div className="flex flex-wrap gap-2 mt-3">
                   {(showAllColors ? availableColors : availableColors.slice(0, 6)).map(({ name, hex }) => {
                     const isActive = selectedColors.includes(name);
                     return (
@@ -1790,14 +1768,21 @@ export default function BuilderPage() {
                     {showAllColors ? "Show less" : `Show ${availableColors.length - 6} more`}
                   </button>
                 )}
+                </>)}
               </div>
 
               {/* BRANDS */}
               {availableBrands.length > 0 && (
                 <div className="border-b border-[var(--border)] px-5 py-4">
-                  <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Brands</p>
+                  <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between group">
+                    <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Brands</p>
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("brand") ? "" : "rotate-180"}`}>
+                      <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {!collapsedSections.has("brand") && (<>
                   {/* Brand search */}
-                  <div className="relative mb-3">
+                  <div className="relative mb-3 mt-3">
                     <input
                       type="text"
                       value={brandSearch}
@@ -1864,6 +1849,7 @@ export default function BuilderPage() {
                         : `Show ${availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length - 8} more`}
                     </button>
                   )}
+                  </>)}
                 </div>
               )}
 

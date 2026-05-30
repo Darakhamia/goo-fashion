@@ -262,6 +262,9 @@ export default function BrowsePage() {
   const [brandSearch, setBrandSearch] = useState("");
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const [brandsOpen, setBrandsOpen] = useState(false);
 
   /* Togglers */
   const toggleBrand = (b: string) =>
@@ -458,7 +461,7 @@ export default function BrowsePage() {
     <div>
       {/* SAVED / LIKED */}
       <div className="border-b border-[var(--border)] px-5 py-4">
-        <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Saved</p>
+        <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Saved</p>
         <button
           onClick={() => setLikedOnly((v) => !v)}
           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -485,7 +488,7 @@ export default function BrowsePage() {
         <>
           {/* OCCASION */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Occasion</p>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Occasion</p>
             <button
               onClick={() => setOccasionOpen(v => !v)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -530,7 +533,7 @@ export default function BrowsePage() {
           </div>
           {/* AI ONLY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Curated by AI</p>
+            <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Curated by AI</p>
             <button
               onClick={() => setAiOnly((v) => !v)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
@@ -552,8 +555,17 @@ export default function BrowsePage() {
         <>
           {/* CATEGORY */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Category</p>
-            <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+            <button
+              onClick={() => setCategoryOpen(v => !v)}
+              className="w-full flex items-center justify-between mb-0 group"
+            >
+              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Category</p>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${categoryOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {categoryOpen && (
+            <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
               {/* All */}
               <button
                 onClick={() => setSelectedSubcategories([])}
@@ -625,27 +637,23 @@ export default function BrowsePage() {
                 );
               })}
             </div>
+            )}
           </div>
           {/* GENDER */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Gender</p>
             <button
               onClick={() => setGenderOpen(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                genderOpen || selectedGender
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
+              className="w-full flex items-center justify-between group"
             >
-              <span className="text-[12px] font-semibold capitalize">
-                {selectedGender === null ? "All" : selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}
-              </span>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
-                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+                Gender{selectedGender !== null && <span className="ml-2 text-[9px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
+              </p>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             {genderOpen && (
-              <div className="mt-2 border border-[var(--border)] rounded-xl overflow-hidden">
+              <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
                 {([null, "women", "men", "unisex"] as (Gender | null)[]).map((g, i) => {
                   const label = g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1);
                   const isActive = selectedGender === g;
@@ -666,8 +674,17 @@ export default function BrowsePage() {
           </div>
           {/* COLORS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Colors</p>
-            <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setColorsOpen(v => !v)}
+              className="w-full flex items-center justify-between group"
+            >
+              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Colors</p>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${colorsOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {colorsOpen && (<>
+            <div className="flex flex-wrap gap-2 mt-3">
               {(showAllColors ? colorGroups : colorGroups.slice(0, 6)).map((cg) => {
                 const isActive = selectedColorGroupIds.includes(cg.id);
                 return (
@@ -694,11 +711,21 @@ export default function BrowsePage() {
                 {showAllColors ? "Show less" : `Show ${colorGroups.length - 6} more`}
               </button>
             )}
+            </>)}
           </div>
           {/* DESIGNER / BRANDS */}
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Designer</p>
-            <div className="relative mb-3">
+            <button
+              onClick={() => setBrandsOpen(v => !v)}
+              className="w-full flex items-center justify-between group"
+            >
+              <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>Designer</p>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${brandsOpen ? "rotate-180" : ""}`}>
+                <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {brandsOpen && (<>
+            <div className="relative mb-3 mt-3">
               <input
                 type="text"
                 value={brandSearch}
@@ -747,29 +774,25 @@ export default function BrowsePage() {
                 {showAllBrands ? "Show less" : `Show ${filteredBrandsForSearch.length - 8} more`}
               </button>
             )}
+            </>)}
           </div>
         </>
       )}
       {/* PRICE */}
       <div className="border-b border-[var(--border)] px-5 py-4">
-        <p className="text-[9px] tracking-[0.16em] uppercase font-bold text-[var(--foreground-muted)] mb-3">Price</p>
         <button
           onClick={() => setPriceOpen(v => !v)}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-            priceOpen || maxPrice !== null
-              ? "border-[var(--foreground)] text-[var(--foreground)]"
-              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-          }`}
+          className="w-full flex items-center justify-between group"
         >
-          <span className="text-[12px] font-semibold">
-            {maxPrice === null || maxPrice >= 2000 ? "All" : `< $${maxPrice.toLocaleString()}`}
-          </span>
-          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
-            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          <p className="text-[10px] tracking-[0.18em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 12px rgba(255,255,255,0.35)" }}>
+            Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[9px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
+          </p>
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${priceOpen ? "rotate-180" : ""}`}>
+            <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {priceOpen && (
-          <div className="mt-3">
+          <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-[var(--foreground-subtle)]">$0</span>
               <span className="text-[11px] font-medium text-[var(--foreground)]">
