@@ -460,27 +460,20 @@ export default function BrowsePage() {
   const renderFilters = () => (
     <div>
       {/* MY LIKED ITEMS */}
-      <div className="border-b border-[var(--border)] px-5 py-4">
+      <div className="border-b border-[var(--border)] px-5 py-3">
         <button
           onClick={() => setLikedOnly((v) => !v)}
-          className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 transition-all duration-200 group ${
-            likedOnly
-              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-              : "border-[var(--border-strong)] text-[var(--foreground)] hover:border-[var(--foreground)]"
-          }`}
-          style={likedOnly ? {} : { boxShadow: "0 0 0 0 transparent" }}
+          className={`w-full flex items-center justify-between py-2 transition-opacity group ${likedOnly ? "opacity-100" : "opacity-70 hover:opacity-100"}`}
         >
           <span className="flex items-center gap-3">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="shrink-0">
               <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.5" fill={likedOnly ? "currentColor" : "none"} />
             </svg>
-            <span className="text-[14px] font-black tracking-wide">My Liked Items</span>
+            <span className={`text-[14px] font-bold ${likedOnly ? "text-[var(--foreground)]" : "text-[var(--foreground)]"}`}>My Liked Items</span>
           </span>
-          {likedOnly && (
-            <svg width="13" height="10" viewBox="0 0 10 8" fill="none" className="shrink-0">
-              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="shrink-0 opacity-50">
+            <path d="M1 1L6 6L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
 
