@@ -199,8 +199,8 @@ export default function Navigation() {
                     </button>
                   </div>
 
-                  <div className="border-t border-[var(--border)] py-1.5">
-                    {/* Currency submenu */}
+                  <div className="border-t border-[var(--border)] py-1.5 relative">
+                    {/* Currency — opens floating panel to the left */}
                     <button onClick={() => setCurrencySubmenu(v => !v)}
                       className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <span className="flex items-center gap-3">
@@ -212,17 +212,18 @@ export default function Navigation() {
                       </span>
                       <span className="flex items-center gap-1 text-[var(--foreground-muted)] text-[11px]">
                         {currency}
-                        <svg width="8" height="8" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-150 ${currencySubmenu ? "rotate-180" : ""}`}>
+                        <svg width="8" height="8" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-150 ${currencySubmenu ? "-rotate-90" : "rotate-90"}`}>
                           <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
                     </button>
                     {currencySubmenu && (
-                      <div className="mx-3 mb-1 rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div className="absolute right-full top-0 mr-2 w-36 rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden z-[60]"
+                        style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
                         {CURRENCIES.map((c) => (
                           <button key={c.code}
                             onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-[11px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-semibold" : "text-[var(--foreground-muted)]"}`}>
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
                             <span>{c.code}</span>
                             <span className="opacity-50">{c.symbol}</span>
                           </button>
