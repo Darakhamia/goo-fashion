@@ -161,6 +161,31 @@ export default function Navigation() {
                 <div className="absolute top-full right-0 mt-2 w-52 rounded-2xl border border-[var(--border)] bg-[var(--background)] z-50 overflow-hidden"
                   style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
 
+                  {/* Currency overlay — covers entire panel */}
+                  {currencySubmenu && (
+                    <div className="absolute inset-0 rounded-2xl bg-[var(--background)] z-10 overflow-hidden flex flex-col"
+                      style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
+                        <span className="text-[11px] tracking-[0.14em] uppercase font-black text-[var(--foreground)]">Currency</span>
+                        <button onClick={() => setCurrencySubmenu(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                            <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="overflow-y-auto py-1">
+                        {CURRENCIES.map((c) => (
+                          <button key={c.code}
+                            onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
+                            <span>{c.code}</span>
+                            <span className="opacity-50 text-[11px]">{c.symbol}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Profile & Wishlist */}
                   <div className="py-1.5">
                     <Link href="/profile" onClick={() => setProfileOpen(false)}
