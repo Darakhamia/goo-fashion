@@ -125,21 +125,17 @@ export default function Navigation() {
             aria-label="Open AI Stylist"
             className={`group relative flex items-center gap-2 px-4 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
               stylistOpen
-                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                ? "bg-white text-black border-white"
                 : showWhiteText
-                ? "bg-white/10 text-white border-white/30 hover:bg-white/[0.15] hover:border-white/60"
-                : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)] hover:border-[var(--foreground)]"
+                ? "bg-black/70 text-white border-white/30 hover:border-white/60"
+                : "bg-black text-white border-[var(--border)] hover:border-white/40"
             }`}
-            style={!stylistOpen ? { boxShadow: "none" } : undefined}
-            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 18px rgba(255,255,255,0.18), 0 0 6px rgba(255,255,255,0.1)"; }}
+            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(255,255,255,0.08)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
           >
-            {/* glow blob on hover */}
-            <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: "radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.08) 0%, transparent 70%)" }} />
             <svg
               width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none"
-              className="relative z-10 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_4px_rgba(255,255,255,0.7)]"
+              className="relative z-10 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_3px_rgba(255,255,255,0.5)]"
             >
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
@@ -321,10 +317,10 @@ export default function Navigation() {
             aria-label="Open AI Stylist"
             className={`group relative flex items-center gap-2 px-3.5 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
               stylistOpen
-                ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                ? "bg-white text-black border-white"
                 : showWhiteText
-                ? "bg-white/10 text-white border-white/30"
-                : "bg-[var(--surface)] text-[var(--foreground)] border-[var(--border)]"
+                ? "bg-black/70 text-white border-white/30"
+                : "bg-black text-white border-[var(--border)]"
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none" className="relative z-10">
