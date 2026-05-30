@@ -20,12 +20,12 @@ const navLinks = [
 export default function Navigation() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [currencySubmenu, setCurrencySubmenu] = useState(false);
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
-  const currencyRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
@@ -36,7 +36,6 @@ export default function Navigation() {
   const showWhiteText = isHero && !scrolled && theme === "dark";
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
-  // Normalize each item to USD first, then formatPrice (no sourceCurrency needed — already USD)
   const cartTotalUsd = cartItems.reduce(
     (sum, item) => sum + convertToUsd(item.price, item.currency || "USD"),
     0,
@@ -54,17 +53,18 @@ export default function Navigation() {
     return () => document.removeEventListener("mousedown", handler);
   }, [cartOpen]);
 
-  // Close currency dropdown on click outside
+  // Close profile dropdown on click outside
   useEffect(() => {
-    if (!currencyOpen) return;
+    if (!profileOpen) return;
     const handler = (e: MouseEvent) => {
-      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
-        setCurrencyOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+        setCurrencySubmenu(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [currencyOpen]);
+  }, [profileOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -117,82 +117,8 @@ export default function Navigation() {
           ))}
         </div>
 
-        {/* Right Actions */}
-        <div className="hidden md:flex items-center gap-6">
-          {/* Currency selector */}
-          <div ref={currencyRef} className="relative">
-            <button
-              onClick={() => setCurrencyOpen((v) => !v)}
-              className={`flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase font-medium transition-colors duration-200 ${iconColor}`}
-              aria-label="Select currency"
-            >
-              {currency}
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-150 ${currencyOpen ? "rotate-180" : ""}`}>
-                <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {currencyOpen && (
-              <div className="absolute top-full right-0 mt-2 w-36 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-lg z-50 py-1.5 overflow-hidden">
-                {CURRENCIES.map((c) => (
-                  <button
-                    key={c.code}
-                    onClick={() => { setCurrency(c.code); setCurrencyOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[10px] tracking-[0.12em] uppercase transition-colors hover:bg-[var(--surface)] rounded-lg mx-0 ${
-                      currency === c.code
-                        ? "text-[var(--foreground)]"
-                        : "text-[var(--foreground-muted)]"
-                    }`}
-                  >
-                    <span>{c.code}</span>
-                    <span className="text-[var(--foreground-subtle)]">{c.symbol}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Cart */}
-          <button
-            onClick={() => setCartOpen(v => !v)}
-            aria-label="Cart"
-            className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-            </svg>
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
-                  {cartCount > 9 ? "9+" : cartCount}
-                </span>
-              </span>
-            )}
-          </button>
-
-          {/* Saved */}
-          <Link
-            href="/saved"
-            aria-label="Saved items"
-            className={`relative transition-colors duration-200 ${iconColor}`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                fill={pathname === "/saved" ? "currentColor" : "none"}
-              />
-            </svg>
-            {totalLikes > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
-                  {totalLikes > 9 ? "9+" : totalLikes}
-                </span>
-              </span>
-            )}
-          </Link>
-
+        {/* Right Actions — AI Stylist + Profile only */}
+        <div className="hidden md:flex items-center gap-4">
           {/* AI Stylist */}
           <button
             onClick={toggleStylist}
@@ -211,36 +137,137 @@ export default function Navigation() {
             <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
           </button>
 
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            className={`transition-colors duration-200 ${iconColor}`}
-          >
-            {theme === "dark" ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="3" />
-                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
-              </svg>
-            )}
-          </button>
-
-          {/* Profile */}
+          {/* Profile dropdown */}
           <SignedIn>
-            <Link
-              href="/profile"
-              aria-label="Style profile"
-              className={`transition-colors duration-200 ${pathname === "/profile" ? linkActive : iconColor}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-            </Link>
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => { setProfileOpen(v => !v); setCurrencySubmenu(false); }}
+                aria-label="Profile menu"
+                className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 ${
+                  profileOpen
+                    ? "border-[var(--foreground)] text-[var(--foreground)]"
+                    : showWhiteText
+                    ? "border-white/30 text-white/70 hover:border-white hover:text-white"
+                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute top-full right-0 mt-2 w-52 rounded-2xl border border-[var(--border)] bg-[var(--background)] z-50 overflow-hidden"
+                  style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
+
+                  {/* Profile & Wishlist */}
+                  <div className="py-1.5">
+                    <Link href="/profile" onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+                        <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      My profile
+                    </Link>
+                    <Link href="/saved" onClick={() => setProfileOpen(false)}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <span className="flex items-center gap-3">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                          <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.2" />
+                        </svg>
+                        Wishlist
+                      </span>
+                      {totalLikes > 0 && (
+                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{totalLikes > 9 ? "9+" : totalLikes}</span>
+                      )}
+                    </Link>
+                    <button onClick={() => { setCartOpen(true); setProfileOpen(false); }}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <span className="flex items-center gap-3">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+                          <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+                          <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+                        </svg>
+                        Cart
+                      </span>
+                      {cartCount > 0 && (
+                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{cartCount > 9 ? "9+" : cartCount}</span>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="border-t border-[var(--border)] py-1.5">
+                    {/* Currency submenu */}
+                    <button onClick={() => setCurrencySubmenu(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <span className="flex items-center gap-3">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                          <circle cx="8" cy="8" r="6" />
+                          <path d="M8 5v6M6 6.5h3a1 1 0 010 2H7a1 1 0 010 2h3.5" />
+                        </svg>
+                        Currency
+                      </span>
+                      <span className="flex items-center gap-1 text-[var(--foreground-muted)] text-[11px]">
+                        {currency}
+                        <svg width="8" height="8" viewBox="0 0 9 9" fill="none" className={`transition-transform duration-150 ${currencySubmenu ? "rotate-180" : ""}`}>
+                          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </button>
+                    {currencySubmenu && (
+                      <div className="mx-3 mb-1 rounded-xl border border-[var(--border)] overflow-hidden">
+                        {CURRENCIES.map((c) => (
+                          <button key={c.code}
+                            onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-[11px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-semibold" : "text-[var(--foreground-muted)]"}`}>
+                            <span>{c.code}</span>
+                            <span className="opacity-50">{c.symbol}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button onClick={() => { toggleTheme(); }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <span className="flex items-center gap-3">
+                        {theme === "dark" ? (
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="8" cy="8" r="3" />
+                            <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06" />
+                          </svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
+                          </svg>
+                        )}
+                        Theme
+                      </span>
+                      <span className="text-[var(--foreground-muted)] text-[11px] capitalize">{theme}</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-[var(--border)] py-1.5">
+                    <Link href="/settings" onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="8" cy="8" r="2" />
+                        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M11.54 4.46l1.41-1.41M3.05 12.95l1.41-1.41" />
+                      </svg>
+                      Settings
+                    </Link>
+                    <Link href="/logout" onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
+                      </svg>
+                      Log out
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </SignedIn>
           <SignedOut>
             <Link
@@ -252,7 +279,7 @@ export default function Navigation() {
           </SignedOut>
         </div>
 
-        {/* Mobile: AI Stylist + Cart */}
+        {/* Mobile: AI Stylist + Profile */}
         <div className="md:hidden flex items-center gap-3">
           <button
             onClick={toggleStylist}
@@ -268,87 +295,48 @@ export default function Navigation() {
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">
-              AI Stylist
-            </span>
+            <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
           </button>
-
-          {/* Theme toggle — mobile */}
-          <button
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            className={`transition-colors duration-200 ${iconColor}`}
-          >
-            {theme === "dark" ? (
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="3" />
-                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06" />
+          <SignedIn>
+            <Link href="/profile" aria-label="Profile"
+              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 ${
+                pathname === "/profile"
+                  ? "border-[var(--foreground)] text-[var(--foreground)]"
+                  : showWhiteText
+                  ? "border-white/30 text-white/70"
+                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z" />
-              </svg>
-            )}
-          </button>
-
-          <button
-            onClick={() => setCartOpen(v => !v)}
-            aria-label="Cart"
-            className={`relative transition-colors duration-200 ${cartOpen ? (showWhiteText ? "text-white" : "text-[var(--foreground)]") : iconColor}`}
-          >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-            </svg>
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                <span className={`text-[7px] font-medium ${showWhiteText ? "text-black" : "text-[var(--background)]"}`}>
-                  {cartCount > 9 ? "9+" : cartCount}
-                </span>
-              </span>
-            )}
-          </button>
+            </Link>
+          </SignedIn>
+          <SignedOut>
+            <Link href="/login" className={`text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${linkMuted}`}>
+              Sign in
+            </Link>
+          </SignedOut>
         </div>
       </nav>
-
     </header>
 
-      {/* Cart drawer overlay — rendered outside <header> to avoid sticky stacking context issues */}
+      {/* Cart drawer */}
       {cartOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40 bg-black/20"
-            onClick={() => setCartOpen(false)}
-            aria-hidden="true"
-          />
-          {/* Drawer */}
-          <div
-            ref={cartDrawerRef}
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
+          <div ref={cartDrawerRef}
             className="fixed top-3 right-3 bottom-3 w-full max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
-            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
-          >
-            {/* Drawer header */}
+            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
               <div>
                 <p className="text-[13px] font-medium text-[var(--foreground)]">Cart</p>
                 <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-0.5">
-                  {cartCount === 0
-                    ? "Empty"
-                    : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+                  {cartCount === 0 ? "Empty" : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
                 </p>
               </div>
-              <button
-                onClick={() => setCartOpen(false)}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors text-xl leading-none"
-                aria-label="Close cart"
-              >
-                ×
-              </button>
+              <button onClick={() => setCartOpen(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors text-xl leading-none" aria-label="Close cart">×</button>
             </div>
-
-            {/* Items list */}
             <div className="flex-1 overflow-y-auto">
               {cartItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
@@ -357,52 +345,23 @@ export default function Navigation() {
                     <circle cx="13" cy="27" r="2" />
                     <circle cx="23" cy="27" r="2" />
                   </svg>
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                    Your cart is empty
-                  </p>
-                  <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-                    Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.
-                  </p>
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Your cart is empty</p>
+                  <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.</p>
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2 p-3">
                   {cartItems.map(item => (
                     <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
-                      {/* Thumbnail — links to product page */}
-                      <Link
-                        href={`/product/${item.id}`}
-                        onClick={() => setCartOpen(false)}
-                        className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg hover:opacity-80 transition-opacity"
-                      >
+                      <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg hover:opacity-80 transition-opacity">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                       </Link>
-                      {/* Info */}
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <Link
-                          href={`/product/${item.id}`}
-                          onClick={() => setCartOpen(false)}
-                          className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2 hover:underline block"
-                        >
-                          {item.name}
-                        </Link>
-                        <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">
-                          {item.brand}
-                        </p>
-                        <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">
-                          {formatPrice(item.price, item.currency)}
-                        </p>
+                        <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2 hover:underline block">{item.name}</Link>
+                        <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">{item.brand}</p>
+                        <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">{formatPrice(item.price, item.currency)}</p>
                       </div>
-                      {/* Remove */}
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="shrink-0 mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                        aria-label={`Remove ${item.name}`}
-                      >
+                      <button onClick={() => removeFromCart(item.id)} className="shrink-0 mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors" aria-label={`Remove ${item.name}`}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                         </svg>
@@ -412,21 +371,13 @@ export default function Navigation() {
                 </ul>
               )}
             </div>
-
-            {/* Footer */}
             {cartItems.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] px-5 py-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                    Estimated total
-                  </p>
-                  <p className="text-[20px] font-bold text-[var(--foreground)]">
-                    {formatPrice(cartTotalUsd)}
-                  </p>
+                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Estimated total</p>
+                  <p className="text-[20px] font-bold text-[var(--foreground)]">{formatPrice(cartTotalUsd)}</p>
                 </div>
-                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">
-                  Checkout coming soon · Links open in retailer sites
-                </p>
+                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">Checkout coming soon · Links open in retailer sites</p>
               </div>
             )}
           </div>
