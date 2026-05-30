@@ -23,7 +23,7 @@ const ITEMS = [
 const AUTOPLAY_MS = 4500;
 
 /* ── Glow card wrapper ─────────────────────────────────────────── */
-function GlowCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function GlowCard({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={`rounded-2xl overflow-hidden transition-all duration-500 ${className}`}
@@ -31,6 +31,7 @@ function GlowCard({ children, className = "" }: { children: React.ReactNode; cla
         background: "rgba(255,255,255,0.025)",
         border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: "0 0 0 0 rgba(255,255,255,0)",
+        ...style,
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.boxShadow =
@@ -227,7 +228,7 @@ function Slide03() {
           <GlowCard
             key={brand}
             className="flex items-center justify-center p-3"
-            style={{ aspectRatio: "4/3", animation: `fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.04}s` } as never}
+            style={{ aspectRatio: "4/3", animation: `fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.04}s` }}
           >
             <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-white/50 text-center uppercase leading-tight">
               {brand}
