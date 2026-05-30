@@ -139,34 +139,37 @@ function Slide01() {
 /* ── Slide 02: Outfit ──────────────────────────────────── */
 function Slide02() {
   return (
-    <div className="flex-1 grid grid-cols-[1fr_1fr] gap-3 min-h-0">
+    <div className="flex-1 grid grid-cols-[1fr_1.1fr] gap-3 min-h-0">
       {/* Left: item list */}
-      <div className="flex flex-col gap-2.5 min-h-0">
+      <div className="flex flex-col gap-2 min-h-0">
         {ITEMS.map((item, i) => (
           <div
             key={item.n}
-            className="flex items-center gap-3 px-3.5 py-3 flex-1 min-h-0"
+            className="flex items-center gap-3.5 px-4 flex-1 min-h-0 overflow-hidden"
             style={{
-              borderRadius: 14,
-              background: "rgba(255,255,255,0.028)",
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.09)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
               animation: `cardReveal 0.55s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
             }}
           >
-            <span className="text-[8px] font-mono text-white/25 shrink-0 w-5">{item.n}</span>
+            <span className="text-[8px] font-mono text-white/22 shrink-0 w-4">{item.n}</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.img} alt={item.cat}
               className="shrink-0 object-cover object-center"
-              style={{ width: 44, height: 56, borderRadius: 8, animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s` }}
+              style={{
+                width: 52, height: 68, borderRadius: 10,
+                animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s`,
+              }}
             />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-black text-white uppercase tracking-[0.06em] leading-tight">{item.cat}</p>
-              <p className="text-[8px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
+              <p className="text-[12px] font-black text-white uppercase tracking-[0.06em] leading-tight">{item.cat}</p>
+              <p className="text-[9px] text-white/28 uppercase tracking-[0.08em] mt-1 leading-tight truncate">{item.brand}</p>
             </div>
             <div className="shrink-0 w-6 h-6 flex items-center justify-center"
-              style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)" }}>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/40">
+              style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.16)" }}>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
                 <path d="M4.5 1.5v6M1.5 4.5h6"/>
               </svg>
             </div>
@@ -174,28 +177,27 @@ function Slide02() {
         ))}
       </div>
 
-      {/* Right: complete look */}
+      {/* Right: complete look — full bleed */}
       <div
         className="flex flex-col overflow-hidden"
         style={{
           borderRadius: 18,
-          background: "rgba(255,255,255,0.025)",
+          background: "#0f0f0f",
           border: "1px solid rgba(255,255,255,0.09)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
           animation: "cardReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0.15s",
         }}
       >
-        <div className="px-4 py-3 flex items-center gap-2 shrink-0"
+        <div className="px-4 py-2.5 flex items-center gap-2 shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <span className="text-[9px] tracking-[0.2em] uppercase text-white/50 font-black">Complete Look</span>
           <span className="w-1.5 h-1.5 rounded-full bg-white/55"
-            style={{ boxShadow: "0 0 6px 1px rgba(255,255,255,0.6)" }}/>
+            style={{ boxShadow: "0 0 7px 1px rgba(255,255,255,0.65)", animation: "dotPulse 2.4s ease-in-out infinite" }}/>
         </div>
         <div className="flex-1 relative overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/cs/outfit.png" alt="Complete look"
-            className="absolute inset-0 w-full h-full object-contain object-center"
-            style={{ animation: "imgReveal 0.9s cubic-bezier(0.16,1,0.3,1) both 0.2s" }}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center top", animation: "imgReveal 0.9s cubic-bezier(0.16,1,0.3,1) both 0.2s" }}
           />
         </div>
       </div>
@@ -316,6 +318,10 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
         @keyframes slideIn {
           from { opacity:0; transform:translateX(28px); }
           to   { opacity:1; transform:translateX(0);    }
+        }
+        @keyframes dotPulse {
+          0%,100% { opacity:0.4; transform:scale(1);   }
+          50%      { opacity:1;  transform:scale(1.5); }
         }
       `}</style>
 
