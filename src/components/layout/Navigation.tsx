@@ -34,6 +34,18 @@ export default function Navigation() {
   const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
   const showWhiteText = isHero && !scrolled && theme === "dark";
+
+  const isDark = theme === "dark";
+  const navBg = isDark ? "#0a0a0a" : "#ffffff";
+  const navBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const navShadow = isDark ? "0 2px 20px rgba(0,0,0,0.4)" : "0 2px 20px rgba(0,0,0,0.08)";
+  const navIconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)";
+  const navIconBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
+  const navDivider = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const logoClass = isDark ? "text-white" : "text-black";
+  const linkActiveClass = isDark ? "text-white" : "text-black";
+  const linkMutedClass = isDark ? "text-white/40 hover:text-white/70" : "text-black/40 hover:text-black/70";
+  const dotColor = isDark ? "white" : "black";
   const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
   const cartTotalUsd = cartItems.reduce(
@@ -92,22 +104,23 @@ export default function Navigation() {
   return (
     <>
     <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${isBuilder ? "hidden md:block" : ""}`}
-      style={{ padding: "10px 16px 0" }}>
+      style={{ padding: "10px 48px 0" }}>
       <nav
-        className="mx-auto h-14 flex items-center justify-between px-5"
+        className="mx-auto h-14 flex items-center justify-between px-6"
         style={{
-          maxWidth: 1100,
-          background: "#0a0a0a",
+          maxWidth: 1280,
+          background: navBg,
           borderRadius: 50,
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 2px 20px rgba(0,0,0,0.4)",
+          border: `1px solid ${navBorder}`,
+          boxShadow: navShadow,
+          transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s",
         }}
       >
         {/* Logo */}
         <Link
           href="/"
           style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
-          className="text-[22px] tracking-[0.18em] text-white hover:opacity-70 transition-opacity duration-200 shrink-0"
+          className={`text-[22px] tracking-[0.18em] hover:opacity-70 transition-opacity duration-200 shrink-0 ${logoClass}`}
         >
           GOO
         </Link>
@@ -123,14 +136,14 @@ export default function Navigation() {
                 className="relative flex flex-col items-center gap-1.5 pb-0.5"
               >
                 <span className={`text-[11px] tracking-[0.14em] uppercase font-semibold transition-colors duration-200 ${
-                  isActive ? "text-white" : "text-white/40 hover:text-white/70"
+                  isActive ? linkActiveClass : linkMutedClass
                 }`}>
                   {link.label}
                 </span>
                 {isActive && (
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%",
-                    background: "white", display: "block",
+                    background: dotColor, display: "block",
                     position: "absolute", bottom: -6,
                   }} />
                 )}
@@ -148,18 +161,16 @@ export default function Navigation() {
             className="flex items-center justify-center transition-all duration-200"
             style={{
               width: 38, height: 38, borderRadius: "50%",
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: stylistOpen ? "white" : "transparent",
-              color: stylistOpen ? "black" : "rgba(255,255,255,0.7)",
+              border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
+              background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
+              color: stylistOpen ? (isDark ? "black" : "white") : navIconColor,
             }}
-            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.5)"; }}
-            onMouseLeave={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
           >
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
           </button>
 
           {/* divider */}
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 8px" }} />
+          <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
 
           {/* Profile */}
           <SignedIn>
@@ -170,12 +181,10 @@ export default function Navigation() {
                 className="flex items-center justify-center transition-all duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: profileOpen ? "rgba(255,255,255,0.08)" : "transparent",
-                  color: "rgba(255,255,255,0.7)",
+                  border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : navIconBorder}`,
+                  background: profileOpen ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
+                  color: navIconColor,
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.5)"; }}
-                onMouseLeave={e => { if (!profileOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -323,7 +332,7 @@ export default function Navigation() {
           </SignedIn>
           <SignedOut>
             <Link href="/login"
-              className="text-[11px] tracking-[0.12em] uppercase font-medium text-white/50 hover:text-white transition-colors">
+              className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
               Sign in
             </Link>
           </SignedOut>
@@ -333,17 +342,18 @@ export default function Navigation() {
         <div className="md:hidden flex items-center gap-1">
           <button onClick={toggleStylist} aria-label="Open AI Stylist"
             className="flex items-center justify-center transition-all duration-200"
-            style={{ width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.15)",
-              background: stylistOpen ? "white" : "transparent",
-              color: stylistOpen ? "black" : "rgba(255,255,255,0.7)" }}>
+            style={{ width:36, height:36, borderRadius:"50%",
+              border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
+              background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
+              color: stylistOpen ? (isDark ? "black" : "white") : navIconColor }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
           </button>
-          <div style={{ width:1, height:18, background:"rgba(255,255,255,0.1)", margin:"0 2px" }} />
+          <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           <SignedIn>
             <Link href="/profile" aria-label="Profile"
               className="flex items-center justify-center transition-all duration-200"
-              style={{ width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.15)",
-                background:"transparent", color:"rgba(255,255,255,0.7)" }}>
+              style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
+                background:"transparent", color: navIconColor }}>
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -352,7 +362,7 @@ export default function Navigation() {
           </SignedIn>
           <SignedOut>
             <Link href="/login"
-              className="text-[11px] tracking-[0.12em] uppercase font-medium text-white/50 hover:text-white transition-colors">
+              className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
               Sign in
             </Link>
           </SignedOut>
