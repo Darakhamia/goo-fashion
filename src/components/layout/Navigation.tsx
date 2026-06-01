@@ -104,11 +104,11 @@ export default function Navigation() {
   return (
     <>
     <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${isBuilder ? "hidden md:block" : ""}`}
-      style={{ padding: "10px 48px 0" }}>
+      style={{ paddingTop: 10 }}>
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
       <nav
-        className="mx-auto h-14 flex items-center justify-between px-6"
+        className="h-14 flex items-center justify-between px-6"
         style={{
-          maxWidth: 1280,
           background: navBg,
           borderRadius: 50,
           border: `1px solid ${navBorder}`,
@@ -368,6 +368,7 @@ export default function Navigation() {
           </SignedOut>
         </div>
       </nav>
+      </div>
     </header>
 
       {/* Cart drawer */}
