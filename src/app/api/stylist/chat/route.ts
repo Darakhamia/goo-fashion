@@ -485,6 +485,7 @@ export async function POST(req: Request) {
       return NextResponse.json<StylistChatResponse>({
         reply: "I couldn't come up with a response. Try asking again.",
         suggestedProductIds: [],
+        suggestedProducts: [],
         styleKeywords: [],
         remaining: null,
         limit: null,
