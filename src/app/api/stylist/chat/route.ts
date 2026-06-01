@@ -3,14 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { chatCompletion } from "@/lib/server/replicate-ai";
 import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-// ── Plan limits ───────────────────────────────────────────────────────────────
-
-const PLAN_DAILY_LIMITS: Record<string, number | null> = {
-  free:  20,
-  plus:  150,
-  ultra: null,
-};
+import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -556,15 +549,13 @@ export async function POST(req: Request) {
 
   // ── Auth + plan ───────────────────────────────────────────────────────────
   const { userId } = await auth();
-  let userPlan: keyof typeof PLAN_DAILY_LIMITS = "free";
+  let userPlan: ReturnType<typeof coercePlan> = "free";
   let userPersonalization: StylistPersonalization | null = null;
 
   if (userId) {
     try {
       const clerkUser = await currentUser();
-      const planRaw =
-        (clerkUser?.publicMetadata as { plan?: string } | null)?.plan ?? "free";
-      if (planRaw in PLAN_DAILY_LIMITS) userPlan = planRaw as typeof userPlan;
+      userPlan = coercePlan((clerkUser?.publicMetadata as { plan?: unknown } | null)?.plan);
       const unsafe = clerkUser?.unsafeMetadata as {
         stylistPersonalization?: StylistPersonalization;
       } | null;
@@ -574,14 +565,14 @@ export async function POST(req: Request) {
     }
   }
 
-  const dailyLimit = PLAN_DAILY_LIMITS[userPlan];
+  const dailyLimit = STYLIST_DAILY_LIMITS[userPlan];
 
   // ── Daily limit check ─────────────────────────────────────────────────────
   let usageCount = 0;
   if (userId && dailyLimit !== null) {
     usageCount = await getDailyUsage(userId);
     if (usageCount >= dailyLimit) {
-      const planLabel = userPlan === "free" ? "Plus" : "Ultra";
+      const planLabel = userPlan === "premium" ? "Premium" : "a higher plan";
       return NextResponse.json(
         {
           error: `You've used all ${dailyLimit} messages for today. Upgrade to ${planLabel} for more.`,
