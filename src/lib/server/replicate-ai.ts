@@ -1,15 +1,12 @@
 /**
- * Replicate AI client — centralised LLM + embedding calls.
- *
- * LLM   : meta/meta-llama-3.1-70b-instruct  (chat responses)
- * Embed : nateraw/bge-large-en-v1.5          (1024-dim text vectors)
+ * Replicate AI client — LLM chat calls.
+ * Model: openai/gpt-4o-mini, served THROUGH Replicate (uses the existing
+ * REPLICATE_API_TOKEN — no personal OpenAI key on the site). Excellent
+ * multilingual quality (incl. Russian) and reliable instruction-following.
  */
 import Replicate from "replicate";
 
-const LLM_MODEL   = "meta/meta-llama-3.1-70b-instruct";
-const EMBED_MODEL = "nateraw/bge-large-en-v1.5";
-
-export const EMBEDDING_DIMS = 1024;
+const LLM_MODEL = "openai/gpt-4o-mini";
 
 function client(): Replicate {
   const token = process.env.REPLICATE_API_TOKEN;
@@ -17,52 +14,6 @@ function client(): Replicate {
   return new Replicate({ auth: token });
 }
 
-/**
- * Generate a 1024-dim embedding for a piece of text.
- * Used both for product indexing and for query vectorisation.
- */
-export async function embedText(text: string): Promise<number[]> {
-  const replicate = client();
-  const output = await replicate.run(EMBED_MODEL, {
-    input: { text: text.slice(0, 512) },
-  });
-  if (!Array.isArray(output)) {
-    throw new Error(`Unexpected embedding output type: ${typeof output}`);
-  }
-  return output as number[];
-}
-
-/**
- * Build the text representation of a product that gets embedded.
- * Keep it short but information-dense so searches match well.
- */
-export function productToEmbedText(p: {
-  name: string;
-  brand: string;
-  category: string;
-  description?: string;
-  styleKeywords?: string[];
-  priceMin?: number;
-}): string {
-  const parts = [
-    `${p.name} by ${p.brand}`,
-    p.category,
-    p.description ?? "",
-    (p.styleKeywords ?? []).join(" "),
-    p.priceMin != null ? `$${p.priceMin}` : "",
-  ];
-  return parts.filter(Boolean).join(". ");
-}
-
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-/**
- * Call the Replicate LLM and return the complete text response.
- * Conversation history is serialised into the prompt (Llama-3 format).
- */
 export async function chatCompletion(opts: {
   systemPrompt: string;
   history: Array<{ role: "user" | "assistant"; content: string }>;
@@ -72,28 +23,26 @@ export async function chatCompletion(opts: {
 }): Promise<string> {
   const replicate = client();
 
-  // Build a prompt string in Llama-3 instruct format
+  // Plain conversational prompt (no model-specific control tokens) so it works
+  // with OpenAI-family models on Replicate.
   let prompt = "";
   for (const msg of opts.history) {
-    if (msg.role === "user") {
-      prompt += `<|start_header_id|>user<|end_header_id|>\n${msg.content}<|eot_id|>\n`;
-    } else {
-      prompt += `<|start_header_id|>assistant<|end_header_id|>\n${msg.content}<|eot_id|>\n`;
-    }
+    const label = msg.role === "user" ? "User" : "Assistant";
+    prompt += `${label}: ${msg.content}\n`;
   }
-  prompt += `<|start_header_id|>user<|end_header_id|>\n${opts.userMessage}<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n`;
+  prompt += `User: ${opts.userMessage}\nAssistant:`;
 
   const output = await replicate.run(LLM_MODEL, {
     input: {
       prompt,
       system_prompt: opts.systemPrompt,
-      max_tokens: opts.maxTokens ?? 600,
-      temperature: opts.temperature ?? 0.7,
-      top_p: 0.9,
-      stop_sequences: "<|eot_id|>",
+      max_completion_tokens: opts.maxTokens ?? 600,
+      temperature: opts.temperature ?? 0.6,
     },
   });
 
+  // Replicate LLM output is string[] (one string per token chunk) or a string.
   if (Array.isArray(output)) return (output as string[]).join("");
-  return String(output);
+  if (typeof output === "string") return output;
+  throw new Error(`Unexpected Replicate output type: ${typeof output}`);
 }

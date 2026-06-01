@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
@@ -35,6 +35,47 @@ interface ChatMessage {
   text: string;
   suggestions?: Product[];
   isError?: true;
+}
+
+// ── Text helpers ──────────────────────────────────────────────────────────────
+
+function cleanReplyText(text: string): string {
+  return text
+    // Strip leftover JSON blocks (fenced or bare) first
+    .replace(/```json[\s\S]*?```/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/\{[^{}]*"suggestedProductIds"[^{}]*\}/g, "")
+    // Strip trailing announcements like "Here's the JSON block:" (EN + RU)
+    .replace(/(here'?s|here is)\s+(the\s+)?json\s*(block|data)?\s*:?\s*$/gim, "")
+    .replace(/вот\s+(json|джсон)[^\n]*:?\s*$/gim, "")
+    // Strip stray "**Suggested ProductIds:** [...]" / "**StyleKeywords:** [...]"
+    .replace(/\*?\*?Suggested\s*Product\s*Ids?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
+    .replace(/\*?\*?Style\s*Keywords?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
+    // Strip any remaining UUID-like strings
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "")
+    // Collapse 3+ newlines and trailing whitespace
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  return lines.map((line, li) => {
+    // Replace **text** with <strong>
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    const nodes = parts.map((part, pi) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={pi}>{part.slice(2, -2)}</strong>;
+      }
+      return <span key={pi}>{part}</span>;
+    });
+    return (
+      <span key={li}>
+        {nodes}
+        {li < lines.length - 1 && <br />}
+      </span>
+    );
+  });
 }
 
 // ── Builder URL builder ───────────────────────────────────────────────────────
@@ -337,20 +378,38 @@ export function StylistDrawer({
       if (json.remaining !== undefined) setRemaining(json.remaining as number | null);
       if (json.limit !== undefined) setDailyLimit(json.limit as number | null);
 
-      // Resolve product IDs
-      const suggestedProducts: Product[] = (json.suggestedProductIds as string[] ?? [])
-        .map((id: string) => products.find(p => p.id === id))
-        .filter((p): p is Product => p != null);
-
-      const keywords = (json.styleKeywords as string[] ?? []);
-      const finalSuggestions: Product[] =
-        suggestedProducts.length > 0
-          ? suggestedProducts
+      // Prefer full product data returned by the API (includes imageUrl, currency for
+      // products that may not be in the local `products` prop list).
+      // Fall back to local lookup for backwards compatibility.
+      type ApiProduct = { id: string; name: string; brand: string; category: string; priceMin: number; currency: string; imageUrl: string; styleKeywords: string[] };
+      const apiProducts: ApiProduct[] = Array.isArray(json.suggestedProducts) ? json.suggestedProducts : [];
+      let finalSuggestions: Product[];
+      if (apiProducts.length > 0) {
+        finalSuggestions = apiProducts.map(ap => {
+          const local = products.find(p => p.id === ap.id);
+          if (local) return local;
+          return {
+            id: ap.id, name: ap.name, brand: ap.brand as Product["brand"],
+            category: ap.category as Product["category"],
+            priceMin: ap.priceMin, priceMax: ap.priceMin,
+            currency: ap.currency, imageUrl: ap.imageUrl, images: [ap.imageUrl],
+            styleKeywords: ap.styleKeywords as Product["styleKeywords"],
+            description: "", colors: [], sizes: [], material: "",
+            retailers: [], isNew: false, isSaved: false,
+          } as Product;
+        });
+      } else {
+        // Fallback: look up by ID from props
+        const byId = (json.suggestedProductIds as string[] ?? [])
+          .map((id: string) => products.find(p => p.id === id))
+          .filter((p): p is Product => p != null);
+        const keywords = (json.styleKeywords as string[] ?? []);
+        finalSuggestions = byId.length > 0
+          ? byId
           : keywords.length > 0
-          ? products
-              .filter(p => keywords.some(kw => (p.styleKeywords as string[] ?? []).includes(kw)))
-              .slice(0, 6)
-          : [];
+            ? products.filter(p => keywords.some(kw => (p.styleKeywords as string[] ?? []).includes(kw))).slice(0, 6)
+            : [];
+      }
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
@@ -564,7 +623,9 @@ export function StylistDrawer({
                       : "bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl rounded-bl-sm"
                   }`}
                 >
-                  {msg.text}
+                  {msg.role === "assistant" && !msg.isError
+                    ? renderMarkdown(cleanReplyText(msg.text))
+                    : msg.text}
                 </div>
 
                 {/* Suggestion strip */}
@@ -621,11 +682,11 @@ export function StylistDrawer({
                       })}
                     </div>
 
-                    {/* Build this look button — shown when 2+ suggestions span different slots */}
+                    {/* Build this look button — shown whenever suggestions map to a builder slot */}
                     {(() => {
                       const url = buildLookUrl(msg.suggestions);
                       const slots = new Set(msg.suggestions.map(p => CATEGORY_TO_SLOT[p.category]).filter(Boolean));
-                      return slots.size >= 2 ? (
+                      return slots.size >= 1 ? (
                         <Link
                           href={url}
                           className="inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"

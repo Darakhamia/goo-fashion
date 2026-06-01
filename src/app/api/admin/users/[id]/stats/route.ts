@@ -2,16 +2,7 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-// Must mirror the limits used in /api/stylist/chat/route.ts
-const PLAN_DAILY_LIMITS: Record<string, number | null> = {
-  free:    20,
-  basic:   50,
-  pro:     150,
-  premium: null,
-  plus:    150,   // legacy alias
-  ultra:   null,  // legacy alias
-};
+import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 
 export interface UserStats {
   stylistMsgToday:  number;
@@ -44,16 +35,14 @@ export async function GET(
   }
 
   // Resolve user plan from Clerk
-  let plan = "free";
+  let plan: ReturnType<typeof coercePlan> = "free";
   try {
     const cc = await clerkClient();
     const u  = await cc.users.getUser(id);
-    plan = ((u.publicMetadata as { plan?: string })?.plan) ?? "free";
+    plan = coercePlan((u.publicMetadata as { plan?: unknown })?.plan);
   } catch { /* keep "free" as fallback */ }
 
-  const dailyLimit = Object.prototype.hasOwnProperty.call(PLAN_DAILY_LIMITS, plan)
-    ? PLAN_DAILY_LIMITS[plan]
-    : 20;
+  const dailyLimit = STYLIST_DAILY_LIMITS[plan];
 
   const today = new Date().toISOString().slice(0, 10);
 

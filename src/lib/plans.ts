@@ -60,6 +60,18 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
   },
 };
 
+/**
+ * Daily AI Stylist message limits per plan. `null` = unlimited.
+ * Single source of truth — used by the stylist chat + usage routes and the
+ * admin dashboard so the numbers can never drift apart again.
+ */
+export const STYLIST_DAILY_LIMITS: Record<PlanId, number | null> = {
+  free: 20,
+  basic: 50,
+  pro: 150,
+  premium: null,
+};
+
 /** Ordered from cheapest to most expensive, for UI + upgrade paths. */
 export const PLAN_ORDER: PlanId[] = ["free", "basic", "pro", "premium"];
 
