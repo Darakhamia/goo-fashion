@@ -140,7 +140,7 @@ export default function Navigation() {
         </div>
 
         {/* Right Actions */}
-        <div className="hidden md:flex items-center shrink-0" style={{ gap: 1 }}>
+        <div className="hidden md:flex items-center shrink-0" style={{ gap: 4 }}>
           {/* AI Stylist — icon circle */}
           <button
             onClick={toggleStylist}
@@ -162,7 +162,7 @@ export default function Navigation() {
           </button>
 
           {/* divider */}
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 8px" }} />
 
           {/* Profile */}
           <SignedIn>
