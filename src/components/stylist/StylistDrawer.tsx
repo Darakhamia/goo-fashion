@@ -674,11 +674,11 @@ export function StylistDrawer({
                       })}
                     </div>
 
-                    {/* Build this look button — shown when 2+ suggestions span different slots */}
+                    {/* Build this look button — shown whenever suggestions map to a builder slot */}
                     {(() => {
                       const url = buildLookUrl(msg.suggestions);
                       const slots = new Set(msg.suggestions.map(p => CATEGORY_TO_SLOT[p.category]).filter(Boolean));
-                      return slots.size >= 2 ? (
+                      return slots.size >= 1 ? (
                         <Link
                           href={url}
                           className="inline-flex items-center gap-1.5 self-start border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 rounded-full font-mono text-[9px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
