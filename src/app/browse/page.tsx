@@ -911,64 +911,70 @@ export default function BrowsePage() {
         {/* Main content */}
         <div>
           <main className="px-6 md:px-8 lg:px-10">
-            {/* View tabs row — directly above toolbar */}
-            <div className="flex items-center gap-2 pt-4 pb-3">
-              {(["pieces", "outfits"] as View[]).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => {
-                    if (v !== view) {
-                      setView(v);
-                      setSelectedBrands([]);
-                      setSelectedSubcategories([]);
-                      setSelectedOccasions([]);
-                      setSelectedColorGroupIds([]);
-                      setAiOnly(false);
-                      setMaxPrice(null);
-                      setSearchQuery("");
-                      setSearchOpen(false);
-                      const url = new URL(window.location.href);
-                      url.searchParams.set("view", v);
-                      window.history.replaceState({}, "", url.toString());
-                    }
-                  }}
-                  className={`w-[100px] justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full py-2.5 transition-all duration-200 ${
-                    view === v
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
+            {/* Toolbar with tabs above each button */}
+            <div className="flex items-end justify-between pt-4 border-b border-[var(--border)] overflow-visible">
+              <div className="flex items-end gap-2 min-w-0 flex-1 overflow-visible">
 
-            {/* Top toolbar */}
-            <div className="flex items-center justify-between py-4 border-b border-[var(--border)] overflow-visible">
-              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-visible">
+                {/* Pieces tab → Filter button */}
+                <div className="flex flex-col gap-2 pb-4 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (view !== "pieces") {
+                        setView("pieces");
+                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                        setSearchQuery(""); setSearchOpen(false);
+                        const url = new URL(window.location.href); url.searchParams.set("view", "pieces");
+                        window.history.replaceState({}, "", url.toString());
+                      }
+                    }}
+                    className={`w-full justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      view === "pieces"
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >Pieces</button>
+                  <button
+                    onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                    className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      filtersOpen
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                      <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span className="hidden sm:inline">Filter</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
 
-                {/* Filter toggle button */}
-                <button
-                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                    filtersOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span className="hidden sm:inline">Filter</span>
-                  {activeFiltersCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
+                {/* Outfits tab → Search button */}
+                <div className="flex flex-col gap-2 pb-4 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (view !== "outfits") {
+                        setView("outfits");
+                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                        setSearchQuery(""); setSearchOpen(false);
+                        const url = new URL(window.location.href); url.searchParams.set("view", "outfits");
+                        window.history.replaceState({}, "", url.toString());
+                      }
+                    }}
+                    className={`w-full justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      view === "outfits"
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >Outfits</button>
 
-
-                {/* Search toggle */}
+                  {/* Search toggle */}
                 <div className="shrink-0 relative">
                   <AnimatePresence mode="wait" initial={false}>
                     {!searchOpen ? (
@@ -1023,6 +1029,7 @@ export default function BrowsePage() {
                     )}
                   </AnimatePresence>
                 </div>
+                </div>{/* end Outfits+Search column */}
               </div>
 
               {/* Sort */}
