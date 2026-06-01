@@ -932,7 +932,7 @@ export default function BrowsePage() {
                             window.history.replaceState({}, "", url.toString());
                           }
                         }}
-                        className="relative px-3 sm:px-5 py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
+                        className="relative flex-1 text-center py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
                         style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
                       >
                         {view === v && (
