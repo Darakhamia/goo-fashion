@@ -1538,28 +1538,21 @@ export default function BuilderPage() {
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto">
 
-              {/* LIKED */}
+              {/* MY LIKED ITEMS — Browse row style */}
               <div className="border-b border-[var(--border)] px-5 py-4">
-                <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Saved</p>
                 <button
                   onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                    likedOnly
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
+                  className="w-full flex items-center justify-between group"
                 >
-                  <span className="flex items-center gap-2 text-[11px] font-semibold">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+                  <span className="flex items-center gap-2.5">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                      <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.5" fill={likedOnly ? "currentColor" : "none"} />
                     </svg>
-                    My Liked Items
+                    <span className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>My Liked Items</span>
                   </span>
-                  {likedOnly && (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${likedOnly ? "rotate-180" : ""}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
               </div>
 
@@ -1569,7 +1562,7 @@ export default function BuilderPage() {
                   <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
                     Category{(selectedSubcategories.length > 0 || catalogCategory) && <span className="ml-2 text-[9px] font-semibold opacity-60">{selectedSubcategories.length === 1 ? `— ${selectedSubcategories[0]}` : selectedSubcategories.length > 1 ? `— ${selectedSubcategories.length} selected` : ""}</span>}
                   </p>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("category") ? "" : "rotate-180"}`}>
                     <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -1650,69 +1643,13 @@ export default function BuilderPage() {
                 )}
               </div>
 
-              {/* PRICE */}
-              <div className="border-b border-[var(--border)] px-5 py-4">
-                <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between group">
-                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
-                    Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[9px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
-                  </p>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
-                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {!collapsedSections.has("price") && (
-                  <div className="mt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[12px] font-semibold text-[var(--foreground)] opacity-40">$0</span>
-                      <span className="text-[13px] font-bold text-[var(--foreground)]">
-                        {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={2000}
-                      step={50}
-                      value={maxPrice ?? 2000}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
-                      }}
-                      className="w-full cursor-pointer mb-3"
-                      style={{ accentColor: "var(--foreground)" }}
-                    />
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {([
-                        { label: "All", max: null },
-                        { label: "<$200", max: 200 },
-                        { label: "<$500", max: 500 },
-                        { label: "<$1k", max: 1000 },
-                        { label: "<$2k", max: 2000 },
-                      ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
-                        <button
-                          key={label}
-                          onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                          className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
-                            maxPrice === max
-                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* GENDER */}
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => setGenderDropOpen(v => !v)} className="w-full flex items-center justify-between group">
                   <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
                     Gender{selectedGender !== null && <span className="ml-2 text-[9px] font-semibold opacity-60 capitalize">— {selectedGender}</span>}
                   </p>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${genderDropOpen ? "rotate-180" : ""}`}>
                     <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -1744,7 +1681,7 @@ export default function BuilderPage() {
               <div className="border-b border-[var(--border)] px-5 py-4">
                 <button onClick={() => toggleSection("color")} className="w-full flex items-center justify-between group">
                   <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Colors</p>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("color") ? "" : "rotate-180"}`}>
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("color") ? "" : "rotate-180"}`}>
                     <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -1779,12 +1716,12 @@ export default function BuilderPage() {
                 </>)}
               </div>
 
-              {/* BRANDS */}
+              {/* DESIGNER */}
               {availableBrands.length > 0 && (
                 <div className="border-b border-[var(--border)] px-5 py-4">
                   <button onClick={() => toggleSection("brand")} className="w-full flex items-center justify-between group">
-                    <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Brands</p>
-                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("brand") ? "" : "rotate-180"}`}>
+                    <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Designer</p>
+                    <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("brand") ? "" : "rotate-180"}`}>
                       <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
@@ -1809,7 +1746,7 @@ export default function BuilderPage() {
                       </button>
                     )}
                   </div>
-                  {/* Brand list */}
+                  {/* Brand list — circular checkboxes like Browse */}
                   <div className="flex flex-col gap-0.5">
                     {availableBrands
                       .filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase()))
@@ -1817,29 +1754,18 @@ export default function BuilderPage() {
                       .map(brand => {
                         const isActive = selectedBrands.includes(brand);
                         return (
-                          <label
+                          <button
                             key={brand}
-                            className="flex items-center gap-2.5 px-1 py-2.5 cursor-pointer hover:bg-[var(--surface)] rounded-lg transition-colors"
+                            onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
+                            className="w-full flex items-center justify-between px-1 py-2.5 hover:bg-[var(--surface)] rounded-lg transition-colors"
                           >
-                            <div
-                              className={`flex items-center justify-center shrink-0 border transition-colors ${
-                                isActive ? "bg-[var(--foreground)] border-[var(--foreground)]" : "border-[var(--border-strong)] bg-transparent"
-                              }`}
-                              style={{ width: 16, height: 16 }}
-                            >
-                              {isActive && (
-                                <svg width="9" height="7" viewBox="0 0 10 8" fill="none">
-                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => setSelectedBrands(prev => isActive ? prev.filter(b => b !== brand) : [...prev, brand])}
-                              className={`text-[13px] font-semibold truncate text-left ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}
-                            >
+                            <span className={`text-[13px] truncate text-left font-semibold ${isActive ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-55"}`}>
                               {brand}
-                            </button>
-                          </label>
+                            </span>
+                            <div className="shrink-0 flex items-center justify-center border transition-colors ml-2" style={{ width: 18, height: 18, borderRadius: "50%", background: isActive ? "var(--foreground)" : "transparent", borderColor: isActive ? "var(--foreground)" : "var(--border-strong)" }}>
+                              {isActive && <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                            </div>
+                          </button>
                         );
                       })}
                     {availableBrands.filter(b => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())).length === 0 && (
@@ -1860,6 +1786,62 @@ export default function BuilderPage() {
                   </>)}
                 </div>
               )}
+
+              {/* PRICE */}
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <button onClick={() => toggleSection("price")} className="w-full flex items-center justify-between group">
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+                    Price{maxPrice !== null && maxPrice < 2000 && <span className="ml-2 text-[10px] font-semibold opacity-60">{`— < $${maxPrice.toLocaleString()}`}</span>}
+                  </p>
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("price") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {!collapsedSections.has("price") && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12px] font-semibold text-[var(--foreground)] opacity-40">$0</span>
+                      <span className="text-[13px] font-bold text-[var(--foreground)]">
+                        {maxPrice !== null && maxPrice < 2000 ? `$${maxPrice.toLocaleString()}` : "$2,000+"}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={2000}
+                      step={50}
+                      value={maxPrice ?? 2000}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setMaxPrice(val >= 2000 ? null : val === 0 ? 1 : val);
+                      }}
+                      className="w-full cursor-pointer mb-3"
+                      style={{ accentColor: "var(--foreground)" }}
+                    />
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {([
+                        { label: "All", max: null },
+                        { label: "< $200", max: 200 },
+                        { label: "< $500", max: 500 },
+                        { label: "< $1k", max: 1000 },
+                        { label: "< $2k", max: 2000 },
+                      ] as Array<{ label: string; max: number | null }>).map(({ label, max }) => (
+                        <button
+                          key={label}
+                          onClick={() => setMaxPrice(maxPrice === max ? null : max)}
+                          className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
+                            maxPrice === max
+                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Clear filters button — shown when active */}
               {hasActiveFilters && (
