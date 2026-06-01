@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { chatCompletion, embedText } from "@/lib/server/replicate-ai";
+import { chatCompletion } from "@/lib/server/replicate-ai";
 import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -16,7 +16,7 @@ const PLAN_DAILY_LIMITS: Record<string, number | null> = {
 
 const MAX_USER_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ENTRIES     = 20;
-const VECTOR_MATCH_COUNT      = 30; // how many similar products to retrieve per query
+const SEARCH_MATCH_COUNT      = 30;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ interface MatchedProduct {
   price_min: number;
   style_keywords: string[];
   description: string;
-  similarity: number;
+  rank: number;
 }
 
 // ── Input helpers ─────────────────────────────────────────────────────────────
@@ -98,33 +98,31 @@ function sanitizeHistory(
 // ── Vector search ─────────────────────────────────────────────────────────────
 
 /**
- * Embeds the user message and calls match_products() in Supabase.
- * Falls back to fetching all products (keyword scan) if pgvector is not set up yet.
+ * Full-text search via search_products() SQL function in Supabase.
+ * No external API needed — uses PostgreSQL tsvector/tsquery.
+ * Falls back to a simple .select() if the function isn't deployed yet.
  */
 async function findRelevantProducts(userMessage: string): Promise<MatchedProduct[]> {
   if (!isSupabaseConfigured || !supabase) return [];
 
   try {
-    const queryEmbedding = await embedText(userMessage);
-
-    const { data, error } = await supabase.rpc("match_products", {
-      query_embedding: `[${queryEmbedding.join(",")}]`,
-      match_count: VECTOR_MATCH_COUNT,
+    const { data, error } = await supabase.rpc("search_products", {
+      query_text: userMessage.slice(0, 300),
+      match_count: SEARCH_MATCH_COUNT,
     });
 
     if (error) throw error;
     return (data ?? []) as MatchedProduct[];
 
   } catch (err) {
-    console.warn("[stylist/chat] Vector search failed, falling back to full scan:", err);
+    console.warn("[stylist/chat] FTS search failed, falling back to full scan:", err);
 
-    // Fallback: return all products (works until embeddings are generated)
     const { data } = await supabase
       .from("products")
       .select("id, name, brand, category, price_min, style_keywords, description")
-      .limit(VECTOR_MATCH_COUNT);
+      .limit(SEARCH_MATCH_COUNT);
 
-    return ((data ?? []) as MatchedProduct[]).map((p) => ({ ...p, similarity: 1 }));
+    return ((data ?? []) as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
   }
 }
 
