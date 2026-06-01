@@ -447,6 +447,8 @@ export default function BuilderPage() {
   // Always show all 13 standard color groups (same as Browse)
   const availableColors = STANDARD_COLORS;
 
+  const [shuffleSeed] = useState(() => Math.random());
+
   const catalogProducts = useMemo(() => {
     let list = filterByCategory(products, catalogCategory, selectedSubcategories);
 
@@ -495,10 +497,17 @@ export default function BuilderPage() {
       list = [...list].sort((a, b) => b.priceMin - a.priceMin);
     } else if (sortBy === "new-in") {
       list = [...list].sort((a, b) => b.id.localeCompare(a.id));
+    } else {
+      // "featured" — shuffle deterministically per session so order changes on every page load
+      list = [...list].sort((a, b) => {
+        const ha = Math.sin(shuffleSeed + a.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0)) * 10000;
+        const hb = Math.sin(shuffleSeed + b.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0)) * 10000;
+        return (ha - Math.floor(ha)) - (hb - Math.floor(hb));
+      });
     }
 
     return list;
-  }, [catalogCategory, selectedSubcategories, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, selectedGender, sortBy]);
+  }, [catalogCategory, selectedSubcategories, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, selectedGender, sortBy, shuffleSeed]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
     if (!selectedColors.length) {
