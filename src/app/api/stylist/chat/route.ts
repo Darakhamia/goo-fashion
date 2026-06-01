@@ -7,9 +7,13 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 // ── Plan limits ───────────────────────────────────────────────────────────────
 
 const PLAN_DAILY_LIMITS: Record<string, number | null> = {
-  free:  20,
-  plus:  150,
-  ultra: null,
+  free:    20,
+  basic:   50,
+  pro:     150,
+  premium: null,
+  // legacy aliases
+  plus:    150,
+  ultra:   null,
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -378,7 +382,7 @@ export async function POST(req: Request) {
   if (userId && dailyLimit !== null) {
     usageCount = await getDailyUsage(userId);
     if (usageCount >= dailyLimit) {
-      const planLabel = userPlan === "free" ? "Plus" : "Ultra";
+      const planLabel = userPlan === "free" ? "Basic" : userPlan === "basic" ? "Pro" : "Premium";
       return NextResponse.json(
         {
           error: `You've used all ${dailyLimit} messages for today. Upgrade to ${planLabel} for more.`,

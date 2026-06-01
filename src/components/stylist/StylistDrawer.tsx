@@ -41,11 +41,19 @@ interface ChatMessage {
 
 const CATEGORY_TO_SLOT: Record<string, string> = {
   outerwear: "outerwear",
-  tops: "top",
-  knitwear: "top",
-  bottoms: "bottom",
-  dresses: "bottom",
-  footwear: "shoes",
+  blazers:   "outerwear",
+  tops:      "top",
+  shirts:    "top",
+  knitwear:  "top",
+  bottoms:   "bottom",
+  jeans:     "bottom",
+  shorts:    "bottom",
+  skirts:    "bottom",
+  dresses:   "bottom",
+  jumpsuits: "bottom",
+  swimwear:  "bottom",
+  footwear:  "shoes",
+  bags:      "accessories",
   accessories: "accessories",
 };
 
