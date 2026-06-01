@@ -96,7 +96,7 @@ export default function Navigation() {
       <nav
         className="mx-auto h-14 flex items-center justify-between px-5"
         style={{
-          maxWidth: 860,
+          maxWidth: 1100,
           background: "#0a0a0a",
           borderRadius: 50,
           border: "1px solid rgba(255,255,255,0.08)",
@@ -155,10 +155,7 @@ export default function Navigation() {
             onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.5)"; }}
             onMouseLeave={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
           >
-            {/* 4-pointed star ✦ */}
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none">
-              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
           </button>
 
           {/* divider */}
@@ -339,9 +336,7 @@ export default function Navigation() {
             style={{ width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.15)",
               background: stylistOpen ? "white" : "transparent",
               color: stylistOpen ? "black" : "rgba(255,255,255,0.7)" }}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" stroke="none">
-              <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
           </button>
           <div style={{ width:1, height:18, background:"rgba(255,255,255,0.1)", margin:"0 2px" }} />
           <SignedIn>
