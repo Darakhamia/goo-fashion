@@ -15,8 +15,22 @@ const ITEMS = [
   { n:"03", cat:"SNEAKERS", brand:"BALENCIAGA",               price:"$890", img:"/cs/sneakers.png" },
 ];
 const BRANDS = [
-  "AMIRI","BALENCIAGA","RICK OWENS","CELINE",
-  "SAINT LAURENT","PRADA","ACNE STUDIOS","OFF-WHITE",
+  { name:"LV",           top:"6%",  left:"5%"  },
+  { name:"BALENCIAGA",   top:"14%", left:"48%" },
+  { name:"NIKE",         top:"5%",  left:"72%" },
+  { name:"PRADA",        top:"30%", left:"8%"  },
+  { name:"SAINT LAURENT",top:"28%", left:"62%" },
+  { name:"CELINE",       top:"48%", left:"3%"  },
+  { name:"STONE ISLAND", top:"50%", left:"58%" },
+  { name:"DIOR",         top:"66%", left:"10%" },
+  { name:"MONCLER",      top:"65%", left:"68%" },
+  { name:"AMIRI",        top:"80%", left:"3%"  },
+  { name:"BURBERRY",     top:"78%", left:"45%" },
+  { name:"A.P.C.",       top:"82%", left:"75%" },
+  { name:"FEAR OF GOD",  top:"92%", left:"12%" },
+  { name:"OFF-WHITE",    top:"90%", left:"56%" },
+  { name:"RHUDE",        top:"38%", left:"82%" },
+  { name:"ACNE STUDIOS", top:"58%", left:"82%" },
 ];
 
 /* ── shared card surface style ──────────────────────────── */
@@ -95,8 +109,6 @@ function EmailForm() {
    ═══════════════════════════════════════════════════════════ */
 function Slide01() {
   const ROT  = [-1.6, -0.4, 0.7] as const;
-  const DRIFT: Array<0|1|2> = [0, 1, 2];
-  const DLY  = [0, 1.3, 0.65];
 
   return (
     <div style={{ height:"100%", display:"grid",
@@ -109,9 +121,6 @@ function Slide01() {
 
           {/* tilt layer */}
           <div style={{ width:"100%", height:"100%", transform:`rotateZ(${ROT[i]}deg)` }}>
-            {/* drift layer — translateY only */}
-            <div style={{ width:"100%", height:"100%",
-              animation:`gDrift${DRIFT[i]} ${7+DRIFT[i]*1.5}s ${DLY[i]}s ease-in-out infinite` }}>
 
               <div style={CS}>
                 <CardGlass />
@@ -149,7 +158,6 @@ function Slide01() {
                 </div>
               </div>
 
-            </div>
           </div>
         </div>
       ))}
@@ -172,42 +180,39 @@ function Slide02() {
             animation:`cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both ${i*0.12}s` }}>
             <div style={{ width:"100%", height:"100%",
               transform:`rotateZ(${[-0.9, 0, 0.6][i]}deg)` }}>
-              <div style={{ width:"100%", height:"100%",
-                animation:`gDrift${i as 0|1|2} ${7+i*1.5}s ${i*0.8}s ease-in-out infinite` }}>
 
-                <div style={CS}>
-                  <CardGlass/>
-                  {/* number */}
-                  <div style={{ position:"absolute", top:8, left:10, zIndex:10,
-                    display:"flex", alignItems:"center", gap:4 }}>
-                    <span style={{ fontSize:7, fontFamily:"monospace", color:"rgba(255,255,255,0.22)", letterSpacing:"0.18em" }}>{item.n}</span>
-                    <div style={{ width:8, height:1, background:"rgba(255,255,255,0.12)" }}/>
-                    <span style={{ fontSize:7, fontWeight:800, color:"rgba(255,255,255,0.28)", letterSpacing:"0.18em", textTransform:"uppercase" }}>{item.cat}</span>
-                  </div>
-                  {/* price */}
-                  <div style={{ position:"absolute", top:8, right:10, zIndex:10 }}>
-                    <span style={{ fontSize:7, fontWeight:700, color:"rgba(255,255,255,0.4)" }}>{item.price}</span>
-                  </div>
-                  {/* image — compact */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.img} alt={item.cat} style={{
-                    position:"absolute", top:22, bottom:30, left:0, right:0,
-                    width:"100%", height:"calc(100% - 52px)",
-                    objectFit:"contain", objectPosition:"center",
-                    filter:"grayscale(1) contrast(1.1)",
-                    padding:"4px 12px",
-                  }}/>
-                  {/* label */}
-                  <div style={{ position:"absolute", bottom:0, left:0, right:0,
-                    padding:"5px 10px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-                    <p style={{ fontSize:9, fontWeight:900, color:"rgba(255,255,255,0.78)",
-                      letterSpacing:"0.07em", textTransform:"uppercase", lineHeight:1.2 }}>{item.cat}</p>
-                    <p style={{ fontSize:6, color:"rgba(255,255,255,0.25)",
-                      letterSpacing:"0.1em", textTransform:"uppercase", marginTop:1.5, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.brand}</p>
-                  </div>
+              <div style={CS}>
+                <CardGlass/>
+                {/* number */}
+                <div style={{ position:"absolute", top:8, left:10, zIndex:10,
+                  display:"flex", alignItems:"center", gap:4 }}>
+                  <span style={{ fontSize:7, fontFamily:"monospace", color:"rgba(255,255,255,0.22)", letterSpacing:"0.18em" }}>{item.n}</span>
+                  <div style={{ width:8, height:1, background:"rgba(255,255,255,0.12)" }}/>
+                  <span style={{ fontSize:7, fontWeight:800, color:"rgba(255,255,255,0.28)", letterSpacing:"0.18em", textTransform:"uppercase" }}>{item.cat}</span>
                 </div>
-
+                {/* price */}
+                <div style={{ position:"absolute", top:8, right:10, zIndex:10 }}>
+                  <span style={{ fontSize:7, fontWeight:700, color:"rgba(255,255,255,0.4)" }}>{item.price}</span>
+                </div>
+                {/* image — compact */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.img} alt={item.cat} style={{
+                  position:"absolute", top:22, bottom:30, left:0, right:0,
+                  width:"100%", height:"calc(100% - 52px)",
+                  objectFit:"contain", objectPosition:"center",
+                  filter:"grayscale(1) contrast(1.1)",
+                  padding:"4px 12px",
+                }}/>
+                {/* label */}
+                <div style={{ position:"absolute", bottom:0, left:0, right:0,
+                  padding:"5px 10px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+                  <p style={{ fontSize:9, fontWeight:900, color:"rgba(255,255,255,0.78)",
+                    letterSpacing:"0.07em", textTransform:"uppercase", lineHeight:1.2 }}>{item.cat}</p>
+                  <p style={{ fontSize:6, color:"rgba(255,255,255,0.25)",
+                    letterSpacing:"0.1em", textTransform:"uppercase", marginTop:1.5, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.brand}</p>
+                </div>
               </div>
+
             </div>
           </div>
         ))}
@@ -217,31 +222,26 @@ function Slide02() {
       <div style={{ overflow:"visible",
         animation:"cReveal 0.75s cubic-bezier(0.16,1,0.3,1) both 0.28s" }}>
         <div style={{ width:"100%", height:"100%", transform:"rotateZ(0.5deg)" }}>
-          <div style={{ width:"100%", height:"100%",
-            animation:"gDrift1 8.5s 0.6s ease-in-out infinite" }}>
-
-            <div style={CS}>
-              <CardGlass/>
-              {/* header */}
-              <div style={{ position:"absolute", top:10, left:11, zIndex:10,
-                display:"flex", alignItems:"center", gap:5 }}>
-                <span style={{ fontSize:7, fontFamily:"monospace", color:"rgba(255,255,255,0.22)", letterSpacing:"0.22em" }}>04</span>
-                <div style={{ width:9, height:1, background:"rgba(255,255,255,0.12)" }}/>
-                <span style={{ fontSize:7, fontWeight:800, color:"rgba(255,255,255,0.35)", letterSpacing:"0.22em", textTransform:"uppercase" }}>COMPLETE LOOK</span>
-                <span style={{ width:5, height:5, borderRadius:"50%", background:"rgba(255,255,255,0.55)",
-                  boxShadow:"0 0 6px rgba(255,255,255,0.6)",
-                  animation:"dotPulse 2.4s ease-in-out infinite", display:"inline-block" }}/>
-              </div>
-              {/* outfit image */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/cs/outfit.png" alt="Complete outfit" style={{
-                position:"absolute", top:28, bottom:0, left:0, right:0,
-                width:"100%", height:"calc(100% - 28px)",
-                objectFit:"cover", objectPosition:"center top",
-                filter:"grayscale(1) contrast(1.08)",
-              }}/>
+          <div style={CS}>
+            <CardGlass/>
+            {/* header */}
+            <div style={{ position:"absolute", top:10, left:11, zIndex:10,
+              display:"flex", alignItems:"center", gap:5 }}>
+              <span style={{ fontSize:7, fontFamily:"monospace", color:"rgba(255,255,255,0.22)", letterSpacing:"0.22em" }}>04</span>
+              <div style={{ width:9, height:1, background:"rgba(255,255,255,0.12)" }}/>
+              <span style={{ fontSize:7, fontWeight:800, color:"rgba(255,255,255,0.35)", letterSpacing:"0.22em", textTransform:"uppercase" }}>COMPLETE LOOK</span>
+              <span style={{ width:5, height:5, borderRadius:"50%", background:"rgba(255,255,255,0.55)",
+                boxShadow:"0 0 6px rgba(255,255,255,0.6)",
+                animation:"dotPulse 2.4s ease-in-out infinite", display:"inline-block" }}/>
             </div>
-
+            {/* outfit image */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/cs/outfit.png" alt="Complete outfit" style={{
+              position:"absolute", top:28, bottom:0, left:0, right:0,
+              width:"100%", height:"calc(100% - 28px)",
+              objectFit:"cover", objectPosition:"center top",
+              filter:"grayscale(1) contrast(1.08)",
+            }}/>
           </div>
         </div>
       </div>
@@ -251,64 +251,58 @@ function Slide02() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SLIDE 03 — brands grid, no product images
+   SLIDE 03 — "50+" center with floating brand pill badges
    ═══════════════════════════════════════════════════════════ */
 function Slide03() {
   return (
-    <div style={{ height:"100%", display:"flex", flexDirection:"column", gap:10 }}>
+    <div style={{ position:"relative", height:"100%", overflow:"hidden",
+      animation:"cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both 0s" }}>
 
-      {/* header */}
-      <div style={{ flexShrink:0, animation:"cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0s" } as React.CSSProperties}>
-        <p style={{ fontSize:7, color:"rgba(255,255,255,0.25)", letterSpacing:"0.28em",
-          textTransform:"uppercase", marginBottom:4 }}>Premium Partners</p>
-        <p style={{ fontSize:18, fontWeight:900, color:"rgba(255,255,255,0.85)",
-          letterSpacing:"-0.01em", textTransform:"uppercase", lineHeight:1.05 }}>
-          50+ Brands.<br/>One Place.
-        </p>
+      {/* large ghost "50+" text — background anchor */}
+      <div style={{
+        position:"absolute", inset:0,
+        display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center",
+        pointerEvents:"none", zIndex:1,
+      }}>
+        <p style={{ fontSize:7, color:"rgba(255,255,255,0.18)", letterSpacing:"0.32em",
+          textTransform:"uppercase", marginBottom:8, fontWeight:600 }}>Premium Partners</p>
+        <p style={{
+          fontSize:"clamp(72px,14vw,110px)", fontWeight:900,
+          color:"rgba(255,255,255,0.06)", letterSpacing:"-0.04em",
+          lineHeight:1, userSelect:"none",
+        }}>50+</p>
+        <p style={{ fontSize:9, color:"rgba(255,255,255,0.18)", letterSpacing:"0.24em",
+          textTransform:"uppercase", marginTop:6, fontWeight:500 }}>BRANDS</p>
       </div>
 
-      {/* 4×2 brand grid */}
-      <div style={{ flex:1, display:"grid",
-        gridTemplateColumns:"repeat(4,1fr)",
-        gridTemplateRows:"repeat(2,1fr)",
-        gap:6, minHeight:0 }}>
-        {BRANDS.map((brand, i) => (
-          <div key={brand} style={{
-            animation:`cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both ${i*0.07}s`,
-            overflow:"visible",
+      {/* brand pill badges — scattered */}
+      {BRANDS.map((b, i) => (
+        <div key={b.name} style={{
+          position:"absolute",
+          top: b.top, left: b.left,
+          zIndex: 2,
+          animation:`cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both ${i*0.05}s`,
+        }}>
+          <div style={{
+            padding:"5px 10px",
+            borderRadius: 8,
+            background:"rgba(255,255,255,0.04)",
+            border:"1px solid rgba(255,255,255,0.09)",
+            boxShadow:"inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(0,0,0,0.4)",
+            backdropFilter:"blur(6px)",
+            whiteSpace:"nowrap",
           }}>
-            <div style={{ width:"100%", height:"100%",
-              animation:`gDrift${(i%3) as 0|1|2} ${7+(i%3)*1.5}s ${(i%4)*0.5}s ease-in-out infinite` }}>
-              <div style={{
-                ...CS,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                cursor:"default",
-                transition:"border-color 0.3s ease, box-shadow 0.3s ease",
-              }}
-                onMouseEnter={(e)=>{
-                  const el=e.currentTarget as HTMLDivElement;
-                  el.style.borderColor="rgba(255,255,255,0.18)";
-                  el.style.boxShadow="0 0 24px rgba(255,255,255,0.055),inset 0 1px 0 rgba(255,255,255,0.08)";
-                }}
-                onMouseLeave={(e)=>{
-                  const el=e.currentTarget as HTMLDivElement;
-                  el.style.borderColor="rgba(255,255,255,0.08)";
-                  el.style.boxShadow="inset 0 1px 0 rgba(255,255,255,0.055),0 0 0 0.5px rgba(255,255,255,0.03)";
-                }}
-              >
-                <CardGlass/>
-                <span style={{
-                  fontSize:8, fontWeight:900,
-                  color:`rgba(255,255,255,${0.65 - i*0.03})`,
-                  letterSpacing:"0.12em", textTransform:"uppercase",
-                  textAlign:"center", lineHeight:1.3,
-                  padding:"0 6px", zIndex:7, position:"relative",
-                }}>{brand}</span>
-              </div>
-            </div>
+            <span style={{
+              fontSize: b.name.length > 10 ? 7 : 8,
+              fontWeight:700,
+              color:`rgba(255,255,255,${0.55 - i*0.015})`,
+              letterSpacing:"0.1em",
+              textTransform:"uppercase",
+            }}>{b.name}</span>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
 
     </div>
   );
@@ -387,9 +381,6 @@ export default function FeatureCarousel({ onSlideChange }:{ onSlideChange?:(i:nu
   return (
     <>
       <style>{`
-        @keyframes gDrift0 { 0%,100%{transform:translateY(0px)}   50%{transform:translateY(-7px)}  }
-        @keyframes gDrift1 { 0%,100%{transform:translateY(-4px)}  50%{transform:translateY(6px)}   }
-        @keyframes gDrift2 { 0%,100%{transform:translateY(3px)}   50%{transform:translateY(-8px)}  }
         /* hero-1 style card entrance — big translateY, spring easing */
         @keyframes cReveal  {
           0%   { opacity:0; transform:translateY(22px) scale(0.96); }
