@@ -1,25 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-
-const SLIDES = [
-  { id: "01", short: "ITEMS",         label: "AI STYLIST" },
-  { id: "02", short: "OUTFIT",        label: "SMART WARDROBE" },
-  { id: "03", short: "BRANDS",        label: "BEST PRICE" },
-];
-
-const BRANDS = [
-  "AMIRI", "BALENCIAGA", "RICK OWENS", "CELINE",
-  "SAINT LAURENT", "PRADA", "ACNE STUDIOS", "OFF-WHITE",
-];
-
-const ITEMS = [
-  { n: "01", cat: "HOODIE",   brand: "ENFANTS RICHES DÉPRIMÉS", img: "/cs/hoodie.png" },
-  { n: "02", cat: "JEANS",    brand: "STRIPE BAGGY DENIM",      img: "/cs/jeans.png" },
-  { n: "03", cat: "SNEAKERS", brand: "BALENCIAGA",              img: "/cs/sneakers.png" },
-];
-
-const AUTOPLAY_MS = 4800;
+import { useState } from "react";
 
 /* ─────────────────────────────────────────────────────── */
 
@@ -47,7 +28,7 @@ function EmailForm() {
       style={{
         background: "rgba(255,255,255,0.03)",
         border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 16,
+        borderRadius: 14,
         boxShadow: "0 0 40px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.06)",
       }}
     >
@@ -57,14 +38,18 @@ function EmailForm() {
           Get notified when<br className="hidden sm:block" /> we launch.
         </p>
       </div>
-      <form onSubmit={submit} className="flex-1 flex items-center"
-        style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, background: "rgba(0,0,0,0.5)", overflow: "hidden" }}>
+      <form
+        onSubmit={submit}
+        className="flex-1 flex items-center"
+        style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, background: "rgba(0,0,0,0.5)", overflow: "hidden" }}
+      >
         {state === "done" ? (
           <p className="flex-1 px-5 py-3.5 text-[11px] text-white/45 tracking-[0.14em] uppercase">You&apos;re on the list ✓</p>
         ) : (
           <>
             <input
-              type="email" value={email} onChange={(e: { target: { value: string } }) => setEmail(e.target.value)}
+              type="email" value={email}
+              onChange={(e: { target: { value: string } }) => setEmail(e.target.value)}
               placeholder="ENTER YOUR EMAIL" required
               className="flex-1 bg-transparent px-5 py-3.5 text-[11px] text-white placeholder:text-white/20 tracking-[0.1em] outline-none"
             />
@@ -87,374 +72,219 @@ function EmailForm() {
   );
 }
 
-/* ── Slide 01: Items ───────────────────────────────────── */
-function Slide01() {
-  return (
-    <div className="flex-1 grid grid-cols-3 gap-2.5 min-h-0">
-      {ITEMS.map((item, i) => (
-        <div
-          key={item.n}
-          className="flex flex-col overflow-hidden"
-          style={{
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.028)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            boxShadow: "0 0 0 0 transparent",
-            transition: "box-shadow 0.4s ease, border-color 0.4s ease",
-            animation: `cardReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
-          }}
-          onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
-            const el = e.currentTarget as HTMLDivElement;
-            el.style.boxShadow = "0 0 28px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.1)";
-            el.style.borderColor = "rgba(255,255,255,0.16)";
-          }}
-          onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
-            const el = e.currentTarget as HTMLDivElement;
-            el.style.boxShadow = "0 0 0 0 transparent";
-            el.style.borderColor = "rgba(255,255,255,0.09)";
-          }}
-        >
-          {/* Image area — object-contain with padding for air */}
-          <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center p-4">
-            <span className="absolute top-2.5 left-2.5 z-10 text-[8px] tracking-[0.18em] text-white/30 font-mono"
-              style={{ textShadow: "0 0 10px rgba(255,255,255,0.5)" }}>
-              {item.n}
-            </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.img} alt={item.cat}
-              className="w-full h-full object-contain"
-              style={{ animation: `imgReveal 0.8s cubic-bezier(0.16,1,0.3,1) both ${0.1 + i * 0.08}s` }}
-            />
-          </div>
-          <div className="px-3 py-2.5 shrink-0"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[10px] font-black text-white tracking-[0.08em] uppercase leading-tight">{item.cat}</p>
-            <p className="text-[8px] text-white/35 tracking-[0.1em] uppercase mt-0.5 leading-tight truncate">{item.brand}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+/* ── Floating panel card ───────────────────────────────── */
+interface FloatCardProps {
+  n: string;
+  label: string;
+  pos: React.CSSProperties;   // outer: left/top/width/height/transform/zIndex
+  drift: number;              // 0 | 1 | 2
+  children?: React.ReactNode;
 }
 
-/* ── Slide 02: Outfit ──────────────────────────────────── */
-function Slide02() {
+function FloatCard({ n, label, pos, drift, children }: FloatCardProps) {
+  const durationMap = [7, 8.5, 6.5];
+  const delayMap    = [0, 1.8, 0.9];
   return (
-    <div className="flex-1 grid grid-cols-[1fr_1.1fr] gap-2.5 min-h-0">
-      {/* Left: item list */}
-      <div className="flex flex-col gap-2 min-h-0">
-        {ITEMS.map((item, i) => (
-          <div
-            key={item.n}
-            className="flex-1 min-h-0 overflow-hidden relative"
-            style={{
-              borderRadius: 12,
-              background: "#080808",
-              border: "1px solid rgba(255,255,255,0.09)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-              animation: `cardReveal 0.55s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
-            }}
-          >
-            <span className="absolute top-2.5 left-3 z-10 text-[7px] font-mono text-white/25">{item.n}</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.img}
-              alt={item.cat}
-              className="w-full object-contain object-center px-3"
-              style={{
-                height: "calc(100% - 40px)",
-                animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s`,
-              }}
-            />
-            <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-[10px] font-black text-white uppercase tracking-[0.07em] leading-tight">{item.cat}</p>
-              <p className="text-[7px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
-            </div>
-            <div className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center shrink-0"
-              style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)" }}>
-              <svg width="8" height="8" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
-                <path d="M4.5 1.5v6M1.5 4.5h6"/>
-              </svg>
-            </div>
+    <div style={{ position: "absolute", ...pos }}>
+      {/* drift wrapper — only translateY, no conflict with outer 3-D transform */}
+      <div style={{
+        width: "100%", height: "100%",
+        animation: `gDrift${drift} ${durationMap[drift]}s ${delayMap[drift]}s ease-in-out infinite`,
+      }}>
+        {/* card surface */}
+        <div style={{
+          width: "100%", height: "100%", position: "relative",
+          borderRadius: 14, overflow: "hidden",
+          background: "rgba(9,9,9,0.97)",
+          border: "1px solid rgba(255,255,255,0.075)",
+          boxShadow: [
+            "inset 0 1px 0 rgba(255,255,255,0.055)",
+            "0 0 0 0.5px rgba(255,255,255,0.03)",
+          ].join(", "),
+        }}>
+
+          {/* glass diagonal sheen */}
+          <div aria-hidden style={{
+            position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none",
+            background: "linear-gradient(140deg, rgba(255,255,255,0.028) 0%, transparent 40%)",
+          }}/>
+
+          {/* top-edge highlight */}
+          <div aria-hidden style={{
+            position: "absolute", top: 0, left: "20%", right: "20%",
+            height: 1, zIndex: 6, pointerEvents: "none",
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
+          }}/>
+
+          {/* category label */}
+          <div style={{
+            position: "absolute", top: 11, left: 13, zIndex: 10,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <span style={{ fontSize: 7, fontFamily: "monospace", color: "rgba(255,255,255,0.22)", letterSpacing: "0.22em" }}>{n}</span>
+            <div style={{ width: 10, height: 1, background: "rgba(255,255,255,0.12)" }}/>
+            <span style={{ fontSize: 7, fontWeight: 800, color: "rgba(255,255,255,0.3)", letterSpacing: "0.24em", textTransform: "uppercase" }}>{label}</span>
           </div>
-        ))}
-      </div>
 
-      {/* Right: complete look */}
-      <div
-        className="flex flex-col overflow-hidden"
-        style={{
-          borderRadius: 14,
-          background: "#080808",
-          border: "1px solid rgba(255,255,255,0.09)",
-          animation: "cardReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0.15s",
-        }}
-      >
-        <div className="px-3.5 py-2 flex items-center gap-2 shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="text-[8px] tracking-[0.2em] uppercase text-white/50 font-black">Complete Look</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-white/55"
-            style={{ boxShadow: "0 0 7px 1px rgba(255,255,255,0.65)", animation: "dotPulse 2.4s ease-in-out infinite" }}/>
+          {children}
         </div>
-        <div className="flex-1 relative overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/cs/outfit.png" alt="Complete look"
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: "center top", animation: "imgReveal 0.9s cubic-bezier(0.16,1,0.3,1) both 0.2s" }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Slide 03: Brands ──────────────────────────────────── */
-function Slide03() {
-  return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-end justify-between mb-4 shrink-0">
-        <div>
-          <p className="text-[7px] tracking-[0.26em] uppercase text-white/25 mb-1.5">Premium Brands</p>
-          <p className="text-[18px] md:text-[22px] font-black text-white uppercase tracking-[-0.01em] leading-[1.05]">
-            50+ Premium Brands.<br />One Place.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white transition-colors"
-            style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.14)" }}>
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6.5 2L3.5 5l3 3"/>
-            </svg>
-          </button>
-          <button className="w-7 h-7 flex items-center justify-center text-white hover:opacity-70 transition-opacity"
-            style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }}>
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3.5 2l3 3-3 3"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-4 gap-2 content-start">
-        {BRANDS.map((brand, i) => (
-          <div
-            key={brand}
-            className="flex items-center justify-center px-2 py-4 transition-all duration-400"
-            style={{
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-              aspectRatio: "1.2",
-              animation: `cardReveal 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.05}s`,
-            }}
-            onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.background = "rgba(255,255,255,0.055)";
-              el.style.borderColor = "rgba(255,255,255,0.18)";
-              el.style.boxShadow = "0 0 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)";
-            }}
-            onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.background = "rgba(255,255,255,0.03)";
-              el.style.borderColor = "rgba(255,255,255,0.09)";
-              el.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.05)";
-            }}
-          >
-            <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-white/55 text-center uppercase leading-tight">
-              {brand}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const SLIDE_COMPONENTS = [Slide01, Slide02, Slide03];
-
-/* ── Animated slide wrapper ────────────────────────────── */
-function SlideTransition({ active, prev }: { active: number; prev: number | null }) {
-  const [exiting, setExiting] = useState<number | null>(null);
-  const [entering, setEntering] = useState<number>(active);
-  const [phase, setPhase] = useState<"idle" | "animating">("idle");
-
-  useEffect(() => {
-    if (prev === null || prev === active) {
-      setEntering(active);
-      return;
-    }
-    setExiting(prev);
-    setEntering(active);
-    setPhase("animating");
-    const t = setTimeout(() => {
-      setExiting(null);
-      setPhase("idle");
-    }, 520);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-
-  const ExitingComponent = exiting !== null ? SLIDE_COMPONENTS[exiting] : null;
-  const EnteringComponent = SLIDE_COMPONENTS[entering];
-
-  return (
-    <div className="absolute inset-0 flex flex-col min-h-0 overflow-hidden">
-      {ExitingComponent && phase === "animating" && (
-        <div
-          key={`exit-${exiting}`}
-          className="absolute inset-0 flex flex-col min-h-0"
-          style={{ animation: "slideOutLeft 0.52s cubic-bezier(0.4,0,0.2,1) both" }}
-        >
-          <ExitingComponent />
-        </div>
-      )}
-      <div
-        key={`enter-${entering}`}
-        className="absolute inset-0 flex flex-col min-h-0"
-        style={{
-          animation: phase === "animating"
-            ? "slideInRight 0.52s cubic-bezier(0.16,1,0.3,1) both"
-            : undefined,
-        }}
-      >
-        <EnteringComponent />
       </div>
     </div>
   );
 }
 
 /* ── Main ──────────────────────────────────────────────── */
-export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (idx: number) => void }) {
-  const [active, setActive] = useState(0);
-  const [prev, setPrev] = useState<number | null>(null);
-  const [progress, setProgress] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const startTimers = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (progRef.current)  clearInterval(progRef.current);
-    setProgress(0);
-    const step = 100 / (AUTOPLAY_MS / 50);
-    progRef.current = setInterval(() => setProgress(p => Math.min(p + step, 100)), 50);
-    timerRef.current = setInterval(() => {
-      setActive(curr => {
-        const next = (curr + 1) % SLIDES.length;
-        setPrev(curr);
-        onSlideChange?.(next);
-        return next;
-      });
-      setProgress(0);
-    }, AUTOPLAY_MS);
-  }, [onSlideChange]);
-
-  useEffect(() => {
-    startTimers();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (progRef.current)  clearInterval(progRef.current);
-    };
-  }, [startTimers]);
-
-  const goTo = (idx: number) => {
-    if (idx === active) return;
-    setPrev(active);
-    setActive(idx);
-    onSlideChange?.(idx);
-    startTimers();
-  };
-
+export default function FeatureCarousel({ onSlideChange: _ }: { onSlideChange?: (idx: number) => void }) {
   return (
     <>
       <style>{`
-        @keyframes cardReveal {
-          from { opacity:0; transform:translateY(12px) scale(0.97); }
-          to   { opacity:1; transform:translateY(0)    scale(1);    }
-        }
-        @keyframes imgReveal {
-          from { opacity:0; transform:scale(1.05); }
-          to   { opacity:1; transform:scale(1);    }
-        }
-        @keyframes slideInRight {
-          from { opacity:0; transform:translateX(40px) scale(0.98); }
-          to   { opacity:1; transform:translateX(0)    scale(1);    }
-        }
-        @keyframes slideOutLeft {
-          from { opacity:1; transform:translateX(0)     scale(1);    }
-          to   { opacity:0; transform:translateX(-40px) scale(0.98); }
-        }
-        @keyframes dotPulse {
-          0%,100% { opacity:0.4; transform:scale(1);   }
-          50%      { opacity:1;  transform:scale(1.5); }
-        }
+        /* drift keyframes — only Y movement so they don't conflict with 3-D transforms */
+        @keyframes gDrift0 { 0%,100%{transform:translateY(0px)}   50%{transform:translateY(-7px)}  }
+        @keyframes gDrift1 { 0%,100%{transform:translateY(-4px)}  50%{transform:translateY(6px)}   }
+        @keyframes gDrift2 { 0%,100%{transform:translateY(3px)}   50%{transform:translateY(-8px)}  }
+        @keyframes csReveal { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      <div className="h-full flex flex-col gap-3">
+      <div className="h-full flex flex-col" style={{ gap: 12 }}>
 
-        {/* ── Top tab nav ── */}
-        <div className="flex items-center gap-0 shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-          {SLIDES.map((slide, i) => (
-            <button
-              key={slide.id}
-              onClick={() => goTo(i)}
-              className="relative flex items-center gap-2 pb-3 pr-8 transition-all duration-300"
-            >
-              <span
-                className="text-[10px] tracking-[0.14em] uppercase transition-all duration-300"
-                style={{
-                  color: i === active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.22)",
-                  fontWeight: i === active ? 700 : 400,
-                  textShadow: i === active ? "0 0 14px rgba(255,255,255,0.3)" : "none",
-                }}
-              >
-                {slide.id} / {slide.short}
-              </span>
-              {i === active && (
-                <span className="absolute bottom-0 left-0 h-[1.5px]"
-                  style={{
-                    width: `${progress}%`,
-                    background: "rgba(255,255,255,0.8)",
-                    boxShadow: "0 0 8px rgba(255,255,255,0.5)",
-                    transition: "width 0.05s linear",
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/*
-          ── 3-D tilted slide area ──
-          Strategy: overflow:hidden clips everything; scale(0.78) pulls the
-          whole scene in so after rotateY the bounding box stays inside the
-          panel; transformOrigin:center keeps it centred.
-        */}
+        {/* ───────────────────────────────────────────────── */}
+        {/* CINEMATIC COMPOSITION                            */}
+        {/* ───────────────────────────────────────────────── */}
         <div
           className="flex-1 min-h-0 relative overflow-hidden"
-          style={{ perspective: "1400px" }}
+          style={{ perspective: "900px" }}
         >
-          {/* Soft vignette on all four edges */}
-          <div className="absolute inset-0 pointer-events-none z-10"
-            style={{
-              background: [
-                "linear-gradient(to right,  #080808 0%, transparent 12%, transparent 75%, #080808 100%)",
-                "linear-gradient(to bottom, transparent 55%, #080808 100%)",
-              ].join(", "),
-            }}
-          />
+          {/* ── multi-edge vignette ── */}
+          <div aria-hidden style={{
+            position: "absolute", inset: 0, zIndex: 30, pointerEvents: "none",
+            background: "linear-gradient(to right, #080808 0%, transparent 13%, transparent 70%, #080808 100%)",
+          }}/>
+          <div aria-hidden style={{
+            position: "absolute", inset: 0, zIndex: 30, pointerEvents: "none",
+            background: "linear-gradient(to bottom, #080808 0%, transparent 9%, transparent 60%, #080808 100%)",
+          }}/>
 
-          {/* 3-D scene — centred, scaled down, gently tilted */}
+          {/* ── 3-D scene ── */}
           <div
-            className="absolute inset-0"
             style={{
-              transform: "rotateY(-12deg) rotateX(5deg) scale(0.78)",
-              transformOrigin: "center center",
+              position: "absolute", inset: 0,
+              transform: "rotateX(4deg) rotateY(-11deg)",
+              transformOrigin: "center 38%",
               transformStyle: "preserve-3d",
+              animation: "csReveal 0.9s cubic-bezier(0.16,1,0.3,1) both 0.3s",
             }}
           >
-            <SlideTransition active={active} prev={prev} />
+
+            {/* ── Card 1: ITEMS — hero, large, front ── */}
+            <FloatCard n="01" label="ITEMS" drift={0} pos={{
+              left: "3%", top: "7%", width: "44%", height: "73%",
+              transform: "translateZ(60px) rotateZ(-1.5deg)",
+              zIndex: 4,
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/cs/hoodie.png" alt="Items"
+                style={{
+                  position: "absolute",
+                  top: 28, bottom: 42, left: 0, right: 0,
+                  width: "100%", height: "calc(100% - 28px - 42px)",
+                  objectFit: "contain", objectPosition: "center",
+                  filter: "grayscale(1) contrast(1.12)",
+                  padding: "10px 18px",
+                }}
+              />
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0,
+                padding: "10px 13px",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+              }}>
+                <p style={{ fontSize: 10, fontWeight: 900, color: "rgba(255,255,255,0.8)", letterSpacing: "0.08em", textTransform: "uppercase" }}>HOODIE</p>
+                <p style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 3 }}>ENFANTS RICHES DÉPRIMÉS</p>
+              </div>
+            </FloatCard>
+
+            {/* ── Card 2: OUTFITS — medium, mid-depth ── */}
+            <FloatCard n="02" label="OUTFITS" drift={1} pos={{
+              left: "27%", top: "1%", width: "39%", height: "61%",
+              transform: "translateZ(20px) rotateZ(-0.5deg)",
+              zIndex: 3,
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/cs/jeans.png" alt="Outfits"
+                style={{
+                  position: "absolute",
+                  top: 28, bottom: 40, left: 0, right: 0,
+                  width: "100%", height: "calc(100% - 28px - 40px)",
+                  objectFit: "contain", objectPosition: "center",
+                  filter: "grayscale(1) contrast(1.1)",
+                  padding: "8px 16px",
+                }}
+              />
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0,
+                padding: "9px 13px",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.72)", letterSpacing: "0.08em", textTransform: "uppercase" }}>JEANS</p>
+                <p style={{ fontSize: 7, color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 2 }}>STRIPE BAGGY DENIM</p>
+              </div>
+            </FloatCard>
+
+            {/* ── Card 3: BRANDS — right, partially cropped, back ── */}
+            <FloatCard n="03" label="BRANDS" drift={2} pos={{
+              right: "-4%", top: "17%", width: "37%", height: "54%",
+              transform: "translateZ(-25px) rotateZ(1deg)",
+              zIndex: 2,
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/cs/sneakers.png" alt="Brands"
+                style={{
+                  position: "absolute",
+                  top: 28, bottom: 40, left: 0, right: 0,
+                  width: "100%", height: "calc(100% - 28px - 40px)",
+                  objectFit: "contain", objectPosition: "center",
+                  filter: "grayscale(1) contrast(1.05)",
+                  padding: "8px 14px",
+                }}
+              />
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0,
+                padding: "9px 13px",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.6)", letterSpacing: "0.08em", textTransform: "uppercase" }}>SNEAKERS</p>
+                <p style={{ fontSize: 7, color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 2 }}>BALENCIAGA</p>
+              </div>
+            </FloatCard>
+
+            {/* ── Card 4: AI STYLIST — thin accent, top-right ── */}
+            <FloatCard n="04" label="AI STYLIST" drift={1} pos={{
+              right: "5%", top: "1%", width: "29%", height: "16%",
+              transform: "translateZ(5px) rotateZ(0.8deg)",
+              zIndex: 3,
+            }}>
+              <div style={{ position: "absolute", bottom: 10, left: 13, right: 13 }}>
+                <p style={{ fontSize: 8, color: "rgba(255,255,255,0.32)", letterSpacing: "0.07em", textTransform: "uppercase", lineHeight: 1.55 }}>
+                  Your personal<br/>stylist. On demand.
+                </p>
+              </div>
+            </FloatCard>
+
+            {/* ── Card 5: SMART WARDROBE — small bottom accent ── */}
+            <FloatCard n="05" label="SMART WARDROBE" drift={0} pos={{
+              left: "46%", top: "75%", width: "27%", height: "16%",
+              transform: "translateZ(-10px) rotateZ(-0.8deg)",
+              zIndex: 2,
+            }}>
+              <div style={{ position: "absolute", bottom: 9, left: 13, right: 13 }}>
+                <p style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase", lineHeight: 1.55 }}>
+                  Intelligently<br/>curated.
+                </p>
+              </div>
+            </FloatCard>
+
           </div>
         </div>
 
@@ -463,39 +293,21 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
           <EmailForm />
         </div>
 
-        {/* ── Bottom nav ── */}
-        <div className="shrink-0 flex items-center justify-between"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12 }}>
-          <div className="flex items-center gap-0">
-            {SLIDES.map((slide, i) => (
-              <button
-                key={slide.id}
-                onClick={() => goTo(i)}
-                className="flex items-center gap-2.5 group"
-              >
-                {i > 0 && (
-                  <span className="text-[8px] text-white/18 tracking-widest mx-1">—</span>
-                )}
-                {i === 0 && (
-                  <span className="text-[8px] text-white/18 tracking-widest mr-1">—</span>
-                )}
-                <span
-                  className="text-[8px] tracking-[0.18em] uppercase transition-all duration-300"
-                  style={{
-                    color: i === active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
-                    fontWeight: i === active ? 700 : 400,
-                    textShadow: i === active ? "0 0 10px rgba(255,255,255,0.25)" : "none",
-                  }}
-                >
-                  {slide.label}
-                </span>
-              </button>
+        {/* ── Bottom tagline ── */}
+        <div
+          className="shrink-0 flex items-center justify-between"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12 }}
+        >
+          <div className="flex items-center gap-5">
+            {["AI STYLIST", "SMART WARDROBE", "BEST PRICE"].map(t => (
+              <span key={t} style={{ fontSize: 7, color: "rgba(255,255,255,0.18)", letterSpacing: "0.18em", textTransform: "uppercase" }}>{t}</span>
             ))}
           </div>
-          <p className="text-[8px] tracking-[0.14em] uppercase text-white/15">
-            AI · Fashion · Personal Style
+          <p style={{ fontSize: 7, color: "rgba(255,255,255,0.1)", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+            AI · FASHION · STYLE
           </p>
         </div>
+
       </div>
     </>
   );
