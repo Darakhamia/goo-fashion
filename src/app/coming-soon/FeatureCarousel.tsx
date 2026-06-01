@@ -430,17 +430,26 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
         {/* ── Slide content — 3-D perspective tilt ── */}
         <div
           className="flex-1 min-h-0 relative"
-          style={{
-            perspective: "900px",
-            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
-          }}
+          style={{ perspective: "1100px" }}
         >
+          {/* right-edge fade + bottom fade mask */}
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{
+              background: "linear-gradient(to right, transparent 60%, #080808 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none z-10"
+            style={{
+              background: "linear-gradient(to bottom, transparent 65%, #080808 100%)",
+            }}
+          />
           <div
             className="absolute inset-0"
             style={{
-              transform: "rotateX(16deg) skewX(1.2deg)",
-              transformOrigin: "top center",
+              transform: "rotateY(-18deg) rotateX(6deg)",
+              transformOrigin: "left center",
               transformStyle: "preserve-3d",
             }}
           >
