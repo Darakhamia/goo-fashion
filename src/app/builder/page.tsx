@@ -1524,10 +1524,10 @@ export default function BuilderPage() {
 
               {/* Header — h-[60px] aligns with center-panel search bar */}
               <div className="flex items-center justify-between px-5 h-[60px] border-b border-[var(--border)] shrink-0">
-                <p className="text-[11px] tracking-[0.18em] uppercase font-bold text-[var(--foreground)]">Filters</p>
+                <p className="text-[11px] tracking-[0.18em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.3)" }}>Filters</p>
                 <button
                   onClick={() => setFiltersOpen(false)}
-                  className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="p-1.5 -mr-1.5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
                     <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -2517,10 +2517,10 @@ export default function BuilderPage() {
             </div>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 shrink-0">
-              <p className="text-[17px] font-medium text-[var(--foreground)]">Filters</p>
+              <p className="text-[11px] tracking-[0.18em] uppercase font-black text-[var(--foreground)]" style={{ textShadow: "0 0 14px rgba(255,255,255,0.3)" }}>Filters</p>
               <button
                 onClick={() => setMobileFiltersOpen(false)}
-                className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="p-1.5 -mr-1.5 flex items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                   <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
