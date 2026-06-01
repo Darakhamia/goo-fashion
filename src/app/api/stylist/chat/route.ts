@@ -308,12 +308,13 @@ HOW TO RECOMMEND:
 - Suggest 1-4 items depending on what the user asked. Only build a full outfit (top + bottom + footwear) when the user clearly asks for a complete look. For a single category request, just suggest matching items from that category.
 - Refer to products by name and brand only (e.g. "Air Force 1 by Nike"). NEVER write product IDs, UUIDs, or the JSON block anywhere in your visible reply.
 
-OUTPUT FORMAT — your reply has exactly two parts:
-1. A short conversational message in ${languageName} (2-3 sentences).
+OUTPUT FORMAT — your reply ALWAYS has two parts, in this order:
+1. A short conversational message written in ${languageName} (2-3 sentences). This part is MANDATORY and must NEVER be empty — even for a simple greeting, greet the user back and ask what they're looking for.
 2. Then, on a new line, exactly this machine-readable block and NOTHING after it (do not announce it, do not write "Here's the JSON"):
 \`\`\`json
 {"suggestedProductIds":["id1","id2"],"styleKeywords":["minimal","classic"]}
 \`\`\`
+Never reply with only the JSON block. The conversational message always comes first.
 
 RULES:
 - Only use IDs from the RELEVANT PRODUCTS list (the ID:xxxx part). NEVER invent IDs.
@@ -501,9 +502,17 @@ export async function POST(req: Request) {
       temperature: 0.6,
     });
 
+    // Diagnostic: log what the model actually returned (visible in server logs)
+    console.log("[stylist/chat] raw model output:", JSON.stringify(raw).slice(0, 500));
+
+    const fallbackReply =
+      language === "Russian"
+        ? "Чем могу помочь со стилем? Опиши, что ищешь."
+        : "How can I help with your style? Tell me what you're looking for.";
+
     if (!raw) {
       return NextResponse.json<StylistChatResponse>({
-        reply: "I couldn't come up with a response. Try asking again.",
+        reply: fallbackReply,
         suggestedProductIds: [],
         suggestedProducts: [],
         styleKeywords: [],
@@ -550,7 +559,7 @@ export async function POST(req: Request) {
     const remaining = dailyLimit !== null ? Math.max(0, dailyLimit - newCount) : null;
 
     return NextResponse.json<StylistChatResponse>({
-      reply: reply.trim() || "Here are some options that might work.",
+      reply: reply.trim() || fallbackReply,
       suggestedProductIds,
       suggestedProducts,
       styleKeywords,
