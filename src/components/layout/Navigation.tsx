@@ -91,70 +91,94 @@ export default function Navigation() {
 
   return (
     <>
-    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${headerBg} ${isBuilder ? "hidden md:block" : ""}`}>
-      <nav className="max-w-[1440px] mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
+    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${isBuilder ? "hidden md:block" : ""}`}
+      style={{ padding: "10px 16px 0" }}>
+      <nav
+        className="mx-auto h-14 flex items-center justify-between px-5"
+        style={{
+          maxWidth: 860,
+          background: "#0a0a0a",
+          borderRadius: 50,
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 2px 20px rgba(0,0,0,0.4)",
+        }}
+      >
         {/* Logo */}
         <Link
           href="/"
-          style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 700 }}
-          className={`text-[26px] tracking-[0.22em] hover:opacity-70 transition-opacity duration-200 ${logoColor}`}
+          style={{ fontFamily: "var(--font-poppins), sans-serif", fontWeight: 800 }}
+          className="text-[22px] tracking-[0.18em] text-white hover:opacity-70 transition-opacity duration-200 shrink-0"
         >
           GOO
         </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-10">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 link-underline ${
-                pathname === link.href ? linkActive : linkMuted
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+        {/* Desktop Nav — centered links */}
+        <div className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="relative flex flex-col items-center gap-1.5 pb-0.5"
+              >
+                <span className={`text-[11px] tracking-[0.14em] uppercase font-semibold transition-colors duration-200 ${
+                  isActive ? "text-white" : "text-white/40 hover:text-white/70"
+                }`}>
+                  {link.label}
+                </span>
+                {isActive && (
+                  <span style={{
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: "white", display: "block",
+                    position: "absolute", bottom: -6,
+                  }} />
+                )}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* Right Actions — AI Stylist + Profile only */}
-        <div className="hidden md:flex items-center gap-4">
-          {/* AI Stylist */}
+        {/* Right Actions */}
+        <div className="hidden md:flex items-center shrink-0" style={{ gap: 1 }}>
+          {/* AI Stylist — icon circle */}
           <button
             onClick={toggleStylist}
             aria-label="Open AI Stylist"
-            className={`group relative flex items-center gap-2 px-4 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
-              stylistOpen
-                ? "bg-white text-black border-white"
-                : showWhiteText
-                ? "bg-black/70 text-white border-white/30 hover:border-white/60"
-                : "bg-black text-white border-[var(--border)] hover:border-white/40"
-            }`}
-            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(255,255,255,0.08)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
+            className="flex items-center justify-center transition-all duration-200"
+            style={{
+              width: 38, height: 38, borderRadius: "50%",
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: stylistOpen ? "white" : "transparent",
+              color: stylistOpen ? "black" : "rgba(255,255,255,0.7)",
+            }}
+            onMouseEnter={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.5)"; }}
+            onMouseLeave={e => { if (!stylistOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
           >
-            <svg
-              width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none"
-              className="relative z-10 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_3px_rgba(255,255,255,0.5)]"
-            >
+            {/* 4-pointed star ✦ */}
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none">
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="relative z-10 text-[10px] tracking-[0.13em] uppercase font-bold leading-none">AI Stylist</span>
           </button>
 
-          {/* Profile dropdown */}
+          {/* divider */}
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 4px" }} />
+
+          {/* Profile */}
           <SignedIn>
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => { setProfileOpen(v => !v); setCurrencySubmenu(false); }}
                 aria-label="Profile menu"
-                className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                  profileOpen
-                    ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--surface)]"
-                    : showWhiteText
-                    ? "border-white/40 text-white/70 hover:border-white hover:text-white hover:bg-white/10"
-                    : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
-                }`}
+                className="flex items-center justify-center transition-all duration-200"
+                style={{
+                  width: 38, height: 38, borderRadius: "50%",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: profileOpen ? "rgba(255,255,255,0.08)" : "transparent",
+                  color: "rgba(255,255,255,0.7)",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.5)"; }}
+                onMouseLeave={e => { if (!profileOpen) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -301,42 +325,30 @@ export default function Navigation() {
             </div>
           </SignedIn>
           <SignedOut>
-            <Link
-              href="/login"
-              className={`text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${linkMuted}`}
-            >
+            <Link href="/login"
+              className="text-[11px] tracking-[0.12em] uppercase font-medium text-white/50 hover:text-white transition-colors">
               Sign in
             </Link>
           </SignedOut>
         </div>
 
-        {/* Mobile: AI Stylist + Profile */}
-        <div className="md:hidden flex items-center gap-3">
-          <button
-            onClick={toggleStylist}
-            aria-label="Open AI Stylist"
-            className={`group relative flex items-center gap-2 px-3.5 py-[7px] rounded-full border transition-all duration-300 overflow-hidden ${
-              stylistOpen
-                ? "bg-white text-black border-white"
-                : showWhiteText
-                ? "bg-black/70 text-white border-white/30"
-                : "bg-black text-white border-[var(--border)]"
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none" className="relative z-10">
+        {/* Mobile: icon buttons */}
+        <div className="md:hidden flex items-center gap-1">
+          <button onClick={toggleStylist} aria-label="Open AI Stylist"
+            className="flex items-center justify-center transition-all duration-200"
+            style={{ width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.15)",
+              background: stylistOpen ? "white" : "transparent",
+              color: stylistOpen ? "black" : "rgba(255,255,255,0.7)" }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" stroke="none">
               <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
             </svg>
-            <span className="relative z-10 text-[10px] tracking-[0.13em] uppercase font-bold leading-none">AI Stylist</span>
           </button>
+          <div style={{ width:1, height:18, background:"rgba(255,255,255,0.1)", margin:"0 2px" }} />
           <SignedIn>
             <Link href="/profile" aria-label="Profile"
-              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-200 ${
-                pathname === "/profile"
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : showWhiteText
-                  ? "border-white/30 text-white/70"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}>
+              className="flex items-center justify-center transition-all duration-200"
+              style={{ width:36, height:36, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.15)",
+                background:"transparent", color:"rgba(255,255,255,0.7)" }}>
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -344,7 +356,8 @@ export default function Navigation() {
             </Link>
           </SignedIn>
           <SignedOut>
-            <Link href="/login" className={`text-xs tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${linkMuted}`}>
+            <Link href="/login"
+              className="text-[11px] tracking-[0.12em] uppercase font-medium text-white/50 hover:text-white transition-colors">
               Sign in
             </Link>
           </SignedOut>
