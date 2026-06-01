@@ -105,7 +105,7 @@ function Slide01() {
       {ITEMS.map((item, i) => (
         /* grid cell — overflow:visible so rotateZ corners don't clip */
         <div key={item.n} style={{ overflow:"visible",
-          animation:`cReveal 0.5s cubic-bezier(0.16,1,0.3,1) both ${i*0.08}s` }}>
+          animation:`cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both ${i*0.12}s` }}>
 
           {/* tilt layer */}
           <div style={{ width:"100%", height:"100%", transform:`rotateZ(${ROT[i]}deg)` }}>
@@ -169,7 +169,7 @@ function Slide02() {
       <div style={{ display:"grid", gridTemplateRows:"repeat(3,1fr)", gap:6, overflow:"visible" }}>
         {ITEMS.map((item, i) => (
           <div key={item.n} style={{ overflow:"visible",
-            animation:`cReveal 0.5s cubic-bezier(0.16,1,0.3,1) both ${i*0.07}s` }}>
+            animation:`cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both ${i*0.12}s` }}>
             <div style={{ width:"100%", height:"100%",
               transform:`rotateZ(${[-0.9, 0, 0.6][i]}deg)` }}>
               <div style={{ width:"100%", height:"100%",
@@ -215,7 +215,7 @@ function Slide02() {
 
       {/* ── right column: full outfit card ── */}
       <div style={{ overflow:"visible",
-        animation:"cReveal 0.55s cubic-bezier(0.16,1,0.3,1) both 0.18s" }}>
+        animation:"cReveal 0.75s cubic-bezier(0.16,1,0.3,1) both 0.28s" }}>
         <div style={{ width:"100%", height:"100%", transform:"rotateZ(0.5deg)" }}>
           <div style={{ width:"100%", height:"100%",
             animation:"gDrift1 8.5s 0.6s ease-in-out infinite" }}>
@@ -258,7 +258,7 @@ function Slide03() {
     <div style={{ height:"100%", display:"flex", flexDirection:"column", gap:10 }}>
 
       {/* header */}
-      <div style={{ shrink:0, animation:"cReveal 0.45s cubic-bezier(0.16,1,0.3,1) both 0s" } as React.CSSProperties}>
+      <div style={{ flexShrink:0, animation:"cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0s" } as React.CSSProperties}>
         <p style={{ fontSize:7, color:"rgba(255,255,255,0.25)", letterSpacing:"0.28em",
           textTransform:"uppercase", marginBottom:4 }}>Premium Partners</p>
         <p style={{ fontSize:18, fontWeight:900, color:"rgba(255,255,255,0.85)",
@@ -274,7 +274,7 @@ function Slide03() {
         gap:6, minHeight:0 }}>
         {BRANDS.map((brand, i) => (
           <div key={brand} style={{
-            animation:`cReveal 0.45s cubic-bezier(0.16,1,0.3,1) both ${i*0.04}s`,
+            animation:`cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both ${i*0.07}s`,
             overflow:"visible",
           }}>
             <div style={{ width:"100%", height:"100%",
@@ -390,10 +390,20 @@ export default function FeatureCarousel({ onSlideChange }:{ onSlideChange?:(i:nu
         @keyframes gDrift0 { 0%,100%{transform:translateY(0px)}   50%{transform:translateY(-7px)}  }
         @keyframes gDrift1 { 0%,100%{transform:translateY(-4px)}  50%{transform:translateY(6px)}   }
         @keyframes gDrift2 { 0%,100%{transform:translateY(3px)}   50%{transform:translateY(-8px)}  }
-        @keyframes cReveal  { from{opacity:0;transform:translateY(8px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-        /* premium crossfade — no translate, just opacity + very subtle scale */
-        @keyframes sFadeIn  { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
-        @keyframes sFadeOut { from{opacity:1;transform:scale(1)}    to{opacity:0;transform:scale(1.02)} }
+        /* hero-1 style card entrance — big translateY, spring easing */
+        @keyframes cReveal  {
+          0%   { opacity:0; transform:translateY(22px) scale(0.96); }
+          100% { opacity:1; transform:translateY(0)    scale(1);    }
+        }
+        /* slide crossfade — premium dissolve with depth */
+        @keyframes sFadeIn  {
+          0%   { opacity:0; transform:scale(0.97) translateY(10px); }
+          100% { opacity:1; transform:scale(1)    translateY(0);    }
+        }
+        @keyframes sFadeOut {
+          0%   { opacity:1; transform:scale(1);    }
+          100% { opacity:0; transform:scale(1.02); }
+        }
         @keyframes dotPulse{ 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
       `}</style>
 
