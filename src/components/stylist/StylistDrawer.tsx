@@ -41,15 +41,20 @@ interface ChatMessage {
 
 function cleanReplyText(text: string): string {
   return text
-    // Strip stray "**Suggested ProductIds:** [...]" lines the model sometimes emits
-    .replace(/\*?\*?Suggested\s*Product\s*Ids?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
-    // Strip stray "**StyleKeywords:** [...]" lines
-    .replace(/\*?\*?Style\s*Keywords?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
-    // Strip any remaining UUID-like strings (36-char hex with dashes)
-    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "")
-    // Strip leftover bare JSON blocks
+    // Strip leftover JSON blocks (fenced or bare) first
     .replace(/```json[\s\S]*?```/g, "")
+    .replace(/```[\s\S]*?```/g, "")
     .replace(/\{[^{}]*"suggestedProductIds"[^{}]*\}/g, "")
+    // Strip trailing announcements like "Here's the JSON block:" (EN + RU)
+    .replace(/(here'?s|here is)\s+(the\s+)?json\s*(block|data)?\s*:?\s*$/gim, "")
+    .replace(/вот\s+(json|джсон)[^\n]*:?\s*$/gim, "")
+    // Strip stray "**Suggested ProductIds:** [...]" / "**StyleKeywords:** [...]"
+    .replace(/\*?\*?Suggested\s*Product\s*Ids?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
+    .replace(/\*?\*?Style\s*Keywords?\*?\*?\s*:?\s*\[[^\]]*\]/gi, "")
+    // Strip any remaining UUID-like strings
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "")
+    // Collapse 3+ newlines and trailing whitespace
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
