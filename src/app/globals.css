@@ -444,3 +444,29 @@ body {
 .animate-scroll-hint {
   animation: scroll-hint 2s ease-in-out infinite;
 }
+
+/* ── Hero-style entrance animations (used on coming-soon & hero sections) ── */
+@keyframes hero-fade-in {
+  0%   { opacity: 0; transform: translateY(22px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes hero-fade-up {
+  0%   { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+
+/* single-use utility classes */
+.animate-hero-fade-in {
+  animation: hero-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-hero-fade-up {
+  animation: hero-fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* stagger helpers for hero card grids */
+.hero-stagger > *:nth-child(1) { animation-delay:  0ms;  }
+.hero-stagger > *:nth-child(2) { animation-delay: 100ms; }
+.hero-stagger > *:nth-child(3) { animation-delay: 200ms; }
+.hero-stagger > *:nth-child(4) { animation-delay: 300ms; }
+.hero-stagger > *:nth-child(5) { animation-delay: 400ms; }
