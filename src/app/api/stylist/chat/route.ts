@@ -265,44 +265,58 @@ const PRODUCT_COLUMNS =
  * fetch of any category the user named (so "кроссовки" always surfaces footwear),
  * and (3) a recency fallback. Results are merged and de-duplicated.
  */
-async function findRelevantProducts(userMessage: string): Promise<MatchedProduct[]> {
-  if (!isSupabaseConfigured || !supabase) return [];
+async function findRelevantProducts(
+  userMessage: string
+): Promise<{ products: MatchedProduct[]; debug: Record<string, unknown> }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { products: [], debug: { supabase: false } };
+  }
 
   const query = augmentQuery(userMessage).slice(0, 500);
   const categories = detectCategories(query);
   const merged = new Map<string, MatchedProduct>();
+  const debug: Record<string, unknown> = { query, categories };
 
-  // (1) Full-text search via RPC (best ranking when the FTS column is populated)
+  // (1) Direct category fetch FIRST — the user explicitly named a category, so
+  //     these are the most relevant. Inserted first so they can never be sliced
+  //     off, and they appear regardless of the FTS column / RPC state.
+  if (categories.length > 0) {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(PRODUCT_COLUMNS)
+        .in("category", categories)
+        .limit(SEARCH_MATCH_COUNT);
+      if (error) throw error;
+      for (const p of ((data ?? []) as unknown as MatchedProduct[])) {
+        merged.set(p.id, { ...p, rank: 2 });
+      }
+      debug.categoryFetchCount = (data ?? []).length;
+    } catch (err) {
+      debug.categoryFetchError = err instanceof Error ? err.message : String(err);
+      console.warn("[stylist/chat] category fetch failed:", err);
+    }
+  }
+
+  // (2) Full-text search via RPC — fills in semantically relevant extras.
   try {
     const { data, error } = await supabase.rpc("search_products", {
       query_text: query,
       match_count: SEARCH_MATCH_COUNT,
     });
     if (error) throw error;
-    for (const p of (data ?? []) as MatchedProduct[]) merged.set(p.id, p);
+    for (const p of (data ?? []) as MatchedProduct[]) {
+      if (!merged.has(p.id)) merged.set(p.id, p);
+    }
+    debug.ftsCount = (data ?? []).length;
   } catch (err) {
+    debug.ftsError = err instanceof Error ? err.message : String(err);
     console.warn("[stylist/chat] FTS RPC failed:", err);
   }
 
-  // (2) Direct category fetch — guarantees named categories appear even if FTS
-  //     is empty or the RPC isn't deployed.
-  if (categories.length > 0 && supabase) {
-    try {
-      const { data } = await supabase
-        .from("products")
-        .select(PRODUCT_COLUMNS)
-        .in("category", categories)
-        .limit(SEARCH_MATCH_COUNT);
-      for (const p of ((data ?? []) as unknown as MatchedProduct[])) {
-        if (!merged.has(p.id)) merged.set(p.id, { ...p, rank: 0.5 });
-      }
-    } catch (err) {
-      console.warn("[stylist/chat] category fetch failed:", err);
-    }
-  }
-
   if (merged.size > 0) {
-    return Array.from(merged.values()).slice(0, SEARCH_MATCH_COUNT + 20);
+    debug.mergedCount = merged.size;
+    return { products: Array.from(merged.values()).slice(0, SEARCH_MATCH_COUNT + 20), debug };
   }
 
   // (3) Recency fallback — nothing matched, show recent products
@@ -311,9 +325,11 @@ async function findRelevantProducts(userMessage: string): Promise<MatchedProduct
       .from("products")
       .select(PRODUCT_COLUMNS)
       .limit(SEARCH_MATCH_COUNT);
-    return ((data ?? []) as unknown as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
+    const products = ((data ?? []) as unknown as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
+    debug.fallbackCount = products.length;
+    return { products, debug };
   } catch {
-    return [];
+    return { products: [], debug };
   }
 }
 
@@ -328,8 +344,12 @@ function buildCatalogBlock(products: MatchedProduct[]): string {
     byCategory[p.category].push(p);
   }
 
+  const availableCats = Object.keys(byCategory);
   const lines = [
-    `RELEVANT PRODUCTS (${products.length} items — use ONLY the IDs listed here, NEVER write IDs in your reply text):`,
+    `RELEVANT PRODUCTS (${products.length} items — use ONLY the IDs listed here, NEVER write IDs in your reply text).`,
+    `CATEGORIES CURRENTLY AVAILABLE: ${availableCats.join(", ")}.`,
+    `CRITICAL: every product below IS in stock and available. NEVER tell the user a category or item listed here is unavailable or out of stock. "footwear" means sneakers/shoes/boots — if the user asks for кроссовки/sneakers and footwear is listed, recommend those items.`,
+    ``,
   ];
   for (const [cat, items] of Object.entries(byCategory)) {
     for (const p of items) {
@@ -339,7 +359,8 @@ function buildCatalogBlock(products: MatchedProduct[]): string {
     }
   }
   lines.push(
-    "If the user asks for something not listed above, say so honestly and suggest the closest available alternative."
+    "",
+    "Only if a category the user wants is NOT in the CATEGORIES CURRENTLY AVAILABLE list above may you say it's unavailable — and then suggest the closest listed alternative."
   );
   return lines.join("\n");
 }
@@ -604,8 +625,16 @@ export async function POST(req: Request) {
   const { currentOutfit, focusProduct, browseContext } = rawBody;
 
   // ── Vector search: find relevant products ─────────────────────────────────
-  const relevantProducts = await findRelevantProducts(userMessage);
+  const { products: relevantProducts, debug: searchDebug } = await findRelevantProducts(userMessage);
   const catalogIds = new Set(relevantProducts.map((p) => p.id));
+
+  // Diagnostic: ?debug=1 returns what the catalog search produced (admin/debug)
+  const wantDebug = new URL(req.url).searchParams.get("debug") === "1";
+  if (wantDebug) {
+    const catCount: Record<string, number> = {};
+    for (const p of relevantProducts) catCount[p.category] = (catCount[p.category] ?? 0) + 1;
+    searchDebug.matchedByCategory = catCount;
+  }
 
   // ── Build system prompt ───────────────────────────────────────────────────
   const outfitContext = focusProduct
@@ -684,13 +713,14 @@ export async function POST(req: Request) {
     }
     const remaining = dailyLimit !== null ? Math.max(0, dailyLimit - newCount) : null;
 
-    return NextResponse.json<StylistChatResponse>({
+    return NextResponse.json<StylistChatResponse & { _debug?: unknown }>({
       reply: reply.trim() || fallbackReply,
       suggestedProductIds,
       suggestedProducts,
       styleKeywords,
       remaining,
       limit: dailyLimit,
+      ...(wantDebug ? { _debug: { ...searchDebug, rawModelOutput: raw.slice(0, 800) } } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
