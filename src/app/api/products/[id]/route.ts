@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { embedText, productToEmbedText } from "@/lib/server/replicate-ai";
 
 const noDb = () =>
   NextResponse.json(
@@ -28,8 +29,18 @@ export async function PUT(
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-regenerate embedding when product is updated (fire-and-forget)
+  const product = dbToProduct(data as DbProduct);
+  embedText(productToEmbedText({
+    name: product.name, brand: product.brand, category: product.category,
+    description: product.description, styleKeywords: product.styleKeywords, priceMin: product.priceMin,
+  })).then((embedding) =>
+    supabase!.from("products").update({ embedding: `[${embedding.join(",")}]` }).eq("id", product.id)
+  ).catch((err) => console.error("[products] embedding regeneration failed:", err));
+
   revalidatePath("/");
-  return NextResponse.json(dbToProduct(data as DbProduct));
+  return NextResponse.json(product);
 }
 
 export async function PATCH(
