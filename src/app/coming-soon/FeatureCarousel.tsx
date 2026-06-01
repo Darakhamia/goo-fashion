@@ -15,22 +15,22 @@ const ITEMS = [
   { n:"03", cat:"SNEAKERS", brand:"BALENCIAGA",               price:"$890", img:"/cs/sneakers.png" },
 ];
 const BRANDS = [
-  { name:"LV",           top:"6%",  left:"5%"  },
-  { name:"BALENCIAGA",   top:"14%", left:"48%" },
-  { name:"NIKE",         top:"5%",  left:"72%" },
-  { name:"PRADA",        top:"30%", left:"8%"  },
-  { name:"SAINT LAURENT",top:"28%", left:"62%" },
-  { name:"CELINE",       top:"48%", left:"3%"  },
-  { name:"STONE ISLAND", top:"50%", left:"58%" },
-  { name:"DIOR",         top:"66%", left:"10%" },
-  { name:"MONCLER",      top:"65%", left:"68%" },
-  { name:"AMIRI",        top:"80%", left:"3%"  },
-  { name:"BURBERRY",     top:"78%", left:"45%" },
-  { name:"A.P.C.",       top:"82%", left:"75%" },
-  { name:"FEAR OF GOD",  top:"92%", left:"12%" },
-  { name:"OFF-WHITE",    top:"90%", left:"56%" },
-  { name:"RHUDE",        top:"38%", left:"82%" },
-  { name:"ACNE STUDIOS", top:"58%", left:"82%" },
+  { name:"LV",           top:"4%",   left:"4%",   size:58, hasBox:true,  textSize:18, bold:true  },
+  { name:"BALENCIAGA",   top:"3%",   left:"26%",  size:52, hasBox:true,  textSize:7,  bold:true  },
+  { name:"NIKE",         top:"2%",   left:"58%",  size:56, hasBox:true,  textSize:10, bold:false },
+  { name:"PRADA",        top:"6%",   left:"82%",  size:0,  hasBox:false, textSize:14, bold:true  },
+  { name:"SAINT LAURENT",top:"18%",  left:"88%",  size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"DIOR",         top:"32%",  left:"8%",   size:54, hasBox:true,  textSize:13, bold:true  },
+  { name:"CELINE",       top:"38%",  left:"82%",  size:0,  hasBox:false, textSize:10, bold:false },
+  { name:"STONE ISLAND", top:"48%",  left:"88%",  size:50, hasBox:true,  textSize:7,  bold:false },
+  { name:"MONCLER",      top:"58%",  left:"2%",   size:58, hasBox:true,  textSize:7,  bold:false },
+  { name:"AMIRI",        top:"68%",  left:"13%",  size:52, hasBox:true,  textSize:11, bold:true  },
+  { name:"BURBERRY",     top:"68%",  left:"84%",  size:0,  hasBox:false, textSize:11, bold:false },
+  { name:"FEAR OF GOD",  top:"82%",  left:"4%",   size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"OFF-WHITE",    top:"84%",  left:"26%",  size:52, hasBox:true,  textSize:8,  bold:true  },
+  { name:"RHUDE",        top:"86%",  left:"52%",  size:52, hasBox:true,  textSize:10, bold:false },
+  { name:"ACNE STUDIOS", top:"84%",  left:"74%",  size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"A.P.C.",       top:"82%",  left:"90%",  size:0,  hasBox:false, textSize:13, bold:true  },
 ];
 
 /* ── shared card surface style ──────────────────────────── */
@@ -251,56 +251,65 @@ function Slide02() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SLIDE 03 — "50+" center with floating brand pill badges
+   SLIDE 03 — "50+" center with scattered brand squircle badges
    ═══════════════════════════════════════════════════════════ */
 function Slide03() {
   return (
     <div style={{ position:"relative", height:"100%", overflow:"hidden",
       animation:"cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both 0s" }}>
 
-      {/* large ghost "50+" text — background anchor */}
+      {/* "50+" hero text — bright, centered */}
       <div style={{
         position:"absolute", inset:0,
-        display:"flex", flexDirection:"column",
-        alignItems:"center", justifyContent:"center",
+        display:"flex", alignItems:"center", justifyContent:"center",
         pointerEvents:"none", zIndex:1,
       }}>
-        <p style={{ fontSize:7, color:"rgba(255,255,255,0.18)", letterSpacing:"0.32em",
-          textTransform:"uppercase", marginBottom:8, fontWeight:600 }}>Premium Partners</p>
         <p style={{
-          fontSize:"clamp(72px,14vw,110px)", fontWeight:900,
-          color:"rgba(255,255,255,0.06)", letterSpacing:"-0.04em",
+          fontSize:"clamp(64px,12vw,96px)", fontWeight:900,
+          color:"rgba(255,255,255,0.92)", letterSpacing:"-0.04em",
           lineHeight:1, userSelect:"none",
         }}>50+</p>
-        <p style={{ fontSize:9, color:"rgba(255,255,255,0.18)", letterSpacing:"0.24em",
-          textTransform:"uppercase", marginTop:6, fontWeight:500 }}>BRANDS</p>
       </div>
 
-      {/* brand pill badges — scattered */}
+      {/* brand badges — squircles + bare text */}
       {BRANDS.map((b, i) => (
         <div key={b.name} style={{
           position:"absolute",
           top: b.top, left: b.left,
           zIndex: 2,
           animation:`cReveal 0.65s cubic-bezier(0.16,1,0.3,1) both ${i*0.05}s`,
+          transform:"translate(-50%,-50%)",
         }}>
-          <div style={{
-            padding:"5px 10px",
-            borderRadius: 8,
-            background:"rgba(255,255,255,0.04)",
-            border:"1px solid rgba(255,255,255,0.09)",
-            boxShadow:"inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(0,0,0,0.4)",
-            backdropFilter:"blur(6px)",
-            whiteSpace:"nowrap",
-          }}>
+          {b.hasBox ? (
+            <div style={{
+              width: b.size, height: b.size,
+              borderRadius: Math.round(b.size * 0.28),
+              background:"rgba(22,22,22,0.95)",
+              border:"1px solid rgba(255,255,255,0.1)",
+              boxShadow:"0 4px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+            }}>
+              <span style={{
+                fontSize: b.textSize,
+                fontWeight: b.bold ? 800 : 500,
+                color:"rgba(255,255,255,0.88)",
+                letterSpacing: b.textSize > 12 ? "0em" : "0.08em",
+                textTransform:"uppercase",
+                textAlign:"center",
+                lineHeight:1.2,
+                padding:"0 6px",
+              }}>{b.name}</span>
+            </div>
+          ) : (
             <span style={{
-              fontSize: b.name.length > 10 ? 7 : 8,
-              fontWeight:700,
-              color:`rgba(255,255,255,${0.55 - i*0.015})`,
-              letterSpacing:"0.1em",
+              fontSize: b.textSize,
+              fontWeight: b.bold ? 700 : 400,
+              color:"rgba(255,255,255,0.55)",
+              letterSpacing:"0.14em",
               textTransform:"uppercase",
+              whiteSpace:"nowrap",
             }}>{b.name}</span>
-          </div>
+          )}
         </div>
       ))}
 
