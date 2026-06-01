@@ -298,7 +298,7 @@ function SlideTransition({ active, prev }: { active: number; prev: number | null
   const EnteringComponent = SLIDE_COMPONENTS[entering];
 
   return (
-    <div className="flex-1 relative min-h-0 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col min-h-0 overflow-hidden">
       {/* Exiting slide — slides out to the left */}
       {ExitingComponent && phase === "animating" && (
         <div
@@ -427,8 +427,26 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
           ))}
         </div>
 
-        {/* ── Slide content with enter/exit animation ── */}
-        <SlideTransition active={active} prev={prev} />
+        {/* ── Slide content — 3-D perspective tilt ── */}
+        <div
+          className="flex-1 min-h-0 relative"
+          style={{
+            perspective: "900px",
+            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+          }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: "rotateX(16deg) skewX(1.2deg)",
+              transformOrigin: "top center",
+              transformStyle: "preserve-3d",
+            }}
+          >
+            <SlideTransition active={active} prev={prev} />
+          </div>
+        </div>
 
         {/* ── Email form ── */}
         <div className="shrink-0">
