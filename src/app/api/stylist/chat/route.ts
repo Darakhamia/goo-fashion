@@ -168,7 +168,7 @@ async function findRelevantProducts(userMessage: string): Promise<MatchedProduct
       .select("id, name, brand, category, price_min, style_keywords, description, image_url, currency")
       .limit(SEARCH_MATCH_COUNT);
 
-    return ((data ?? []) as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
+    return ((data ?? []) as unknown as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
   }
 }
 
