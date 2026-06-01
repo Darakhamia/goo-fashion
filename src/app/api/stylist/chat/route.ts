@@ -183,12 +183,80 @@ const CATEGORY_HINTS: Record<string, string> = {
   scarf: "accessories", hat: "accessories", bag: "accessories", belt: "accessories",
 };
 
+// Stem prefixes — tolerant to declensions AND common typos (e.g. "кросовки"
+// with one с). If a word starts with one of these stems, map to the category.
+const CATEGORY_STEMS: Array<{ stem: string; category: string }> = [
+  // footwear
+  { stem: "крос", category: "footwear" },   // кроссовки / кросовки / кроссовок
+  { stem: "кед",  category: "footwear" },
+  { stem: "ботин", category: "footwear" },
+  { stem: "туфл", category: "footwear" },
+  { stem: "сапог", category: "footwear" },
+  { stem: "лофер", category: "footwear" },
+  { stem: "обув", category: "footwear" },
+  { stem: "sneaker", category: "footwear" },
+  { stem: "shoe", category: "footwear" },
+  { stem: "boot", category: "footwear" },
+  { stem: "loafer", category: "footwear" },
+  // bottoms
+  { stem: "брюк", category: "bottoms" },
+  { stem: "джинс", category: "bottoms" },
+  { stem: "шорт", category: "bottoms" },
+  { stem: "юбк", category: "bottoms" },
+  { stem: "штан", category: "bottoms" },
+  { stem: "pant", category: "bottoms" },
+  { stem: "jean", category: "bottoms" },
+  { stem: "short", category: "bottoms" },
+  { stem: "skirt", category: "bottoms" },
+  { stem: "trouser", category: "bottoms" },
+  // tops
+  { stem: "рубаш", category: "tops" },
+  { stem: "блуз", category: "tops" },
+  { stem: "футболк", category: "tops" },
+  { stem: "майк", category: "tops" },
+  { stem: "shirt", category: "tops" },
+  { stem: "blouse", category: "tops" },
+  { stem: "tee", category: "tops" },
+  // knitwear
+  { stem: "свитер", category: "knitwear" },
+  { stem: "худи", category: "knitwear" },
+  { stem: "толстов", category: "knitwear" },
+  { stem: "кардиган", category: "knitwear" },
+  { stem: "кофт", category: "knitwear" },
+  { stem: "sweater", category: "knitwear" },
+  { stem: "hoodie", category: "knitwear" },
+  { stem: "cardigan", category: "knitwear" },
+  // outerwear
+  { stem: "пальто", category: "outerwear" },
+  { stem: "куртк", category: "outerwear" },
+  { stem: "плащ", category: "outerwear" },
+  { stem: "пиджак", category: "outerwear" },
+  { stem: "coat", category: "outerwear" },
+  { stem: "jacket", category: "outerwear" },
+  { stem: "blazer", category: "outerwear" },
+  { stem: "parka", category: "outerwear" },
+  // dresses / accessories
+  { stem: "плать", category: "dresses" },
+  { stem: "dress", category: "dresses" },
+  { stem: "шарф", category: "accessories" },
+  { stem: "шапк", category: "accessories" },
+  { stem: "сумк", category: "accessories" },
+  { stem: "scarf", category: "accessories" },
+  { stem: "bag", category: "accessories" },
+];
+
 function detectCategories(msg: string): string[] {
   const words = msg.toLowerCase().split(/[\s,.!?]+/);
   const cats = new Set<string>();
   for (const w of words) {
-    const cat = CATEGORY_HINTS[w];
-    if (cat) cats.add(cat);
+    if (w.length < 3) continue;
+    // Exact dictionary hit first
+    const exact = CATEGORY_HINTS[w];
+    if (exact) { cats.add(exact); continue; }
+    // Stem/prefix match — handles declensions and minor typos
+    for (const { stem, category } of CATEGORY_STEMS) {
+      if (w.startsWith(stem)) { cats.add(category); break; }
+    }
   }
   return Array.from(cats);
 }
