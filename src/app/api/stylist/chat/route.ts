@@ -157,36 +157,102 @@ function augmentQuery(msg: string): string {
   return extras.length > 0 ? `${msg} ${extras.join(" ")}` : msg;
 }
 
-// ── Vector search ─────────────────────────────────────────────────────────────
+// Map RU/EN words to catalog category names so we can fetch a category directly
+// even when full-text search misses it.
+const CATEGORY_HINTS: Record<string, string> = {
+  // footwear
+  кроссовки: "footwear", кеды: "footwear", ботинки: "footwear", туфли: "footwear",
+  сапоги: "footwear", лоферы: "footwear", обувь: "footwear", кроссовок: "footwear",
+  sneakers: "footwear", shoes: "footwear", boots: "footwear", footwear: "footwear",
+  loafers: "footwear",
+  // bottoms
+  брюки: "bottoms", джинсы: "bottoms", шорты: "bottoms", юбка: "bottoms",
+  pants: "bottoms", jeans: "bottoms", shorts: "bottoms", skirt: "bottoms", trousers: "bottoms",
+  // tops
+  рубашка: "tops", блузка: "tops", топ: "tops", футболка: "tops", майка: "tops",
+  shirt: "tops", blouse: "tops", "t-shirt": "tops", tee: "tops", top: "tops",
+  // knitwear
+  свитер: "knitwear", худи: "knitwear", толстовка: "knitwear", кардиган: "knitwear",
+  sweater: "knitwear", hoodie: "knitwear", cardigan: "knitwear", knit: "knitwear",
+  // outerwear
+  пальто: "outerwear", куртка: "outerwear", плащ: "outerwear", пиджак: "outerwear",
+  coat: "outerwear", jacket: "outerwear", blazer: "outerwear", parka: "outerwear",
+  // dresses / accessories
+  платье: "dresses", dress: "dresses",
+  шарф: "accessories", шапка: "accessories", сумка: "accessories",
+  scarf: "accessories", hat: "accessories", bag: "accessories", belt: "accessories",
+};
+
+function detectCategories(msg: string): string[] {
+  const words = msg.toLowerCase().split(/[\s,.!?]+/);
+  const cats = new Set<string>();
+  for (const w of words) {
+    const cat = CATEGORY_HINTS[w];
+    if (cat) cats.add(cat);
+  }
+  return Array.from(cats);
+}
+
+// ── Catalog search ─────────────────────────────────────────────────────────────
+
+const PRODUCT_COLUMNS =
+  "id, name, brand, category, price_min, style_keywords, description, image_url, currency";
 
 /**
- * Full-text search via search_products() SQL function in Supabase.
- * Augments Russian queries with English translations for multilingual FTS.
- * Falls back to a simple .select() if the function isn't deployed yet.
+ * Find relevant products for a user message. Robust against the FTS migration
+ * not being applied: combines (1) PostgreSQL full-text search, (2) a direct
+ * fetch of any category the user named (so "кроссовки" always surfaces footwear),
+ * and (3) a recency fallback. Results are merged and de-duplicated.
  */
 async function findRelevantProducts(userMessage: string): Promise<MatchedProduct[]> {
   if (!isSupabaseConfigured || !supabase) return [];
 
   const query = augmentQuery(userMessage).slice(0, 500);
+  const categories = detectCategories(query);
+  const merged = new Map<string, MatchedProduct>();
 
+  // (1) Full-text search via RPC (best ranking when the FTS column is populated)
   try {
     const { data, error } = await supabase.rpc("search_products", {
       query_text: query,
       match_count: SEARCH_MATCH_COUNT,
     });
-
     if (error) throw error;
-    return (data ?? []) as MatchedProduct[];
-
+    for (const p of (data ?? []) as MatchedProduct[]) merged.set(p.id, p);
   } catch (err) {
-    console.warn("[stylist/chat] FTS search failed, falling back to full scan:", err);
+    console.warn("[stylist/chat] FTS RPC failed:", err);
+  }
 
+  // (2) Direct category fetch — guarantees named categories appear even if FTS
+  //     is empty or the RPC isn't deployed.
+  if (categories.length > 0 && supabase) {
+    try {
+      const { data } = await supabase
+        .from("products")
+        .select(PRODUCT_COLUMNS)
+        .in("category", categories)
+        .limit(SEARCH_MATCH_COUNT);
+      for (const p of ((data ?? []) as unknown as MatchedProduct[])) {
+        if (!merged.has(p.id)) merged.set(p.id, { ...p, rank: 0.5 });
+      }
+    } catch (err) {
+      console.warn("[stylist/chat] category fetch failed:", err);
+    }
+  }
+
+  if (merged.size > 0) {
+    return Array.from(merged.values()).slice(0, SEARCH_MATCH_COUNT + 20);
+  }
+
+  // (3) Recency fallback — nothing matched, show recent products
+  try {
     const { data } = await supabase
       .from("products")
-      .select("id, name, brand, category, price_min, style_keywords, description, image_url, currency")
+      .select(PRODUCT_COLUMNS)
       .limit(SEARCH_MATCH_COUNT);
-
     return ((data ?? []) as unknown as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
+  } catch {
+    return [];
   }
 }
 
@@ -307,6 +373,7 @@ HOW TO RECOMMEND:
 - NEVER substitute an unrelated item for a missing one (e.g. do NOT offer swim shorts when the user wants sneakers). If a needed category is not in the list, simply say it's not available right now — do not force a fake alternative.
 - Suggest 1-4 items depending on what the user asked. Only build a full outfit (top + bottom + footwear) when the user clearly asks for a complete look. For a single category request, just suggest matching items from that category.
 - Refer to products by name and brand only (e.g. "Air Force 1 by Nike"). NEVER write product IDs, UUIDs, or the JSON block anywhere in your visible reply.
+- BUILDER: When the user asks to add the look to the builder / collect it / "собери в builder", DO NOT refuse — a "Build this look" button automatically appears beneath your suggested items. Just include the items in the JSON block and tell the user (in ${languageName}) to tap the "Build this look" button below to open them in the builder.
 
 OUTPUT FORMAT — your reply ALWAYS has two parts, in this order:
 1. A short conversational message written in ${languageName} (2-3 sentences). This part is MANDATORY and must NEVER be empty — even for a simple greeting, greet the user back and ask what they're looking for.
