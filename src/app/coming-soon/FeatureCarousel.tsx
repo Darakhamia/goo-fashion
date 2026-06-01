@@ -154,9 +154,7 @@ function Slide02() {
               animation: `cardReveal 0.55s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
             }}
           >
-            {/* Number badge */}
             <span className="absolute top-3 left-3.5 z-10 text-[8px] font-mono text-white/25">{item.n}</span>
-            {/* Product image — fills most of card */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.img}
@@ -167,13 +165,11 @@ function Slide02() {
                 animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s`,
               }}
             />
-            {/* Label strip at bottom */}
             <div className="absolute bottom-0 left-0 right-0 px-3.5 py-2.5"
               style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
               <p className="text-[11px] font-black text-white uppercase tracking-[0.07em] leading-tight">{item.cat}</p>
               <p className="text-[8px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
             </div>
-            {/* Plus button */}
             <div className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center shrink-0"
               style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)" }}>
               <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
@@ -184,7 +180,7 @@ function Slide02() {
         ))}
       </div>
 
-      {/* Right: complete look — full bleed */}
+      {/* Right: complete look */}
       <div
         className="flex flex-col overflow-hidden"
         style={{
@@ -274,9 +270,65 @@ function Slide03() {
   );
 }
 
+const SLIDE_COMPONENTS = [Slide01, Slide02, Slide03];
+
+/* ── Animated slide wrapper ────────────────────────────── */
+function SlideTransition({ active, prev }: { active: number; prev: number | null }) {
+  const [exiting, setExiting] = useState<number | null>(null);
+  const [entering, setEntering] = useState<number>(active);
+  const [phase, setPhase] = useState<"idle" | "animating">("idle");
+
+  useEffect(() => {
+    if (prev === null || prev === active) {
+      setEntering(active);
+      return;
+    }
+    setExiting(prev);
+    setEntering(active);
+    setPhase("animating");
+    const t = setTimeout(() => {
+      setExiting(null);
+      setPhase("idle");
+    }, 520);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  const ExitingComponent = exiting !== null ? SLIDE_COMPONENTS[exiting] : null;
+  const EnteringComponent = SLIDE_COMPONENTS[entering];
+
+  return (
+    <div className="flex-1 relative min-h-0 overflow-hidden">
+      {/* Exiting slide — slides out to the left */}
+      {ExitingComponent && phase === "animating" && (
+        <div
+          key={`exit-${exiting}`}
+          className="absolute inset-0 flex flex-col min-h-0"
+          style={{ animation: "slideOutLeft 0.52s cubic-bezier(0.4,0,0.2,1) both" }}
+        >
+          <ExitingComponent />
+        </div>
+      )}
+      {/* Entering slide — slides in from the right */}
+      <div
+        key={`enter-${entering}`}
+        className="absolute inset-0 flex flex-col min-h-0"
+        style={{
+          animation: phase === "animating"
+            ? "slideInRight 0.52s cubic-bezier(0.16,1,0.3,1) both"
+            : undefined,
+        }}
+      >
+        <EnteringComponent />
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ──────────────────────────────────────────────── */
 export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (idx: number) => void }) {
   const [active, setActive] = useState(0);
+  const [prev, setPrev] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -288,8 +340,9 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
     const step = 100 / (AUTOPLAY_MS / 50);
     progRef.current = setInterval(() => setProgress(p => Math.min(p + step, 100)), 50);
     timerRef.current = setInterval(() => {
-      setActive(prev => {
-        const next = (prev + 1) % SLIDES.length;
+      setActive(curr => {
+        const next = (curr + 1) % SLIDES.length;
+        setPrev(curr);
         onSlideChange?.(next);
         return next;
       });
@@ -306,6 +359,8 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
   }, [startTimers]);
 
   const goTo = (idx: number) => {
+    if (idx === active) return;
+    setPrev(active);
     setActive(idx);
     onSlideChange?.(idx);
     startTimers();
@@ -322,9 +377,13 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
           from { opacity:0; transform:scale(1.06); }
           to   { opacity:1; transform:scale(1);    }
         }
-        @keyframes slideIn {
-          from { opacity:0; transform:translateX(28px); }
-          to   { opacity:1; transform:translateX(0);    }
+        @keyframes slideInRight {
+          from { opacity:0; transform:translateX(48px) scale(0.98); }
+          to   { opacity:1; transform:translateX(0)    scale(1);    }
+        }
+        @keyframes slideOutLeft {
+          from { opacity:1; transform:translateX(0)     scale(1);    }
+          to   { opacity:0; transform:translateX(-48px) scale(0.98); }
         }
         @keyframes dotPulse {
           0%,100% { opacity:0.4; transform:scale(1);   }
@@ -334,7 +393,7 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
 
       <div className="h-full flex flex-col gap-4">
 
-        {/* ── Top tab nav (slide 2 & 3 style) ── */}
+        {/* ── Top tab nav ── */}
         <div className="flex items-center gap-0 shrink-0 pb-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           {SLIDES.map((slide, i) => (
@@ -368,16 +427,8 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
           ))}
         </div>
 
-        {/* ── Slide content ── */}
-        <div
-          key={active}
-          className="flex-1 flex flex-col min-h-0 overflow-hidden"
-          style={{ animation: "slideIn 0.5s cubic-bezier(0.16,1,0.3,1) both" }}
-        >
-          {active === 0 && <Slide01 />}
-          {active === 1 && <Slide02 />}
-          {active === 2 && <Slide03 />}
-        </div>
+        {/* ── Slide content with enter/exit animation ── */}
+        <SlideTransition active={active} prev={prev} />
 
         {/* ── Email form ── */}
         <div className="shrink-0">
