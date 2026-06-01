@@ -5,7 +5,6 @@ import { getAllProducts } from "@/lib/data/db";
 import { productToDb, dbToProduct } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
-import { embedText, productToEmbedText } from "@/lib/server/replicate-ai";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -32,16 +31,6 @@ export async function POST(req: Request) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Auto-generate embedding for the new product (fire-and-forget)
-  const product = dbToProduct(data as DbProduct);
-  embedText(productToEmbedText({
-    name: product.name, brand: product.brand, category: product.category,
-    description: product.description, styleKeywords: product.styleKeywords, priceMin: product.priceMin,
-  })).then((embedding) =>
-    supabase!.from("products").update({ embedding: `[${embedding.join(",")}]` }).eq("id", product.id)
-  ).catch((err) => console.error("[products] embedding generation failed:", err));
-
   revalidatePath("/");
-  return NextResponse.json(product, { status: 201 });
+  return NextResponse.json(dbToProduct(data as DbProduct), { status: 201 });
 }
