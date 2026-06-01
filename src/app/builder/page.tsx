@@ -270,7 +270,7 @@ export default function BuilderPage() {
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [genderDropOpen, setGenderDropOpen] = useState(false);
 
-  const { likedProducts } = useLikes();
+  const { likedProducts, toggleProductLike } = useLikes();
   const { addManyToCart } = useCart();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice, convertToUsd } = useCurrency();
@@ -1366,8 +1366,9 @@ export default function BuilderPage() {
                               alt={product.name}
                               className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                             />
+                            {/* Top-left: + / ✓ add to outfit */}
                             {!isSelected && (
-                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
                                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                   <line x1="5" y1="1" x2="5" y2="9" />
                                   <line x1="1" y1="5" x2="9" y2="5" />
@@ -1375,12 +1376,28 @@ export default function BuilderPage() {
                               </div>
                             )}
                             {isSelected && (
-                              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[var(--foreground)] flex items-center justify-center">
                                 <svg width="10" height="8" viewBox="0 0 12 10" fill="none">
                                   <path d="M1.5 5L4.5 8L10.5 1.5" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               </div>
                             )}
+                            {/* Top-right: heart like button */}
+                            <button
+                              onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label={likedProducts.includes(product.id) ? "Unlike" : "Like"}
+                            >
+                              <svg width="12" height="11" viewBox="0 0 16 16" fill="none">
+                                <path
+                                  d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
+                                  stroke={likedProducts.includes(product.id) ? "none" : "currentColor"}
+                                  fill={likedProducts.includes(product.id) ? "#ef4444" : "none"}
+                                  strokeWidth="1.5"
+                                  style={{ color: likedProducts.includes(product.id) ? "#ef4444" : "var(--foreground-muted)" }}
+                                />
+                              </svg>
+                            </button>
                             {/* Colour swatches — slide up on hover */}
                             {hasColorImages && (
                               <div
