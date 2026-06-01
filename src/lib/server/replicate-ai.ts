@@ -1,12 +1,12 @@
 /**
  * Replicate AI client — LLM chat calls.
- * Model: meta/meta-llama-3.1-70b-instruct — strong multilingual (incl. Russian)
- * and far better instruction-following than the 8B model. Self-hosted Coolify
- * deploy has no 30s function timeout, so the larger model is viable.
+ * Model: openai/gpt-4o-mini, served THROUGH Replicate (uses the existing
+ * REPLICATE_API_TOKEN — no personal OpenAI key on the site). Excellent
+ * multilingual quality (incl. Russian) and reliable instruction-following.
  */
 import Replicate from "replicate";
 
-const LLM_MODEL = "meta/meta-llama-3.1-70b-instruct";
+const LLM_MODEL = "openai/gpt-4o-mini";
 
 function client(): Replicate {
   const token = process.env.REPLICATE_API_TOKEN;
@@ -23,29 +23,25 @@ export async function chatCompletion(opts: {
 }): Promise<string> {
   const replicate = client();
 
-  // Llama-3 instruct prompt format
+  // Plain conversational prompt (no model-specific control tokens) so it works
+  // with OpenAI-family models on Replicate.
   let prompt = "";
   for (const msg of opts.history) {
-    if (msg.role === "user") {
-      prompt += `<|start_header_id|>user<|end_header_id|>\n${msg.content}<|eot_id|>\n`;
-    } else {
-      prompt += `<|start_header_id|>assistant<|end_header_id|>\n${msg.content}<|eot_id|>\n`;
-    }
+    const label = msg.role === "user" ? "User" : "Assistant";
+    prompt += `${label}: ${msg.content}\n`;
   }
-  prompt += `<|start_header_id|>user<|end_header_id|>\n${opts.userMessage}<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n`;
+  prompt += `User: ${opts.userMessage}\nAssistant:`;
 
   const output = await replicate.run(LLM_MODEL, {
     input: {
       prompt,
       system_prompt: opts.systemPrompt,
-      max_tokens: opts.maxTokens ?? 600,
-      temperature: opts.temperature ?? 0.7,
-      top_p: 0.9,
-      stop_sequences: "<|eot_id|>",
+      max_completion_tokens: opts.maxTokens ?? 600,
+      temperature: opts.temperature ?? 0.6,
     },
   });
 
-  // Replicate LLM output is string[] (one string per token chunk)
+  // Replicate LLM output is string[] (one string per token chunk) or a string.
   if (Array.isArray(output)) return (output as string[]).join("");
   if (typeof output === "string") return output;
   throw new Error(`Unexpected Replicate output type: ${typeof output}`);
