@@ -927,7 +927,7 @@ export default function BrowsePage() {
                   onClick={() => setFiltersOpen(false)}
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="p-1.5 -mr-1.5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
                     <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
