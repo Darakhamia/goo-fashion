@@ -1,11 +1,12 @@
 /**
  * Replicate AI client — LLM chat calls.
- * Model: meta/llama-3-8b-instruct (fast, affordable, reliable on Replicate)
+ * Model: meta/meta-llama-3.1-70b-instruct — strong multilingual (incl. Russian)
+ * and far better instruction-following than the 8B model. Self-hosted Coolify
+ * deploy has no 30s function timeout, so the larger model is viable.
  */
 import Replicate from "replicate";
 
-// Llama 3 8B — well-supported on Replicate, fast cold start
-const LLM_MODEL = "meta/meta-llama-3-8b-instruct";
+const LLM_MODEL = "meta/meta-llama-3.1-70b-instruct";
 
 function client(): Replicate {
   const token = process.env.REPLICATE_API_TOKEN;
