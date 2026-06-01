@@ -857,38 +857,9 @@ export default function BrowsePage() {
             <div className="mt-6 border-t border-[var(--border)]" />
           </div>
 
-          {/* View tabs */}
-          <div className="flex justify-center gap-2 mt-6">
-            {(["pieces", "outfits"] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => {
-                  if (v !== view) {
-                    setView(v);
-                    setSelectedBrands([]);
-                    setSelectedSubcategories([]);
-                    setSelectedOccasions([]);
-                    setSelectedColorGroupIds([]);
-                    setAiOnly(false);
-                    setMaxPrice(null);
-                    setSearchQuery("");
-                    setSearchOpen(false);
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("view", v);
-                    window.history.replaceState({}, "", url.toString());
-                  }
-                }}
-                className={`relative flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
-                  view === v
-                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                    : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                }`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+          {/* View tabs — moved to toolbar */}
         </div>
+
 
         {/* ── FILTER SIDEBAR OVERLAY ── */}
         <AnimatePresence>
@@ -964,6 +935,36 @@ export default function BrowsePage() {
                   )}
                 </button>
 
+
+                {/* View tabs */}
+                {(["pieces", "outfits"] as View[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      if (v !== view) {
+                        setView(v);
+                        setSelectedBrands([]);
+                        setSelectedSubcategories([]);
+                        setSelectedOccasions([]);
+                        setSelectedColorGroupIds([]);
+                        setAiOnly(false);
+                        setMaxPrice(null);
+                        setSearchQuery("");
+                        setSearchOpen(false);
+                        const url = new URL(window.location.href);
+                        url.searchParams.set("view", v);
+                        window.history.replaceState({}, "", url.toString());
+                      }
+                    }}
+                    className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      view === v
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
 
                 {/* Search toggle */}
                 <div className="shrink-0 relative">
