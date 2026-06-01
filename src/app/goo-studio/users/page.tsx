@@ -607,6 +607,28 @@ function UserDrawer({
     return () => { cancelled = true; };
   }, [userId]);
 
+  const [resetting, setResetting] = useState(false);
+
+  const resetStylistUsage = async (scope: "today" | "all") => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/stylist-usage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+      // Refresh stats so the counter reflects the reset
+      const statsRes = await fetch(`/api/admin/users/${userId}/stats`, { cache: "no-store" });
+      if (statsRes.ok) setStats(await statsRes.json() as UserStats);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to reset usage");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const hasChanges =
     detail !== null && (
       firstName !== (detail.firstName ?? "") ||
@@ -781,6 +803,26 @@ function UserDrawer({
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
                     <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">published</p>
                   </div>
+                </div>
+              )}
+
+              {/* Reset stylist limit */}
+              {stats && (
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => resetStylistUsage("today")}
+                    disabled={resetting || stats.stylistMsgToday === 0}
+                    className="text-[10px] tracking-[0.1em] uppercase border border-[var(--border)] hover:border-[var(--foreground)] rounded-full px-3 py-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {resetting ? "Resetting…" : "Reset today's limit"}
+                  </button>
+                  <button
+                    onClick={() => resetStylistUsage("all")}
+                    disabled={resetting}
+                    className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Reset all-time
+                  </button>
                 </div>
               )}
             </div>
