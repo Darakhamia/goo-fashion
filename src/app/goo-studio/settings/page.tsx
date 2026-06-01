@@ -25,6 +25,12 @@ export default function SettingsPage() {
   const [heroLightOk, setHeroLightOk] = useState(false);
   const heroLightInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Embeddings state ──────────────────────────────────────────────────────
+  const [embedStatus, setEmbedStatus] = useState<{ total: number; embedded: number; missing: number } | null>(null);
+  const [embedRunning, setEmbedRunning] = useState(false);
+  const [embedResult, setEmbedResult] = useState<{ processed: number; errors: number } | null>(null);
+  const [embedError, setEmbedError] = useState("");
+
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -47,7 +53,33 @@ export default function SettingsPage() {
   useEffect(() => {
     loadHero();
     loadStatus();
+    loadEmbedStatus();
   }, []);
+
+  async function loadEmbedStatus() {
+    try {
+      const res = await fetch("/api/admin/embeddings");
+      if (!res.ok) return;
+      setEmbedStatus(await res.json());
+    } catch { /* non-fatal */ }
+  }
+
+  async function runEmbeddings() {
+    setEmbedRunning(true);
+    setEmbedResult(null);
+    setEmbedError("");
+    try {
+      const res = await fetch("/api/admin/embeddings", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setEmbedError(data.error ?? "Failed"); return; }
+      setEmbedResult(data);
+      await loadEmbedStatus();
+    } catch {
+      setEmbedError("Network error. Try again.");
+    } finally {
+      setEmbedRunning(false);
+    }
+  }
 
   async function loadHero() {
     try {
@@ -366,6 +398,82 @@ export default function SettingsPage() {
               Reset to default
             </button>
           )}
+        </div>
+      </div>
+
+      {/* ── AI Stylist Embeddings ── */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-4">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M4.5 7C4.5 5.62 5.62 4.5 7 4.5C8.38 4.5 9.5 5.62 9.5 7C9.5 8.38 8.38 9.5 7 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+              <circle cx="7" cy="7" r="1" fill="currentColor" />
+            </svg>
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+              AI Stylist — Product Embeddings
+            </p>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+            Векторы позволяют стилисту находить релевантные товары семантически. Запускай после добавления новых товаров.
+          </p>
+        </div>
+
+        <div className="px-5 py-4">
+          {embedStatus && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] text-[var(--foreground-muted)]">Прогресс векторизации</span>
+                <span className="text-[11px] font-mono text-[var(--foreground)]">
+                  {embedStatus.embedded} / {embedStatus.total}
+                </span>
+              </div>
+              <div className="h-1.5 bg-[var(--surface)] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[var(--foreground)] rounded-full transition-all"
+                  style={{ width: embedStatus.total > 0 ? `${(embedStatus.embedded / embedStatus.total) * 100}%` : "0%" }}
+                />
+              </div>
+              {embedStatus.missing > 0 ? (
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1.5">
+                  {embedStatus.missing} товаров без вектора — нажми Generate чтобы обновить
+                </p>
+              ) : (
+                <p className="text-[10px] text-green-600 mt-1.5">Все товары векторизованы ✓</p>
+              )}
+            </div>
+          )}
+
+          {embedResult && (
+            <p className="text-[11px] text-green-600 mb-2">
+              Готово: {embedResult.processed} обработано{embedResult.errors > 0 ? `, ${embedResult.errors} ошибок` : ""}
+            </p>
+          )}
+          {embedError && <p className="text-[11px] text-red-500 mb-2">{embedError}</p>}
+
+          {embedRunning && (
+            <p className="text-[11px] text-[var(--foreground-muted)] flex items-center gap-2">
+              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+              Генерируем векторы… это займёт ~2-3 минуты
+            </p>
+          )}
+        </div>
+
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2">
+          <button
+            onClick={runEmbeddings}
+            disabled={embedRunning}
+            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {embedRunning && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {embedRunning ? "Running…" : "Generate Embeddings"}
+          </button>
+          <button
+            onClick={loadEmbedStatus}
+            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            Refresh
+          </button>
         </div>
       </div>
 
