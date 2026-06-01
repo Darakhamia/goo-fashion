@@ -915,25 +915,39 @@ export default function BrowsePage() {
             <div className="flex items-end justify-between pt-4 border-b border-[var(--border)] overflow-visible">
               <div className="flex items-end gap-2 min-w-0 flex-1 overflow-visible">
 
-                {/* Pieces tab → Filter button */}
+                {/* Pieces/Outfits toggle + Filter/Search — columns */}
                 <div className="flex flex-col gap-2 pb-4 shrink-0">
-                  <button
-                    onClick={() => {
-                      if (view !== "pieces") {
-                        setView("pieces");
-                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                        setSearchQuery(""); setSearchOpen(false);
-                        const url = new URL(window.location.href); url.searchParams.set("view", "pieces");
-                        window.history.replaceState({}, "", url.toString());
-                      }
-                    }}
-                    className={`w-full justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                      view === "pieces"
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                    }`}
-                  >Pieces</button>
+                  {/* Sliding pill toggle */}
+                  <div className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
+                    {(["pieces", "outfits"] as View[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => {
+                          if (v !== view) {
+                            setView(v);
+                            setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                            setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                            setSearchQuery(""); setSearchOpen(false);
+                            const url = new URL(window.location.href); url.searchParams.set("view", v);
+                            window.history.replaceState({}, "", url.toString());
+                          }
+                        }}
+                        className="relative px-3 sm:px-5 py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
+                        style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                      >
+                        {view === v && (
+                          <motion.div
+                            layoutId="browse-tab-pill"
+                            className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                            style={{ zIndex: -1 }}
+                          />
+                        )}
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
                   <button
                     onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
                     className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
@@ -952,28 +966,6 @@ export default function BrowsePage() {
                       </span>
                     )}
                   </button>
-                </div>
-
-                {/* Outfits tab → Search button */}
-                <div className="flex flex-col gap-2 pb-4 shrink-0">
-                  <button
-                    onClick={() => {
-                      if (view !== "outfits") {
-                        setView("outfits");
-                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                        setSearchQuery(""); setSearchOpen(false);
-                        const url = new URL(window.location.href); url.searchParams.set("view", "outfits");
-                        window.history.replaceState({}, "", url.toString());
-                      }
-                    }}
-                    className={`w-full justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                      view === "outfits"
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                    }`}
-                  >Outfits</button>
-
                   {/* Search toggle */}
                 <div className="shrink-0 relative">
                   <AnimatePresence mode="wait" initial={false}>
@@ -1029,7 +1021,8 @@ export default function BrowsePage() {
                     )}
                   </AnimatePresence>
                 </div>
-                </div>{/* end Outfits+Search column */}
+                  </div>{/* end Filter+Search row */}
+                </div>{/* end tabs+toolbar column */}
               </div>
 
               {/* Sort */}
