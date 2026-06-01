@@ -325,7 +325,8 @@ function SlideTransition({ active, prev }:{ active:number; prev:number|null }) {
   useEffect(() => {
     if (prev===null||prev===active) { setEntering(active); return; }
     setExiting(prev); setEntering(active); setPhase("animating");
-    const t = setTimeout(() => { setExiting(null); setPhase("idle"); }, 540);
+    // keep exiting slide visible for the full fade-out duration (500ms)
+    const t = setTimeout(() => { setExiting(null); setPhase("idle"); }, 500);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
@@ -333,15 +334,23 @@ function SlideTransition({ active, prev }:{ active:number; prev:number|null }) {
   const Exit  = exiting!==null ? SLIDE_COMPS[exiting]  : null;
   const Enter = SLIDE_COMPS[entering];
   return (
-    <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>
+    <div style={{ position:"absolute", inset:0 }}>
+      {/* exiting slide fades out behind the entering one */}
       {Exit && phase==="animating" && (
-        <div key={`x-${exiting}`} style={{ position:"absolute", inset:0,
-          animation:"sOutLeft 0.52s cubic-bezier(0.4,0,0.2,1) both" }}>
+        <div key={`x-${exiting}`} style={{
+          position:"absolute", inset:0, zIndex:1,
+          animation:"sFadeOut 0.5s cubic-bezier(0.4,0,1,1) both",
+        }}>
           <Exit/>
         </div>
       )}
-      <div key={`e-${entering}`} style={{ position:"absolute", inset:0,
-        animation:phase==="animating"?"sInRight 0.52s cubic-bezier(0.16,1,0.3,1) both":undefined }}>
+      {/* entering slide fades in on top — subtle scale-up for depth feel */}
+      <div key={`e-${entering}`} style={{
+        position:"absolute", inset:0, zIndex:2,
+        animation:phase==="animating"
+          ? "sFadeIn 0.75s cubic-bezier(0.16,1,0.3,1) both"
+          : undefined,
+      }}>
         <Enter/>
       </div>
     </div>
@@ -381,9 +390,10 @@ export default function FeatureCarousel({ onSlideChange }:{ onSlideChange?:(i:nu
         @keyframes gDrift0 { 0%,100%{transform:translateY(0px)}   50%{transform:translateY(-7px)}  }
         @keyframes gDrift1 { 0%,100%{transform:translateY(-4px)}  50%{transform:translateY(6px)}   }
         @keyframes gDrift2 { 0%,100%{transform:translateY(3px)}   50%{transform:translateY(-8px)}  }
-        @keyframes cReveal { from{opacity:0;transform:translateY(10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-        @keyframes sInRight{ from{opacity:0;transform:translateX(42px) scale(0.98)} to{opacity:1;transform:translateX(0) scale(1)} }
-        @keyframes sOutLeft{ from{opacity:1;transform:translateX(0) scale(1)} to{opacity:0;transform:translateX(-42px) scale(0.98)} }
+        @keyframes cReveal  { from{opacity:0;transform:translateY(8px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        /* premium crossfade — no translate, just opacity + very subtle scale */
+        @keyframes sFadeIn  { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+        @keyframes sFadeOut { from{opacity:1;transform:scale(1)}    to{opacity:0;transform:scale(1.02)} }
         @keyframes dotPulse{ 0%,100%{opacity:.4;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
       `}</style>
 
