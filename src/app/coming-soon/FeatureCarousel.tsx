@@ -15,22 +15,22 @@ const ITEMS = [
   { n:"03", cat:"SNEAKERS", brand:"BALENCIAGA",               price:"$890", img:"/cs/sneakers.png" },
 ];
 const BRANDS = [
-  { name:"LV",           top:"4%",   left:"4%",   size:58, hasBox:true,  textSize:18, bold:true  },
-  { name:"BALENCIAGA",   top:"3%",   left:"26%",  size:52, hasBox:true,  textSize:7,  bold:true  },
-  { name:"NIKE",         top:"2%",   left:"58%",  size:56, hasBox:true,  textSize:10, bold:false },
-  { name:"PRADA",        top:"6%",   left:"82%",  size:0,  hasBox:false, textSize:14, bold:true  },
-  { name:"SAINT LAURENT",top:"18%",  left:"88%",  size:0,  hasBox:false, textSize:8,  bold:false },
-  { name:"DIOR",         top:"32%",  left:"8%",   size:54, hasBox:true,  textSize:13, bold:true  },
-  { name:"CELINE",       top:"38%",  left:"82%",  size:0,  hasBox:false, textSize:10, bold:false },
-  { name:"STONE ISLAND", top:"48%",  left:"88%",  size:50, hasBox:true,  textSize:7,  bold:false },
-  { name:"MONCLER",      top:"58%",  left:"2%",   size:58, hasBox:true,  textSize:7,  bold:false },
-  { name:"AMIRI",        top:"68%",  left:"13%",  size:52, hasBox:true,  textSize:11, bold:true  },
-  { name:"BURBERRY",     top:"68%",  left:"84%",  size:0,  hasBox:false, textSize:11, bold:false },
-  { name:"FEAR OF GOD",  top:"82%",  left:"4%",   size:0,  hasBox:false, textSize:8,  bold:false },
-  { name:"OFF-WHITE",    top:"84%",  left:"26%",  size:52, hasBox:true,  textSize:8,  bold:true  },
-  { name:"RHUDE",        top:"86%",  left:"52%",  size:52, hasBox:true,  textSize:10, bold:false },
-  { name:"ACNE STUDIOS", top:"84%",  left:"74%",  size:0,  hasBox:false, textSize:8,  bold:false },
-  { name:"A.P.C.",       top:"82%",  left:"90%",  size:0,  hasBox:false, textSize:13, bold:true  },
+  { name:"LV",           top:"16%", left:"12%", size:66, hasBox:true,  textSize:20, bold:true  },
+  { name:"BALENCIAGA",   top:"10%", left:"31%", size:54, hasBox:true,  textSize:7,  bold:true  },
+  { name:"NIKE",         top:"9%",  left:"55%", size:58, hasBox:true,  textSize:10, bold:false },
+  { name:"PRADA",        top:"12%", left:"72%", size:0,  hasBox:false, textSize:14, bold:true  },
+  { name:"SAINT LAURENT",top:"23%", left:"88%", size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"DIOR",         top:"38%", left:"19%", size:56, hasBox:true,  textSize:14, bold:true  },
+  { name:"CELINE",       top:"34%", left:"78%", size:0,  hasBox:false, textSize:11, bold:false },
+  { name:"STONE ISLAND", top:"47%", left:"93%", size:52, hasBox:true,  textSize:7,  bold:false },
+  { name:"MONCLER",      top:"55%", left:"7%",  size:62, hasBox:true,  textSize:7,  bold:false },
+  { name:"AMIRI",        top:"69%", left:"19%", size:54, hasBox:true,  textSize:12, bold:true  },
+  { name:"BURBERRY",     top:"67%", left:"86%", size:0,  hasBox:false, textSize:12, bold:false },
+  { name:"FEAR OF GOD",  top:"86%", left:"11%", size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"OFF-WHITE",    top:"87%", left:"31%", size:54, hasBox:true,  textSize:8,  bold:true  },
+  { name:"RHUDE",        top:"92%", left:"55%", size:54, hasBox:true,  textSize:11, bold:false },
+  { name:"ACNE STUDIOS", top:"90%", left:"73%", size:0,  hasBox:false, textSize:8,  bold:false },
+  { name:"A.P.C.",       top:"85%", left:"84%", size:0,  hasBox:false, textSize:14, bold:true  },
 ];
 
 /* ── shared card surface style ──────────────────────────── */
@@ -258,6 +258,12 @@ function Slide03() {
     <div style={{ position:"relative", height:"100%", overflow:"hidden",
       animation:"cReveal 0.7s cubic-bezier(0.16,1,0.3,1) both 0s" }}>
 
+      {/* subtle radial glow behind 50+ */}
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
+        background:"radial-gradient(ellipse 55% 40% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%)",
+      }}/>
+
       {/* "50+" hero text — bright, centered */}
       <div style={{
         position:"absolute", inset:0,
@@ -265,8 +271,8 @@ function Slide03() {
         pointerEvents:"none", zIndex:1,
       }}>
         <p style={{
-          fontSize:"clamp(64px,12vw,96px)", fontWeight:900,
-          color:"rgba(255,255,255,0.92)", letterSpacing:"-0.04em",
+          fontSize:"clamp(72px,14vw,108px)", fontWeight:900,
+          color:"rgba(255,255,255,0.93)", letterSpacing:"-0.03em",
           lineHeight:1, userSelect:"none",
         }}>50+</p>
       </div>
