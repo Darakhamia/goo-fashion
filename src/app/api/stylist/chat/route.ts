@@ -464,9 +464,10 @@ export async function POST(req: Request) {
       limit: dailyLimit,
     });
   } catch (err) {
-    console.error("[stylist/chat]", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[stylist/chat] ERROR:", msg);
     return NextResponse.json(
-      { error: "The AI service is temporarily unavailable. Try again in a moment." },
+      { error: "The AI service is temporarily unavailable. Try again in a moment.", _debug: msg },
       { status: 502 }
     );
   }
