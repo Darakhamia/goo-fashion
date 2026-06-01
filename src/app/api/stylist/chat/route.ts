@@ -50,9 +50,21 @@ interface StylistChatRequest {
   browseContext?: BrowseContext;
 }
 
+interface SuggestedProduct {
+  id: string;
+  name: string;
+  brand: string;
+  category: string;
+  priceMin: number;
+  currency: string;
+  imageUrl: string;
+  styleKeywords: string[];
+}
+
 interface StylistChatResponse {
   reply: string;
   suggestedProductIds: string[];
+  suggestedProducts: SuggestedProduct[];
   styleKeywords: string[];
   remaining: number | null;
   limit: number | null;
@@ -153,7 +165,7 @@ async function findRelevantProducts(userMessage: string): Promise<MatchedProduct
 
     const { data } = await supabase
       .from("products")
-      .select("id, name, brand, category, price_min, style_keywords, description")
+      .select("id, name, brand, category, price_min, style_keywords, description, image_url, currency")
       .limit(SEARCH_MATCH_COUNT);
 
     return ((data ?? []) as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
@@ -485,6 +497,30 @@ export async function POST(req: Request) {
       .slice(0, 6);
     const styleKeywords = parsed.styleKeywords.slice(0, 5);
 
+    // ── Fetch full product data for suggested IDs ─────────────────────────
+    let suggestedProducts: SuggestedProduct[] = [];
+    if (suggestedProductIds.length > 0 && isSupabaseConfigured && supabase) {
+      try {
+        const { data: fullData } = await supabase
+          .from("products")
+          .select("id, name, brand, category, price_min, currency, image_url, style_keywords")
+          .in("id", suggestedProductIds);
+        if (fullData) {
+          const order = new Map(suggestedProductIds.map((id, i) => [id, i]));
+          suggestedProducts = (fullData as Array<{
+            id: string; name: string; brand: string; category: string;
+            price_min: number; currency: string; image_url: string; style_keywords: string[];
+          }>)
+            .map(p => ({
+              id: p.id, name: p.name, brand: p.brand, category: p.category,
+              priceMin: p.price_min, currency: p.currency ?? "USD",
+              imageUrl: p.image_url ?? "", styleKeywords: p.style_keywords ?? [],
+            }))
+            .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+        }
+      } catch { /* UI falls back to local props lookup */ }
+    }
+
     // ── Increment usage ───────────────────────────────────────────────────
     let newCount = usageCount;
     if (userId && dailyLimit !== null) {
@@ -495,6 +531,7 @@ export async function POST(req: Request) {
     return NextResponse.json<StylistChatResponse>({
       reply: reply.trim() || "Here are some options that might work.",
       suggestedProductIds,
+      suggestedProducts,
       styleKeywords,
       remaining,
       limit: dailyLimit,
