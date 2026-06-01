@@ -858,7 +858,7 @@ export default function BrowsePage() {
           </div>
 
           {/* View tabs */}
-          <div className="flex gap-0 mt-6 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
+          <div className="flex justify-center gap-2 mt-6">
             {(["pieces", "outfits"] as View[]).map((v) => (
               <button
                 key={v}
@@ -878,17 +878,12 @@ export default function BrowsePage() {
                     window.history.replaceState({}, "", url.toString());
                   }
                 }}
-                className="relative px-6 py-2 text-xs tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
-                style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                className={`relative flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                  view === v
+                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                    : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                }`}
               >
-                {view === v && (
-                  <motion.div
-                    layoutId="browse-tab-pill"
-                    className="absolute inset-0 rounded-full bg-[var(--foreground)]"
-                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                    style={{ zIndex: -1 }}
-                  />
-                )}
                 {v}
               </button>
             ))}
