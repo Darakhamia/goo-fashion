@@ -90,13 +90,13 @@ function EmailForm() {
 /* ── Slide 01: Items ───────────────────────────────────── */
 function Slide01() {
   return (
-    <div className="flex-1 grid grid-cols-3 gap-3 min-h-0">
+    <div className="flex-1 grid grid-cols-3 gap-2.5 min-h-0">
       {ITEMS.map((item, i) => (
         <div
           key={item.n}
           className="flex flex-col overflow-hidden"
           style={{
-            borderRadius: 18,
+            borderRadius: 14,
             background: "rgba(255,255,255,0.028)",
             border: "1px solid rgba(255,255,255,0.09)",
             boxShadow: "0 0 0 0 transparent",
@@ -105,7 +105,7 @@ function Slide01() {
           }}
           onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
             const el = e.currentTarget as HTMLDivElement;
-            el.style.boxShadow = "0 0 35px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.1)";
+            el.style.boxShadow = "0 0 28px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.1)";
             el.style.borderColor = "rgba(255,255,255,0.16)";
           }}
           onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
@@ -114,21 +114,22 @@ function Slide01() {
             el.style.borderColor = "rgba(255,255,255,0.09)";
           }}
         >
-          <div className="relative flex-1 min-h-0 overflow-hidden">
-            <span className="absolute top-3.5 left-3.5 z-10 text-[9px] tracking-[0.18em] text-white/35 font-mono"
+          {/* Image area — object-contain with padding for air */}
+          <div className="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center p-4">
+            <span className="absolute top-2.5 left-2.5 z-10 text-[8px] tracking-[0.18em] text-white/30 font-mono"
               style={{ textShadow: "0 0 10px rgba(255,255,255,0.5)" }}>
               {item.n}
             </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.img} alt={item.cat}
-              className="w-full h-full object-cover object-center"
+              className="w-full h-full object-contain"
               style={{ animation: `imgReveal 0.8s cubic-bezier(0.16,1,0.3,1) both ${0.1 + i * 0.08}s` }}
             />
           </div>
-          <div className="px-4 py-3.5 shrink-0"
+          <div className="px-3 py-2.5 shrink-0"
             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[12px] font-black text-white tracking-[0.08em] uppercase leading-tight">{item.cat}</p>
-            <p className="text-[9px] text-white/35 tracking-[0.1em] uppercase mt-1 leading-tight truncate">{item.brand}</p>
+            <p className="text-[10px] font-black text-white tracking-[0.08em] uppercase leading-tight">{item.cat}</p>
+            <p className="text-[8px] text-white/35 tracking-[0.1em] uppercase mt-0.5 leading-tight truncate">{item.brand}</p>
           </div>
         </div>
       ))}
@@ -139,7 +140,7 @@ function Slide01() {
 /* ── Slide 02: Outfit ──────────────────────────────────── */
 function Slide02() {
   return (
-    <div className="flex-1 grid grid-cols-[1fr_1.1fr] gap-3 min-h-0">
+    <div className="flex-1 grid grid-cols-[1fr_1.1fr] gap-2.5 min-h-0">
       {/* Left: item list */}
       <div className="flex flex-col gap-2 min-h-0">
         {ITEMS.map((item, i) => (
@@ -147,32 +148,32 @@ function Slide02() {
             key={item.n}
             className="flex-1 min-h-0 overflow-hidden relative"
             style={{
-              borderRadius: 16,
+              borderRadius: 12,
               background: "#080808",
               border: "1px solid rgba(255,255,255,0.09)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
               animation: `cardReveal 0.55s cubic-bezier(0.16,1,0.3,1) both ${i * 0.1}s`,
             }}
           >
-            <span className="absolute top-3 left-3.5 z-10 text-[8px] font-mono text-white/25">{item.n}</span>
+            <span className="absolute top-2.5 left-3 z-10 text-[7px] font-mono text-white/25">{item.n}</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.img}
               alt={item.cat}
-              className="w-full object-contain object-center"
+              className="w-full object-contain object-center px-3"
               style={{
-                height: "calc(100% - 44px)",
+                height: "calc(100% - 40px)",
                 animation: `imgReveal 0.6s cubic-bezier(0.16,1,0.3,1) both ${0.05 + i * 0.08}s`,
               }}
             />
-            <div className="absolute bottom-0 left-0 right-0 px-3.5 py-2.5"
+            <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
               style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-[11px] font-black text-white uppercase tracking-[0.07em] leading-tight">{item.cat}</p>
-              <p className="text-[8px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
+              <p className="text-[10px] font-black text-white uppercase tracking-[0.07em] leading-tight">{item.cat}</p>
+              <p className="text-[7px] text-white/30 uppercase tracking-[0.08em] mt-0.5 leading-tight truncate">{item.brand}</p>
             </div>
-            <div className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center shrink-0"
+            <div className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center shrink-0"
               style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)" }}>
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
+              <svg width="8" height="8" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" className="text-white/38">
                 <path d="M4.5 1.5v6M1.5 4.5h6"/>
               </svg>
             </div>
@@ -184,15 +185,15 @@ function Slide02() {
       <div
         className="flex flex-col overflow-hidden"
         style={{
-          borderRadius: 18,
+          borderRadius: 14,
           background: "#080808",
           border: "1px solid rgba(255,255,255,0.09)",
           animation: "cardReveal 0.65s cubic-bezier(0.16,1,0.3,1) both 0.15s",
         }}
       >
-        <div className="px-4 py-2.5 flex items-center gap-2 shrink-0"
+        <div className="px-3.5 py-2 flex items-center gap-2 shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="text-[9px] tracking-[0.2em] uppercase text-white/50 font-black">Complete Look</span>
+          <span className="text-[8px] tracking-[0.2em] uppercase text-white/50 font-black">Complete Look</span>
           <span className="w-1.5 h-1.5 rounded-full bg-white/55"
             style={{ boxShadow: "0 0 7px 1px rgba(255,255,255,0.65)", animation: "dotPulse 2.4s ease-in-out infinite" }}/>
         </div>
@@ -212,46 +213,46 @@ function Slide02() {
 function Slide03() {
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-end justify-between mb-5 shrink-0">
+      <div className="flex items-end justify-between mb-4 shrink-0">
         <div>
-          <p className="text-[8px] tracking-[0.26em] uppercase text-white/25 mb-2">Premium Brands</p>
-          <p className="text-[20px] md:text-[24px] font-black text-white uppercase tracking-[-0.01em] leading-[1.05]">
+          <p className="text-[7px] tracking-[0.26em] uppercase text-white/25 mb-1.5">Premium Brands</p>
+          <p className="text-[18px] md:text-[22px] font-black text-white uppercase tracking-[-0.01em] leading-[1.05]">
             50+ Premium Brands.<br />One Place.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-8 h-8 flex items-center justify-center text-white/30 hover:text-white transition-colors"
+          <button className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white transition-colors"
             style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.14)" }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6.5 2L3.5 5l3 3"/>
             </svg>
           </button>
-          <button className="w-8 h-8 flex items-center justify-center text-white hover:opacity-70 transition-opacity"
+          <button className="w-7 h-7 flex items-center justify-center text-white hover:opacity-70 transition-opacity"
             style={{ borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)" }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3.5 2l3 3-3 3"/>
             </svg>
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2.5 content-start">
+      <div className="grid grid-cols-4 gap-2 content-start">
         {BRANDS.map((brand, i) => (
           <div
             key={brand}
-            className="flex items-center justify-center px-2 py-5 transition-all duration-400"
+            className="flex items-center justify-center px-2 py-4 transition-all duration-400"
             style={{
-              borderRadius: 14,
+              borderRadius: 12,
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.09)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-              aspectRatio: "1.15",
+              aspectRatio: "1.2",
               animation: `cardReveal 0.5s cubic-bezier(0.16,1,0.3,1) both ${i * 0.05}s`,
             }}
             onMouseEnter={(e: { currentTarget: HTMLDivElement }) => {
               const el = e.currentTarget as HTMLDivElement;
               el.style.background = "rgba(255,255,255,0.055)";
               el.style.borderColor = "rgba(255,255,255,0.18)";
-              el.style.boxShadow = "0 0 30px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)";
+              el.style.boxShadow = "0 0 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)";
             }}
             onMouseLeave={(e: { currentTarget: HTMLDivElement }) => {
               const el = e.currentTarget as HTMLDivElement;
@@ -260,7 +261,7 @@ function Slide03() {
               el.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.05)";
             }}
           >
-            <span className="text-[9px] md:text-[10px] font-black tracking-[0.1em] text-white/55 text-center uppercase leading-tight">
+            <span className="text-[8px] md:text-[9px] font-black tracking-[0.1em] text-white/55 text-center uppercase leading-tight">
               {brand}
             </span>
           </div>
@@ -299,7 +300,6 @@ function SlideTransition({ active, prev }: { active: number; prev: number | null
 
   return (
     <div className="absolute inset-0 flex flex-col min-h-0 overflow-hidden">
-      {/* Exiting slide — slides out to the left */}
       {ExitingComponent && phase === "animating" && (
         <div
           key={`exit-${exiting}`}
@@ -309,7 +309,6 @@ function SlideTransition({ active, prev }: { active: number; prev: number | null
           <ExitingComponent />
         </div>
       )}
-      {/* Entering slide — slides in from the right */}
       <div
         key={`enter-${entering}`}
         className="absolute inset-0 flex flex-col min-h-0"
@@ -370,20 +369,20 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
     <>
       <style>{`
         @keyframes cardReveal {
-          from { opacity:0; transform:translateY(14px) scale(0.98); }
+          from { opacity:0; transform:translateY(12px) scale(0.97); }
           to   { opacity:1; transform:translateY(0)    scale(1);    }
         }
         @keyframes imgReveal {
-          from { opacity:0; transform:scale(1.06); }
+          from { opacity:0; transform:scale(1.05); }
           to   { opacity:1; transform:scale(1);    }
         }
         @keyframes slideInRight {
-          from { opacity:0; transform:translateX(48px) scale(0.98); }
+          from { opacity:0; transform:translateX(40px) scale(0.98); }
           to   { opacity:1; transform:translateX(0)    scale(1);    }
         }
         @keyframes slideOutLeft {
           from { opacity:1; transform:translateX(0)     scale(1);    }
-          to   { opacity:0; transform:translateX(-48px) scale(0.98); }
+          to   { opacity:0; transform:translateX(-40px) scale(0.98); }
         }
         @keyframes dotPulse {
           0%,100% { opacity:0.4; transform:scale(1);   }
@@ -391,10 +390,10 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
         }
       `}</style>
 
-      <div className="h-full flex flex-col gap-4">
+      <div className="h-full flex flex-col gap-3">
 
         {/* ── Top tab nav ── */}
-        <div className="flex items-center gap-0 shrink-0 pb-0"
+        <div className="flex items-center gap-0 shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           {SLIDES.map((slide, i) => (
             <button
@@ -412,7 +411,6 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
               >
                 {slide.id} / {slide.short}
               </span>
-              {/* Active underline with progress */}
               {i === active && (
                 <span className="absolute bottom-0 left-0 h-[1.5px]"
                   style={{
@@ -427,29 +425,32 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
           ))}
         </div>
 
-        {/* ── Slide content — 3-D perspective tilt ── */}
+        {/*
+          ── 3-D tilted slide area ──
+          Strategy: overflow:hidden clips everything; scale(0.78) pulls the
+          whole scene in so after rotateY the bounding box stays inside the
+          panel; transformOrigin:center keeps it centred.
+        */}
         <div
-          className="flex-1 min-h-0 relative"
-          style={{ perspective: "1100px" }}
+          className="flex-1 min-h-0 relative overflow-hidden"
+          style={{ perspective: "1400px" }}
         >
-          {/* right-edge fade + bottom fade mask */}
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
+          {/* Soft vignette on all four edges */}
+          <div className="absolute inset-0 pointer-events-none z-10"
             style={{
-              background: "linear-gradient(to right, transparent 60%, #080808 100%)",
+              background: [
+                "linear-gradient(to right,  #080808 0%, transparent 12%, transparent 75%, #080808 100%)",
+                "linear-gradient(to bottom, transparent 55%, #080808 100%)",
+              ].join(", "),
             }}
           />
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{
-              background: "linear-gradient(to bottom, transparent 65%, #080808 100%)",
-            }}
-          />
+
+          {/* 3-D scene — centred, scaled down, gently tilted */}
           <div
             className="absolute inset-0"
             style={{
-              transform: "rotateY(-18deg) rotateX(6deg)",
-              transformOrigin: "left center",
+              transform: "rotateY(-12deg) rotateX(5deg) scale(0.78)",
+              transformOrigin: "center center",
               transformStyle: "preserve-3d",
             }}
           >
@@ -464,7 +465,7 @@ export default function FeatureCarousel({ onSlideChange }: { onSlideChange?: (id
 
         {/* ── Bottom nav ── */}
         <div className="shrink-0 flex items-center justify-between"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12 }}>
           <div className="flex items-center gap-0">
             {SLIDES.map((slide, i) => (
               <button
