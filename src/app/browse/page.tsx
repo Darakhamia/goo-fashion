@@ -932,7 +932,7 @@ export default function BrowsePage() {
                       window.history.replaceState({}, "", url.toString());
                     }
                   }}
-                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                  className={`w-[100px] justify-center flex items-center text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full py-2.5 transition-all duration-200 ${
                     view === v
                       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                       : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
