@@ -9,6 +9,7 @@ import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
+import BugReportButton from "@/components/internal/BugReportButton";
 
 const interTight = Inter_Tight({
   subsets: ["latin"],
@@ -66,6 +67,7 @@ export default function RootLayout({
                   <CurrencyProvider>
                     <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
                     <AnalyticsTracker />
+                    <BugReportButton />
                   </CurrencyProvider>
                 </CartProvider>
               </LikesProvider>
