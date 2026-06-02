@@ -932,7 +932,7 @@ export default function BrowsePage() {
                             window.history.replaceState({}, "", url.toString());
                           }
                         }}
-                        className="relative flex-1 text-center py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
+                        className="relative flex-1 text-center px-6 py-2.5 text-[13px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
                         style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
                       >
                         {view === v && (
@@ -1026,7 +1026,7 @@ export default function BrowsePage() {
               </div>
 
               {/* Sort */}
-              <div className="relative flex items-center shrink-0 ml-2" ref={sortRef}>
+              <div className="relative flex items-center shrink-0 ml-2 pb-4" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
                   className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
