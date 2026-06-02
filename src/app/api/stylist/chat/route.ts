@@ -593,7 +593,7 @@ export async function POST(req: Request) {
   if (userId && dailyLimit !== null) {
     usageCount = await getDailyUsage(userId);
     if (usageCount >= dailyLimit) {
-      const planLabel = userPlan === "premium" ? "Premium" : "a higher plan";
+      const planLabel = userPlan === "free" ? "Basic" : userPlan === "basic" ? "Pro" : "Premium";
       return NextResponse.json(
         {
           error: `You've used all ${dailyLimit} messages for today. Upgrade to ${planLabel} for more.`,
