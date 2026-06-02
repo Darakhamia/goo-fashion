@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { SignedIn, SignedOut, useClerk } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
 
@@ -24,6 +24,7 @@ export default function Navigation() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [currencySubmenu, setCurrencySubmenu] = useState(false);
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
+  const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { likedOutfits, likedProducts } = useLikes();
@@ -372,13 +373,13 @@ export default function Navigation() {
                       </svg>
                       Settings
                     </Link>
-                    <Link href="/logout" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all">
+                    <button onClick={() => { setProfileOpen(false); signOut({ redirectUrl: "/" }); }}
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
                       </svg>
                       Log out
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}
