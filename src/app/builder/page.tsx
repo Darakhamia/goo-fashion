@@ -1385,16 +1385,15 @@ export default function BuilderPage() {
                             {/* Top-right: heart like button */}
                             <button
                               onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
-                              className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+                              className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
                               aria-label={likedProducts.includes(product.id) ? "Unlike" : "Like"}
                             >
-                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
                                 <path
                                   d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
                                   stroke="currentColor"
                                   strokeWidth="1.3"
                                   fill={likedProducts.includes(product.id) ? "currentColor" : "none"}
-                                  className="text-[var(--foreground)]"
                                 />
                               </svg>
                             </button>
