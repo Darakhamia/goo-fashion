@@ -30,6 +30,20 @@ export default function Navigation() {
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
   const { currency, setCurrency, formatPrice, convertToUsd } = useCurrency();
+  const [aiTooltipVisible, setAiTooltipVisible] = useState(false);
+  const aiButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("ai-tooltip-dismissed")) {
+      const t = setTimeout(() => setAiTooltipVisible(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  const dismissAiTooltip = () => {
+    setAiTooltipVisible(false);
+    localStorage.setItem("ai-tooltip-dismissed", "1");
+  };
 
   const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
@@ -155,19 +169,59 @@ export default function Navigation() {
         {/* Right Actions */}
         <div className="hidden md:flex items-center shrink-0" style={{ gap: 4 }}>
           {/* AI Stylist — icon circle */}
-          <button
-            onClick={toggleStylist}
-            aria-label="Open AI Stylist"
-            className="flex items-center justify-center transition-all duration-200"
-            style={{
-              width: 38, height: 38, borderRadius: "50%",
-              border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
-              background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
-              color: stylistOpen ? (isDark ? "black" : "white") : navIconColor,
-            }}
-          >
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
-          </button>
+          <div ref={aiButtonRef} className="relative">
+            <button
+              onClick={() => { toggleStylist(); dismissAiTooltip(); }}
+              aria-label="Open AI Stylist"
+              className="flex items-center justify-center transition-all duration-200"
+              style={{
+                width: 38, height: 38, borderRadius: "50%",
+                border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
+                background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
+                color: stylistOpen ? (isDark ? "black" : "white") : navIconColor,
+              }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
+            </button>
+
+            {/* AI tooltip onboarding popup */}
+            {aiTooltipVisible && (
+              <div
+                className="absolute top-full right-0 mt-2 z-50"
+                style={{
+                  width: 200,
+                  background: isDark ? "#1a1a1a" : "#0A0A0A",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.08)"}`,
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  animation: "fadeInDown 0.25s ease",
+                }}
+              >
+                <button
+                  onClick={dismissAiTooltip}
+                  aria-label="Dismiss"
+                  style={{
+                    position: "absolute", top: 8, right: 8,
+                    width: 18, height: 18,
+                    background: "rgba(255,255,255,0.1)",
+                    border: "none", borderRadius: "50%",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: 10, lineHeight: 1,
+                  }}
+                >
+                  ✕
+                </button>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 4, paddingRight: 18 }}>
+                  AI-стилист
+                </p>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45, margin: 0 }}>
+                  Персональные подборки и идеи от искусственного интеллекта
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* divider */}
           <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
