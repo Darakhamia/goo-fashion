@@ -173,7 +173,7 @@ export default function Navigation() {
             <button
               onClick={() => { toggleStylist(); dismissAiTooltip(); }}
               aria-label="Open AI Stylist"
-              className="flex items-center justify-center transition-all duration-200"
+              className={`flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
@@ -214,10 +214,10 @@ export default function Navigation() {
                   ✕
                 </button>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 4, paddingRight: 18 }}>
-                  AI-стилист
+                  AI Stylist
                 </p>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45, margin: 0 }}>
-                  Персональные подборки и идеи от искусственного интеллекта
+                  Personal outfit picks and ideas powered by AI
                 </p>
               </div>
             )}
