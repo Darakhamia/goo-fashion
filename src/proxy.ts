@@ -15,6 +15,7 @@ const isProtectedRoute = createRouteMatcher([
 
 const isPublicRoute = createRouteMatcher([
   "/coming-soon(.*)",
+  "/report(.*)",
   "/api/unlock(.*)",
   "/api/(.*)",
 ]);
