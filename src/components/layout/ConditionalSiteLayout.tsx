@@ -22,7 +22,8 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   const isBarePage =
     pathname.startsWith("/goo-studio") ||
     pathname === "/login" ||
-    pathname === "/coming-soon";
+    pathname === "/coming-soon" ||
+    pathname === "/report";
 
   const isBuilder = pathname === "/builder";
 
