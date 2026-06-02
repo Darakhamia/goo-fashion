@@ -23,6 +23,7 @@ export default function Navigation() {
   const [cartOpen, setCartOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [currencySubmenu, setCurrencySubmenu] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
@@ -373,7 +374,7 @@ export default function Navigation() {
                       </svg>
                       Settings
                     </Link>
-                    <button onClick={() => { setProfileOpen(false); signOut({ redirectUrl: "/" }); }}
+                    <button onClick={() => { setProfileOpen(false); setLogoutConfirmOpen(true); }}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
@@ -487,6 +488,63 @@ export default function Navigation() {
             )}
           </div>
         </>
+      )}
+
+      {/* Logout confirmation modal */}
+      {logoutConfirmOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,0.45)" }}
+          onClick={() => setLogoutConfirmOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 20,
+              padding: "28px 28px 24px",
+              width: 300,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
+              animation: "fadeInDown 0.2s ease",
+            }}
+          >
+            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
+              Sign out?
+            </p>
+            <p style={{ fontSize: 13, color: "var(--foreground-muted)", marginBottom: 24, lineHeight: 1.5 }}>
+              Are you sure you want to sign out of your account?
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setLogoutConfirmOpen(false)}
+                style={{
+                  flex: 1, height: 40, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  background: "var(--fg-overlay-05)",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                  transition: "opacity 0.15s",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setLogoutConfirmOpen(false); signOut({ redirectUrl: "/" }); }}
+                style={{
+                  flex: 1, height: 40, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  background: "var(--foreground)",
+                  border: "none",
+                  color: "var(--background)",
+                  cursor: "pointer",
+                  transition: "opacity 0.15s",
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
