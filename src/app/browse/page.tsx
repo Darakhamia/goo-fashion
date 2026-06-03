@@ -1075,8 +1075,8 @@ export default function BrowsePage() {
 
             {/* Toolbar — row 2: View toggle + Style chips */}
             <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Sliding pill toggle: Outfits / Pieces */}
-              <div className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] shrink-0">
+              {/* Outfits / Pieces — same pill look as Filter/Search, sliding white fill via layoutId */}
+              <div className="flex gap-2 shrink-0">
                 {(["outfits", "pieces"] as View[]).map((v) => (
                   <button
                     key={v}
@@ -1090,8 +1090,11 @@ export default function BrowsePage() {
                         window.history.replaceState({}, "", url.toString());
                       }
                     }}
-                    className="relative flex-1 text-center px-5 py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200 whitespace-nowrap"
-                    style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                    className={`relative shrink-0 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-colors duration-200 whitespace-nowrap z-10 ${
+                      view === v
+                        ? "border-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
                   >
                     {view === v && (
                       <motion.div
