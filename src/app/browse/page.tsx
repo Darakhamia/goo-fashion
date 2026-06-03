@@ -1035,9 +1035,9 @@ export default function BrowsePage() {
                   </div>
                 </div>
 
-                {/* Divider + style chips — bottom-aligned with Pieces/Outfits, scrollable */}
+                {/* Divider + style chips — centered with Pieces/Outfits pill, scrollable */}
                 <div
-                  className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto"
+                  className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto self-end pb-[1px]"
                   style={{ scrollbarWidth: "none" }}
                 >
                   <div className="w-px h-5 shrink-0 bg-[var(--border)]" />
@@ -1045,7 +1045,7 @@ export default function BrowsePage() {
                     <button
                       key={style}
                       onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] tracking-[0.10em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
+                      className={`shrink-0 px-4 py-2 rounded-full text-[11px] tracking-[0.12em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
                         selectedStyle === style
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
