@@ -11,6 +11,9 @@ import { useLikes } from "@/lib/context/likes-context";
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
 
+const STYLE_FILTERS = ["Casual", "Sport", "Streetwear", "Classic", "Smart Casual", "Outdoor", "Home", "Premium"] as const;
+type StyleFilter = typeof STYLE_FILTERS[number];
+
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
 ];
@@ -259,6 +262,7 @@ export default function BrowsePage() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState<StyleFilter | null>(null);
   const [brandSearch, setBrandSearch] = useState("");
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
@@ -287,7 +291,8 @@ export default function BrowsePage() {
     (selectedGender !== null ? 1 : 0) +
     (maxPrice !== null ? 1 : 0) +
     (aiOnly ? 1 : 0) +
-    (likedOnly ? 1 : 0);
+    (likedOnly ? 1 : 0) +
+    (selectedStyle !== null ? 1 : 0);
 
   const clearAll = () => {
     setSelectedBrands([]);
@@ -300,6 +305,7 @@ export default function BrowsePage() {
     setAiOnly(false);
     setLikedOnly(false);
     setSearchQuery("");
+    setSelectedStyle(null);
   };
 
   /* Filtered data */
@@ -358,6 +364,14 @@ export default function BrowsePage() {
         (o) =>
           maxPrice === null || o.totalPriceMin <= maxPrice
       )
+      .filter((o) => {
+        if (!selectedStyle) return true;
+        const s = selectedStyle.toLowerCase();
+        return (
+          o.occasion.toLowerCase() === s ||
+          o.styleKeywords.some((k) => k.toLowerCase().includes(s))
+        );
+      })
       .filter(
         (o) =>
           !q ||
@@ -371,7 +385,7 @@ export default function BrowsePage() {
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, searchQuery, sort]);
+  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, selectedStyle, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -428,7 +442,7 @@ export default function BrowsePage() {
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
   // Reset to page 1 whenever filters/sort/view change
-  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly]);
+  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle]);
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
   const pagedItems = useMemo(
@@ -911,62 +925,30 @@ export default function BrowsePage() {
         {/* Main content */}
         <div>
           <main className="px-6 md:px-8 lg:px-10">
-            {/* Toolbar with tabs above each button */}
-            <div className="flex items-end justify-between pt-4 border-b border-[var(--border)] overflow-visible">
-              <div className="flex items-end gap-2 min-w-0 flex-1 overflow-visible">
+            {/* Toolbar — row 1: Filter + Search + Sort */}
+            <div className="flex items-center justify-between pt-4 pb-3">
+              <div className="flex gap-2 items-center">
+                {/* Filter button */}
+                <button
+                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                    filtersOpen
+                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                  }`}
+                >
+                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  <span className="hidden sm:inline">Filter</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
 
-                {/* Pieces/Outfits toggle + Filter/Search — columns */}
-                <div className="flex flex-col gap-2 pb-4 shrink-0">
-                  {/* Sliding pill toggle */}
-                  <div className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
-                    {(["pieces", "outfits"] as View[]).map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => {
-                          if (v !== view) {
-                            setView(v);
-                            setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                            setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                            setSearchQuery(""); setSearchOpen(false);
-                            const url = new URL(window.location.href); url.searchParams.set("view", v);
-                            window.history.replaceState({}, "", url.toString());
-                          }
-                        }}
-                        className="relative flex-1 text-center px-6 py-2.5 text-[13px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200"
-                        style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
-                      >
-                        {view === v && (
-                          <motion.div
-                            layoutId="browse-tab-pill"
-                            className="absolute inset-0 rounded-full bg-[var(--foreground)]"
-                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                            style={{ zIndex: -1 }}
-                          />
-                        )}
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                  <button
-                    onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                    className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                      filtersOpen
-                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                    }`}
-                  >
-                    <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                      <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                    </svg>
-                    <span className="hidden sm:inline">Filter</span>
-                    {activeFiltersCount > 0 && (
-                      <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                        {activeFiltersCount}
-                      </span>
-                    )}
-                  </button>
-                  {/* Search toggle */}
+                {/* Search toggle */}
                 <div className="shrink-0 relative">
                   <AnimatePresence mode="wait" initial={false}>
                     {!searchOpen ? (
@@ -1021,12 +1003,10 @@ export default function BrowsePage() {
                     )}
                   </AnimatePresence>
                 </div>
-                  </div>{/* end Filter+Search row */}
-                </div>{/* end tabs+toolbar column */}
               </div>
 
               {/* Sort */}
-              <div className="relative flex items-center shrink-0 ml-2 pb-4" ref={sortRef}>
+              <div className="relative flex items-center shrink-0 ml-2" ref={sortRef}>
                 <button
                   onClick={() => setSortOpen((o) => !o)}
                   className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
@@ -1091,6 +1071,58 @@ export default function BrowsePage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Toolbar — row 2: View toggle + Style chips */}
+            <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {/* Sliding pill toggle: Outfits / Pieces */}
+              <div className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] shrink-0">
+                {(["outfits", "pieces"] as View[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      if (v !== view) {
+                        setView(v);
+                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                        setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
+                        const url = new URL(window.location.href); url.searchParams.set("view", v);
+                        window.history.replaceState({}, "", url.toString());
+                      }
+                    }}
+                    className="relative flex-1 text-center px-5 py-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full z-10 transition-colors duration-200 whitespace-nowrap"
+                    style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                  >
+                    {view === v && (
+                      <motion.div
+                        layoutId="browse-tab-pill"
+                        className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                        transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                        style={{ zIndex: -1 }}
+                      />
+                    )}
+                    {v}
+                  </button>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div className="w-px h-6 shrink-0 bg-[var(--border)]" />
+
+              {/* Style filter chips */}
+              {STYLE_FILTERS.map((style) => (
+                <button
+                  key={style}
+                  onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
+                  className={`shrink-0 px-4 py-2 rounded-full text-[11px] tracking-[0.12em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
+                    selectedStyle === style
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {style}
+                </button>
+              ))}
             </div>
 
 
@@ -1217,6 +1249,18 @@ export default function BrowsePage() {
                     <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
                   </motion.div>
                 )}
+                {selectedStyle && (
+                  <motion.div
+                    key="style"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.15 }}
+                    layout
+                  >
+                    <ActiveChip label={selectedStyle} onRemove={() => setSelectedStyle(null)} />
+                  </motion.div>
+                )}
                 </AnimatePresence>
               </div>
             )}
@@ -1230,7 +1274,7 @@ export default function BrowsePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="mt-6 pb-16"
+              className="mt-10 pb-16"
             >
               {view === "outfits" && loadingOutfits ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
