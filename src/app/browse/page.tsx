@@ -1075,9 +1075,9 @@ export default function BrowsePage() {
 
             {/* Toolbar — row 2: View toggle + Style chips */}
             <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Outfits / Pieces — same pill look as Filter/Search, sliding white fill via layoutId */}
-              <div className="flex gap-2 shrink-0">
-                {(["outfits", "pieces"] as View[]).map((v) => (
+              {/* Pieces / Outfits — single unified pill, size matches Filter/Search */}
+              <div className="flex shrink-0 border border-[var(--foreground-muted)] rounded-full overflow-hidden">
+                {(["pieces", "outfits"] as View[]).map((v) => (
                   <button
                     key={v}
                     onClick={() => {
@@ -1090,16 +1090,14 @@ export default function BrowsePage() {
                         window.history.replaceState({}, "", url.toString());
                       }
                     }}
-                    className={`relative shrink-0 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-colors duration-200 whitespace-nowrap z-10 ${
-                      view === v
-                        ? "border-[var(--foreground)] text-[var(--background)]"
-                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    className={`relative px-5 py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold transition-colors duration-200 whitespace-nowrap z-10 ${
+                      view === v ? "text-[var(--background)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                     }`}
                   >
                     {view === v && (
                       <motion.div
                         layoutId="browse-tab-pill"
-                        className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                        className="absolute inset-0 bg-[var(--foreground)]"
                         transition={{ type: "spring", stiffness: 400, damping: 35 }}
                         style={{ zIndex: -1 }}
                       />
