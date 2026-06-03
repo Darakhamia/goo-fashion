@@ -925,83 +925,117 @@ export default function BrowsePage() {
         {/* Main content */}
         <div>
           <main className="px-6 md:px-8 lg:px-10">
-            {/* Toolbar — row 1: Filter + Search + Sort */}
-            <div className="flex items-center justify-between pt-4 pb-3">
-              <div className="flex gap-2 items-center">
-                {/* Filter button */}
-                <button
-                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                    filtersOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span className="hidden sm:inline">Filter</span>
-                  {activeFiltersCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Search toggle */}
-                <div className="shrink-0 relative">
-                  <AnimatePresence mode="wait" initial={false}>
-                    {!searchOpen ? (
-                      <motion.button
-                        key="search-btn"
-                        onClick={() => {
-                          setSearchOpen(true);
-                          setTimeout(() => searchInputRef.current?.focus(), 50);
-                        }}
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.92 }}
-                        transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                          <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                        <span className="hidden sm:inline">Search</span>
-                      </motion.button>
-                    ) : (
-                      <motion.div
-                        key="search-input"
-                        initial={{ opacity: 0, width: 80, scale: 0.96 }}
-                        animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
-                        exit={{ opacity: 0, width: 80, scale: 0.96 }}
-                        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
-                          <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                          <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                        <input
-                          ref={searchInputRef}
-                          type="text"
-                          placeholder="Search…"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 min-w-0 flex-1"
-                        />
-                        <button
-                          onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                          className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
-                        >
-                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
-                          </svg>
-                        </button>
-                      </motion.div>
+            {/* Toolbar: left column (Filter+Search stacked over Pieces/Outfits) + Sort */}
+            <div className="flex items-start justify-between pt-4 pb-3">
+              {/* Left column — Pieces/Outfits pill stretches to exact width of Filter+Search */}
+              <div className="flex flex-col gap-2 shrink-0">
+                {/* Filter + Search */}
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                    className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      filtersOpen
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                      <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span className="hidden sm:inline">Filter</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                        {activeFiltersCount}
+                      </span>
                     )}
-                  </AnimatePresence>
+                  </button>
+
+                  <div className="shrink-0 relative">
+                    <AnimatePresence mode="wait" initial={false}>
+                      {!searchOpen ? (
+                        <motion.button
+                          key="search-btn"
+                          onClick={() => {
+                            setSearchOpen(true);
+                            setTimeout(() => searchInputRef.current?.focus(), 50);
+                          }}
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.92 }}
+                          transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                          </svg>
+                          <span className="hidden sm:inline">Search</span>
+                        </motion.button>
+                      ) : (
+                        <motion.div
+                          key="search-input"
+                          initial={{ opacity: 0, width: 80, scale: 0.96 }}
+                          animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
+                          exit={{ opacity: 0, width: 80, scale: 0.96 }}
+                          transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                          </svg>
+                          <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Search…"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 min-w-0 flex-1"
+                          />
+                          <button
+                            onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                            className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
+                          >
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                              <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
+                            </svg>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Pieces / Outfits — w-full stretches to match Filter+Search width exactly */}
+                <div className="w-full flex border border-[var(--foreground-muted)] rounded-full overflow-hidden">
+                  {(["pieces", "outfits"] as View[]).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => {
+                        if (v !== view) {
+                          setView(v);
+                          setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                          setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                          setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
+                          const url = new URL(window.location.href); url.searchParams.set("view", v);
+                          window.history.replaceState({}, "", url.toString());
+                        }
+                      }}
+                      className={`relative flex-1 text-center py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold transition-colors duration-200 whitespace-nowrap z-10 ${
+                        view === v ? "text-[var(--background)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {view === v && (
+                        <motion.div
+                          layoutId="browse-tab-pill"
+                          className="absolute inset-0 bg-[var(--foreground)]"
+                          transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                          style={{ zIndex: -1 }}
+                        />
+                      )}
+                      {v}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1073,42 +1107,8 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            {/* Toolbar — row 2: View toggle + Style chips */}
+            {/* Style chips row */}
             <div className="flex items-center gap-2.5 pb-4 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Pieces / Outfits — single unified pill, same size as style chips */}
-              <div className="flex shrink-0 border border-[var(--foreground-muted)] rounded-full overflow-hidden">
-                {(["pieces", "outfits"] as View[]).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => {
-                      if (v !== view) {
-                        setView(v);
-                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                        setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
-                        const url = new URL(window.location.href); url.searchParams.set("view", v);
-                        window.history.replaceState({}, "", url.toString());
-                      }
-                    }}
-                    className={`relative px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-bold transition-colors duration-200 whitespace-nowrap z-10 ${
-                      view === v ? "text-[var(--background)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {view === v && (
-                      <motion.div
-                        layoutId="browse-tab-pill"
-                        className="absolute inset-0 bg-[var(--foreground)]"
-                        transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                        style={{ zIndex: -1 }}
-                      />
-                    )}
-                    {v}
-                  </button>
-                ))}
-              </div>
-
-              {/* Divider */}
-              <div className="w-px h-6 shrink-0 bg-[var(--border)]" />
 
               {/* Style filter chips */}
               {STYLE_FILTERS.map((style) => (
