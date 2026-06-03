@@ -925,188 +925,197 @@ export default function BrowsePage() {
         {/* Main content */}
         <div>
           <main className="px-6 md:px-8 lg:px-10">
-            {/* Toolbar row 1: Filter + Search + Sort */}
-            <div className="flex items-center justify-between pt-4 pb-3">
-              <div className="flex gap-2 items-center">
-                <button
-                  onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                  className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                    filtersOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
-                    <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span className="hidden sm:inline">Filter</span>
-                  {activeFiltersCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </button>
+            {/* Toolbar: flex row, items-end so chips align with bottom pill */}
+            <div className="pt-4 pb-4 border-b border-[var(--border)]">
+              <div className="flex items-end gap-2">
 
-                <div className="shrink-0 relative">
-                  <AnimatePresence mode="wait" initial={false}>
-                    {!searchOpen ? (
-                      <motion.button
-                        key="search-btn"
-                        onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.92 }}
-                        transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                          <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                        <span className="hidden sm:inline">Search</span>
-                      </motion.button>
-                    ) : (
-                      <motion.div
-                        key="search-input"
-                        initial={{ opacity: 0, width: 80, scale: 0.96 }}
-                        animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
-                        exit={{ opacity: 0, width: 80, scale: 0.96 }}
-                        transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
-                          <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                          <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                        <input
-                          ref={searchInputRef}
-                          type="text"
-                          placeholder="Search…"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 min-w-0 flex-1"
-                        />
-                        <button
-                          onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                          className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
-                        >
-                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
-                          </svg>
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
+                {/* Left column: Filter+Search on top, Pieces/Outfits below (w-full matches above) */}
+                <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex gap-2 items-center">
+                    {/* Filter */}
+                    <button
+                      onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
+                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                        filtersOpen
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                      }`}
+                    >
+                      <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                        <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      <span className="hidden sm:inline">Filter</span>
+                      {activeFiltersCount > 0 && (
+                        <span className="w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[8px] font-bold flex items-center justify-center">
+                          {activeFiltersCount}
+                        </span>
+                      )}
+                    </button>
 
-              {/* Sort */}
-              <div className="relative flex items-center shrink-0 ml-2" ref={sortRef}>
-                <button
-                  onClick={() => setSortOpen((o) => !o)}
-                  className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
-                    sortOpen
-                      ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                  }`}
-                >
-                  <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
-                    <path d="M1 1.5H10M2.5 5H8.5M4 8.5H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
-                  <span className="hidden sm:inline">
-                    {sort === "featured" && "Featured"}
-                    {sort === "price-asc" && "Price ↑"}
-                    {sort === "price-desc" && "Price ↓"}
-                    {sort === "newest" && "Newest"}
-                  </span>
-                  {sort !== "featured" && (
-                    <span className="sm:hidden text-[9px]">
-                      {sort === "price-asc" && "↑"}
-                      {sort === "price-desc" && "↓"}
-                      {sort === "newest" && "New"}
-                    </span>
-                  )}
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}>
-                    <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {sortOpen && (
-                  <div className="absolute right-0 top-full mt-2 z-50 min-w-[140px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden">
-                    {([
-                      { value: "featured", label: "Featured" },
-                      { value: "price-asc", label: "Price ↑" },
-                      { value: "price-desc", label: "Price ↓" },
-                      { value: "newest", label: "Newest" },
-                    ] as { value: SortOption; label: string }[]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => { setSort(opt.value); setSortOpen(false); }}
-                        className={`w-full text-left px-5 py-3 text-[10px] tracking-[0.14em] uppercase font-bold transition-colors duration-150 flex items-center justify-between gap-3 ${
-                          sort === opt.value
-                            ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-                            : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                        }`}
-                      >
-                        {opt.label}
-                        {sort === opt.value && (
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                    {/* Search */}
+                    <div className="shrink-0 relative">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!searchOpen ? (
+                          <motion.button
+                            key="search-btn"
+                            onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <span className="hidden sm:inline">Search</span>
+                          </motion.button>
+                        ) : (
+                          <motion.div
+                            key="search-input"
+                            initial={{ opacity: 0, width: 80, scale: 0.96 }}
+                            animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
+                            exit={{ opacity: 0, width: 80, scale: 0.96 }}
+                            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="Search…"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 min-w-0 flex-1"
+                            />
+                            <button
+                              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                              className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
+                            >
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
+                              </svg>
+                            </button>
+                          </motion.div>
                         )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* Pieces/Outfits pill — w-full fills column = Filter+Search width */}
+                  <div className="w-full relative flex border border-[var(--foreground-muted)] rounded-full overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] rounded-full"
+                      animate={{ x: view === "pieces" ? "0%" : "100%" }}
+                      transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                    />
+                    {(["pieces", "outfits"] as View[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => {
+                          if (v !== view) {
+                            setView(v);
+                            setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
+                            setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
+                            setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
+                            const url = new URL(window.location.href); url.searchParams.set("view", v);
+                            window.history.replaceState({}, "", url.toString());
+                          }
+                        }}
+                        className="relative z-10 flex-1 py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold whitespace-nowrap transition-colors duration-200 text-center"
+                        style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
+                      >
+                        {v}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            {/* Toolbar row 2: Pieces/Outfits toggle + style chips */}
-            <div className="flex items-center gap-2 pb-4 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Unified pill — single sliding background, smooth spring animation */}
-              <div className="relative flex shrink-0 border border-[var(--foreground-muted)] rounded-full overflow-hidden">
-                <motion.div
-                  className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] rounded-full"
-                  animate={{ x: view === "pieces" ? "0%" : "100%" }}
-                  transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
-                />
-                {(["pieces", "outfits"] as View[]).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => {
-                      if (v !== view) {
-                        setView(v);
-                        setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
-                        setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                        setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
-                        const url = new URL(window.location.href); url.searchParams.set("view", v);
-                        window.history.replaceState({}, "", url.toString());
-                      }
-                    }}
-                    className="relative z-10 flex-1 px-5 py-2.5 text-[11px] tracking-[0.14em] uppercase font-bold whitespace-nowrap transition-colors duration-200"
-                    style={{ color: view === v ? "var(--background)" : "var(--foreground-muted)" }}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-
-              {/* Divider */}
-              <div className="w-px h-5 shrink-0 bg-[var(--border)]" />
-
-              {/* Style chips — slightly smaller to share the row */}
-              {STYLE_FILTERS.map((style) => (
-                <button
-                  key={style}
-                  onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] tracking-[0.10em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
-                    selectedStyle === style
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
+                {/* Divider + style chips — bottom-aligned with Pieces/Outfits, scrollable */}
+                <div
+                  className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto"
+                  style={{ scrollbarWidth: "none" }}
                 >
-                  {style}
-                </button>
-              ))}
+                  <div className="w-px h-5 shrink-0 bg-[var(--border)]" />
+                  {STYLE_FILTERS.map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] tracking-[0.10em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
+                        selectedStyle === style
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sort — self-start keeps it aligned with Filter+Search row */}
+                <div className="relative shrink-0 self-start" ref={sortRef}>
+                  <button
+                    onClick={() => setSortOpen((o) => !o)}
+                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      sortOpen
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                    }`}
+                  >
+                    <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
+                      <path d="M1 1.5H10M2.5 5H8.5M4 8.5H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                    <span className="hidden sm:inline">
+                      {sort === "featured" && "Featured"}
+                      {sort === "price-asc" && "Price ↑"}
+                      {sort === "price-desc" && "Price ↓"}
+                      {sort === "newest" && "Newest"}
+                    </span>
+                    {sort !== "featured" && (
+                      <span className="sm:hidden text-[9px]">
+                        {sort === "price-asc" && "↑"}
+                        {sort === "price-desc" && "↓"}
+                        {sort === "newest" && "New"}
+                      </span>
+                    )}
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}>
+                      <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {sortOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-50 min-w-[140px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden">
+                      {([
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price ↑" },
+                        { value: "price-desc", label: "Price ↓" },
+                        { value: "newest", label: "Newest" },
+                      ] as { value: SortOption; label: string }[]).map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSort(opt.value); setSortOpen(false); }}
+                          className={`w-full text-left px-5 py-3 text-[10px] tracking-[0.14em] uppercase font-bold transition-colors duration-150 flex items-center justify-between gap-3 ${
+                            sort === opt.value
+                              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                          }`}
+                        >
+                          {opt.label}
+                          {sort === opt.value && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
 
 
