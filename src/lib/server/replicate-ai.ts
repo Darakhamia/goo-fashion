@@ -100,14 +100,27 @@ export async function embedTextOrThrow(text: string): Promise<number[]> {
 /**
  * Safe wrapper around {@link embedTextOrThrow}: returns null on any failure so
  * the stylist degrades to keyword search instead of breaking the request.
+ *
+ * Pass `timeoutMs` in latency-sensitive paths (e.g. live chat): the BGE model
+ * on Replicate scales to zero, so the first request after idle cold-starts and
+ * can take minutes. With a timeout we stop waiting and fall back to keyword
+ * search; the prediction still finishes in the background and warms the model
+ * for next time.
  */
-export async function embedText(text: string): Promise<number[] | null> {
-  try {
-    return await embedTextOrThrow(text);
-  } catch (err) {
+export async function embedText(
+  text: string,
+  opts?: { timeoutMs?: number }
+): Promise<number[] | null> {
+  const run = embedTextOrThrow(text).catch((err) => {
     console.warn("[replicate-ai] embedText failed:", err instanceof Error ? err.message : err);
     return null;
-  }
+  });
+  if (!opts?.timeoutMs || opts.timeoutMs <= 0) return run;
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), opts.timeoutMs);
+  });
+  return Promise.race([run, timeout]).finally(() => clearTimeout(timer));
 }
 
 /**

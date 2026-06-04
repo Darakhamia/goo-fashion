@@ -18,6 +18,10 @@ const SEMANTIC_MIN_SIMILARITY = 0.3;
 // via POST /api/admin/embeddings. Until then the keyword/FTS path runs alone.
 const SEMANTIC_SEARCH_ENABLED =
   /^(1|true|yes)$/i.test(process.env.STYLIST_SEMANTIC_SEARCH ?? "");
+// Cap how long live chat waits on the query embedding. The BGE model scales to
+// zero on Replicate, so a cold start can take minutes — past this we drop to
+// keyword search and answer immediately (the prediction still warms the model).
+const SEMANTIC_EMBED_TIMEOUT_MS = 3500;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -355,7 +359,7 @@ async function findRelevantProducts(
   //     full-text search below. Catches intent the keyword path misses.
   if (SEMANTIC_SEARCH_ENABLED && process.env.REPLICATE_API_TOKEN) {
     try {
-      const queryVec = await embedText(query);
+      const queryVec = await embedText(query, { timeoutMs: SEMANTIC_EMBED_TIMEOUT_MS });
       if (queryVec) {
         const { data, error } = await supabase.rpc("match_products", {
           query_embedding: queryVec,
@@ -372,7 +376,8 @@ async function findRelevantProducts(
         }
         debug.semanticCount = added;
       } else {
-        debug.semantic = "embed-unavailable";
+        // null = embed failed OR timed out (cold start). Keyword search covers it.
+        debug.semantic = "embed-unavailable-or-timeout";
       }
     } catch (err) {
       debug.semanticError = err instanceof Error ? err.message : String(err);
