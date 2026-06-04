@@ -21,6 +21,27 @@
 
 <!-- Новые записи добавляются сверху -->
 
+### Перф 2 — анимации лендинга (по профилю Firefox) (2026-06-04)
+
+Профиль показал `RefreshDriver tick` 71%, Paint 24% / Graphics 45%,
+FrameRequestCallback 7.4% — непрерывная перерисовка из-за всегда работающих
+анимаций. Выбран «сбалансированный» вариант.
+
+**Сделано.**
+- `src/components/ui/gooey-text-morphing.tsx`: убраны дорогие **SVG goo-filter**
+  и **per-frame `filter: blur`** (главный источник Paint). Заменено на лёгкий
+  opacity-кроссфейд (GPU), вместо непрерывного RAF — таймер с паузой на скрытой
+  вкладке и учётом prefers-reduced-motion.
+- `src/components/ui/parallax-floating.tsx`: RAF пропускает работу при
+  `document.hidden` и когда позиции «устаканились» (мышь не двигается) — больше
+  нет записи стилей каждый кадр впустую.
+- `src/app/globals.css`: глобальный `@media (prefers-reduced-motion: reduce)` —
+  гасит бесконечные анимации (marquee, scroll-hint, pulse) и тяжёлые переходы
+  для пользователей с этой настройкой.
+
+**Файлы:** `src/components/ui/gooey-text-morphing.tsx`,
+`src/components/ui/parallax-floating.tsx`, `src/app/globals.css`.
+
 ### Перф — снижение нагрузки на CPU (2026-06-04)
 
 Симптом: «тормозит при использовании», одинаково на телефоне и компе → высокий

@@ -62,13 +62,16 @@ const Floating = ({
   }, []);
 
   useAnimationFrame(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || document.hidden) return;
     elementsMap.current.forEach((data) => {
       const strength = (data.depth * sensitivity) / 20;
       const newTargetX = mousePositionRef.current.x * strength;
       const newTargetY = mousePositionRef.current.y * strength;
       const dx = newTargetX - data.currentPosition.x;
       const dy = newTargetY - data.currentPosition.y;
+      // Settled: target reached and not moving — skip the style write so an idle
+      // mouse doesn't repaint every frame.
+      if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) return;
       data.currentPosition.x += dx * easingFactor;
       data.currentPosition.y += dy * easingFactor;
       data.element.style.transform = `translate3d(${data.currentPosition.x}px, ${data.currentPosition.y}px, 0)`;
