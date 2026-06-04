@@ -233,7 +233,7 @@ function CroppedImage({
   sizes?: string;
 }) {
   if (!cropData) {
-    return <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} quality={100} />;
+    return <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} />;
   }
 
   // cropData zooms into a fraction of the image (e.g. width=0.3 → 3.3× zoom).
@@ -258,7 +258,6 @@ function CroppedImage({
         src={src}
         alt={alt}
         fill
-        quality={100}
         className="object-cover"
         sizes={scaledSizes}
         style={{ objectPosition: `${cropData.focalX * 100}% ${cropData.focalY * 100}%` }}
