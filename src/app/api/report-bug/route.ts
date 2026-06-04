@@ -39,9 +39,10 @@ Priority: ${priority}`;
     const content: ContentBlock[] = [];
 
     if (screenshotBase64 && screenshotMime) {
+      const validMime = screenshotMime as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
       content.push({
         type: "image",
-        source: { type: "base64", media_type: screenshotMime, data: screenshotBase64 },
+        source: { type: "base64", media_type: validMime, data: screenshotBase64 },
       });
     }
     content.push({ type: "text", text: textPrompt });
