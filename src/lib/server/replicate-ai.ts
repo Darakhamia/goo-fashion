@@ -56,3 +56,46 @@ export async function chatCompletion(opts: {
   if (typeof output === "string") return output;
   throw new Error(`Unexpected Replicate output type: ${typeof output}`);
 }
+
+// ── Embeddings ────────────────────────────────────────────────────────────────
+
+/** Embedding model + dimensions. Must match migration 005 (vector(1024)). */
+const EMBED_MODEL = "nateraw/bge-large-en-v1.5";
+export const EMBEDDING_DIMS = 1024;
+
+/**
+ * Embed a single piece of text into a 1024-dim vector via Replicate (BGE-large).
+ * Returns null on any failure or unexpected shape so callers can degrade
+ * gracefully to keyword search instead of breaking the request.
+ */
+export async function embedText(text: string): Promise<number[] | null> {
+  const clean = text.trim();
+  if (!clean) return null;
+  try {
+    const replicate = client();
+    const output = await replicate.run(EMBED_MODEL as `${string}/${string}`, {
+      input: { texts: JSON.stringify([clean.slice(0, 4000)]) },
+    });
+    const vec = extractEmbedding(output);
+    return vec && vec.length === EMBEDDING_DIMS ? vec : null;
+  } catch (err) {
+    console.warn("[replicate-ai] embedText failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * BGE on Replicate returns one embedding per input text. Depending on the model
+ * version that arrives as number[][], { embedding: number[] }[], or a bare
+ * number[]. Normalise all shapes to the first embedding vector.
+ */
+function extractEmbedding(output: unknown): number[] | null {
+  if (!Array.isArray(output) || output.length === 0) return null;
+  const first = output[0];
+  if (typeof first === "number") return output as number[];
+  if (Array.isArray(first)) return first as number[];
+  if (first && typeof first === "object" && Array.isArray((first as { embedding?: unknown }).embedding)) {
+    return (first as { embedding: number[] }).embedding;
+  }
+  return null;
+}
