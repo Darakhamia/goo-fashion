@@ -10,7 +10,6 @@ import ProductCard from "./ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import PriceHistoryChart from "./PriceHistoryChart";
 import ProductReviews from "./ProductReviews";
-import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { track } from "@/lib/analytics/track";
 
 interface Props {
@@ -41,7 +40,6 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
-  const [stylistOpen, setStylistOpen] = useState(false);
 
   useEffect(() => {
     track("product_view", { targetId: product.id });
@@ -182,24 +180,6 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             </p>
           </div>
 
-          {/* AI Stylist trigger */}
-          <div className="mb-8">
-            <button
-              onClick={() => setStylistOpen(true)}
-              className="flex items-center gap-3 w-full rounded-xl border border-[var(--border)] px-5 py-4 hover:border-[var(--foreground)] hover:shadow-sm transition-all duration-200 group"
-            >
-              <div className="w-6 h-6 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[11px] font-medium italic shrink-0">
-                G
-              </div>
-              <div className="text-left flex-1">
-                <p className="text-[11px] font-medium text-[var(--foreground)]">Ask the Stylist</p>
-                <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">How to wear it, what goes with it, outfit ideas</p>
-              </div>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors shrink-0">
-                <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
 
           {/* Material */}
           {product.material && (
@@ -378,14 +358,6 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           )}
         </div>
       </div>
-
-      <StylistDrawer
-        isOpen={stylistOpen}
-        onClose={() => setStylistOpen(false)}
-        surface="product"
-        products={allProducts}
-        focusProduct={product}
-      />
 
       {/* Price history chart */}
       <PriceHistoryChart productId={product.id} />
