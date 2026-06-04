@@ -21,6 +21,68 @@
 
 <!-- Новые записи добавляются сверху -->
 
+### Блок 1 (улучшение) — эмбеддинги переведены на OpenAI (2026-06-04)
+
+**Причина.** Replicate-модель BGE scale-to-zero давала холодный старт на минуты
+и тормозила чат. OpenAI-эмбеддинги без cold start, быстрые, дешёвые.
+
+**Сделано.**
+- `src/lib/server/embeddings.ts` (новый): провайдер OpenAI
+  `text-embedding-3-small` (1536 dims) через `getOpenAIKey()`. Экспорт:
+  `embedText` (safe + timeout), `embedTextOrThrow`, `embedTextsOrThrow` (батч —
+  весь батч за один запрос).
+- `src/lib/server/replicate-ai.ts`: удалён embedding-код (остался только чат).
+- `src/app/api/stylist/chat/route.ts`: импорт `embedText` из нового модуля;
+  семантический блок больше не завязан на `REPLICATE_API_TOKEN`; таймаут снижен
+  до 3000мс; порог `SEMANTIC_MIN_SIMILARITY` = 0.2 (тюнится `STYLIST_SEMANTIC_MIN_SIM`).
+- `src/app/api/admin/embeddings/route.ts`: бэкфилл через `embedTextsOrThrow`
+  (один OpenAI-вызов на батч, дефолт 100, cap 200); убрана логика 429-throttle
+  Replicate.
+- `supabase/migrations/007_embeddings_openai_1536.sql` (новый): колонка
+  `embedding → vector(1536)`, HNSW-индекс и `match_products` пересозданы.
+
+**⚠️ Операционные шаги:**
+1. Применить миграцию 007 (она **обнулит** старые 1024-эмбеддинги).
+2. Убедиться, что задан `OPENAI_API_KEY` (env или таблица `settings`).
+3. Перегнать `POST /api/admin/embeddings` до `coverage: 100` (теперь быстро, батчами).
+4. `STYLIST_SEMANTIC_SEARCH=1` уже стоит — проверить чат.
+
+**Файлы:** `src/lib/server/embeddings.ts`, `src/lib/server/replicate-ai.ts`,
+`src/app/api/stylist/chat/route.ts`, `src/app/api/admin/embeddings/route.ts`,
+`supabase/migrations/007_embeddings_openai_1536.sql`, `AI_ARCHITECTURE.md`.
+
+### Блок 1 (фикс 3) — таймаут на эмбеддинг запроса в чате (2026-06-04)
+
+**Симптом.** После включения семантики чат «думал» минутами. Причина — модель
+BGE на Replicate scale-to-zero: первый запрос после простоя делает **холодный
+старт** (Starting несколько минут), а чат ждал эмбеддинг синхронно.
+
+**Сделано.**
+- `src/lib/server/replicate-ai.ts`: `embedText()` принимает `{ timeoutMs }` и
+  через `Promise.race` перестаёт ждать по таймауту (возвращает `null`).
+  Предсказание при этом дорабатывает в фоне и «прогревает» модель.
+- `src/app/api/stylist/chat/route.ts`: семантический эмбеддинг запроса
+  вызывается с `SEMANTIC_EMBED_TIMEOUT_MS = 3500` → при холодном старте чат
+  мгновенно отвечает через FTS, семантика подключится, когда модель тёплая.
+
+**Файлы:** `src/lib/server/replicate-ai.ts`, `src/app/api/stylist/chat/route.ts`.
+
+### Блок 1 (фикс 2) — устойчивость бэкфилла к rate limit Replicate (2026-06-04)
+
+**Симптом.** На бэкфилле прилетал `429 Too Many Requests` («rate limit reduced
+to 60/min, burst 5 while you have less than $10 in credit»). Часть батча
+успевала пройти (48/50), но клиентский цикл падал.
+
+**Сделано.** `src/app/api/admin/embeddings/route.ts` отличает 429 от реальных
+ошибок: при throttling батч останавливается, уже сгенерированные строки
+сохранены, ответ содержит `throttled: true` и `retryAfter` (секунды, из текста
+ошибки Replicate). Клиент по этому полю делает паузу и продолжает.
+
+**Операционно:** корневая причина — баланс Replicate <$10 (жёсткий throttle).
+Пополнение до ≥$10 снимает лимит; иначе бэкфилл идёт медленнее с паузами.
+
+**Файлы:** `src/app/api/admin/embeddings/route.ts`.
+
 ### Блок 1 (фикс) — генерация эмбеддингов падала (2026-06-04)
 
 **Симптом.** `POST /api/admin/embeddings` возвращал `processed: 0, failed: N` —

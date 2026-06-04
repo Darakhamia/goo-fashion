@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { embedTextOrThrow } from "@/lib/server/replicate-ai";
+import { embedTextsOrThrow } from "@/lib/server/embeddings";
 
 // ── POST /api/admin/embeddings ────────────────────────────────────────────────
-// Backfills semantic embeddings for products that don't have one yet. Processes
-// a bounded batch per call so the request can't time out — call it repeatedly
-// (or in a loop) until `remaining` reaches 0. Admin-only.
+// Backfills semantic embeddings for products that don't have one yet. Each call
+// embeds one batch in a single OpenAI request — call it repeatedly (or in a
+// loop) until `remaining` reaches 0. Admin-only.
 //
-// Body (optional): { batchSize?: number }  — defaults to 25, capped at 100.
+// Body (optional): { batchSize?: number }  — defaults to 100, capped at 200.
 
-const DEFAULT_BATCH = 25;
-const MAX_BATCH = 100;
+const DEFAULT_BATCH = 100;
+const MAX_BATCH = 200;
 
 interface ProductRow {
   id: string;
@@ -41,9 +41,6 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   }
-  if (!process.env.REPLICATE_API_TOKEN) {
-    return NextResponse.json({ error: "REPLICATE_API_TOKEN is missing." }, { status: 503 });
-  }
 
   const body = (await req.json().catch(() => ({}))) as { batchSize?: number };
   const batchSize = Math.min(
@@ -67,18 +64,21 @@ export async function POST(req: Request) {
   let failed = 0;
   let firstError: string | undefined;
 
-  for (const row of rows) {
+  if (rows.length > 0) {
     try {
-      const vec = await embedTextOrThrow(buildEmbedText(row));
-      const { error: updErr } = await supabase
-        .from("products")
-        .update({ embedding: vec })
-        .eq("id", row.id);
-      if (updErr) throw new Error(`db update: ${updErr.message}`);
-      processed++;
+      // One OpenAI call embeds the whole batch, then persist row by row.
+      const vectors = await embedTextsOrThrow(rows.map(buildEmbedText));
+      for (let i = 0; i < rows.length; i++) {
+        const { error: updErr } = await supabase
+          .from("products")
+          .update({ embedding: vectors[i] })
+          .eq("id", rows[i].id);
+        if (updErr) { failed++; if (!firstError) firstError = `db update: ${updErr.message}`; continue; }
+        processed++;
+      }
     } catch (err) {
-      failed++;
-      if (!firstError) firstError = err instanceof Error ? err.message : String(err);
+      failed = rows.length;
+      firstError = err instanceof Error ? err.message : String(err);
     }
   }
 

@@ -14,7 +14,7 @@ AI Стилист на GOO работает на базе **Replicate** (мод�
 | Компонент | Технология |
 |---|---|
 | LLM (чат) | `openai/gpt-4.1` на Replicate (переопределяется env `STYLIST_LLM_MODEL`) |
-| Embedding (векторизация) | `nateraw/bge-large-en-v1.5` на Replicate (1024 dims) |
+| Embedding (векторизация) | OpenAI `text-embedding-3-small` (1536 dims, без cold start) |
 | Поиск по каталогу | PostgreSQL FTS (`search_products`) + опц. pgvector (`match_products`) |
 | Аутентификация | Clerk |
 | Rate limiting | Upstash Redis |
@@ -86,9 +86,13 @@ src/
 (десктоп + мобильная «AI»), drawer рендерится глобально в
 `ConditionalSiteLayout.tsx` через контекст `useStylist()`.
 
+lib/server/
+└── embeddings.ts                  ← OpenAI эмбеддинги (embedText / embedTexts)
+
 supabase/migrations/
-├── 005_product_embeddings.sql     ← pgvector + match_products функция
-└── 006_product_fts.sql            ← tsvector + триггер + search_products функция
+├── 005_product_embeddings.sql     ← pgvector + match_products (1024, устар.)
+├── 006_product_fts.sql            ← tsvector + триггер + search_products функция
+└── 007_embeddings_openai_1536.sql ← embedding → vector(1536), match_products 1536
 ```
 
 ---
@@ -99,8 +103,10 @@ supabase/migrations/
 REPLICATE_API_TOKEN=r8_...          ← Токен аккаунта goo-fashion на Replicate
 SUPABASE_URL=https://...            ← URL проекта Supabase
 SUPABASE_SERVICE_ROLE_KEY=eyJ...    ← Service role ключ (только сервер)
+OPENAI_API_KEY=sk-...               ← для эмбеддингов (или ключ в таблице settings)
 STYLIST_LLM_MODEL=openai/gpt-4.1    ← (опц.) переопределить модель чата
 STYLIST_SEMANTIC_SEARCH=1           ← (опц.) включить семантический поиск
+STYLIST_SEMANTIC_MIN_SIM=0.2        ← (опц.) порог cosine-сходства
 ADMIN_USER_IDS=user_...,user_...    ← доступ к /api/admin/embeddings
 ```
 
@@ -150,16 +156,16 @@ POST /api/admin/embeddings   { "batchSize": 50 }  → { processed, remaining, do
 
 ## Как поменять модель
 
-В файле `src/lib/server/replicate-ai.ts`:
-
 ```typescript
-const DEFAULT_LLM_MODEL = "openai/gpt-4.1";        // ← модель чата по умолчанию
-const EMBED_MODEL       = "nateraw/bge-large-en-v1.5"; // ← embedding (размерность → миграция)
+// src/lib/server/replicate-ai.ts
+const DEFAULT_LLM_MODEL = "openai/gpt-4.1";          // ← модель чата по умолчанию
+// src/lib/server/embeddings.ts
+const EMBED_MODEL       = "text-embedding-3-small";  // ← embedding (1536 dims)
 ```
 
-Модель чата можно сменить без деплоя через env `STYLIST_LLM_MODEL`.
+Модель чата меняется без деплоя через env `STYLIST_LLM_MODEL`.
 
-При смене embedding модели с другой размерностью нужно:
-1. Обновить `EMBEDDING_DIMS` в `replicate-ai.ts`
-2. Создать новую миграцию с `alter table products alter column embedding type vector(NEW_DIM)`
-3. Заново сгенерировать все эмбеддинги через `/api/admin/embeddings`
+При смене embedding-модели с другой размерностью нужно:
+1. Обновить `EMBEDDING_DIMS` в `src/lib/server/embeddings.ts`
+2. Создать миграцию `alter table products ... type vector(NEW_DIM)` + пересоздать `match_products`
+3. Заново сгенерировать эмбеддинги через `POST /api/admin/embeddings`
