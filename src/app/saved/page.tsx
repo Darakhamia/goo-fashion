@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
+import { useCart } from "@/lib/context/cart-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import OutfitCard from "@/components/outfit/OutfitCard";
@@ -33,10 +34,34 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { formatPrice } = useCurrency();
+  const { addManyToCart } = useCart();
   const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
+  const [shopAdded, setShopAdded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [modalEditingName, setModalEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(look.name || "My Look");
+
+  const handleShop = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (shopAdded) return;
+    const items = look.pieces
+      .map((piece) => {
+        const product = allProducts.find((p) => p.id === piece.productId);
+        const officialRetailer = product?.retailers.find((r) => r.isOfficial) ?? product?.retailers[0] ?? null;
+        return {
+          id: piece.productId,
+          name: piece.name ?? product?.name ?? piece.slot,
+          brand: product?.brand ?? "",
+          imageUrl: piece.imageUrl ?? product?.imageUrl ?? "",
+          price: product?.priceMin ?? 0,
+          retailerUrl: officialRetailer?.url ?? null,
+        };
+      });
+    if (items.length === 0) return;
+    addManyToCart(items);
+    setShopAdded(true);
+    setTimeout(() => setShopAdded(false), 2000);
+  };
 
   const commitName = () => {
     const trimmed = nameValue.trim() || "My Look";
@@ -255,6 +280,15 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
               {formatPrice(look.totalPrice)}
             </p>
             <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={handleShop}
+                disabled={look.pieces.length === 0}
+                className={`text-[11px] tracking-[0.1em] uppercase font-medium transition-colors disabled:opacity-30 disabled:cursor-default ${
+                  shopAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {shopAdded ? "Added ✓" : "Shop"}
+              </button>
               <Link
                 href={builderUrl}
                 className="text-[11px] tracking-[0.1em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
@@ -375,6 +409,15 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                 </p>
               </div>
               <div className="flex items-center gap-4">
+                <button
+                  onClick={handleShop}
+                  disabled={look.pieces.length === 0}
+                  className={`text-[9px] tracking-[0.12em] uppercase font-medium transition-colors disabled:opacity-30 disabled:cursor-default ${
+                    shopAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {shopAdded ? "Added ✓" : "Shop the look"}
+                </button>
                 <Link
                   href={builderUrl}
                   onClick={() => setOpen(false)}
