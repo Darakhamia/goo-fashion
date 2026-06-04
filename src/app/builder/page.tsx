@@ -768,15 +768,13 @@ export default function BuilderPage() {
     if (!isLoggedIn) { login("", ""); return; }
     try {
       const urlEditId = new URLSearchParams(window.location.search).get("editId");
-      const existing: { id: string; name?: string; description?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      const existing: { id: string; name?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
-      setPendingLookDescription(existingLook?.description || buildDescription());
     } catch {
       setPendingLookName("Outfit 1");
-      setPendingLookDescription(buildDescription());
     }
-    setShowNameModal(true);
+    setShowStylePicker(true);
   };
 
   const handleMobileSave = () => {
@@ -784,7 +782,7 @@ export default function BuilderPage() {
   };
 
   const confirmSave = () => {
-    persistLook({ name: pendingLookName.trim() || "My Look", description: pendingLookDescription.trim() || undefined, generatedImage: generatedImage });
+    persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage });
     setSaved(true);
     setShowNameModal(false);
     router.push("/saved?tab=looks");
@@ -863,21 +861,10 @@ export default function BuilderPage() {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
-        try {
-          const ex: unknown[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
-          const urlEditId = new URLSearchParams(window.location.search).get("editId");
-          const existingLook = urlEditId ? (ex as { id: string; name?: string; description?: string }[]).find(o => o.id === urlEditId) : null;
-          setModalLookName(existingLook?.name || `Outfit ${ex.length + 1}`);
-          setModalLookDescription(existingLook?.description || buildDescription());
-        } catch {
-          setModalLookName("Outfit 1");
-          setModalLookDescription(buildDescription());
-        }
-        setShowModalDetails(false);
-        setShowModal(true);
-        // Auto-save the look with its generated image so it's not lost when the modal closes
+        // Auto-save the look with its generated image so it's not lost if modal is closed
         persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
         setSaved(true);
+        setShowNameModal(true);
       }
     } catch {
       setGenerateError("Network error. Check your connection.");
@@ -1888,29 +1875,8 @@ export default function BuilderPage() {
                   : "Add pieces to build your look"}
               </p>
             </div>
-            {/* Right section: Generate + Save + Shop the Look */}
+            {/* Right section: Save + Shop the Look */}
             <div className="flex-1 flex items-center justify-end gap-3 px-5 py-3">
-              {/* Generate */}
-              <button
-                onClick={openStylePicker}
-                disabled={generating || selectedCount === 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-strong)] text-[11px] font-semibold text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30"
-              >
-                {generating ? (
-                  <>
-                    <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    Generating…
-                  </>
-                ) : (
-                  <>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                    </svg>
-                    Generate
-                  </>
-                )}
-              </button>
               {/* Shop the Look — secondary */}
               <button
                 onClick={shopTheLook}
@@ -2124,7 +2090,7 @@ export default function BuilderPage() {
               })()}
             </div>
 
-            {/* Total + Clear all + Generate */}
+            {/* Total + Clear all */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</span>
@@ -2135,23 +2101,6 @@ export default function BuilderPage() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {selectedCount >= 1 && (
-                  <button
-                    onClick={openStylePicker}
-                    disabled={generating}
-                    className="flex items-center gap-1.5 border border-[var(--border-strong)] rounded-full px-3 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {generating ? (
-                      <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                        <path d="M6 1L7.2 4.8H11L8 7.2L9.1 11L6 8.8L2.9 11L4 7.2L1 4.8H4.8L6 1Z"
-                          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                    {generating ? "Generating…" : "Generate"}
-                  </button>
-                )}
                 <button
                   onClick={clearAll}
                   disabled={selectedCount === 0}
@@ -2391,9 +2340,9 @@ export default function BuilderPage() {
               )}
             </div>
 
-            {/* Name input + description + actions */}
+            {/* Name input + actions */}
             <div className="shrink-0 px-5 pt-4 pb-6 border-t border-[var(--border)]">
-              <div className="flex items-center gap-1.5 mb-1">
+              <div className="flex items-center gap-1.5 mb-5">
                 <input
                   type="text"
                   value={pendingLookName}
@@ -2407,13 +2356,6 @@ export default function BuilderPage() {
                   <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <textarea
-                value={pendingLookDescription}
-                onChange={e => setPendingLookDescription(e.target.value)}
-                rows={2}
-                className="w-full mt-3 mb-5 text-[12px] text-[var(--foreground-muted)] bg-transparent outline-none resize-none border-b border-dashed border-[var(--border)] pb-1 leading-relaxed placeholder-[var(--foreground-subtle)] focus:border-[var(--foreground-muted)] transition-colors"
-                placeholder="Describe this look…"
-              />
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowNameModal(false)}
@@ -2966,7 +2908,7 @@ export default function BuilderPage() {
                 </button>
               ) : (
                 <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
-                  Choose style
+                  Save look
                 </p>
               )}
               <button
@@ -2982,7 +2924,31 @@ export default function BuilderPage() {
             {/* ── Step 1: Style selection ── */}
             {!tryonStep && (
               <>
-                <div className="p-5 grid grid-cols-2 gap-3">
+                {/* Without generation — top option */}
+                <div className="px-5 pt-5 pb-3">
+                  <button
+                    onClick={() => { setShowStylePicker(false); setGeneratedImage(null); setShowNameModal(true); }}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-[var(--foreground)] text-[var(--background)] rounded-xl hover:opacity-90 transition-opacity group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                      <div className="text-left">
+                        <p className="font-mono text-[10px] tracking-[0.14em] uppercase font-semibold">Without generation</p>
+                        <p className="font-mono text-[8px] opacity-60 mt-0.5">Save as collage</p>
+                      </div>
+                    </div>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <path d="M2 6H10M10 6L6 2M10 6L6 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="px-5 pb-2 font-mono text-[8px] text-[var(--foreground-subtle)] text-center tracking-[0.1em] uppercase">Or generate with AI</p>
+                <div className="px-5 pb-3 grid grid-cols-2 gap-3">
                   {/* Mannequin */}
                   <button
                     onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
