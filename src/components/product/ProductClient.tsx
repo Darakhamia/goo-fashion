@@ -309,9 +309,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                             <img
                               src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
                               alt={retailer.name}
-                              width={28}
-                              height={28}
-                              className="w-7 h-7 object-contain"
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).style.display = "none";
                                 (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
