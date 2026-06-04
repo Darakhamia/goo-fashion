@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { chatCompletion, embedText } from "@/lib/server/replicate-ai";
+import { chatCompletion } from "@/lib/server/replicate-ai";
+import { embedText } from "@/lib/server/embeddings";
 import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
@@ -11,17 +12,19 @@ const MAX_USER_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ENTRIES     = 20;
 const SEARCH_MATCH_COUNT      = 30;
 // Minimum cosine similarity for a semantic match to be trusted. Below this the
-// vector hit is likely noise, so we let keyword search decide instead.
-const SEMANTIC_MIN_SIMILARITY = 0.3;
+// vector hit is likely noise, so we let keyword search decide instead. Tuned
+// for OpenAI text-embedding-3-small (query↔product similarities run lower than
+// BGE's); override via STYLIST_SEMANTIC_MIN_SIM.
+const SEMANTIC_MIN_SIMILARITY = Number(process.env.STYLIST_SEMANTIC_MIN_SIM) || 0.2;
 // Semantic search adds one embedding call per request, so it's opt-in: enable it
 // (STYLIST_SEMANTIC_SEARCH=1) only after product embeddings have been backfilled
 // via POST /api/admin/embeddings. Until then the keyword/FTS path runs alone.
 const SEMANTIC_SEARCH_ENABLED =
   /^(1|true|yes)$/i.test(process.env.STYLIST_SEMANTIC_SEARCH ?? "");
-// Cap how long live chat waits on the query embedding. The BGE model scales to
-// zero on Replicate, so a cold start can take minutes — past this we drop to
-// keyword search and answer immediately (the prediction still warms the model).
-const SEMANTIC_EMBED_TIMEOUT_MS = 3500;
+// Cap how long live chat waits on the query embedding before dropping to
+// keyword search. OpenAI embeddings are fast (~50-100ms); this just guards
+// against a slow network or rate limit so chat never stalls.
+const SEMANTIC_EMBED_TIMEOUT_MS = 3000;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -357,7 +360,7 @@ async function findRelevantProducts(
   //     products. Best-effort: if embeddings aren't generated yet, the embed
   //     call fails, or match_products is absent, we silently fall through to
   //     full-text search below. Catches intent the keyword path misses.
-  if (SEMANTIC_SEARCH_ENABLED && process.env.REPLICATE_API_TOKEN) {
+  if (SEMANTIC_SEARCH_ENABLED) {
     try {
       const queryVec = await embedText(query, { timeoutMs: SEMANTIC_EMBED_TIMEOUT_MS });
       if (queryVec) {
