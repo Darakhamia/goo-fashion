@@ -64,7 +64,6 @@ export default async function ProductDetailPage({ params }: Props) {
           relatedProducts={relatedProducts}
           outfitsWithProduct={outfitsWithProduct}
           lowestPrice={lowestPrice}
-          allProducts={allProducts}
         />
       </div>
     </div>

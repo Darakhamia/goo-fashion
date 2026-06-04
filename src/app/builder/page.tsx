@@ -287,7 +287,6 @@ export default function BuilderPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalLookName, setModalLookName] = useState("");
   const [modalLookDescription, setModalLookDescription] = useState("");
-  const [pendingLookDescription, setPendingLookDescription] = useState("");
   const [showModalDetails, setShowModalDetails] = useState(false);
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [activeStyle, setActiveStyle] = useState<"mannequin" | "flatlay" | "tryon">("mannequin");
