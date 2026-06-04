@@ -358,7 +358,7 @@ export function StylistDrawer({
         setChatMessages(prev => [...prev, {
           id: `msg-${Date.now()}-ai`,
           role: "assistant",
-          text: "AI Stylist isn't set up yet. An admin needs to add an OpenAI API key in Settings.",
+          text: "AI Stylist isn't set up yet. An admin needs to configure the AI provider token.",
           isError: true,
         }]);
         return;

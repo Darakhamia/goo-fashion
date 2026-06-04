@@ -1,12 +1,15 @@
 /**
  * Replicate AI client — LLM chat calls.
- * Model: openai/gpt-4o-mini, served THROUGH Replicate (uses the existing
- * REPLICATE_API_TOKEN — no personal OpenAI key on the site). Excellent
- * multilingual quality (incl. Russian) and reliable instruction-following.
+ * Model: openai/gpt-4.1, served THROUGH Replicate (uses the existing
+ * REPLICATE_API_TOKEN — no personal OpenAI key on the site). Stronger
+ * instruction-following than 4o-mini, excellent multilingual quality (incl.
+ * Russian). Override the model without a deploy via STYLIST_LLM_MODEL.
  */
 import Replicate from "replicate";
 
-const LLM_MODEL = "openai/gpt-4o-mini";
+const DEFAULT_LLM_MODEL = "openai/gpt-4.1";
+const LLM_MODEL = (process.env.STYLIST_LLM_MODEL?.trim() ||
+  DEFAULT_LLM_MODEL) as `${string}/${string}`;
 
 function client(): Replicate {
   const token = process.env.REPLICATE_API_TOKEN;
@@ -23,12 +26,19 @@ export async function chatCompletion(opts: {
 }): Promise<string> {
   const replicate = client();
 
-  // Plain conversational prompt (no model-specific control tokens) so it works
-  // with OpenAI-family models on Replicate.
+  // Replicate's OpenAI-family models take a single `prompt` string plus a
+  // separate `system_prompt`. We render the turn-by-turn history with explicit
+  // role labels and a clear boundary so the model treats it as a transcript to
+  // continue rather than text to paraphrase. The trailing "Assistant:" cues it
+  // to produce only the next reply.
   let prompt = "";
-  for (const msg of opts.history) {
-    const label = msg.role === "user" ? "User" : "Assistant";
-    prompt += `${label}: ${msg.content}\n`;
+  if (opts.history.length > 0) {
+    prompt += "Conversation so far:\n";
+    for (const msg of opts.history) {
+      const label = msg.role === "user" ? "User" : "Assistant";
+      prompt += `${label}: ${msg.content}\n`;
+    }
+    prompt += "\n";
   }
   prompt += `User: ${opts.userMessage}\nAssistant:`;
 
