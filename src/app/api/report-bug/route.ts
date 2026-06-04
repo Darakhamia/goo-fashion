@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -32,25 +33,23 @@ URL: ${url || "не указан"}
 Section: ${section}
 Priority: ${priority}`;
 
-    type ContentBlock =
-      | { type: "text"; text: string }
-      | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+    const validMimes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+    type ValidMime = (typeof validMimes)[number];
 
-    const content: ContentBlock[] = [];
+    const messageContent: MessageParam["content"] = [];
 
-    if (screenshotBase64 && screenshotMime) {
-      const validMime = screenshotMime as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-      content.push({
+    if (screenshotBase64 && screenshotMime && validMimes.includes(screenshotMime as ValidMime)) {
+      messageContent.push({
         type: "image",
-        source: { type: "base64", media_type: validMime, data: screenshotBase64 },
+        source: { type: "base64", media_type: screenshotMime as ValidMime, data: screenshotBase64 },
       });
     }
-    content.push({ type: "text", text: textPrompt });
+    messageContent.push({ type: "text", text: textPrompt });
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,
-      messages: [{ role: "user", content }],
+      messages: [{ role: "user", content: messageContent }],
     });
 
     const rawText = message.content[0].type === "text" ? message.content[0].text : "";
