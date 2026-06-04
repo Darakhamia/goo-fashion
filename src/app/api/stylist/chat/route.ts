@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { chatCompletion } from "@/lib/server/replicate-ai";
+import { chatCompletion, embedText } from "@/lib/server/replicate-ai";
 import { checkRateLimit } from "@/lib/server/rate-limit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
@@ -10,6 +10,14 @@ import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 const MAX_USER_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ENTRIES     = 20;
 const SEARCH_MATCH_COUNT      = 30;
+// Minimum cosine similarity for a semantic match to be trusted. Below this the
+// vector hit is likely noise, so we let keyword search decide instead.
+const SEMANTIC_MIN_SIMILARITY = 0.3;
+// Semantic search adds one embedding call per request, so it's opt-in: enable it
+// (STYLIST_SEMANTIC_SEARCH=1) only after product embeddings have been backfilled
+// via POST /api/admin/embeddings. Until then the keyword/FTS path runs alone.
+const SEMANTIC_SEARCH_ENABLED =
+  /^(1|true|yes)$/i.test(process.env.STYLIST_SEMANTIC_SEARCH ?? "");
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,12 +148,55 @@ const RU_TO_EN: Record<string, string> = {
   элегантный: "elegant", минималистичный: "minimal", уличный: "streetwear",
 };
 
+// Occasion / intent → style vocabulary. Many requests name an occasion ("на
+// свидание", "for the office") rather than a garment, so full-text search has
+// nothing to match. We translate the intent into style terms that DO appear in
+// product descriptions / keywords, which also gives the embedding query useful
+// signal. Keyed by stem so declensions and EN/RU both hit.
+const OCCASION_STEMS: Array<{ stem: string; terms: string }> = [
+  { stem: "свидан",   terms: "elegant romantic evening date" },
+  { stem: "date",     terms: "elegant romantic evening" },
+  { stem: "офис",     terms: "classic minimal tailored blazer office" },
+  { stem: "работ",    terms: "classic minimal tailored office" },
+  { stem: "office",   terms: "classic minimal tailored blazer" },
+  { stem: "work",     terms: "classic minimal tailored" },
+  { stem: "собесед",  terms: "classic professional tailored formal" },
+  { stem: "interview",terms: "classic professional tailored formal" },
+  { stem: "вечеринк",  terms: "statement bold evening party" },
+  { stem: "party",    terms: "statement bold evening" },
+  { stem: "спорт",    terms: "sporty athletic activewear" },
+  { stem: "трениров", terms: "sporty athletic activewear gym" },
+  { stem: "gym",      terms: "sporty athletic activewear" },
+  { stem: "workout",  terms: "sporty athletic activewear" },
+  { stem: "пляж",     terms: "coastal linen summer beach" },
+  { stem: "отпуск",   terms: "coastal linen summer vacation" },
+  { stem: "vacation", terms: "coastal linen summer" },
+  { stem: "beach",    terms: "coastal linen summer" },
+  { stem: "свадьб",   terms: "formal elegant suit dress wedding" },
+  { stem: "wedding",  terms: "formal elegant suit dress" },
+  { stem: "casual",   terms: "casual relaxed everyday" },
+  { stem: "повседнев",terms: "casual relaxed everyday" },
+  { stem: "зим",      terms: "warm coat knitwear winter" },
+  { stem: "winter",   terms: "warm coat knitwear" },
+  { stem: "лет",      terms: "light linen breathable summer" },
+  { stem: "summer",   terms: "light linen breathable" },
+];
+
 function augmentQuery(msg: string): string {
-  const words = msg.toLowerCase().split(/\s+/);
+  const words = msg.toLowerCase().split(/[\s,.!?]+/);
   const extras: string[] = [];
+  const seen = new Set<string>();
   for (const w of words) {
     const en = RU_TO_EN[w];
     if (en) extras.push(en);
+    if (w.length < 3) continue;
+    for (const { stem, terms } of OCCASION_STEMS) {
+      if (w.startsWith(stem) && !seen.has(stem)) {
+        seen.add(stem);
+        extras.push(terms);
+        break;
+      }
+    }
   }
   return extras.length > 0 ? `${msg} ${extras.join(" ")}` : msg;
 }
@@ -298,7 +349,38 @@ async function findRelevantProducts(
     }
   }
 
-  // (2) Full-text search via RPC — fills in semantically relevant extras.
+  // (2) Semantic search via pgvector — embed the query and find the nearest
+  //     products. Best-effort: if embeddings aren't generated yet, the embed
+  //     call fails, or match_products is absent, we silently fall through to
+  //     full-text search below. Catches intent the keyword path misses.
+  if (SEMANTIC_SEARCH_ENABLED && process.env.REPLICATE_API_TOKEN) {
+    try {
+      const queryVec = await embedText(query);
+      if (queryVec) {
+        const { data, error } = await supabase.rpc("match_products", {
+          query_embedding: queryVec,
+          match_count: SEARCH_MATCH_COUNT,
+        });
+        if (error) throw error;
+        let added = 0;
+        for (const p of (data ?? []) as Array<MatchedProduct & { similarity?: number }>) {
+          if ((p.similarity ?? 0) < SEMANTIC_MIN_SIMILARITY) continue;
+          if (!merged.has(p.id)) {
+            merged.set(p.id, { ...p, rank: 1.5 });
+            added++;
+          }
+        }
+        debug.semanticCount = added;
+      } else {
+        debug.semantic = "embed-unavailable";
+      }
+    } catch (err) {
+      debug.semanticError = err instanceof Error ? err.message : String(err);
+      console.warn("[stylist/chat] semantic search failed:", err);
+    }
+  }
+
+  // (3) Full-text search via RPC — fills in semantically relevant extras.
   try {
     const { data, error } = await supabase.rpc("search_products", {
       query_text: query,
@@ -319,7 +401,7 @@ async function findRelevantProducts(
     return { products: Array.from(merged.values()).slice(0, SEARCH_MATCH_COUNT + 20), debug };
   }
 
-  // (3) Recency fallback — nothing matched, show recent products
+  // (4) Recency fallback — nothing matched, show recent products
   try {
     const { data } = await supabase
       .from("products")
@@ -520,6 +602,42 @@ function extractJsonBlock(text: string): { clean: string; parsed: ParsedBlock } 
   return { clean: text.trim(), parsed: empty };
 }
 
+// ── Suggestion recovery ───────────────────────────────────────────────────────
+
+/**
+ * The model sometimes breaks the contract: forgets the JSON block, writes the
+ * product ID inline, or just names the product in prose. Rather than lose the
+ * recommendation, recover IDs from the raw text and from product names that
+ * appear in the reply, scoped strictly to the relevant catalog so we never
+ * surface an item the model didn't actually mean.
+ */
+function recoverSuggestions(
+  rawText: string,
+  cleanReply: string,
+  relevantProducts: MatchedProduct[]
+): string[] {
+  const recovered: string[] = [];
+  const seen = new Set<string>();
+  const add = (id: string) => {
+    if (!seen.has(id)) { seen.add(id); recovered.push(id); }
+  };
+
+  // (1) Any catalog ID written literally in the raw model output.
+  for (const p of relevantProducts) {
+    if (rawText.includes(p.id)) add(p.id);
+  }
+
+  // (2) Product names mentioned in the conversational reply. Match on the full
+  //     name to avoid generic single-word collisions ("shirt", "black").
+  const haystack = cleanReply.toLowerCase();
+  for (const p of relevantProducts) {
+    const name = (p.name ?? "").toLowerCase().trim();
+    if (name.length >= 4 && haystack.includes(name)) add(p.id);
+  }
+
+  return recovered;
+}
+
 // ── Daily usage ───────────────────────────────────────────────────────────────
 
 async function getDailyUsage(userId: string): Promise<number> {
@@ -677,9 +795,22 @@ export async function POST(req: Request) {
     }
 
     const { clean: reply, parsed } = extractJsonBlock(raw);
-    const suggestedProductIds = parsed.suggestedProductIds
+    let suggestedProductIds = parsed.suggestedProductIds
       .filter((id) => catalogIds.has(id))
       .slice(0, 6);
+
+    // Contract recovery: if the model gave us no usable IDs but clearly talked
+    // about catalog items, recover them from the raw output and reply text.
+    if (suggestedProductIds.length === 0) {
+      const recovered = recoverSuggestions(raw, reply, relevantProducts)
+        .filter((id) => catalogIds.has(id))
+        .slice(0, 6);
+      if (recovered.length > 0) {
+        suggestedProductIds = recovered;
+        searchDebug.recoveredSuggestions = recovered.length;
+      }
+    }
+
     const styleKeywords = parsed.styleKeywords.slice(0, 5);
 
     // ── Fetch full product data for suggested IDs ─────────────────────────
