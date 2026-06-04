@@ -17,10 +17,9 @@ interface Props {
   relatedProducts: Product[];
   outfitsWithProduct: Outfit[];
   lowestPrice: number;
-  allProducts: Product[];
 }
 
-export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, allProducts }: Props) {
+export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
