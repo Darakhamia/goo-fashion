@@ -47,7 +47,7 @@ export default function OutfitActions({ outfitId }: OutfitActionsProps) {
     <div className="flex flex-col sm:flex-row gap-3 mb-12">
       <button
         onClick={handleLike}
-        className={`text-xs tracking-[0.14em] uppercase font-medium px-8 py-4 transition-opacity duration-200 flex items-center justify-center gap-2 ${
+        className={`text-xs tracking-[0.14em] uppercase font-medium px-8 py-4 rounded-full transition-opacity duration-200 flex items-center justify-center gap-2 ${
           liked
             ? "text-[var(--foreground)] bg-transparent border border-[var(--foreground)] hover:opacity-70"
             : "text-[var(--background)] bg-[var(--foreground)] hover:opacity-80"
@@ -68,7 +68,7 @@ export default function OutfitActions({ outfitId }: OutfitActionsProps) {
       </button>
       <button
         onClick={handleShare}
-        className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 hover:border-[var(--border-strong)] transition-colors duration-200"
+        className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-full hover:border-[var(--border-strong)] transition-colors duration-200"
       >
         {copied ? "Link Copied!" : "Share"}
       </button>
