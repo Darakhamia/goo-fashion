@@ -310,7 +310,10 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               <div className="space-y-2">
                 {[...product.retailers]
                   .sort((a, b) => a.price - b.price)
-                  .map((retailer, i) => (
+                  .map((retailer, i) => {
+                    let domain = "";
+                    try { domain = new URL(retailer.url).hostname.replace("www.", ""); } catch {}
+                    return (
                     <a
                       key={retailer.name}
                       href={retailer.url}
@@ -319,13 +322,38 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       className="group flex items-center justify-between gap-4 p-4 border border-[var(--border)] rounded-xl hover:shadow-sm hover:border-[var(--foreground-muted)] transition-all duration-200"
                     >
                       <div className="flex items-center gap-3">
-                        {i === 0 && (
-                          <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] rounded-full px-2 py-1">
-                            Best
+                        {/* Retailer logo */}
+                        <div className="w-10 h-10 shrink-0 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center overflow-hidden">
+                          {domain ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                              alt={retailer.name}
+                              width={28}
+                              height={28}
+                              className="w-7 h-7 object-contain"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                                (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
+                              }}
+                            />
+                          ) : null}
+                          <span
+                            className="text-[11px] font-bold text-[var(--foreground-muted)] hidden items-center justify-center w-full h-full"
+                            style={{ display: "none" }}
+                          >
+                            {retailer.name.slice(0, 2).toUpperCase()}
                           </span>
-                        )}
+                        </div>
                         <div>
-                          <p className="text-sm text-[var(--foreground)]">{retailer.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-[var(--foreground)]">{retailer.name}</p>
+                            {i === 0 && (
+                              <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] rounded-full px-2 py-0.5">
+                                Best
+                              </span>
+                            )}
+                          </div>
                           {retailer.isOfficial && (
                             <p className="text-[9px] tracking-[0.1em] text-[var(--foreground-subtle)] mt-0.5">
                               Official store
@@ -369,7 +397,8 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                         </svg>
                       </div>
                     </a>
-                  ))}
+                  );
+                  })}
               </div>
               <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
                 Prices updated regularly. GOO is not responsible for pricing changes.
