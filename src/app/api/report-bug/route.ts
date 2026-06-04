@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 interface ClaudeResult {
   title: string;
   steps: string[];
@@ -20,6 +18,15 @@ export async function POST(req: NextRequest) {
     if (!description) {
       return NextResponse.json({ error: "Description is required" }, { status: 400 });
     }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: "ANTHROPIC_API_KEY is not configured on the server" }, { status: 500 });
+    }
+    if (!process.env.PLANE_API_KEY) {
+      return NextResponse.json({ error: "PLANE_API_KEY is not configured on the server" }, { status: 500 });
+    }
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const textPrompt = `Analyze this bug report and return ONLY a JSON object with:
 - title: short bug title in Russian (max 60 chars)
