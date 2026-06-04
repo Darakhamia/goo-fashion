@@ -61,23 +61,49 @@ export async function chatCompletion(opts: {
 
 /** Embedding model + dimensions. Must match migration 005 (vector(1024)). */
 const EMBED_MODEL = "nateraw/bge-large-en-v1.5";
+// Community models on Replicate must be pinned to a version hash.
+const EMBED_VERSION = "9cf9f015a9cb9c61d1a2610659cdac4a4ca222f2d3707a68517b18c198a9add1";
 export const EMBEDDING_DIMS = 1024;
 
 /**
- * Embed a single piece of text into a 1024-dim vector via Replicate (BGE-large).
- * Returns null on any failure or unexpected shape so callers can degrade
- * gracefully to keyword search instead of breaking the request.
+ * Embed text into a 1024-dim vector via Replicate (BGE-large). Throws on any
+ * failure or unexpected shape — the thrown message includes a sample of the
+ * raw output so callers can diagnose. Use {@link embedText} for the safe,
+ * null-returning variant in hot paths.
+ */
+export async function embedTextOrThrow(text: string): Promise<number[]> {
+  const clean = text.trim();
+  if (!clean) throw new Error("embedText: empty text");
+  const replicate = client();
+  const output = await replicate.run(
+    `${EMBED_MODEL}:${EMBED_VERSION}` as `${string}/${string}:${string}`,
+    {
+      input: {
+        texts: JSON.stringify([clean.slice(0, 4000)]),
+        convert_to_numpy: false,
+        normalize_embeddings: true,
+      },
+    }
+  );
+  const vec = extractEmbedding(output);
+  if (!vec) {
+    throw new Error(
+      `embedText: unexpected output shape: ${JSON.stringify(output).slice(0, 200)}`
+    );
+  }
+  if (vec.length !== EMBEDDING_DIMS) {
+    throw new Error(`embedText: got ${vec.length} dims, expected ${EMBEDDING_DIMS}`);
+  }
+  return vec;
+}
+
+/**
+ * Safe wrapper around {@link embedTextOrThrow}: returns null on any failure so
+ * the stylist degrades to keyword search instead of breaking the request.
  */
 export async function embedText(text: string): Promise<number[] | null> {
-  const clean = text.trim();
-  if (!clean) return null;
   try {
-    const replicate = client();
-    const output = await replicate.run(EMBED_MODEL as `${string}/${string}`, {
-      input: { texts: JSON.stringify([clean.slice(0, 4000)]) },
-    });
-    const vec = extractEmbedding(output);
-    return vec && vec.length === EMBEDDING_DIMS ? vec : null;
+    return await embedTextOrThrow(text);
   } catch (err) {
     console.warn("[replicate-ai] embedText failed:", err instanceof Error ? err.message : err);
     return null;

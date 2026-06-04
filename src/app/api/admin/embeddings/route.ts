@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { embedText } from "@/lib/server/replicate-ai";
+import { embedTextOrThrow } from "@/lib/server/replicate-ai";
 
 // ── POST /api/admin/embeddings ────────────────────────────────────────────────
 // Backfills semantic embeddings for products that don't have one yet. Processes
@@ -65,16 +65,21 @@ export async function POST(req: Request) {
   const rows = (data ?? []) as ProductRow[];
   let processed = 0;
   let failed = 0;
+  let firstError: string | undefined;
 
   for (const row of rows) {
-    const vec = await embedText(buildEmbedText(row));
-    if (!vec) { failed++; continue; }
-    const { error: updErr } = await supabase
-      .from("products")
-      .update({ embedding: vec })
-      .eq("id", row.id);
-    if (updErr) { failed++; continue; }
-    processed++;
+    try {
+      const vec = await embedTextOrThrow(buildEmbedText(row));
+      const { error: updErr } = await supabase
+        .from("products")
+        .update({ embedding: vec })
+        .eq("id", row.id);
+      if (updErr) throw new Error(`db update: ${updErr.message}`);
+      processed++;
+    } catch (err) {
+      failed++;
+      if (!firstError) firstError = err instanceof Error ? err.message : String(err);
+    }
   }
 
   // How many are still missing an embedding after this batch?
@@ -89,6 +94,7 @@ export async function POST(req: Request) {
     batchSize,
     remaining: remaining ?? null,
     done: (remaining ?? 0) === 0,
+    ...(firstError ? { firstError } : {}),
   });
 }
 
