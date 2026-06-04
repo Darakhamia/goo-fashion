@@ -520,6 +520,42 @@ function extractJsonBlock(text: string): { clean: string; parsed: ParsedBlock } 
   return { clean: text.trim(), parsed: empty };
 }
 
+// ── Suggestion recovery ───────────────────────────────────────────────────────
+
+/**
+ * The model sometimes breaks the contract: forgets the JSON block, writes the
+ * product ID inline, or just names the product in prose. Rather than lose the
+ * recommendation, recover IDs from the raw text and from product names that
+ * appear in the reply, scoped strictly to the relevant catalog so we never
+ * surface an item the model didn't actually mean.
+ */
+function recoverSuggestions(
+  rawText: string,
+  cleanReply: string,
+  relevantProducts: MatchedProduct[]
+): string[] {
+  const recovered: string[] = [];
+  const seen = new Set<string>();
+  const add = (id: string) => {
+    if (!seen.has(id)) { seen.add(id); recovered.push(id); }
+  };
+
+  // (1) Any catalog ID written literally in the raw model output.
+  for (const p of relevantProducts) {
+    if (rawText.includes(p.id)) add(p.id);
+  }
+
+  // (2) Product names mentioned in the conversational reply. Match on the full
+  //     name to avoid generic single-word collisions ("shirt", "black").
+  const haystack = cleanReply.toLowerCase();
+  for (const p of relevantProducts) {
+    const name = (p.name ?? "").toLowerCase().trim();
+    if (name.length >= 4 && haystack.includes(name)) add(p.id);
+  }
+
+  return recovered;
+}
+
 // ── Daily usage ───────────────────────────────────────────────────────────────
 
 async function getDailyUsage(userId: string): Promise<number> {
@@ -677,9 +713,22 @@ export async function POST(req: Request) {
     }
 
     const { clean: reply, parsed } = extractJsonBlock(raw);
-    const suggestedProductIds = parsed.suggestedProductIds
+    let suggestedProductIds = parsed.suggestedProductIds
       .filter((id) => catalogIds.has(id))
       .slice(0, 6);
+
+    // Contract recovery: if the model gave us no usable IDs but clearly talked
+    // about catalog items, recover them from the raw output and reply text.
+    if (suggestedProductIds.length === 0) {
+      const recovered = recoverSuggestions(raw, reply, relevantProducts)
+        .filter((id) => catalogIds.has(id))
+        .slice(0, 6);
+      if (recovered.length > 0) {
+        suggestedProductIds = recovered;
+        searchDebug.recoveredSuggestions = recovered.length;
+      }
+    }
+
     const styleKeywords = parsed.styleKeywords.slice(0, 5);
 
     // ── Fetch full product data for suggested IDs ─────────────────────────
