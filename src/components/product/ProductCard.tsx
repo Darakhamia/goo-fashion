@@ -23,7 +23,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   const { isProductLiked, toggleProductLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, isInCart, removeFromCart } = useCart();
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
@@ -37,16 +37,19 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   const inCart = isInCart(currentId);
 
   const handleAddToCart = () => {
-    if (inCart) return;
-    addToCart({
-      id: currentId,
-      name: activeVariant ? activeVariant.name : product.name,
-      brand: product.brand,
-      imageUrl: activeVariant ? activeVariant.imageUrl : product.imageUrl,
-      price: activeVariant ? activeVariant.priceMin : product.priceMin,
-      currency: product.currency,
-      retailerUrl: product.retailers?.[0]?.url ?? null,
-    });
+    if (inCart) {
+      removeFromCart(currentId);
+    } else {
+      addToCart({
+        id: currentId,
+        name: activeVariant ? activeVariant.name : product.name,
+        brand: product.brand,
+        imageUrl: activeVariant ? activeVariant.imageUrl : product.imageUrl,
+        price: activeVariant ? activeVariant.priceMin : product.priceMin,
+        currency: product.currency,
+        retailerUrl: product.retailers?.[0]?.url ?? null,
+      });
+    }
   };
 
   const displayImages = useMemo(() => {
@@ -196,20 +199,13 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       {/* Cart button */}
       <button
         onClick={handleAddToCart}
-        aria-label={inCart ? "In cart" : "Add to cart"}
+        aria-label={inCart ? "Remove from cart" : "Add to cart"}
         className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
-        {inCart ? (
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="text-white">
-            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        ) : (
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-            <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-            <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-            <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-          </svg>
-        )}
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+          <path d="M5 7V5.5a3 3 0 116 0V7" />
+          <path d="M3 7h10l-.8 6.5H3.8L3 7z" fill={inCart ? "currentColor" : "none"} />
+        </svg>
       </button>
 
       {/* Like button */}
