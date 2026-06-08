@@ -203,8 +203,10 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-          <path d="M5 7V5.5a3 3 0 116 0V7" />
-          <path d="M3 7h10l-.8 6.5H3.8L3 7z" fill={inCart ? "currentColor" : "none"} />
+          <path d="M1 1h2l1.5 7.5" />
+          <path d="M4.5 8.5h8l1.5-5.5H4z" fill={inCart ? "currentColor" : "none"} />
+          <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+          <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
         </svg>
       </button>
 
