@@ -34,6 +34,7 @@ export default function Navigation() {
   const { currency, setCurrency, formatPrice, convertToUsd } = useCurrency();
   const [aiTooltipVisible, setAiTooltipVisible] = useState(false);
   const [aiHover, setAiHover] = useState(false);
+  const [cartHover, setCartHover] = useState(false);
   const [profileHover, setProfileHover] = useState(false);
   const aiButtonRef = useRef<HTMLDivElement>(null);
 
@@ -234,6 +235,46 @@ export default function Navigation() {
           {/* divider */}
           <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
 
+          {/* Cart */}
+          <div className="relative">
+            <button
+              onClick={() => setCartOpen(true)}
+              onMouseEnter={() => setCartHover(true)}
+              onMouseLeave={() => setCartHover(false)}
+              aria-label="Open cart"
+              className="flex items-center justify-center transition-all duration-200"
+              style={{
+                width: 38, height: 38, borderRadius: "50%",
+                border: `1px solid ${cartOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : cartHover ? navIconBorderHover : navIconBorder}`,
+                background: cartOpen ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
+                color: cartHover ? navIconColorHover : navIconColor,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+                <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+                <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              </svg>
+              {cartCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 1, right: 1,
+                  width: 15, height: 15,
+                  background: isDark ? "white" : "black",
+                  color: isDark ? "black" : "white",
+                  borderRadius: "50%",
+                  fontSize: 8, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  lineHeight: 1,
+                }}>
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* divider */}
+          <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
+
           {/* Profile */}
           <SignedIn>
             <div ref={profileRef} className="relative">
@@ -307,20 +348,6 @@ export default function Navigation() {
                         <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{totalLikes > 9 ? "9+" : totalLikes}</span>
                       )}
                     </Link>
-                    <button onClick={() => { setCartOpen(true); setProfileOpen(false); }}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
-                      <span className="flex items-center gap-3">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
-                          <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-                          <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
-                        </svg>
-                        Cart
-                      </span>
-                      {cartCount > 0 && (
-                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{cartCount > 9 ? "9+" : cartCount}</span>
-                      )}
-                    </button>
                   </div>
 
                   <div className="border-t border-[var(--border)] py-1.5 relative">
