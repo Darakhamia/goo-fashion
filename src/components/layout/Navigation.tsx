@@ -33,6 +33,8 @@ export default function Navigation() {
   const { cartItems, removeFromCart } = useCart();
   const { currency, setCurrency, formatPrice, convertToUsd } = useCurrency();
   const [aiTooltipVisible, setAiTooltipVisible] = useState(false);
+  const [aiHover, setAiHover] = useState(false);
+  const [profileHover, setProfileHover] = useState(false);
   const aiButtonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,7 +58,9 @@ export default function Navigation() {
   const navBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const navShadow = isDark ? "0 2px 20px rgba(0,0,0,0.4)" : "0 2px 20px rgba(0,0,0,0.08)";
   const navIconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)";
+  const navIconColorHover = isDark ? "rgba(255,255,255,1)" : "rgba(0,0,0,0.9)";
   const navIconBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
+  const navIconBorderHover = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)";
   const navDivider = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
   const logoClass = isDark ? "text-white" : "text-black";
   const linkActiveClass = isDark ? "text-white" : "text-black";
@@ -174,13 +178,15 @@ export default function Navigation() {
           <div ref={aiButtonRef} className="relative">
             <button
               onClick={() => { toggleStylist(); dismissAiTooltip(); }}
+              onMouseEnter={() => setAiHover(true)}
+              onMouseLeave={() => setAiHover(false)}
               aria-label="Open AI Stylist"
               className={`flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
-                border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
+                border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : aiHover ? navIconBorderHover : navIconBorder}`,
                 background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
-                color: stylistOpen ? (isDark ? "black" : "white") : navIconColor,
+                color: stylistOpen ? (isDark ? "black" : "white") : aiHover ? navIconColorHover : navIconColor,
               }}
             >
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
@@ -233,13 +239,15 @@ export default function Navigation() {
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => { setProfileOpen(v => !v); setCurrencySubmenu(false); }}
+                onMouseEnter={() => setProfileHover(true)}
+                onMouseLeave={() => setProfileHover(false)}
                 aria-label="Profile menu"
                 className="flex items-center justify-center transition-all duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
-                  border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : navIconBorder}`,
+                  border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : profileHover ? navIconBorderHover : navIconBorder}`,
                   background: profileOpen ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
-                  color: navIconColor,
+                  color: profileHover ? navIconColorHover : navIconColor,
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
