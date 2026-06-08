@@ -8,6 +8,7 @@ import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
+import { useCart } from "@/lib/context/cart-context";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -22,6 +23,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   const { isProductLiked, toggleProductLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
+  const { addToCart, isInCart } = useCart();
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
@@ -30,6 +32,22 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   };
 
   const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(initialVariant);
+
+  const currentId = activeVariant ? activeVariant.id : product.id;
+  const inCart = isInCart(currentId);
+
+  const handleAddToCart = () => {
+    if (inCart) return;
+    addToCart({
+      id: currentId,
+      name: activeVariant ? activeVariant.name : product.name,
+      brand: product.brand,
+      imageUrl: activeVariant ? activeVariant.imageUrl : product.imageUrl,
+      price: activeVariant ? activeVariant.priceMin : product.priceMin,
+      currency: product.currency,
+      retailerUrl: product.retailers?.[0]?.url ?? null,
+    });
+  };
 
   const displayImages = useMemo(() => {
     if (activeVariant) return activeVariant.images?.length ? activeVariant.images : [activeVariant.imageUrl];
@@ -174,6 +192,25 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           )}
         </div>
       </Link>
+
+      {/* Cart button */}
+      <button
+        onClick={handleAddToCart}
+        aria-label={inCart ? "In cart" : "Add to cart"}
+        className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+      >
+        {inCart ? (
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="text-white">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ) : (
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+            <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+            <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+          </svg>
+        )}
+      </button>
 
       {/* Like button */}
       <button
