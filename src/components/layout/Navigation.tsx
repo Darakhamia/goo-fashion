@@ -493,15 +493,15 @@ export default function Navigation() {
                 <ul className="flex flex-col gap-2 p-3">
                   {cartItems.map(item => (
                     <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
-                      <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg hover:opacity-80 transition-opacity">
+                      <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={item.imageUrl} alt={item.name} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg object-cover" />
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <p className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">{item.name}</p>
+                          <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">{item.brand}</p>
+                          <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">{formatPrice(item.price, item.currency)}</p>
+                        </div>
                       </Link>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2 hover:underline block">{item.name}</Link>
-                        <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">{item.brand}</p>
-                        <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">{formatPrice(item.price, item.currency)}</p>
-                      </div>
                       <button onClick={() => removeFromCart(item.id)} className="shrink-0 mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors" aria-label={`Remove ${item.name}`}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
