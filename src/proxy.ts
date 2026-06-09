@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const ADMIN_PATH = "/goo-studio";
-const COMING_SOON = process.env.COMING_SOON === "true";
+// Site is live — coming-soon gate disabled. Set to `process.env.COMING_SOON === "true"` to re-enable.
+const COMING_SOON = false;
 const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
 const COOKIE_NAME = "goo_preview";
 
