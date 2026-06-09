@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { getPrompt } from "@/lib/server/get-prompt";
 import { DEFAULT_BLOG_SYSTEM_PROMPT, DEFAULT_BLOG_USER_PROMPT } from "@/lib/server/prompt-defaults";
@@ -43,6 +44,9 @@ async function fetchPageText(url: string): Promise<{ text: string; ogImage?: str
 }
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { url } = await req.json();
     if (!url || typeof url !== "string") {

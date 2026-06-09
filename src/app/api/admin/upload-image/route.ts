@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const BUCKET = "product-images";
 
 export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 501 });
   }
