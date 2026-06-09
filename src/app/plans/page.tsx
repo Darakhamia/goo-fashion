@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { planPriceLabel, PLAN_PRICE_UAH, type PlanId } from "@/lib/plans";
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ const PLANS = [
 type Cell = string | boolean;
 
 const COMPARISON: { label: string; basic: Cell; pro: Cell; premium: Cell }[] = [
-  { label: "Price",               basic: "$10 / mo",   pro: "$25 / mo",   premium: "$45 / mo"  },
+  { label: "Price",               basic: `${PLAN_PRICE_UAH.basic} ₴ / mo`, pro: `${PLAN_PRICE_UAH.pro} ₴ / mo`, premium: `${PLAN_PRICE_UAH.premium} ₴ / mo` },
   { label: "Image generations",   basic: "50",          pro: "180",        premium: "450"        },
   { label: "AI messages",         basic: "~300",        pro: "~1,000",     premium: "~3,000"     },
   { label: "Generation speed",    basic: "Standard",    pro: "Priority",   premium: "Very fast"  },
@@ -91,7 +92,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is there a free plan?",
-    a: "Not at the moment. All plans start at $10/month. We're keeping things simple during early access — a free tier may come later.",
+    a: `Not at the moment. Plans start at ${PLAN_PRICE_UAH.basic} ₴/month. We're keeping things simple during early access — a free tier may come later.`,
   },
   {
     q: "Do unused credits roll over?",
@@ -212,7 +213,7 @@ export default function PlansPage() {
                   <span className={`text-6xl font-black leading-none ${
                     plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
                   }`}>
-                    ${plan.price}
+                    {planPriceLabel(plan.id as PlanId)}
                   </span>
                   <span className={`text-sm mb-1 ${
                     plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"

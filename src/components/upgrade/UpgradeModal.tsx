@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { PlanId } from "@/lib/plans";
-import { PLANS } from "@/lib/plans";
+import { PLANS, planPriceLabel } from "@/lib/plans";
 
 export interface UpgradePrompt {
   /** Human-readable message from the server (402 body). */
@@ -28,9 +28,9 @@ export function UpgradeModal({ prompt, onClose }: Props) {
     prompt.requiredPlan && PLANS[prompt.requiredPlan]
       ? PLANS[prompt.requiredPlan].name
       : null;
-  const price =
+  const priceLabel =
     prompt.requiredPlan && PLANS[prompt.requiredPlan]
-      ? PLANS[prompt.requiredPlan].price
+      ? planPriceLabel(prompt.requiredPlan)
       : null;
 
   const handleUpgrade = () => {
@@ -63,14 +63,14 @@ export function UpgradeModal({ prompt, onClose }: Props) {
           </p>
         </div>
 
-        {planName && price !== null && (
+        {planName && priceLabel !== null && (
           <div className="px-6 pb-4">
             <div className="border border-[var(--border)] px-4 py-3 flex items-baseline justify-between">
               <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                 {planName}
               </span>
               <span className="text-xl font-semibold text-[var(--foreground)]">
-                ${price}
+                {priceLabel}
                 <span className="text-xs text-[var(--foreground-muted)] ml-1">/mo</span>
               </span>
             </div>

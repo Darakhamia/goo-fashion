@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@/lib/context/auth-context";
 import { useTheme } from "@/lib/context/theme-context";
 import Link from "next/link";
-import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, planPriceLabel, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -82,28 +82,19 @@ const PLAN_FEATURE_LABELS: Record<string, string> = {
 const ALL_FEATURES = ["aiStylist", "imageGeneration", "saveOutfits", "stylistMemory", "exclusiveStyles"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function nextBillingDate(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-function fakeBillingHistory(plan: PlanId): { date: string; amount: number; label: string }[] {
-  if (plan === "free") return [];
-  const price = PLANS[plan].price;
-  const name = PLANS[plan].name;
-  const history = [];
-  const now = new Date();
-  for (let i = 0; i < 3; i++) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - i);
-    history.push({
-      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      amount: price,
-      label: name,
-    });
-  }
-  return history;
+interface BillingStatus {
+  plan: PlanId;
+  status: "pending" | "active" | "past_due" | "canceled";
+  amount: number;
+  ccy: number;
+  autoRenew: boolean;
+  currentPeriodEnd: string | null;
+  maskedPan: string | null;
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
@@ -387,7 +378,42 @@ function AccountTab({
 // ── Plan Tab ───────────────────────────────────────────────────────────────────
 function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
   const isPaid = currentPlan !== "free";
-  const billingHistory = fakeBillingHistory(currentPlan);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [loadingBilling, setLoadingBilling] = useState(isPaid);
+  const [canceling, setCanceling] = useState(false);
+  const [canceled, setCanceled] = useState(false);
+
+  useEffect(() => {
+    if (!isPaid) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/billing/status");
+        const body = await res.json().catch(() => ({}));
+        if (active && body.subscription) {
+          setBilling(body.subscription as BillingStatus);
+          setCanceled(!body.subscription.autoRenew);
+        }
+      } finally {
+        if (active) setLoadingBilling(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isPaid]);
+
+  const handleCancel = async () => {
+    if (canceling || canceled) return;
+    if (!window.confirm("Cancel auto-renewal? You'll keep access until the end of the current period.")) return;
+    setCanceling(true);
+    try {
+      const res = await fetch("/api/billing/cancel", { method: "POST" });
+      if (res.ok) setCanceled(true);
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   return (
     <div className="animate-fade-up space-y-10">
@@ -404,7 +430,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 {PLANS[currentPlan].name}
               </p>
               <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                {PLANS[currentPlan].price === 0 ? "Free forever" : `$${PLANS[currentPlan].price} / month`}
+                {currentPlan === "free" ? "Free forever" : `${planPriceLabel(currentPlan)} / month`}
               </p>
             </div>
             {currentPlan !== "premium" && (
@@ -452,50 +478,43 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
             </p>
             <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
               <div className="flex items-center justify-between px-5 py-4">
-                <p className="text-xs text-[var(--foreground-muted)]">Next payment</p>
+                <p className="text-xs text-[var(--foreground-muted)]">
+                  {canceled ? "Access until" : "Next payment"}
+                </p>
                 <p className="text-xs font-medium text-[var(--foreground)]">
-                  ${PLANS[currentPlan].price}.00 on {nextBillingDate()}
+                  {canceled
+                    ? formatDate(billing?.currentPeriodEnd)
+                    : `${planPriceLabel(currentPlan)} on ${formatDate(billing?.currentPeriodEnd)}`}
                 </p>
               </div>
               <div className="flex items-center justify-between px-5 py-4">
                 <p className="text-xs text-[var(--foreground-muted)]">Billing cycle</p>
-                <p className="text-xs font-medium text-[var(--foreground)]">Monthly</p>
+                <p className="text-xs font-medium text-[var(--foreground)]">
+                  {canceled ? "Canceled — won't renew" : "Monthly (auto-renew)"}
+                </p>
               </div>
               <div className="flex items-center justify-between px-5 py-4">
                 <p className="text-xs text-[var(--foreground-muted)]">Payment method</p>
                 <p className="text-xs font-medium text-[var(--foreground)] flex items-center gap-2">
-                  <span className="text-[var(--foreground-subtle)] tracking-widest">••••</span>
-                  4242
-                  <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] px-1.5 py-0.5">
-                    demo
-                  </span>
+                  {loadingBilling ? (
+                    <span className="text-[var(--foreground-subtle)]">Loading…</span>
+                  ) : billing?.maskedPan ? (
+                    <>
+                      <span className="text-[var(--foreground-subtle)] tracking-widest">••••</span>
+                      {billing.maskedPan.slice(-4)}
+                      <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] px-1.5 py-0.5">
+                        monobank
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[var(--foreground-subtle)]">monobank</span>
+                  )}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Billing history */}
-          <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-              Billing history
-            </p>
-            <div className="border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
-              {billingHistory.map((entry, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-4">
-                  <div>
-                    <p className="text-xs text-[var(--foreground)]">{entry.label} plan</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{entry.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-[var(--foreground)]">${entry.amount}.00</p>
-                    <p className="text-[9px] tracking-[0.10em] uppercase text-green-600 dark:text-green-400 mt-0.5">paid</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Cancel */}
+          {/* Manage */}
           <div className="pt-2">
             <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
               Manage
@@ -507,12 +526,18 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
               >
                 Change plan
               </Link>
-              <button className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground-muted)] transition-colors duration-200">
-                Cancel subscription
+              <button
+                onClick={handleCancel}
+                disabled={canceling || canceled}
+                className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground-muted)] transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {canceled ? "Auto-renewal canceled" : canceling ? "Canceling…" : "Cancel subscription"}
               </button>
             </div>
             <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
-              Billing is currently in demo mode — no actual charges are made.
+              {canceled
+                ? "Your subscription won't renew. You keep access until the date above."
+                : "Secure recurring billing via monobank. Cancel anytime — you keep access until the current period ends."}
             </p>
           </div>
         </>
@@ -530,7 +555,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 return (
                   <div key={planId} className="p-4 border border-[var(--border)] rounded-xl hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
                     <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
-                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">${plan.price}/mo</p>
+                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">{planPriceLabel(planId)}/mo</p>
                     {isUpgrade && (
                       <Link
                         href={`/subscribe?plan=${planId}`}
