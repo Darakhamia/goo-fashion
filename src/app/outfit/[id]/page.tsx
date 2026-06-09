@@ -8,8 +8,8 @@ import OutfitCollage from "@/components/outfit/OutfitCollage";
 import OutfitActions from "@/components/outfit/OutfitActions";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
+import JsonLd from "@/components/seo/JsonLd";
+import { SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -20,10 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const outfit = await getOutfitById(id);
   if (!outfit) return {};
 
-  const title = `${outfit.name} Outfit | GOO`;
-  const description = outfit.description
-    ? outfit.description.slice(0, 155)
-    : `Curated ${outfit.occasion} outfit for ${outfit.season === "all" ? "all seasons" : outfit.season}. From $${outfit.totalPriceMin.toLocaleString()}.`;
+  // Derive a unique title/description from the outfit's own data so the
+  // generically-named "Community Look" pages don't read as duplicates.
+  const { title, description } = buildOutfitSeo(outfit);
 
   return {
     title,
@@ -49,8 +48,16 @@ export default async function OutfitDetailPage({ params }: Props) {
     .filter((o) => o.id !== outfit.id && o.occasion === outfit.occasion)
     .slice(0, 3);
 
+  const { heading, description: seoDescription } = buildOutfitSeo(outfit);
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", url: SITE_URL },
+    { name: "Outfits", url: absoluteUrl("/browse") },
+    { name: heading },
+  ]);
+
   return (
     <div className="min-h-screen">
+      <JsonLd data={[outfitJsonLd(outfit, heading), breadcrumb]} />
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         {/* Breadcrumb */}
         <div className="pt-8 flex items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
@@ -62,7 +69,7 @@ export default async function OutfitDetailPage({ params }: Props) {
             Outfits
           </Link>
           <span>/</span>
-          <span className="text-[var(--foreground)]">{outfit.name}</span>
+          <span className="text-[var(--foreground)]">{heading}</span>
         </div>
 
         {/* Main layout */}
@@ -104,10 +111,10 @@ export default async function OutfitDetailPage({ params }: Props) {
                 {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
               </p>
               <h1 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight mb-4">
-                {outfit.name}
+                {heading}
               </h1>
               <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-w-sm">
-                {outfit.description}
+                {outfit.description || seoDescription}
               </p>
 
               <div className="mt-6 flex items-center gap-6">

@@ -7,6 +7,8 @@ import { HeroSection } from "@/components/home/HeroSection";
 import FeaturesBento from "@/components/home/FeaturesBento";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
 import { getAllOutfits, getFeaturedOutfits } from "@/lib/data/db";
+import JsonLd from "@/components/seo/JsonLd";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -77,6 +79,9 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Structured data: Organization + WebSite (with sitelinks SearchAction) */}
+      <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
+
       {/* ── HERO ── */}
       <HeroSection />
 

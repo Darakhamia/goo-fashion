@@ -196,6 +196,8 @@ export interface Outfit {
   season: "all" | "spring" | "summer" | "autumn" | "winter";
   source?: "community" | null;
   isHomepageFeatured?: boolean;
+  /** ISO date string from DB — used for per-entity sitemap lastmod. */
+  createdAt?: string;
 }
 
 export interface UserProfile {

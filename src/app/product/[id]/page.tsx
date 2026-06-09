@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductById, getAllProducts, getOutfitsByProductId } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
+import JsonLd from "@/components/seo/JsonLd";
+import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${product.name} — ${product.brand} | GOO`;
   const description = product.description
     ? product.description.slice(0, 155)
-    : `Shop ${product.name} by ${product.brand}. From $${lowestPrice} ${product.currency}.`;
+    : `Shop ${product.name} by ${product.brand}. From ${formatMetaPrice(lowestPrice, product.currency)}.`;
 
   return {
     title,
@@ -56,8 +56,16 @@ export default async function ProductDetailPage({ params }: Props) {
     ? Math.min(...product.retailers.map((r) => r.price))
     : product.priceMin;
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", url: SITE_URL },
+    { name: "Browse", url: absoluteUrl("/browse") },
+    { name: product.category, url: absoluteUrl(`/browse?category=${product.category}`) },
+    { name: product.name },
+  ]);
+
   return (
     <div className="min-h-screen">
+      <JsonLd data={[productJsonLd(product), breadcrumb]} />
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         <ProductClient
           product={product}
