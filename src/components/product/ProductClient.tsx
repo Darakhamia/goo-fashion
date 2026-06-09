@@ -11,6 +11,7 @@ import OutfitCard from "@/components/outfit/OutfitCard";
 import PriceHistoryChart from "./PriceHistoryChart";
 import ProductReviews from "./ProductReviews";
 import { track } from "@/lib/analytics/track";
+import { buildStylingNotes } from "@/lib/seo";
 
 interface Props {
   product: Product;
@@ -71,6 +72,10 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   }, [selectedColor]);
 
   const mainImage = displayImages[activeIdx] || product.imageUrl || "";
+
+  // Unique, data-derived styling copy so the page isn't a thin duplicate of the
+  // source catalog feed.
+  const styling = useMemo(() => buildStylingNotes(product), [product]);
 
   return (
     <>
@@ -386,6 +391,34 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           )}
         </div>
       </div>
+
+      {/* How to wear it — unique on-page styling copy */}
+      <section className="mt-16 md:mt-20">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-6 md:px-10 py-8 md:py-10">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
+            How to wear it
+          </p>
+          <p className="text-sm md:text-base text-[var(--foreground-muted)] leading-relaxed max-w-2xl">
+            {styling.text}
+          </p>
+          {styling.pairWith.length > 0 && (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">
+                Pairs with
+              </span>
+              {styling.pairWith.map((cat) => (
+                <Link
+                  key={cat}
+                  href={`/browse?category=${cat}`}
+                  className="text-[11px] capitalize border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] rounded-full px-3 py-1.5 transition-colors duration-200"
+                >
+                  {cat}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Price history chart */}
       <PriceHistoryChart productId={product.id} />

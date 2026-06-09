@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_URL } from "@/lib/seo";
 import { Inter_Tight, Poppins } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { LikesProvider } from "@/lib/context/likes-context";
@@ -25,13 +26,17 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
+  // Resolves all relative canonical/og URLs against the canonical non-www origin.
+  metadataBase: new URL(SITE_URL),
   title: "GOO — AI Stylist",
   description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
   keywords: ["fashion", "AI stylist", "outfits", "luxury fashion", "personal stylist"],
+  alternates: { canonical: "/" },
   openGraph: {
     title: "GOO — AI Stylist",
     description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
     type: "website",
+    url: SITE_URL,
   },
 };
 

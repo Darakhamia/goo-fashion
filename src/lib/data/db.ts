@@ -299,6 +299,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     season: (row.season ?? "all") as Outfit["season"],
     source: (row.source === "community" ? "community" : null),
     isHomepageFeatured: row.is_homepage_featured ?? false,
+    createdAt: row.created_at,
   };
 }
 

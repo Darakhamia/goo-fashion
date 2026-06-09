@@ -187,6 +187,11 @@ export default function BrowsePage() {
     const v = params.get("view");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (v === "pieces" || v === "outfits") setView(v);
+    // Seed the search box from ?search= so the WebSite SearchAction (and shared
+    // links) land on a pre-filtered catalog.
+    const q = params.get("search");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q) setSearchQuery(q);
   }, []);
   const [sort, setSort] = useState<SortOption>("featured");
   const [sortOpen, setSortOpen] = useState(false);

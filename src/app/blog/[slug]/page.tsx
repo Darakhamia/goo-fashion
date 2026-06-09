@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/data/db";
 import { renderBlogBody } from "@/lib/blog-render";
+import JsonLd from "@/components/seo/JsonLd";
+import { SITE_URL, absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -62,24 +64,25 @@ export default async function BlogPostPage({ params }: Props) {
   const all = await getAllBlogPosts({ publishedOnly: true });
   const related = all.filter((p) => p.slug !== post.slug).slice(0, 3);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.excerpt,
-    image: post.coverImageUrl || undefined,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt,
-    author: { "@type": "Organization", name: post.authorName },
-    articleSection: post.category,
-  };
+  const jsonLd = blogPostingJsonLd({
+    title: post.title,
+    excerpt: post.excerpt,
+    coverImageUrl: post.coverImageUrl,
+    publishedAt: post.publishedAt,
+    updatedAt: post.updatedAt,
+    authorName: post.authorName,
+    category: post.category,
+    slug: post.slug,
+  });
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Home", url: SITE_URL },
+    { name: "Journal", url: absoluteUrl("/blog") },
+    { name: post.title },
+  ]);
 
   return (
     <article className="min-h-screen">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={[jsonLd, breadcrumb]} />
 
       <div className="max-w-[820px] mx-auto px-6 md:px-12 pt-12 md:pt-20 pb-8">
         {/* Breadcrumb */}

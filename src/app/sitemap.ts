@@ -1,10 +1,25 @@
 import type { MetadataRoute } from "next";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
+import { SITE_URL } from "@/lib/seo";
 
 export const revalidate = 3600;
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
+/**
+ * Safely parse an entity timestamp into a Date for <lastmod>, falling back to
+ * `now` when the value is missing or unparseable.
+ */
+function toDate(value: string | undefined, fallback: Date): Date {
+  if (!value) return fallback;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? fallback : d;
+}
 
+/**
+ * Single sitemap for ~317 URLs. If the catalog grows past ~10–20k URLs, split
+ * the dynamic sections below into separate route segments
+ * (e.g. app/sitemap/products/[n]/route.ts) and expose a sitemap index from
+ * Next's `generateSitemaps()` — the per-section builders are already isolated.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -28,21 +43,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${SITE_URL}/product/${p.id}`,
-    lastModified: now,
+    lastModified: toDate(p.createdAt, now),
     changeFrequency: "weekly",
     priority: 0.8,
   }));
 
   const outfitRoutes: MetadataRoute.Sitemap = outfits.map((o) => ({
     url: `${SITE_URL}/outfit/${o.id}`,
-    lastModified: now,
+    lastModified: toDate(o.createdAt, now),
     changeFrequency: "weekly",
     priority: 0.8,
   }));
 
   const blogRoutes: MetadataRoute.Sitemap = blogPosts.map((p) => ({
     url: `${SITE_URL}/blog/${p.slug}`,
-    lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
+    lastModified: toDate(p.updatedAt, now),
     changeFrequency: "monthly",
     priority: 0.6,
   }));

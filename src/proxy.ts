@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextFetchEvent } from "next/server";
 
 const ADMIN_PATH = "/goo-studio";
 // Site is live — coming-soon gate disabled. Set to `process.env.COMING_SOON === "true"` to re-enable.
@@ -21,7 +21,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/(.*)",
 ]);
 
-export default clerkMiddleware(async (auth, req: NextRequest) => {
+const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
 
   // Block direct /admin access — redirect to home silently
@@ -69,6 +69,22 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     await auth.protect();
   }
 });
+
+/**
+ * Canonical host enforcement runs *before* Clerk: permanently (301) redirect
+ * www → bare apex domain so the site isn't served as a duplicate on both hosts.
+ * Canonical tags, robots Host, and sitemap loc all use the non-www origin.
+ * Kept outside clerkMiddleware so it doesn't depend on Clerk being configured.
+ */
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  const host = req.headers.get("host") ?? "";
+  if (host.startsWith("www.")) {
+    const url = req.nextUrl.clone();
+    url.host = host.slice(4);
+    return NextResponse.redirect(url, 301);
+  }
+  return clerk(req, event);
+}
 
 export const config = {
   matcher: [
