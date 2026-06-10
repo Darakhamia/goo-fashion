@@ -190,6 +190,39 @@ export function StylistDrawer({
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const chatThreadRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Escape closes the drawer; Tab cycles focus inside it (focus trap).
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      // Pull focus into the drawer on first Tab, then keep it cycling inside
+      if (!drawerRef.current.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -447,6 +480,10 @@ export function StylistDrawer({
         />
       )}
     <div
+      ref={drawerRef}
+      role="dialog"
+      aria-modal={position === "fixed"}
+      aria-label="AI Stylist chat"
       className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
       style={{ boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined }}
     >

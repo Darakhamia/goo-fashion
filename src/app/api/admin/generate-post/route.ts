@@ -15,6 +15,38 @@ function slugify(s: string): string {
     .slice(0, 90);
 }
 
+/**
+ * SSRF guard: only allow public http(s) URLs — reject internal hostnames and
+ * private/link-local IP ranges so the server can't be used to probe
+ * infrastructure (cloud metadata endpoints, internal services).
+ */
+function isAllowedExternalUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+
+  const host = parsed.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) return false;
+  // IPv6 literals (URL keeps brackets in hostname for them)
+  if (host.startsWith("[")) return false;
+  // Private / loopback / link-local IPv4 ranges
+  if (
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    host === "0.0.0.0"
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function fetchPageText(url: string): Promise<{ text: string; ogImage?: string }> {
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; GOO-Bot/1.0)" },
@@ -52,6 +84,9 @@ export async function POST(req: Request) {
     if (!url || typeof url !== "string") {
       return NextResponse.json({ error: "url is required" }, { status: 400 });
     }
+    if (!isAllowedExternalUrl(url)) {
+      return NextResponse.json({ error: "url must be a public http(s) address" }, { status: 400 });
+    }
 
     const apiKey = await getOpenAIKey();
     if (!apiKey) {
@@ -60,7 +95,8 @@ export async function POST(req: Request) {
 
     const { text: pageText, ogImage } = await fetchPageText(url);
 
-    const client = new OpenAI({ apiKey });
+    // 60s cap so a stuck completion can't hold the serverless function open
+    const client = new OpenAI({ apiKey, timeout: 60_000 });
 
     const [systemPrompt, userPromptTemplate] = await Promise.all([
       getPrompt("prompt_blog_system", DEFAULT_BLOG_SYSTEM_PROMPT),
