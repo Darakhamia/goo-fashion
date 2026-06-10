@@ -9,7 +9,6 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
-import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 
 type View = "outfits" | "pieces" | "looks";
@@ -27,59 +26,198 @@ interface SavedLook {
   generatedStyle?: "mannequin" | "flatlay" | "tryon";
 }
 
-const SLOT_ORDER = ["outerwear", "top", "bottom", "shoes", "accessories", "accessories2"];
+type PublicationStatus = "pending" | "approved" | "rejected";
 
-// ── Builder outfit card ───────────────────────────────────────────────────────
-function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; onDelete: () => void; onRename: (id: string, name: string) => void; allProducts: Product[] }) {
+interface LookSubmission {
+  id: string;
+  lookId: string | null;
+  generatedImage: string | null;
+  status: PublicationStatus;
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+/** A piece counts as unavailable only when we know it's sold out everywhere. */
+function isProductAvailable(product: Product | undefined): boolean {
+  if (!product) return true; // unknown product — don't penalise while data loads
+  if (!product.retailers || product.retailers.length === 0) return true;
+  return product.retailers.some((r) => r.availability !== "sold out");
+}
+
+const CATEGORY_TO_SLOT: Record<string, string> = {
+  outerwear: "outerwear",
+  blazers: "outerwear",
+  tops: "top",
+  shirts: "top",
+  knitwear: "top",
+  dresses: "top",
+  bottoms: "bottom",
+  jeans: "bottom",
+  shorts: "bottom",
+  skirts: "bottom",
+  footwear: "shoes",
+  accessories: "accessories",
+  bags: "accessories",
+};
+
+function StatusDot({ className }: { className: string }) {
+  return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${className}`} />;
+}
+
+function BagIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0">
+      <path d="M6 8h12l-1 12H7L6 8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// ── Popover menu (anchored above the actions row) ─────────────────────────────
+function ActionMenu({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute bottom-full right-0 mb-2 z-50 w-60 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5"
+          >
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function MenuItem({
+  onClick,
+  disabled,
+  danger,
+  icon,
+  children,
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-default ${
+        danger
+          ? "text-red-500 hover:bg-red-500/10"
+          : "text-[var(--foreground)] hover:bg-[var(--surface)]"
+      }`}
+    >
+      {icon && <span className="shrink-0 text-[var(--foreground-muted)]">{icon}</span>}
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
+function MenuCaption({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-4 pt-2 pb-1 text-[10px] leading-relaxed text-[var(--foreground-subtle)] border-t border-[var(--border)] mt-1.5">
+      {children}
+    </p>
+  );
+}
+
+// ── Builder look card ─────────────────────────────────────────────────────────
+function LookCard({
+  look,
+  onDelete,
+  onRename,
+  allProducts,
+  publication,
+  onSubmitted,
+}: {
+  look: SavedLook;
+  onDelete: () => void;
+  onRename: (id: string, name: string) => void;
+  allProducts: Product[];
+  publication: PublicationStatus | null;
+  onSubmitted: (lookId: string, generatedImage: string | null) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { formatPrice } = useCurrency();
   const { addManyToCart } = useCart();
-  const [shareState, setShareState] = useState<"idle" | "submitting" | "done">("idle");
-  const [shopAdded, setShopAdded] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
+  const [bagAdded, setBagAdded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [modalEditingName, setModalEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(look.name || "My Look");
+  const [menu, setMenu] = useState<"share" | "more" | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const handleShop = (e: React.MouseEvent) => {
+  // System name by content type — used whenever the user hasn't named the look
+  const autoName = !look.generatedImage
+    ? "Created look"
+    : look.generatedStyle === "tryon"
+    ? "Generated look"
+    : look.generatedStyle === "flatlay"
+    ? "Flat lay look"
+    : "AI look";
+  const displayName = look.name || autoName;
+  const [nameValue, setNameValue] = useState(look.name || autoName);
+
+  // Availability — a piece counts only when we know it's sold out everywhere
+  const totalPieces = look.pieces.length;
+  const availablePieces = look.pieces.filter((p) =>
+    isProductAvailable(allProducts.find((x) => x.id === p.productId))
+  );
+  const availableCount = availablePieces.length;
+  const partial = availableCount < totalPieces;
+
+  const handleAddToBag = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (shopAdded) return;
-    const items = look.pieces
-      .map((piece) => {
-        const product = allProducts.find((p) => p.id === piece.productId);
-        const officialRetailer = product?.retailers.find((r) => r.isOfficial) ?? product?.retailers[0] ?? null;
-        return {
-          id: piece.productId,
-          name: piece.name ?? product?.name ?? piece.slot,
-          brand: product?.brand ?? "",
-          imageUrl: piece.imageUrl ?? product?.imageUrl ?? "",
-          price: product?.priceMin ?? 0,
-          retailerUrl: officialRetailer?.url ?? null,
-        };
-      });
+    if (bagAdded) return;
+    const items = availablePieces.map((piece) => {
+      const product = allProducts.find((p) => p.id === piece.productId);
+      const officialRetailer = product?.retailers.find((r) => r.isOfficial) ?? product?.retailers[0] ?? null;
+      return {
+        id: piece.productId,
+        name: piece.name ?? product?.name ?? piece.slot,
+        brand: product?.brand ?? "",
+        imageUrl: piece.imageUrl ?? product?.imageUrl ?? "",
+        price: product?.priceMin ?? 0,
+        retailerUrl: officialRetailer?.url ?? null,
+      };
+    });
     if (items.length === 0) return;
     addManyToCart(items);
-    setShopAdded(true);
-    setTimeout(() => setShopAdded(false), 2000);
+    setBagAdded(true);
+    setTimeout(() => setBagAdded(false), 2000);
   };
 
   const commitName = () => {
-    const trimmed = nameValue.trim() || "My Look";
+    const trimmed = nameValue.trim() || autoName;
     setNameValue(trimmed);
     setEditingName(false);
     setModalEditingName(false);
-    if (trimmed !== (look.name || "My Look")) onRename(look.id, trimmed);
+    if (trimmed !== (look.name || autoName)) onRename(look.id, trimmed === autoName ? "" : trimmed);
   };
 
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (shareState !== "idle") return;
-    setShareState("submitting");
+  const canSubmit = !!look.generatedImage && publication !== "pending" && publication !== "approved";
+
+  const handleSubmitForPublication = async () => {
+    if (!canSubmit || submitState !== "idle") return;
+    setSubmitState("submitting");
     try {
       await fetch("/api/looks/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          lookId: look.id,
           generatedImage: look.generatedImage,
           generatedStyle: look.generatedStyle,
           pieces: look.pieces,
@@ -87,10 +225,12 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
           styleKeywords: look.styleKeywords,
         }),
       });
-      setShareState("done");
+      onSubmitted(look.id, look.generatedImage ?? null);
+      setMenu(null);
     } catch {
-      setShareState("idle");
+      // leave as idle so the user can retry
     }
+    setSubmitState("idle");
   };
 
   // Priority order for display layout
@@ -110,37 +250,67 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
       };
     });
 
-  const builderUrl =
-    "/builder?editId=" + look.id + "&" +
-    look.pieces
-      .flatMap((p) => {
-        const params = [`${p.slot}=${p.productId}`];
-        if (p.variantId) params.push(`${p.slot}_variant=${p.variantId}`);
-        return params;
-      })
-      .join("&");
+  const pieceParams = look.pieces
+    .flatMap((p) => {
+      const params = [`${p.slot}=${p.productId}`];
+      if (p.variantId) params.push(`${p.slot}_variant=${p.variantId}`);
+      return params;
+    })
+    .join("&");
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDelete(true);
+  const builderUrl = "/builder?editId=" + look.id + "&" + pieceParams;
+  const privateLink = () =>
+    `${window.location.origin}/builder?${pieceParams}`;
+
+  const copyPrivateLink = async () => {
+    try {
+      await navigator.clipboard.writeText(privateLink());
+      setCopied(true);
+      setTimeout(() => { setCopied(false); setMenu(null); }, 1200);
+    } catch {}
   };
+
+  const shareLink = async () => {
+    const url = privateLink();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: displayName, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }
+      setMenu(null);
+    } catch {}
+  };
+
+  // Metadata segment: publication status > availability > origin
+  const statusSegment =
+    publication === "approved"
+      ? { label: "Published to GOO", dot: "bg-green-500" }
+      : publication === "pending"
+      ? { label: "Pending approval", dot: "bg-orange-400" }
+      : publication === "rejected"
+      ? { label: "Rejected", dot: "bg-red-400" }
+      : partial
+      ? { label: `${availableCount}/${totalPieces} available`, dot: "bg-orange-400" }
+      : look.generatedImage
+      ? { label: "AI generated", dot: "bg-violet-400" }
+      : { label: "Created by you", dot: null };
 
   return (
     <>
-      <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="group relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {/* Main image — click opens detail modal */}
-        <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden aspect-[3/4]">
+        <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
           {look.generatedImage ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={look.generatedImage}
-                alt="Generated look"
+                alt={displayName}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute top-2.5 left-2.5 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
-                {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
-              </span>
             </div>
           ) : pieces.length > 0 ? (
             /* Collage grid — same layout as OutfitCollage and builder preview */
@@ -240,76 +410,165 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
               <span className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)] opacity-50">Empty look</span>
             </div>
           )}
+          {/* Type badge */}
+          {look.generatedImage && (
+            <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+              {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+            </span>
+          )}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
         </button>
 
-        {/* Delete button */}
-        <button
-          onClick={handleDelete}
-          title="Delete look"
-          className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-        </button>
-
         {/* Info */}
-        <div className="px-5 pt-4 pb-5">
+        <div className="px-4 pt-3.5 pb-4 flex flex-col">
           {editingName ? (
             <input
               type="text"
               value={nameValue}
               onChange={e => setNameValue(e.target.value)}
               onBlur={commitName}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commitName(); } if (e.key === "Escape") { setNameValue(look.name || "My Look"); setEditingName(false); } }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commitName(); } if (e.key === "Escape") { setNameValue(look.name || autoName); setEditingName(false); } }}
               className="w-full text-[15px] font-semibold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
               autoFocus
             />
           ) : (
             <button
-              onClick={() => { setNameValue(look.name || "My Look"); setEditingName(true); }}
+              onClick={() => { setNameValue(look.name || autoName); setEditingName(true); }}
               className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug w-full text-left hover:opacity-70 transition-opacity"
               title="Click to rename"
             >
-              {look.name || "My Look"}
+              {displayName}
             </button>
           )}
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-[13px] text-[var(--foreground-muted)] truncate flex-1 min-w-0">
-              {formatPrice(look.totalPrice)}
-            </p>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={handleShop}
-                disabled={look.pieces.length === 0}
-                className={`text-[11px] tracking-[0.1em] uppercase font-medium transition-colors disabled:opacity-30 disabled:cursor-default ${
-                  shopAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
+
+          {/* Metadata */}
+          <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
+            {formatPrice(look.totalPrice)} total
+          </p>
+          <p className="flex items-center gap-1.5 text-[11px] text-[var(--foreground-subtle)] mt-0.5 truncate">
+            <span className="shrink-0">{totalPieces} {totalPieces === 1 ? "piece" : "pieces"}</span>
+            <span className="opacity-50">•</span>
+            {statusSegment.dot && <StatusDot className={statusSegment.dot} />}
+            <span className="truncate">{statusSegment.label}</span>
+          </p>
+
+          {/* Primary action */}
+          <button
+            onClick={handleAddToBag}
+            disabled={availableCount === 0}
+            className={`mt-3 w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+              bagAdded
+                ? "bg-green-600 text-white"
+                : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
+            }`}
+          >
+            {bagAdded ? "Added to bag ✓" : (
+              <>
+                <span>{partial ? "Add available items" : "Add all to bag"}</span>
+                <BagIcon />
+              </>
+            )}
+          </button>
+
+          {/* Secondary actions */}
+          <div className="relative flex items-center justify-between mt-2.5 px-1">
+            <Link
+              href={builderUrl}
+              className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
+              </svg>
+              Edit
+            </Link>
+            <button
+              onClick={() => setMenu(menu === "share" ? null : "share")}
+              className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              Share
+            </button>
+            <button
+              onClick={() => setMenu(menu === "more" ? null : "more")}
+              aria-label="More actions"
+              className="py-1.5 px-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+              </svg>
+            </button>
+
+            {/* Share menu */}
+            <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
+              <MenuItem
+                onClick={copyPrivateLink}
+                icon={
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M10 14a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 4l-1.5 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <path d="M14 10a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 20l1.5-1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                }
               >
-                {shopAdded ? "Added ✓" : "Shop"}
-              </button>
-              <Link
-                href={builderUrl}
-                className="text-[11px] tracking-[0.1em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                {copied ? "Link copied ✓" : "Copy private link"}
+              </MenuItem>
+              <MenuItem
+                onClick={shareLink}
+                icon={
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                }
               >
-                Edit
-              </Link>
-              <button
-                onClick={look.generatedImage ? handleShare : undefined}
-                disabled={!look.generatedImage || shareState !== "idle"}
-                title={shareState === "done" ? "Submitted for review" : "Share this look"}
-                className={`text-[11px] tracking-[0.1em] uppercase font-medium transition-colors disabled:cursor-default ${
-                  !look.generatedImage
-                    ? "text-[var(--foreground-subtle)] opacity-30"
-                    : shareState === "done"
-                    ? "text-green-500"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                }`}
+                Share link
+              </MenuItem>
+              <MenuItem
+                onClick={handleSubmitForPublication}
+                disabled={!canSubmit || submitState === "submitting"}
+                icon={
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 19V5m0 0-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                }
               >
-                {shareState === "done" ? "Sent" : shareState === "submitting" ? "…" : "Share"}
-              </button>
-            </div>
+                {publication === "pending"
+                  ? "Pending approval"
+                  : publication === "approved"
+                  ? "Published to GOO"
+                  : submitState === "submitting"
+                  ? "Submitting…"
+                  : "Submit for publication"}
+              </MenuItem>
+              <MenuCaption>
+                Publication requires admin approval.
+                {!look.generatedImage && " Generate an image for this look to submit it."}
+              </MenuCaption>
+            </ActionMenu>
+
+            {/* More menu */}
+            <ActionMenu open={menu === "more"} onClose={() => setMenu(null)}>
+              <MenuItem onClick={() => { setMenu(null); setNameValue(look.name || autoName); setEditingName(true); }}>
+                Rename
+              </MenuItem>
+              {look.generatedImage && (
+                <a
+                  href={look.generatedImage}
+                  download="goo-look.jpg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMenu(null)}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                >
+                  Download image
+                </a>
+              )}
+              <MenuItem danger onClick={() => { setMenu(null); setConfirmDelete(true); }}>
+                Delete look
+              </MenuItem>
+            </ActionMenu>
           </div>
         </div>
       </div>
@@ -381,20 +640,20 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                     onBlur={commitName}
                     onKeyDown={e => {
                       if (e.key === "Enter") { e.preventDefault(); commitName(); }
-                      if (e.key === "Escape") { setNameValue(look.name || "My Look"); setModalEditingName(false); }
+                      if (e.key === "Escape") { setNameValue(look.name || autoName); setModalEditingName(false); }
                     }}
                     className="w-full text-[17px] font-bold bg-transparent outline-none border-b border-[var(--foreground)] pb-0.5 text-[var(--foreground)] leading-snug"
-                    placeholder="Название лука…"
+                    placeholder="Name this look…"
                     autoFocus
                   />
                 ) : (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setNameValue(nameValue); setModalEditingName(true); }}
+                    onClick={(e) => { e.stopPropagation(); setNameValue(look.name || autoName); setModalEditingName(true); }}
                     className="flex items-center gap-2 group/rename max-w-full"
-                    title="Переименовать"
+                    title="Rename"
                   >
                     <span className="text-[17px] font-bold text-[var(--foreground)] leading-snug truncate">
-                      {nameValue}
+                      {displayName}
                     </span>
                     <svg
                       width="11" height="11" viewBox="0 0 16 16" fill="currentColor"
@@ -405,18 +664,18 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                   </button>
                 )}
                 <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
-                  {formatPrice(look.totalPrice)}{look.styleKeywords.length > 0 ? " · " + look.styleKeywords.slice(0, 3).join(" · ") : ""}
+                  {formatPrice(look.totalPrice)} total · {totalPieces} pieces{partial ? ` · ${availableCount}/${totalPieces} available` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <button
-                  onClick={handleShop}
-                  disabled={look.pieces.length === 0}
+                  onClick={handleAddToBag}
+                  disabled={availableCount === 0}
                   className={`text-[9px] tracking-[0.12em] uppercase font-medium transition-colors disabled:opacity-30 disabled:cursor-default ${
-                    shopAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    bagAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  {shopAdded ? "Added ✓" : "Shop the look"}
+                  {bagAdded ? "Added ✓" : partial ? "Add available items" : "Add all to bag"}
                 </button>
                 <Link
                   href={builderUrl}
@@ -426,17 +685,21 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                   Edit in Builder →
                 </Link>
                 {look.generatedImage && (
-                  shareState === "done" ? (
+                  publication === "approved" ? (
                     <span className="text-[9px] tracking-[0.12em] uppercase font-medium text-green-500">
-                      Under review ✓
+                      Published to GOO
+                    </span>
+                  ) : publication === "pending" ? (
+                    <span className="text-[9px] tracking-[0.12em] uppercase font-medium text-orange-400">
+                      Pending approval
                     </span>
                   ) : (
                     <button
-                      onClick={handleShare}
-                      disabled={shareState === "submitting"}
+                      onClick={handleSubmitForPublication}
+                      disabled={submitState === "submitting"}
                       className="text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
                     >
-                      {shareState === "submitting" ? "Sharing…" : "Share"}
+                      {submitState === "submitting" ? "Submitting…" : "Submit for publication"}
                     </button>
                   )
                 )}
@@ -460,7 +723,7 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={look.generatedImage}
-                    alt="Generated look"
+                    alt={displayName}
                     className="w-full h-full object-cover object-top"
                   />
                   <a
@@ -613,15 +876,200 @@ function LookCard({ look, onDelete, onRename, allProducts }: { look: SavedLook; 
   );
 }
 
+// ── Liked outfit card (Outfits tab) ───────────────────────────────────────────
+function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
+  const { formatPrice } = useCurrency();
+  const { addManyToCart } = useCart();
+  const { toggleOutfitLike } = useLikes();
+  const [bagAdded, setBagAdded] = useState(false);
+  const [menu, setMenu] = useState<"share" | "more" | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const totalPieces = outfit.items.length;
+  const availableItems = outfit.items.filter((it) => isProductAvailable(it.product));
+  const availableCount = availableItems.length;
+  const partial = availableCount < totalPieces;
+
+  const outfitUrl = `/outfit/${outfit.id}`;
+
+  const builderUrl = (() => {
+    const params: string[] = [];
+    const used = new Set<string>();
+    for (const it of outfit.items) {
+      let slot = CATEGORY_TO_SLOT[it.product.category];
+      if (slot === "accessories" && used.has(slot)) slot = "accessories2";
+      if (slot && !used.has(slot)) {
+        params.push(`${slot}=${it.product.id}`);
+        used.add(slot);
+      }
+    }
+    return params.length > 0 ? `/builder?${params.join("&")}` : "/builder";
+  })();
+
+  const handleAddToBag = () => {
+    if (bagAdded) return;
+    const items = availableItems.map(({ product }) => {
+      const officialRetailer = product.retailers.find((r) => r.isOfficial) ?? product.retailers[0] ?? null;
+      return {
+        id: product.id,
+        name: product.name,
+        brand: product.brand,
+        imageUrl: product.imageUrl,
+        price: product.priceMin,
+        retailerUrl: officialRetailer?.url ?? null,
+      };
+    });
+    if (items.length === 0) return;
+    addManyToCart(items);
+    setBagAdded(true);
+    setTimeout(() => setBagAdded(false), 2000);
+  };
+
+  const shareUrl = () => `${window.location.origin}${outfitUrl}`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl());
+      setCopied(true);
+      setTimeout(() => { setCopied(false); setMenu(null); }, 1200);
+    } catch {}
+  };
+
+  const shareLink = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: outfit.name || "Saved outfit", url: shareUrl() });
+      } else {
+        await navigator.clipboard.writeText(shareUrl());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }
+      setMenu(null);
+    } catch {}
+  };
+
+  const statusSegment = partial
+    ? { label: `${availableCount}/${totalPieces} available`, dot: "bg-orange-400" }
+    : { label: "Ready to shop", dot: "bg-green-500" };
+
+  return (
+    <div className="group relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      {/* Image — click opens the outfit page */}
+      <Link href={outfitUrl} className="img-zoom block w-full relative overflow-hidden rounded-t-2xl aspect-[3/4]">
+        {outfit.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={outfit.imageUrl} alt={outfit.name || "Saved outfit"} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 grid grid-cols-2 gap-px bg-gray-200">
+            {outfit.items.slice(0, 4).map(({ product }) => (
+              <div key={product.id} className="relative overflow-hidden bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2" />
+              </div>
+            ))}
+          </div>
+        )}
+        <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+          Outfit
+        </span>
+        <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
+      </Link>
+
+      {/* Info */}
+      <div className="px-4 pt-3.5 pb-4 flex flex-col">
+        <Link href={outfitUrl} className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug hover:opacity-70 transition-opacity">
+          Saved outfit
+        </Link>
+        <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
+          {formatPrice(outfit.totalPriceMin)} total
+        </p>
+        <p className="flex items-center gap-1.5 text-[11px] text-[var(--foreground-subtle)] mt-0.5 truncate">
+          <span className="shrink-0">{totalPieces} {totalPieces === 1 ? "piece" : "pieces"}</span>
+          <span className="opacity-50">•</span>
+          <StatusDot className={statusSegment.dot} />
+          <span className="truncate">{statusSegment.label}</span>
+        </p>
+
+        {/* Primary action */}
+        <button
+          onClick={handleAddToBag}
+          disabled={availableCount === 0}
+          className={`mt-3 w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+            bagAdded
+              ? "bg-green-600 text-white"
+              : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
+          }`}
+        >
+          {bagAdded ? "Added to bag ✓" : (
+            <>
+              <span>{partial ? "Add available items" : "Add all to bag"}</span>
+              <BagIcon />
+            </>
+          )}
+        </button>
+
+        {/* Secondary actions */}
+        <div className="relative flex items-center justify-between mt-2.5 px-1">
+          <Link
+            href={builderUrl}
+            className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
+            </svg>
+            Edit
+          </Link>
+          <button
+            onClick={() => setMenu(menu === "share" ? null : "share")}
+            className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            Share
+          </button>
+          <button
+            onClick={() => setMenu(menu === "more" ? null : "more")}
+            aria-label="More actions"
+            className="py-1.5 px-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+            </svg>
+          </button>
+
+          <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
+            <MenuItem onClick={copyLink}>{copied ? "Link copied ✓" : "Copy link"}</MenuItem>
+            <MenuItem onClick={shareLink}>Share link</MenuItem>
+          </ActionMenu>
+
+          <ActionMenu open={menu === "more"} onClose={() => setMenu(null)}>
+            <Link
+              href={outfitUrl}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            >
+              View outfit
+            </Link>
+            <MenuItem danger onClick={() => { setMenu(null); toggleOutfitLike(outfit.id); }}>
+              Remove from likes
+            </MenuItem>
+          </ActionMenu>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SavedPage() {
   const [view, setView] = useState<View>("looks");
   const { likedOutfits, likedProducts } = useLikes();
-  const { formatPrice } = useCurrency();
   const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
+  const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
 
   // Load saved looks — from API when logged in, else from localStorage
   useEffect(() => {
@@ -664,6 +1112,12 @@ export default function SavedPage() {
           }
         })
         .catch(() => {});
+
+      // Publication statuses for looks submitted to GOO
+      fetch("/api/user/look-submissions")
+        .then((r) => r.json())
+        .then((d: LookSubmission[]) => { if (Array.isArray(d)) setSubmissions(d); })
+        .catch(() => {});
     }
   }, [isLoaded, user]);
 
@@ -696,7 +1150,7 @@ export default function SavedPage() {
 
   const renameLook = (id: string, name: string) => {
     setMyLooks((prev) => {
-      const next = prev.map((l) => l.id === id ? { ...l, name } : l);
+      const next = prev.map((l) => l.id === id ? { ...l, name: name || undefined } : l);
       try { localStorage.setItem("goo-saved-outfits", JSON.stringify(next)); } catch {}
       if (user) {
         const look = next.find((l) => l.id === id);
@@ -704,6 +1158,25 @@ export default function SavedPage() {
       }
       return next;
     });
+  };
+
+  /** Latest submission status for a look — matched by id, with image fallback
+   *  for submissions created before look_id was stored. */
+  const publicationFor = (look: SavedLook): PublicationStatus | null => {
+    const byId = submissions.find((s) => s.lookId === look.id);
+    if (byId) return byId.status;
+    if (look.generatedImage) {
+      const byImage = submissions.find((s) => s.generatedImage === look.generatedImage);
+      if (byImage) return byImage.status;
+    }
+    return null;
+  };
+
+  const markSubmitted = (lookId: string, generatedImage: string | null) => {
+    setSubmissions((prev) => [
+      { id: `local-${lookId}`, lookId, generatedImage, status: "pending" },
+      ...prev,
+    ]);
   };
 
   const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
@@ -771,10 +1244,9 @@ export default function SavedPage() {
               {savedOutfits.map((outfit) => (
                 <motion.div
                   key={outfit.id}
-                  className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
                   variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                 >
-                  <OutfitCard outfit={outfit} />
+                  <SavedOutfitCard outfit={outfit} />
                 </motion.div>
               ))}
             </motion.div>
@@ -847,7 +1319,14 @@ export default function SavedPage() {
                   key={look.id}
                   variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                 >
-                  <LookCard look={look} onDelete={() => deleteLook(look.id)} onRename={renameLook} allProducts={allProducts} />
+                  <LookCard
+                    look={look}
+                    onDelete={() => deleteLook(look.id)}
+                    onRename={renameLook}
+                    allProducts={allProducts}
+                    publication={publicationFor(look)}
+                    onSubmitted={markSubmitted}
+                  />
                 </motion.div>
               ))}
             </motion.div>
