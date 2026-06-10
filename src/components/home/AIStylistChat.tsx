@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Msg = { role: "ai" | "user"; text: string };
 

@@ -37,6 +37,12 @@ export const metadata: Metadata = {
     description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
     type: "website",
     url: SITE_URL,
+    siteName: "GOO",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GOO — AI Stylist",
+    description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
   },
 };
 
