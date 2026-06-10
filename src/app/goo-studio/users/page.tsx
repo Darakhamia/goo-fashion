@@ -6,6 +6,16 @@ import Image from "next/image";
 const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const PAGE_SIZE = 25;
 
+interface UserSubscription {
+  plan: string;
+  status: string;
+  amountUah: number;
+  autoRenew: boolean;
+  maskedPan: string | null;
+  startedAt: string;
+  currentPeriodEnd: string | null;
+}
+
 interface UserRow {
   id: string;
   firstName: string | null;
@@ -20,6 +30,7 @@ interface UserRow {
   plan: string;
   isAdmin: boolean;
   isSuperAdmin?: boolean;
+  subscription?: UserSubscription | null;
 }
 
 interface UserDetail extends UserRow {
@@ -29,6 +40,7 @@ interface UserDetail extends UserRow {
   twoFactorEnabled: boolean;
   publicMetadata: Record<string, unknown>;
   isSuperAdmin: boolean;
+  subscription: UserSubscription | null;
 }
 
 const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
@@ -67,6 +79,24 @@ function fmtRelative(ts: number | null | undefined) {
   if (days  < 30) return `${days}d ago`;
   return fmtDate(ts);
 }
+
+/** "3 mo", "12 d" — how long since `iso`. */
+function fmtDuration(iso: string): string {
+  const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
+  if (days < 1)  return "today";
+  if (days < 31) return `${days} d`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months} mo`;
+  const years = Math.floor(months / 12);
+  return `${years} y ${months % 12} mo`;
+}
+
+const subStatusBadge: Record<string, string> = {
+  active:   "text-emerald-600",
+  pending:  "text-amber-500",
+  past_due: "text-red-500",
+  canceled: "text-[var(--foreground-subtle)]",
+};
 
 const inputCls =
   "bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
@@ -397,7 +427,7 @@ export default function AdminUsersPage() {
                   className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
                 />
               </th>
-              {["User", "Email", "Plan", "Joined", "Last active", "Status", ""].map((h) => (
+              {["User", "Email", "Plan", "Subscription", "Joined", "Last active", "Status", ""].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] font-medium">
                   {h}
                 </th>
@@ -448,6 +478,23 @@ export default function AdminUsersPage() {
                     <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
                       {u.plan}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.subscription ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[10px] tracking-[0.06em] uppercase ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                          {u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
+                        </span>
+                        <span className="text-[10px] text-[var(--foreground-subtle)]">
+                          {fmtDuration(u.subscription.startedAt)}
+                          {u.subscription.currentPeriodEnd && u.subscription.status === "active"
+                            ? ` · ${u.subscription.autoRenew ? "renews" : "ends"} ${fmtDate(Date.parse(u.subscription.currentPeriodEnd))}`
+                            : ""}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</td>
                   <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
@@ -754,6 +801,37 @@ function UserDrawer({
               <MetaItem label="Last active"  value={fmtRelative(detail.lastActiveAt)} />
               <MetaItem label="2FA"          value={detail.twoFactorEnabled ? "Enabled" : "Disabled"} />
               <MetaItem label="Username"     value={detail.username ?? "—"} />
+            </div>
+
+            {/* Subscription (monobank billing ledger) */}
+            <div>
+              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Subscription</p>
+              {detail.subscription ? (
+                <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-[var(--foreground)] capitalize">{detail.subscription.plan} · {detail.subscription.amountUah} ₴/mo</span>
+                    <span className={`text-[9px] tracking-[0.12em] uppercase ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                      {detail.subscription.status.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
+                    <MetaItem label="Subscribed for" value={fmtDuration(detail.subscription.startedAt)} />
+                    <MetaItem label="Since"          value={fmtDate(Date.parse(detail.subscription.startedAt))} />
+                    <MetaItem
+                      label={detail.subscription.autoRenew ? "Next charge" : "Access until"}
+                      value={detail.subscription.currentPeriodEnd ? fmtDate(Date.parse(detail.subscription.currentPeriodEnd)) : "—"}
+                    />
+                    <MetaItem label="Auto-renew" value={detail.subscription.autoRenew ? "On" : "Off"} />
+                    {detail.subscription.maskedPan && (
+                      <MetaItem label="Card" value={detail.subscription.maskedPan.replace(/\*+/, "··")} />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
+                  Never subscribed — plan is set manually or free.
+                </p>
+              )}
             </div>
 
             {/* Activity stats */}

@@ -118,7 +118,7 @@ export async function GET(req: Request) {
 
   // ── Fetch raw rows ────────────────────────────────────────────────────────
   const fiveMinAgo = new Date(now - 5 * 60_000).toISOString();
-  const [pvQ, pvPrevQ, wvQ, evQ, onlineQ, subsQ, stylistQ] = await Promise.all([
+  const [pvQ, pvPrevQ, wvQ, evQ, onlineQ, subsQ, stylistQ, monthQ] = await Promise.all([
     supabase.from("page_views")
       .select("ts,session_id,user_id,path,referrer,utm_source,utm_medium,utm_campaign,country,device,browser,os,load_ms,ttfb_ms")
       .gte("ts", since)
@@ -152,6 +152,12 @@ export async function GET(req: Request) {
       .select("usage_date,count")
       .gte("usage_date", since.slice(0, 10))
       .limit(100_000),
+    // Sessions over the last 30 days — DAU/WAU/MAU must use their own windows,
+    // not the selected range (otherwise "MAU" on a 24h range is just DAU).
+    supabase.from("page_views")
+      .select("ts,session_id")
+      .gte("ts", new Date(now - 30 * 86_400_000).toISOString())
+      .limit(200_000),
   ]);
 
   const pageViews = (pvQ.data ?? []) as PageViewRow[];
@@ -161,6 +167,7 @@ export async function GET(req: Request) {
   const onlineRows = (onlineQ.data ?? []) as { session_id: string }[];
   const subs = (subsQ.error ? [] : (subsQ.data ?? [])) as SubscriptionRow[];
   const stylistUsage = (stylistQ.error ? [] : (stylistQ.data ?? [])) as { usage_date: string; count: number }[];
+  const monthViews = (monthQ.data ?? []) as { ts: string; session_id: string }[];
 
   // ── Summary counters ──────────────────────────────────────────────────────
   const uniqueSessions = new Set(pageViews.map((r) => r.session_id));
@@ -302,15 +309,17 @@ export async function GET(req: Request) {
   ];
 
   // ── Retention (DAU / WAU / MAU) ───────────────────────────────────────────
+  // Computed from a fixed 30-day window (monthViews), independent of the
+  // selected range, so the numbers mean what their labels say.
   const dayMs = 86_400_000;
   const dau = new Set<string>();
   const wau = new Set<string>();
   const mau = new Set<string>();
-  for (const pv of pageViews) {
+  for (const pv of monthViews) {
     const age = now - Date.parse(pv.ts);
     if (age <= dayMs)       dau.add(pv.session_id);
     if (age <= 7 * dayMs)   wau.add(pv.session_id);
-    if (age <= 30 * dayMs)  mau.add(pv.session_id);
+    mau.add(pv.session_id);
   }
   const retention = {
     dau: dau.size,
@@ -376,11 +385,26 @@ export async function GET(req: Request) {
     searchTerms.set(q, r);
   }
 
-  // ── Activity heatmap: UTC weekday (0=Mon) × hour ─────────────────────────
+  // ── Activity heatmap: Kyiv weekday (0=Mon) × hour ────────────────────────
+  // Formatted via Intl for correct DST handling; cached per hour-bucket so we
+  // run the (slow) formatter at most ~24×days times, not once per row.
+  const kyivFmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Kyiv", weekday: "short", hour: "numeric", hour12: false,
+  });
+  const WD_INDEX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+  const hourCache = new Map<string, { wd: number; hour: number }>();
   const heatmap: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
   for (const pv of pageViews) {
-    const d = new Date(pv.ts);
-    heatmap[(d.getUTCDay() + 6) % 7][d.getUTCHours()]++;
+    const bucketTs = pv.ts.slice(0, 13); // YYYY-MM-DDTHH
+    let cell = hourCache.get(bucketTs);
+    if (!cell) {
+      const parts = kyivFmt.formatToParts(new Date(pv.ts));
+      const wd = WD_INDEX[parts.find((p) => p.type === "weekday")?.value ?? "Mon"] ?? 0;
+      const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0) % 24;
+      cell = { wd, hour };
+      hourCache.set(bucketTs, cell);
+    }
+    heatmap[cell.wd][cell.hour]++;
   }
 
   // ── Resolve product/outfit names for the top lists ───────────────────────
