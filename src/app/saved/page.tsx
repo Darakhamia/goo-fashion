@@ -420,7 +420,7 @@ function LookCard({
           )}
           {/* Type badge */}
           {look.generatedImage && (
-            <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+            <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 rounded-md backdrop-blur-sm">
               {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
             </span>
           )}
@@ -708,7 +708,7 @@ function LookCard({
                       className="w-full h-full object-cover object-top"
                     />
                     {look.generatedStyle && (
-                      <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-1 backdrop-blur-sm">
+                      <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-1 rounded-md backdrop-blur-sm">
                         {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
                       </span>
                     )}
@@ -1035,7 +1035,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
             ))}
           </div>
         )}
-        <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 backdrop-blur-sm">
+        <span className="absolute top-2.5 left-2.5 z-10 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-0.5 rounded-md backdrop-blur-sm">
           Outfit
         </span>
         <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
