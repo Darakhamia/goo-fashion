@@ -10,6 +10,7 @@ import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
 import { SignedIn, SignedOut, useClerk } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
+import { useScrollLock } from "@/lib/hooks/useScrollLock";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -75,29 +76,32 @@ export default function Navigation() {
     0,
   );
 
-  // Close cart drawer on click outside
+  // Lock background scroll while the cart drawer or logout modal is open
+  useScrollLock(cartOpen || logoutConfirmOpen);
+
+  // Close cart drawer on click/tap outside (pointerdown fires reliably on touch)
   useEffect(() => {
     if (!cartOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (cartDrawerRef.current && !cartDrawerRef.current.contains(e.target as Node)) {
         setCartOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [cartOpen]);
 
-  // Close profile dropdown on click outside
+  // Close profile dropdown on click/tap outside
   useEffect(() => {
     if (!profileOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
         setCurrencySubmenu(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [profileOpen]);
 
   useEffect(() => {
@@ -441,6 +445,30 @@ export default function Navigation() {
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>AI</span>
           </button>
           <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
+          {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
+          <button onClick={() => setCartOpen(true)} aria-label="Open cart"
+            className="relative flex items-center justify-center transition-all duration-200"
+            style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
+              background:"transparent", color: navIconColor }}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h2l1.5 7.5h8l1.5-5.5H4" />
+              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            {cartCount > 0 && (
+              <span style={{
+                position: "absolute", top: 0, right: 0,
+                width: 15, height: 15,
+                background: isDark ? "white" : "black",
+                color: isDark ? "black" : "white",
+                borderRadius: "50%", fontSize: 8, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+              }}>
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
+          </button>
+          <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           <SignedIn>
             <Link href="/profile" aria-label="Profile"
               className="flex items-center justify-center transition-all duration-200"
@@ -468,7 +496,7 @@ export default function Navigation() {
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
           <div ref={cartDrawerRef}
-            className="fixed top-3 right-3 bottom-3 w-full max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
+            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
               <div>

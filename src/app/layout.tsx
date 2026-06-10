@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SITE_URL } from "@/lib/seo";
 import { Inter_Tight, Poppins } from "next/font/google";
@@ -48,6 +48,14 @@ export const metadata: Metadata = {
     title: "GOO — AI Stylist",
     description: "Your personal AI stylist. Curated outfits, premium fashion, one platform.",
   },
+};
+
+// viewportFit: "cover" lets the page extend under the iPhone notch/home-indicator
+// so `env(safe-area-inset-*)` returns real values for our fixed bottom nav & sheets.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Fallback key satisfies Clerk's base64 format check (pk_test_ + base64("clerk.example.com$"))

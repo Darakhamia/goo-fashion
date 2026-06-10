@@ -58,22 +58,26 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)] flex items-stretch h-14">
-      {tabs.map(({ href, label, icon }) => {
-        const active = pathname === href || (href !== "/" && pathname.startsWith(href));
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
-              active ? "text-[#c9a84c]" : "text-[var(--foreground-subtle)]"
-            }`}
-          >
-            {icon(active)}
-            <span className="font-mono text-[8px] tracking-[0.06em] uppercase">{label}</span>
-          </Link>
-        );
-      })}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)]">
+      <div className="flex items-stretch h-14">
+        {tabs.map(({ href, label, icon }) => {
+          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                active ? "text-[#c9a84c]" : "text-[var(--foreground-subtle)]"
+              }`}
+            >
+              {icon(active)}
+              <span className="font-mono text-[10px] tracking-[0.04em] uppercase leading-none">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      {/* Safe-area spacer so tab labels clear the iPhone home indicator */}
+      <div style={{ height: "env(safe-area-inset-bottom)" }} />
     </nav>
   );
 }

@@ -164,7 +164,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           </div>
 
           {hasMultiple && (
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
               {allImages.map((_, i) => (
                 <div
                   key={i}
@@ -185,7 +185,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
           )}
 
           {product.retailers.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+            <div className="absolute bottom-0 left-0 right-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10">
               <div className="bg-[var(--bg-overlay-95)] backdrop-blur-sm px-3 py-2 rounded-b-xl">
                 <p className="text-[9px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                   {product.retailers.length} stores
@@ -200,7 +200,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       <button
         onClick={handleAddToCart}
         aria-label={inCart ? "Remove from cart" : "Add to cart"}
-        className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+        className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="text-white">
           <path d="M1 1h2l1.5 7.5" />
@@ -214,7 +214,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
-        className={`absolute top-3 right-3 z-20 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+        className={`absolute top-3 right-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
           <path
