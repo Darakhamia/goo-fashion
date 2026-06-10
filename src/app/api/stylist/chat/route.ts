@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { chatCompletion } from "@/lib/server/replicate-ai";
 import { embedText } from "@/lib/server/embeddings";
-import { checkRateLimit } from "@/lib/server/rate-limit";
+import { checkRateLimit, checkAnonDailyLimit } from "@/lib/server/rate-limit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
 
@@ -715,6 +715,21 @@ export async function POST(req: Request) {
   const dailyLimit = STYLIST_DAILY_LIMITS[userPlan];
 
   // ── Daily limit check ─────────────────────────────────────────────────────
+  // Anonymous users: per-IP daily cap (signed-in users are tracked per plan).
+  if (!userId) {
+    const anonDaily = await checkAnonDailyLimit(req);
+    if (!anonDaily.allowed) {
+      return NextResponse.json(
+        {
+          error: "You've reached today's free limit. Sign in to keep chatting with the stylist.",
+          remaining: 0,
+          limit: null,
+        },
+        { status: 429, headers: { "Retry-After": String(anonDaily.retryAfterSeconds) } }
+      );
+    }
+  }
+
   let usageCount = 0;
   if (userId && dailyLimit !== null) {
     usageCount = await getDailyUsage(userId);

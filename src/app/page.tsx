@@ -1,4 +1,6 @@
-export const dynamic = "force-dynamic";
+// ISR: serve a cached page, regenerate at most once a minute — homepage
+// content (outfits, featured looks) doesn't change in real time.
+export const revalidate = 60;
 
 import Link from "next/link";
 import FadeInView from "@/components/ui/FadeInView";

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/data/db";
@@ -122,12 +123,14 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Cover */}
       {post.coverImageUrl && (
         <div className="max-w-[1200px] mx-auto px-6 md:px-12 mb-12">
-          <div className="aspect-[16/9] overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <Image
               src={post.coverImageUrl}
               alt={post.title}
-              className="w-full h-full object-cover"
+              fill
+              priority
+              sizes="(max-width: 1200px) 100vw, 1200px"
+              className="object-cover"
             />
           </div>
         </div>
@@ -166,12 +169,13 @@ export default async function BlogPostPage({ params }: Props) {
                 href={`/blog/${p.slug}`}
                 className="group bg-[var(--background)] flex flex-col"
               >
-                <div className="overflow-hidden aspect-[3/2]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative overflow-hidden aspect-[3/2]">
+                  <Image
                     src={p.coverImageUrl}
                     alt={p.title}
-                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
                   />
                 </div>
                 <div className="p-6">

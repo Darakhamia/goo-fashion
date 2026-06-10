@@ -5,19 +5,32 @@ import { Redis } from "@upstash/redis";
 // Safe for casual public use; increase if needed for authenticated heavy users.
 const REQUESTS_PER_MINUTE = 10;
 
-// Module-level singleton — created once per serverless function instance.
+// Daily cap for unauthenticated users (per IP). Signed-in users get per-plan
+// limits via STYLIST_DAILY_LIMITS instead; without this an anonymous visitor
+// could burn AI tokens indefinitely at the per-minute rate.
+const ANON_REQUESTS_PER_DAY = 25;
+
+// Module-level singletons — created once per serverless function instance.
 // null when UPSTASH env vars are absent (dev / unconfigured deployments).
 let ratelimit: Ratelimit | null = null;
+let anonDailyLimit: Ratelimit | null = null;
 
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
   ratelimit = new Ratelimit({
-    redis: new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    }),
+    redis,
     limiter: Ratelimit.slidingWindow(REQUESTS_PER_MINUTE, "1 m"),
     analytics: false,
     prefix: "goo:stylist",
+  });
+  anonDailyLimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(ANON_REQUESTS_PER_DAY, "1 d"),
+    analytics: false,
+    prefix: "goo:stylist:anon-daily",
   });
 }
 
@@ -26,18 +39,19 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
-export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
-  if (!ratelimit) {
+// Prefer x-forwarded-for for real client IP behind proxies / Vercel edge
+function clientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  return forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
+}
+
+async function runLimit(limiter: Ratelimit | null, key: string): Promise<RateLimitResult> {
+  if (!limiter) {
     // Upstash not configured — passthrough (safe for dev / internal deployments)
     return { allowed: true, retryAfterSeconds: 0 };
   }
-
-  // Prefer x-forwarded-for for real client IP behind proxies / Vercel edge
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
-
   try {
-    const result = await ratelimit.limit(ip);
+    const result = await limiter.limit(key);
     return {
       allowed: result.success,
       retryAfterSeconds: result.success
@@ -50,4 +64,13 @@ export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
     console.warn("[rate-limit] Upstash error, allowing request:", err);
     return { allowed: true, retryAfterSeconds: 0 };
   }
+}
+
+export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
+  return runLimit(ratelimit, clientIp(req));
+}
+
+/** Daily cap for unauthenticated users — call only when there is no userId. */
+export async function checkAnonDailyLimit(req: Request): Promise<RateLimitResult> {
+  return runLimit(anonDailyLimit, clientIp(req));
 }

@@ -8,7 +8,7 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { useAnimationFrame } from "motion/react";
+import { useAnimationFrame } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useMousePositionRef } from "@/hooks/use-mouse-position-ref";
 

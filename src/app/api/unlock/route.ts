@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
+// Env-only — no hardcoded fallback. Without BYPASS_KEY set, unlock is disabled.
+const BYPASS_KEY = process.env.BYPASS_KEY || null;
 const COOKIE_NAME = "goo_preview";
 
 function siteBase(req: NextRequest): string {
@@ -23,7 +24,7 @@ export function GET(req: NextRequest) {
   }
 
   // Grant access
-  if (key === BYPASS_KEY) {
+  if (BYPASS_KEY !== null && key === BYPASS_KEY) {
     const res = NextResponse.redirect(`${base}/`);
     res.cookies.set(COOKIE_NAME, BYPASS_KEY, {
       httpOnly: true,

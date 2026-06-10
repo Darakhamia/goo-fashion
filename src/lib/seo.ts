@@ -164,6 +164,14 @@ function availabilityUrl(a?: string): string {
   return AVAILABILITY[(a ?? "").toLowerCase()] ?? "https://schema.org/InStock";
 }
 
+/**
+ * JSON-LD prices must match what's shown on the page — Google flags rich
+ * results when they diverge, so keep cents instead of rounding.
+ */
+function jsonLdPrice(amount: number): number {
+  return Number(amount.toFixed(2));
+}
+
 /** Build an Offer / AggregateOffer block from a product's retailers. */
 function buildOffers(product: Product, productUrl: string): Record<string, unknown> {
   const retailers = product.retailers ?? [];
@@ -171,7 +179,7 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
   if (retailers.length === 0) {
     return {
       "@type": "Offer",
-      price: Math.round(product.priceMin),
+      price: jsonLdPrice(product.priceMin),
       priceCurrency: normalizeCurrencyCode(product.currency),
       availability: "https://schema.org/InStock",
       url: productUrl,
@@ -182,7 +190,7 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
     const r = retailers[0];
     return {
       "@type": "Offer",
-      price: Math.round(r.price),
+      price: jsonLdPrice(r.price),
       priceCurrency: normalizeCurrencyCode(r.currency),
       availability: availabilityUrl(r.availability),
       url: r.url || productUrl,
@@ -193,13 +201,13 @@ function buildOffers(product: Product, productUrl: string): Record<string, unkno
   const prices = retailers.map((r) => r.price);
   return {
     "@type": "AggregateOffer",
-    lowPrice: Math.round(Math.min(...prices)),
-    highPrice: Math.round(Math.max(...prices)),
+    lowPrice: jsonLdPrice(Math.min(...prices)),
+    highPrice: jsonLdPrice(Math.max(...prices)),
     offerCount: retailers.length,
     priceCurrency: normalizeCurrencyCode(retailers[0].currency ?? product.currency),
     offers: retailers.map((r) => ({
       "@type": "Offer",
-      price: Math.round(r.price),
+      price: jsonLdPrice(r.price),
       priceCurrency: normalizeCurrencyCode(r.currency),
       availability: availabilityUrl(r.availability),
       url: r.url || productUrl,
@@ -265,7 +273,7 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "GOO",
     url: SITE_URL,
-    logo: absoluteUrl("/favicon.ico"),
+    logo: absoluteUrl("/logo.png"),
     description: "AI-powered fashion stylist and aggregator — curated outfits and premium fashion from leading retailers.",
   };
 }

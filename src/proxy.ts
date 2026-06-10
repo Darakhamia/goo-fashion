@@ -5,7 +5,9 @@ import type { NextRequest, NextFetchEvent } from "next/server";
 const ADMIN_PATH = "/goo-studio";
 // Site is live — coming-soon gate disabled. Set to `process.env.COMING_SOON === "true"` to re-enable.
 const COMING_SOON = false;
-const BYPASS_KEY = process.env.BYPASS_KEY ?? "goo-preview-2026";
+// Env-only — no hardcoded fallback. Without BYPASS_KEY set, the coming-soon
+// gate (when enabled) cannot be bypassed.
+const BYPASS_KEY = process.env.BYPASS_KEY || null;
 const COOKIE_NAME = "goo_preview";
 
 const isProtectedRoute = createRouteMatcher([
@@ -31,7 +33,7 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 
   if (COMING_SOON) {
     const bypassCookie = req.cookies.get(COOKIE_NAME);
-    const hasBypass = bypassCookie?.value === BYPASS_KEY;
+    const hasBypass = BYPASS_KEY !== null && bypassCookie?.value === BYPASS_KEY;
 
     if (!hasBypass && !isPublicRoute(req)) {
       return NextResponse.redirect(new URL("/coming-soon", req.url));
@@ -79,8 +81,9 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
   const host = req.headers.get("host") ?? "";
   if (host.startsWith("www.")) {
-    const url = req.nextUrl.clone();
-    url.host = host.slice(4);
+    // Build the URL from scratch: behind Vercel's proxy req.nextUrl carries the
+    // internal port (e.g. :3000), which would leak into the redirect Location.
+    const url = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${host.slice(4)}`);
     return NextResponse.redirect(url, 301);
   }
   return clerk(req, event);
