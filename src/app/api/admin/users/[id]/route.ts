@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, isSuperAdminId } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 interface ClerkError {
   errors?: { message?: string }[];
@@ -27,7 +28,33 @@ export async function GET(
     const cc = await clerkClient();
     const u = await cc.users.getUser(id);
     const meta = (u.publicMetadata ?? {}) as { plan?: string; isAdmin?: boolean };
+
+    // Billing ledger row (if the user ever subscribed via monobank)
+    let subscription: {
+      plan: string; status: string; amountUah: number; autoRenew: boolean;
+      maskedPan: string | null; startedAt: string; currentPeriodEnd: string | null;
+    } | null = null;
+    if (isSupabaseConfigured && supabase) {
+      const { data: s } = await supabase
+        .from("subscriptions")
+        .select("plan,status,amount,auto_renew,masked_pan,created_at,current_period_end")
+        .eq("user_id", id)
+        .maybeSingle();
+      if (s) {
+        subscription = {
+          plan: s.plan,
+          status: s.status,
+          amountUah: Math.round((s.amount as number) / 100),
+          autoRenew: s.auto_renew,
+          maskedPan: s.masked_pan,
+          startedAt: s.created_at,
+          currentPeriodEnd: s.current_period_end,
+        };
+      }
+    }
+
     return NextResponse.json({
+      subscription,
       id: u.id,
       firstName: u.firstName,
       lastName: u.lastName,

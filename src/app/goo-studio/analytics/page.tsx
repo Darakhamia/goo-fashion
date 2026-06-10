@@ -227,8 +227,9 @@ export default function AdminAnalyticsPage() {
 
       {/* Business + AI usage */}
       {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
-          <Section title="Revenue & Subscriptions" className="mb-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-10 mb-10 items-start">
+          <section>
+            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">Revenue & Subscriptions</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
                 <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">MRR</p>
@@ -262,8 +263,9 @@ export default function AdminAnalyticsPage() {
                 )}
               </div>
             </div>
-          </Section>
-          <Section title="AI Usage" className="mb-0">
+          </section>
+          <section>
+            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">AI Usage</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
                 <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist Messages</p>
@@ -301,7 +303,7 @@ export default function AdminAnalyticsPage() {
                 )}
               </div>
             </div>
-          </Section>
+          </section>
         </div>
       )}
 
@@ -315,7 +317,7 @@ export default function AdminAnalyticsPage() {
 
       {/* Activity heatmap */}
       {data && (
-        <Section title="Activity by Hour (UTC)">
+        <Section title="Activity by Hour (Kyiv time)">
           <div className="rounded-xl border border-[var(--border)] p-4 overflow-x-auto" style={{ background: "var(--background)" }}>
             <HourHeatmap heatmap={data.heatmap} />
           </div>
@@ -487,7 +489,7 @@ function HourHeatmap({ heatmap }: { heatmap: number[][] }) {
             {row.map((count, h) => (
               <div
                 key={h}
-                title={`${WEEKDAYS[d]} ${String(h).padStart(2, "0")}:00 UTC — ${count.toLocaleString()} views`}
+                title={`${WEEKDAYS[d]} ${String(h).padStart(2, "0")}:00 Kyiv — ${count.toLocaleString()} views`}
                 className="aspect-square rounded-[3px]"
                 style={{
                   background: count === 0
