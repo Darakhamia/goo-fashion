@@ -471,10 +471,10 @@ function LookCard({
           </button>
 
           {/* Secondary actions */}
-          <div className="relative flex items-center justify-between mt-2.5 px-1">
+          <div className="relative flex items-center gap-1.5 mt-2.5">
             <Link
               href={builderUrl}
-              className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
@@ -483,7 +483,7 @@ function LookCard({
             </Link>
             <button
               onClick={() => setMenu(menu === "share" ? null : "share")}
-              className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -494,7 +494,7 @@ function LookCard({
             <button
               onClick={() => setMenu(menu === "more" ? null : "more")}
               aria-label="More actions"
-              className="py-1.5 px-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
@@ -1009,10 +1009,10 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
         </button>
 
         {/* Secondary actions */}
-        <div className="relative flex items-center justify-between mt-2.5 px-1">
+        <div className="relative flex items-center gap-1.5 mt-2.5">
           <Link
             href={builderUrl}
-            className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
@@ -1021,7 +1021,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
           </Link>
           <button
             onClick={() => setMenu(menu === "share" ? null : "share")}
-            className="flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
               <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -1032,7 +1032,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
           <button
             onClick={() => setMenu(menu === "more" ? null : "more")}
             aria-label="More actions"
-            className="py-1.5 px-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
