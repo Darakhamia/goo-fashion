@@ -13,12 +13,12 @@ interface GooeyTextProps {
 }
 
 /**
- * Cycles through `texts` with a smooth blur-morph crossfade: each word blurs
- * out and fades while the next blurs in. No SVG threshold filter, so the text
- * stays crisp and anti-aliased (the threshold filter rasterizes coarsely and
- * produced jagged "pixelated" edges). The RAF loop pauses while the tab is
- * hidden, and users with prefers-reduced-motion get a GPU-composited opacity
- * crossfade instead of the filter-heavy morph.
+ * Cycles through `texts` with the signature gooey morph: an SVG alpha-threshold
+ * filter over two cross-blurring text layers, so words melt into one another.
+ * The filtered layer is supersampled (rendered larger, scaled down) so the goo
+ * stays crisp on hi-DPI screens instead of looking pixelated. The RAF loop
+ * pauses while the tab is hidden, and users with prefers-reduced-motion get a
+ * GPU-composited opacity crossfade instead of the filter-heavy morph.
  */
 export function GooeyText({
   texts,
@@ -62,7 +62,16 @@ export function GooeyText({
   );
 }
 
-/** Blur-morph crossfade driven by RAF — no SVG threshold filter. */
+/**
+ * Supersample factor for the goo filter. CSS `filter: url(#svg)` rasterises an
+ * HTML element at CSS-pixel resolution (Chromium ignores devicePixelRatio
+ * here), so on hi-DPI screens the threshold edges looked pixelated/blocky. We
+ * render the filtered layer SS× larger and scale it back down, so the filter
+ * rasterises at SS× the resolution — crisp edges, identical gooey morph.
+ */
+const SUPERSAMPLE = 2;
+
+/** Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF. */
 function MorphText({
   texts,
   morphTime = 1,
@@ -83,11 +92,13 @@ function MorphText({
 
     const setMorph = (fraction: number) => {
       if (text1Ref.current && text2Ref.current) {
-        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 40)}px)`;
+        // Blur is multiplied by SUPERSAMPLE because the layer is scaled down by
+        // 1/SUPERSAMPLE, which would otherwise halve the visual blur radius.
+        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SUPERSAMPLE}px)`;
         text2Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
 
         fraction = 1 - fraction;
-        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 40)}px)`;
+        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SUPERSAMPLE}px)`;
         text1Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
       }
     };
@@ -146,23 +157,59 @@ function MorphText({
     return () => cancelAnimationFrame(animationId);
   }, [texts, morphTime, cooldownTime, firstTextCooldown]);
 
+  // `textClassName` (the responsive font-size) goes on the outer box so it acts
+  // as the base em; the spans render at SUPERSAMPLE em inside an SS×-larger,
+  // scaled-down layer, so the goo filter rasterises at SS× resolution.
   return (
-    <div className={cn("relative", className)}>
-      <div className="flex items-center justify-center w-full h-full">
+    <div className={cn("relative", className, textClassName)}>
+      <svg className="absolute h-0 w-0" aria-hidden="true" focusable="false">
+        <defs>
+          <filter
+            id="goo-threshold"
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feColorMatrix
+              in="SourceGraphic"
+              type="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 255 -140"
+            />
+          </filter>
+        </defs>
+      </svg>
+
+      <div
+        className="absolute flex items-center justify-center"
+        style={{
+          width: `${SUPERSAMPLE * 100}%`,
+          height: `${SUPERSAMPLE * 100}%`,
+          left: `${-(SUPERSAMPLE - 1) * 50}%`,
+          top: `${-(SUPERSAMPLE - 1) * 50}%`,
+          filter: "url(#goo-threshold)",
+          transform: `scale(${1 / SUPERSAMPLE})`,
+          transformOrigin: "center",
+        }}
+      >
         <span
           ref={text1Ref}
+          style={{ fontSize: `${SUPERSAMPLE}em` }}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)] [will-change:filter,opacity] [transform:translateZ(0)]",
-            textClassName
+            "text-[var(--foreground)] [will-change:filter,opacity]"
           )}
         />
         <span
           ref={text2Ref}
+          style={{ fontSize: `${SUPERSAMPLE}em` }}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)] [will-change:filter,opacity] [transform:translateZ(0)]",
-            textClassName
+            "text-[var(--foreground)] [will-change:filter,opacity]"
           )}
         />
       </div>
