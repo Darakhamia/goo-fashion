@@ -13,10 +13,12 @@ interface GooeyTextProps {
 }
 
 /**
- * Cycles through `texts` with the signature gooey blur morph (SVG threshold
- * filter + per-frame blur). The RAF loop pauses while the tab is hidden, and
- * users with prefers-reduced-motion get a GPU-composited opacity crossfade
- * instead of the filter-heavy morph.
+ * Cycles through `texts` with a smooth blur-morph crossfade: each word blurs
+ * out and fades while the next blurs in. No SVG threshold filter, so the text
+ * stays crisp and anti-aliased (the threshold filter rasterizes coarsely and
+ * produced jagged "pixelated" edges). The RAF loop pauses while the tab is
+ * hidden, and users with prefers-reduced-motion get a GPU-composited opacity
+ * crossfade instead of the filter-heavy morph.
  */
 export function GooeyText({
   texts,
@@ -60,7 +62,7 @@ export function GooeyText({
   );
 }
 
-/** Original gooey morph: SVG threshold filter + blur driven by RAF. */
+/** Blur-morph crossfade driven by RAF — no SVG threshold filter. */
 function MorphText({
   texts,
   morphTime = 1,
@@ -81,11 +83,11 @@ function MorphText({
 
     const setMorph = (fraction: number) => {
       if (text1Ref.current && text2Ref.current) {
-        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100)}px)`;
+        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 40)}px)`;
         text2Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
 
         fraction = 1 - fraction;
-        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100)}px)`;
+        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 40)}px)`;
         text1Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
       }
     };
@@ -146,30 +148,12 @@ function MorphText({
 
   return (
     <div className={cn("relative", className)}>
-      <svg className="absolute h-0 w-0" aria-hidden="true" focusable="false">
-        <defs>
-          <filter id="goo-threshold">
-            <feColorMatrix
-              in="SourceGraphic"
-              type="matrix"
-              values="1 0 0 0 0
-                      0 1 0 0 0
-                      0 0 1 0 0
-                      0 0 0 255 -140"
-            />
-          </filter>
-        </defs>
-      </svg>
-
-      <div
-        className="flex items-center justify-center w-full h-full"
-        style={{ filter: "url(#goo-threshold)" }}
-      >
+      <div className="flex items-center justify-center w-full h-full">
         <span
           ref={text1Ref}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)]",
+            "text-[var(--foreground)] [will-change:filter,opacity] [transform:translateZ(0)]",
             textClassName
           )}
         />
@@ -177,7 +161,7 @@ function MorphText({
           ref={text2Ref}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)]",
+            "text-[var(--foreground)] [will-change:filter,opacity] [transform:translateZ(0)]",
             textClassName
           )}
         />
