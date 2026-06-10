@@ -6,6 +6,7 @@ import {
   activateSubscription,
   buildReference,
   getDueSubscriptions,
+  logBillingEvent,
   recordRenewalFailure,
 } from "@/lib/server/subscriptions";
 
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
           userId: sub.user_id,
           plan,
           invoiceId: charge.invoiceId,
+          kind: "renewal",
         });
         results.push({ userId: sub.user_id, plan, outcome: "renewed" });
       } else if (
@@ -64,13 +66,33 @@ export async function GET(req: Request) {
         charge.status === "reversed"
       ) {
         await recordRenewalFailure(sub.user_id);
+        await logBillingEvent({
+          userId: sub.user_id,
+          eventType: "payment_failed",
+          kind: "renewal",
+          plan,
+          invoiceId: charge.invoiceId,
+          amount: planPriceMinor(plan),
+          ccy: BILLING_CCY,
+          status: charge.status,
+          detail: charge.failureReason ?? null,
+        });
         results.push({ userId: sub.user_id, plan, outcome: "failed" });
       } else {
         // processing / hold — the webhook will resolve it.
         results.push({ userId: sub.user_id, plan, outcome: "pending" });
       }
-    } catch {
+    } catch (err) {
       await recordRenewalFailure(sub.user_id);
+      await logBillingEvent({
+        userId: sub.user_id,
+        eventType: "payment_failed",
+        kind: "renewal",
+        plan,
+        amount: planPriceMinor(plan),
+        ccy: BILLING_CCY,
+        detail: err instanceof Error ? err.message : "charge error",
+      });
       results.push({ userId: sub.user_id, plan, outcome: "error" });
     }
   }

@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@/lib/context/auth-context";
 import { useTheme } from "@/lib/context/theme-context";
 import Link from "next/link";
-import { PLANS, PLAN_ORDER, planPriceLabel, type PlanId } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, planPriceDual, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -430,7 +430,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 {PLANS[currentPlan].name}
               </p>
               <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                {currentPlan === "free" ? "Free forever" : `${planPriceLabel(currentPlan)} / month`}
+                {currentPlan === "free" ? "Free forever" : `${planPriceDual(currentPlan)} / month`}
               </p>
             </div>
             {currentPlan !== "premium" && (
@@ -484,7 +484,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 <p className="text-xs font-medium text-[var(--foreground)]">
                   {canceled
                     ? formatDate(billing?.currentPeriodEnd)
-                    : `${planPriceLabel(currentPlan)} on ${formatDate(billing?.currentPeriodEnd)}`}
+                    : `${planPriceDual(currentPlan)} on ${formatDate(billing?.currentPeriodEnd)}`}
                 </p>
               </div>
               <div className="flex items-center justify-between px-5 py-4">
@@ -555,7 +555,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 return (
                   <div key={planId} className="p-4 border border-[var(--border)] rounded-xl hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
                     <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
-                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">{planPriceLabel(planId)}/mo</p>
+                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">{planPriceDual(planId)}/mo</p>
                     {isUpgrade && (
                       <Link
                         href={`/subscribe?plan=${planId}`}

@@ -87,6 +87,13 @@ export const STYLIST_DAILY_LIMITS: Record<PlanId, number | null> = {
 export const BILLING_CCY = 980; // ISO 4217 numeric for UAH
 export const BILLING_CCY_SYMBOL = "₴";
 
+/**
+ * Approximate UAH per 1 USD, used only for *display* of $-equivalents in the
+ * admin dashboard (real charges are always the exact UAH amounts below).
+ * Override via env without a redeploy of the pricing logic.
+ */
+export const USD_UAH_RATE = Number(process.env.BILLING_USD_UAH_RATE) || 41;
+
 type PaidPlanId = "basic" | "pro" | "premium";
 
 function envPrice(key: string, fallback: number): number {
@@ -107,10 +114,21 @@ export function planPriceMinor(plan: PaidPlanId): number {
   return Math.round(PLAN_PRICE_UAH[plan] * 100);
 }
 
-/** Human label for UI, e.g. "399 ₴". */
+/** Hryvnia label for UI, e.g. "399 ₴" (the amount actually charged). */
 export function planPriceLabel(plan: PlanId): string {
   if (plan === "free") return "0 ₴";
   return `${PLAN_PRICE_UAH[plan].toLocaleString("uk-UA")} ${BILLING_CCY_SYMBOL}`;
+}
+
+/** USD headline label, e.g. "$10". */
+export function planPriceUsdLabel(plan: PlanId): string {
+  return `$${PLANS[plan].price}`;
+}
+
+/** Combined "$10 (399 ₴)" — dollars headline, hryvnia (charged) in parens. */
+export function planPriceDual(plan: PlanId): string {
+  if (plan === "free") return "Free";
+  return `${planPriceUsdLabel(plan)} (${planPriceLabel(plan)})`;
 }
 
 /** Ordered from cheapest to most expensive, for UI + upgrade paths. */

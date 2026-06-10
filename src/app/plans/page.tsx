@@ -68,7 +68,7 @@ const PLANS = [
 type Cell = string | boolean;
 
 const COMPARISON: { label: string; basic: Cell; pro: Cell; premium: Cell }[] = [
-  { label: "Price",               basic: `${PLAN_PRICE_UAH.basic} ₴ / mo`, pro: `${PLAN_PRICE_UAH.pro} ₴ / mo`, premium: `${PLAN_PRICE_UAH.premium} ₴ / mo` },
+  { label: "Price",               basic: `$10 (${PLAN_PRICE_UAH.basic} ₴)`, pro: `$25 (${PLAN_PRICE_UAH.pro} ₴)`, premium: `$45 (${PLAN_PRICE_UAH.premium} ₴)` },
   { label: "Image generations",   basic: "50",          pro: "180",        premium: "450"        },
   { label: "AI messages",         basic: "~300",        pro: "~1,000",     premium: "~3,000"     },
   { label: "Generation speed",    basic: "Standard",    pro: "Priority",   premium: "Very fast"  },
@@ -92,7 +92,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is there a free plan?",
-    a: `Not at the moment. Plans start at ${PLAN_PRICE_UAH.basic} ₴/month. We're keeping things simple during early access — a free tier may come later.`,
+    a: `Not at the moment. Plans start at $10 (${PLAN_PRICE_UAH.basic} ₴)/month. We're keeping things simple during early access — a free tier may come later.`,
   },
   {
     q: "Do unused credits roll over?",
@@ -213,7 +213,7 @@ export default function PlansPage() {
                   <span className={`text-6xl font-black leading-none ${
                     plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
                   }`}>
-                    {planPriceLabel(plan.id as PlanId)}
+                    ${plan.price}
                   </span>
                   <span className={`text-sm mb-1 ${
                     plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
@@ -221,6 +221,11 @@ export default function PlansPage() {
                     / mo
                   </span>
                 </div>
+                <p className={`text-xs mt-2 ${
+                  plan.highlighted ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"
+                }`}>
+                  charged as {planPriceLabel(plan.id as PlanId)} / mo
+                </p>
               </div>
 
               {/* Features */}
