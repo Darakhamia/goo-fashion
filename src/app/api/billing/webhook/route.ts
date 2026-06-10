@@ -7,6 +7,7 @@ import {
 import {
   activateSubscription,
   getSubscription,
+  logBillingEvent,
   parseReference,
   recordRenewalFailure,
 } from "@/lib/server/subscriptions";
@@ -74,12 +75,16 @@ export async function POST(req: Request) {
         cardToken = null;
       }
 
+      // If the user was already active, this webhook reflects a renewal that
+      // the cron sweep didn't resolve synchronously; otherwise it's the first payment.
+      const kind = existing && existing.status === "active" ? "renewal" : "initial";
       await activateSubscription({
         userId,
         plan,
         invoiceId: payload.invoiceId,
         cardToken,
         maskedPan,
+        kind,
       });
       return NextResponse.json({ ok: true });
     }
@@ -92,9 +97,21 @@ export async function POST(req: Request) {
       const existing = await getSubscription(userId);
       // Only treat as a renewal failure if this user already had an active sub;
       // a failed *first* payment just leaves the pending row untouched.
-      if (existing && (existing.status === "active" || existing.status === "past_due")) {
+      const failedRenewal = !!existing && (existing.status === "active" || existing.status === "past_due");
+      if (failedRenewal) {
         await recordRenewalFailure(userId);
       }
+      await logBillingEvent({
+        userId,
+        eventType: "payment_failed",
+        kind: failedRenewal ? "renewal" : "initial",
+        plan,
+        invoiceId: payload.invoiceId,
+        amount: payload.amount,
+        ccy: payload.ccy,
+        status: payload.status,
+        detail: payload.failureReason ?? null,
+      });
       return NextResponse.json({ ok: true });
     }
 

@@ -269,7 +269,10 @@ function SubscribeInner() {
             You are subscribing to
           </p>
           <p className="text-2xl font-bold text-[var(--foreground)]">
-            {plan.name} — <span className="text-[var(--foreground)]">{priceLabel} / month</span>
+            {plan.name} — <span className="text-[var(--foreground)]">${plan.price} / month</span>
+          </p>
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+            charged as {priceLabel} / month via monobank
           </p>
         </div>
 
@@ -307,7 +310,7 @@ function SubscribeInner() {
             ? "Redirecting to payment..."
             : !isSignedIn
             ? "Sign in to continue"
-            : `Pay ${priceLabel} — continue`}
+            : `Pay $${plan.price} (${priceLabel}) — continue`}
         </button>
 
         {/* Payment notice */}

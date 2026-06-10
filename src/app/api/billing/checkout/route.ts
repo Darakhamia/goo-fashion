@@ -9,7 +9,7 @@ import {
 } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { createInvoice, isMonobankConfigured, MonobankError } from "@/lib/server/monobank";
-import { buildReference, upsertPendingSubscription } from "@/lib/server/subscriptions";
+import { buildReference, logBillingEvent, upsertPendingSubscription } from "@/lib/server/subscriptions";
 
 /**
  * Start a real monobank checkout for the requested plan.
@@ -60,6 +60,15 @@ export async function POST(req: Request) {
       amount,
       ccy: BILLING_CCY,
       invoiceId: invoice.invoiceId,
+    });
+
+    await logBillingEvent({
+      userId,
+      eventType: "checkout_started",
+      plan,
+      invoiceId: invoice.invoiceId,
+      amount,
+      ccy: BILLING_CCY,
     });
 
     return NextResponse.json({ pageUrl: invoice.pageUrl, invoiceId: invoice.invoiceId });

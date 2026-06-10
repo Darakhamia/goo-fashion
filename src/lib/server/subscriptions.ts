@@ -1,6 +1,6 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
-import { coercePlan, DEFAULT_PLAN, type PlanId } from "@/lib/plans";
+import { coercePlan, DEFAULT_PLAN, BILLING_CCY, planPriceMinor, type PlanId } from "@/lib/plans";
 
 /**
  * Subscription ledger backing monobank billing.
@@ -34,6 +34,46 @@ function db() {
     throw new Error("Supabase is not configured — set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
   return supabase;
+}
+
+export type BillingEventType =
+  | "checkout_started"
+  | "payment_success"
+  | "payment_failed"
+  | "canceled";
+
+/**
+ * Append a row to the billing_events audit log. Best-effort: logging must never
+ * break the payment flow, so failures here are swallowed (the table may also not
+ * exist yet if the migration hasn't been run).
+ */
+export async function logBillingEvent(args: {
+  userId: string;
+  eventType: BillingEventType;
+  kind?: "initial" | "renewal" | null;
+  plan?: PlanId | null;
+  invoiceId?: string | null;
+  amount?: number | null;
+  ccy?: number | null;
+  status?: string | null;
+  detail?: string | null;
+}): Promise<void> {
+  try {
+    if (!supabase) return;
+    await supabase.from("billing_events").insert({
+      user_id: args.userId,
+      event_type: args.eventType,
+      kind: args.kind ?? null,
+      plan: args.plan ?? null,
+      invoice_id: args.invoiceId ?? null,
+      amount: args.amount ?? null,
+      ccy: args.ccy ?? null,
+      status: args.status ?? null,
+      detail: args.detail ?? null,
+    });
+  } catch {
+    // best-effort
+  }
 }
 
 /** Set the user's entitlement in Clerk so the paywall unlocks immediately. */
@@ -91,6 +131,8 @@ export async function activateSubscription(args: {
   invoiceId: string;
   cardToken?: string | null;
   maskedPan?: string | null;
+  /** Whether this charge is the first payment or a monthly renewal. */
+  kind?: "initial" | "renewal";
 }): Promise<void> {
   const existing = await getSubscription(args.userId);
   const base =
@@ -119,6 +161,21 @@ export async function activateSubscription(args: {
   if (error) throw new Error(error.message);
 
   await setClerkPlan(args.userId, args.plan);
+
+  // Single chokepoint for "money received" — logged exactly once per charge
+  // (webhook initial payments and cron renewals both funnel through here, and
+  // duplicate webhooks are filtered out before this is called).
+  const amount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
+  await logBillingEvent({
+    userId: args.userId,
+    eventType: "payment_success",
+    kind: args.kind ?? "initial",
+    plan: args.plan,
+    invoiceId: args.invoiceId,
+    amount,
+    ccy: BILLING_CCY,
+    status: "success",
+  });
 }
 
 export async function getSubscription(userId: string): Promise<SubscriptionRow | null> {

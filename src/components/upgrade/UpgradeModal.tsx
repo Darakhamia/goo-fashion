@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { PlanId } from "@/lib/plans";
-import { PLANS, planPriceLabel } from "@/lib/plans";
+import { PLANS, planPriceLabel, planPriceUsdLabel } from "@/lib/plans";
 
 export interface UpgradePrompt {
   /** Human-readable message from the server (402 body). */
@@ -28,7 +28,11 @@ export function UpgradeModal({ prompt, onClose }: Props) {
     prompt.requiredPlan && PLANS[prompt.requiredPlan]
       ? PLANS[prompt.requiredPlan].name
       : null;
-  const priceLabel =
+  const usdLabel =
+    prompt.requiredPlan && PLANS[prompt.requiredPlan]
+      ? planPriceUsdLabel(prompt.requiredPlan)
+      : null;
+  const uahLabel =
     prompt.requiredPlan && PLANS[prompt.requiredPlan]
       ? planPriceLabel(prompt.requiredPlan)
       : null;
@@ -63,14 +67,15 @@ export function UpgradeModal({ prompt, onClose }: Props) {
           </p>
         </div>
 
-        {planName && priceLabel !== null && (
+        {planName && usdLabel !== null && (
           <div className="px-6 pb-4">
             <div className="border border-[var(--border)] px-4 py-3 flex items-baseline justify-between">
               <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                 {planName}
               </span>
               <span className="text-xl font-semibold text-[var(--foreground)]">
-                {priceLabel}
+                {usdLabel}
+                {uahLabel && <span className="text-xs text-[var(--foreground-muted)] ml-1.5">({uahLabel})</span>}
                 <span className="text-xs text-[var(--foreground-muted)] ml-1">/mo</span>
               </span>
             </div>
