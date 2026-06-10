@@ -79,13 +79,21 @@ function ActionMenu({ open, onClose, children }: { open: boolean; onClose: () =>
     <AnimatePresence>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          {/* Backdrop: dims on mobile so the menu reads as a sheet; an invisible
+              click-catcher on desktop. */}
+          <div
+            className="fixed inset-0 z-[55] bg-black/40 sm:bg-transparent sm:z-40"
+            onClick={onClose}
+          />
+          {/* On phones the menu is a bottom sheet pinned to the viewport, so it
+              can never clip off-screen for cards in the left column. From sm: up
+              it returns to an anchored dropdown above the trigger. */}
           <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.97 }}
-            transition={{ duration: 0.12 }}
-            className="absolute bottom-full right-0 mb-2 z-50 w-60 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5"
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed left-3 right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[56] w-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5 sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-60 sm:rounded-xl sm:z-50"
           >
             {children}
           </motion.div>

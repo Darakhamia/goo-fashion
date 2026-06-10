@@ -468,19 +468,10 @@ export default function Navigation() {
               </span>
             )}
           </button>
-          <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
-          <SignedIn>
-            <Link href="/profile" aria-label="Profile"
-              className="flex items-center justify-center transition-all duration-200"
-              style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
-                background:"transparent", color: navIconColor }}>
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-            </Link>
-          </SignedIn>
+          {/* Profile lives in the mobile bottom nav — keep the header lean.
+              Signed-out users still get a Sign in entry point here. */}
           <SignedOut>
+            <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
             <Link href="/login"
               className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
               Sign in
