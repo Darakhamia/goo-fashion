@@ -50,12 +50,12 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   return (
     <>
       <Navigation />
-      <main className={!isBuilder ? "md:pb-0 pb-[calc(3.5rem+env(safe-area-inset-bottom))]" : ""}>
+      <main className={!isBuilder ? "md:pb-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : ""}>
         <PageTransition>{children}</PageTransition>
       </main>
       {/* Footer: hidden entirely on builder */}
       {!isBuilder && (
-        <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
           <Footer />
         </div>
       )}

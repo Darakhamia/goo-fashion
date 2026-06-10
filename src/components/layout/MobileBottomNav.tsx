@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTheme } from "@/lib/context/theme-context";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   const tabs = [
     {
@@ -58,9 +61,18 @@ export default function MobileBottomNav() {
     },
   ];
 
+  // Floating pill — same vocabulary as the desktop header (rounded surface,
+  // 1px border, theme-aware shadow, overlay background + blur) so the mobile
+  // nav reads as a continuation of the site rather than a separate bar.
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-overlay-95)] backdrop-blur-md border-t border-[var(--border)]">
-      <div className="flex items-stretch h-14">
+    <div
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none px-3"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
+    >
+      <nav
+        className="pointer-events-auto mx-auto max-w-md flex items-stretch h-14 rounded-full border border-[var(--border)] bg-[var(--bg-overlay-95)] backdrop-blur-md"
+        style={{ boxShadow: isDark ? "0 6px 28px rgba(0,0,0,0.55)" : "0 6px 28px rgba(0,0,0,0.12)" }}
+      >
         {tabs.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
@@ -70,10 +82,9 @@ export default function MobileBottomNav() {
               aria-current={active ? "page" : undefined}
               className="group relative flex-1 flex flex-col items-center justify-center gap-1"
             >
-              {/* Icon sits in a subtle highlight circle on active — mirrors the
-                  desktop header's icon-button active state (fg overlay + border).
-                  The pill slides between tabs with the same spring the Browse
-                  Pieces/Outfits toggle uses, so the motion language matches. */}
+              {/* Active icon sits in the same subtle highlight (fg overlay +
+                  border) the desktop header's icon buttons use; it slides
+                  between tabs with the spring the Browse toggle uses. */}
               <span className="relative flex items-center justify-center w-11 h-7 transition-transform duration-200 active:scale-90">
                 {active && (
                   <motion.span
@@ -100,9 +111,7 @@ export default function MobileBottomNav() {
             </Link>
           );
         })}
-      </div>
-      {/* Safe-area spacer so tab labels clear the iPhone home indicator */}
-      <div style={{ height: "env(safe-area-inset-bottom)" }} />
-    </nav>
+      </nav>
+    </div>
   );
 }
