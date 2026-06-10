@@ -2,13 +2,20 @@
 
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { StylistProvider, useStylist } from "@/lib/context/stylist-context";
 import PageTransition from "@/components/ui/PageTransition";
 import type { Product } from "@/lib/types";
+
+// The drawer is ~800 lines and only needed once the user opens the stylist —
+// keep it out of the initial bundle of every page.
+const StylistDrawer = dynamic(
+  () => import("@/components/stylist/StylistDrawer").then((m) => m.StylistDrawer),
+  { ssr: false }
+);
 
 interface ConditionalSiteLayoutProps {
   children: React.ReactNode;
