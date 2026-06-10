@@ -55,6 +55,15 @@ interface EventRow {
   user_id: string | null;
   event: string;
   target_id: string | null;
+  props: Record<string, unknown> | null;
+}
+
+interface SubscriptionRow {
+  plan: string;
+  status: string;
+  amount: number;
+  auto_renew: boolean;
+  current_period_end: string | null;
 }
 
 function safeReferrerHost(ref: string | null): string | null {
@@ -108,7 +117,8 @@ export async function GET(req: Request) {
   const prevSince = new Date(now - 2 * rangeMs(range)).toISOString();
 
   // ── Fetch raw rows ────────────────────────────────────────────────────────
-  const [pvQ, pvPrevQ, wvQ, evQ] = await Promise.all([
+  const fiveMinAgo = new Date(now - 5 * 60_000).toISOString();
+  const [pvQ, pvPrevQ, wvQ, evQ, onlineQ, subsQ, stylistQ] = await Promise.all([
     supabase.from("page_views")
       .select("ts,session_id,user_id,path,referrer,utm_source,utm_medium,utm_campaign,country,device,browser,os,load_ms,ttfb_ms")
       .gte("ts", since)
@@ -125,15 +135,32 @@ export async function GET(req: Request) {
       .gte("ts", since)
       .limit(200_000),
     supabase.from("analytics_events")
-      .select("ts,session_id,user_id,event,target_id")
+      .select("ts,session_id,user_id,event,target_id,props")
       .gte("ts", since)
       .limit(200_000),
+    // Realtime: sessions seen in the last 5 minutes
+    supabase.from("page_views")
+      .select("session_id")
+      .gte("ts", fiveMinAgo)
+      .limit(10_000),
+    // Billing ledger — may not exist if the migration hasn't been run
+    supabase.from("subscriptions")
+      .select("plan,status,amount,auto_renew,current_period_end")
+      .limit(50_000),
+    // Stylist AI usage per day over the range
+    supabase.from("stylist_daily_usage")
+      .select("usage_date,count")
+      .gte("usage_date", since.slice(0, 10))
+      .limit(100_000),
   ]);
 
   const pageViews = (pvQ.data ?? []) as PageViewRow[];
   const pageViewsPrev = (pvPrevQ.data ?? []) as { session_id: string; user_id: string | null }[];
   const vitals    = (wvQ.data ?? []) as WebVitalRow[];
   const events    = (evQ.data ?? []) as EventRow[];
+  const onlineRows = (onlineQ.data ?? []) as { session_id: string }[];
+  const subs = (subsQ.error ? [] : (subsQ.data ?? [])) as SubscriptionRow[];
+  const stylistUsage = (stylistQ.error ? [] : (stylistQ.data ?? [])) as { usage_date: string; count: number }[];
 
   // ── Summary counters ──────────────────────────────────────────────────────
   const uniqueSessions = new Set(pageViews.map((r) => r.session_id));
@@ -301,22 +328,113 @@ export async function GET(req: Request) {
     .map(([event, count]) => ({ event, count }))
     .sort((a, b) => b.count - a.count);
 
+  // ── Realtime + new vs returning ──────────────────────────────────────────
+  const onlineNow = new Set(onlineRows.map((r) => r.session_id)).size;
+  let returningSessions = 0;
+  for (const s of uniqueSessions) if (prevSessions.has(s)) returningSessions++;
+  const newVsReturning = {
+    newSessions: uniqueSessions.size - returningSessions,
+    returningSessions,
+  };
+
+  // ── Business (subscriptions ledger) ──────────────────────────────────────
+  const activeSubs = subs.filter((s) => s.status === "active");
+  const byPlan = new Map<string, number>();
+  for (const s of activeSubs) byPlan.set(s.plan, (byPlan.get(s.plan) ?? 0) + 1);
+  const business = {
+    // amount is stored in minor units (kopiykas) — MRR in whole UAH
+    mrrUah: Math.round(activeSubs.reduce((sum, s) => sum + s.amount, 0) / 100),
+    activeSubscriptions: activeSubs.length,
+    byPlan: Array.from(byPlan.entries()).map(([plan, count]) => ({ plan, count })),
+    pastDue: subs.filter((s) => s.status === "past_due").length,
+    canceled: subs.filter((s) => s.status === "canceled").length,
+    autoRenewOff: activeSubs.filter((s) => !s.auto_renew).length,
+  };
+
+  // ── AI usage ──────────────────────────────────────────────────────────────
+  const stylistByDay = new Map<string, number>();
+  for (const r of stylistUsage) {
+    stylistByDay.set(r.usage_date, (stylistByDay.get(r.usage_date) ?? 0) + r.count);
+  }
+  const aiUsage = {
+    stylistMessages: stylistUsage.reduce((s, r) => s + r.count, 0),
+    stylistDaily: Array.from(stylistByDay.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    imageGenerations: eventBreakdown.get("generate_success") ?? 0,
+    imageGenerationErrors: eventBreakdown.get("generate_error") ?? 0,
+  };
+
+  // ── Search terms ──────────────────────────────────────────────────────────
+  const searchTerms = new Map<string, { count: number }>();
+  for (const e of events) {
+    if (e.event !== "search") continue;
+    const q = typeof e.props?.query === "string" ? e.props.query.trim().toLowerCase() : "";
+    if (!q) continue;
+    const r = searchTerms.get(q) ?? { count: 0 };
+    r.count++;
+    searchTerms.set(q, r);
+  }
+
+  // ── Activity heatmap: UTC weekday (0=Mon) × hour ─────────────────────────
+  const heatmap: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+  for (const pv of pageViews) {
+    const d = new Date(pv.ts);
+    heatmap[(d.getUTCDay() + 6) % 7][d.getUTCHours()]++;
+  }
+
+  // ── Resolve product/outfit names for the top lists ───────────────────────
+  const topProductsRaw = topN(productViews, 10);
+  const topOutfitsRaw  = topN(outfitViews, 10);
+  const [prodNamesQ, outfitNamesQ] = await Promise.all([
+    topProductsRaw.length
+      ? supabase.from("products").select("id,name,brand,image_url").in("id", topProductsRaw.map((p) => p.key))
+      : Promise.resolve({ data: [], error: null }),
+    topOutfitsRaw.length
+      ? supabase.from("outfits").select("id,name,image_url").in("id", topOutfitsRaw.map((o) => o.key))
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const prodMeta = new Map(
+    ((prodNamesQ.data ?? []) as { id: string; name: string; brand: string; image_url: string }[])
+      .map((p) => [p.id, p])
+  );
+  const outfitMeta = new Map(
+    ((outfitNamesQ.data ?? []) as { id: string; name: string; image_url: string }[])
+      .map((o) => [o.id, o])
+  );
+  const topProducts = topProductsRaw.map((p) => ({
+    ...p,
+    name: prodMeta.get(p.key)?.name ?? null,
+    brand: prodMeta.get(p.key)?.brand ?? null,
+    imageUrl: prodMeta.get(p.key)?.image_url ?? null,
+  }));
+  const topOutfits = topOutfitsRaw.map((o) => ({
+    ...o,
+    name: outfitMeta.get(o.key)?.name ?? null,
+    imageUrl: outfitMeta.get(o.key)?.image_url ?? null,
+  }));
+
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     range,
-    summary,
+    summary: { ...summary, onlineNow },
     timeseries,
     topPages,
-    topProducts: topN(productViews, 10),
-    topOutfits:  topN(outfitViews, 10),
+    topProducts,
+    topOutfits,
     referrers:   topN(referrers, 10),
     utmSources:  topN(utmSources, 10),
     devices:     topN(devices, 5),
     browsers:    topN(browsers, 5),
     countries:   topN(countries, 10),
+    searchTerms: topN(searchTerms, 10),
     vitals:      vitalsSummary,
     funnel,
     retention,
+    newVsReturning,
+    business,
+    aiUsage,
+    heatmap,
     events:      eventsList,
   });
 }

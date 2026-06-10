@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { AnalyticsResponse, RangeOption } from "./types";
 
@@ -160,7 +160,24 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+          <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Online Now</p>
+          {loading ? (
+            <Skeleton h={8} />
+          ) : (
+            <>
+              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-1 flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                {fmtNumber(data?.summary.onlineNow)}
+              </p>
+              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">Active in last 5 min</p>
+            </>
+          )}
+        </div>
         <StatCard
           label="Page Views"
           value={fmtNumber(data?.summary.pageViews)}
@@ -190,12 +207,14 @@ export default function AdminAnalyticsPage() {
 
       {/* Retention quick stats */}
       {data && (
-        <div className="grid grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
           {[
             { label: "DAU", value: data.retention.dau, hint: "Active today" },
             { label: "WAU", value: data.retention.wau, hint: "Active this week" },
             { label: "MAU", value: data.retention.mau, hint: "Active this month" },
             { label: "Stickiness", value: `${data.retention.stickiness}%`, hint: "DAU / MAU" },
+            { label: "New", value: data.newVsReturning.newSessions, hint: "First-seen sessions" },
+            { label: "Returning", value: data.newVsReturning.returningSessions, hint: "Seen in prev period" },
           ].map((s) => (
             <div key={s.label} className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
               <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">{s.label}</p>
@@ -206,6 +225,86 @@ export default function AdminAnalyticsPage() {
         </div>
       )}
 
+      {/* Business + AI usage */}
+      {data && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+          <Section title="Revenue & Subscriptions" className="mb-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+                <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">MRR</p>
+                <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.business.mrrUah)} ₴</p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{fmtNumber(data.business.activeSubscriptions)} active subs</p>
+              </div>
+              <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+                <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">At Risk</p>
+                <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.business.pastDue + data.business.autoRenewOff)}</p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                  {data.business.pastDue} past due · {data.business.autoRenewOff} renew off · {data.business.canceled} canceled
+                </p>
+              </div>
+              <div className="col-span-2 border border-[var(--border)]" style={{ background: "var(--background)" }}>
+                {data.business.byPlan.length === 0 ? (
+                  <div className="px-4 py-5 text-xs text-[var(--foreground-subtle)] text-center">No paid subscriptions yet</div>
+                ) : (
+                  data.business.byPlan.map((p) => {
+                    const max = Math.max(...data.business.byPlan.map((x) => x.count));
+                    const w = max > 0 ? Math.max(2, Math.round((p.count / max) * 100)) : 0;
+                    return (
+                      <div key={p.plan} className="relative border-b border-[var(--border)] last:border-0 px-4 py-2.5">
+                        <div className="absolute inset-0 bg-[var(--fg-overlay-05)]" style={{ width: `${w}%` }} />
+                        <div className="relative flex items-center justify-between">
+                          <span className="text-xs text-[var(--foreground)] capitalize">{p.plan}</span>
+                          <span className="text-xs text-[var(--foreground-muted)] tabular-nums">{p.count}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </Section>
+          <Section title="AI Usage" className="mb-0">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+                <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist Messages</p>
+                <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.aiUsage.stylistMessages)}</p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">signed-in users, this period</p>
+              </div>
+              <div className="border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+                <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">Image Generations</p>
+                <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.aiUsage.imageGenerations)}</p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                  {data.aiUsage.imageGenerationErrors > 0
+                    ? `${fmtNumber(data.aiUsage.imageGenerationErrors)} failed`
+                    : "no failures"}
+                </p>
+              </div>
+              <div className="col-span-2 border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
+                <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">Stylist messages per day</p>
+                {data.aiUsage.stylistDaily.length === 0 ? (
+                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-3">No stylist usage yet</p>
+                ) : (
+                  <div className="flex items-end gap-[2px] h-16">
+                    {data.aiUsage.stylistDaily.map((d) => {
+                      const max = Math.max(...data.aiUsage.stylistDaily.map((x) => x.count));
+                      const h = max > 0 ? Math.max(4, Math.round((d.count / max) * 100)) : 0;
+                      return (
+                        <div
+                          key={d.date}
+                          title={`${d.date}: ${d.count}`}
+                          className="flex-1 bg-[var(--foreground)] opacity-70 hover:opacity-100 transition-opacity rounded-t-sm"
+                          style={{ height: `${h}%` }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Section>
+        </div>
+      )}
+
       {/* Traffic chart */}
       <Section title="Traffic Over Time">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--background)" }}>
@@ -213,6 +312,15 @@ export default function AdminAnalyticsPage() {
           {!loading && data && <TrafficChart data={data} />}
         </div>
       </Section>
+
+      {/* Activity heatmap */}
+      {data && (
+        <Section title="Activity by Hour (UTC)">
+          <div className="rounded-xl border border-[var(--border)] p-4 overflow-x-auto" style={{ background: "var(--background)" }}>
+            <HourHeatmap heatmap={data.heatmap} />
+          </div>
+        </Section>
+      )}
 
       {/* Web Vitals */}
       <Section title="Core Web Vitals — p75">
@@ -262,17 +370,18 @@ export default function AdminAnalyticsPage() {
       {/* Top pages + products + outfits */}
       <Section title="Top Content">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <TopTable title="Pages"    rows={data?.topPages.map((p) => ({ key: p.path, count: p.views, sub: p.avgLoadMs ? `${p.avgLoadMs} ms avg` : "" })) ?? []} loading={loading} />
-          <TopTable title="Products" rows={data?.topProducts.map((p) => ({ key: p.key, count: p.count, sub: "", href: `/product/${p.key}` })) ?? []} loading={loading} />
-          <TopTable title="Outfits"  rows={data?.topOutfits.map((o) => ({ key: o.key, count: o.count, sub: "", href: `/outfit/${o.key}` })) ?? []} loading={loading} />
+          <TopTable title="Pages"    rows={data?.topPages.map((p) => ({ key: p.path, label: p.path, count: p.views, sub: p.avgLoadMs ? `${p.avgLoadMs} ms avg` : "" })) ?? []} loading={loading} />
+          <TopTable title="Products" rows={data?.topProducts.map((p) => ({ key: p.key, label: p.name ?? p.key, count: p.count, sub: p.brand ?? "", img: p.imageUrl, href: `/product/${p.key}` })) ?? []} loading={loading} />
+          <TopTable title="Outfits"  rows={data?.topOutfits.map((o) => ({ key: o.key, label: o.name || o.key, count: o.count, sub: "", img: o.imageUrl, href: `/outfit/${o.key}` })) ?? []} loading={loading} />
         </div>
       </Section>
 
       {/* Sources */}
-      <Section title="Traffic Sources">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RowList title="Referrers"   items={data?.referrers ?? []}  loading={loading} />
-          <RowList title="UTM Sources" items={data?.utmSources ?? []} loading={loading} empty="No UTM-tagged traffic yet" />
+      <Section title="Traffic Sources & Search">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <RowList title="Referrers"    items={data?.referrers ?? []}   loading={loading} />
+          <RowList title="UTM Sources"  items={data?.utmSources ?? []}  loading={loading} empty="No UTM-tagged traffic yet" />
+          <RowList title="Search Terms" items={data?.searchTerms ?? []} loading={loading} empty="No on-site searches yet" />
         </div>
       </Section>
 
@@ -326,7 +435,9 @@ function RowList({
 function TopTable({
   title, rows, loading,
 }: {
-  title: string; rows: { key: string; count: number; sub: string; href?: string }[]; loading: boolean;
+  title: string;
+  rows: { key: string; label: string; count: number; sub: string; img?: string | null; href?: string }[];
+  loading: boolean;
 }) {
   return (
     <div>
@@ -336,16 +447,56 @@ function TopTable({
         {!loading && rows.length === 0 && <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No data yet</div>}
         {rows.map((r) => (
           <div key={r.key} className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] last:border-0 gap-3">
+            {r.img && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={r.img} alt="" className="w-8 h-10 shrink-0 rounded object-cover bg-[var(--surface)]" loading="lazy" />
+            )}
             <div className="min-w-0 flex-1">
               {r.href ? (
-                <a href={r.href} target="_blank" rel="noreferrer" className="text-xs text-[var(--foreground)] hover:underline truncate block">{r.key}</a>
+                <a href={r.href} target="_blank" rel="noreferrer" className="text-xs text-[var(--foreground)] hover:underline truncate block">{r.label}</a>
               ) : (
-                <span className="text-xs text-[var(--foreground)] truncate block">{r.key}</span>
+                <span className="text-xs text-[var(--foreground)] truncate block">{r.label}</span>
               )}
               {r.sub && <p className="text-[10px] text-[var(--foreground-subtle)]">{r.sub}</p>}
             </div>
             <span className="text-xs text-[var(--foreground-muted)] tabular-nums">{r.count.toLocaleString()}</span>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Hour-of-week heatmap ──────────────────────────────────────────────────────
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function HourHeatmap({ heatmap }: { heatmap: number[][] }) {
+  const max = Math.max(1, ...heatmap.flat());
+  return (
+    <div className="min-w-[640px]">
+      <div className="grid gap-[3px]" style={{ gridTemplateColumns: "36px repeat(24, 1fr)" }}>
+        <div />
+        {Array.from({ length: 24 }).map((_, h) => (
+          <div key={h} className="text-center text-[8px] text-[var(--foreground-subtle)]">
+            {h % 3 === 0 ? h : ""}
+          </div>
+        ))}
+        {heatmap.map((row, d) => (
+          <React.Fragment key={d}>
+            <div className="text-[9px] text-[var(--foreground-subtle)] flex items-center">{WEEKDAYS[d]}</div>
+            {row.map((count, h) => (
+              <div
+                key={h}
+                title={`${WEEKDAYS[d]} ${String(h).padStart(2, "0")}:00 UTC — ${count.toLocaleString()} views`}
+                className="aspect-square rounded-[3px]"
+                style={{
+                  background: count === 0
+                    ? "var(--surface)"
+                    : `color-mix(in srgb, var(--foreground) ${Math.max(12, Math.round((count / max) * 100))}%, var(--surface))`,
+                }}
+              />
+            ))}
+          </React.Fragment>
         ))}
       </div>
     </div>

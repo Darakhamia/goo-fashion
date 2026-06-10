@@ -7,6 +7,7 @@ import ProductCard from "@/components/product/ProductCard";
 import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
+import { track } from "@/lib/analytics/track";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -180,6 +181,15 @@ export default function BrowsePage() {
     return () => window.removeEventListener("resize", update);
   }, []);
   const [stylistOpen, setStylistOpen] = useState(false);
+
+  // Report search terms (debounced) so the admin analytics "Search Terms"
+  // list has data — fires once the user stops typing for a second.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) return;
+    const id = setTimeout(() => track("search", { query: q }), 1000);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
 
   // Restore tab from URL on mount (survives browser back navigation)
   useEffect(() => {
