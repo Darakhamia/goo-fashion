@@ -18,19 +18,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: null });
   }
 
-  const { data, error } = await supabase
+  const row = {
+    user_id: userId,
+    generated_image: body.generatedImage,
+    generated_style: body.generatedStyle ?? null,
+    pieces: body.pieces ?? [],
+    total_price: body.totalPrice ?? null,
+    style_keywords: body.styleKeywords ?? [],
+    status: "pending",
+  };
+
+  let { data, error } = await supabase
     .from("pending_looks")
-    .insert({
-      user_id: userId,
-      generated_image: body.generatedImage,
-      generated_style: body.generatedStyle ?? null,
-      pieces: body.pieces ?? [],
-      total_price: body.totalPrice ?? null,
-      style_keywords: body.styleKeywords ?? [],
-      status: "pending",
-    })
+    .insert({ ...row, look_id: body.lookId ?? null })
     .select("id")
     .single();
+
+  // look_id column may not exist on older databases — retry without it
+  if (error) {
+    ({ data, error } = await supabase
+      .from("pending_looks")
+      .insert(row)
+      .select("id")
+      .single());
+  }
 
   if (error) {
     console.error("[looks/submit]", error);
