@@ -568,11 +568,11 @@ export function StylistDrawer({
         <div className="px-5 py-2.5 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center justify-between mb-1.5">
             <span className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
-              Daily limit
+              Daily messages
             </span>
             <span className={`font-mono text-[8px] tracking-[0.08em] ${usageWarning ? "text-amber-500" : "text-[var(--foreground-subtle)]"}`}>
-              {pctLeft}% remaining
-              {usageWarning && remaining! > 0 && (
+              {remaining} of {dailyLimit} left today
+              {usageWarning && (
                 <Link href="/plans" className="ml-2 underline hover:no-underline">
                   Upgrade
                 </Link>

@@ -37,6 +37,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 export interface RateLimitResult {
   allowed: boolean;
   retryAfterSeconds: number;
+  /** Requests left in the window after this check; null when the limiter is off. */
+  remaining: number | null;
+  /** Window size of this limiter; null when the limiter is off. */
+  limit: number | null;
 }
 
 // Prefer x-forwarded-for for real client IP behind proxies / Vercel edge
@@ -45,10 +49,14 @@ function clientIp(req: Request): string {
   return forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
 }
 
-async function runLimit(limiter: Ratelimit | null, key: string): Promise<RateLimitResult> {
+async function runLimit(
+  limiter: Ratelimit | null,
+  key: string,
+  windowSize: number
+): Promise<RateLimitResult> {
   if (!limiter) {
     // Upstash not configured — passthrough (safe for dev / internal deployments)
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, remaining: null, limit: null };
   }
   try {
     const result = await limiter.limit(key);
@@ -57,20 +65,22 @@ async function runLimit(limiter: Ratelimit | null, key: string): Promise<RateLim
       retryAfterSeconds: result.success
         ? 0
         : Math.ceil((result.reset - Date.now()) / 1000),
+      remaining: Math.max(0, result.remaining),
+      limit: windowSize,
     };
   } catch (err) {
     // If the Upstash call itself fails (network blip, quota, etc.),
     // allow the request rather than blocking all users.
     console.warn("[rate-limit] Upstash error, allowing request:", err);
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, remaining: null, limit: null };
   }
 }
 
 export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
-  return runLimit(ratelimit, clientIp(req));
+  return runLimit(ratelimit, clientIp(req), REQUESTS_PER_MINUTE);
 }
 
 /** Daily cap for unauthenticated users — call only when there is no userId. */
 export async function checkAnonDailyLimit(req: Request): Promise<RateLimitResult> {
-  return runLimit(anonDailyLimit, clientIp(req));
+  return runLimit(anonDailyLimit, clientIp(req), ANON_REQUESTS_PER_DAY);
 }
