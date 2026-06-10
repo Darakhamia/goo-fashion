@@ -9,8 +9,12 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import ProductCard from "./ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
-import PriceHistoryChart from "./PriceHistoryChart";
-import ProductReviews from "./ProductReviews";
+import dynamic from "next/dynamic";
+
+// Both sit below the fold and fetch their own data — load them after the
+// critical product UI instead of shipping them in the page bundle.
+const PriceHistoryChart = dynamic(() => import("./PriceHistoryChart"), { ssr: false });
+const ProductReviews = dynamic(() => import("./ProductReviews"), { ssr: false });
 import { track } from "@/lib/analytics/track";
 import { buildStylingNotes } from "@/lib/seo";
 

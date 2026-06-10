@@ -11,7 +11,15 @@ export async function GET(req: Request) {
   // raw=true → skip variant grouping (used by admin panel to show all products)
   const raw = searchParams.get("raw") === "true";
   const products = await getAllProducts(raw);
-  return NextResponse.json(products);
+  return NextResponse.json(products, {
+    headers: raw
+      ? { "Cache-Control": "no-store" } // admin view must always be fresh
+      : {
+          // Public catalog: CDN-cache 5 min, serve stale while revalidating —
+          // this fetch fires every time the stylist drawer opens.
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+  });
 }
 
 export async function POST(req: Request) {
