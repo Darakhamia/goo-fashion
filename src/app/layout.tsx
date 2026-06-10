@@ -10,7 +10,11 @@ import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
+import PostHogTracker from "@/components/analytics/PostHogTracker";
 import BugReportButton from "@/components/internal/BugReportButton";
+import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const interTight = Inter_Tight({
   subsets: ["latin"],
@@ -78,6 +82,12 @@ export default function RootLayout({
                   <CurrencyProvider>
                     <ConditionalSiteLayout>{children}</ConditionalSiteLayout>
                     <AnalyticsTracker />
+                    {/* useSearchParams requires a Suspense boundary */}
+                    <Suspense fallback={null}>
+                      <PostHogTracker />
+                    </Suspense>
+                    <Analytics />
+                    <SpeedInsights />
                     <BugReportButton />
                   </CurrencyProvider>
                 </CartProvider>
