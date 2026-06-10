@@ -8,6 +8,7 @@ import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } fro
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
+import { useScrollLock } from "@/lib/hooks/useScrollLock";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -229,6 +230,9 @@ export default function BrowsePage() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [filtersOpen]);
+
+  // Lock background scroll while the filter sidebar is open
+  useScrollLock(filtersOpen);
 
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -752,7 +756,7 @@ export default function BrowsePage() {
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
                 placeholder="Search brands…"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
               />
               {brandSearch && (
                 <button
@@ -1005,7 +1009,7 @@ export default function BrowsePage() {
                               placeholder="Search…"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-[11px] mx-2 min-w-0 flex-1"
+                              className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-base md:text-[11px] mx-2 min-w-0 flex-1"
                             />
                             <button
                               onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
@@ -1360,7 +1364,7 @@ export default function BrowsePage() {
                     <button
                       onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === 1}
-                      className="w-8 h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
                       <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
@@ -1376,13 +1380,13 @@ export default function BrowsePage() {
                         p = i === 0 ? 1 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages : page + i - 3;
                       }
                       if (p === -1) {
-                        return <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
+                        return <span key={`ellipsis-${i}`} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
                       }
                       return (
                         <button
                           key={p}
                           onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                          className={`w-8 h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
+                          className={`w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
                             page === p
                               ? "bg-[var(--foreground)] text-[var(--background)] rounded-lg"
                               : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -1395,7 +1399,7 @@ export default function BrowsePage() {
                     <button
                       onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === totalPages}
-                      className="w-8 h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
                       <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>

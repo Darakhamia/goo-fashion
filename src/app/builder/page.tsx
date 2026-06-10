@@ -949,7 +949,7 @@ export default function BuilderPage() {
                     {/* Remove button top-right */}
                     <button
                       onClick={e => clearSlot(slot.id, e)}
-                      className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
+                      className="absolute top-2 right-2 w-7 h-7 md:w-5 md:h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
                       aria-label={`Remove ${slot.label}`}
                     >
                       <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
@@ -1354,7 +1354,7 @@ export default function BuilderPage() {
                             />
                             {/* Top-left: + / ✓ add to outfit */}
                             {!isSelected && (
-                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                   <line x1="5" y1="1" x2="5" y2="9" />
                                   <line x1="1" y1="5" x2="9" y2="5" />
@@ -1371,7 +1371,7 @@ export default function BuilderPage() {
                             {/* Top-right: heart like button */}
                             <button
                               onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
-                              className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+                              className={`absolute top-2 right-2 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
                               aria-label={likedProducts.includes(product.id) ? "Unlike" : "Like"}
                             >
                               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
@@ -2008,7 +2008,7 @@ export default function BuilderPage() {
                     )}
                     <button
                       onClick={() => clearSlot(item.slotId as SlotId)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10"
+                      className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10"
                       aria-label={`Remove ${item.name}`}
                     >
                       <svg width="7" height="7" viewBox="0 0 10 10" fill="none">
@@ -2038,7 +2038,7 @@ export default function BuilderPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[2].imageUrl} alt={items[2].name} className="absolute inset-0 w-full h-full object-contain p-2" />
                       )}
-                      <button onClick={() => clearSlot(items[2].slotId as SlotId)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[2].name}`}>
+                      <button onClick={() => clearSlot(items[2].slotId as SlotId)} className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[2].name}`}>
                         <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
                       </button>
                     </div>
@@ -2080,7 +2080,7 @@ export default function BuilderPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={items[5].imageUrl} alt={items[5].name} className="absolute inset-0 w-full h-full object-contain p-2" />
                       )}
-                      <button onClick={() => clearSlot(items[5].slotId as SlotId)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[5].name}`}>
+                      <button onClick={() => clearSlot(items[5].slotId as SlotId)} className="absolute top-1 right-1 w-7 h-7 md:w-5 md:h-5 rounded-full bg-black/50 flex items-center justify-center z-10" aria-label={`Remove ${items[5].name}`}>
                         <svg width="7" height="7" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" /></svg>
                       </button>
                     </div>

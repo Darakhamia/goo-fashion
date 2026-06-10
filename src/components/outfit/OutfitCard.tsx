@@ -88,7 +88,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       <button
         onClick={handleLike}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
-        className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100"
+        className="absolute top-3 right-3 z-20 w-9 h-9 md:w-8 md:h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 opacity-100 md:opacity-0 md:group-hover:opacity-100"
       >
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <path

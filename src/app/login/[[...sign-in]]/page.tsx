@@ -23,7 +23,7 @@ export default function LoginPage() {
             formButtonPrimary:
               "bg-[#0A0A0A] text-[#F4F2EE] hover:opacity-80 transition-opacity rounded-none text-xs tracking-[0.14em] uppercase font-medium",
             formFieldInput:
-              "border-[#E8E6E0] bg-white text-[#0A0A0A] rounded-none focus:ring-0 focus:border-[#0A0A0A]",
+              "border-[#E8E6E0] bg-white text-[#0A0A0A] text-base rounded-none focus:ring-0 focus:border-[#0A0A0A]",
             footerActionLink: "text-[#0A0A0A] underline underline-offset-2",
             dividerLine: "bg-[#E8E6E0]",
             dividerText: "text-[#6B6B6B]",
