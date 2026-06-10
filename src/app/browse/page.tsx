@@ -946,10 +946,11 @@ export default function BrowsePage() {
           <main className="px-6 md:px-8 lg:px-10">
             {/* Toolbar: flex row, items-end so chips align with bottom pill */}
             <div className="pt-4 pb-4 border-b border-[var(--border)]">
-              <div className="flex items-end gap-2">
+              <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
 
-                {/* Left column: Filter+Search on top, Pieces/Outfits below (w-full matches above) */}
-                <div className="flex flex-col gap-2 shrink-0">
+                {/* Left column: Filter+Search on top, Pieces/Outfits below.
+                    Full width on mobile so the segmented toggle never clips. */}
+                <div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
                   <div className="flex gap-2 items-center">
                     {/* Filter */}
                     <button
@@ -1059,7 +1060,7 @@ export default function BrowsePage() {
                   className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto self-end pb-[1px]"
                   style={{ scrollbarWidth: "none" }}
                 >
-                  <div className="w-px h-5 shrink-0 bg-[var(--border)]" />
+                  <div className="hidden sm:block w-px h-5 shrink-0 bg-[var(--border)]" />
                   {STYLE_FILTERS.map((style) => (
                     <button
                       key={style}
@@ -1075,8 +1076,9 @@ export default function BrowsePage() {
                   ))}
                 </div>
 
-                {/* Sort — self-start keeps it aligned with Filter+Search row */}
-                <div className="relative shrink-0 self-start" ref={sortRef}>
+                {/* Sort — self-start aligns with Filter+Search on desktop; on the
+                    wrapped mobile row it sits beside the scrollable style chips */}
+                <div className="relative shrink-0 self-end sm:self-start" ref={sortRef}>
                   <button
                     onClick={() => setSortOpen((o) => !o)}
                     className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${

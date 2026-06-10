@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -15,7 +16,7 @@ export default function MobileBottomNav() {
           <path
             d="M7 4L3 8v2.5L5.5 9V20h13V9l2.5 1.5V8l-4-4S15.5 6 12 6 7 4 7 4Z"
             stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0}
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.16 : 0}
           />
         </svg>
       ),
@@ -58,7 +59,7 @@ export default function MobileBottomNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-overlay-95)] backdrop-blur-md border-t border-[var(--border)]">
       <div className="flex items-stretch h-14">
         {tabs.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -66,12 +67,36 @@ export default function MobileBottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                active ? "text-[#c9a84c]" : "text-[var(--foreground-subtle)]"
-              }`}
+              aria-current={active ? "page" : undefined}
+              className="group relative flex-1 flex flex-col items-center justify-center gap-1"
             >
-              {icon(active)}
-              <span className="font-mono text-[10px] tracking-[0.04em] uppercase leading-none">{label}</span>
+              {/* Icon sits in a subtle highlight circle on active — mirrors the
+                  desktop header's icon-button active state (fg overlay + border).
+                  The pill slides between tabs with the same spring the Browse
+                  Pieces/Outfits toggle uses, so the motion language matches. */}
+              <span className="relative flex items-center justify-center w-11 h-7 transition-transform duration-200 active:scale-90">
+                {active && (
+                  <motion.span
+                    layoutId="bottomNavHighlight"
+                    transition={{ type: "spring", stiffness: 500, damping: 42, mass: 0.8 }}
+                    className="absolute inset-0 rounded-full bg-[var(--fg-overlay-08)] border border-[var(--border)]"
+                  />
+                )}
+                <span className={`relative z-10 transition-colors duration-200 ${
+                  active
+                    ? "text-[var(--foreground)]"
+                    : "text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] group-active:text-[var(--foreground)]"
+                }`}>
+                  {icon(active)}
+                </span>
+              </span>
+              <span className={`font-mono text-[10px] tracking-[0.1em] uppercase leading-none transition-colors duration-200 ${
+                active
+                  ? "text-[var(--foreground)]"
+                  : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
+              }`}>
+                {label}
+              </span>
             </Link>
           );
         })}
