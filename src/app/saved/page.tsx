@@ -157,6 +157,7 @@ function LookCard({
   const [editingName, setEditingName] = useState(false);
   const [modalEditingName, setModalEditingName] = useState(false);
   const [menu, setMenu] = useState<"share" | "more" | null>(null);
+  const [modalShare, setModalShare] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // System name by content type — used whenever the user hasn't named the look
@@ -238,6 +239,11 @@ function LookCard({
     outerwear: 0, top: 1, bottom: 2, shoes: 3, accessories: 4, accessories2: 5,
   };
 
+  const SLOT_LABEL: Record<string, string> = {
+    outerwear: "Outerwear", top: "Top", bottom: "Bottom", shoes: "Shoes",
+    accessories: "Accessory", accessories2: "Accessory",
+  };
+
   const pieces = [...look.pieces]
     .sort((a, b) => (SLOT_PRIORITY[a.slot] ?? 99) - (SLOT_PRIORITY[b.slot] ?? 99))
     .map((piece) => {
@@ -247,6 +253,8 @@ function LookCard({
         imageUrl: piece.imageUrl ?? product?.imageUrl ?? null,
         name: piece.name ?? product?.name ?? piece.slot,
         productId: piece.productId,
+        price: product?.priceMin ?? null,
+        color: product?.colors?.[0] ?? null,
       };
     });
 
@@ -626,11 +634,11 @@ function LookCard({
             exit={{ opacity: 0, scale: 0.94, y: 12 }}
             transition={{ duration: 0.2 }}
             className={`bg-[var(--background)] w-full overflow-hidden flex flex-col rounded-2xl max-w-3xl`}
-            style={{ height: "min(90vh, 560px)" }}
+            style={{ height: "min(90vh, 680px)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
+            {/* Modal header — name + metadata only, actions live in the right column */}
+            <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div className="flex-1 min-w-0 mr-4">
                 {modalEditingName ? (
                   <input
@@ -663,129 +671,64 @@ function LookCard({
                     </svg>
                   </button>
                 )}
-                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-1">
-                  {formatPrice(look.totalPrice)} total · {totalPieces} pieces{partial ? ` · ${availableCount}/${totalPieces} available` : ""}
+                <p className="flex items-center gap-1.5 text-[12px] text-[var(--foreground-muted)] mt-1 truncate">
+                  <span>{formatPrice(look.totalPrice)} total</span>
+                  <span className="opacity-50">•</span>
+                  <span>{totalPieces} {totalPieces === 1 ? "piece" : "pieces"}</span>
+                  {partial && (
+                    <>
+                      <span className="opacity-50">•</span>
+                      <StatusDot className="bg-orange-400" />
+                      <span>{availableCount}/{totalPieces} available</span>
+                    </>
+                  )}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleAddToBag}
-                  disabled={availableCount === 0}
-                  className={`text-[9px] tracking-[0.12em] uppercase font-medium transition-colors disabled:opacity-30 disabled:cursor-default ${
-                    bagAdded ? "text-green-500" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {bagAdded ? "Added ✓" : partial ? "Add available items" : "Add all to bag"}
-                </button>
-                <Link
-                  href={builderUrl}
-                  onClick={() => setOpen(false)}
-                  className="text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  Edit in Builder →
-                </Link>
-                {look.generatedImage && (
-                  publication === "approved" ? (
-                    <span className="text-[9px] tracking-[0.12em] uppercase font-medium text-green-500">
-                      Published to GOO
-                    </span>
-                  ) : publication === "pending" ? (
-                    <span className="text-[9px] tracking-[0.12em] uppercase font-medium text-orange-400">
-                      Pending approval
-                    </span>
-                  ) : (
-                    <button
-                      onClick={handleSubmitForPublication}
-                      disabled={submitState === "submitting"}
-                      className="text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
-                    >
-                      {submitState === "submitting" ? "Submitting…" : "Submit for publication"}
-                    </button>
-                  )
-                )}
-                <button
-                  onClick={() => { setOpen(false); setModalEditingName(false); }}
-                  className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
+              <button
+                onClick={() => { setOpen(false); setModalEditingName(false); setModalShare(false); }}
+                aria-label="Close"
+                className="mt-1 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
 
             {/* Body */}
-            {look.generatedImage ? (
-              /* ── Side-by-side: AI image left, pieces list right ── */
-              <div className="flex min-h-0 flex-1">
-                {/* Left: generated image */}
-                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden bg-[var(--surface)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={look.generatedImage}
-                    alt={displayName}
-                    className="w-full h-full object-cover object-top"
-                  />
-                  <a
-                    href={look.generatedImage}
-                    download="goo-outfit.jpg"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-3 right-3 font-mono text-[9px] tracking-[0.12em] uppercase bg-[var(--background)]/85 backdrop-blur-sm text-[var(--foreground)] px-2.5 py-1.5 hover:bg-[var(--background)] transition-colors"
-                  >
-                    Download
-                  </a>
-                  {look.generatedStyle && (
-                    <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-1 backdrop-blur-sm">
-                      {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
-                    </span>
-                  )}
-                </div>
-
-                {/* Right: pieces list */}
-                <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
-                  {pieces.length > 0 ? pieces.map(({ slot, imageUrl, name, productId }) => (
-                    <Link
-                      key={slot}
-                      href={`/product/${productId}`}
-                      onClick={() => setOpen(false)}
-                      className="group/item flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors"
+            <div className="flex min-h-0 flex-1">
+              {/* Left: single look image (or collage when no image) — no carousel */}
+              <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden bg-[var(--surface)]">
+                {look.generatedImage ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={look.generatedImage}
+                      alt={displayName}
+                      className="w-full h-full object-cover object-top"
+                    />
+                    {look.generatedStyle && (
+                      <span className="absolute top-3 left-3 font-mono text-[8px] tracking-[0.18em] uppercase bg-black/55 text-white px-2 py-1 backdrop-blur-sm">
+                        {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
+                      </span>
+                    )}
+                    <a
+                      href={look.generatedImage}
+                      download="goo-look.jpg"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Download image"
+                      aria-label="Download image"
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
                     >
-                      <div className="w-14 h-14 shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg border border-[var(--border)]">
-                        {imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={imageUrl}
-                            alt={name}
-                            className="w-full h-full object-contain p-1 group-hover/item:scale-105 transition-transform duration-200"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="font-mono text-[8px] text-[var(--border-strong)]">{slot[0].toUpperCase()}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{slot}</p>
-                        <p className="text-xs text-[var(--foreground)] truncate">{name}</p>
-                      </div>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)] group-hover/item:text-[var(--foreground)] transition-colors">
-                        <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                       </svg>
-                    </Link>
-                  )) : (
-                    <div className="flex items-center justify-center h-full py-12">
-                      <p className="font-mono text-[9px] uppercase text-[var(--foreground-subtle)]">No pieces</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* ── No generated image: collage left, pieces list right ── */
-              <div className="flex min-h-0 flex-1">
-                {/* Left: piece collage — absolute inset-0 fills the fixed-height modal body */}
-                <div className="relative w-[56%] shrink-0 border-r border-[var(--border)] overflow-hidden">
+                    </a>
+                  </>
+                ) : (
                   <div className="absolute inset-0 bg-gray-200 flex flex-col gap-px">
                     {(() => {
                       const n = pieces.length;
@@ -831,21 +774,27 @@ function LookCard({
                       );
                     })()}
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Right: pieces list */}
+              {/* Right: pieces list + actions */}
+              <div className="flex-1 flex flex-col min-w-0">
                 <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
-                  {pieces.length > 0 ? pieces.map(({ slot, imageUrl, name, productId }) => (
+                  {pieces.length > 0 ? pieces.map(({ slot, imageUrl, name, productId, price, color }) => (
                     <Link
                       key={slot}
                       href={`/product/${productId}`}
                       onClick={() => setOpen(false)}
                       className="group/item flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors"
                     >
-                      <div className="w-14 h-14 shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg border border-[var(--border)]">
+                      <div className="w-14 h-14 shrink-0 bg-white overflow-hidden rounded-lg border border-[var(--border)]">
                         {imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={imageUrl} alt={name} className="w-full h-full object-contain p-1 group-hover/item:scale-105 transition-transform duration-200" />
+                          <img
+                            src={imageUrl}
+                            alt={name}
+                            className="w-full h-full object-contain p-1 group-hover/item:scale-105 transition-transform duration-200"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <span className="font-mono text-[8px] text-[var(--border-strong)]">{slot[0].toUpperCase()}</span>
@@ -853,8 +802,13 @@ function LookCard({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{slot}</p>
-                        <p className="text-xs text-[var(--foreground)] truncate">{name}</p>
+                        <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5">{SLOT_LABEL[slot] ?? slot}</p>
+                        <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{name}</p>
+                        {(price !== null || color) && (
+                          <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5 truncate">
+                            {[price !== null ? formatPrice(price) : null, color].filter(Boolean).join(" • ")}
+                          </p>
+                        )}
                       </div>
                       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)] group-hover/item:text-[var(--foreground)] transition-colors">
                         <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -866,8 +820,120 @@ function LookCard({
                     </div>
                   )}
                 </div>
+
+                {/* Footer: total, primary action, secondary actions, publication */}
+                <div className="shrink-0 border-t border-[var(--border)] px-4 pt-3.5 pb-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-medium text-[var(--foreground)]">Total</span>
+                    <span className="text-[15px] font-semibold text-[var(--foreground)]">{formatPrice(look.totalPrice)}</span>
+                  </div>
+
+                  <button
+                    onClick={handleAddToBag}
+                    disabled={availableCount === 0}
+                    className={`mt-3 w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+                      bagAdded
+                        ? "bg-green-600 text-white"
+                        : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
+                    }`}
+                  >
+                    {bagAdded ? "Added to bag ✓" : (
+                      <>
+                        <span>{partial ? "Add available items" : "Add all to bag"}</span>
+                        <BagIcon />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="relative flex gap-1.5 mt-2">
+                    <Link
+                      href={builderUrl}
+                      onClick={() => setOpen(false)}
+                      className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
+                      </svg>
+                      Edit in Builder
+                    </Link>
+                    <button
+                      onClick={() => setModalShare((v) => !v)}
+                      className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                      Share
+                    </button>
+                    <ActionMenu open={modalShare} onClose={() => setModalShare(false)}>
+                      <MenuItem onClick={copyPrivateLink}>{copied ? "Link copied ✓" : "Copy private link"}</MenuItem>
+                      <MenuItem onClick={shareLink}>Share link</MenuItem>
+                    </ActionMenu>
+                  </div>
+
+                  {/* Publication status block */}
+                  {publication === "approved" ? (
+                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
+                      <span className="w-8 h-8 shrink-0 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                          <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z" stroke="currentColor" strokeWidth="1.6" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold text-[var(--foreground)]">Published to GOO</span>
+                        <span className="block text-[11px] text-[var(--foreground-subtle)]">This look is live on the site.</span>
+                      </span>
+                    </div>
+                  ) : publication === "pending" ? (
+                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
+                      <span className="w-8 h-8 shrink-0 rounded-full bg-orange-400/15 text-orange-400 flex items-center justify-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                          <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold text-[var(--foreground)]">Pending approval</span>
+                        <span className="block text-[11px] text-[var(--foreground-subtle)]">Your look is awaiting admin review.</span>
+                      </span>
+                    </div>
+                  ) : publication === "rejected" ? (
+                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
+                      <span className="w-8 h-8 shrink-0 rounded-full bg-red-400/15 text-red-400 flex items-center justify-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                          <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold text-[var(--foreground)]">Rejected</span>
+                        <span className="block text-[11px] text-[var(--foreground-subtle)]">This look wasn&apos;t approved for publication.</span>
+                      </span>
+                    </div>
+                  ) : look.generatedImage ? (
+                    <button
+                      onClick={handleSubmitForPublication}
+                      disabled={submitState === "submitting"}
+                      className="mt-3 w-full flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-left hover:border-[var(--border-strong)] transition-colors disabled:opacity-50 disabled:cursor-default"
+                    >
+                      <span className="w-8 h-8 shrink-0 rounded-full bg-[var(--fg-overlay-08)] text-[var(--foreground)] flex items-center justify-center">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 19V5m0 0-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold text-[var(--foreground)]">
+                          {submitState === "submitting" ? "Submitting…" : "Submit for publication"}
+                        </span>
+                        <span className="block text-[11px] text-[var(--foreground-subtle)]">Send this look for admin approval before it appears on GOO.</span>
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            )}
+            </div>
           </motion.div>
         </motion.div>
       )}
