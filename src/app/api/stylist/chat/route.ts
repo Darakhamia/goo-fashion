@@ -1099,7 +1099,12 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[stylist/chat] ERROR:", msg);
     return NextResponse.json(
-      { error: "The AI service is temporarily unavailable. Try again in a moment.", _debug: msg },
+      {
+        error: "The AI service is temporarily unavailable. Try again in a moment.",
+        // Internal error detail is logged server-side; only surfaced to admins
+        // running ?debug=1 so it can't leak stack/internal info to end users.
+        ...(wantDebug ? { _debug: msg } : {}),
+      },
       { status: 502 }
     );
   }
