@@ -155,7 +155,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
               >
                 <CroppedImage
                   src={src}
-                  alt={product.name}
+                  alt={`${product.name} by ${product.brand}`}
                   cropData={activeVariant ? undefined : product.cropData}
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />

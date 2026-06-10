@@ -32,7 +32,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${SITE_URL}/product/${id}`,
       type: "website",
-      images: product.imageUrl ? [{ url: product.imageUrl, alt: product.name }] : [],
+      // Fall back to the site-wide branded card when the product has no photo,
+      // so shared links always render with an image.
+      images: product.imageUrl
+        ? [{ url: product.imageUrl, alt: product.name }]
+        : [{ url: absoluteUrl("/opengraph-image"), alt: "GOO — AI Stylist" }],
     },
   };
 }

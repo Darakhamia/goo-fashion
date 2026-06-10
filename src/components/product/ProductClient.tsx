@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Outfit, Product, ProductSwatch } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useLikes } from "@/lib/context/likes-context";
@@ -99,11 +100,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
             <div className="relative aspect-[3/4] overflow-hidden bg-white">
               {mainImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={mainImage}
-                  alt={product.name}
-                  className="w-full h-full object-contain transition-opacity duration-[260ms] ease-in-out"
+                  alt={`${product.name} by ${product.brand}`}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-contain transition-opacity duration-[260ms] ease-in-out"
                   style={{ opacity: imgVisible ? 1 : 0 }}
                 />
               ) : (
@@ -142,12 +145,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 <button
                   key={`${img}-${i}`}
                   onClick={() => goTo(i)}
-                  className={`flex-1 aspect-square rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
+                  className={`relative flex-1 aspect-square rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={`${product.name} ${i + 1}`} className="w-full h-full object-contain" />
+                  <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="120px" className="object-contain" />
                 </button>
               ))}
             </div>

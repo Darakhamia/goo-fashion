@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { getAllBlogPosts } from "@/lib/data/db";
 
@@ -69,12 +70,14 @@ export default async function BlogPage() {
         <Link href={`/blog/${featured.slug}`} className="group block mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md transition-all duration-200">
             <div className="bg-[var(--background)] overflow-hidden">
-              <div className="aspect-[4/3] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <Image
                   src={featured.coverImageUrl}
                   alt={featured.title}
-                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover group-hover:scale-[1.02] transition-transform duration-700"
                 />
               </div>
             </div>
@@ -116,12 +119,13 @@ export default async function BlogPage() {
                 href={`/blog/${post.slug}`}
                 className="group bg-[var(--background)] flex flex-col rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--foreground-muted)] transition-all duration-200"
               >
-                <div className="overflow-hidden aspect-[3/2]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative overflow-hidden aspect-[3/2]">
+                  <Image
                     src={post.coverImageUrl}
                     alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
                   />
                 </div>
                 <div className="p-6 flex flex-col flex-1">

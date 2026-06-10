@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 
 interface ProductGalleryProps {
   images: string[];
@@ -45,11 +46,13 @@ export default function ProductGallery({
       {/* ── Main image ── */}
       <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
         {mainImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={mainImage}
             alt={productName}
-            className="w-full h-full object-cover transition-opacity duration-300"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover transition-opacity duration-300"
             key={mainImage}
           />
         ) : (
@@ -85,11 +88,12 @@ export default function ProductGallery({
                   : "opacity-60 hover:opacity-100"
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={img}
                 alt={`${productName} view ${i + 1}`}
-                className="w-full h-full object-cover"
+                fill
+                sizes="120px"
+                className="object-cover"
               />
             </button>
           ))}
