@@ -80,8 +80,8 @@ export function GooeyText({
  * gooey morph. At runtime this is bumped to match the device pixel ratio.
  */
 const DEFAULT_SUPERSAMPLE = 2;
-/** Cap so DPR-3 phones don't pay for an 4×+ oversized rasterised layer. */
-const MAX_SUPERSAMPLE = 3;
+/** Cap so very high-DPR phones don't pay for an oversized rasterised layer. */
+const MAX_SUPERSAMPLE = 4;
 
 /** Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF. */
 function MorphText({
@@ -102,7 +102,9 @@ function MorphText({
   const [supersample, setSupersample] = React.useState(DEFAULT_SUPERSAMPLE);
   React.useEffect(() => {
     const dpr = window.devicePixelRatio || 1;
-    setSupersample(Math.min(MAX_SUPERSAMPLE, Math.max(DEFAULT_SUPERSAMPLE, Math.ceil(dpr))));
+    // One step above the device pixel ratio so the goo threshold has resolution
+    // headroom to antialias against, instead of rasterising at bare parity.
+    setSupersample(Math.min(MAX_SUPERSAMPLE, Math.max(DEFAULT_SUPERSAMPLE, Math.ceil(dpr) + 1)));
   }, []);
 
   React.useEffect(() => {
@@ -209,7 +211,17 @@ function MorphText({
                       0 1 0 0 0
                       0 0 1 0 0
                       0 0 0 255 -140"
+              result="threshold"
             />
+            {/* The hard alpha threshold above snaps glyph edges into a binary
+                staircase, which reads as pixelated/jagged while the morph is
+                playing. A small final blur re-antialiases that edge back to a
+                ~1px soft edge (like native font antialiasing) without touching
+                the blob-merge behaviour the threshold drives, so the goo stays
+                crisp in motion. stdDeviation is in the SS×-scaled layer's local
+                units, so after the 1/SS downscale it lands at roughly one
+                on-screen pixel. */}
+            <feGaussianBlur in="threshold" stdDeviation="1" edgeMode="none" />
           </filter>
         </defs>
       </svg>
