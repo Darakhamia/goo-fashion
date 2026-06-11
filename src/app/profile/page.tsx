@@ -296,16 +296,6 @@ const THEME_OPTIONS: { id: ThemePreference; label: string; icon: React.ReactNode
       </svg>
     ),
   },
-  {
-    id: "system",
-    label: "System",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M8 20h8M12 16v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-    ),
-  },
 ];
 
 function AccountTab({
@@ -397,11 +387,7 @@ function AccountTab({
             );
           })}
         </div>
-        {preference === "system" && (
-          <p className="text-[11px] text-[var(--foreground-subtle)] mt-3">
-            Following your device — currently {theme === "dark" ? "dark" : "light"}.
-          </p>
-        )}
+
       </div>
 
       {/* Currency */}
