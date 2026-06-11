@@ -282,6 +282,30 @@ function LookCard({
   // pieces on the right — the same format as published / default looks.
   const publicLink = () => `${window.location.origin}/look/${look.id}`;
 
+  // Make sure the look exists server-side before its public link goes out, so a
+  // recipient (who isn't the owner) never lands on a 404. Looks are otherwise
+  // only synced on builder-save; a freshly opened saved page may hold looks
+  // that were never pushed (e.g. created before sign-in). Fire-and-forget: by
+  // the time the link is opened the upsert has long completed, and keeping it
+  // un-awaited lets navigator.share() stay inside the user gesture on iOS.
+  const persistToServer = () => {
+    fetch("/api/user/looks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: look.id,
+        savedAt: look.savedAt,
+        name: look.name,
+        description: look.description,
+        pieces: look.pieces,
+        totalPrice: look.totalPrice,
+        styleKeywords: look.styleKeywords,
+        generatedImage: look.generatedImage,
+        generatedStyle: look.generatedStyle,
+      }),
+    }).catch(() => {});
+  };
+
   const copyPrivateLink = async () => {
     try {
       await navigator.clipboard.writeText(privateLink());
@@ -291,6 +315,7 @@ function LookCard({
   };
 
   const shareLink = async () => {
+    persistToServer();
     const url = publicLink();
     try {
       if (navigator.share) {
@@ -302,6 +327,14 @@ function LookCard({
       }
       setMenu(null);
     } catch {}
+  };
+
+  // Persist as soon as the share UI opens, so the row is in place well before
+  // the recipient follows the link.
+  const openShareMenu = () => {
+    const next = menu === "share" ? null : "share";
+    setMenu(next);
+    if (next === "share") persistToServer();
   };
 
   // Metadata segment: publication status > availability > origin
@@ -502,7 +535,7 @@ function LookCard({
               Edit
             </Link>
             <button
-              onClick={() => setMenu(menu === "share" ? null : "share")}
+              onClick={openShareMenu}
               className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -869,7 +902,7 @@ function LookCard({
                       Edit in Builder
                     </Link>
                     <button
-                      onClick={() => setModalShare((v) => !v)}
+                      onClick={() => setModalShare((v) => { const next = !v; if (next) persistToServer(); return next; })}
                       className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
