@@ -364,22 +364,35 @@ function AccountTab({
         <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-4">
           Appearance
         </p>
-        <div className="inline-flex bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
+        <div
+          role="radiogroup"
+          aria-label="Theme"
+          className="inline-flex bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]"
+        >
           {THEME_OPTIONS.map((opt) => {
             const active = preference === opt.id;
             return (
               <button
                 key={opt.id}
+                role="radio"
+                aria-checked={active}
                 onClick={() => setPreference(opt.id)}
-                aria-pressed={active}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] tracking-[0.14em] uppercase font-medium transition-colors duration-200 ${
-                  active
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                className={`relative flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] tracking-[0.14em] uppercase font-medium transition-colors duration-200 ${
+                  active ? "text-[var(--background)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 }`}
               >
-                {opt.icon}
-                {opt.label}
+                {active && (
+                  <motion.span
+                    layoutId="account-theme-pill"
+                    className="absolute inset-0 rounded-full bg-[var(--foreground)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    style={{ zIndex: 0 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {opt.icon}
+                  {opt.label}
+                </span>
               </button>
             );
           })}
@@ -401,14 +414,15 @@ function AccountTab({
             e.g. {formatPrice(1200)}
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div role="radiogroup" aria-label="Display currency" className="flex flex-wrap gap-2">
           {CURRENCIES.map((c) => {
             const active = currency === c.code;
             return (
               <button
                 key={c.code}
+                role="radio"
+                aria-checked={active}
                 onClick={() => setCurrency(c.code as CurrencyCode)}
-                aria-pressed={active}
                 title={c.name}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[11px] font-medium transition-all duration-200 ${
                   active
@@ -422,6 +436,9 @@ function AccountTab({
             );
           })}
         </div>
+        <p className="text-[11px] text-[var(--foreground-subtle)] mt-3">
+          Prices across the site are shown in {CURRENCIES.find((c) => c.code === currency)?.name ?? currency}.
+        </p>
       </div>
 
       {/* Session */}
