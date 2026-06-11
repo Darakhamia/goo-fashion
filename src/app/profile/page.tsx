@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 
 import { useAuth } from "@/lib/context/auth-context";
-import { useTheme } from "@/lib/context/theme-context";
+import { useTheme, type ThemePreference } from "@/lib/context/theme-context";
+import { useCurrency, CURRENCIES, type CurrencyCode } from "@/lib/context/currency-context";
 import Link from "next/link";
 import { PLANS, PLAN_ORDER, planPriceDual, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "account" | "plan" | "stylist";
+type Tab = "account" | "settings" | "plan" | "stylist";
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
 type StyleKeyword =
   | "minimal" | "classic" | "streetwear" | "sporty" | "avant-garde"
@@ -101,7 +102,6 @@ interface BillingStatus {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { user: clerkUser, isLoaded } = useUser();
-  const { theme, toggleTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState<Tab>("account");
 
@@ -168,6 +168,7 @@ export default function ProfilePage() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "account", label: "Account" },
+    { id: "settings", label: "Settings" },
     { id: "plan", label: "Plan" },
     { id: "stylist", label: "AI Stylist" },
   ];
@@ -231,8 +232,9 @@ export default function ProfilePage() {
               className="max-w-2xl pb-20"
             >
               {activeTab === "account" && (
-                <AccountTab user={user} clerkUser={clerkUser} theme={theme} toggleTheme={toggleTheme} />
+                <AccountTab user={user} clerkUser={clerkUser} onOpenSettings={() => setActiveTab("settings")} />
               )}
+              {activeTab === "settings" && <SettingsTab />}
               {activeTab === "plan" && (
                 <PlanTab currentPlan={user?.plan ?? "free"} />
               )}
@@ -279,13 +281,11 @@ export default function ProfilePage() {
 function AccountTab({
   user,
   clerkUser,
-  theme,
-  toggleTheme,
+  onOpenSettings,
 }: {
   user: { name: string; email: string; plan: PlanId; avatar?: string; joinedAt: string } | null;
   clerkUser: ReturnType<typeof useUser>["user"];
-  theme: string;
-  toggleTheme: () => void;
+  onOpenSettings: () => void;
 }) {
   const { logout } = useAuth();
 
@@ -329,34 +329,27 @@ function AccountTab({
         </Link>
       </div>
 
-      {/* Appearance */}
+      {/* Personalization shortcut */}
       <div>
         <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-5">
-          Appearance
+          Personalization
         </p>
-        <div className="flex items-center justify-between p-5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors duration-200">
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center justify-between p-5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] transition-colors duration-200 text-left"
+        >
           <div>
-            <p className="text-sm font-medium text-[var(--foreground)]">
-              {theme === "dark" ? "Dark mode" : "Light mode"}
-            </p>
+            <p className="text-sm font-medium text-[var(--foreground)]">Settings</p>
             <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-              {theme === "dark" ? "Easy on the eyes, GOO's default" : "Optimised for bright environments"}
+              Theme and currency preferences
             </p>
           </div>
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className={`relative w-11 h-6 rounded-full transition-colors duration-300 shrink-0 ${
-              theme === "dark" ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
-            }`}
-          >
-            <span
-              className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-300 bg-[var(--background)] ${
-                theme === "dark" ? "left-6" : "left-1"
-              }`}
-            />
-          </button>
-        </div>
+          <span className="text-[var(--foreground-subtle)]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </button>
       </div>
 
       {/* Session */}
@@ -370,6 +363,150 @@ function AccountTab({
         >
           Sign out
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Settings Tab ───────────────────────────────────────────────────────────────
+const THEME_OPTIONS: { id: ThemePreference; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    id: "light",
+    label: "Light",
+    description: "Bright interface",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "dark",
+    label: "Dark",
+    description: "Easy on the eyes",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    id: "system",
+    label: "System",
+    description: "Match your device",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="18" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M8 20h8M12 16v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+];
+
+function SettingsTab() {
+  const { preference, setPreference, theme } = useTheme();
+  const { currency, setCurrency, formatPrice } = useCurrency();
+
+  return (
+    <div className="animate-fade-up space-y-12">
+      {/* ── Theme ── */}
+      <div>
+        <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
+          Theme
+        </p>
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-6">
+          Choose how GOO looks. Applies instantly across the whole site.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {THEME_OPTIONS.map((opt) => {
+            const active = preference === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => setPreference(opt.id)}
+                aria-pressed={active}
+                className={`flex items-center gap-3.5 p-4 rounded-xl border text-left transition-all duration-200 ${
+                  active
+                    ? "border-[var(--foreground)] bg-[var(--foreground)]"
+                    : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                }`}
+              >
+                <span className={active ? "text-[var(--background)]" : "text-[var(--foreground-muted)]"}>
+                  {opt.icon}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                    {opt.label}
+                  </span>
+                  <span className={`block text-xs mt-0.5 ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                    {opt.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {preference === "system" && (
+          <p className="text-[11px] text-[var(--foreground-subtle)] mt-3">
+            Following your device — currently {theme === "dark" ? "dark" : "light"}.
+          </p>
+        )}
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="border-t border-[var(--border)]" />
+
+      {/* ── Currency ── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+            Currency
+          </p>
+          <span className="text-[9px] tracking-[0.10em] uppercase text-[var(--foreground-subtle)]">
+            e.g. {formatPrice(1200)}
+          </span>
+        </div>
+        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-6">
+          Prices across the site are shown in this currency. Saved for next time.
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {CURRENCIES.map((c) => {
+            const active = currency === c.code;
+            return (
+              <button
+                key={c.code}
+                onClick={() => setCurrency(c.code as CurrencyCode)}
+                aria-pressed={active}
+                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all duration-200 ${
+                  active
+                    ? "border-[var(--foreground)] bg-[var(--foreground)]"
+                    : "border-[var(--border)] hover:border-[var(--foreground-muted)] hover:bg-[var(--surface)]"
+                }`}
+              >
+                <span
+                  className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-base font-semibold ${
+                    active
+                      ? "bg-[var(--background)]/15 text-[var(--background)]"
+                      : "bg-[var(--surface)] text-[var(--foreground)]"
+                  }`}
+                >
+                  {c.symbol}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-sm font-medium ${active ? "text-[var(--background)]" : "text-[var(--foreground)]"}`}>
+                    {c.code}
+                  </span>
+                  <span className={`block text-xs mt-0.5 truncate ${active ? "text-[var(--fg-on-dark-60)]" : "text-[var(--foreground-muted)]"}`}>
+                    {c.name}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
