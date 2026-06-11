@@ -15,10 +15,19 @@ interface GooeyTextProps {
 /**
  * Cycles through `texts` with the signature gooey morph: an SVG alpha-threshold
  * filter over two cross-blurring text layers, so words melt into one another.
- * The filtered layer is supersampled (rendered larger, scaled down) so the goo
- * stays crisp on hi-DPI screens instead of looking pixelated. The RAF loop
- * pauses while the tab is hidden, and users with prefers-reduced-motion get a
- * GPU-composited opacity crossfade instead of the filter-heavy morph.
+ *
+ * Crispness comes from two things working together:
+ *   1. The goo threshold filter is only applied *while morphing*. CSS
+ *      `filter: url(#svg)` rasterises an HTML element at CSS-pixel resolution,
+ *      which is what made even the settled (static) word look pixelated. Once a
+ *      word settles we drop the filter entirely, so it renders as crisp native
+ *      antialiased text.
+ *   2. While morphing, the filtered layer is supersampled (rendered larger,
+ *      scaled back down) at a factor matched to the device pixel ratio, so the
+ *      goo rasterises at the screen's real resolution on Retina/mobile.
+ *
+ * The RAF loop pauses while the tab is hidden, and users with
+ * prefers-reduced-motion get a GPU-composited opacity crossfade instead.
  */
 export function GooeyText({
   texts,
@@ -63,13 +72,16 @@ export function GooeyText({
 }
 
 /**
- * Supersample factor for the goo filter. CSS `filter: url(#svg)` rasterises an
- * HTML element at CSS-pixel resolution (Chromium ignores devicePixelRatio
- * here), so on hi-DPI screens the threshold edges looked pixelated/blocky. We
- * render the filtered layer SS× larger and scale it back down, so the filter
- * rasterises at SS× the resolution — crisp edges, identical gooey morph.
+ * Default/SSR supersample factor for the goo filter. CSS `filter: url(#svg)`
+ * rasterises an HTML element at CSS-pixel resolution (Chromium ignores
+ * devicePixelRatio here), so on hi-DPI screens the threshold edges looked
+ * pixelated/blocky. We render the filtered layer SS× larger and scale it back
+ * down, so the filter rasterises at SS× the resolution — crisp edges, identical
+ * gooey morph. At runtime this is bumped to match the device pixel ratio.
  */
-const SUPERSAMPLE = 2;
+const DEFAULT_SUPERSAMPLE = 2;
+/** Cap so DPR-3 phones don't pay for an 4×+ oversized rasterised layer. */
+const MAX_SUPERSAMPLE = 3;
 
 /** Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF. */
 function MorphText({
@@ -82,8 +94,19 @@ function MorphText({
 }: GooeyTextProps) {
   const text1Ref = React.useRef<HTMLSpanElement>(null);
   const text2Ref = React.useRef<HTMLSpanElement>(null);
+  const layerRef = React.useRef<HTMLDivElement>(null);
+
+  // Match the supersample factor to the screen's pixel density so the goo
+  // rasterises at real resolution on Retina / mobile. Resolved after mount to
+  // stay SSR-safe (devicePixelRatio is undefined on the server).
+  const [supersample, setSupersample] = React.useState(DEFAULT_SUPERSAMPLE);
+  React.useEffect(() => {
+    const dpr = window.devicePixelRatio || 1;
+    setSupersample(Math.min(MAX_SUPERSAMPLE, Math.max(DEFAULT_SUPERSAMPLE, Math.ceil(dpr))));
+  }, []);
 
   React.useEffect(() => {
+    const SS = supersample;
     let textIndex = texts.length - 1;
     let time = new Date();
     let morph = 0;
@@ -92,13 +115,17 @@ function MorphText({
 
     const setMorph = (fraction: number) => {
       if (text1Ref.current && text2Ref.current) {
-        // Blur is multiplied by SUPERSAMPLE because the layer is scaled down by
-        // 1/SUPERSAMPLE, which would otherwise halve the visual blur radius.
-        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SUPERSAMPLE}px)`;
+        // The goo threshold is only meaningful while the two layers overlap, so
+        // it's applied during the morph and dropped on cooldown (crisp native
+        // text when settled).
+        if (layerRef.current) layerRef.current.style.filter = "url(#goo-threshold)";
+        // Blur is multiplied by SS because the layer is scaled down by 1/SS,
+        // which would otherwise halve the visual blur radius.
+        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS}px)`;
         text2Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
 
         fraction = 1 - fraction;
-        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SUPERSAMPLE}px)`;
+        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS}px)`;
         text1Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
       }
     };
@@ -106,6 +133,9 @@ function MorphText({
     const doCooldown = () => {
       morph = 0;
       if (text1Ref.current && text2Ref.current) {
+        // Settled word: drop the SVG threshold filter so the text rasterises as
+        // crisp native antialiased glyphs instead of through the filter graph.
+        if (layerRef.current) layerRef.current.style.filter = "none";
         text2Ref.current.style.filter = "";
         text2Ref.current.style.opacity = "100%";
         text1Ref.current.style.filter = "";
@@ -155,10 +185,10 @@ function MorphText({
     animationId = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(animationId);
-  }, [texts, morphTime, cooldownTime, firstTextCooldown]);
+  }, [texts, morphTime, cooldownTime, firstTextCooldown, supersample]);
 
   // `textClassName` (the responsive font-size) goes on the outer box so it acts
-  // as the base em; the spans render at SUPERSAMPLE em inside an SS×-larger,
+  // as the base em; the spans render at `supersample` em inside an SS×-larger,
   // scaled-down layer, so the goo filter rasterises at SS× resolution.
   return (
     <div className={cn("relative", className, textClassName)}>
@@ -185,20 +215,23 @@ function MorphText({
       </svg>
 
       <div
+        ref={layerRef}
         className="absolute flex items-center justify-center"
         style={{
-          width: `${SUPERSAMPLE * 100}%`,
-          height: `${SUPERSAMPLE * 100}%`,
-          left: `${-(SUPERSAMPLE - 1) * 50}%`,
-          top: `${-(SUPERSAMPLE - 1) * 50}%`,
+          width: `${supersample * 100}%`,
+          height: `${supersample * 100}%`,
+          left: `${-(supersample - 1) * 50}%`,
+          top: `${-(supersample - 1) * 50}%`,
+          // Starts filtered (first frame is mid-cooldown → swapped to "none" by
+          // the RAF loop); only re-applied while actively morphing.
           filter: "url(#goo-threshold)",
-          transform: `scale(${1 / SUPERSAMPLE})`,
+          transform: `scale(${1 / supersample})`,
           transformOrigin: "center",
         }}
       >
         <span
           ref={text1Ref}
-          style={{ fontSize: `${SUPERSAMPLE}em` }}
+          style={{ fontSize: `${supersample}em` }}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
             "text-[var(--foreground)] [will-change:filter,opacity]"
@@ -206,7 +239,7 @@ function MorphText({
         />
         <span
           ref={text2Ref}
-          style={{ fontSize: `${SUPERSAMPLE}em` }}
+          style={{ fontSize: `${supersample}em` }}
           className={cn(
             "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
             "text-[var(--foreground)] [will-change:filter,opacity]"
