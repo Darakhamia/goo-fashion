@@ -275,8 +275,12 @@ function LookCard({
     .join("&");
 
   const builderUrl = "/builder?editId=" + look.id + "&" + pieceParams;
+  // "Private link" opens the builder pre-filled so the recipient can edit a copy.
   const privateLink = () =>
     `${window.location.origin}/builder?${pieceParams}`;
+  // "Share link" points at the public look page: image on the left, the list of
+  // pieces on the right — the same format as published / default looks.
+  const publicLink = () => `${window.location.origin}/look/${look.id}`;
 
   const copyPrivateLink = async () => {
     try {
@@ -287,7 +291,7 @@ function LookCard({
   };
 
   const shareLink = async () => {
-    const url = privateLink();
+    const url = publicLink();
     try {
       if (navigator.share) {
         await navigator.share({ title: displayName, url });

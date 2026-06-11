@@ -478,6 +478,99 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
   return dbToOutfit(row, productMap);
 }
 
+/**
+ * A user-created builder look, resolved against the product catalog so it can
+ * be rendered on a public share page the same way published outfits are. Reads
+ * straight from `user_looks` by id (service-role), so anyone with the link can
+ * view it without being the owner.
+ */
+export interface SharedLookPiece {
+  slot: string;
+  productId: string;
+  name: string;
+  imageUrl: string | null;
+  brand: string | null;
+  priceMin: number | null;
+  retailerCount: number;
+  /** False when the referenced product is no longer in the catalog. */
+  productExists: boolean;
+}
+
+export interface SharedLook {
+  id: string;
+  name: string | null;
+  description: string | null;
+  generatedImage: string | null;
+  generatedStyle: string | null;
+  totalPrice: number | null;
+  styleKeywords: string[];
+  savedAt: string | null;
+  pieces: SharedLookPiece[];
+}
+
+export async function getUserLookById(id: string): Promise<SharedLook | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  const { data, error } = await supabase
+    .from("user_looks")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  const rawPieces: Array<{
+    slot: string;
+    productId: string;
+    variantId?: string | null;
+    imageUrl?: string;
+    name?: string;
+  }> = Array.isArray(data.pieces) ? data.pieces : [];
+
+  const productIds = rawPieces.map((p) => p.productId).filter(Boolean);
+  const productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    const { data: prodData } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+    if (prodData) {
+      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+        productMap.set(p.id, p);
+      }
+    }
+  }
+
+  const pieces: SharedLookPiece[] = rawPieces.map((p) => {
+    const product = productMap.get(p.productId);
+    return {
+      slot: p.slot,
+      productId: p.productId,
+      name: p.name ?? product?.name ?? p.slot,
+      imageUrl: p.imageUrl ?? product?.imageUrl ?? null,
+      brand: product?.brand ?? null,
+      priceMin: product?.priceMin ?? null,
+      retailerCount: product?.retailers?.length ?? 0,
+      productExists: !!product,
+    };
+  });
+
+  const generatedStyle =
+    typeof data.generated_style === "string" ? data.generated_style : null;
+
+  return {
+    id: data.id,
+    name: data.look_name ?? null,
+    description: data.look_description ?? null,
+    generatedImage: data.generated_image ?? null,
+    generatedStyle,
+    totalPrice: data.total_price ?? null,
+    styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
+    savedAt: data.saved_at ?? null,
+    pieces,
+  };
+}
+
 export async function getOutfitsByProductId(productIds: string | string[]): Promise<Outfit[]> {
   const ids = Array.isArray(productIds) ? productIds : [productIds];
   const all = await getAllOutfits();
