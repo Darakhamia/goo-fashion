@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,9 +7,17 @@ import Price from "@/components/ui/Price";
 import { getUserLookById, type SharedLook } from "@/lib/data/db";
 import { SITE_URL } from "@/lib/seo";
 
+// Looks are created at runtime, so a given id may not exist at build time and
+// must always be re-fetched — never statically cached (which could freeze in a
+// 404 for a look that was created later).
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ id: string }>;
 }
+
+// Dedupe the lookup between generateMetadata and the page render in one request.
+const loadLook = cache(getUserLookById);
 
 // Ordering so the pieces read top-to-bottom like a real outfit.
 const SLOT_PRIORITY: Record<string, number> = {
@@ -28,7 +37,7 @@ function sortedPieces(look: SharedLook) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const look = await getUserLookById(id);
+  const look = await loadLook(id);
   if (!look) return {};
 
   const title = `${lookHeading(look)} · GOO`;
@@ -52,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharedLookPage({ params }: Props) {
   const { id } = await params;
-  const look = await getUserLookById(id);
+  const look = await loadLook(id);
 
   if (!look) notFound();
 
