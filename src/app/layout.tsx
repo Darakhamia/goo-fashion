@@ -78,7 +78,7 @@ export default function RootLayout({
           {/* Inline script prevents flash of wrong theme on load */}
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){try{var t=localStorage.getItem('goo-theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}})()`,
+              __html: `(function(){try{var t=localStorage.getItem('goo-theme');var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)||(t!=='light'&&t!=='system');if(dark){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
             }}
           />
         </head>
