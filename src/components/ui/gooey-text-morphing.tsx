@@ -83,6 +83,14 @@ const DEFAULT_SUPERSAMPLE = 2;
 /** Cap so very high-DPR phones don't pay for an oversized rasterised layer. */
 const MAX_SUPERSAMPLE = 4;
 
+/**
+ * Font size the morph blur was tuned at (the lg desktop hero size). The blur
+ * scales relative to this so the gooey effect has the same relative strength
+ * at every responsive size — the desktop look is the reference and is left
+ * pixel-identical, smaller breakpoints melt by the same proportion.
+ */
+const REFERENCE_FONT_PX = 128;
+
 /** Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF. */
 function MorphText({
   texts,
@@ -92,6 +100,7 @@ function MorphText({
   className,
   textClassName,
 }: GooeyTextProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const text1Ref = React.useRef<HTMLSpanElement>(null);
   const text2Ref = React.useRef<HTMLSpanElement>(null);
   const layerRef = React.useRef<HTMLDivElement>(null);
@@ -105,6 +114,25 @@ function MorphText({
     // One step above the device pixel ratio so the goo threshold has resolution
     // headroom to antialias against, instead of rasterising at bare parity.
     setSupersample(Math.min(MAX_SUPERSAMPLE, Math.max(DEFAULT_SUPERSAMPLE, Math.ceil(dpr) + 1)));
+  }, []);
+
+  // The morph blur is a *pixel* radius, but the hero text shrinks responsively
+  // (128px on desktop down to 64px on mobile). A fixed pixel blur would melt a
+  // 64px glyph twice as hard as a 128px one, so the goo looks like a different,
+  // blobbier effect on phones. We scale the blur by the live glyph size so the
+  // morph keeps the same *relative* strength — identical feel — at every
+  // breakpoint, while the responsive sizes themselves stay untouched.
+  const fontScaleRef = React.useRef(1);
+  React.useEffect(() => {
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const px = parseFloat(getComputedStyle(el).fontSize) || REFERENCE_FONT_PX;
+      fontScaleRef.current = px / REFERENCE_FONT_PX;
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
   React.useEffect(() => {
@@ -122,12 +150,15 @@ function MorphText({
         // text when settled).
         if (layerRef.current) layerRef.current.style.filter = "url(#goo-threshold)";
         // Blur is multiplied by SS because the layer is scaled down by 1/SS,
-        // which would otherwise halve the visual blur radius.
-        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS}px)`;
+        // which would otherwise halve the visual blur radius, and by fontScale
+        // so the morph melts each glyph by the same fraction of its size on
+        // every screen (identical effect on mobile and desktop).
+        const FS = fontScaleRef.current;
+        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS * FS}px)`;
         text2Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
 
         fraction = 1 - fraction;
-        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS}px)`;
+        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS * FS}px)`;
         text1Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
       }
     };
@@ -193,7 +224,7 @@ function MorphText({
   // as the base em; the spans render at `supersample` em inside an SS×-larger,
   // scaled-down layer, so the goo filter rasterises at SS× resolution.
   return (
-    <div className={cn("relative", className, textClassName)}>
+    <div ref={containerRef} className={cn("relative", className, textClassName)}>
       <svg className="absolute h-0 w-0" aria-hidden="true" focusable="false">
         <defs>
           <filter
