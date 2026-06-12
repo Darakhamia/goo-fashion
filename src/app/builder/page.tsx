@@ -1938,29 +1938,22 @@ export default function BuilderPage() {
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
-            {/* AI Stylist + Save — hero-style pills (rounded, semibold, icon in a
-                soft circle) sized for comfortable touch targets. Save is the
-                filled primary action; AI Stylist is its outlined sibling that
-                inverts while the drawer is open. */}
+            {/* AI Stylist + Save. The AI button is the same round "AI" circle
+                as the site navigation (38px, bold AI label, transparent with a
+                border, inverting while the drawer is open), sized up slightly
+                for a comfortable touch target. Save stays the filled primary
+                pill. */}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleStylist}
-                className={`flex items-center gap-2 h-11 pl-4 pr-2 rounded-full text-[13px] font-semibold tracking-[-0.01em] transition-all duration-200 active:scale-95 ${
+                aria-label="Open AI Stylist"
+                className={`w-11 h-11 shrink-0 rounded-full border flex items-center justify-center transition-all duration-200 active:scale-95 ${
                   stylistOpen
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                    : "bg-transparent text-[var(--foreground)] border-[var(--border-strong)]"
                 }`}
               >
-                AI Stylist
-                <span
-                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
-                    stylistOpen ? "bg-[var(--background)]/15" : "bg-[var(--fg-overlay-08)]"
-                  }`}
-                >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-                  </svg>
-                </span>
+                <span className="text-[11px] font-bold tracking-[0.04em] leading-none">AI</span>
               </button>
               <button
                 onClick={handleMobileSave}
