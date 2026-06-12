@@ -16,15 +16,12 @@ interface GooeyTextProps {
  * Cycles through `texts` with the signature gooey morph: an SVG alpha-threshold
  * filter over two cross-blurring text layers, so words melt into one another.
  *
- * Crispness comes from two things working together:
- *   1. The goo threshold filter is only applied *while morphing*. CSS
- *      `filter: url(#svg)` rasterises an HTML element at CSS-pixel resolution,
- *      which is what made even the settled (static) word look pixelated. Once a
- *      word settles we drop the filter entirely, so it renders as crisp native
- *      antialiased text.
- *   2. While morphing, the filtered layer is supersampled (rendered larger,
- *      scaled back down) at a factor matched to the device pixel ratio, so the
- *      goo rasterises at the screen's real resolution on Retina/mobile.
+ * The morph is rendered as real SVG `<text>` so the filter pipeline runs in
+ * every engine — WebKit ignores `filter: url(#…)` on HTML elements, which made
+ * phones silently lose the goo. The threshold filter is only applied *while
+ * morphing*; once a word settles every filter is dropped so it renders as
+ * crisp native antialiased text. Blur radii scale with the live font size so
+ * the effect has the same relative strength at every responsive breakpoint.
  *
  * The RAF loop pauses while the tab is hidden, and users with
  * prefers-reduced-motion get a GPU-composited opacity crossfade instead.
@@ -72,18 +69,6 @@ export function GooeyText({
 }
 
 /**
- * Default/SSR supersample factor for the goo filter. CSS `filter: url(#svg)`
- * rasterises an HTML element at CSS-pixel resolution (Chromium ignores
- * devicePixelRatio here), so on hi-DPI screens the threshold edges looked
- * pixelated/blocky. We render the filtered layer SS× larger and scale it back
- * down, so the filter rasterises at SS× the resolution — crisp edges, identical
- * gooey morph. At runtime this is bumped to match the device pixel ratio.
- */
-const DEFAULT_SUPERSAMPLE = 2;
-/** Cap so very high-DPR phones don't pay for an oversized rasterised layer. */
-const MAX_SUPERSAMPLE = 4;
-
-/**
  * Font size the morph blur was tuned at (the lg desktop hero size). The blur
  * scales relative to this so the gooey effect has the same relative strength
  * at every responsive size — the desktop look is the reference and is left
@@ -91,7 +76,16 @@ const MAX_SUPERSAMPLE = 4;
  */
 const REFERENCE_FONT_PX = 128;
 
-/** Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF. */
+/**
+ * Gooey morph: SVG alpha-threshold filter + per-frame blur, driven by RAF.
+ *
+ * Rendered as real SVG `<text>` rather than filtered HTML because WebKit (all
+ * iOS browsers) ignores `filter: url(#…)` on HTML elements — on phones the
+ * threshold never ran and the morph silently degraded into a plain blurry
+ * crossfade, a visibly different effect from desktop. SVG filters applied to
+ * SVG content work in every engine and rasterise at device resolution, which
+ * also retires the DPR-supersampling workaround the HTML version needed.
+ */
 function MorphText({
   texts,
   morphTime = 1,
@@ -101,27 +95,18 @@ function MorphText({
   textClassName,
 }: GooeyTextProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const text1Ref = React.useRef<HTMLSpanElement>(null);
-  const text2Ref = React.useRef<HTMLSpanElement>(null);
-  const layerRef = React.useRef<HTMLDivElement>(null);
-
-  // Match the supersample factor to the screen's pixel density so the goo
-  // rasterises at real resolution on Retina / mobile. Resolved after mount to
-  // stay SSR-safe (devicePixelRatio is undefined on the server).
-  const [supersample, setSupersample] = React.useState(DEFAULT_SUPERSAMPLE);
-  React.useEffect(() => {
-    const dpr = window.devicePixelRatio || 1;
-    // One step above the device pixel ratio so the goo threshold has resolution
-    // headroom to antialias against, instead of rasterising at bare parity.
-    setSupersample(Math.min(MAX_SUPERSAMPLE, Math.max(DEFAULT_SUPERSAMPLE, Math.ceil(dpr) + 1)));
-  }, []);
+  const gooGroupRef = React.useRef<SVGGElement>(null);
+  const text1Ref = React.useRef<SVGTextElement>(null);
+  const text2Ref = React.useRef<SVGTextElement>(null);
+  const blur1Ref = React.useRef<SVGFEGaussianBlurElement>(null);
+  const blur2Ref = React.useRef<SVGFEGaussianBlurElement>(null);
 
   // The morph blur is a *pixel* radius, but the hero text shrinks responsively
   // (128px on desktop down to 64px on mobile). A fixed pixel blur would melt a
-  // 64px glyph twice as hard as a 128px one, so the goo looks like a different,
-  // blobbier effect on phones. We scale the blur by the live glyph size so the
-  // morph keeps the same *relative* strength — identical feel — at every
-  // breakpoint, while the responsive sizes themselves stay untouched.
+  // 64px glyph twice as hard as a 128px one, so the goo would read blobbier on
+  // phones. We scale the blur by the live glyph size so the morph keeps the
+  // same *relative* strength — identical feel — at every breakpoint, while the
+  // responsive sizes themselves stay untouched.
   const fontScaleRef = React.useRef(1);
   React.useEffect(() => {
     const measure = () => {
@@ -136,7 +121,6 @@ function MorphText({
   }, []);
 
   React.useEffect(() => {
-    const SS = supersample;
     let textIndex = texts.length - 1;
     let time = new Date();
     let morph = 0;
@@ -144,21 +128,22 @@ function MorphText({
     let animationId: number;
 
     const setMorph = (fraction: number) => {
-      if (text1Ref.current && text2Ref.current) {
+      if (text1Ref.current && text2Ref.current && blur1Ref.current && blur2Ref.current) {
         // The goo threshold is only meaningful while the two layers overlap, so
         // it's applied during the morph and dropped on cooldown (crisp native
         // text when settled).
-        if (layerRef.current) layerRef.current.style.filter = "url(#goo-threshold)";
-        // Blur is multiplied by SS because the layer is scaled down by 1/SS,
-        // which would otherwise halve the visual blur radius, and by fontScale
-        // so the morph melts each glyph by the same fraction of its size on
-        // every screen (identical effect on mobile and desktop).
+        gooGroupRef.current?.setAttribute("filter", "url(#goo-threshold)");
+        text1Ref.current.setAttribute("filter", "url(#goo-blur-1)");
+        text2Ref.current.setAttribute("filter", "url(#goo-blur-2)");
+        // Scaled by fontScale so the morph melts each glyph by the same
+        // fraction of its size on every screen (identical effect on mobile
+        // and desktop). stdDeviation matches CSS blur() radius 1:1.
         const FS = fontScaleRef.current;
-        text2Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS * FS}px)`;
+        blur2Ref.current.setAttribute("stdDeviation", String(Math.min(8 / fraction - 8, 100) * FS));
         text2Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
 
         fraction = 1 - fraction;
-        text1Ref.current.style.filter = `blur(${Math.min(8 / fraction - 8, 100) * SS * FS}px)`;
+        blur1Ref.current.setAttribute("stdDeviation", String(Math.min(8 / fraction - 8, 100) * FS));
         text1Ref.current.style.opacity = `${Math.pow(fraction, 0.4) * 100}%`;
       }
     };
@@ -166,12 +151,12 @@ function MorphText({
     const doCooldown = () => {
       morph = 0;
       if (text1Ref.current && text2Ref.current) {
-        // Settled word: drop the SVG threshold filter so the text rasterises as
-        // crisp native antialiased glyphs instead of through the filter graph.
-        if (layerRef.current) layerRef.current.style.filter = "none";
-        text2Ref.current.style.filter = "";
+        // Settled word: drop every filter so the text rasterises as crisp
+        // native antialiased glyphs instead of through the filter graph.
+        gooGroupRef.current?.removeAttribute("filter");
+        text2Ref.current.removeAttribute("filter");
         text2Ref.current.style.opacity = "100%";
-        text1Ref.current.style.filter = "";
+        text1Ref.current.removeAttribute("filter");
         text1Ref.current.style.opacity = "0%";
       }
     };
@@ -218,14 +203,18 @@ function MorphText({
     animationId = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(animationId);
-  }, [texts, morphTime, cooldownTime, firstTextCooldown, supersample]);
+  }, [texts, morphTime, cooldownTime, firstTextCooldown]);
 
-  // `textClassName` (the responsive font-size) goes on the outer box so it acts
-  // as the base em; the spans render at `supersample` em inside an SS×-larger,
-  // scaled-down layer, so the goo filter rasterises at SS× resolution.
+  // `textClassName` (the responsive font-size) goes on the outer box; the SVG
+  // <text> elements inherit it through the CSS cascade, so the words render at
+  // the same responsive size as before.
   return (
     <div ref={containerRef} className={cn("relative", className, textClassName)}>
-      <svg className="absolute h-0 w-0" aria-hidden="true" focusable="false">
+      <svg
+        className="absolute inset-0 h-full w-full overflow-visible"
+        aria-hidden="true"
+        focusable="false"
+      >
         <defs>
           <filter
             id="goo-threshold"
@@ -247,48 +236,42 @@ function MorphText({
             {/* The hard alpha threshold above snaps glyph edges into a binary
                 staircase, which reads as pixelated/jagged while the morph is
                 playing. A small final blur re-antialiases that edge back to a
-                ~1px soft edge (like native font antialiasing) without touching
-                the blob-merge behaviour the threshold drives, so the goo stays
-                crisp in motion. stdDeviation is in the SS×-scaled layer's local
-                units, so after the 1/SS downscale it lands at roughly one
-                on-screen pixel. */}
-            <feGaussianBlur in="threshold" stdDeviation="1" edgeMode="none" />
+                soft sub-pixel edge (like native font antialiasing) without
+                touching the blob-merge behaviour the threshold drives, so the
+                goo stays crisp in motion. */}
+            <feGaussianBlur in="threshold" stdDeviation="0.5" edgeMode="none" />
+          </filter>
+          {/* Per-layer cross-blur, updated every frame by the RAF loop. The
+              filter region is oversized so large blur radii aren't clipped. */}
+          <filter id="goo-blur-1" x="-150%" y="-150%" width="400%" height="400%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur ref={blur1Ref} stdDeviation="0" edgeMode="none" />
+          </filter>
+          <filter id="goo-blur-2" x="-150%" y="-150%" width="400%" height="400%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur ref={blur2Ref} stdDeviation="0" edgeMode="none" />
           </filter>
         </defs>
-      </svg>
 
-      <div
-        ref={layerRef}
-        className="absolute flex items-center justify-center"
-        style={{
-          width: `${supersample * 100}%`,
-          height: `${supersample * 100}%`,
-          left: `${-(supersample - 1) * 50}%`,
-          top: `${-(supersample - 1) * 50}%`,
-          // Starts filtered (first frame is mid-cooldown → swapped to "none" by
-          // the RAF loop); only re-applied while actively morphing.
-          filter: "url(#goo-threshold)",
-          transform: `scale(${1 / supersample})`,
-          transformOrigin: "center",
-        }}
-      >
-        <span
-          ref={text1Ref}
-          style={{ fontSize: `${supersample}em` }}
-          className={cn(
-            "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)] [will-change:filter,opacity]"
-          )}
-        />
-        <span
-          ref={text2Ref}
-          style={{ fontSize: `${supersample}em` }}
-          className={cn(
-            "absolute inline-block select-none text-center font-bold tracking-[-0.04em]",
-            "text-[var(--foreground)] [will-change:filter,opacity]"
-          )}
-        />
-      </div>
+        {/* Starts filtered (first frame is mid-cooldown → removed by the RAF
+            loop); only re-applied while actively morphing. */}
+        <g ref={gooGroupRef} filter="url(#goo-threshold)">
+          <text
+            ref={text1Ref}
+            x="50%"
+            y="50%"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="select-none font-bold tracking-[-0.04em] fill-[var(--foreground)] [will-change:opacity]"
+          />
+          <text
+            ref={text2Ref}
+            x="50%"
+            y="50%"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="select-none font-bold tracking-[-0.04em] fill-[var(--foreground)] [will-change:opacity]"
+          />
+        </g>
+      </svg>
     </div>
   );
 }
