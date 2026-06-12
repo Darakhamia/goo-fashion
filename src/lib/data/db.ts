@@ -515,7 +515,7 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
     .from("user_looks")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
 

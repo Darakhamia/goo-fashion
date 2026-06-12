@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -166,7 +166,7 @@ function LookCard({
   const [modalEditingName, setModalEditingName] = useState(false);
   const [menu, setMenu] = useState<"share" | "more" | null>(null);
   const [modalShare, setModalShare] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
 
   // System name by content type — used whenever the user hasn't named the look
   const autoName = !look.generatedImage
@@ -275,57 +275,103 @@ function LookCard({
     .join("&");
 
   const builderUrl = "/builder?editId=" + look.id + "&" + pieceParams;
-  // "Share link" points at the public look page: image on the left, the list of
-  // pieces on the right — the same format as published / default looks. It opens
-  // for anyone, owner or not, even when the look was never published to the
-  // catalog.
-  const publicLink = () => `${window.location.origin}/look/${look.id}`;
 
-  // Make sure the look exists server-side before its public link goes out, so a
-  // recipient (who isn't the owner) never lands on a 404. Looks are otherwise
-  // only synced on builder-save; a freshly opened saved page may hold looks
-  // that were never pushed (e.g. created before sign-in). Fire-and-forget: by
-  // the time the link is opened the upsert has long completed, and keeping it
-  // un-awaited lets navigator.share() stay inside the user gesture on iOS.
-  const persistToServer = () => {
-    fetch("/api/user/looks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: look.id,
-        savedAt: look.savedAt,
-        name: look.name,
-        description: look.description,
-        pieces: look.pieces,
-        totalPrice: look.totalPrice,
-        styleKeywords: look.styleKeywords,
-        generatedImage: look.generatedImage,
-        generatedStyle: look.generatedStyle,
-      }),
-    }).catch(() => {});
+  // "Share link" publishes a snapshot of this look and points at its public
+  // /look/[id] page — image on the left, the list of pieces on the right, the
+  // same format as published / default looks. The link opens for anyone, even
+  // when the look was never published to the catalog.
+  //
+  // The snapshot POST is awaited and its result cached: the link is only
+  // handed out once the server confirms the row exists, so a recipient can
+  // never land on a 404. The request is kicked off as soon as the share UI
+  // opens, so by the time the user taps "Share link" it has usually resolved
+  // and navigator.share()/clipboard stay within the user-gesture window.
+  const shareRequest = useRef<Promise<string> | null>(null);
+  useEffect(() => {
+    // A rename/edit invalidates the cached snapshot — re-publish on next share.
+    shareRequest.current = null;
+  }, [look]);
+
+  const ensureShared = (): Promise<string> => {
+    if (!shareRequest.current) {
+      shareRequest.current = fetch("/api/looks/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: look.id,
+          savedAt: look.savedAt,
+          name: look.name,
+          description: look.description,
+          pieces: look.pieces,
+          totalPrice: look.totalPrice,
+          styleKeywords: look.styleKeywords,
+          generatedImage: look.generatedImage,
+          generatedStyle: look.generatedStyle,
+        }),
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => null);
+          if (!res.ok || typeof data?.id !== "string") throw new Error("share failed");
+          return data.id as string;
+        })
+        .catch((err) => {
+          shareRequest.current = null; // allow retry
+          throw err;
+        });
+    }
+    return shareRequest.current;
+  };
+
+  const closeShareUi = () => {
+    setMenu(null);
+    setModalShare(false);
   };
 
   const shareLink = async () => {
-    persistToServer();
-    const url = publicLink();
+    if (shareState === "working") return;
+    setShareState("working");
     try {
+      const id = await ensureShared();
+      const url = `${window.location.origin}/look/${id}`;
       if (navigator.share) {
-        await navigator.share({ title: displayName, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
+        try {
+          await navigator.share({ title: displayName, url });
+          setShareState("idle");
+          closeShareUi();
+          return;
+        } catch (err) {
+          if ((err as Error)?.name === "AbortError") {
+            // user dismissed the native sheet — nothing to report
+            setShareState("idle");
+            return;
+          }
+          // fall through to clipboard
+        }
       }
-      setMenu(null);
-    } catch {}
+      await navigator.clipboard.writeText(url);
+      setShareState("copied");
+      setTimeout(() => { setShareState("idle"); closeShareUi(); }, 1200);
+    } catch {
+      setShareState("error");
+      setTimeout(() => setShareState("idle"), 2500);
+    }
   };
 
-  // Persist as soon as the share UI opens, so the row is in place well before
-  // the recipient follows the link.
+  const shareLabel =
+    shareState === "working"
+      ? "Preparing link…"
+      : shareState === "copied"
+      ? "Link copied ✓"
+      : shareState === "error"
+      ? "Couldn't share — tap to retry"
+      : "Share link";
+
+  // Start publishing as soon as the share UI opens, so the link is ready by
+  // the time the user taps "Share link".
   const openShareMenu = () => {
     const next = menu === "share" ? null : "share";
     setMenu(next);
-    if (next === "share") persistToServer();
+    if (next === "share") ensureShared().catch(() => {});
   };
 
   // Metadata segment: publication status > availability > origin
@@ -556,7 +602,7 @@ function LookCard({
                   </svg>
                 }
               >
-                {copied ? "Link copied ✓" : "Share link"}
+                {shareLabel}
               </MenuItem>
               <MenuItem
                 onClick={handleSubmitForPublication}
@@ -882,7 +928,7 @@ function LookCard({
                       Edit in Builder
                     </Link>
                     <button
-                      onClick={() => setModalShare((v) => { const next = !v; if (next) persistToServer(); return next; })}
+                      onClick={() => setModalShare((v) => { const next = !v; if (next) ensureShared().catch(() => {}); return next; })}
                       className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -892,7 +938,7 @@ function LookCard({
                       Share
                     </button>
                     <ActionMenu open={modalShare} onClose={() => setModalShare(false)}>
-                      <MenuItem onClick={shareLink}>{copied ? "Link copied ✓" : "Share link"}</MenuItem>
+                      <MenuItem onClick={shareLink}>{shareLabel}</MenuItem>
                     </ActionMenu>
                   </div>
 
