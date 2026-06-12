@@ -275,11 +275,10 @@ function LookCard({
     .join("&");
 
   const builderUrl = "/builder?editId=" + look.id + "&" + pieceParams;
-  // "Private link" opens the builder pre-filled so the recipient can edit a copy.
-  const privateLink = () =>
-    `${window.location.origin}/builder?${pieceParams}`;
   // "Share link" points at the public look page: image on the left, the list of
-  // pieces on the right — the same format as published / default looks.
+  // pieces on the right — the same format as published / default looks. It opens
+  // for anyone, owner or not, even when the look was never published to the
+  // catalog.
   const publicLink = () => `${window.location.origin}/look/${look.id}`;
 
   // Make sure the look exists server-side before its public link goes out, so a
@@ -304,14 +303,6 @@ function LookCard({
         generatedStyle: look.generatedStyle,
       }),
     }).catch(() => {});
-  };
-
-  const copyPrivateLink = async () => {
-    try {
-      await navigator.clipboard.writeText(privateLink());
-      setCopied(true);
-      setTimeout(() => { setCopied(false); setMenu(null); }, 1200);
-    } catch {}
   };
 
   const shareLink = async () => {
@@ -557,17 +548,6 @@ function LookCard({
             {/* Share menu */}
             <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
               <MenuItem
-                onClick={copyPrivateLink}
-                icon={
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path d="M10 14a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 4l-1.5 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                    <path d="M14 10a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 20l1.5-1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                }
-              >
-                {copied ? "Link copied ✓" : "Copy private link"}
-              </MenuItem>
-              <MenuItem
                 onClick={shareLink}
                 icon={
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -576,7 +556,7 @@ function LookCard({
                   </svg>
                 }
               >
-                Share link
+                {copied ? "Link copied ✓" : "Share link"}
               </MenuItem>
               <MenuItem
                 onClick={handleSubmitForPublication}
@@ -912,8 +892,7 @@ function LookCard({
                       Share
                     </button>
                     <ActionMenu open={modalShare} onClose={() => setModalShare(false)}>
-                      <MenuItem onClick={copyPrivateLink}>{copied ? "Link copied ✓" : "Copy private link"}</MenuItem>
-                      <MenuItem onClick={shareLink}>Share link</MenuItem>
+                      <MenuItem onClick={shareLink}>{copied ? "Link copied ✓" : "Share link"}</MenuItem>
                     </ActionMenu>
                   </div>
 
