@@ -1929,40 +1929,45 @@ export default function BuilderPage() {
         <div className="md:hidden h-full flex flex-col overflow-hidden">
 
           {/* Mobile top header: back + ai stylist + save */}
-          <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-[var(--background)] border-b border-[var(--border)]">
+          <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-[var(--background)] border-b border-[var(--border)]">
             <Link
               href="/"
-              className="w-9 h-9 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--surface-hover,var(--surface))] transition-colors active:scale-95"
+              className="w-10 h-10 shrink-0 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--surface-hover,var(--surface))] transition-colors active:scale-95"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
-            {/* AI Stylist + Save — same pill shape, side by side */}
+            {/* AI Stylist + Save — hero-style pills (rounded, semibold, icon in a
+                soft circle) sized for comfortable touch targets. Save is the
+                filled primary action; AI Stylist is its outlined sibling that
+                inverts while the drawer is open. */}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleStylist}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95 ${
+                className={`flex items-center gap-2 h-11 pl-4 pr-2 rounded-full text-[13px] font-semibold tracking-[-0.01em] transition-all duration-200 active:scale-95 ${
                   stylistOpen
-                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
+                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    : "bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground)]"
                 }`}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
-                </svg>
-                <span className="text-[9px] tracking-[0.1em] uppercase font-medium leading-none">AI Stylist</span>
+                AI Stylist
+                <span
+                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full transition-colors ${
+                    stylistOpen ? "bg-[var(--background)]/15" : "bg-[var(--fg-overlay-08)]"
+                  }`}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 1.5L9.5 6H14L10.5 8.5L11.8 13L8 10.5L4.2 13L5.5 8.5L2 6H6.5L8 1.5Z" />
+                  </svg>
+                </span>
               </button>
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[9px] tracking-[0.1em] uppercase font-medium leading-none transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
-                  saved
-                    ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                    : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
-                }`}
+                className="flex items-center gap-2 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[13px] font-semibold tracking-[-0.01em] transition-all duration-200 active:scale-95 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
                 </svg>
                 {saved ? "Saved" : "Save"}
