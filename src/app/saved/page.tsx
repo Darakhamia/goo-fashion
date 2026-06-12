@@ -595,40 +595,50 @@ function LookCard({
             <span className="truncate">{statusSegment.label}</span>
           </p>
 
-          {/* Primary action */}
+          {/* Primary action. Cards sit two-up on phones (~130px of row width),
+              so the mobile label is shorter and the bag icon is desktop-only —
+              otherwise the uppercase tracking overflows the pill. */}
           <button
             onClick={handleAddToBag}
             disabled={availableCount === 0}
-            className={`mt-3 w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+            className={`mt-3 w-full h-11 md:h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
               bagAdded
                 ? "bg-green-600 text-white"
                 : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
             }`}
           >
-            {bagAdded ? "Added to bag ✓" : (
+            {bagAdded ? (
               <>
-                <span>{partial ? "Add available items" : "Add all to bag"}</span>
-                <BagIcon />
+                <span className="md:hidden">Added ✓</span>
+                <span className="hidden md:inline">Added to bag ✓</span>
+              </>
+            ) : (
+              <>
+                <span className="md:hidden">{partial ? "Add available" : "Add to bag"}</span>
+                <span className="hidden md:inline">{partial ? "Add available items" : "Add all to bag"}</span>
+                <span className="hidden md:inline-flex"><BagIcon /></span>
               </>
             )}
           </button>
 
-          {/* Secondary actions */}
-          <div className="relative flex items-center gap-1.5 mt-2.5">
+          {/* Secondary actions — taller, text-only buttons on phones (the
+              icon+label pair doesn't fit the narrow two-up cards), the
+              original compact icon+label row from md up. */}
+          <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
             <Link
               href={builderUrl}
-              className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+              className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
                 <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
               </svg>
               Edit
             </Link>
             <button
               onClick={openShareMenu}
-              className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+              className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
                 <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
@@ -637,7 +647,7 @@ function LookCard({
             <button
               onClick={() => setMenu(menu === "more" ? null : "more")}
               aria-label="More actions"
-              className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+              className="w-10 h-10 md:w-8 md:h-8 shrink-0 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
@@ -1179,40 +1189,48 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
           <span className="truncate">{statusSegment.label}</span>
         </p>
 
-        {/* Primary action */}
+        {/* Primary action — same responsive treatment as the look cards:
+            shorter label and no bag icon on the narrow two-up phone cards. */}
         <button
           onClick={handleAddToBag}
           disabled={availableCount === 0}
-          className={`mt-3 w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
+          className={`mt-3 w-full h-11 md:h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold transition-opacity disabled:opacity-30 disabled:cursor-default ${
             bagAdded
               ? "bg-green-600 text-white"
               : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
           }`}
         >
-          {bagAdded ? "Added to bag ✓" : (
+          {bagAdded ? (
             <>
-              <span>{partial ? "Add available items" : "Add all to bag"}</span>
-              <BagIcon />
+              <span className="md:hidden">Added ✓</span>
+              <span className="hidden md:inline">Added to bag ✓</span>
+            </>
+          ) : (
+            <>
+              <span className="md:hidden">{partial ? "Add available" : "Add to bag"}</span>
+              <span className="hidden md:inline">{partial ? "Add available items" : "Add all to bag"}</span>
+              <span className="hidden md:inline-flex"><BagIcon /></span>
             </>
           )}
         </button>
 
-        {/* Secondary actions */}
-        <div className="relative flex items-center gap-1.5 mt-2.5">
+        {/* Secondary actions — taller text-only buttons on phones, the
+            original compact icon+label row from md up. */}
+        <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
           <Link
             href={builderUrl}
-            className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+            className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
               <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
             </svg>
             Edit
           </Link>
           <button
             onClick={() => setMenu(menu === "share" ? null : "share")}
-            className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+            className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
               <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
@@ -1221,7 +1239,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
           <button
             onClick={() => setMenu(menu === "more" ? null : "more")}
             aria-label="More actions"
-            className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+            className="w-10 h-10 md:w-8 md:h-8 shrink-0 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
