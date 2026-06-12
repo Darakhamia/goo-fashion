@@ -47,6 +47,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Ids are minted client-side (`outfit-${Date.now()}`) and can collide across
+  // users — never let one user's sync overwrite another user's look.
+  const { data: existing, error: lookupError } = await supabase
+    .from("user_looks")
+    .select("user_id")
+    .eq("id", body.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    return NextResponse.json({ error: lookupError.message }, { status: 500 });
+  }
+  if (existing && existing.user_id !== userId) {
+    return NextResponse.json({ error: "Look id belongs to another user" }, { status: 409 });
+  }
+
   const { error } = await supabase
     .from("user_looks")
     .upsert({
