@@ -508,6 +508,60 @@ export interface SharedLook {
   pieces: SharedLookPiece[];
 }
 
+type RawLookPiece = {
+  slot?: unknown;
+  productId?: unknown;
+  imageUrl?: unknown;
+  name?: unknown;
+};
+
+/** Resolve raw look-piece refs against the catalog (brand, price, stores). */
+async function enrichSharedLookPieces(raw: unknown): Promise<SharedLookPiece[]> {
+  const rawPieces = (Array.isArray(raw) ? raw : []).filter(
+    (p): p is RawLookPiece => !!p && typeof p === "object"
+  );
+
+  const productIds = rawPieces
+    .map((p) => (typeof p.productId === "string" ? p.productId : null))
+    .filter((id): id is string => !!id);
+
+  const productMap = new Map<string, Product>();
+  if (productIds.length > 0) {
+    if (isSupabaseConfigured && supabase) {
+      const { data: prodData } = await supabase
+        .from("products")
+        .select("*")
+        .in("id", productIds);
+      if (prodData) {
+        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
+          productMap.set(p.id, p);
+        }
+      }
+    } else {
+      for (const p of staticProducts) {
+        if (productIds.includes(p.id)) productMap.set(p.id, p);
+      }
+    }
+  }
+
+  return rawPieces.map((p) => {
+    const productId = typeof p.productId === "string" ? p.productId : "";
+    const product = productMap.get(productId);
+    const slot = typeof p.slot === "string" ? p.slot : "";
+    return {
+      slot,
+      productId,
+      name: (typeof p.name === "string" && p.name ? p.name : product?.name) ?? slot,
+      imageUrl:
+        (typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : product?.imageUrl) ?? null,
+      brand: product?.brand ?? null,
+      priceMin: product?.priceMin ?? null,
+      retailerCount: product?.retailers?.length ?? 0,
+      productExists: !!product,
+    };
+  });
+}
+
 export async function getUserLookById(id: string): Promise<SharedLook | null> {
   if (!isSupabaseConfigured || !supabase) return null;
 
@@ -519,41 +573,7 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
 
   if (error || !data) return null;
 
-  const rawPieces: Array<{
-    slot: string;
-    productId: string;
-    variantId?: string | null;
-    imageUrl?: string;
-    name?: string;
-  }> = Array.isArray(data.pieces) ? data.pieces : [];
-
-  const productIds = rawPieces.map((p) => p.productId).filter(Boolean);
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds);
-    if (prodData) {
-      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-        productMap.set(p.id, p);
-      }
-    }
-  }
-
-  const pieces: SharedLookPiece[] = rawPieces.map((p) => {
-    const product = productMap.get(p.productId);
-    return {
-      slot: p.slot,
-      productId: p.productId,
-      name: p.name ?? product?.name ?? p.slot,
-      imageUrl: p.imageUrl ?? product?.imageUrl ?? null,
-      brand: product?.brand ?? null,
-      priceMin: product?.priceMin ?? null,
-      retailerCount: product?.retailers?.length ?? 0,
-      productExists: !!product,
-    };
-  });
+  const pieces = await enrichSharedLookPieces(data.pieces);
 
   const generatedStyle =
     typeof data.generated_style === "string" ? data.generated_style : null;
@@ -567,6 +587,67 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
     totalPrice: data.total_price ?? null,
     styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
     savedAt: data.saved_at ?? null,
+    pieces,
+  };
+}
+
+/**
+ * Fallback for share links that carry the look in the URL itself (?d=...).
+ * Used when the look never reached the database (e.g. the write failed at
+ * share time) — the link must still open the standard look page for any
+ * recipient. The payload is untrusted URL input, so every field is validated
+ * and images are restricted to http(s) URLs.
+ */
+export async function sharedLookFromShareData(
+  id: string,
+  encoded: string
+): Promise<SharedLook | null> {
+  let data: Record<string, unknown>;
+  try {
+    const b64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    data = parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const str = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() && v.length <= max ? v.trim() : null;
+  const httpUrl = (v: unknown) => {
+    const s = str(v, 2000);
+    return s && /^https?:\/\//.test(s) ? s : null;
+  };
+
+  const rawPieces = (Array.isArray(data.pieces) ? data.pieces : [])
+    .slice(0, 12)
+    .map((p: RawLookPiece) => ({
+      slot: str(p?.slot, 40) ?? "",
+      productId: str(p?.productId, 100) ?? "",
+      name: str(p?.name, 300) ?? undefined,
+      imageUrl: httpUrl(p?.imageUrl) ?? undefined,
+    }))
+    .filter((p) => p.productId);
+
+  const pieces = await enrichSharedLookPieces(rawPieces);
+  if (pieces.length === 0) return null;
+
+  return {
+    id,
+    name: str(data.name, 200),
+    description: str(data.description, 2000),
+    generatedImage: httpUrl(data.generatedImage),
+    generatedStyle: str(data.generatedStyle, 40),
+    totalPrice:
+      typeof data.totalPrice === "number" && Number.isFinite(data.totalPrice)
+        ? data.totalPrice
+        : null,
+    styleKeywords: Array.isArray(data.styleKeywords)
+      ? (data.styleKeywords as unknown[])
+          .filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 60)
+          .slice(0, 20)
+      : [],
+    savedAt: null,
     pieces,
   };
 }
