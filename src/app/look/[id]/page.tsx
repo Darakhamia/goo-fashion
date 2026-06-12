@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Price from "@/components/ui/Price";
-import { getUserLookById, type SharedLook } from "@/lib/data/db";
+import { getUserLookById, sharedLookFromShareData, type SharedLook } from "@/lib/data/db";
 import { SITE_URL } from "@/lib/seo";
 
 // Looks are created at runtime, so a given id may not exist at build time and
@@ -14,10 +14,24 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ d?: string | string[] }>;
 }
 
-// Dedupe the lookup between generateMetadata and the page render in one request.
-const loadLook = cache(getUserLookById);
+// Dedupe the lookup between generateMetadata and the page render in one
+// request. Share links may carry the look in the URL itself (?d=...) as a
+// fallback for when the snapshot never reached the database — the database
+// row wins when both exist.
+const loadLook = cache(async (id: string, d: string | null): Promise<SharedLook | null> => {
+  const fromDb = await getUserLookById(id);
+  if (fromDb) return fromDb;
+  return d ? sharedLookFromShareData(id, d) : null;
+});
+
+async function resolveLook({ params, searchParams }: Props): Promise<SharedLook | null> {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
+  const d = typeof sp.d === "string" ? sp.d : null;
+  return loadLook(id, d);
+}
 
 // Ordering so the pieces read top-to-bottom like a real outfit.
 const SLOT_PRIORITY: Record<string, number> = {
@@ -35,9 +49,9 @@ function sortedPieces(look: SharedLook) {
   );
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const look = await loadLook(id);
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const { id } = await props.params;
+  const look = await resolveLook(props);
   if (!look) return {};
 
   const title = `${lookHeading(look)} · GOO`;
@@ -59,9 +73,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function SharedLookPage({ params }: Props) {
-  const { id } = await params;
-  const look = await loadLook(id);
+export default async function SharedLookPage(props: Props) {
+  const look = await resolveLook(props);
 
   if (!look) notFound();
 

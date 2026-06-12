@@ -281,17 +281,50 @@ function LookCard({
   // same format as published / default looks. The link opens for anyone, even
   // when the look was never published to the catalog.
   //
-  // The snapshot POST is awaited and its result cached: the link is only
-  // handed out once the server confirms the row exists, so a recipient can
-  // never land on a 404. The request is kicked off as soon as the share UI
-  // opens, so by the time the user taps "Share link" it has usually resolved
-  // and navigator.share()/clipboard stay within the user-gesture window.
+  // Producing a link can never fail: the server confirms the snapshot row and
+  // we hand out the clean /look/{id} URL; if persisting didn't work (DB down,
+  // schema drift, network error) we fall back to a self-contained link that
+  // carries the look in the URL, which the /look page renders without a row.
+  // Generated images are hosted http(s) URLs, so the payload stays small.
+  const sharePayload = () => ({
+    name: look.name,
+    description: look.description,
+    pieces: look.pieces.map((p) => ({
+      slot: p.slot,
+      productId: p.productId,
+      ...(p.variantId ? { variantId: p.variantId } : {}),
+      ...(p.imageUrl && /^https?:\/\//.test(p.imageUrl) ? { imageUrl: p.imageUrl } : {}),
+      ...(p.name ? { name: p.name } : {}),
+    })),
+    totalPrice: look.totalPrice,
+    styleKeywords: look.styleKeywords,
+    ...(look.generatedImage && /^https?:\/\//.test(look.generatedImage)
+      ? { generatedImage: look.generatedImage }
+      : {}),
+    generatedStyle: look.generatedStyle,
+  });
+
+  // base64url with unicode support (look names can be any language)
+  const encodeShareData = (payload: unknown): string => {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    let bin = "";
+    bytes.forEach((b) => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  };
+
+  const selfContainedLink = (id: string) =>
+    `${window.location.origin}/look/${id}?d=${encodeShareData(sharePayload())}`;
+
+  // The request is kicked off as soon as the share UI opens, so by the time
+  // the user taps "Share link" it has usually resolved and navigator.share()/
+  // clipboard stay within the user-gesture window.
   const shareRequest = useRef<Promise<string> | null>(null);
   useEffect(() => {
-    // A rename/edit invalidates the cached snapshot — re-publish on next share.
+    // A rename/edit invalidates the cached link — re-publish on next share.
     shareRequest.current = null;
   }, [look]);
 
+  /** Resolves to a working share URL — never rejects. */
   const ensureShared = (): Promise<string> => {
     if (!shareRequest.current) {
       shareRequest.current = fetch("/api/looks/share", {
@@ -311,13 +344,13 @@ function LookCard({
       })
         .then(async (res) => {
           const data = await res.json().catch(() => null);
-          if (!res.ok || typeof data?.id !== "string") throw new Error("share failed");
-          return data.id as string;
+          const id = typeof data?.id === "string" ? data.id : look.id;
+          if (res.ok && data?.persisted) {
+            return `${window.location.origin}/look/${id}`;
+          }
+          return selfContainedLink(id);
         })
-        .catch((err) => {
-          shareRequest.current = null; // allow retry
-          throw err;
-        });
+        .catch(() => selfContainedLink(look.id));
     }
     return shareRequest.current;
   };
@@ -327,31 +360,51 @@ function LookCard({
     setModalShare(false);
   };
 
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+    // Legacy path — the clipboard API can be unavailable or denied.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
   const shareLink = async () => {
     if (shareState === "working") return;
     setShareState("working");
-    try {
-      const id = await ensureShared();
-      const url = `${window.location.origin}/look/${id}`;
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: displayName, url });
+    const url = await ensureShared();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: displayName, url });
+        setShareState("idle");
+        closeShareUi();
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") {
+          // user dismissed the native sheet — nothing to report
           setShareState("idle");
-          closeShareUi();
           return;
-        } catch (err) {
-          if ((err as Error)?.name === "AbortError") {
-            // user dismissed the native sheet — nothing to report
-            setShareState("idle");
-            return;
-          }
-          // fall through to clipboard
         }
+        // fall through to clipboard
       }
-      await navigator.clipboard.writeText(url);
+    }
+    if (await copyToClipboard(url)) {
       setShareState("copied");
-      setTimeout(() => { setShareState("idle"); closeShareUi(); }, 1200);
-    } catch {
+      setTimeout(() => { setShareState("idle"); closeShareUi(); }, 1500);
+    } else {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 2500);
     }
@@ -363,7 +416,7 @@ function LookCard({
       : shareState === "copied"
       ? "Link copied ✓"
       : shareState === "error"
-      ? "Couldn't share — tap to retry"
+      ? "Couldn't copy — tap to retry"
       : "Share link";
 
   // Start publishing as soon as the share UI opens, so the link is ready by
@@ -371,7 +424,7 @@ function LookCard({
   const openShareMenu = () => {
     const next = menu === "share" ? null : "share";
     setMenu(next);
-    if (next === "share") ensureShared().catch(() => {});
+    if (next === "share") void ensureShared();
   };
 
   // Metadata segment: publication status > availability > origin
@@ -928,7 +981,7 @@ function LookCard({
                       Edit in Builder
                     </Link>
                     <button
-                      onClick={() => setModalShare((v) => { const next = !v; if (next) ensureShared().catch(() => {}); return next; })}
+                      onClick={() => setModalShare((v) => { const next = !v; if (next) void ensureShared(); return next; })}
                       className="flex-1 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none">

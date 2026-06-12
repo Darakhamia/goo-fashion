@@ -6,16 +6,18 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 //
 // Publishes a snapshot of a user-created look so its public /look/[id] page
 // opens for ANY visitor — signed in or not, published to the catalog or not.
+// No session is required: looks that exist only in localStorage (created
+// before sign-in) must still produce working links.
 //
-// Unlike /api/user/looks this endpoint does not require a session: looks that
-// exist only in localStorage (created before sign-in) must still produce
-// working links. The caller awaits the response and only hands the link out
-// once the row is confirmed in place, so a recipient can never land on a 404.
+// This endpoint must never dead-end the Share button, so it does not respond
+// with 5xx for persistence problems. Instead it always returns the id the
+// link should use plus `persisted` — when false, the client falls back to a
+// self-contained link that carries the look in the URL, which the /look page
+// can render without a database row.
 //
-// Look ids are minted client-side as `outfit-${Date.now()}`, which can collide
-// across users. If the requested id already belongs to someone else we never
-// overwrite it — a fresh id is minted for this snapshot instead. The response
-// always carries the id the share link must use.
+// Look ids are minted client-side as `outfit-${Date.now()}` and can collide
+// across users. A row owned by someone else is never overwritten — a fresh id
+// is minted for this snapshot instead.
 
 const ANON_USER = "anonymous";
 const MAX_PIECES = 12;
@@ -58,8 +60,18 @@ function mintLookId(): string {
   return `outfit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** The live DB may predate migration 009 (look_name / look_description). */
+function isMissingColumnError(e: { code?: string; message?: string } | null): boolean {
+  if (!e) return false;
+  return (
+    e.code === "42703" ||
+    e.code === "PGRST204" ||
+    /column|schema cache/i.test(e.message ?? "")
+  );
+}
+
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const { userId } = await auth().catch(() => ({ userId: null as string | null }));
   const owner = userId ?? ANON_USER;
 
   const body = await req.json().catch(() => null);
@@ -70,7 +82,8 @@ export async function POST(req: Request) {
   }
 
   if (!isSupabaseConfigured || !supabase) {
-    return NextResponse.json({ error: "Sharing is unavailable" }, { status: 503 });
+    console.error("[looks/share] Supabase not configured — falling back to data link");
+    return NextResponse.json({ id: requestedId, persisted: false });
   }
 
   const name = asTrimmedString(body?.name, 200);
@@ -94,8 +107,16 @@ export async function POST(req: Request) {
     ? new Date().toISOString()
     : new Date(savedAtMs).toISOString();
 
-  // Never clobber a look that belongs to a different user: timestamp-based ids
-  // can collide, and a malicious caller could otherwise overwrite any row.
+  const contentColumns = {
+    saved_at: savedAt,
+    pieces,
+    total_price: totalPrice,
+    style_keywords: styleKeywords,
+    generated_image: generatedImage,
+    generated_style: body?.generatedStyle ?? null,
+  };
+  const nameColumns = { look_name: name, look_description: description };
+
   const { data: existing, error: lookupError } = await supabase
     .from("user_looks")
     .select("id, user_id")
@@ -103,30 +124,53 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (lookupError) {
-    return NextResponse.json({ error: lookupError.message }, { status: 500 });
+    console.error("[looks/share] lookup failed:", lookupError.message);
+    return NextResponse.json({ id: requestedId, persisted: false });
   }
 
-  const id = existing && existing.user_id !== owner ? mintLookId() : requestedId;
+  // Fast path: the look is already in place (builder sync) and owned by this
+  // user — the link already works. Refresh content best-effort; a failed
+  // refresh must not block sharing.
+  if (existing && existing.user_id === owner) {
+    const { error: updateError } = await supabase
+      .from("user_looks")
+      .update({ ...contentColumns, ...nameColumns })
+      .eq("id", requestedId);
+    if (isMissingColumnError(updateError)) {
+      await supabase.from("user_looks").update(contentColumns).eq("id", requestedId);
+    } else if (updateError) {
+      console.error("[looks/share] refresh failed:", updateError.message);
+    }
+    return NextResponse.json({ id: requestedId, persisted: true });
+  }
 
-  const { error } = await supabase
-    .from("user_looks")
-    .upsert(
-      {
-        id,
-        user_id: owner,
-        saved_at: savedAt,
-        look_name: name,
-        look_description: description,
-        pieces,
-        total_price: totalPrice,
-        style_keywords: styleKeywords,
-        generated_image: generatedImage,
-        generated_style: body?.generatedStyle ?? null,
-      },
-      { onConflict: "id" }
-    );
+  // Insert a snapshot — under a fresh id when the requested one is taken by a
+  // different user (timestamp ids can collide; never overwrite foreign rows).
+  const insertSnapshot = async (id: string) => {
+    const row = { id, user_id: owner, ...contentColumns, ...nameColumns };
+    let { error } = await supabase!.from("user_looks").insert(row);
+    if (isMissingColumnError(error)) {
+      ({ error } = await supabase!
+        .from("user_looks")
+        .insert({ id, user_id: owner, ...contentColumns }));
+    }
+    return error;
+  };
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let id = existing ? mintLookId() : requestedId;
+  let insertError = await insertSnapshot(id);
 
-  return NextResponse.json({ id });
+  // Duplicate key: a concurrent share won the race for this id — retry once
+  // with a minted id so this snapshot still lands.
+  if (insertError?.code === "23505") {
+    id = mintLookId();
+    insertError = await insertSnapshot(id);
+  }
+
+  if (insertError) {
+    console.error("[looks/share] insert failed:", insertError.message);
+    return NextResponse.json({ id, persisted: false });
+  }
+
+  return NextResponse.json({ id, persisted: true });
 }
