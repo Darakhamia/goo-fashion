@@ -47,8 +47,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Ids are minted client-side (`outfit-${Date.now()}`) and can collide across
-  // users — never let one user's sync overwrite another user's look.
+  // Ids may be minted client-side and can collide across users — never let one
+  // user's sync overwrite another user's look.
   const { data: existing, error: lookupError } = await supabase
     .from("user_looks")
     .select("user_id")
@@ -62,20 +62,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Look id belongs to another user" }, { status: 409 });
   }
 
-  const { error } = await supabase
-    .from("user_looks")
-    .upsert({
-      id: body.id,
-      user_id: userId,
-      saved_at: body.savedAt ?? new Date().toISOString(),
-      look_name: body.name ?? null,
-      look_description: body.description ?? null,
-      pieces: body.pieces,
-      total_price: body.totalPrice ?? null,
-      style_keywords: body.styleKeywords ?? [],
-      generated_image: body.generatedImage ?? null,
-      generated_style: body.generatedStyle ?? null,
-    }, { onConflict: "id" });
+  const row: Record<string, unknown> = {
+    id: body.id,
+    user_id: userId,
+    saved_at: body.savedAt ?? new Date().toISOString(),
+    look_name: body.name ?? null,
+    look_description: body.description ?? null,
+    pieces: body.pieces,
+    total_price: body.totalPrice ?? null,
+    style_keywords: body.styleKeywords ?? [],
+    generated_image: body.generatedImage ?? null,
+    generated_style: body.generatedStyle ?? null,
+  };
+
+  let { error } = await supabase.from("user_looks").upsert(row, { onConflict: "id" });
+
+  // If the optional name/description columns aren't present in this environment
+  // (migration 009 not applied), persist the core look anyway rather than
+  // failing the whole save — the look itself must never be lost.
+  if (error && /look_name|look_description|column/i.test(error.message)) {
+    delete row.look_name;
+    delete row.look_description;
+    ({ error } = await supabase.from("user_looks").upsert(row, { onConflict: "id" }));
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

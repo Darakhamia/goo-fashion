@@ -12,7 +12,7 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
-import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, type SavedLook } from "@/lib/looks-storage";
+import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type SavedLook } from "@/lib/looks-storage";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -257,6 +257,8 @@ export default function BuilderPage() {
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [savingLook, setSavingLook] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [showSavedPopup, setShowSavedPopup] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openSwatchPopup, setOpenSwatchPopup] = useState<string | null>(null);
@@ -691,7 +693,7 @@ export default function BuilderPage() {
     return desc;
   };
 
-  const persistLook = (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string } = {}) => {
+  const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string } = {}): Promise<boolean> => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
     const pieces = Object.entries(selection)
@@ -738,8 +740,10 @@ export default function BuilderPage() {
             : o
         );
       } else {
-        // Reuse targetId (editId) so we upsert the correct Supabase record
-        savedId = targetId || `outfit-${Date.now()}`;
+        // Reuse targetId (editId) so we upsert the correct Supabase record.
+        // New looks get a UUID so two users can never mint the same id (which
+        // the API rejects with 409, silently dropping the save).
+        savedId = targetId || newLookId();
         const outfit = {
           id: savedId,
           savedAt: new Date().toISOString(),
@@ -757,14 +761,18 @@ export default function BuilderPage() {
       saveLocalLooks(updated as unknown as SavedLook[]);
       setPersistedLookId(savedId);
 
-      // Sync to the account when logged in. pushLook uses keepalive + retry so
-      // the request survives the navigation to /saved (and mobile backgrounding),
-      // which is why looks created on phones used to never reach the server.
+      // Write to the account. We AWAIT the server confirmation so the look is
+      // guaranteed in the shared database before the caller navigates away —
+      // this is what was failing on mobile, where the fire-and-forget request
+      // was killed when the page was backgrounded mid-navigation.
       if (isLoggedIn) {
         const look = (updated as unknown as SavedLook[]).find((o) => o.id === savedId);
-        if (look) void pushLook(look);
+        if (look) return await pushLook(look);
       }
-    } catch {}
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const saveOutfit = () => {
@@ -784,8 +792,13 @@ export default function BuilderPage() {
     saveOutfit();
   };
 
-  const confirmSave = () => {
-    persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage });
+  const confirmSave = async () => {
+    if (savingLook) return;
+    setSavingLook(true);
+    setSaveFailed(false);
+    const ok = await persistLook({ name: pendingLookName.trim() || "My Look", generatedImage: generatedImage });
+    setSavingLook(false);
+    if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
     setShowNameModal(false);
     router.push("/saved?tab=looks");
@@ -864,8 +877,10 @@ export default function BuilderPage() {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
         setGeneratedImage(json.imageUrl);
-        // Auto-save the look with its generated image so it's not lost if modal is closed
-        persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
+        // Auto-save the look (with its generated image) to the account right away
+        // so it's persisted to the database the moment it's created — no second
+        // save, refresh, or re-login needed for it to show on other devices.
+        void persistLook({ generatedImage: json.imageUrl, generatedStyle: style });
         setSaved(true);
         setShowNameModal(true);
       }
@@ -2366,10 +2381,10 @@ export default function BuilderPage() {
                 </button>
                 <button
                   onClick={confirmSave}
-                  disabled={!pendingLookName.trim()}
+                  disabled={!pendingLookName.trim() || savingLook}
                   className="flex-1 h-11 bg-[var(--foreground)] text-[var(--background)] rounded-xl text-[11px] tracking-[0.14em] uppercase font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
                 >
-                  Save look
+                  {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save look"}
                 </button>
               </div>
             </div>
@@ -3349,18 +3364,24 @@ export default function BuilderPage() {
                 May not reflect exact products.
               </p>
               <button
-                onClick={() => {
-                  persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage });
+                disabled={savingLook}
+                onClick={async () => {
+                  if (savingLook) return;
+                  setSavingLook(true);
+                  setSaveFailed(false);
+                  const ok = await persistLook({ name: modalLookName, description: modalLookDescription.trim() || undefined, generatedImage: generatedImage });
+                  setSavingLook(false);
+                  if (!ok) { setSaveFailed(true); return; }
                   setSaved(true);
                   setShowModal(false);
                   router.push("/saved?tab=looks");
                 }}
-                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0"
+                className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0 disabled:opacity-50"
               >
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" stroke="currentColor" strokeWidth="0.5">
                   <path d="M7 12C7 12 1.5 8.5 1.5 5C1.5 3.34 2.84 2 4.5 2C5.56 2 6.48 2.56 7 3.38C7.52 2.56 8.44 2 9.5 2C11.16 2 12.5 3.34 12.5 5C12.5 8.5 7 12 7 12Z" />
                 </svg>
-                Save
+                {savingLook ? "Saving…" : saveFailed ? "Retry save" : "Save"}
               </button>
             </div>
           </div>

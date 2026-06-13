@@ -25,6 +25,16 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+/** Collision-proof look id. `outfit-${Date.now()}` could collide across users
+ *  (same millisecond), which the API rejects with 409 — silently losing the
+ *  save. A UUID removes that whole class of failure. */
+export function newLookId(): string {
+  if (isBrowser() && typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `outfit-${crypto.randomUUID()}`;
+  }
+  return `outfit-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function loadLocalLooks(): SavedLook[] {
   if (!isBrowser()) return [];
   try {

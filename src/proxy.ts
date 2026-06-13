@@ -84,7 +84,10 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
     // Build the URL from scratch: behind Vercel's proxy req.nextUrl carries the
     // internal port (e.g. :3000), which would leak into the redirect Location.
     const url = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${host.slice(4)}`);
-    return NextResponse.redirect(url, 301);
+    // 308 (not 301): preserves the HTTP method and body. A 301 turns a POST
+    // into a bodyless GET, which would silently drop API writes (e.g. saving a
+    // look) submitted from the www host.
+    return NextResponse.redirect(url, 308);
   }
   return clerk(req, event);
 }
