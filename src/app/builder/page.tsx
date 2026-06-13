@@ -12,6 +12,7 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
+import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, type SavedLook } from "@/lib/looks-storage";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -319,6 +320,14 @@ export default function BuilderPage() {
     mobileScrollRef.current?.scrollTo({ left: 0, behavior: "instant" });
   }, [catalogCategory]);
 
+  // Reconcile this device with the account on entry: push up any look that
+  // never reached the server and pull in looks created on other devices, so the
+  // local cache (used for editing) stays consistent everywhere.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void syncLooks(true);
+  }, [isLoggedIn]);
+
   // ── Data loading ──────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/products")
@@ -403,8 +412,7 @@ export default function BuilderPage() {
     const editId = params.get("editId");
     if (editId) {
       try {
-        const existing: { id: string; generatedImage?: string | null; generatedStyle?: string }[] =
-          JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+        const existing = loadLocalLooks();
         const existing_look = existing.find(o => o.id === editId);
         if (existing_look?.generatedImage) {
           setGeneratedImage(existing_look.generatedImage);
@@ -695,7 +703,7 @@ export default function BuilderPage() {
         return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
       });
     try {
-      const existing: Record<string, unknown>[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      const existing: Record<string, unknown>[] = loadLocalLooks() as unknown as Record<string, unknown>[];
       let updated;
       let savedId: string;
       if (targetId && existing.some((o) => o.id === targetId)) {
@@ -746,19 +754,15 @@ export default function BuilderPage() {
         // Replace any stale entry with the same id, then prepend
         updated = [outfit, ...existing.filter((o) => o.id !== savedId)].slice(0, 50);
       }
-      localStorage.setItem("goo-saved-outfits", JSON.stringify(updated));
+      saveLocalLooks(updated as unknown as SavedLook[]);
       setPersistedLookId(savedId);
 
-      // Sync to server when logged in
+      // Sync to the account when logged in. pushLook uses keepalive + retry so
+      // the request survives the navigation to /saved (and mobile backgrounding),
+      // which is why looks created on phones used to never reach the server.
       if (isLoggedIn) {
-        const look = updated.find((o: Record<string, unknown>) => o.id === savedId);
-        if (look) {
-          fetch("/api/user/looks", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(look),
-          }).catch(() => {});
-        }
+        const look = (updated as unknown as SavedLook[]).find((o) => o.id === savedId);
+        if (look) void pushLook(look);
       }
     } catch {}
   };
@@ -767,7 +771,7 @@ export default function BuilderPage() {
     if (!isLoggedIn) { login("", ""); return; }
     try {
       const urlEditId = new URLSearchParams(window.location.search).get("editId");
-      const existing: { id: string; name?: string }[] = JSON.parse(localStorage.getItem("goo-saved-outfits") || "[]");
+      const existing = loadLocalLooks();
       const existingLook = urlEditId ? existing.find(o => o.id === urlEditId) : null;
       setPendingLookName(existingLook?.name || `Outfit ${existing.length + 1}`);
     } catch {

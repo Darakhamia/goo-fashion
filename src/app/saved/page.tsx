@@ -10,21 +10,16 @@ import { useCart } from "@/lib/context/cart-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import ProductCard from "@/components/product/ProductCard";
+import {
+  loadLocalLooks,
+  saveLocalLooks,
+  pushLook,
+  deleteLookFromServer,
+  syncLooks,
+  type SavedLook,
+} from "@/lib/looks-storage";
 
 type View = "outfits" | "pieces" | "looks";
-
-// ── Saved builder outfit type ─────────────────────────────────────────────────
-interface SavedLook {
-  id: string;
-  savedAt: string;
-  name?: string;
-  description?: string;
-  pieces: { slot: string; productId: string; variantId?: string | null; imageUrl?: string; name?: string }[];
-  totalPrice: number;
-  styleKeywords: string[];
-  generatedImage?: string | null;
-  generatedStyle?: "mannequin" | "flatlay" | "tryon";
-}
 
 type PublicationStatus = "pending" | "approved" | "rejected";
 
@@ -1287,45 +1282,26 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    // Always load from localStorage immediately (has the latest names)
-    try {
-      const raw = localStorage.getItem("goo-saved-outfits");
-      if (raw) setMyLooks(JSON.parse(raw));
-    } catch {}
+    // Show the local cache immediately (has the latest names), then reconcile
+    // with the account so looks created on other devices appear and any
+    // local-only looks are pushed up.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMyLooks(loadLocalLooks());
+
+    let cancelled = false;
+    syncLooks(!!user).then((looks) => {
+      if (!cancelled) setMyLooks(looks);
+    });
 
     if (user) {
-      fetch("/api/user/looks")
-        .then((r) => r.json())
-        .then((apiLooks: SavedLook[]) => {
-          if (!Array.isArray(apiLooks)) return;
-          try {
-            const raw = localStorage.getItem("goo-saved-outfits");
-            const local: SavedLook[] = raw ? JSON.parse(raw) : [];
-            const localById = new Map(local.map((l) => [l.id, l]));
-            const apiIds = new Set(apiLooks.map((a) => a.id));
-            // Merge API looks (prefer local name/description) + any local-only looks
-            // that haven't synced to Supabase yet
-            const merged = [
-              ...apiLooks.map((a) => ({
-                ...a,
-                name: a.name ?? localById.get(a.id)?.name,
-                description: a.description ?? localById.get(a.id)?.description,
-              })),
-              ...local.filter((l) => !apiIds.has(l.id)),
-            ].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
-            setMyLooks(merged);
-          } catch {
-            setMyLooks(apiLooks);
-          }
-        })
-        .catch(() => {});
-
       // Publication statuses for looks submitted to GOO
       fetch("/api/user/look-submissions")
         .then((r) => r.json())
         .then((d: LookSubmission[]) => { if (Array.isArray(d)) setSubmissions(d); })
         .catch(() => {});
     }
+
+    return () => { cancelled = true; };
   }, [isLoaded, user]);
 
   // Fetch outfits from API (includes DB outfits)
@@ -1347,10 +1323,8 @@ export default function SavedPage() {
   const deleteLook = (id: string) => {
     setMyLooks((prev) => {
       const next = prev.filter((l) => l.id !== id);
-      try { localStorage.setItem("goo-saved-outfits", JSON.stringify(next)); } catch {}
-      if (user) {
-        fetch(`/api/user/looks?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
-      }
+      saveLocalLooks(next);
+      if (user) void deleteLookFromServer(id);
       return next;
     });
   };
@@ -1358,10 +1332,10 @@ export default function SavedPage() {
   const renameLook = (id: string, name: string) => {
     setMyLooks((prev) => {
       const next = prev.map((l) => l.id === id ? { ...l, name: name || undefined } : l);
-      try { localStorage.setItem("goo-saved-outfits", JSON.stringify(next)); } catch {}
+      saveLocalLooks(next);
       if (user) {
         const look = next.find((l) => l.id === id);
-        if (look) fetch("/api/user/looks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(look) }).catch(() => {});
+        if (look) void pushLook(look);
       }
       return next;
     });

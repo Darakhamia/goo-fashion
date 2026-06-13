@@ -15,7 +15,7 @@ export async function GET() {
     .select("*")
     .eq("user_id", userId)
     .order("saved_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
