@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import type { Outfit } from "@/lib/types";
+import { useStylist } from "@/lib/context/stylist-context";
 
 interface FeaturesBentoProps {
   outfits: Outfit[];
@@ -55,6 +56,7 @@ function StepLabel({ n, label, light }: { n: string; label: string; light?: bool
 
 export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
   const [idx, setIdx] = useState(0);
+  const { open: openStylist } = useStylist();
 
   useEffect(() => {
     if (outfits.length < 2) return;
@@ -64,9 +66,16 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
 
   const outfit = outfits[idx] ?? null;
   const items = outfit?.items ?? [];
-  const thumbItems = items.slice(0, 4);
   const shopItems = items.slice(0, 4);
   const total = outfit?.totalPriceMin ?? 0;
+
+  // Adaptive thumbnail layout: render only real items. When there are more than
+  // we can show, the last slot becomes a "+N" overflow indicator instead of
+  // leaving empty grey cards behind.
+  const MAX_THUMBS = 4;
+  const hasMoreThumbs = items.length > MAX_THUMBS;
+  const visibleThumbs = hasMoreThumbs ? items.slice(0, MAX_THUMBS - 1) : items;
+  const extraThumbs = items.length - visibleThumbs.length;
 
   return (
     <div className="mt-14 grid grid-cols-12 gap-4 md:gap-5 md:h-[700px] md:items-stretch">
@@ -74,7 +83,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
       {/* ── PANEL 1: AI Outfit Preview ── */}
       <FadeCard
         delay={0}
-        className="col-span-12 md:col-span-7 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col min-h-[560px] md:min-h-0 overflow-hidden"
+        className="col-span-12 md:col-span-7 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col min-h-[560px] md:min-h-0 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.03),0_18px_40px_-24px_rgba(0,0,0,0.12)]"
       >
         <StepLabel n="01" label="AI Outfit Preview" />
 
@@ -88,40 +97,59 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         {/* Content row: item thumbs | outfit image */}
         <div className="flex-1 flex gap-4 min-h-0">
 
-          {/* Left column: item thumbnails — fixed height prevents layout jumps */}
-          <div className="flex flex-col gap-2 shrink-0 w-[80px]">
-            {Array.from({ length: 4 }, (_, i) => {
-              const item = thumbItems[i];
-              return (
-                <motion.div
-                  key={`${idx}-${i}`}
-                  className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] overflow-hidden shrink-0"
-                  initial={{ opacity: 0, scale: 0.88 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}
-                >
-                  {item?.product.imageUrl ? (
-                    <Image
-                      src={item.product.imageUrl}
-                      alt={item.product.name}
-                      width={80}
-                      height={80}
-                      className="object-cover w-full h-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--border)]" />
-                  )}
-                </motion.div>
-              );
-            })}
+          {/* Left column: item thumbnails — only real items, vertically centred
+              so the composition stays balanced regardless of how many there are */}
+          <div className="flex flex-col gap-2 shrink-0 w-[80px] justify-center">
+            {items.length === 0 ? (
+              // Genuine empty state — calm skeletons, never broken grey cards
+              Array.from({ length: 3 }, (_, i) => (
+                <div
+                  key={`skeleton-${i}`}
+                  className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] shrink-0"
+                />
+              ))
+            ) : (
+              <>
+                {visibleThumbs.map((item, i) => (
+                  <motion.div
+                    key={`${idx}-${i}`}
+                    className="w-[80px] h-[80px] rounded-2xl bg-[var(--background)] border border-[var(--border)] overflow-hidden shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                    initial={{ opacity: 0, scale: 0.88 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }}
+                  >
+                    {item.product.imageUrl ? (
+                      <Image
+                        src={item.product.imageUrl}
+                        alt={item.product.name}
+                        width={80}
+                        height={80}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[var(--surface)] text-[10px] font-medium uppercase tracking-wide text-[var(--foreground-subtle)]">
+                        {item.product.name?.slice(0, 2)}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
 
-            <motion.div
-              className="w-[80px] h-[80px] rounded-2xl border border-dashed border-[var(--border-strong)] flex items-center justify-center shrink-0"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <span className="text-[20px] font-light text-[var(--foreground-subtle)] leading-none">+</span>
-            </motion.div>
+                {/* "+N" overflow indicator — shown only when items are actually hidden */}
+                {extraThumbs > 0 && (
+                  <motion.div
+                    key={`${idx}-overflow`}
+                    className="w-[80px] h-[80px] rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--background)] flex items-center justify-center shrink-0"
+                    initial={{ opacity: 0, scale: 0.88 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: visibleThumbs.length * 0.04, ease: EASE }}
+                  >
+                    <span className="text-[15px] font-semibold text-[var(--foreground-subtle)] leading-none">
+                      +{extraThumbs}
+                    </span>
+                  </motion.div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Right: outfit image */}
@@ -223,7 +251,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         {/* ── PANEL 2: AI Stylist ── */}
         <FadeCard
           delay={0.07}
-          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-[4] min-h-[260px] md:min-h-0"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-7 flex flex-col flex-[4] min-h-[260px] md:min-h-0 shadow-[0_1px_3px_rgba(0,0,0,0.03),0_18px_40px_-24px_rgba(0,0,0,0.12)]"
         >
           <StepLabel n="02" label="AI Stylist" />
 
@@ -234,35 +262,33 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
             Chat with your AI stylist to get outfit ideas, combinations, and personalized advice.
           </p>
 
-          {/* Input */}
-          <div className="relative mb-3">
-            <input
-              readOnly
-              value=""
-              placeholder="Ask your AI stylist…"
-              className="w-full h-11 rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-4 pr-12 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none"
-            />
-            <Link
-              href="/builder"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--foreground)] flex items-center justify-center hover:opacity-90 transition-opacity"
-            >
+          {/* Input — clicking anywhere opens the AI Stylist straight away */}
+          <button
+            type="button"
+            onClick={openStylist}
+            aria-label="Open the AI Stylist"
+            className="group relative w-full h-11 mb-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] pl-4 pr-12 flex items-center text-left hover:border-[var(--foreground-muted)] transition-colors"
+          >
+            <span className="text-[13px] text-[var(--foreground-subtle)]">Ask your AI stylist…</span>
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[var(--foreground)] flex items-center justify-center group-hover:opacity-90 transition-opacity">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M2 10L10 2M10 2H4M10 2V8" stroke="var(--background)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
-          </div>
+            </span>
+          </button>
 
-          {/* Chips — nowrap, guaranteed single row */}
+          {/* Chips — nowrap, guaranteed single row; each opens the AI Stylist */}
           <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             {STYLIST_CHIPS.map((chip) => (
-              <Link
+              <button
                 key={chip.label}
-                href="/builder"
+                type="button"
+                onClick={openStylist}
                 className="inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)] text-[11px] whitespace-nowrap text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <span className="text-[9px]">{chip.icon}</span>
                 {chip.label}
-              </Link>
+              </button>
             ))}
           </div>
         </FadeCard>
@@ -270,7 +296,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
         {/* ── PANEL 3: Build & Shop — always-dark bg, no theme inversion ── */}
         <FadeCard
           delay={0.13}
-          className="bg-[#111] rounded-3xl p-7 flex flex-col flex-[6] min-h-[320px] md:min-h-0"
+          className="bg-[#111] rounded-3xl p-7 flex flex-col flex-[6] min-h-[320px] md:min-h-0 shadow-[0_14px_44px_-20px_rgba(0,0,0,0.5)]"
         >
           <StepLabel n="03" label="Build & Shop" light />
 
