@@ -360,9 +360,10 @@ export default function Navigation() {
                     <button onClick={() => setCurrencySubmenu(v => !v)}
                       className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <span className="flex items-center gap-3">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="8" cy="8" r="6" />
-                          <path d="M8 5v6M6 6.5h3a1 1 0 010 2H7a1 1 0 010 2h3.5" />
+                          <path d="M10 6.1c-.4-.8-1.1-1.2-2-1.2-1.1 0-2 .6-2 1.5 0 .9.9 1.2 2 1.4 1.1.2 2 .6 2 1.5 0 .9-.9 1.5-2 1.5-.9 0-1.6-.4-2-1.2" />
+                          <path d="M8 3.8v8.4" />
                         </svg>
                         Currency
                       </span>
@@ -408,9 +409,9 @@ export default function Navigation() {
                   <div className="border-t border-[var(--border)] py-1.5">
                     <Link href="/settings" onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="8" cy="8" r="2" />
-                        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M11.54 4.46l1.41-1.41M3.05 12.95l1.41-1.41" />
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                       </svg>
                       Settings
                     </Link>
