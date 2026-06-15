@@ -9,7 +9,9 @@ export type AdminAction =
   | "user.unbanned"
   | "user.deleted"
   | "settings.api_key_updated"
-  | "settings.api_key_deleted";
+  | "settings.api_key_deleted"
+  | "parser.config_updated"
+  | "parser.product_imported";
 
 interface AuditEntry {
   admin_id: string;
