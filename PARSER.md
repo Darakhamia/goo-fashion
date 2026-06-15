@@ -106,6 +106,24 @@ field, image picker, diagnostics: HTTP status, HTML size, which strategies hit).
 **Import** writes one product, deduped by `source_url` (re-importing the same URL
 updates in place), and records an `import_jobs` row.
 
+### Listing / category pages
+
+Paste a category or search URL and the parser pulls **every** product it can:
+
+- If the page embeds product data (a schema.org `ItemList`, or multiple
+  `Product` nodes), each card becomes a row in a **selectable grid** — tweak
+  category/gender/name inline, then **bulk-import** the selected ones.
+- If the page only has links, the parser lists the discovered product URLs and
+  **"Parse first N"** fetches each individually (using the same fetch provider),
+  then drops them into the same grid.
+
+### Image quality
+
+`og:image` / JSON-LD thumbnails are often small. `upscaleImageUrl()` bumps the
+width token in the URL to ~1000px for common CDNs (Farfetch `_NNN.jpg`,
+`?w=`/`?width=` query params, AWIN proxy). It's a reversible heuristic — edit the
+URL in the preview if a site uses a different scheme.
+
 ---
 
 ## Storage & schema

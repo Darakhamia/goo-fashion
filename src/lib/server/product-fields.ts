@@ -150,3 +150,36 @@ export function colorToHex(colorName: string): string {
   const key = (colorName ?? "").toLowerCase().trim();
   return COLOR_HEX[key] ?? "#888888";
 }
+
+// ── Request a higher-resolution variant of a product image URL ─────────────────
+// Many CDNs encode the width in the URL. og:image / JSON-LD thumbnails are often
+// small; bumping the obvious size token to ~1000px yields a sharper catalog image.
+// Heuristic and reversible — the admin can always edit the URL in the preview.
+
+const MIN_WIDTH = 1000;
+
+export function upscaleImageUrl(url: string): string {
+  if (!url || !/^https?:\/\//.test(url)) return url;
+  let out = url;
+
+  // Width-style query params: ?w=300, &width=200, &sw=150, &imwidth=250, &wid=…
+  out = out.replace(
+    /([?&](?:w|width|sw|wid|imwidth|mw|maxwidth|fit-width)=)(\d{2,4})\b/gi,
+    (_m, prefix: string, n: string) => prefix + Math.max(Number(n), MIN_WIDTH),
+  );
+
+  // Farfetch CDN encodes width as a trailing _NNN before the extension.
+  if (/farfetch/i.test(out)) {
+    out = out.replace(
+      /_(\d{2,4})\.(jpg|jpeg|png|webp)(?=$|\?)/i,
+      (m, n: string, ext: string) => (Number(n) < MIN_WIDTH ? `_${MIN_WIDTH}.${ext}` : m),
+    );
+  }
+
+  // AWIN / productserve proxy uses w=/h= params (kept square).
+  if (/productserve\.com|awin1\.com/i.test(out)) {
+    out = out.replace(/([?&]w=)\d+/i, `$1${MIN_WIDTH}`).replace(/([?&]h=)\d+/i, `$1${MIN_WIDTH}`);
+  }
+
+  return out;
+}

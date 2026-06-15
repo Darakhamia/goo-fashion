@@ -91,6 +91,8 @@ export interface RawExtract {
   color?: string;
   material?: string;
   description?: string;
+  /** Per-product URL (set when extracting from a listing/ItemList). */
+  url?: string;
   /** Which strategies contributed at least one field (diagnostics). */
   strategies: string[];
 }

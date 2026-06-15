@@ -44,6 +44,16 @@ type Diagnostics = {
   strategies?: string[];
 };
 
+interface ParseResponse {
+  ok: boolean;
+  products?: ParsedProduct[];
+  links?: string[];
+  isListing?: boolean;
+  error?: string;
+  hint?: string;
+  diagnostics?: Diagnostics;
+}
+
 type Tab = "parse" | "recipes" | "fetch";
 
 // ── Tiny styled primitives ───────────────────────────────────────────────────
@@ -151,26 +161,47 @@ function ParseTab({ config }: { config: ConfigState | null }) {
   const [url, setUrl] = useState("");
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState("");
+  const [hint, setHint] = useState("");
   const [diag, setDiag] = useState<Diagnostics | null>(null);
-  const [draft, setDraft] = useState<ParsedProduct | null>(null);
+  const [products, setProducts] = useState<ParsedProduct[]>([]);
+  const [isListing, setIsListing] = useState(false);
+  const [links, setLinks] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [linkParsing, setLinkParsing] = useState(false);
+  const [linkProgress, setLinkProgress] = useState({ done: 0, total: 0 });
 
-  const [importing, setImporting] = useState(false);
-  const [imported, setImported] = useState<{ productId: string | null; updated: boolean } | null>(null);
-  const [importError, setImportError] = useState("");
+  const provider = config?.fetchSettings.provider ?? "direct";
+
+  async function callParse(target: string): Promise<ParseResponse> {
+    const res = await fetch("/api/admin/parser/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: target }),
+    });
+    return res.json();
+  }
+
+  const selectValid = (list: ParsedProduct[]) =>
+    new Set(list.map((p, i) => (p.valid ? i : -1)).filter((i) => i >= 0));
 
   async function runParse() {
     if (!url.trim()) return;
-    setParsing(true); setError(""); setDraft(null); setDiag(null); setImported(null); setImportError("");
+    setParsing(true); setError(""); setHint(""); setDiag(null);
+    setProducts([]); setLinks([]); setSelected(new Set()); setIsListing(false);
     try {
-      const res = await fetch("/api/admin/parser/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
-      });
-      const data = await res.json();
+      const data = await callParse(url.trim());
       setDiag(data.diagnostics ?? null);
-      if (!res.ok || !data.ok) { setError(data.error ?? "Parse failed"); return; }
-      setDraft(data.product as ParsedProduct);
+      if (!data.ok) {
+        setError(data.error ?? "Parse failed");
+        setHint(data.hint ?? "");
+        setLinks(data.links ?? []);
+        return;
+      }
+      const prods = data.products ?? [];
+      setProducts(prods);
+      setIsListing(!!data.isListing);
+      setLinks(data.links ?? []);
+      setSelected(selectValid(prods));
     } catch {
       setError("Network error");
     } finally {
@@ -178,29 +209,31 @@ function ParseTab({ config }: { config: ConfigState | null }) {
     }
   }
 
-  async function runImport() {
-    if (!draft) return;
-    setImporting(true); setImportError(""); setImported(null);
-    try {
-      const res = await fetch("/api/admin/parser/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product: draft, sourceUrl: draft.sourceUrl }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) { setImportError(data.error ?? "Import failed"); return; }
-      setImported({ productId: data.productId, updated: data.updated });
-    } catch {
-      setImportError("Network error");
-    } finally {
-      setImporting(false);
+  async function parseAllLinks() {
+    const targets = links.slice(0, 24);
+    if (!targets.length) return;
+    setLinkParsing(true); setLinkProgress({ done: 0, total: targets.length });
+    const collected: ParsedProduct[] = [];
+    for (let i = 0; i < targets.length; i++) {
+      try {
+        const data = await callParse(targets[i]);
+        if (data.ok && data.products?.length) collected.push(data.products[0]);
+      } catch { /* skip failed link */ }
+      setLinkProgress({ done: i + 1, total: targets.length });
     }
+    setProducts(collected);
+    setIsListing(true);
+    setLinks([]);
+    setSelected(selectValid(collected));
+    setLinkParsing(false);
   }
 
-  const set = <K extends keyof ParsedProduct>(k: K, v: ParsedProduct[K]) =>
-    setDraft((d) => (d ? { ...d, [k]: v } : d));
+  const setProductAt = (i: number, patch: Partial<ParsedProduct>) =>
+    setProducts((arr) => arr.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
+  const toggle = (i: number) =>
+    setSelected((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
-  const provider = config?.fetchSettings.provider ?? "direct";
+  const single = products.length === 1 && !isListing;
 
   return (
     <div className="space-y-5">
@@ -229,119 +262,336 @@ function ParseTab({ config }: { config: ConfigState | null }) {
       </p>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400">
-          {error}
+        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
+          <p>{error}</p>
+          {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
         </div>
       )}
 
       {diag && <DiagnosticsBar diag={diag} />}
 
-      {/* Editable preview */}
-      {draft && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-          <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between">
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Preview &amp; edit</p>
-            {draft.valid ? (
-              <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Ready</span>
-            ) : (
-              <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded" title={draft.issues.join("; ")}>
-                {draft.issues.join(" · ")}
-              </span>
-            )}
+      {/* Listing page: product links to parse individually */}
+      {links.length > 0 && (
+        <LinksPanel count={links.length} parsing={linkParsing} progress={linkProgress} onParseAll={parseAllLinks} />
+      )}
+
+      {/* Single product — full editor */}
+      {single && (
+        <SingleProductEditor product={products[0]} onChange={(patch) => setProductAt(0, patch)} />
+      )}
+
+      {/* Listing / multiple products — selectable grid */}
+      {products.length > 0 && !single && (
+        <ProductGrid
+          products={products}
+          selected={selected}
+          onToggle={toggle}
+          onSelectAllValid={() => setSelected(selectValid(products))}
+          onClear={() => setSelected(new Set())}
+          setProductAt={setProductAt}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Single-product editor ────────────────────────────────────────────────────
+
+function SingleProductEditor({
+  product,
+  onChange,
+}: {
+  product: ParsedProduct;
+  onChange: (patch: Partial<ParsedProduct>) => void;
+}) {
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<{ updated: boolean } | null>(null);
+  const [error, setError] = useState("");
+  const set = <K extends keyof ParsedProduct>(k: K, v: ParsedProduct[K]) =>
+    onChange({ [k]: v } as Partial<ParsedProduct>);
+
+  async function runImport() {
+    setImporting(true); setError(""); setImported(null);
+    try {
+      const res = await fetch("/api/admin/parser/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product, sourceUrl: product.sourceUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) { setError(data.error ?? "Import failed"); return; }
+      setImported({ updated: data.updated });
+    } catch {
+      setError("Network error");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+      <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between">
+        <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Preview &amp; edit</p>
+        {product.valid ? (
+          <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Ready</span>
+        ) : (
+          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded" title={product.issues.join("; ")}>
+            {product.issues.join(" · ")}
+          </span>
+        )}
+      </div>
+
+      <div className="p-5 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-5">
+        {/* Images */}
+        <div>
+          <div className="aspect-[3/4] bg-[var(--surface)] rounded-lg overflow-hidden border border-[var(--border)]">
+            {product.imageUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+              : <div className="w-full h-full grid place-items-center text-[10px] text-[var(--foreground-subtle)]">no image</div>}
           </div>
-
-          <div className="p-5 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-5">
-            {/* Images */}
-            <div>
-              <div className="aspect-[3/4] bg-[var(--surface)] rounded-lg overflow-hidden border border-[var(--border)]">
-                {draft.imageUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={draft.imageUrl} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full grid place-items-center text-[10px] text-[var(--foreground-subtle)]">no image</div>}
-              </div>
-              {draft.images.length > 1 && (
-                <div className="mt-2 flex gap-1.5 flex-wrap">
-                  {draft.images.slice(0, 8).map((img) => (
-                    <button
-                      key={img}
-                      onClick={() => set("imageUrl", img)}
-                      className={`w-8 h-10 rounded overflow-hidden border ${img === draft.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="text-[9px] text-[var(--foreground-subtle)] mt-1.5">{draft.images.length} image(s)</p>
+          {product.images.length > 1 && (
+            <div className="mt-2 flex gap-1.5 flex-wrap">
+              {product.images.slice(0, 8).map((img) => (
+                <button
+                  key={img}
+                  onClick={() => set("imageUrl", img)}
+                  className={`w-8 h-10 rounded overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
             </div>
+          )}
+          <p className="text-[9px] text-[var(--foreground-subtle)] mt-1.5">{product.images.length} image(s)</p>
+        </div>
 
-            {/* Fields */}
-            <div className="space-y-3">
-              <Field label="Name">
-                <input className={inputCls} value={draft.name} onChange={(e) => set("name", e.target.value)} />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Brand">
-                  <input className={inputCls} value={draft.brand} onChange={(e) => set("brand", e.target.value)} />
-                </Field>
-                <Field label="Material">
-                  <input className={inputCls} value={draft.material} onChange={(e) => set("material", e.target.value)} />
-                </Field>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Category">
-                  <select className={inputCls} value={draft.category} onChange={(e) => set("category", e.target.value as Category)}>
+        {/* Fields */}
+        <div className="space-y-3">
+          <Field label="Name">
+            <input className={inputCls} value={product.name} onChange={(e) => set("name", e.target.value)} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Brand">
+              <input className={inputCls} value={product.brand} onChange={(e) => set("brand", e.target.value)} />
+            </Field>
+            <Field label="Material">
+              <input className={inputCls} value={product.material} onChange={(e) => set("material", e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Category">
+              <select className={inputCls} value={product.category} onChange={(e) => set("category", e.target.value as Category)}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Gender">
+              <select className={inputCls} value={product.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)}>
+                <option value="">—</option>
+                {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </Field>
+            <Field label="Currency">
+              <input className={inputCls} value={product.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} maxLength={3} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Price">
+              <input type="number" className={inputCls} value={product.price || ""} onChange={(e) => set("price", Number(e.target.value) || 0)} />
+            </Field>
+            <Field label="Original price (was)">
+              <input type="number" className={inputCls} value={product.priceOriginal || ""} onChange={(e) => set("priceOriginal", Number(e.target.value) || 0)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Colors (comma-sep)">
+              <input className={inputCls} value={product.colors.join(", ")} onChange={(e) => set("colors", splitList(e.target.value))} />
+            </Field>
+            <Field label="Sizes (comma-sep)">
+              <input className={inputCls} value={product.sizes.join(", ")} onChange={(e) => set("sizes", splitList(e.target.value))} />
+            </Field>
+          </div>
+          <Field label="Description">
+            <textarea className={`${inputCls} h-20 resize-y`} value={product.description} onChange={(e) => set("description", e.target.value)} />
+          </Field>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
+        <button onClick={runImport} disabled={importing || !product.name} className={btnPrimary}>
+          {importing && <Spinner />} {importing ? "Importing…" : "Import product"}
+        </button>
+        {error && <span className="text-[12px] text-red-500">{error}</span>}
+        {imported && (
+          <span className="text-[12px] text-emerald-500 flex items-center gap-2">
+            {imported.updated ? "Updated existing product" : "Product created"}
+            <a href="/goo-studio/products" className="underline hover:no-underline">View products →</a>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Multi-product grid (listing pages) ───────────────────────────────────────
+
+function ProductGrid({
+  products,
+  selected,
+  onToggle,
+  onSelectAllValid,
+  onClear,
+  setProductAt,
+}: {
+  products: ParsedProduct[];
+  selected: Set<number>;
+  onToggle: (i: number) => void;
+  onSelectAllValid: () => void;
+  onClear: () => void;
+  setProductAt: (i: number, patch: Partial<ParsedProduct>) => void;
+}) {
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [result, setResult] = useState<{ ok: number; failed: number } | null>(null);
+
+  async function importSelected() {
+    const idxs = [...selected];
+    if (!idxs.length) return;
+    setImporting(true); setResult(null); setProgress({ done: 0, total: idxs.length });
+    let ok = 0, failed = 0;
+    for (let i = 0; i < idxs.length; i++) {
+      const product = products[idxs[i]];
+      try {
+        const res = await fetch("/api/admin/parser/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ product, sourceUrl: product.sourceUrl }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) ok++; else failed++;
+      } catch { failed++; }
+      setProgress({ done: i + 1, total: idxs.length });
+    }
+    setResult({ ok, failed });
+    setImporting(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+      <div className="px-5 py-3 border-b border-[var(--border)] flex items-center gap-4 flex-wrap">
+        <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+          {products.length} products found · {selected.size} selected
+        </p>
+        <button onClick={onSelectAllValid} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Select valid</button>
+        <button onClick={onClear} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Clear</button>
+        <div className="ml-auto flex items-center gap-3">
+          {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
+          {result && (
+            <span className="text-[11px] text-emerald-500">
+              Imported {result.ok}{result.failed ? ` · ${result.failed} failed` : ""}
+              <a href="/goo-studio/products" className="underline hover:no-underline ml-2">View →</a>
+            </span>
+          )}
+          <button onClick={importSelected} disabled={importing || !selected.size} className={btnPrimary}>
+            {importing && <Spinner />} Import {selected.size || ""} selected
+          </button>
+        </div>
+      </div>
+
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {products.map((p, i) => {
+          const sel = selected.has(i);
+          return (
+            <div
+              key={i}
+              className={`rounded-lg border overflow-hidden transition-colors ${sel ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
+            >
+              <button onClick={() => onToggle(i)} className="block w-full text-left relative">
+                <div className="aspect-[3/4] bg-[var(--surface)]">
+                  {p.imageUrl
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full grid place-items-center text-[10px] text-[var(--foreground-subtle)]">no image</div>}
+                </div>
+                <span className={`absolute top-2 left-2 w-4 h-4 rounded flex items-center justify-center border ${sel ? "bg-[var(--foreground)] border-[var(--foreground)]" : "bg-[var(--background)]/80 border-[var(--border-strong)]"}`}>
+                  {sel && (
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="var(--background)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  )}
+                </span>
+                {!p.valid && (
+                  <span className="absolute top-2 right-2 text-[8px] tracking-[0.1em] uppercase text-amber-500 bg-amber-500/15 px-1.5 py-0.5 rounded" title={p.issues.join("; ")}>
+                    {p.issues[0]}
+                  </span>
+                )}
+              </button>
+              <div className="p-2 space-y-1.5">
+                <input
+                  value={p.name}
+                  onChange={(e) => setProductAt(i, { name: e.target.value })}
+                  className="w-full bg-transparent text-[11px] text-[var(--foreground)] outline-none border-b border-transparent focus:border-[var(--border-strong)] leading-tight"
+                />
+                <div className="flex items-center justify-between text-[10px] text-[var(--foreground-muted)]">
+                  <span className="truncate">{p.brand || "—"}</span>
+                  <span className="font-mono tabular-nums">{p.price ? `${p.price} ${p.currency}` : "—"}</span>
+                </div>
+                <div className="flex gap-1">
+                  <select
+                    value={p.category}
+                    onChange={(e) => setProductAt(i, { category: e.target.value as Category })}
+                    className="flex-1 bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded outline-none"
+                  >
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
-                </Field>
-                <Field label="Gender">
-                  <select className={inputCls} value={draft.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)}>
+                  <select
+                    value={p.gender ?? ""}
+                    onChange={(e) => setProductAt(i, { gender: (e.target.value || undefined) as Gender | undefined })}
+                    className="bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded outline-none"
+                  >
                     <option value="">—</option>
                     {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
                   </select>
-                </Field>
-                <Field label="Currency">
-                  <input className={inputCls} value={draft.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} maxLength={3} />
-                </Field>
+                </div>
+                {p.sourceUrl && (
+                  <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="block text-[9px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] truncate">
+                    source ↗
+                  </a>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Price">
-                  <input type="number" className={inputCls} value={draft.price || ""} onChange={(e) => set("price", Number(e.target.value) || 0)} />
-                </Field>
-                <Field label="Original price (was)">
-                  <input type="number" className={inputCls} value={draft.priceOriginal || ""} onChange={(e) => set("priceOriginal", Number(e.target.value) || 0)} />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Colors (comma-sep)">
-                  <input className={inputCls} value={draft.colors.join(", ")} onChange={(e) => set("colors", splitList(e.target.value))} />
-                </Field>
-                <Field label="Sizes (comma-sep)">
-                  <input className={inputCls} value={draft.sizes.join(", ")} onChange={(e) => set("sizes", splitList(e.target.value))} />
-                </Field>
-              </div>
-              <Field label="Description">
-                <textarea className={`${inputCls} h-20 resize-y`} value={draft.description} onChange={(e) => set("description", e.target.value)} />
-              </Field>
             </div>
-          </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-          {/* Footer */}
-          <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
-            <button onClick={runImport} disabled={importing || !draft.name} className={btnPrimary}>
-              {importing && <Spinner />} {importing ? "Importing…" : "Import product"}
-            </button>
-            {importError && <span className="text-[12px] text-red-500">{importError}</span>}
-            {imported && (
-              <span className="text-[12px] text-emerald-500 flex items-center gap-2">
-                {imported.updated ? "Updated existing product" : "Product created"}
-                <a href="/goo-studio/products" className="underline hover:no-underline">View products →</a>
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+// ── Listing links panel ──────────────────────────────────────────────────────
+
+function LinksPanel({
+  count,
+  parsing,
+  progress,
+  onParseAll,
+}: {
+  count: number;
+  parsing: boolean;
+  progress: { done: number; total: number };
+  onParseAll: () => void;
+}) {
+  const cap = Math.min(count, 24);
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-5 py-4 flex items-center gap-4 flex-wrap">
+      <div className="flex-1 min-w-[200px]">
+        <p className="text-[12px] text-[var(--foreground)]">Looks like a listing — found {count} product link{count !== 1 ? "s" : ""}.</p>
+        <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
+          No full product data was embedded on this page. Parse each link to pull name, price and images, then select which to import.
+        </p>
+      </div>
+      <button onClick={onParseAll} disabled={parsing} className={btnPrimary}>
+        {parsing ? <><Spinner /> Parsing {progress.done}/{progress.total}…</> : `Parse first ${cap}`}
+      </button>
     </div>
   );
 }
