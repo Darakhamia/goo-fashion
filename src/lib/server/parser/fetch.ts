@@ -165,6 +165,14 @@ export async function fetchHtml(
       ? target
       : buildProviderUrl(settings.provider, settings, target, apiKey);
 
+  // For direct fetches, present a same-origin Referer — some soft anti-bot
+  // setups reject requests that arrive with no referrer.
+  let directHeaders: Record<string, string> | undefined;
+  if (settings.provider === "direct") {
+    directHeaders = browserHeaders(settings.impersonate);
+    try { directHeaders.Referer = new URL(target).origin + "/"; } catch { /* ignore */ }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1_000, settings.timeoutMs));
   try {
@@ -173,7 +181,7 @@ export async function fetchHtml(
       redirect: "follow",
       signal: controller.signal,
       // Browser headers only matter for `direct`; providers set their own.
-      headers: settings.provider === "direct" ? browserHeaders(settings.impersonate) : undefined,
+      headers: directHeaders,
     });
     const html = await res.text();
     return {

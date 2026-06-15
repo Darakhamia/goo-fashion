@@ -104,12 +104,32 @@ function typeIncludes(node: JsonObject, type: string): boolean {
   return false;
 }
 
-/** Depth-first search across blocks (incl. @graph) for the first Product node. */
-function findProductNode(blocks: JsonObject[]): JsonObject | null {
+/**
+ * Breadth-first search across blocks (incl. @graph and ItemList) collecting
+ * every Product node in document order. ItemList → itemListElement → item is
+ * expanded so listing/category pages yield one node per card.
+ */
+function findAllProductNodes(blocks: JsonObject[]): JsonObject[] {
+  const out: JsonObject[] = [];
+  const seen = new Set<JsonObject>();
   const queue: JsonObject[] = [...blocks];
   while (queue.length) {
     const node = queue.shift()!;
-    if (typeIncludes(node, "Product")) return node;
+    if (seen.has(node)) continue;
+    seen.add(node);
+
+    if (typeIncludes(node, "Product")) out.push(node);
+
+    // ItemList / ItemPage → itemListElement entries (often { item: Product } or { url })
+    const els = node.itemListElement;
+    if (Array.isArray(els)) {
+      for (const el of els) {
+        if (!isObj(el)) continue;
+        if (isObj(el.item)) queue.push(el.item);
+        else queue.push(el);
+      }
+    }
+
     const graph = node["@graph"];
     if (Array.isArray(graph)) graph.forEach((g) => isObj(g) && queue.push(g));
     for (const v of Object.values(node)) {
@@ -117,7 +137,7 @@ function findProductNode(blocks: JsonObject[]): JsonObject | null {
       else if (Array.isArray(v)) v.forEach((x) => isObj(x) && queue.push(x));
     }
   }
-  return null;
+  return out;
 }
 
 function asString(v: JsonValue | undefined): string | undefined {
@@ -194,15 +214,17 @@ function offerInfo(v: JsonValue | undefined): OfferInfo {
   return result;
 }
 
-function fromJsonLd(html: string): Partial<RawExtract> & { found: boolean } {
-  const node = findProductNode(parseJsonLdBlocks(html));
-  if (!node) return { found: false, images: [], sizes: [] };
-
+/** Extract raw fields from a single schema.org Product node. */
+function rawFromProductNode(node: JsonObject): Partial<RawExtract> & { found: boolean } {
   const offers = offerInfo(node.offers);
   const images = imageList(node.image);
   const color = asString(node.color);
   const material = asString(node.material);
   const description = asString(node.description);
+  const url =
+    asString(node.url) ??
+    asString(node["@id"]) ??
+    (isObj(node.offers) ? asString((node.offers as JsonObject).url) : undefined);
 
   return {
     found: true,
@@ -216,8 +238,15 @@ function fromJsonLd(html: string): Partial<RawExtract> & { found: boolean } {
     color: color ? decodeEntities(color) : undefined,
     material: material ? decodeEntities(material) : undefined,
     description: description ? decodeEntities(description) : undefined,
+    url: url && /^https?:\/\//.test(url) ? url : undefined,
     sizes: [],
   };
+}
+
+function fromJsonLd(html: string): Partial<RawExtract> & { found: boolean } {
+  const node = findAllProductNodes(parseJsonLdBlocks(html))[0];
+  if (!node) return { found: false, images: [], sizes: [] };
+  return rawFromProductNode(node);
 }
 
 function fromMeta(html: string): Partial<RawExtract> {
@@ -325,4 +354,73 @@ export function extractProduct(html: string, config?: ParserSiteConfig | null): 
     description: pick(ruleVal("description"), jsonld.description, meta.description),
     strategies,
   };
+}
+
+/**
+ * Extract EVERY product embedded in the page (listing / category pages).
+ * Returns one RawExtract per schema.org Product node found. A node is kept only
+ * if it carries enough to be a real product card (a name, or a price+image).
+ */
+export function extractProductNodes(html: string): RawExtract[] {
+  const nodes = findAllProductNodes(parseJsonLdBlocks(html));
+  const out: RawExtract[] = [];
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    const r = rawFromProductNode(node);
+    const name = r.name ?? "";
+    const hasData = !!name || (!!r.price && !!r.image);
+    if (!hasData) continue;
+    const key = `${name.toLowerCase()}::${r.url ?? r.image ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      name: r.name,
+      brand: r.brand,
+      price: r.price,
+      priceOriginal: r.priceOriginal,
+      currency: r.currency,
+      image: r.image,
+      images: r.images ?? [],
+      sizes: [],
+      color: r.color,
+      material: r.material,
+      description: r.description,
+      url: r.url,
+      strategies: ["json-ld"],
+    });
+  }
+  return out;
+}
+
+/**
+ * Discover product-page URLs on a listing page. Combines schema.org ItemList
+ * URLs with same-host anchors that look like product links — used to "parse
+ * each" when the listing doesn't embed full product data.
+ */
+export function extractProductLinks(html: string, baseUrl: string): string[] {
+  const urls = new Set<string>();
+  let host = "";
+  try { host = new URL(baseUrl).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
+
+  // 1. ItemList element urls from JSON-LD
+  for (const node of findAllProductNodes(parseJsonLdBlocks(html))) {
+    const u = (typeof node.url === "string" && node.url) || (typeof node["@id"] === "string" && node["@id"]);
+    if (typeof u === "string" && /^https?:\/\//.test(u)) urls.add(u.split("#")[0]);
+  }
+
+  // 2. Anchors that look like product pages on the same host
+  const PRODUCT_PATH = /\/(product|products|item|items|pd|prod|shopping|p)\/|-item-|\/[\w-]+-\d{5,}|\.aspx/i;
+  const anchorRe = /<a\b[^>]*\bhref=["']([^"'#]+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = anchorRe.exec(html))) {
+    let abs: URL;
+    try { abs = new URL(m[1], baseUrl); } catch { continue; }
+    if (abs.protocol !== "http:" && abs.protocol !== "https:") continue;
+    if (host && abs.hostname.replace(/^www\./, "") !== host) continue;
+    if (!PRODUCT_PATH.test(abs.pathname)) continue;
+    urls.add(`${abs.origin}${abs.pathname}`);
+    if (urls.size >= 60) break;
+  }
+
+  return [...urls].slice(0, 60);
 }

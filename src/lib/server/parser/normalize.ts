@@ -10,6 +10,7 @@ import {
   inferCategoryFromName,
   parseRetailCategory,
   inferGenderFromText,
+  upscaleImageUrl,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 
@@ -63,13 +64,15 @@ export function normalizeExtract(
     inferGenderFromText(sourceUrl) ??
     inferGenderFromText(`${name} ${raw.description ?? ""}`);
 
-  // Images: resolve + dedupe, cap at 12
+  // Images: resolve → request higher-res → dedupe, cap at 12
   const images = [...new Set(
     (raw.images ?? [])
       .map((u) => absoluteUrl(u, sourceUrl))
-      .filter((u): u is string => !!u),
+      .filter((u): u is string => !!u)
+      .map(upscaleImageUrl),
   )].slice(0, 12);
-  const imageUrl = (raw.image && absoluteUrl(raw.image, sourceUrl)) || images[0] || "";
+  const rawPrimary = raw.image && absoluteUrl(raw.image, sourceUrl);
+  const imageUrl = (rawPrimary && upscaleImageUrl(rawPrimary)) || images[0] || "";
   if (!imageUrl) issues.push("no image");
 
   const colors = raw.color ? [raw.color] : [];
