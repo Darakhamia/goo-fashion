@@ -946,11 +946,11 @@ export default function BrowsePage() {
           <main className="px-6 md:px-8 lg:px-10">
             {/* Toolbar: flex row, items-end so chips align with bottom pill */}
             <div className="pt-4 pb-4 border-b border-[var(--border)]">
-              <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-3 sm:flex-nowrap">
 
                 {/* Left column: Filter+Search on top, Pieces/Outfits below.
                     Full width on mobile so the segmented toggle never clips. */}
-                <div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
+                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-auto">
                   <div className="flex gap-2 items-center">
                     {/* Filter */}
                     <button
