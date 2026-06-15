@@ -1993,8 +1993,8 @@ export default function BuilderPage() {
           <div className="flex-1 min-h-0 flex flex-col bg-[var(--background)]">
 
             {/* Collage canvas — flexes to take the available height (floored at
-                220px so it never collapses on short viewports). */}
-            <div className="relative flex-1 min-h-0 mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ minHeight: 220 }}>
+                210px so it never collapses on short viewports). */}
+            <div className="relative flex-1 min-h-0 mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ minHeight: 210 }}>
               {selectedCount === 0 ? (
                 <div className="absolute inset-0 border border-dashed border-[var(--border-strong)] rounded-xl flex flex-col items-center justify-center gap-2">
                   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-[var(--foreground-subtle)]">
@@ -2133,8 +2133,10 @@ export default function BuilderPage() {
 
           {/* Bottom panel — filters + products. Sized to its content (not
               flex-1) so the catalog row is only as tall as the cards need,
-              handing the leftover height to the collage canvas above. */}
-          <div className="shrink-0 flex flex-col bg-[var(--background)]">
+              handing the leftover height to the collage canvas above. A little
+              bottom padding lifts the items off the bottom of the interface so
+              the layout breathes without bringing back the old empty gap. */}
+          <div className="shrink-0 flex flex-col bg-[var(--background)] pb-3">
 
             {/* Filters + category chips in one scrollable row */}
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
