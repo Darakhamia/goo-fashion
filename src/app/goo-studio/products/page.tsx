@@ -6,6 +6,22 @@ import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
+const fmtDate = (iso?: string) =>
+  iso ? new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—";
+
+// Sort options shown in the admin toolbar dropdown. Each maps to a (key, direction) pair
+// that drives the same sortKey/sortDir state used by the clickable column headers.
+type SortColumn = "name" | "brand" | "category" | "priceMin" | "createdAt";
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "createdAt:desc", label: "Newest first" },
+  { value: "createdAt:asc", label: "Oldest first" },
+  { value: "name:asc", label: "Name A–Z" },
+  { value: "name:desc", label: "Name Z–A" },
+  { value: "brand:asc", label: "Brand A–Z" },
+  { value: "priceMin:asc", label: "Price: low → high" },
+  { value: "priceMin:desc", label: "Price: high → low" },
+];
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const SUGGESTED_BRANDS = [
@@ -584,8 +600,9 @@ export default function AdminProductsPage() {
 
   const [filterCategory, setFilterCategory] = useState<Category | "">("");
   const [filterNew, setFilterNew] = useState<boolean | null>(null);
-  const [sortKey, setSortKey] = useState<"name" | "brand" | "category" | "priceMin" | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // Default to newest-first so the table mirrors the DB order (created_at desc).
+  const [sortKey, setSortKey] = useState<SortColumn>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // ── Crop editor ────────────────────────────────────────────────────────────
@@ -720,11 +737,15 @@ export default function AdminProductsPage() {
     if (filterNew !== null) list = list.filter((p) => p.isNew === filterNew);
     if (sortKey) {
       list = [...list].sort((a, b) => {
-        const va = (sortKey === "priceMin" ? a.priceMin : a[sortKey as "name" | "brand" | "category"]) ?? "";
-        const vb = (sortKey === "priceMin" ? b.priceMin : b[sortKey as "name" | "brand" | "category"]) ?? "";
-        const cmp = typeof va === "number"
-          ? (va as number) - (vb as number)
-          : String(va).toLowerCase().localeCompare(String(vb).toLowerCase());
+        let cmp: number;
+        if (sortKey === "priceMin") {
+          cmp = (a.priceMin ?? 0) - (b.priceMin ?? 0);
+        } else if (sortKey === "createdAt") {
+          // ISO date strings compare lexicographically; missing dates sort oldest.
+          cmp = String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+        } else {
+          cmp = String(a[sortKey] ?? "").toLowerCase().localeCompare(String(b[sortKey] ?? "").toLowerCase());
+        }
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
@@ -1040,13 +1061,22 @@ export default function AdminProductsPage() {
 
   // ── Sort / select helpers ───────────────────────────────────────────────────
 
-  const toggleSort = (key: "name" | "brand" | "category" | "priceMin") => {
+  const toggleSort = (key: SortColumn) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("asc"); }
+    else { setSortKey(key); setSortDir(key === "createdAt" ? "desc" : "asc"); }
   };
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
   const someSelected = selectedIds.size > 0;
+
+  // Keep the Sort dropdown in sync with column-header clicks. If a header produced a
+  // (key, dir) combo that isn't a named preset (e.g. Category ↓), surface it as an option
+  // so the <select> always reflects the active sort instead of falling back to the first item.
+  const currentSortValue = `${sortKey}:${sortDir}`;
+  const isDefaultSort = currentSortValue === "createdAt:desc";
+  const sortOptions = SORT_OPTIONS.some((o) => o.value === currentSortValue)
+    ? SORT_OPTIONS
+    : [...SORT_OPTIONS, { value: currentSortValue, label: `${sortKey} (${sortDir})` }];
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => {
@@ -1135,7 +1165,7 @@ export default function AdminProductsPage() {
   };
 
   // Sort arrow helper
-  const SortIcon = ({ col }: { col: "name" | "brand" | "category" | "priceMin" }) => (
+  const SortIcon = ({ col }: { col: SortColumn }) => (
     <span className="inline-flex flex-col ml-1 gap-[1px] opacity-50 group-hover:opacity-100">
       <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-b-[4px] ${sortKey === col && sortDir === "asc" ? "border-b-[var(--foreground)] opacity-100" : "border-b-[var(--foreground-muted)]"}`} />
       <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-t-[4px] ${sortKey === col && sortDir === "desc" ? "border-t-[var(--foreground)] opacity-100" : "border-t-[var(--foreground-muted)]"}`} />
@@ -1247,10 +1277,31 @@ export default function AdminProductsPage() {
             New only
           </button>
 
+          {/* Divider */}
+          <span className="w-px h-4 bg-[var(--border)]" />
+
+          {/* Sort dropdown */}
+          <label className="inline-flex items-center gap-1.5">
+            <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Sort:</span>
+            <select
+              value={currentSortValue}
+              onChange={(e) => {
+                const [key, dir] = e.target.value.split(":") as [SortColumn, "asc" | "desc"];
+                setSortKey(key);
+                setSortDir(dir);
+              }}
+              className="rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
+            >
+              {sortOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+
           {/* Clear filters */}
-          {(filterCategory || filterNew !== null || sortKey) && (
+          {(filterCategory || filterNew !== null || !isDefaultSort) && (
             <button
-              onClick={() => { setFilterCategory(""); setFilterNew(null); setSortKey(null); }}
+              onClick={() => { setFilterCategory(""); setFilterNew(null); setSortKey("createdAt"); setSortDir("desc"); }}
               className="ml-1 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
             >
               Clear
@@ -1336,13 +1387,18 @@ export default function AdminProductsPage() {
                   </button>
                 </th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
+                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
+                  <button onClick={() => toggleSort("createdAt")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
+                    Added <SortIcon col="createdAt" />
+                  </button>
+                </th>
                 <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                     No products found.
                   </td>
                 </tr>
@@ -1412,6 +1468,9 @@ export default function AdminProductsPage() {
                       ) : (
                         <span className="text-[var(--foreground-subtle)]">—</span>
                       )}
+                    </td>
+                    <td className="px-2 py-3 hidden lg:table-cell">
+                      <span className="text-xs text-[var(--foreground-subtle)] whitespace-nowrap">{fmtDate(product.createdAt)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
