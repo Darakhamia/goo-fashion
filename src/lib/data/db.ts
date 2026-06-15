@@ -178,7 +178,10 @@ export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
 
   const all = allData.map(dbToProduct);
   const grouped = skipGrouping ? all : groupVariants(all);
-  return shuffleArray(grouped);
+  // Admin view (skipGrouping=true) keeps the deterministic newest-first order from
+  // the DB query so the table doesn't reshuffle on every refresh. The public catalog
+  // stays shuffled for visual variety between visits.
+  return skipGrouping ? grouped : shuffleArray(grouped);
 }
 
 /**
