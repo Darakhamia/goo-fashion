@@ -161,6 +161,17 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/goo-studio/parser",
+    label: "Parser",
+    category: "imports",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 1.5V4M8 12V14.5M1.5 8H4M12 8H14.5M3.5 3.5L5.2 5.2M10.8 10.8L12.5 12.5M3.5 12.5L5.2 10.8M10.8 5.2L12.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <circle cx="8" cy="8" r="2.4" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+    ),
+  },
+  {
     href: "/goo-studio/settings",
     label: "Settings",
     category: "system",
@@ -216,6 +227,7 @@ const pageTitles: Record<string, string> = {
   "/goo-studio/waitlist": "Waitlist",
   "/goo-studio/email": "Email",
   "/goo-studio/brightdata": "Import",
+  "/goo-studio/parser": "Universal Parser",
   "/goo-studio/settings": "Settings",
   "/goo-studio/prompts": "Prompts",
   "/goo-studio/activity": "Activity",
