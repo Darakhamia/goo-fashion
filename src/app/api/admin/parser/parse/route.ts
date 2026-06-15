@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { fetchHtml } from "@/lib/server/parser/fetch";
-import { extractProduct, extractProductNodes, extractProductLinks } from "@/lib/server/parser/extract";
+import { extractProduct, partitionProducts, extractProductLinks } from "@/lib/server/parser/extract";
 import { normalizeExtract } from "@/lib/server/parser/normalize";
 import {
   getFetchSettings,
@@ -70,26 +70,37 @@ export async function POST(req: Request) {
     });
   }
 
-  // Every embedded Product node (covers listing/category pages).
-  const nodes = extractProductNodes(fetched.html);
+  // Separate the page's own product(s) from embedded ItemList cards so a
+  // product page with a "related products" carousel stays single.
+  const { standaloneCount, standaloneItems, listItems } = partitionProducts(fetched.html);
+
+  const single = () => {
+    const prod = normalizeExtract(extractProduct(fetched.html, matched), pageUrl, matched);
+    return prod.name || prod.imageUrl ? [prod] : [];
+  };
 
   let products: ParsedProduct[] = [];
   let isListing = false;
 
-  if (nodes.length >= 2) {
-    isListing = true;
-    products = nodes.map((n) => {
-      const purl = n.url ? resolveUrl(n.url, pageUrl) : "";
-      const prod = normalizeExtract(n, purl || pageUrl, matched);
-      // Keep each card's own source URL (empty → import inserts a fresh row
-      // instead of all cards colliding on the listing URL).
-      prod.sourceUrl = purl;
-      return prod;
-    });
+  if (standaloneCount === 1) {
+    // A clear single product page (related lists ignored). Merge meta/microdata.
+    products = single();
   } else {
-    // Single product page — merge meta/microdata for a richer result.
-    const single = normalizeExtract(extractProduct(fetched.html, matched), pageUrl, matched);
-    if (single.name || single.imageUrl) products = [single];
+    // No single main product → treat embedded products as a listing.
+    const items = standaloneCount >= 2 ? standaloneItems : listItems;
+    if (items.length >= 2) {
+      isListing = true;
+      products = items.map((n) => {
+        const purl = n.url ? resolveUrl(n.url, pageUrl) : "";
+        const prod = normalizeExtract(n, purl || pageUrl, matched);
+        // Keep each card's own source URL (empty → import inserts a fresh row
+        // instead of all cards colliding on the listing URL).
+        prod.sourceUrl = purl;
+        return prod;
+      });
+    } else {
+      products = single();
+    }
   }
 
   // When the page is a listing that didn't embed full product data, surface the

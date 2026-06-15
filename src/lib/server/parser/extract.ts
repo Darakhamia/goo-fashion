@@ -30,7 +30,12 @@ export function decodeEntities(input: string): string {
 }
 
 function stripTags(input: string): string {
-  return decodeEntities((input ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " "));
+  return decodeEntities(
+    (input ?? "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\s+([.,;:!?])/g, "$1"),
+  );
 }
 
 // ── Meta tags ─────────────────────────────────────────────────────────────────
@@ -140,6 +145,43 @@ function findAllProductNodes(blocks: JsonObject[]): JsonObject[] {
   return out;
 }
 
+/**
+ * Split Product nodes into the page's own product(s) vs. products that live
+ * inside an ItemList (e.g. "you may also like" / "recently viewed" carousels).
+ * This lets a product page stay in single-product mode even when it embeds
+ * related-product lists — otherwise we'd misread it as a listing.
+ */
+function partitionProductNodes(blocks: JsonObject[]): { standalone: JsonObject[]; listItems: JsonObject[] } {
+  const standalone: JsonObject[] = [];
+  const listItems: JsonObject[] = [];
+  const seen = new Set<JsonObject>();
+  const queue: { node: JsonObject; underList: boolean }[] = blocks.map((b) => ({ node: b, underList: false }));
+  while (queue.length) {
+    const { node, underList } = queue.shift()!;
+    if (seen.has(node)) continue;
+    seen.add(node);
+
+    if (typeIncludes(node, "Product")) (underList ? listItems : standalone).push(node);
+
+    const els = node.itemListElement;
+    if (Array.isArray(els)) {
+      for (const el of els) {
+        if (!isObj(el)) continue;
+        queue.push({ node: isObj(el.item) ? el.item : el, underList: true });
+      }
+    }
+
+    const graph = node["@graph"];
+    if (Array.isArray(graph)) graph.forEach((g) => isObj(g) && queue.push({ node: g, underList }));
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "itemListElement") continue;
+      if (isObj(v)) queue.push({ node: v, underList });
+      else if (Array.isArray(v)) v.forEach((x) => isObj(x) && queue.push({ node: x, underList }));
+    }
+  }
+  return { standalone, listItems };
+}
+
 function asString(v: JsonValue | undefined): string | undefined {
   if (typeof v === "string") return v.trim() || undefined;
   if (typeof v === "number") return String(v);
@@ -237,14 +279,52 @@ function rawFromProductNode(node: JsonObject): Partial<RawExtract> & { found: bo
     images,
     color: color ? decodeEntities(color) : undefined,
     material: material ? decodeEntities(material) : undefined,
-    description: description ? decodeEntities(description) : undefined,
+    // descriptions are sometimes HTML — strip tags so the catalog stays clean
+    description: description ? stripTags(description) : undefined,
     url: url && /^https?:\/\//.test(url) ? url : undefined,
     sizes: [],
   };
 }
 
+/** A full RawExtract from a single Product node (json-ld only, no meta merge). */
+function nodeToRaw(node: JsonObject): RawExtract {
+  const r = rawFromProductNode(node);
+  return {
+    name: r.name,
+    brand: r.brand,
+    price: r.price,
+    priceOriginal: r.priceOriginal,
+    currency: r.currency,
+    image: r.image,
+    images: r.images ?? [],
+    sizes: [],
+    color: r.color,
+    material: r.material,
+    description: r.description,
+    url: r.url,
+    strategies: ["json-ld"],
+  };
+}
+
+/** Keep only product-like extracts, deduped by name + url/image. */
+function dedupeRaw(list: RawExtract[]): RawExtract[] {
+  const out: RawExtract[] = [];
+  const seen = new Set<string>();
+  for (const r of list) {
+    const hasData = !!r.name || (!!r.price && !!r.image);
+    if (!hasData) continue;
+    const key = `${(r.name ?? "").toLowerCase()}::${r.url ?? r.image ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
 function fromJsonLd(html: string): Partial<RawExtract> & { found: boolean } {
-  const node = findAllProductNodes(parseJsonLdBlocks(html))[0];
+  const { standalone, listItems } = partitionProductNodes(parseJsonLdBlocks(html));
+  // Prefer the page's own product; fall back to the first list item.
+  const node = standalone[0] ?? listItems[0];
   if (!node) return { found: false, images: [], sizes: [] };
   return rawFromProductNode(node);
 }
@@ -356,40 +436,36 @@ export function extractProduct(html: string, config?: ParserSiteConfig | null): 
   };
 }
 
+export interface PageProducts {
+  /** Number of standalone (non-list) Product nodes — 1 means a product page. */
+  standaloneCount: number;
+  /** The page's own product(s). */
+  standaloneItems: RawExtract[];
+  /** Products embedded in an ItemList (listing cards / related products). */
+  listItems: RawExtract[];
+}
+
+/**
+ * Analyse a page: separate its own product(s) from any embedded ItemList. The
+ * parse route uses this to choose single-product vs listing mode robustly —
+ * a product page with a "related products" carousel stays single.
+ */
+export function partitionProducts(html: string): PageProducts {
+  const { standalone, listItems } = partitionProductNodes(parseJsonLdBlocks(html));
+  return {
+    standaloneCount: standalone.length,
+    standaloneItems: dedupeRaw(standalone.map(nodeToRaw)),
+    listItems: dedupeRaw(listItems.map(nodeToRaw)),
+  };
+}
+
 /**
  * Extract EVERY product embedded in the page (listing / category pages).
  * Returns one RawExtract per schema.org Product node found. A node is kept only
  * if it carries enough to be a real product card (a name, or a price+image).
  */
 export function extractProductNodes(html: string): RawExtract[] {
-  const nodes = findAllProductNodes(parseJsonLdBlocks(html));
-  const out: RawExtract[] = [];
-  const seen = new Set<string>();
-  for (const node of nodes) {
-    const r = rawFromProductNode(node);
-    const name = r.name ?? "";
-    const hasData = !!name || (!!r.price && !!r.image);
-    if (!hasData) continue;
-    const key = `${name.toLowerCase()}::${r.url ?? r.image ?? ""}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      name: r.name,
-      brand: r.brand,
-      price: r.price,
-      priceOriginal: r.priceOriginal,
-      currency: r.currency,
-      image: r.image,
-      images: r.images ?? [],
-      sizes: [],
-      color: r.color,
-      material: r.material,
-      description: r.description,
-      url: r.url,
-      strategies: ["json-ld"],
-    });
-  }
-  return out;
+  return dedupeRaw(findAllProductNodes(parseJsonLdBlocks(html)).map(nodeToRaw));
 }
 
 /**
