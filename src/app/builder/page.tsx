@@ -1987,11 +1987,14 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          {/* Mobile collage preview */}
-          <div className="shrink-0 bg-[var(--background)]">
+          {/* Mobile collage preview — grows to fill the space the catalog row
+              doesn't need, so the look-assembly canvas is the focus of the
+              screen instead of the empty area that used to sit under the items. */}
+          <div className="flex-1 min-h-0 flex flex-col bg-[var(--background)]">
 
-            {/* Collage canvas */}
-            <div className="relative mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ height: 200 }}>
+            {/* Collage canvas — flexes to take the available height (floored at
+                220px so it never collapses on short viewports). */}
+            <div className="relative flex-1 min-h-0 mx-4 mt-3 mb-2 rounded-xl overflow-hidden" style={{ minHeight: 220 }}>
               {selectedCount === 0 ? (
                 <div className="absolute inset-0 border border-dashed border-[var(--border-strong)] rounded-xl flex flex-col items-center justify-center gap-2">
                   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-[var(--foreground-subtle)]">
@@ -2107,7 +2110,7 @@ export default function BuilderPage() {
             </div>
 
             {/* Total + Clear all */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+            <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</span>
                 <span className={`text-[20px] font-bold leading-none transition-all ${
@@ -2128,8 +2131,10 @@ export default function BuilderPage() {
             </div>
           </div>
 
-          {/* Bottom panel — filters + products */}
-          <div className="flex-1 min-h-0 flex flex-col bg-[var(--background)]">
+          {/* Bottom panel — filters + products. Sized to its content (not
+              flex-1) so the catalog row is only as tall as the cards need,
+              handing the leftover height to the collage canvas above. */}
+          <div className="shrink-0 flex flex-col bg-[var(--background)]">
 
             {/* Filters + category chips in one scrollable row */}
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
@@ -2179,8 +2184,9 @@ export default function BuilderPage() {
               </button>
             </div>
 
-            {/* Horizontal product scroll */}
-            <div ref={mobileScrollRef} className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
+            {/* Horizontal product scroll — fixed height that fits a card
+                (image + brand/name/price), keeping the catalog compact. */}
+            <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none", height: 188 }}>
               {expandedCatalogItems.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
