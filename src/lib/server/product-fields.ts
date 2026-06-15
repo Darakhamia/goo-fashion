@@ -87,7 +87,7 @@ export function parseRetailCategory(raw: string): { category: Category; gender?:
   else if (/\bshirt\b/.test(t))                                        category = "shirts";
   else if (/knitwear|knit|sweater|jumper|cardigan/.test(t))            category = "knitwear";
   else if (/jacket|coat|outerwear|parka|anorak/.test(t))              category = "outerwear";
-  else if (/\bshort\b/.test(t))                                        category = "shorts";
+  else if (/\bshorts?\b/.test(t))                                      category = "shorts";
   else if (/skirt/.test(t))                                            category = "skirts";
   else if (/dress/.test(t))                                            category = "dresses";
   else if (/suit|blazer/.test(t))                                      category = "blazers";
@@ -111,7 +111,7 @@ export function inferCategoryFromName(text: string): Category {
   if (/\bshirt\b/.test(t)) return "shirts";
   if (/\bjeans?\b|denim(?! jacket)/.test(t)) return "jeans";
   if (/trouser|pant|legging|jogger/.test(t)) return "bottoms";
-  if (/\bshort\b/.test(t)) return "shorts";
+  if (/\bshorts?\b/.test(t)) return "shorts";
   if (/skirt/.test(t)) return "skirts";
   if (/dress|gown/.test(t)) return "dresses";
   if (/jumpsuit|overall/.test(t)) return "jumpsuits";
