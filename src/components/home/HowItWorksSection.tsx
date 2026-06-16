@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import FadeInView from "@/components/ui/FadeInView";
+import FloatLoop from "@/components/ui/FloatLoop";
 
 // ── PRODUCT CUTOUTS ──────────────────────────────────────────────────────────
-const HOODIE = "/cs/hoodie-card.png";
+const HOODIE = "/cs/hoodie-card-black.png";
 const JEANS = "/cs/jeans-card.png";
 const SNEAKERS = "/cs/sneakers-card.png";
 const OUTFIT = "/cs/outfit-card.png";
@@ -209,7 +210,9 @@ export default function HowItWorksSection() {
               </div>
 
               <div className="relative mt-10 h-[280px] flex items-end justify-start">
-                {step.scene}
+                <FloatLoop delay={i * 0.7} duration={5 + i * 0.4}>
+                  {step.scene}
+                </FloatLoop>
                 {i < STEPS.length - 1 && <StepArrow />}
               </div>
             </FadeInView>
