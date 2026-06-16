@@ -35,7 +35,7 @@ function Card({
 // Circular outlined connector arrow shown between steps on large screens.
 function StepArrow() {
   return (
-    <div className="hidden lg:flex absolute bottom-[150px] right-0 translate-x-[calc(50%+20px)] z-40 w-9 h-9 items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)]">
+    <div className="hidden lg:flex absolute bottom-[120px] right-0 translate-x-[calc(50%+20px)] z-40 w-9 h-9 items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)]">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
         <path
           d="M1 6.5H11M11 6.5L6.5 2M11 6.5L6.5 11"
@@ -122,20 +122,20 @@ function BoxArt() {
 // 01 — Choose items: cards tucked into a GOO shopping bag, with a saved heart.
 function BagScene() {
   return (
-    <div className="relative w-[200px] h-[240px]">
-      <Card src={HOODIE} alt="Hoodie" className="z-10 left-[20px] bottom-[84px] w-[80px] h-[106px] -rotate-[11deg]" />
-      <Card src={JEANS} alt="Jeans" className="z-10 right-[20px] bottom-[96px] w-[76px] h-[106px] rotate-[9deg]" />
+    <div className="relative w-[220px] h-[250px]">
+      <Card src={HOODIE} alt="Hoodie" className="z-10 left-[38px] bottom-[88px] w-[72px] h-[94px] -rotate-[9deg]" />
+      <Card src={JEANS} alt="Jeans" className="z-10 right-[40px] bottom-[94px] w-[68px] h-[94px] rotate-[8deg]" />
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[176px]">
+      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[208px]">
         <div className="relative">
           <BagArt />
-          <span className="absolute left-[46%] top-[63%] -translate-x-1/2 -translate-y-1/2 text-[15px] font-bold tracking-[0.32em] text-[#ededed] pl-[0.32em] select-none">
+          <span className="absolute left-[46%] top-[66%] -translate-x-1/2 -translate-y-1/2 text-[16px] font-bold tracking-[0.32em] text-[#ededed] pl-[0.32em] select-none">
             GOO
           </span>
         </div>
       </div>
 
-      <div className="absolute z-30 right-[8px] bottom-[176px] w-9 h-9 rounded-full bg-white shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5)] ring-1 ring-black/5 flex items-center justify-center">
+      <div className="absolute z-30 right-[26px] bottom-[164px] w-9 h-9 rounded-full bg-white shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5)] ring-1 ring-black/5 flex items-center justify-center">
         <Heart size={15} className="text-[#111]" fill="#111" />
       </div>
     </div>
@@ -171,12 +171,12 @@ function PreviewScene() {
 // 04 — Shop the look: cards standing in an open box with a cart mark.
 function BoxScene() {
   return (
-    <div className="relative w-[210px] h-[240px]">
-      <Card src={JEANS} alt="Jeans" className="z-10 left-[28px] bottom-[58px] w-[70px] h-[98px] -rotate-[8deg]" />
-      <Card src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[64px] w-[78px] h-[92px] rotate-[5deg]" />
-      <Card src={HOODIE} alt="Hoodie" className="z-10 right-[28px] bottom-[62px] w-[66px] h-[96px] rotate-[12deg]" />
+    <div className="relative w-[240px] h-[250px]">
+      <Card src={JEANS} alt="Jeans" className="z-10 left-[62px] bottom-[70px] w-[60px] h-[86px] -rotate-[7deg]" />
+      <Card src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[76px] w-[66px] h-[80px] rotate-[4deg]" />
+      <Card src={HOODIE} alt="Hoodie" className="z-10 right-[56px] bottom-[72px] w-[58px] h-[84px] rotate-[9deg]" />
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[206px]">
+      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[238px]">
         <div className="relative">
           <BoxArt />
           <div className="absolute left-1/2 top-[72%] -translate-x-1/2 -translate-y-1/2 text-white">
