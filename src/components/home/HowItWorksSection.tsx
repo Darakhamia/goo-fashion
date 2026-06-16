@@ -79,37 +79,29 @@ function StepArrow() {
   );
 }
 
-// ── SVG ART (flat matte, no gradients) ───────────────────────────────────────
+// ── SHOPPING-CART ICON ───────────────────────────────────────────────────────
 
-// Open gift box — back half: opened lid + inner wall + tissue.
-function BoxBackArt() {
+// White line-art shopping cart, printed on the front face of the box.
+function CartMark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 270 196" className="w-full h-auto block">
-      <path d="M70 116 L82 14 L212 14 L200 116 Z" fill="#121212" />
-      <path d="M82 14 L212 14 L208 26 L86 26 Z" fill="#1d1d1d" />
-      <path d="M56 120 L214 120 L200 138 L70 138 Z" fill="#0c0c0c" />
-      <path d="M74 126 L130 122 L165 130 L205 124 L202 140 L74 142 Z" fill="#181818" />
+    <svg
+      viewBox="0 0 33 33"
+      width="48"
+      height="48"
+      className={`text-white ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 1.5 H6.5 L11 23 H27.5 L31.5 7 H8.5" />
+      <circle cx="13.5" cy="29" r="2.6" />
+      <circle cx="25" cy="29" r="2.6" />
     </svg>
   );
 }
 
-// Open gift box — front half: base, tissue lip and cart mark.
-function BoxFrontArt() {
-  return (
-    <svg viewBox="0 0 270 116" className="w-full h-auto block">
-      <ellipse cx="135" cy="110" rx="104" ry="7" fill="#000000" opacity="0.55" />
-      <path d="M52 6 L66 24 L66 92 L46 84 Z" fill="#0e0e0e" />
-      <path d="M66 24 L218 24 L218 92 L66 92 Z" fill="#171717" />
-      <path d="M218 24 L232 10 L232 78 L218 92 Z" fill="#0b0b0b" />
-      <path d="M66 24 L130 20 L165 26 L218 22 L218 32 L66 34 Z" fill="#1c1c1c" />
-      <g stroke="#e8e8e8" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(126,50)">
-        <path d="M0 0 L6 0 L11 22 L27 22 L31 6 L9 6" />
-        <circle cx="13" cy="28" r="2.6" />
-        <circle cx="25" cy="28" r="2.6" />
-      </g>
-    </svg>
-  );
-}
 
 // ── SCENES ───────────────────────────────────────────────────────────────────
 
@@ -156,25 +148,25 @@ function PreviewScene() {
   );
 }
 
-// 04 — cards standing inside an open gift box. The whole composition is scaled
-// uniformly to fit the reference frame and centered on the same baseline.
+// 04 — three product cards standing inside an open matte-black box, with a cart
+// mark on the front face. Recreates the reference packshot one-to-one.
 function ShopScene() {
   return (
     <div className="relative w-[210px] h-[280px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom scale-[0.808]">
-        <div className="relative w-[260px] h-[300px]">
-          <div className="absolute z-0 bottom-[53px] left-1/2 -translate-x-1/2 w-[252px]">
-            <BoxBackArt />
-          </div>
+      {/* Raised back wall / opened lid, sitting behind the cards. */}
+      <div className="absolute z-0 left-1/2 -translate-x-1/2 top-[24px] w-[150px] h-[152px] rounded-t-[7px] bg-[#0d0d0d]">
+        <div className="absolute inset-x-0 top-0 h-[11px] rounded-t-[7px] bg-[#191919]" />
+      </div>
 
-          <PCard src={JEANS} alt="Jeans" className="z-10 left-[45px] bottom-[74px] w-[54px] h-[156px] -rotate-[4deg]" pad="p-1.5" />
-          <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[78px] w-[60px] h-[108px] rotate-[3deg]" pad="p-1.5" />
-          <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[50px] bottom-[76px] w-[52px] h-[150px] rotate-[4deg]" pad="p-1.5" />
+      {/* Product cards standing upright in the box (bottoms tucked behind front). */}
+      <PCard src={JEANS} alt="Jeans" radius="rounded-[10px]" pad="p-2" className="z-20 left-[24px] top-[58px] w-[66px] h-[152px] -rotate-[3deg]" />
+      <PCard src={HOODIE} alt="Hoodie" radius="rounded-[10px]" pad="p-2" className="z-20 right-[24px] top-[58px] w-[66px] h-[152px] rotate-[3deg]" />
+      <PCard src={SNEAKERS} alt="Sneakers" radius="rounded-[10px]" pad="p-2" className="z-10 left-1/2 -translate-x-1/2 top-[64px] w-[66px] h-[152px]" />
 
-          <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[252px]">
-            <BoxFrontArt />
-          </div>
-        </div>
+      {/* Front face of the box, covering the lower part of the cards. */}
+      <div className="absolute z-30 bottom-0 left-1/2 -translate-x-1/2 w-[198px] h-[118px] rounded-[9px] bg-[#070707] shadow-[0_26px_52px_-18px_rgba(0,0,0,0.9)]">
+        <div className="absolute inset-x-0 top-0 h-px bg-white/[0.08]" />
+        <CartMark className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
       </div>
     </div>
   );
