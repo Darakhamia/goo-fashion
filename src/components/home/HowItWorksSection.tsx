@@ -71,7 +71,7 @@ function HandCursor({ className = "" }: { className?: string }) {
 // Circular connector arrow — small, thin, low opacity.
 function StepArrow() {
   return (
-    <div className="hidden lg:flex absolute bottom-[140px] right-0 translate-x-[calc(50%+24px)] z-40 w-7 h-7 items-center justify-center rounded-full border border-white/12 text-white/35">
+    <div className="hidden lg:flex absolute bottom-[150px] right-0 translate-x-[calc(50%+24px)] z-40 w-7 h-7 items-center justify-center rounded-full border border-white/12 text-white/35">
       <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
         <path d="M1 6.5H11M11 6.5L6.5 2M11 6.5L6.5 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -84,11 +84,11 @@ function StepArrow() {
 // Open gift box — back half: opened lid + inner wall + tissue.
 function BoxBackArt() {
   return (
-    <svg viewBox="0 0 270 180" className="w-full h-auto block">
-      <path d="M70 100 L84 32 L210 32 L196 100 Z" fill="#121212" />
-      <path d="M84 32 L210 32 L206 42 L88 42 Z" fill="#1d1d1d" />
-      <path d="M56 104 L214 104 L200 122 L70 122 Z" fill="#0c0c0c" />
-      <path d="M74 110 L130 106 L165 114 L205 108 L202 124 L74 126 Z" fill="#181818" />
+    <svg viewBox="0 0 270 196" className="w-full h-auto block">
+      <path d="M70 116 L82 14 L212 14 L200 116 Z" fill="#121212" />
+      <path d="M82 14 L212 14 L208 26 L86 26 Z" fill="#1d1d1d" />
+      <path d="M56 120 L214 120 L200 138 L70 138 Z" fill="#0c0c0c" />
+      <path d="M74 126 L130 122 L165 130 L205 124 L202 140 L74 142 Z" fill="#181818" />
     </svg>
   );
 }
@@ -114,53 +114,54 @@ function BoxFrontArt() {
 // ── SCENES ───────────────────────────────────────────────────────────────────
 
 // 01 — one large product card with a wishlist heart and a cursor on it.
+// This card is the size reference for every other step.
 function ChooseScene() {
   return (
-    <div className="relative w-[200px] h-[292px]">
-      <PCard src={HOODIE} alt="Hoodie" pad="p-3.5" className="z-10 left-1/2 -translate-x-1/2 bottom-0 w-[180px] h-[266px]" />
-      <HeartButton className="top-[38px] right-[24px]" />
-      <HandCursor className="top-[62px] right-[14px] -rotate-[18deg]" />
+    <div className="relative w-[226px] h-[306px]">
+      <PCard src={HOODIE} alt="Hoodie" pad="p-4" className="z-10 left-1/2 -translate-x-1/2 bottom-0 w-[224px] h-[300px]" />
+      <HeartButton className="top-[16px] right-[16px]" />
+      <HandCursor className="top-[42px] right-[2px] -rotate-[18deg]" />
     </div>
   );
 }
 
-// 02 — three draggable cards scattered over a faint drop zone; angled cursor.
+// 02 — three draggable cards scattered to fill the same area as Step 01/03.
 function BuildScene() {
   return (
-    <div className="relative w-[214px] h-[280px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[204px] h-[238px] rounded-[20px] border border-dashed border-white/12" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[6px] bottom-[74px] w-[94px] h-[126px] -rotate-[8deg]" />
-      <PCard src={JEANS} alt="Jeans" className="z-10 right-[6px] bottom-[84px] w-[88px] h-[126px] rotate-[6deg]" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-1/2 -translate-x-1/2 bottom-[28px] w-[112px] h-[78px] -rotate-[4deg]" />
-      <HandCursor className="bottom-[20px] right-[38px] rotate-[14deg]" />
+    <div className="relative w-[240px] h-[306px]">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[236px] h-[300px] rounded-[22px] border border-dashed border-white/12" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[4px] bottom-[100px] w-[120px] h-[160px] -rotate-[8deg]" />
+      <PCard src={JEANS} alt="Jeans" className="z-10 right-[4px] bottom-[112px] w-[112px] h-[160px] rotate-[6deg]" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-1/2 -translate-x-1/2 bottom-[20px] w-[140px] h-[96px] -rotate-[4deg]" />
+      <HandCursor className="bottom-[12px] right-[46px] rotate-[14deg]" />
     </div>
   );
 }
 
-// 03 — the hero: AI-generated full-body look on one clean card.
+// 03 — the hero: AI-generated full-body look on one clean card (reference size).
 function PreviewScene() {
   return (
-    <div className="relative w-[200px] h-[300px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[200px] h-[298px] rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
-        <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="220px" className="object-contain p-4" />
+    <div className="relative w-[224px] h-[306px]">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[224px] h-[300px] rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
+        <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="240px" className="object-contain p-4" />
       </div>
     </div>
   );
 }
 
-// 04 — cards standing fully inside an open gift box with a cart mark.
+// 04 — cards standing inside an open gift box, scaled to the reference area.
 function ShopScene() {
   return (
-    <div className="relative w-[258px] h-[284px]">
-      <div className="absolute z-0 bottom-[52px] left-1/2 -translate-x-1/2 w-[254px]">
+    <div className="relative w-[260px] h-[306px]">
+      <div className="absolute z-0 bottom-[53px] left-1/2 -translate-x-1/2 w-[252px]">
         <BoxBackArt />
       </div>
 
-      <PCard src={JEANS} alt="Jeans" className="z-10 left-[54px] bottom-[74px] w-[52px] h-[104px] -rotate-[4deg]" pad="p-1.5" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[78px] w-[58px] h-[84px] rotate-[3deg]" pad="p-1.5" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[54px] bottom-[76px] w-[50px] h-[100px] rotate-[4deg]" pad="p-1.5" />
+      <PCard src={JEANS} alt="Jeans" className="z-10 left-[45px] bottom-[74px] w-[54px] h-[156px] -rotate-[4deg]" pad="p-1.5" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[78px] w-[60px] h-[108px] rotate-[3deg]" pad="p-1.5" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[50px] bottom-[76px] w-[52px] h-[150px] rotate-[4deg]" pad="p-1.5" />
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[254px]">
+      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[252px]">
         <BoxFrontArt />
       </div>
     </div>
@@ -201,7 +202,7 @@ export default function HowItWorksSection() {
                 <p className="mt-2 text-[14px] text-white/50 leading-relaxed max-w-[210px]">{step.body}</p>
               </div>
 
-              <div className="relative mt-10 h-[310px] flex items-end justify-center">
+              <div className="relative mt-10 h-[320px] flex items-end justify-center">
                 {step.scene}
                 {i < STEPS.length - 1 && <StepArrow />}
               </div>
