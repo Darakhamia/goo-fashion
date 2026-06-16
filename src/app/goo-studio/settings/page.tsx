@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface KeyStatus {
   configured: boolean;
@@ -8,23 +8,28 @@ interface KeyStatus {
   maskedKey?: string;
 }
 
+// ── Homepage showcase ────────────────────────────────────────────────────────
+
+type StepKey = "step1" | "step2" | "step3" | "step4";
+type ShowcaseIds = Record<StepKey, string[]>;
+
+interface PickerProduct {
+  id: string;
+  name: string;
+  brand: string;
+  imageUrl: string;
+}
+
+const STEP_META: { key: StepKey; n: string; title: string; hint: string; max: number }[] = [
+  { key: "step1", n: "01", title: "Choose items", hint: "One product — the large reference card.", max: 1 },
+  { key: "step2", n: "02", title: "Build your look", hint: "Up to 3 products scattered in the frame.", max: 3 },
+  { key: "step3", n: "03", title: "Generate preview", hint: "One product shown on the preview card.", max: 1 },
+  { key: "step4", n: "04", title: "Shop the look", hint: "Up to 3 products standing in the box.", max: 3 },
+];
+
+const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: [] };
+
 export default function SettingsPage() {
-  // ── Hero image state (dark) ───────────────────────────────────────────────
-  const [heroUrl, setHeroUrl] = useState<string | null>(null);
-  const [heroIsDefault, setHeroIsDefault] = useState(true);
-  const [heroUploading, setHeroUploading] = useState(false);
-  const [heroError, setHeroError] = useState("");
-  const [heroOk, setHeroOk] = useState(false);
-  const heroInputRef = useRef<HTMLInputElement>(null);
-
-  // ── Hero image state (light) ──────────────────────────────────────────────
-  const [heroLightUrl, setHeroLightUrl] = useState<string | null>(null);
-  const [heroLightIsDefault, setHeroLightIsDefault] = useState(true);
-  const [heroLightUploading, setHeroLightUploading] = useState(false);
-  const [heroLightError, setHeroLightError] = useState("");
-  const [heroLightOk, setHeroLightOk] = useState(false);
-  const heroLightInputRef = useRef<HTMLInputElement>(null);
-
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -44,83 +49,95 @@ export default function SettingsPage() {
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState("");
 
+  // ── Homepage showcase state ───────────────────────────────────────────────
+  const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
+  const [products, setProducts] = useState<PickerProduct[]>([]);
+  const [pickerStep, setPickerStep] = useState<StepKey | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const [showcaseSaving, setShowcaseSaving] = useState(false);
+  const [showcaseOk, setShowcaseOk] = useState(false);
+  const [showcaseError, setShowcaseError] = useState("");
+
   useEffect(() => {
-    loadHero();
+    loadShowcase();
+    loadProducts();
     loadStatus();
   }, []);
 
-  async function loadHero() {
+  // ── Showcase loaders / handlers ───────────────────────────────────────────
+
+  async function loadShowcase() {
     try {
-      const res = await fetch("/api/admin/hero-image");
+      const res = await fetch("/api/admin/homepage-showcase");
       if (!res.ok) return;
       const data = await res.json();
-      setHeroUrl(data.dark.url);
-      setHeroIsDefault(data.dark.isDefault);
-      setHeroLightUrl(data.light.url);
-      setHeroLightIsDefault(data.light.isDefault);
+      setShowcase({
+        step1: Array.isArray(data.step1) ? data.step1 : [],
+        step2: Array.isArray(data.step2) ? data.step2 : [],
+        step3: Array.isArray(data.step3) ? data.step3 : [],
+        step4: Array.isArray(data.step4) ? data.step4 : [],
+      });
     } catch { /* non-fatal */ }
   }
 
-  async function uploadHero(file: File) {
-    setHeroUploading(true);
-    setHeroError("");
-    setHeroOk(false);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("variant", "dark");
+  async function loadProducts() {
     try {
-      const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
+      const res = await fetch("/api/products?raw=true");
+      if (!res.ok) return;
       const data = await res.json();
-      if (!res.ok) { setHeroError(data.error ?? "Upload failed"); return; }
-      setHeroUrl(data.url);
-      setHeroIsDefault(false);
-      setHeroOk(true);
-      setTimeout(() => setHeroOk(false), 3000);
+      if (Array.isArray(data)) {
+        setProducts(
+          data.map((p: { id: string; name: string; brand: string; imageUrl: string }) => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            imageUrl: p.imageUrl,
+          }))
+        );
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  const productById = (id: string) => products.find((p) => p.id === id);
+
+  function toggleItem(step: StepKey, id: string) {
+    setShowcaseOk(false);
+    const meta = STEP_META.find((m) => m.key === step)!;
+    setShowcase((prev) => {
+      const current = prev[step];
+      if (current.includes(id)) {
+        return { ...prev, [step]: current.filter((x) => x !== id) };
+      }
+      // Adding: single-item steps replace; multi-item steps append up to max.
+      const next = meta.max === 1 ? [id] : [...current, id].slice(0, meta.max);
+      return { ...prev, [step]: next };
+    });
+  }
+
+  function removeItem(step: StepKey, id: string) {
+    setShowcaseOk(false);
+    setShowcase((prev) => ({ ...prev, [step]: prev[step].filter((x) => x !== id) }));
+  }
+
+  async function saveShowcase() {
+    setShowcaseSaving(true);
+    setShowcaseError("");
+    setShowcaseOk(false);
+    try {
+      const res = await fetch("/api/admin/homepage-showcase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(showcase),
+      });
+      const json = await res.json();
+      if (!res.ok) { setShowcaseError(json.error ?? "Save failed"); return; }
+      setShowcaseOk(true);
+      setTimeout(() => setShowcaseOk(false), 3000);
     } catch {
-      setHeroError("Network error");
+      setShowcaseError("Network error. Try again.");
     } finally {
-      setHeroUploading(false);
+      setShowcaseSaving(false);
     }
-  }
-
-  async function resetHero() {
-    if (!confirm("Reset dark hero image to default?")) return;
-    try {
-      const res = await fetch("/api/admin/hero-image?variant=dark", { method: "DELETE" });
-      const data = await res.json();
-      if (res.ok) { setHeroUrl(data.url); setHeroIsDefault(true); }
-    } catch { /* non-fatal */ }
-  }
-
-  async function uploadHeroLight(file: File) {
-    setHeroLightUploading(true);
-    setHeroLightError("");
-    setHeroLightOk(false);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("variant", "light");
-    try {
-      const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) { setHeroLightError(data.error ?? "Upload failed"); return; }
-      setHeroLightUrl(data.url);
-      setHeroLightIsDefault(false);
-      setHeroLightOk(true);
-      setTimeout(() => setHeroLightOk(false), 3000);
-    } catch {
-      setHeroLightError("Network error");
-    } finally {
-      setHeroLightUploading(false);
-    }
-  }
-
-  async function resetHeroLight() {
-    if (!confirm("Reset light hero image to default?")) return;
-    try {
-      const res = await fetch("/api/admin/hero-image?variant=light", { method: "DELETE" });
-      const data = await res.json();
-      if (res.ok) { setHeroLightUrl(data.url); setHeroLightIsDefault(true); }
-    } catch { /* non-fatal */ }
   }
 
   // ── Load key status on mount ──────────────────────────────────────────────
@@ -226,146 +243,106 @@ export default function SettingsPage() {
     );
   }
 
+  const pickerMeta = pickerStep ? STEP_META.find((m) => m.key === pickerStep)! : null;
+  const filteredProducts = pickerQuery.trim()
+    ? products.filter((p) =>
+        `${p.name} ${p.brand}`.toLowerCase().includes(pickerQuery.trim().toLowerCase())
+      )
+    : products;
+
   return (
     <div className="max-w-lg">
       <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
         Settings
       </h1>
       <p className="text-xs text-[var(--foreground-muted)] mb-8">
-        Configure API keys and site appearance.
+        Configure the homepage showcase and API keys.
       </p>
 
-      {/* ── Hero Image — Dark theme ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-4">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="2.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.1" />
-              <path d="M1 8.5L4 6L6.5 8L9 6.5L13 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
-              <circle cx="4.5" cy="5" r="1" stroke="currentColor" strokeWidth="1.1" />
-            </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-              Hero Image — Dark theme
-            </p>
-          </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Full-screen background shown when dark mode is active. Recommended: 2000×1400px or larger.
-          </p>
-        </div>
-
-        <div className="px-5 py-4">
-          {heroUrl && (
-            <div className="mb-4 relative overflow-hidden rounded-xl border border-[var(--border)]" style={{ height: 160 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroUrl} alt="Dark hero preview" className="w-full h-full object-cover" />
-              {heroIsDefault && (
-                <span className="absolute top-2 left-2 text-[9px] tracking-[0.14em] uppercase bg-[var(--background)]/80 text-[var(--foreground-subtle)] px-2 py-1">
-                  Default
-                </span>
-              )}
-            </div>
-          )}
-
-          {heroError && <p className="text-[11px] text-red-500 mb-3">{heroError}</p>}
-          {heroOk && <p className="text-[11px] text-green-600 mb-3">Image updated — changes go live on next page load.</p>}
-
-          <input
-            ref={heroInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadHero(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
-
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2">
-          <button
-            onClick={() => heroInputRef.current?.click()}
-            disabled={heroUploading}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            {heroUploading && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
-            {heroUploading ? "Uploading…" : "Upload image"}
-          </button>
-          {!heroIsDefault && (
-            <button
-              onClick={resetHero}
-              className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-            >
-              Reset to default
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Hero Image — Light theme ── */}
+      {/* ── Homepage showcase ── */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="2.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.1" />
-              <path d="M1 8.5L4 6L6.5 8L9 6.5L13 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
-              <circle cx="4.5" cy="5" r="1" stroke="currentColor" strokeWidth="1.1" />
+              <rect x="1.5" y="2" width="11" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M1.5 5H12.5" stroke="currentColor" strokeWidth="1.1" />
             </svg>
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-              Hero Image — Light theme
+              Homepage showcase
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Full-screen background shown when light mode is active. Recommended: 2000×1400px or larger.
+            Pick which products appear in the four “How it works” cards on the homepage.
+            Empty slots fall back to the default artwork.
           </p>
         </div>
 
-        <div className="px-5 py-4">
-          {heroLightUrl && (
-            <div className="mb-4 relative overflow-hidden rounded-xl border border-[var(--border)]" style={{ height: 160 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroLightUrl} alt="Light hero preview" className="w-full h-full object-cover" />
-              {heroLightIsDefault && (
-                <span className="absolute top-2 left-2 text-[9px] tracking-[0.14em] uppercase bg-[var(--background)]/80 text-[var(--foreground-subtle)] px-2 py-1">
-                  Default
-                </span>
-              )}
+        <div className="px-5 py-4 space-y-5">
+          {STEP_META.map((meta) => (
+            <div key={meta.key}>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="font-mono text-[10px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
+                <span className="text-[12px] font-medium text-[var(--foreground)]">{meta.title}</span>
+                <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {showcase[meta.key].map((id) => {
+                  const p = productById(id);
+                  return (
+                    <div
+                      key={id}
+                      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+                      title={p?.name ?? id}
+                    >
+                      {p?.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)] text-center px-1">
+                          missing
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeItem(meta.key, id)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove"
+                      >
+                        <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+                          <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {showcase[meta.key].length < meta.max && (
+                  <button
+                    onClick={() => { setPickerStep(meta.key); setPickerQuery(""); }}
+                    className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
+                    aria-label={`Add product to ${meta.title}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-
-          {heroLightError && <p className="text-[11px] text-red-500 mb-3">{heroLightError}</p>}
-          {heroLightOk && <p className="text-[11px] text-green-600 mb-3">Image updated — changes go live on next page load.</p>}
-
-          <input
-            ref={heroLightInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) uploadHeroLight(file);
-              e.target.value = "";
-            }}
-          />
+          ))}
         </div>
 
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2">
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
           <button
-            onClick={() => heroLightInputRef.current?.click()}
-            disabled={heroLightUploading}
+            onClick={saveShowcase}
+            disabled={showcaseSaving}
             className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
-            {heroLightUploading && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
-            {heroLightUploading ? "Uploading…" : "Upload image"}
+            {showcaseSaving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {showcaseSaving ? "Saving…" : "Save showcase"}
           </button>
-          {!heroLightIsDefault && (
-            <button
-              onClick={resetHeroLight}
-              className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-            >
-              Reset to default
-            </button>
-          )}
+          {showcaseOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
+          {showcaseError && <p className="text-[11px] text-red-500">{showcaseError}</p>}
         </div>
       </div>
 
@@ -619,6 +596,79 @@ alter table settings enable row level security;`}</pre>
           Run this SQL once in the Supabase SQL editor.
         </p>
       </div>
+
+      {/* ── Product picker modal ── */}
+      {pickerStep && pickerMeta && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setPickerStep(null)}>
+          <div
+            className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
+              <div>
+                <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+                  {pickerMeta.n} · {pickerMeta.title}
+                </p>
+                <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
+                  {showcase[pickerStep].length}/{pickerMeta.max} selected · click a product to {pickerMeta.max === 1 ? "choose" : "toggle"}
+                </p>
+              </div>
+              <button
+                onClick={() => setPickerStep(null)}
+                className="ml-auto px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="px-5 py-3 border-b border-[var(--border)]">
+              <input
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                placeholder="Search by name or brand…"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+              />
+            </div>
+
+            <div className="overflow-y-auto p-4">
+              {products.length === 0 ? (
+                <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">No products found.</p>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {filteredProducts.map((p) => {
+                    const selected = showcase[pickerStep].includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => toggleItem(pickerStep, p.id)}
+                        className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
+                          selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
+                        }`}
+                      >
+                        <div className="aspect-square bg-[var(--surface)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                        </div>
+                        {selected && (
+                          <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                            <svg width="9" height="9" viewBox="0 0 11 11" fill="none">
+                              <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
+                        )}
+                        <div className="px-2 py-1.5">
+                          <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
+                          <p className="text-[9px] text-[var(--foreground-subtle)] truncate">{p.brand}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
