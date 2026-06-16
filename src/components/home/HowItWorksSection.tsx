@@ -71,7 +71,7 @@ function HandCursor({ className = "" }: { className?: string }) {
 // Circular connector arrow — small, thin, low opacity.
 function StepArrow() {
   return (
-    <div className="hidden lg:flex absolute bottom-[140px] right-0 translate-x-[calc(50%+24px)] z-40 w-7 h-7 items-center justify-center rounded-full border border-white/12 text-white/35">
+    <div className="hidden lg:flex absolute bottom-[130px] right-0 translate-x-[calc(50%+24px)] z-40 w-7 h-7 items-center justify-center rounded-full border border-white/12 text-white/35">
       <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
         <path d="M1 6.5H11M11 6.5L6.5 2M11 6.5L6.5 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -113,16 +113,17 @@ function BoxFrontArt() {
 
 // ── SCENES ───────────────────────────────────────────────────────────────────
 
-// Shared reference frame — every scene fills exactly this box, centered in its
-// column. Width is tied to the text (description max-w-[210px]); height gives a
-// clean 7:10 vertical product-card proportion.
-//   Reference = Step 01's product card: 210 × 300.
+// Shared reference frame — every scene fills exactly this box. Its width is
+// tied to the text column (description max-w-[210px]), so each block runs from
+// the left edge of the title to the end of the description and no further.
+// All four scenes are left-aligned with the text, never centered.
+//   Reference = Step 01's product card: 210 × 280.
 
 // 01 — one large product card with a wishlist heart and a cursor on it.
 // This card is the size reference for every other step.
 function ChooseScene() {
   return (
-    <div className="relative w-[210px] h-[300px]">
+    <div className="relative w-[210px] h-[280px]">
       <PCard src={HOODIE} alt="Hoodie" pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
       <HeartButton className="top-[14px] right-[14px]" />
       <HandCursor className="top-[38px] right-[6px] -rotate-[18deg]" />
@@ -134,12 +135,12 @@ function ChooseScene() {
 // Cards stay fully inside the reference frame (rotation included, no overflow).
 function BuildScene() {
   return (
-    <div className="relative w-[210px] h-[300px]">
+    <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl border border-dashed border-white/12" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[14px] top-[50px] w-[104px] h-[140px] -rotate-[8deg]" />
-      <PCard src={JEANS} alt="Jeans" className="z-10 left-[95px] top-[50px] w-[94px] h-[140px] rotate-[6deg]" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-[43px] top-[208px] w-[124px] h-[84px] -rotate-[4deg]" />
-      <HandCursor className="top-[250px] right-[36px] rotate-[14deg]" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[14px] top-[42px] w-[104px] h-[140px] -rotate-[8deg]" />
+      <PCard src={JEANS} alt="Jeans" className="z-10 left-[95px] top-[42px] w-[94px] h-[140px] rotate-[6deg]" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-[43px] top-[190px] w-[124px] h-[84px] -rotate-[4deg]" />
+      <HandCursor className="top-[232px] right-[36px] rotate-[14deg]" />
     </div>
   );
 }
@@ -147,7 +148,7 @@ function BuildScene() {
 // 03 — the hero: AI-generated full-body look on one clean card (reference size).
 function PreviewScene() {
   return (
-    <div className="relative w-[210px] h-[300px]">
+    <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
         <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="220px" className="object-contain p-4" />
       </div>
@@ -159,7 +160,7 @@ function PreviewScene() {
 // uniformly to fit the reference frame and centered on the same baseline.
 function ShopScene() {
   return (
-    <div className="relative w-[210px] h-[300px]">
+    <div className="relative w-[210px] h-[280px]">
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom scale-[0.808]">
         <div className="relative w-[260px] h-[300px]">
           <div className="absolute z-0 bottom-[53px] left-1/2 -translate-x-1/2 w-[252px]">
@@ -213,7 +214,7 @@ export default function HowItWorksSection() {
                 <p className="mt-2 text-[14px] text-white/50 leading-relaxed max-w-[210px]">{step.body}</p>
               </div>
 
-              <div className="relative mt-10 h-[300px] flex items-end justify-center">
+              <div className="relative mt-10 h-[280px] flex items-end justify-start">
                 {step.scene}
                 {i < STEPS.length - 1 && <StepArrow />}
               </div>
