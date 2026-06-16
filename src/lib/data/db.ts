@@ -858,3 +858,69 @@ export async function deleteBlogPost(id: string): Promise<boolean> {
   }
   return true;
 }
+
+// ── HOMEPAGE SHOWCASE ("How it works" section) ───────────────────────────────
+// Admins pick which existing products appear in each of the four steps. Stored
+// as a single settings row (key = "homepage_showcase") holding product-id lists.
+
+const SHOWCASE_KEY = "homepage_showcase";
+const SHOWCASE_STEPS = ["step1", "step2", "step3", "step4"] as const;
+export type ShowcaseStep = (typeof SHOWCASE_STEPS)[number];
+export type HomepageShowcaseIds = Record<ShowcaseStep, string[]>;
+
+export interface ShowcaseItem {
+  id: string;
+  name: string;
+  imageUrl: string;
+}
+export type HomepageShowcase = Record<ShowcaseStep, ShowcaseItem[]>;
+
+function emptyShowcaseIds(): HomepageShowcaseIds {
+  return { step1: [], step2: [], step3: [], step4: [] };
+}
+
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+/** Raw product-id lists per step (used by the admin editor). */
+export async function getHomepageShowcaseIds(): Promise<HomepageShowcaseIds> {
+  if (!isSupabaseConfigured || !supabase) return emptyShowcaseIds();
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", SHOWCASE_KEY)
+    .maybeSingle();
+  const raw = (data as { value: string } | null)?.value;
+  if (!raw) return emptyShowcaseIds();
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const out = emptyShowcaseIds();
+    for (const step of SHOWCASE_STEPS) out[step] = asStringArray(parsed[step]);
+    return out;
+  } catch {
+    return emptyShowcaseIds();
+  }
+}
+
+/** Resolved products per step (used by the public homepage). */
+export async function getHomepageShowcase(): Promise<HomepageShowcase> {
+  const ids = await getHomepageShowcaseIds();
+  const wanted = new Set(SHOWCASE_STEPS.flatMap((s) => ids[s]));
+  if (wanted.size === 0) return { step1: [], step2: [], step3: [], step4: [] };
+
+  const all = await getAllProducts(true);
+  const byId = new Map<string, ShowcaseItem>();
+  for (const p of all) {
+    if (wanted.has(p.id)) byId.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
+  }
+  const resolve = (arr: string[]) =>
+    arr.map((id) => byId.get(id)).filter((x): x is ShowcaseItem => Boolean(x));
+
+  return {
+    step1: resolve(ids.step1),
+    step2: resolve(ids.step2),
+    step3: resolve(ids.step3),
+    step4: resolve(ids.step4),
+  };
+}

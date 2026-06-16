@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import FadeInView from "@/components/ui/FadeInView";
 import FloatLoop from "@/components/ui/FloatLoop";
+import type { HomepageShowcase, ShowcaseItem } from "@/lib/data/db";
 
 // ── PRODUCT CUTOUTS ──────────────────────────────────────────────────────────
 const HOODIE = "/cs/hoodie-card-black.png";
@@ -114,10 +115,10 @@ function CartMark({ className = "" }: { className?: string }) {
 
 // 01 — one large product card with a wishlist heart and a cursor on it.
 // This card is the size reference for every other step.
-function ChooseScene() {
+function ChooseScene({ src }: { src: string }) {
   return (
     <div className="relative w-[210px] h-[280px]">
-      <PCard src={HOODIE} alt="Hoodie" pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
+      <PCard src={src} alt="Selected item" pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
       <HeartButton className="top-[14px] right-[14px]" />
       <HandCursor className="top-[38px] right-[6px] -rotate-[18deg]" />
     </div>
@@ -126,24 +127,24 @@ function ChooseScene() {
 
 // 02 — three draggable cards scattered to fill the same area as Step 01/03.
 // Cards stay fully inside the reference frame (rotation included, no overflow).
-function BuildScene() {
+function BuildScene({ srcs }: { srcs: [string, string, string] }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl border border-dashed border-white/12" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[14px] top-[42px] w-[104px] h-[140px] -rotate-[8deg]" />
-      <PCard src={JEANS} alt="Jeans" className="z-10 left-[95px] top-[42px] w-[94px] h-[140px] rotate-[6deg]" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-[43px] top-[190px] w-[124px] h-[84px] -rotate-[4deg]" />
+      <PCard src={srcs[0]} alt="Look item 1" className="z-10 left-[14px] top-[42px] w-[104px] h-[140px] -rotate-[8deg]" />
+      <PCard src={srcs[1]} alt="Look item 2" className="z-10 left-[95px] top-[42px] w-[94px] h-[140px] rotate-[6deg]" />
+      <PCard src={srcs[2]} alt="Look item 3" className="z-20 left-[43px] top-[190px] w-[124px] h-[84px] -rotate-[4deg]" />
       <HandCursor className="top-[232px] right-[36px] rotate-[14deg]" />
     </div>
   );
 }
 
 // 03 — the hero: AI-generated full-body look on one clean card (reference size).
-function PreviewScene() {
+function PreviewScene({ src }: { src: string }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       <div className="absolute inset-0 rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
-        <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="220px" className="object-contain p-4" />
+        <Image src={src} alt="Generated look preview" fill sizes="220px" className="object-contain p-4" />
       </div>
     </div>
   );
@@ -151,7 +152,7 @@ function PreviewScene() {
 
 // 04 — three product cards standing inside an open matte-black box, with a cart
 // mark on the front face. Recreates the reference packshot one-to-one.
-function ShopScene() {
+function ShopScene({ srcs }: { srcs: [string, string, string] }) {
   return (
     <div className="relative w-[210px] h-[280px]">
       {/* Raised back wall / opened lid, sitting behind the cards. */}
@@ -160,9 +161,9 @@ function ShopScene() {
       </div>
 
       {/* Product cards standing upright in the box (bottoms tucked behind front). */}
-      <PCard src={JEANS} alt="Jeans" radius="rounded-[10px]" pad="p-2" className="z-20 left-[24px] top-[58px] w-[66px] h-[152px] -rotate-[3deg]" />
-      <PCard src={HOODIE} alt="Hoodie" radius="rounded-[10px]" pad="p-2" className="z-20 right-[24px] top-[58px] w-[66px] h-[152px] rotate-[3deg]" />
-      <PCard src={SNEAKERS} alt="Sneakers" radius="rounded-[10px]" pad="p-2" className="z-10 left-1/2 -translate-x-1/2 top-[64px] w-[66px] h-[152px]" />
+      <PCard src={srcs[0]} alt="Box item 1" radius="rounded-[10px]" pad="p-2" className="z-20 left-[24px] top-[58px] w-[66px] h-[152px] -rotate-[3deg]" />
+      <PCard src={srcs[1]} alt="Box item 2" radius="rounded-[10px]" pad="p-2" className="z-10 left-1/2 -translate-x-1/2 top-[64px] w-[66px] h-[152px]" />
+      <PCard src={srcs[2]} alt="Box item 3" radius="rounded-[10px]" pad="p-2" className="z-20 right-[24px] top-[58px] w-[66px] h-[152px] rotate-[3deg]" />
 
       {/* Front face of the box, covering the lower part of the cards. */}
       <div className="absolute z-30 bottom-0 left-1/2 -translate-x-1/2 w-[198px] h-[118px] rounded-[9px] bg-[#070707] shadow-[0_26px_52px_-18px_rgba(0,0,0,0.9)]">
@@ -175,16 +176,36 @@ function ShopScene() {
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
 
-const STEPS = [
-  { n: "01", title: "Choose items", body: "Pick your favorite pieces from top brands.", scene: <ChooseScene /> },
-  { n: "02", title: "Build your look", body: "Drag and drop to create the perfect outfit.", scene: <BuildScene /> },
-  { n: "03", title: "Generate preview", body: "See your look come to life with AI visualization.", scene: <PreviewScene /> },
-  { n: "04", title: "Shop the look", body: "Buy each item directly from the original store.", scene: <ShopScene /> },
-];
+// Admin-selected product images flow in here; any unset slot falls back to the
+// default art so the composition always stays complete.
+function buildSteps(showcase?: HomepageShowcase) {
+  const img = (items: ShowcaseItem[] | undefined, i: number) => items?.[i]?.imageUrl;
+
+  const step1: string = img(showcase?.step1, 0) ?? HOODIE;
+  const step2: [string, string, string] = [
+    img(showcase?.step2, 0) ?? HOODIE,
+    img(showcase?.step2, 1) ?? JEANS,
+    img(showcase?.step2, 2) ?? SNEAKERS,
+  ];
+  const step3: string = img(showcase?.step3, 0) ?? OUTFIT;
+  const step4: [string, string, string] = [
+    img(showcase?.step4, 0) ?? JEANS,
+    img(showcase?.step4, 1) ?? SNEAKERS,
+    img(showcase?.step4, 2) ?? HOODIE,
+  ];
+
+  return [
+    { n: "01", title: "Choose items", body: "Pick your favorite pieces from top brands.", scene: <ChooseScene src={step1} /> },
+    { n: "02", title: "Build your look", body: "Drag and drop to create the perfect outfit.", scene: <BuildScene srcs={step2} /> },
+    { n: "03", title: "Generate preview", body: "See your look come to life with AI visualization.", scene: <PreviewScene src={step3} /> },
+    { n: "04", title: "Shop the look", body: "Buy each item directly from the original store.", scene: <ShopScene srcs={step4} /> },
+  ];
+}
 
 // ── SECTION ──────────────────────────────────────────────────────────────────
 
-export default function HowItWorksSection() {
+export default function HowItWorksSection({ showcase }: { showcase?: HomepageShowcase }) {
+  const STEPS = buildSteps(showcase);
   return (
     <section className="py-28 md:py-36 bg-[#050505]">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">

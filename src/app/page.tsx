@@ -8,20 +8,22 @@ import { HeroSection } from "@/components/home/HeroSection";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
 import FeaturesBento from "@/components/home/FeaturesBento";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
-import { getAllOutfits, getFeaturedOutfits } from "@/lib/data/db";
+import { getAllOutfits, getFeaturedOutfits, getHomepageShowcase } from "@/lib/data/db";
 import JsonLd from "@/components/seo/JsonLd";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 
 async function getData() {
-  const [allOutfits, featuredForBento] = await Promise.all([
+  const [allOutfits, featuredForBento, showcase] = await Promise.all([
     getAllOutfits(),
     getFeaturedOutfits(),
+    getHomepageShowcase(),
   ]);
   return {
     allOutfits,
     bentoFeaturedOutfits: featuredForBento,
+    showcase,
   };
 }
 
@@ -74,7 +76,7 @@ function SectionH2({
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { allOutfits, bentoFeaturedOutfits } = await getData();
+  const { allOutfits, bentoFeaturedOutfits, showcase } = await getData();
 
   // Outfit examples: up to 9 so carousel has 3 full pages
   const carouselOutfits = allOutfits.slice(0, 9);
@@ -88,7 +90,7 @@ export default async function HomePage() {
       <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
-      <HowItWorksSection />
+      <HowItWorksSection showcase={showcase} />
 
       {/* ── FEATURES BENTO ── */}
       <Section>
