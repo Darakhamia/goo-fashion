@@ -4,8 +4,8 @@ export const revalidate = 60;
 
 import Link from "next/link";
 import FadeInView from "@/components/ui/FadeInView";
-import { Layers, ScanSearch, ShoppingBag, Sparkles } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
+import HowItWorksSection from "@/components/home/HowItWorksSection";
 import FeaturesBento from "@/components/home/FeaturesBento";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
 import { getAllOutfits, getFeaturedOutfits } from "@/lib/data/db";
@@ -88,72 +88,13 @@ export default async function HomePage() {
       <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
-      <Section soft>
-        <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-          <div>
-            <Kicker>How it works</Kicker>
-            <SectionH2>Four steps to a finished look.</SectionH2>
-          </div>
-          <Link
-            href="/builder"
-            className="text-sm font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
-          >
-            Try the builder →
-          </Link>
-        </FadeInView>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--border)] rounded-3xl overflow-hidden">
-          {[
-            {
-              n: "01", icon: <ShoppingBag size={18} strokeWidth={1.5} />,
-              title: "Choose items",
-              body: "Browse hundreds of premium brands and pick clothes, shoes and accessories.",
-            },
-            {
-              n: "02", icon: <Layers size={18} strokeWidth={1.5} />,
-              title: "Build your look",
-              body: "Drop items into outfit slots and craft combinations that actually work.",
-            },
-            {
-              n: "03", icon: <Sparkles size={18} strokeWidth={1.5} />,
-              title: "Generate a preview",
-              body: "Visualize the full-body look with AI — before you spend a single dollar.",
-            },
-            {
-              n: "04", icon: <ScanSearch size={18} strokeWidth={1.5} />,
-              title: "Shop the products",
-              body: "Open direct links and buy each piece from the original store at the best price.",
-            },
-          ].map((step, i) => (
-            <FadeInView
-              key={step.n}
-              delay={i * 0.08}
-              className="relative bg-[var(--surface)] p-8 flex flex-col gap-6 overflow-hidden group hover:bg-[var(--background)] transition-colors duration-300"
-            >
-              <span className="absolute -right-3 -top-4 text-[120px] font-black tracking-[-0.06em] leading-none text-[var(--border)] select-none pointer-events-none transition-colors duration-300 group-hover:text-[var(--border-strong)]">
-                {step.n}
-              </span>
-              <div className="relative z-10 w-10 h-10 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] group-hover:border-[var(--foreground-muted)] transition-colors duration-300">
-                {step.icon}
-              </div>
-              <div className="relative z-10">
-                <h3 className="text-[16px] font-semibold text-[var(--foreground)] mb-2 leading-snug">
-                  {step.title}
-                </h3>
-                <p className="text-[13px] text-[var(--foreground-muted)] leading-relaxed">
-                  {step.body}
-                </p>
-              </div>
-            </FadeInView>
-          ))}
-        </div>
-      </Section>
+      <HowItWorksSection />
 
       {/* ── FEATURES BENTO ── */}
       <Section>
         <FadeInView>
           <Kicker>Features</Kicker>
-          <SectionH2>Everything you need to create better outfits.</SectionH2>
+          <SectionH2>Real outfits, ready to shop.</SectionH2>
         </FadeInView>
         <FeaturesBento outfits={bentoFeaturedOutfits} />
       </Section>
