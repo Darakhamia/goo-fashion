@@ -185,7 +185,7 @@ const STEPS = [
 
 export default function HowItWorksSection() {
   return (
-    <section className="py-28 md:py-36 bg-[#161616]">
+    <section className="py-28 md:py-36 bg-[#050505]">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">
         <FadeInView className="text-center mb-20 md:mb-28">
           <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
@@ -197,7 +197,9 @@ export default function HowItWorksSection() {
           </p>
         </FadeInView>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-20">
+        {/* Soft gray panel sitting only behind the step cards and their labels. */}
+        <div className="rounded-[28px] bg-[#161616] px-6 py-12 md:px-10 md:py-14">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-20">
           {STEPS.map((step, i) => (
             <FadeInView key={step.n} delay={i * 0.08} className="flex flex-col">
               <div className="lg:min-h-[108px]">
@@ -212,6 +214,7 @@ export default function HowItWorksSection() {
               </div>
             </FadeInView>
           ))}
+          </div>
         </div>
 
         <FadeInView delay={0.1} className="mt-20 md:mt-24 flex justify-center">
