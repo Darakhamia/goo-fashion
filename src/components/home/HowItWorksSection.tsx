@@ -1,188 +1,192 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, ShoppingCart, MousePointer2 } from "lucide-react";
 import FadeInView from "@/components/ui/FadeInView";
 
 // ── PRODUCT CUTOUTS ──────────────────────────────────────────────────────────
-// Transparent PNG cutouts of the catalog hero pieces, shown on white "product
-// cards" so the black garments read clearly against the dark section.
 const HOODIE = "/cs/hoodie-card.png";
 const JEANS = "/cs/jeans-card.png";
 const SNEAKERS = "/cs/sneakers-card.png";
 const OUTFIT = "/cs/outfit-card.png";
 
-// A floating white product card with the garment cutout centered inside.
-function Card({
+// White product card — mirrors the real ProductCard image area (white bg,
+// rounded-xl, object-contain, hairline ring + a single soft shadow).
+function PCard({
   src,
   alt,
   className = "",
-  pad = "p-2",
+  pad = "p-2.5",
+  radius = "rounded-xl",
 }: {
   src: string;
   alt: string;
   className?: string;
   pad?: string;
+  radius?: string;
 }) {
   return (
     <div
-      className={`absolute rounded-[13px] bg-white shadow-[0_16px_36px_-12px_rgba(0,0,0,0.6)] ring-1 ring-black/5 ${className}`}
+      className={`absolute ${radius} bg-white ring-1 ring-black/5 shadow-[0_20px_44px_-18px_rgba(0,0,0,0.75)] ${className}`}
     >
-      <Image src={src} alt={alt} fill sizes="160px" className={`object-contain ${pad}`} />
+      <Image src={src} alt={alt} fill sizes="200px" className={`object-contain ${pad}`} />
     </div>
   );
 }
 
-// Circular outlined connector arrow shown between steps on large screens.
-function StepArrow() {
+// Wishlist button identical to the real card's like button.
+function HeartButton({ className = "" }: { className?: string }) {
   return (
-    <div className="hidden lg:flex absolute bottom-[120px] right-0 translate-x-[calc(50%+20px)] z-40 w-9 h-9 items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)]">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <div
+      className={`absolute z-30 w-8 h-8 rounded-full bg-black/85 backdrop-blur-sm flex items-center justify-center ${className}`}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-white">
         <path
-          d="M1 6.5H11M11 6.5L6.5 2M11 6.5L6.5 11"
+          d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
           stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeWidth="1.3"
+          fill="none"
         />
       </svg>
     </div>
   );
 }
 
-// ── SVG ART ──────────────────────────────────────────────────────────────────
+// White pointing-hand cursor.
+function HandCursor({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="26"
+      className={`absolute z-30 drop-shadow-[0_3px_5px_rgba(0,0,0,0.6)] ${className}`}
+    >
+      <path
+        fill="#fff"
+        stroke="#0a0a0a"
+        strokeWidth="1"
+        d="M9 2.6c-.8 0-1.4.6-1.4 1.4v6l-1-1c-.6-.6-1.5-.6-2.1 0-.6.6-.6 1.4 0 2l3.4 4.1c.8 1 2 1.6 3.4 1.6h2.6c2.1 0 3.8-1.7 3.8-3.8V9.9c0-.8-.6-1.4-1.4-1.4-.3 0-.5.1-.8.2-.2-.6-.7-1-1.4-1-.3 0-.6.1-.8.2-.2-.5-.7-.9-1.4-.9-.3 0-.5.1-.7.2V4c0-.8-.6-1.4-1.5-1.4z"
+      />
+    </svg>
+  );
+}
 
-// Matte-black paper shopping bag with rope handles (GOO printed separately).
+// Circular connector arrow — small, thin, low opacity.
+function StepArrow() {
+  return (
+    <div className="hidden lg:flex absolute bottom-[132px] right-0 translate-x-[calc(50%+24px)] z-40 w-7 h-7 items-center justify-center rounded-full border border-white/12 text-white/35">
+      <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
+        <path d="M1 6.5H11M11 6.5L6.5 2M11 6.5L6.5 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+// ── SVG ART (flat matte, no gradients) ───────────────────────────────────────
+
+// Rigid matte-black paper shopping bag with thin handles (GOO overlaid).
 function BagArt() {
   return (
-    <svg viewBox="0 0 200 210" className="w-full h-auto block">
-      <defs>
-        <linearGradient id="bagFront" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#242424" />
-          <stop offset="0.45" stopColor="#171717" />
-          <stop offset="1" stopColor="#0d0d0d" />
-        </linearGradient>
-        <linearGradient id="bagSide" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#0b0b0b" />
-          <stop offset="1" stopColor="#040404" />
-        </linearGradient>
-        <linearGradient id="bagRim" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3a3a3a" />
-          <stop offset="1" stopColor="#101010" />
-        </linearGradient>
-      </defs>
-      <path d="M58 72 C54 34 96 34 95 70" fill="none" stroke="#7c7c78" strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M105 70 C104 34 146 34 142 72" fill="none" stroke="#5f5f5c" strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M150 70 L172 80 L172 198 L150 190 Z" fill="url(#bagSide)" />
-      <path d="M34 70 L150 70 L150 190 L34 198 Z" fill="url(#bagFront)" />
-      <path d="M34 70 L150 70 L172 80 L150 78 L34 78 Z" fill="url(#bagRim)" />
-      <path d="M34 78 L150 78" stroke="#2c2c2c" strokeWidth="1" />
-      <path d="M34 78 L150 78 L150 86 L34 86 Z" fill="#000" opacity="0.55" />
+    <svg viewBox="0 0 190 200" className="w-full h-auto block">
+      <ellipse cx="88" cy="193" rx="62" ry="6" fill="#000000" opacity="0.55" />
+      <path d="M58 66 C56 38 86 38 86 64" fill="none" stroke="#4a4a4a" strokeWidth="2" />
+      <path d="M92 64 C92 38 122 38 120 66" fill="none" stroke="#3d3d3d" strokeWidth="2" />
+      <path d="M150 62 L170 72 L170 182 L150 174 Z" fill="#0d0d0d" />
+      <path d="M18 62 L150 62 L150 174 L18 182 Z" fill="#161616" />
+      <path d="M18 62 L150 62 L170 72 L150 70 L18 70 Z" fill="#1f1f1f" />
+      <path d="M18 70 L150 70 L150 76 L18 76 Z" fill="#000000" opacity="0.5" />
     </svg>
   );
 }
 
-// Matte-black open shipping box with splayed flaps (cart icon overlaid).
-function BoxArt() {
+// Open magnetic gift box — back half: opened lid + inner wall + tissue.
+function BoxBackArt() {
   return (
-    <svg viewBox="0 0 240 200" className="w-full h-auto block">
-      <defs>
-        <linearGradient id="boxFront" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#222" />
-          <stop offset="1" stopColor="#0c0c0c" />
-        </linearGradient>
-        <linearGradient id="boxLeft" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#171717" />
-          <stop offset="1" stopColor="#090909" />
-        </linearGradient>
-        <linearGradient id="boxFlap" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1d1d1d" />
-          <stop offset="1" stopColor="#0f0f0f" />
-        </linearGradient>
-        <linearGradient id="boxFlapIn" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#272727" />
-          <stop offset="1" stopColor="#151515" />
-        </linearGradient>
-      </defs>
-      <path d="M74 100 L166 100 L158 58 L82 58 Z" fill="url(#boxFlapIn)" stroke="#2c2c2c" strokeWidth="1" strokeLinejoin="round" />
-      <path d="M74 100 L36 84 L20 104 L60 118 Z" fill="url(#boxFlap)" stroke="#2a2a2a" strokeWidth="1" strokeLinejoin="round" />
-      <path d="M166 100 L204 84 L220 104 L180 118 Z" fill="url(#boxFlap)" stroke="#2a2a2a" strokeWidth="1" strokeLinejoin="round" />
-      <path d="M58 104 L182 104 L174 122 L66 122 Z" fill="#040404" />
-      <path d="M58 108 L58 180 L46 188 L46 116 Z" fill="url(#boxLeft)" />
-      <path d="M58 108 L182 108 L182 180 L58 180 Z" fill="url(#boxFront)" />
-      <rect x="57" y="107" width="126" height="74" rx="7" fill="none" stroke="#2f2f2f" strokeWidth="1.2" />
-      <path d="M58 108 L182 108 L176 100 L64 100 Z" fill="url(#boxFlapIn)" stroke="#2c2c2c" strokeWidth="0.8" />
+    <svg viewBox="0 0 250 175" className="w-full h-auto block">
+      <path d="M58 92 L70 30 L196 30 L184 92 Z" fill="#121212" />
+      <path d="M70 30 L196 30 L192 40 L74 40 Z" fill="#1d1d1d" />
+      <path d="M52 96 L198 96 L186 112 L64 112 Z" fill="#0c0c0c" />
+      <path d="M70 104 L120 100 L150 108 L185 102 L182 116 L70 118 Z" fill="#181818" />
     </svg>
   );
 }
 
-// ── ILLUSTRATIONS ────────────────────────────────────────────────────────────
-// Each scene is bottom-aligned inside the step's stage so it never collides
-// with the heading text above it.
-
-// 01 — Choose items: cards tucked into a GOO shopping bag, with a saved heart.
-function BagScene() {
+// Open magnetic gift box — front half: base, tissue lip and cart mark.
+function BoxFrontArt() {
   return (
-    <div className="relative w-[220px] h-[250px]">
-      <Card src={HOODIE} alt="Hoodie" className="z-10 left-[38px] bottom-[88px] w-[72px] h-[94px] -rotate-[9deg]" />
-      <Card src={JEANS} alt="Jeans" className="z-10 right-[40px] bottom-[94px] w-[68px] h-[94px] rotate-[8deg]" />
+    <svg viewBox="0 0 250 110" className="w-full h-auto block">
+      <ellipse cx="125" cy="104" rx="92" ry="7" fill="#000000" opacity="0.55" />
+      <path d="M52 4 L64 20 L64 86 L46 78 Z" fill="#0e0e0e" />
+      <path d="M64 20 L198 20 L198 86 L64 86 Z" fill="#171717" />
+      <path d="M198 20 L210 8 L210 74 L198 86 Z" fill="#0b0b0b" />
+      <path d="M64 20 L120 16 L150 22 L198 18 L198 28 L64 30 Z" fill="#1c1c1c" />
+      <g stroke="#e8e8e8" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(112,46)">
+        <path d="M0 0 L6 0 L11 22 L27 22 L31 6 L9 6" />
+        <circle cx="13" cy="28" r="2.6" />
+        <circle cx="25" cy="28" r="2.6" />
+      </g>
+    </svg>
+  );
+}
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[208px]">
+// ── SCENES ───────────────────────────────────────────────────────────────────
+
+// 01 — one product card lifted out of a GOO bag; cursor heading to the heart.
+function ChooseScene() {
+  return (
+    <div className="relative w-[230px] h-[286px]">
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-1/2 -translate-x-1/2 bottom-[80px] w-[122px] h-[164px]" />
+      <HeartButton className="top-[36px] right-[44px]" />
+      <HandCursor className="top-[58px] right-[30px]" />
+
+      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[186px]">
         <div className="relative">
           <BagArt />
-          <span className="absolute left-[46%] top-[66%] -translate-x-1/2 -translate-y-1/2 text-[16px] font-bold tracking-[0.32em] text-[#ededed] pl-[0.32em] select-none">
+          <span className="absolute left-[44%] top-[60%] -translate-x-1/2 -translate-y-1/2 text-[15px] font-bold tracking-[0.34em] text-[#ededed] pl-[0.34em] select-none">
             GOO
           </span>
         </div>
       </div>
-
-      <div className="absolute z-30 right-[26px] bottom-[164px] w-9 h-9 rounded-full bg-white shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5)] ring-1 ring-black/5 flex items-center justify-center">
-        <Heart size={15} className="text-[#111]" fill="#111" />
-      </div>
     </div>
   );
 }
 
-// 02 — Build your look: fanned cards inside a dashed drop zone with a cursor.
-function DropZoneScene() {
+// 02 — three draggable cards scattered over a faint drop zone.
+function BuildScene() {
   return (
-    <div className="relative w-[208px] h-[240px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[200px] h-[228px] rounded-[20px] border-2 border-dashed border-[var(--border-strong)]" />
-      <Card src={HOODIE} alt="Hoodie" className="z-10 left-[14px] bottom-[78px] w-[94px] h-[122px] -rotate-[9deg]" />
-      <Card src={JEANS} alt="Jeans" className="z-10 right-[14px] bottom-[88px] w-[88px] h-[122px] rotate-[11deg]" />
-      <Card src={SNEAKERS} alt="Sneakers" className="z-20 left-1/2 -translate-x-1/2 bottom-[34px] w-[120px] h-[80px] -rotate-[3deg]" />
-      <div className="absolute z-30 right-[24px] bottom-[20px] text-[#111] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
-        <MousePointer2 size={26} className="fill-white" />
-      </div>
+    <div className="relative w-[214px] h-[270px]">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[204px] h-[236px] rounded-[20px] border border-dashed border-white/12" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[6px] bottom-[70px] w-[94px] h-[126px] -rotate-[8deg]" />
+      <PCard src={JEANS} alt="Jeans" className="z-10 right-[6px] bottom-[80px] w-[88px] h-[126px] rotate-[6deg]" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-1/2 -translate-x-1/2 bottom-[26px] w-[112px] h-[78px] -rotate-[4deg]" />
+      <HandCursor className="bottom-[18px] right-[40px] rotate-[8deg]" />
     </div>
   );
 }
 
-// 03 — Generate preview: the assembled full-body look on a single card.
+// 03 — the hero: AI-generated full-body look on one clean card.
 function PreviewScene() {
   return (
-    <div className="relative w-[180px] h-[280px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[180px] h-[278px] rounded-[18px] bg-white shadow-[0_24px_50px_-16px_rgba(0,0,0,0.7)] ring-1 ring-black/5">
-        <Image src={OUTFIT} alt="Generated full-body look" fill sizes="180px" className="object-contain p-3.5" />
+    <div className="relative w-[188px] h-[286px]">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[188px] h-[284px] rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
+        <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="200px" className="object-contain p-4" />
       </div>
     </div>
   );
 }
 
-// 04 — Shop the look: cards standing in an open box with a cart mark.
-function BoxScene() {
+// 04 — cards standing inside an open magnetic gift box with a cart mark.
+function ShopScene() {
   return (
-    <div className="relative w-[240px] h-[250px]">
-      <Card src={JEANS} alt="Jeans" className="z-10 left-[62px] bottom-[70px] w-[60px] h-[86px] -rotate-[7deg]" />
-      <Card src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[76px] w-[66px] h-[80px] rotate-[4deg]" />
-      <Card src={HOODIE} alt="Hoodie" className="z-10 right-[56px] bottom-[72px] w-[58px] h-[84px] rotate-[9deg]" />
+    <div className="relative w-[244px] h-[270px]">
+      <div className="absolute z-0 bottom-[52px] left-1/2 -translate-x-1/2 w-[240px]">
+        <BoxBackArt />
+      </div>
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[238px]">
-        <div className="relative">
-          <BoxArt />
-          <div className="absolute left-1/2 top-[72%] -translate-x-1/2 -translate-y-1/2 text-white">
-            <ShoppingCart size={24} strokeWidth={1.7} />
-          </div>
-        </div>
+      <PCard src={JEANS} alt="Jeans" className="z-10 left-[58px] bottom-[44px] w-[56px] h-[116px] -rotate-[6deg]" pad="p-1.5" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[48px] w-[64px] h-[92px] rotate-[3deg]" pad="p-1.5" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[58px] bottom-[46px] w-[54px] h-[112px] rotate-[7deg]" pad="p-1.5" />
+
+      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[240px]">
+        <BoxFrontArt />
       </div>
     </div>
   );
@@ -191,42 +195,38 @@ function BoxScene() {
 // ── STEPS ────────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { n: "01", title: "Choose items", body: "Pick your favorite pieces from top brands.", scene: <BagScene /> },
-  { n: "02", title: "Build your look", body: "Drag and drop to create the perfect outfit.", scene: <DropZoneScene /> },
+  { n: "01", title: "Choose items", body: "Pick your favorite pieces from top brands.", scene: <ChooseScene /> },
+  { n: "02", title: "Build your look", body: "Drag and drop to create the perfect outfit.", scene: <BuildScene /> },
   { n: "03", title: "Generate preview", body: "See your look come to life with AI visualization.", scene: <PreviewScene /> },
-  { n: "04", title: "Shop the look", body: "Buy each item directly from the original store.", scene: <BoxScene /> },
+  { n: "04", title: "Shop the look", body: "Buy each item directly from the original store.", scene: <ShopScene /> },
 ];
 
 // ── SECTION ──────────────────────────────────────────────────────────────────
 
 export default function HowItWorksSection() {
   return (
-    <section className="py-24 md:py-32 bg-[var(--background)]">
+    <section className="py-28 md:py-36 bg-[#050505]">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-        <FadeInView className="text-center mb-16 md:mb-20">
-          <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-[var(--foreground)]">
+        <FadeInView className="text-center mb-20 md:mb-28">
+          <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
             Everything you need
             <br className="hidden sm:block" /> to create better outfits.
           </h2>
-          <p className="mt-5 text-lg md:text-xl text-[var(--foreground-muted)]">
+          <p className="mt-5 text-lg md:text-xl text-white/45">
             Visualize. Get inspired. Shop the look.
           </p>
         </FadeInView>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-20">
           {STEPS.map((step, i) => (
             <FadeInView key={step.n} delay={i * 0.08} className="flex flex-col">
-              <div className="lg:min-h-[112px]">
-                <span className="text-[13px] text-[var(--foreground-subtle)] tabular-nums">{step.n}</span>
-                <h3 className="mt-2 text-[19px] font-semibold text-[var(--foreground)] leading-snug">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-[14px] text-[var(--foreground-muted)] leading-relaxed max-w-[220px]">
-                  {step.body}
-                </p>
+              <div className="lg:min-h-[108px]">
+                <span className="text-[13px] text-white/40 tabular-nums">{step.n}</span>
+                <h3 className="mt-2 text-[19px] font-semibold text-white leading-snug">{step.title}</h3>
+                <p className="mt-2 text-[14px] text-white/50 leading-relaxed max-w-[210px]">{step.body}</p>
               </div>
 
-              <div className="relative mt-8 h-[290px] flex items-end justify-center">
+              <div className="relative mt-10 h-[300px] flex items-end justify-center">
                 {step.scene}
                 {i < STEPS.length - 1 && <StepArrow />}
               </div>
@@ -234,10 +234,10 @@ export default function HowItWorksSection() {
           ))}
         </div>
 
-        <FadeInView delay={0.1} className="mt-16 md:mt-20 flex justify-center">
+        <FadeInView delay={0.1} className="mt-20 md:mt-24 flex justify-center">
           <Link
             href="/builder"
-            className="group inline-flex items-center gap-3 text-[15px] font-semibold text-[var(--foreground)] border-b border-[var(--border-strong)] pb-1.5 hover:gap-4 transition-all duration-300"
+            className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-all duration-300"
           >
             Try the builder
             <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
