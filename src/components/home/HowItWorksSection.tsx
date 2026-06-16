@@ -185,7 +185,7 @@ const STEPS = [
 
 export default function HowItWorksSection() {
   return (
-    <section className="py-28 md:py-36 bg-[#050505]">
+    <section className="py-28 md:py-36 bg-[#161616]">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">
         <FadeInView className="text-center mb-20 md:mb-28">
           <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
