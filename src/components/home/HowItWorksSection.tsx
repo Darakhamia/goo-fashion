@@ -113,27 +113,32 @@ function BoxFrontArt() {
 
 // ── SCENES ───────────────────────────────────────────────────────────────────
 
+// Shared reference frame — every scene fills exactly this box so all four
+// blocks occupy an identical visual area and stay perfectly centered.
+//   Reference = Step 01's product card: 224 × 300.
+
 // 01 — one large product card with a wishlist heart and a cursor on it.
 // This card is the size reference for every other step.
 function ChooseScene() {
   return (
-    <div className="relative w-[226px] h-[306px]">
-      <PCard src={HOODIE} alt="Hoodie" pad="p-4" className="z-10 left-1/2 -translate-x-1/2 bottom-0 w-[224px] h-[300px]" />
+    <div className="relative w-[224px] h-[300px]">
+      <PCard src={HOODIE} alt="Hoodie" pad="p-4" radius="rounded-2xl" className="z-10 inset-0" />
       <HeartButton className="top-[16px] right-[16px]" />
-      <HandCursor className="top-[42px] right-[2px] -rotate-[18deg]" />
+      <HandCursor className="top-[42px] right-[6px] -rotate-[18deg]" />
     </div>
   );
 }
 
 // 02 — three draggable cards scattered to fill the same area as Step 01/03.
+// Cards stay fully inside the reference frame (rotation included, no overflow).
 function BuildScene() {
   return (
-    <div className="relative w-[240px] h-[306px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[236px] h-[300px] rounded-[22px] border border-dashed border-white/12" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[4px] bottom-[100px] w-[120px] h-[160px] -rotate-[8deg]" />
-      <PCard src={JEANS} alt="Jeans" className="z-10 right-[4px] bottom-[112px] w-[112px] h-[160px] rotate-[6deg]" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-1/2 -translate-x-1/2 bottom-[20px] w-[140px] h-[96px] -rotate-[4deg]" />
-      <HandCursor className="bottom-[12px] right-[46px] rotate-[14deg]" />
+    <div className="relative w-[224px] h-[300px]">
+      <div className="absolute inset-0 rounded-2xl border border-dashed border-white/12" />
+      <PCard src={HOODIE} alt="Hoodie" className="z-10 left-[15px] top-[46px] w-[110px] h-[148px] -rotate-[8deg]" />
+      <PCard src={JEANS} alt="Jeans" className="z-10 left-[100px] top-[45px] w-[100px] h-[150px] rotate-[6deg]" />
+      <PCard src={SNEAKERS} alt="Sneakers" className="z-20 left-[46px] top-[205px] w-[132px] h-[90px] -rotate-[4deg]" />
+      <HandCursor className="top-[250px] right-[40px] rotate-[14deg]" />
     </div>
   );
 }
@@ -141,28 +146,33 @@ function BuildScene() {
 // 03 — the hero: AI-generated full-body look on one clean card (reference size).
 function PreviewScene() {
   return (
-    <div className="relative w-[224px] h-[306px]">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[224px] h-[300px] rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
+    <div className="relative w-[224px] h-[300px]">
+      <div className="absolute inset-0 rounded-2xl bg-white shadow-[0_28px_56px_-20px_rgba(0,0,0,0.8)] ring-1 ring-black/5">
         <Image src={OUTFIT} alt="AI-generated full-body look" fill sizes="240px" className="object-contain p-4" />
       </div>
     </div>
   );
 }
 
-// 04 — cards standing inside an open gift box, scaled to the reference area.
+// 04 — cards standing inside an open gift box. The whole composition is scaled
+// uniformly to fit the reference frame and centered on the same baseline.
 function ShopScene() {
   return (
-    <div className="relative w-[260px] h-[306px]">
-      <div className="absolute z-0 bottom-[53px] left-1/2 -translate-x-1/2 w-[252px]">
-        <BoxBackArt />
-      </div>
+    <div className="relative w-[224px] h-[300px]">
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom scale-[0.862]">
+        <div className="relative w-[260px] h-[300px]">
+          <div className="absolute z-0 bottom-[53px] left-1/2 -translate-x-1/2 w-[252px]">
+            <BoxBackArt />
+          </div>
 
-      <PCard src={JEANS} alt="Jeans" className="z-10 left-[45px] bottom-[74px] w-[54px] h-[156px] -rotate-[4deg]" pad="p-1.5" />
-      <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[78px] w-[60px] h-[108px] rotate-[3deg]" pad="p-1.5" />
-      <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[50px] bottom-[76px] w-[52px] h-[150px] rotate-[4deg]" pad="p-1.5" />
+          <PCard src={JEANS} alt="Jeans" className="z-10 left-[45px] bottom-[74px] w-[54px] h-[156px] -rotate-[4deg]" pad="p-1.5" />
+          <PCard src={SNEAKERS} alt="Sneakers" className="z-10 left-1/2 -translate-x-1/2 bottom-[78px] w-[60px] h-[108px] rotate-[3deg]" pad="p-1.5" />
+          <PCard src={HOODIE} alt="Hoodie" className="z-10 right-[50px] bottom-[76px] w-[52px] h-[150px] rotate-[4deg]" pad="p-1.5" />
 
-      <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[252px]">
-        <BoxFrontArt />
+          <div className="absolute z-20 bottom-0 left-1/2 -translate-x-1/2 w-[252px]">
+            <BoxFrontArt />
+          </div>
+        </div>
       </div>
     </div>
   );
