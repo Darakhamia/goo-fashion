@@ -903,24 +903,44 @@ export async function getHomepageShowcaseIds(): Promise<HomepageShowcaseIds> {
   }
 }
 
-/** Resolved products per step (used by the public homepage). */
+/**
+ * Resolved items per step (used by the public homepage). Steps 1/2/4 reference
+ * individual products; step 3 ("Generate preview") references a generated
+ * outfit/look and uses its preview image.
+ */
 export async function getHomepageShowcase(): Promise<HomepageShowcase> {
   const ids = await getHomepageShowcaseIds();
-  const wanted = new Set(SHOWCASE_STEPS.flatMap((s) => ids[s]));
-  if (wanted.size === 0) return { step1: [], step2: [], step3: [], step4: [] };
-
-  const all = await getAllProducts(true);
-  const byId = new Map<string, ShowcaseItem>();
-  for (const p of all) {
-    if (wanted.has(p.id)) byId.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
+  const productWanted = new Set([...ids.step1, ...ids.step2, ...ids.step4]);
+  const outfitWanted = new Set(ids.step3);
+  if (productWanted.size === 0 && outfitWanted.size === 0) {
+    return { step1: [], step2: [], step3: [], step4: [] };
   }
-  const resolve = (arr: string[]) =>
-    arr.map((id) => byId.get(id)).filter((x): x is ShowcaseItem => Boolean(x));
+
+  const productById = new Map<string, ShowcaseItem>();
+  if (productWanted.size > 0) {
+    const all = await getAllProducts(true);
+    for (const p of all) {
+      if (productWanted.has(p.id)) productById.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
+    }
+  }
+
+  const outfitById = new Map<string, ShowcaseItem>();
+  if (outfitWanted.size > 0) {
+    const all = await getAllOutfits();
+    for (const o of all) {
+      if (outfitWanted.has(o.id)) outfitById.set(o.id, { id: o.id, name: o.name, imageUrl: o.imageUrl });
+    }
+  }
+
+  const fromProducts = (arr: string[]) =>
+    arr.map((id) => productById.get(id)).filter((x): x is ShowcaseItem => Boolean(x));
+  const fromOutfits = (arr: string[]) =>
+    arr.map((id) => outfitById.get(id)).filter((x): x is ShowcaseItem => Boolean(x));
 
   return {
-    step1: resolve(ids.step1),
-    step2: resolve(ids.step2),
-    step3: resolve(ids.step3),
-    step4: resolve(ids.step4),
+    step1: fromProducts(ids.step1),
+    step2: fromProducts(ids.step2),
+    step3: fromOutfits(ids.step3),
+    step4: fromProducts(ids.step4),
   };
 }
