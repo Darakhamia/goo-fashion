@@ -13,18 +13,20 @@ interface KeyStatus {
 type StepKey = "step1" | "step2" | "step3" | "step4";
 type ShowcaseIds = Record<StepKey, string[]>;
 
-interface PickerProduct {
+interface PickerItem {
   id: string;
   name: string;
-  brand: string;
   imageUrl: string;
+  sub: string; // brand (products) or occasion (outfits)
 }
 
-const STEP_META: { key: StepKey; n: string; title: string; hint: string; max: number }[] = [
-  { key: "step1", n: "01", title: "Choose items", hint: "One product — the large reference card.", max: 1 },
-  { key: "step2", n: "02", title: "Build your look", hint: "Up to 3 products scattered in the frame.", max: 3 },
-  { key: "step3", n: "03", title: "Generate preview", hint: "One product shown on the preview card.", max: 1 },
-  { key: "step4", n: "04", title: "Shop the look", hint: "Up to 3 products standing in the box.", max: 3 },
+type StepSource = "products" | "outfits";
+
+const STEP_META: { key: StepKey; n: string; title: string; hint: string; max: number; source: StepSource }[] = [
+  { key: "step1", n: "01", title: "Choose items", hint: "One product — the large reference card.", max: 1, source: "products" },
+  { key: "step2", n: "02", title: "Build your look", hint: "Up to 3 products scattered in the frame.", max: 3, source: "products" },
+  { key: "step3", n: "03", title: "Generate preview", hint: "One generated look shown on the preview card.", max: 1, source: "outfits" },
+  { key: "step4", n: "04", title: "Shop the look", hint: "Up to 3 products standing in the box.", max: 3, source: "products" },
 ];
 
 const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: [] };
@@ -51,7 +53,8 @@ export default function SettingsPage() {
 
   // ── Homepage showcase state ───────────────────────────────────────────────
   const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
-  const [products, setProducts] = useState<PickerProduct[]>([]);
+  const [products, setProducts] = useState<PickerItem[]>([]);
+  const [outfits, setOutfits] = useState<PickerItem[]>([]);
   const [pickerStep, setPickerStep] = useState<StepKey | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
   const [showcaseSaving, setShowcaseSaving] = useState(false);
@@ -61,6 +64,7 @@ export default function SettingsPage() {
   useEffect(() => {
     loadShowcase();
     loadProducts();
+    loadOutfits();
     loadStatus();
   }, []);
 
@@ -90,15 +94,36 @@ export default function SettingsPage() {
           data.map((p: { id: string; name: string; brand: string; imageUrl: string }) => ({
             id: p.id,
             name: p.name,
-            brand: p.brand,
             imageUrl: p.imageUrl,
+            sub: p.brand,
           }))
         );
       }
     } catch { /* non-fatal */ }
   }
 
-  const productById = (id: string) => products.find((p) => p.id === id);
+  async function loadOutfits() {
+    try {
+      const res = await fetch("/api/outfits");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setOutfits(
+          data.map((o: { id: string; name: string; occasion: string; imageUrl: string }) => ({
+            id: o.id,
+            name: o.name,
+            imageUrl: o.imageUrl,
+            sub: o.occasion ?? "look",
+          }))
+        );
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  // Which catalog backs a given step, and a lookup within it.
+  const itemsForStep = (step: StepKey) =>
+    STEP_META.find((m) => m.key === step)!.source === "outfits" ? outfits : products;
+  const lookupItem = (step: StepKey, id: string) => itemsForStep(step).find((p) => p.id === id);
 
   function toggleItem(step: StepKey, id: string) {
     setShowcaseOk(false);
@@ -244,11 +269,12 @@ export default function SettingsPage() {
   }
 
   const pickerMeta = pickerStep ? STEP_META.find((m) => m.key === pickerStep)! : null;
-  const filteredProducts = pickerQuery.trim()
-    ? products.filter((p) =>
-        `${p.name} ${p.brand}`.toLowerCase().includes(pickerQuery.trim().toLowerCase())
+  const pickerItems = pickerStep ? itemsForStep(pickerStep) : [];
+  const filteredItems = pickerQuery.trim()
+    ? pickerItems.filter((p) =>
+        `${p.name} ${p.sub}`.toLowerCase().includes(pickerQuery.trim().toLowerCase())
       )
-    : products;
+    : pickerItems;
 
   return (
     <div className="max-w-lg">
@@ -288,7 +314,7 @@ export default function SettingsPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 {showcase[meta.key].map((id) => {
-                  const p = productById(id);
+                  const p = lookupItem(meta.key, id);
                   return (
                     <div
                       key={id}
@@ -610,7 +636,7 @@ alter table settings enable row level security;`}</pre>
                   {pickerMeta.n} · {pickerMeta.title}
                 </p>
                 <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-                  {showcase[pickerStep].length}/{pickerMeta.max} selected · click a product to {pickerMeta.max === 1 ? "choose" : "toggle"}
+                  {showcase[pickerStep].length}/{pickerMeta.max} selected · click a {pickerMeta.source === "outfits" ? "look" : "product"} to {pickerMeta.max === 1 ? "choose" : "toggle"}
                 </p>
               </div>
               <button
@@ -625,17 +651,19 @@ alter table settings enable row level security;`}</pre>
               <input
                 value={pickerQuery}
                 onChange={(e) => setPickerQuery(e.target.value)}
-                placeholder="Search by name or brand…"
+                placeholder={pickerMeta.source === "outfits" ? "Search looks by name…" : "Search by name or brand…"}
                 className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
               />
             </div>
 
             <div className="overflow-y-auto p-4">
-              {products.length === 0 ? (
-                <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">No products found.</p>
+              {pickerItems.length === 0 ? (
+                <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
+                  {pickerMeta.source === "outfits" ? "No generated looks yet." : "No products found."}
+                </p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {filteredProducts.map((p) => {
+                  {filteredItems.map((p) => {
                     const selected = showcase[pickerStep].includes(p.id);
                     return (
                       <button
@@ -658,7 +686,7 @@ alter table settings enable row level security;`}</pre>
                         )}
                         <div className="px-2 py-1.5">
                           <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
-                          <p className="text-[9px] text-[var(--foreground-subtle)] truncate">{p.brand}</p>
+                          <p className="text-[9px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
                         </div>
                       </button>
                     );
