@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
-import type { Product } from "@/lib/types";
+import type { Product, Retailer } from "@/lib/types";
 import type { StylistChatLook, ShowcaseBrand } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
 
@@ -253,6 +253,101 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+/**
+ * One "Where to buy" row. Shows the store logo + name; price/rating/availability
+ * are rendered only when a matching retailer (with a price for this item) exists.
+ */
+function BuyRow({
+  name,
+  logoUrl,
+  retailer,
+  onFallbackClick,
+}: {
+  name: string;
+  logoUrl: string | null;
+  retailer: Retailer | null;
+  onFallbackClick: () => void;
+}) {
+  return (
+    <a
+      href={retailer?.url || undefined}
+      target={retailer?.url ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      onClick={(e) => {
+        if (!retailer?.url) {
+          e.preventDefault();
+          onFallbackClick();
+        }
+      }}
+      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        {logoUrl ? (
+          <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+            <Image src={logoUrl} alt={name} width={36} height={36} className="object-contain w-full h-full p-1" />
+          </span>
+        ) : (
+          <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
+            {name.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+        <div className="min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="text-[14px] font-medium text-white truncate">{name}</span>
+            {retailer?.isOfficial && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-white/70 shrink-0">
+                Official Store
+              </span>
+            )}
+          </span>
+          {retailer?.rating ? (
+            <span className="mt-0.5 flex items-center gap-2">
+              <StarRating rating={retailer.rating} />
+              {retailer.reviewCount ? (
+                <span className="text-[11px] text-white/35">
+                  {retailer.reviewCount.toLocaleString()} reviews
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {retailer && (
+        <span className="hidden sm:block text-[12px] text-white/40 justify-self-start">
+          {retailer.isOfficial ? "Fast delivery" : "Worldwide shipping"}
+        </span>
+      )}
+
+      <div className="flex items-center gap-3 justify-self-end col-start-3">
+        {retailer && (
+          <div className="text-right">
+            <p className="text-[14px] font-semibold text-white">
+              {money(retailer.price, retailer.currency)}
+            </p>
+            <p
+              className={`text-[11px] ${
+                retailer.availability === "sold out" ? "text-white/30" : "text-emerald-400"
+              }`}
+            >
+              {retailer.availability === "sold out"
+                ? "Sold out"
+                : retailer.availability === "low stock"
+                  ? "Low stock"
+                  : "In stock"}
+            </p>
+          </div>
+        )}
+        <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </div>
+    </a>
+  );
+}
+
 function FeaturedProduct({
   product,
   retailerLogos = {},
@@ -264,7 +359,28 @@ function FeaturedProduct({
 }) {
   const { open } = useStylist();
   const [liked, setLiked] = useState(false);
-  const retailers = (product.retailers ?? []).slice(0, 5);
+
+  // Match a store name to one of the product's retailers (case-insensitive),
+  // so a curated brand shows this item's price when the store actually sells it.
+  const matchRetailer = (n: string): Retailer | null =>
+    (product.retailers ?? []).find(
+      (r) => r.name.trim().toLowerCase() === n.trim().toLowerCase()
+    ) ?? null;
+
+  // Admin-curated brands take priority; otherwise fall back to the item's
+  // retailers directly (with logos matched from the brand library).
+  const rows =
+    showcaseBrands.length > 0
+      ? showcaseBrands.map((b) => ({
+          name: b.name,
+          logoUrl: b.logoUrl ?? retailerLogos[b.name.trim().toLowerCase()] ?? null,
+          retailer: matchRetailer(b.name),
+        }))
+      : (product.retailers ?? []).slice(0, 5).map((r) => ({
+          name: r.name,
+          logoUrl: retailerLogos[r.name.trim().toLowerCase()] ?? null,
+          retailer: r,
+        }));
 
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
@@ -309,130 +425,21 @@ function FeaturedProduct({
           <p className="text-[11px] text-white/35">Prices may vary by retailer.</p>
         </div>
 
-        {showcaseBrands.length > 0 ? (
-          /* Admin-curated brand list */
+        {rows.length > 0 ? (
           <div className="flex flex-col">
-            {showcaseBrands.map((b, i) => (
-              <button
-                key={`${b.name}-${i}`}
-                type="button"
-                onClick={open}
-                className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors text-left"
-              >
-                {b.logoUrl ? (
-                  <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
-                    <Image
-                      src={b.logoUrl}
-                      alt={b.name}
-                      width={36}
-                      height={36}
-                      className="object-contain w-full h-full p-1"
-                    />
-                  </span>
-                ) : (
-                  <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
-                    {b.name.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-                <span className="text-[14px] font-medium text-white truncate">{b.name}</span>
-                <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors justify-self-end">
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : retailers.length > 0 ? (
-          <div className="flex flex-col">
-            {retailers.map((r, i) => (
-              <a
-                key={`${r.name}-${i}`}
-                href={r.url || undefined}
-                target={r.url ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (!r.url) {
-                    e.preventDefault();
-                    open();
-                  }
-                }}
-                className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {(() => {
-                    const logo = retailerLogos[r.name.trim().toLowerCase()];
-                    return logo ? (
-                      <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
-                        <Image
-                          src={logo}
-                          alt={r.name}
-                          width={36}
-                          height={36}
-                          className="object-contain w-full h-full p-1"
-                        />
-                      </span>
-                    ) : (
-                      <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
-                        {r.name.slice(0, 2).toUpperCase()}
-                      </span>
-                    );
-                  })()}
-                  <div className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="text-[14px] font-medium text-white truncate">{r.name}</span>
-                      {r.isOfficial && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-white/70 shrink-0">
-                          Official Store
-                        </span>
-                      )}
-                    </span>
-                    {r.rating ? (
-                      <span className="mt-0.5 flex items-center gap-2">
-                        <StarRating rating={r.rating} />
-                        {r.reviewCount ? (
-                          <span className="text-[11px] text-white/35">
-                            {r.reviewCount.toLocaleString()} reviews
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <span className="hidden sm:block text-[12px] text-white/40 justify-self-start">
-                  {r.isOfficial ? "Fast delivery" : "Worldwide shipping"}
-                </span>
-
-                <div className="flex items-center gap-3 justify-self-end">
-                  <div className="text-right">
-                    <p className="text-[14px] font-semibold text-white">
-                      {money(r.price, r.currency)}
-                    </p>
-                    <p
-                      className={`text-[11px] ${
-                        r.availability === "sold out" ? "text-white/30" : "text-emerald-400"
-                      }`}
-                    >
-                      {r.availability === "sold out"
-                        ? "Sold out"
-                        : r.availability === "low stock"
-                          ? "Low stock"
-                          : "In stock"}
-                    </p>
-                  </div>
-                  <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors">
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                      <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                </div>
-              </a>
+            {rows.map((row, i) => (
+              <BuyRow
+                key={`${row.name}-${i}`}
+                name={row.name}
+                logoUrl={row.logoUrl}
+                retailer={row.retailer}
+                onFallbackClick={open}
+              />
             ))}
           </div>
         ) : (
           <p className="text-[13px] text-white/40 py-6">
-            No retailers listed yet for this item.
+            No stores listed yet for this item.
           </p>
         )}
 
