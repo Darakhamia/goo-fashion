@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
 import type { Product } from "@/lib/types";
-import type { StylistChatLook } from "@/lib/data/db";
+import type { StylistChatLook, ShowcaseBrand } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
 
 interface AIStylistShowcaseProps {
@@ -12,6 +12,8 @@ interface AIStylistShowcaseProps {
   featuredProduct: Product | null;
   /** Lower-cased brand/store name → logo URL. */
   retailerLogos?: Record<string, string>;
+  /** Admin-curated brands shown in the "Where to buy" list. */
+  showcaseBrands?: ShowcaseBrand[];
 }
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
@@ -254,9 +256,11 @@ function StarRating({ rating }: { rating: number }) {
 function FeaturedProduct({
   product,
   retailerLogos = {},
+  showcaseBrands = [],
 }: {
   product: Product;
   retailerLogos?: Record<string, string>;
+  showcaseBrands?: ShowcaseBrand[];
 }) {
   const { open } = useStylist();
   const [liked, setLiked] = useState(false);
@@ -305,7 +309,41 @@ function FeaturedProduct({
           <p className="text-[11px] text-white/35">Prices may vary by retailer.</p>
         </div>
 
-        {retailers.length > 0 ? (
+        {showcaseBrands.length > 0 ? (
+          /* Admin-curated brand list */
+          <div className="flex flex-col">
+            {showcaseBrands.map((b, i) => (
+              <button
+                key={`${b.name}-${i}`}
+                type="button"
+                onClick={open}
+                className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors text-left"
+              >
+                {b.logoUrl ? (
+                  <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+                    <Image
+                      src={b.logoUrl}
+                      alt={b.name}
+                      width={36}
+                      height={36}
+                      className="object-contain w-full h-full p-1"
+                    />
+                  </span>
+                ) : (
+                  <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
+                    {b.name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+                <span className="text-[14px] font-medium text-white truncate">{b.name}</span>
+                <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors justify-self-end">
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : retailers.length > 0 ? (
           <div className="flex flex-col">
             {retailers.map((r, i) => (
               <a
@@ -412,6 +450,7 @@ export default function AIStylistShowcase({
   chatLooks,
   featuredProduct,
   retailerLogos = {},
+  showcaseBrands = [],
 }: AIStylistShowcaseProps) {
   return (
     <section className="bg-[var(--background)] py-20 md:py-28">
@@ -430,7 +469,11 @@ export default function AIStylistShowcase({
             delay={0.08}
             className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
           >
-            <FeaturedProduct product={featuredProduct} retailerLogos={retailerLogos} />
+            <FeaturedProduct
+              product={featuredProduct}
+              retailerLogos={retailerLogos}
+              showcaseBrands={showcaseBrands}
+            />
           </FadeCard>
         )}
       </div>

@@ -953,6 +953,7 @@ export async function getHomepageShowcase(): Promise<HomepageShowcase> {
 
 const STYLIST_KEY = "homepage_stylist";
 const MAX_CHAT_LOOKS = 2;
+const MAX_SHOWCASE_BRANDS = 6;
 
 /** A trending "look" card shown inside the chat preview. */
 export interface StylistChatLook {
@@ -963,10 +964,18 @@ export interface StylistChatLook {
   currency: string;
 }
 
+/** A brand shown in the "Where to buy" list under the featured product. */
+export interface ShowcaseBrand {
+  name: string;
+  logoUrl: string | null;
+}
+
 /** Raw ids stored in settings (used by the admin editor). */
 export interface HomepageStylistIds {
   chatOutfits: string[];
   featuredProduct: string | null;
+  /** Brand names shown in the "Where to buy" list (admin-curated). */
+  brands: string[];
 }
 
 /** Resolved data consumed by the public homepage. */
@@ -975,6 +984,8 @@ export interface HomepageStylist {
   featuredProduct: Product | null;
   /** Lower-cased brand/store name → logo URL, used to badge "Where to buy" rows. */
   retailerLogos: Record<string, string>;
+  /** Admin-curated brands shown in the "Where to buy" list (logo + name). */
+  showcaseBrands: ShowcaseBrand[];
 }
 
 /**
@@ -992,8 +1003,24 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
   return map;
 }
 
+/** All brands with their (optional) logo, used to resolve curated brand lists. */
+export async function getAllBrandsWithLogos(): Promise<ShowcaseBrand[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const withLogo = await supabase.from("brands").select("name, logo_url");
+  if (!withLogo.error && withLogo.data) {
+    return (withLogo.data as { name: string; logo_url: string | null }[]).map((r) => ({
+      name: r.name,
+      logoUrl: r.logo_url ?? null,
+    }));
+  }
+  // logo_url column missing — fall back to names only
+  const nameOnly = await supabase.from("brands").select("name");
+  if (nameOnly.error || !nameOnly.data) return [];
+  return (nameOnly.data as { name: string }[]).map((r) => ({ name: r.name, logoUrl: null }));
+}
+
 function emptyStylistIds(): HomepageStylistIds {
-  return { chatOutfits: [], featuredProduct: null };
+  return { chatOutfits: [], featuredProduct: null, brands: [] };
 }
 
 /** Raw selection (used by the admin editor). */
@@ -1012,6 +1039,7 @@ export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
       chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
       featuredProduct:
         typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
+      brands: asStringArray(parsed.brands).slice(0, MAX_SHOWCASE_BRANDS),
     };
   } catch {
     return emptyStylistIds();
@@ -1056,5 +1084,16 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
 
   const retailerLogos = await getBrandLogos();
 
-  return { chatLooks, featuredProduct, retailerLogos };
+  // Curated brands shown in the "Where to buy" list, resolved in the admin's
+  // chosen order with their logos attached.
+  let showcaseBrands: ShowcaseBrand[] = [];
+  if (ids.brands.length > 0) {
+    const all = await getAllBrandsWithLogos();
+    const byName = new Map(all.map((b) => [b.name.toLowerCase(), b]));
+    showcaseBrands = ids.brands
+      .map((name) => byName.get(name.toLowerCase()) ?? { name, logoUrl: null })
+      .filter((b): b is ShowcaseBrand => Boolean(b));
+  }
+
+  return { chatLooks, featuredProduct, retailerLogos, showcaseBrands };
 }
