@@ -13,21 +13,35 @@ const DEFAULT_BRANDS = [
 
 export async function GET() {
   if (!isSupabaseConfigured || !supabase) {
-    const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
+    const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name, logoUrl: null })));
     res.headers.set("X-Brands-Table-Missing", "true");
     return res;
   }
-  const { data, error } = await supabase
+  // Prefer name + logo_url; gracefully fall back to name-only if the logo_url
+  // column hasn't been added yet (migration not run).
+  type BrandRow = { name: string; logo_url?: string | null };
+  let rows: BrandRow[] = [];
+  const withLogo = await supabase
     .from("brands")
-    .select("name")
+    .select("name, logo_url")
     .order("name", { ascending: true });
-  if (error) {
-    // Table doesn't exist yet — return defaults and signal to client
-    const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name })));
-    res.headers.set("X-Brands-Table-Missing", "true");
-    return res;
+  if (!withLogo.error) {
+    rows = (withLogo.data ?? []) as BrandRow[];
+  } else {
+    const nameOnly = await supabase
+      .from("brands")
+      .select("name")
+      .order("name", { ascending: true });
+    if (nameOnly.error) {
+      // Table doesn't exist yet — return defaults and signal to client
+      const res = NextResponse.json(DEFAULT_BRANDS.map((name) => ({ name, logoUrl: null })));
+      res.headers.set("X-Brands-Table-Missing", "true");
+      return res;
+    }
+    rows = (nameOnly.data ?? []) as BrandRow[];
   }
-  return NextResponse.json(data);
+
+  return NextResponse.json(rows.map((r) => ({ name: r.name, logoUrl: r.logo_url ?? null })));
 }
 
 export async function POST(req: Request) {

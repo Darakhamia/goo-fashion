@@ -43,6 +43,11 @@ const MAX_CHAT_LOOKS = 2;
 
 type StylistPickerKind = "chat" | "featured";
 
+interface BrandRow {
+  name: string;
+  logoUrl: string | null;
+}
+
 export default function SettingsPage() {
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -81,13 +86,99 @@ export default function SettingsPage() {
   const [stylistOk, setStylistOk] = useState(false);
   const [stylistError, setStylistError] = useState("");
 
+  // ── Brands & logos state ──────────────────────────────────────────────────
+  const [brandList, setBrandList] = useState<BrandRow[]>([]);
+  const [brandQuery, setBrandQuery] = useState("");
+  const [newBrandName, setNewBrandName] = useState("");
+  const [addingBrand, setAddingBrand] = useState(false);
+  const [uploadingBrand, setUploadingBrand] = useState<string | null>(null);
+  const [brandError, setBrandError] = useState("");
+
   useEffect(() => {
     loadShowcase();
     loadStylist();
     loadProducts();
     loadOutfits();
+    loadBrands();
     loadStatus();
   }, []);
+
+  // ── Brands loaders / handlers ─────────────────────────────────────────────
+
+  async function loadBrands() {
+    try {
+      const res = await fetch("/api/brands");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setBrandList(
+          data.map((b: { name: string; logoUrl?: string | null }) => ({
+            name: b.name,
+            logoUrl: b.logoUrl ?? null,
+          }))
+        );
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  async function addBrand() {
+    const name = newBrandName.trim();
+    if (!name) return;
+    setAddingBrand(true);
+    setBrandError("");
+    try {
+      const res = await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setBrandError(json.error ?? "Could not add brand"); return; }
+      setNewBrandName("");
+      await loadBrands();
+    } catch {
+      setBrandError("Network error. Try again.");
+    } finally {
+      setAddingBrand(false);
+    }
+  }
+
+  async function uploadBrandLogo(name: string, file: File) {
+    setUploadingBrand(name);
+    setBrandError("");
+    try {
+      const fd = new FormData();
+      fd.append("name", name);
+      fd.append("file", file);
+      const res = await fetch("/api/admin/brand-logo", { method: "POST", body: fd });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setBrandError(json.error ?? "Upload failed"); return; }
+      setBrandList((prev) =>
+        prev.map((b) => (b.name === name ? { ...b, logoUrl: json.logoUrl } : b))
+      );
+    } catch {
+      setBrandError("Network error. Try again.");
+    } finally {
+      setUploadingBrand(null);
+    }
+  }
+
+  async function removeBrandLogo(name: string) {
+    setBrandError("");
+    try {
+      const res = await fetch(`/api/admin/brand-logo?name=${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setBrandError(json.error ?? "Could not remove logo");
+        return;
+      }
+      setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: null } : b)));
+    } catch {
+      setBrandError("Network error. Try again.");
+    }
+  }
 
   // ── Stylist loaders / handlers ────────────────────────────────────────────
 
@@ -574,6 +665,103 @@ export default function SettingsPage() {
           </button>
           {stylistOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
           {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
+        </div>
+      </div>
+
+      {/* ── Brands & logos ── */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h7A1.5 1.5 0 0 1 12 4.5v5A1.5 1.5 0 0 1 10.5 11h-7A1.5 1.5 0 0 1 2 9.5v-5Z" stroke="currentColor" strokeWidth="1.1" />
+              <circle cx="5" cy="6" r="1" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M2.5 10l3-2.5 2.5 2 1.5-1.2L12 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+            </svg>
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+              Brands &amp; logos
+            </p>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+            Upload a logo for each store/brand. On the homepage, a logo is shown next to a
+            “Where to buy” row when the retailer name matches a brand here.
+          </p>
+        </div>
+
+        {/* Add brand */}
+        <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center gap-2">
+          <input
+            value={newBrandName}
+            onChange={(e) => { setNewBrandName(e.target.value); setBrandError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") addBrand(); }}
+            placeholder="New brand / store name…"
+            className="flex-1 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+          />
+          <button
+            onClick={addBrand}
+            disabled={!newBrandName.trim() || addingBrand}
+            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+          >
+            {addingBrand ? "Adding…" : "Add"}
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 py-3 border-b border-[var(--border)]">
+          <input
+            value={brandQuery}
+            onChange={(e) => setBrandQuery(e.target.value)}
+            placeholder="Search brands…"
+            className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+          />
+        </div>
+
+        <div className="px-5 py-4">
+          {brandError && <p className="text-[11px] text-red-500 mb-3">{brandError}</p>}
+          {brandList.length === 0 ? (
+            <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-6">No brands yet.</p>
+          ) : (
+            <div className="max-h-[360px] overflow-y-auto -mx-1 px-1 divide-y divide-[var(--border)]">
+              {brandList
+                .filter((b) => b.name.toLowerCase().includes(brandQuery.trim().toLowerCase()))
+                .map((b) => (
+                  <div key={b.name} className="flex items-center gap-3 py-2.5">
+                    <div className="w-10 h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center shrink-0">
+                      {b.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.logoUrl} alt={b.name} className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
+                          {b.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <span className="flex-1 text-[12px] text-[var(--foreground)] truncate">{b.name}</span>
+                    {b.logoUrl && (
+                      <button
+                        onClick={() => removeBrandLogo(b.name)}
+                        className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <label className="px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer shrink-0">
+                      {uploadingBrand === b.name ? "Uploading…" : b.logoUrl ? "Replace" : "Upload logo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingBrand === b.name}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadBrandLogo(b.name, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       </div>
 

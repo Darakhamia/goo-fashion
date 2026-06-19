@@ -973,6 +973,23 @@ export interface HomepageStylistIds {
 export interface HomepageStylist {
   chatLooks: StylistChatLook[];
   featuredProduct: Product | null;
+  /** Lower-cased brand/store name → logo URL, used to badge "Where to buy" rows. */
+  retailerLogos: Record<string, string>;
+}
+
+/**
+ * Brand name → logo URL map (lower-cased keys). Resilient to the brands table
+ * or the logo_url column not existing yet, in which case it returns {}.
+ */
+export async function getBrandLogos(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured || !supabase) return {};
+  const { data, error } = await supabase.from("brands").select("name, logo_url");
+  if (error || !data) return {};
+  const map: Record<string, string> = {};
+  for (const row of data as { name: string; logo_url: string | null }[]) {
+    if (row.name && row.logo_url) map[row.name.toLowerCase()] = row.logo_url;
+  }
+  return map;
 }
 
 function emptyStylistIds(): HomepageStylistIds {
@@ -1037,5 +1054,7 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
     featuredProduct = all.find((p) => p.retailers?.length > 0) ?? all[0] ?? null;
   }
 
-  return { chatLooks, featuredProduct };
+  const retailerLogos = await getBrandLogos();
+
+  return { chatLooks, featuredProduct, retailerLogos };
 }

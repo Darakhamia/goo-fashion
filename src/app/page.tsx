@@ -100,6 +100,7 @@ export default async function HomePage() {
       <AIStylistShowcase
         chatLooks={stylist.chatLooks}
         featuredProduct={stylist.featuredProduct}
+        retailerLogos={stylist.retailerLogos}
       />
 
       {/* ── OUTFIT EXAMPLES ── */}
