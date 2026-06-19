@@ -944,3 +944,98 @@ export async function getHomepageShowcase(): Promise<HomepageShowcase> {
     step4: fromProducts(ids.step4),
   };
 }
+
+// ── HOMEPAGE AI STYLIST SHOWCASE ─────────────────────────────────────────────
+// Drives the "Your style. Found by AI." section on the homepage. Admins pick:
+//   • up to 2 outfits ("looks") rendered as cards inside the chat preview, and
+//   • one featured product shown bottom-left with its "Where to buy" retailers.
+// Stored as a single settings row (key = "homepage_stylist").
+
+const STYLIST_KEY = "homepage_stylist";
+const MAX_CHAT_LOOKS = 2;
+
+/** A trending "look" card shown inside the chat preview. */
+export interface StylistChatLook {
+  id: string;
+  name: string;
+  imageUrl: string;
+  price: number;
+  currency: string;
+}
+
+/** Raw ids stored in settings (used by the admin editor). */
+export interface HomepageStylistIds {
+  chatOutfits: string[];
+  featuredProduct: string | null;
+}
+
+/** Resolved data consumed by the public homepage. */
+export interface HomepageStylist {
+  chatLooks: StylistChatLook[];
+  featuredProduct: Product | null;
+}
+
+function emptyStylistIds(): HomepageStylistIds {
+  return { chatOutfits: [], featuredProduct: null };
+}
+
+/** Raw selection (used by the admin editor). */
+export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
+  if (!isSupabaseConfigured || !supabase) return emptyStylistIds();
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", STYLIST_KEY)
+    .maybeSingle();
+  const raw = (data as { value: string } | null)?.value;
+  if (!raw) return emptyStylistIds();
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
+      featuredProduct:
+        typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
+    };
+  } catch {
+    return emptyStylistIds();
+  }
+}
+
+/**
+ * Resolved stylist showcase for the homepage. Falls back to the first available
+ * outfits / a product with retailers so the section never renders empty.
+ */
+export async function getHomepageStylist(): Promise<HomepageStylist> {
+  const ids = await getHomepageStylistIds();
+
+  // Chat looks: resolve configured outfits in order, then top up from the
+  // catalogue so there are always two cards in the preview.
+  const allOutfits = await getAllOutfits();
+  const chosen: Outfit[] = ids.chatOutfits
+    .map((id) => allOutfits.find((o) => o.id === id))
+    .filter((o): o is Outfit => Boolean(o));
+  for (const o of allOutfits) {
+    if (chosen.length >= MAX_CHAT_LOOKS) break;
+    if (!chosen.some((c) => c.id === o.id)) chosen.push(o);
+  }
+  const chatLooks: StylistChatLook[] = chosen.slice(0, MAX_CHAT_LOOKS).map((o) => ({
+    id: o.id,
+    name: o.name,
+    imageUrl: o.imageUrl,
+    price: o.totalPriceMin,
+    currency: o.currency,
+  }));
+
+  // Featured product: the configured one (with retailers attached), else the
+  // first product that actually has a "where to buy" list.
+  let featuredProduct: Product | null = null;
+  if (ids.featuredProduct) {
+    featuredProduct = (await getProductById(ids.featuredProduct)) ?? null;
+  }
+  if (!featuredProduct) {
+    const all = await getAllProducts(true);
+    featuredProduct = all.find((p) => p.retailers?.length > 0) ?? all[0] ?? null;
+  }
+
+  return { chatLooks, featuredProduct };
+}
