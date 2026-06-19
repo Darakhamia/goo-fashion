@@ -10,6 +10,8 @@ import { useStylist } from "@/lib/context/stylist-context";
 interface AIStylistShowcaseProps {
   chatLooks: StylistChatLook[];
   featuredProduct: Product | null;
+  /** Lower-cased brand/store name → logo URL. */
+  retailerLogos?: Record<string, string>;
 }
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
@@ -249,21 +251,27 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function FeaturedProduct({ product }: { product: Product }) {
+function FeaturedProduct({
+  product,
+  retailerLogos = {},
+}: {
+  product: Product;
+  retailerLogos?: Record<string, string>;
+}) {
   const { open } = useStylist();
   const [liked, setLiked] = useState(false);
   const retailers = (product.retailers ?? []).slice(0, 5);
 
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
-      {/* Image — frame hugs the product so it doesn't float in empty space */}
-      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[340px]">
+      {/* Image — fills the whole frame edge to edge */}
+      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[360px]">
         {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-contain p-3 md:p-4"
+            className="object-cover"
             sizes="(max-width: 1024px) 100vw, 34vw"
           />
         )}
@@ -314,9 +322,24 @@ function FeaturedProduct({ product }: { product: Product }) {
                 className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
-                    {r.name.slice(0, 2).toUpperCase()}
-                  </span>
+                  {(() => {
+                    const logo = retailerLogos[r.name.trim().toLowerCase()];
+                    return logo ? (
+                      <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+                        <Image
+                          src={logo}
+                          alt={r.name}
+                          width={36}
+                          height={36}
+                          className="object-contain w-full h-full p-1"
+                        />
+                      </span>
+                    ) : (
+                      <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
+                        {r.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    );
+                  })()}
                   <div className="min-w-0">
                     <span className="flex items-center gap-2">
                       <span className="text-[14px] font-medium text-white truncate">{r.name}</span>
@@ -388,6 +411,7 @@ function FeaturedProduct({ product }: { product: Product }) {
 export default function AIStylistShowcase({
   chatLooks,
   featuredProduct,
+  retailerLogos = {},
 }: AIStylistShowcaseProps) {
   return (
     <section className="bg-[var(--background)] py-20 md:py-28">
@@ -406,7 +430,7 @@ export default function AIStylistShowcase({
             delay={0.08}
             className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
           >
-            <FeaturedProduct product={featuredProduct} />
+            <FeaturedProduct product={featuredProduct} retailerLogos={retailerLogos} />
           </FadeCard>
         )}
       </div>
