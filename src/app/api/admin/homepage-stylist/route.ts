@@ -8,6 +8,7 @@ import { getHomepageStylistIds, type HomepageStylistIds } from "@/lib/data/db";
 
 const KEY = "homepage_stylist";
 const MAX_CHAT_LOOKS = 2;
+const MAX_SHOWCASE_BRANDS = 6;
 
 // GET /api/admin/homepage-stylist → { chatOutfits: string[], featuredProduct: string|null }
 export async function GET() {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
 
   const rawOutfits = (body as Record<string, unknown>).chatOutfits;
   const rawProduct = (body as Record<string, unknown>).featuredProduct;
+  const rawBrands = (body as Record<string, unknown>).brands;
 
   const clean: HomepageStylistIds = {
     chatOutfits: Array.isArray(rawOutfits)
@@ -42,6 +44,12 @@ export async function POST(req: Request) {
         )
       : [],
     featuredProduct: typeof rawProduct === "string" && rawProduct ? rawProduct : null,
+    brands: Array.isArray(rawBrands)
+      ? Array.from(new Set(rawBrands.filter((x): x is string => typeof x === "string"))).slice(
+          0,
+          MAX_SHOWCASE_BRANDS
+        )
+      : [],
   };
 
   const { error } = await supabase

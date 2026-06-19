@@ -36,12 +36,14 @@ const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: []
 interface StylistIds {
   chatOutfits: string[];      // up to 2 outfits shown as cards in the chat
   featuredProduct: string | null; // product shown bottom-left with retailers
+  brands: string[];           // brand names shown in the "Where to buy" list
 }
 
-const EMPTY_STYLIST: StylistIds = { chatOutfits: [], featuredProduct: null };
+const EMPTY_STYLIST: StylistIds = { chatOutfits: [], featuredProduct: null, brands: [] };
 const MAX_CHAT_LOOKS = 2;
+const MAX_SHOWCASE_BRANDS = 6;
 
-type StylistPickerKind = "chat" | "featured";
+type StylistPickerKind = "chat" | "featured" | "brands";
 
 interface BrandRow {
   name: string;
@@ -190,6 +192,7 @@ export default function SettingsPage() {
       setStylist({
         chatOutfits: Array.isArray(data.chatOutfits) ? data.chatOutfits.slice(0, 2) : [],
         featuredProduct: typeof data.featuredProduct === "string" ? data.featuredProduct : null,
+        brands: Array.isArray(data.brands) ? data.brands.slice(0, MAX_SHOWCASE_BRANDS) : [],
       });
     } catch { /* non-fatal */ }
   }
@@ -210,6 +213,16 @@ export default function SettingsPage() {
       ...prev,
       featuredProduct: prev.featuredProduct === id ? null : id,
     }));
+  }
+
+  function toggleShowcaseBrand(name: string) {
+    setStylistOk(false);
+    setStylist((prev) => {
+      if (prev.brands.includes(name)) {
+        return { ...prev, brands: prev.brands.filter((x) => x !== name) };
+      }
+      return { ...prev, brands: [...prev.brands, name].slice(0, MAX_SHOWCASE_BRANDS) };
+    });
   }
 
   async function saveStylist() {
@@ -651,6 +664,66 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Brands shown in "Where to buy" */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-[12px] font-medium text-[var(--foreground)]">Brands (Where to buy)</span>
+              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                Up to {MAX_SHOWCASE_BRANDS} brands shown beside the item. Empty = the item’s retailers.
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {stylist.brands.map((name) => {
+                const b = brandList.find((x) => x.name === name);
+                return (
+                  <div
+                    key={name}
+                    className="flex items-center gap-1.5 pl-1.5 pr-1 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                    title={name}
+                  >
+                    <span className="w-6 h-6 rounded bg-[var(--background)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
+                      {b?.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.logoUrl} alt={name} className="w-full h-full object-contain p-0.5" />
+                      ) : (
+                        <span className="text-[8px] font-semibold text-[var(--foreground-subtle)]">
+                          {name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] text-[var(--foreground)] max-w-[120px] truncate">{name}</span>
+                    <button
+                      onClick={() => toggleShowcaseBrand(name)}
+                      className="w-4 h-4 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors"
+                      aria-label="Remove"
+                    >
+                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+              {stylist.brands.length < MAX_SHOWCASE_BRANDS && (
+                <button
+                  onClick={() => { setStylistPicker("brands"); setStylistQuery(""); }}
+                  className="h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+                  aria-label="Add a brand"
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                  Add brand
+                </button>
+              )}
+            </div>
+            {brandList.length === 0 && (
+              <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+                Add brands and logos in the “Brands &amp; logos” section below first.
+              </p>
+            )}
           </div>
         </div>
 
@@ -1094,7 +1167,12 @@ alter table settings enable row level security;`}</pre>
       {/* ── Stylist picker modal ── */}
       {stylistPicker && (() => {
         const isChat = stylistPicker === "chat";
-        const source = isChat ? outfits : products;
+        const isBrands = stylistPicker === "brands";
+        const source: PickerItem[] = isChat
+          ? outfits
+          : isBrands
+            ? brandList.map((b) => ({ id: b.name, name: b.name, imageUrl: b.logoUrl ?? "", sub: "brand" }))
+            : products;
         const filtered = stylistQuery.trim()
           ? source.filter((p) =>
               `${p.name} ${p.sub}`.toLowerCase().includes(stylistQuery.trim().toLowerCase())
@@ -1102,10 +1180,18 @@ alter table settings enable row level security;`}</pre>
           : source;
         const selectedIds = isChat
           ? stylist.chatOutfits
-          : stylist.featuredProduct ? [stylist.featuredProduct] : [];
-        const onPick = (id: string) => (isChat ? toggleChatOutfit(id) : setFeaturedProduct(id));
-        const count = isChat ? stylist.chatOutfits.length : (stylist.featuredProduct ? 1 : 0);
-        const max = isChat ? MAX_CHAT_LOOKS : 1;
+          : isBrands
+            ? stylist.brands
+            : stylist.featuredProduct ? [stylist.featuredProduct] : [];
+        const onPick = (id: string) =>
+          isChat ? toggleChatOutfit(id) : isBrands ? toggleShowcaseBrand(id) : setFeaturedProduct(id);
+        const count = isChat
+          ? stylist.chatOutfits.length
+          : isBrands
+            ? stylist.brands.length
+            : stylist.featuredProduct ? 1 : 0;
+        const max = isChat ? MAX_CHAT_LOOKS : isBrands ? MAX_SHOWCASE_BRANDS : 1;
+        const noun = isChat ? "look" : isBrands ? "brand" : "product";
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setStylistPicker(null)}>
             <div
@@ -1115,10 +1201,10 @@ alter table settings enable row level security;`}</pre>
               <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
                 <div>
                   <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-                    {isChat ? "Chat looks" : "Featured product"}
+                    {isChat ? "Chat looks" : isBrands ? "Brands (Where to buy)" : "Featured product"}
                   </p>
                   <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-                    {count}/{max} selected · click a {isChat ? "look" : "product"} to {max === 1 ? "choose" : "toggle"}
+                    {count}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
                   </p>
                 </div>
                 <button
@@ -1133,7 +1219,7 @@ alter table settings enable row level security;`}</pre>
                 <input
                   value={stylistQuery}
                   onChange={(e) => setStylistQuery(e.target.value)}
-                  placeholder={isChat ? "Search looks by name…" : "Search by name or brand…"}
+                  placeholder={isChat ? "Search looks by name…" : isBrands ? "Search brands…" : "Search by name or brand…"}
                   className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
                 />
               </div>
@@ -1141,7 +1227,7 @@ alter table settings enable row level security;`}</pre>
               <div className="overflow-y-auto p-4">
                 {source.length === 0 ? (
                   <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
-                    {isChat ? "No outfits yet." : "No products found."}
+                    {isChat ? "No outfits yet." : isBrands ? "No brands yet — add some in “Brands & logos” below." : "No products found."}
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -1155,9 +1241,15 @@ alter table settings enable row level security;`}</pre>
                             selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
                           }`}
                         >
-                          <div className="aspect-square bg-[var(--surface)]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={p.imageUrl} alt={p.name} className={`w-full h-full ${isChat ? "object-cover" : "object-contain"}`} />
+                          <div className="aspect-square bg-[var(--surface)] flex items-center justify-center">
+                            {p.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.imageUrl} alt={p.name} className={`w-full h-full ${isChat ? "object-cover" : "object-contain"} ${isBrands ? "p-3" : ""}`} />
+                            ) : (
+                              <span className="text-[13px] font-semibold text-[var(--foreground-subtle)]">
+                                {isBrands ? "No logo" : p.name.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
                           </div>
                           {selected && (
                             <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
