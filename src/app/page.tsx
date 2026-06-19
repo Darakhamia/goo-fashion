@@ -6,24 +6,28 @@ import Link from "next/link";
 import FadeInView from "@/components/ui/FadeInView";
 import { HeroSection } from "@/components/home/HeroSection";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
-import FeaturesBento from "@/components/home/FeaturesBento";
+import AIStylistShowcase from "@/components/home/AIStylistShowcase";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
-import { getAllOutfits, getFeaturedOutfits, getHomepageShowcase } from "@/lib/data/db";
+import {
+  getAllOutfits,
+  getHomepageShowcase,
+  getHomepageStylist,
+} from "@/lib/data/db";
 import JsonLd from "@/components/seo/JsonLd";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 
 async function getData() {
-  const [allOutfits, featuredForBento, showcase] = await Promise.all([
+  const [allOutfits, showcase, stylist] = await Promise.all([
     getAllOutfits(),
-    getFeaturedOutfits(),
     getHomepageShowcase(),
+    getHomepageStylist(),
   ]);
   return {
     allOutfits,
-    bentoFeaturedOutfits: featuredForBento,
     showcase,
+    stylist,
   };
 }
 
@@ -76,7 +80,7 @@ function SectionH2({
 // ── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const { allOutfits, bentoFeaturedOutfits, showcase } = await getData();
+  const { allOutfits, showcase, stylist } = await getData();
 
   // Outfit examples: up to 9 so carousel has 3 full pages
   const carouselOutfits = allOutfits.slice(0, 9);
@@ -92,14 +96,11 @@ export default async function HomePage() {
       {/* ── HOW IT WORKS ── */}
       <HowItWorksSection showcase={showcase} />
 
-      {/* ── FEATURES BENTO ── */}
-      <Section>
-        <FadeInView>
-          <Kicker>Features</Kicker>
-          <SectionH2>Real outfits, ready to shop.</SectionH2>
-        </FadeInView>
-        <FeaturesBento outfits={bentoFeaturedOutfits} />
-      </Section>
+      {/* ── AI STYLIST SHOWCASE ── */}
+      <AIStylistShowcase
+        chatLooks={stylist.chatLooks}
+        featuredProduct={stylist.featuredProduct}
+      />
 
       {/* ── OUTFIT EXAMPLES ── */}
       <Section>

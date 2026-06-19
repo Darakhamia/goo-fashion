@@ -31,6 +31,18 @@ const STEP_META: { key: StepKey; n: string; title: string; hint: string; max: nu
 
 const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: [] };
 
+// ── AI Stylist showcase ──────────────────────────────────────────────────────
+
+interface StylistIds {
+  chatOutfits: string[];      // up to 2 outfits shown as cards in the chat
+  featuredProduct: string | null; // product shown bottom-left with retailers
+}
+
+const EMPTY_STYLIST: StylistIds = { chatOutfits: [], featuredProduct: null };
+const MAX_CHAT_LOOKS = 2;
+
+type StylistPickerKind = "chat" | "featured";
+
 export default function SettingsPage() {
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -61,12 +73,74 @@ export default function SettingsPage() {
   const [showcaseOk, setShowcaseOk] = useState(false);
   const [showcaseError, setShowcaseError] = useState("");
 
+  // ── AI Stylist showcase state ─────────────────────────────────────────────
+  const [stylist, setStylist] = useState<StylistIds>(EMPTY_STYLIST);
+  const [stylistPicker, setStylistPicker] = useState<StylistPickerKind | null>(null);
+  const [stylistQuery, setStylistQuery] = useState("");
+  const [stylistSaving, setStylistSaving] = useState(false);
+  const [stylistOk, setStylistOk] = useState(false);
+  const [stylistError, setStylistError] = useState("");
+
   useEffect(() => {
     loadShowcase();
+    loadStylist();
     loadProducts();
     loadOutfits();
     loadStatus();
   }, []);
+
+  // ── Stylist loaders / handlers ────────────────────────────────────────────
+
+  async function loadStylist() {
+    try {
+      const res = await fetch("/api/admin/homepage-stylist");
+      if (!res.ok) return;
+      const data = await res.json();
+      setStylist({
+        chatOutfits: Array.isArray(data.chatOutfits) ? data.chatOutfits.slice(0, 2) : [],
+        featuredProduct: typeof data.featuredProduct === "string" ? data.featuredProduct : null,
+      });
+    } catch { /* non-fatal */ }
+  }
+
+  function toggleChatOutfit(id: string) {
+    setStylistOk(false);
+    setStylist((prev) => {
+      if (prev.chatOutfits.includes(id)) {
+        return { ...prev, chatOutfits: prev.chatOutfits.filter((x) => x !== id) };
+      }
+      return { ...prev, chatOutfits: [...prev.chatOutfits, id].slice(0, MAX_CHAT_LOOKS) };
+    });
+  }
+
+  function setFeaturedProduct(id: string) {
+    setStylistOk(false);
+    setStylist((prev) => ({
+      ...prev,
+      featuredProduct: prev.featuredProduct === id ? null : id,
+    }));
+  }
+
+  async function saveStylist() {
+    setStylistSaving(true);
+    setStylistError("");
+    setStylistOk(false);
+    try {
+      const res = await fetch("/api/admin/homepage-stylist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(stylist),
+      });
+      const json = await res.json();
+      if (!res.ok) { setStylistError(json.error ?? "Save failed"); return; }
+      setStylistOk(true);
+      setTimeout(() => setStylistOk(false), 3000);
+    } catch {
+      setStylistError("Network error. Try again.");
+    } finally {
+      setStylistSaving(false);
+    }
+  }
 
   // ── Showcase loaders / handlers ───────────────────────────────────────────
 
@@ -369,6 +443,137 @@ export default function SettingsPage() {
           </button>
           {showcaseOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
           {showcaseError && <p className="text-[11px] text-red-500">{showcaseError}</p>}
+        </div>
+      </div>
+
+      {/* ── AI Stylist showcase ── */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1.5l1.1 3 3.2.2-2.5 2 .8 3.1L7 8.3 4.4 9.8l.8-3.1-2.5-2 3.2-.2L7 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+            </svg>
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+              AI Stylist showcase
+            </p>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+            Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
+            cards in the chat preview, and one product featured below with its “Where to buy”
+            list. Empty slots fall back to the latest catalog items.
+          </p>
+        </div>
+
+        <div className="px-5 py-4 space-y-5">
+          {/* Chat looks */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
+              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {stylist.chatOutfits.map((id) => {
+                const o = outfits.find((x) => x.id === id);
+                return (
+                  <div
+                    key={id}
+                    className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+                    title={o?.name ?? id}
+                  >
+                    {o?.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={o.imageUrl} alt={o.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)]">missing</div>
+                    )}
+                    <button
+                      onClick={() => toggleChatOutfit(id)}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Remove"
+                    >
+                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+              {stylist.chatOutfits.length < MAX_CHAT_LOOKS && (
+                <button
+                  onClick={() => { setStylistPicker("chat"); setStylistQuery(""); }}
+                  className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
+                  aria-label="Add a chat look"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Featured product */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
+              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                Shown bottom-left with its retailers.
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {stylist.featuredProduct && (() => {
+                const p = products.find((x) => x.id === stylist.featuredProduct);
+                return (
+                  <div
+                    className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+                    title={p?.name ?? stylist.featuredProduct!}
+                  >
+                    {p?.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)]">missing</div>
+                    )}
+                    <button
+                      onClick={() => setStylist((prev) => ({ ...prev, featuredProduct: null }))}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Remove"
+                    >
+                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })()}
+              {!stylist.featuredProduct && (
+                <button
+                  onClick={() => { setStylistPicker("featured"); setStylistQuery(""); }}
+                  className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
+                  aria-label="Add the featured product"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
+          <button
+            onClick={saveStylist}
+            disabled={stylistSaving}
+            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          >
+            {stylistSaving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {stylistSaving ? "Saving…" : "Save stylist"}
+          </button>
+          {stylistOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
+          {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
         </div>
       </div>
 
@@ -697,6 +902,96 @@ alter table settings enable row level security;`}</pre>
           </div>
         </div>
       )}
+
+      {/* ── Stylist picker modal ── */}
+      {stylistPicker && (() => {
+        const isChat = stylistPicker === "chat";
+        const source = isChat ? outfits : products;
+        const filtered = stylistQuery.trim()
+          ? source.filter((p) =>
+              `${p.name} ${p.sub}`.toLowerCase().includes(stylistQuery.trim().toLowerCase())
+            )
+          : source;
+        const selectedIds = isChat
+          ? stylist.chatOutfits
+          : stylist.featuredProduct ? [stylist.featuredProduct] : [];
+        const onPick = (id: string) => (isChat ? toggleChatOutfit(id) : setFeaturedProduct(id));
+        const count = isChat ? stylist.chatOutfits.length : (stylist.featuredProduct ? 1 : 0);
+        const max = isChat ? MAX_CHAT_LOOKS : 1;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setStylistPicker(null)}>
+            <div
+              className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
+                <div>
+                  <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+                    {isChat ? "Chat looks" : "Featured product"}
+                  </p>
+                  <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
+                    {count}/{max} selected · click a {isChat ? "look" : "product"} to {max === 1 ? "choose" : "toggle"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStylistPicker(null)}
+                  className="ml-auto px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+                >
+                  Done
+                </button>
+              </div>
+
+              <div className="px-5 py-3 border-b border-[var(--border)]">
+                <input
+                  value={stylistQuery}
+                  onChange={(e) => setStylistQuery(e.target.value)}
+                  placeholder={isChat ? "Search looks by name…" : "Search by name or brand…"}
+                  className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                />
+              </div>
+
+              <div className="overflow-y-auto p-4">
+                {source.length === 0 ? (
+                  <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
+                    {isChat ? "No outfits yet." : "No products found."}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {filtered.map((p) => {
+                      const selected = selectedIds.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => onPick(p.id)}
+                          className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
+                            selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          <div className="aspect-square bg-[var(--surface)]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.imageUrl} alt={p.name} className={`w-full h-full ${isChat ? "object-cover" : "object-contain"}`} />
+                          </div>
+                          {selected && (
+                            <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                              <svg width="9" height="9" viewBox="0 0 11 11" fill="none">
+                                <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </span>
+                          )}
+                          <div className="px-2 py-1.5">
+                            <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
+                            <p className="text-[9px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

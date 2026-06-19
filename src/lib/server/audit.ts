@@ -11,6 +11,7 @@ export type AdminAction =
   | "settings.api_key_updated"
   | "settings.api_key_deleted"
   | "settings.homepage_showcase_updated"
+  | "settings.homepage_stylist_updated"
   | "parser.config_updated"
   | "parser.product_imported";
 
