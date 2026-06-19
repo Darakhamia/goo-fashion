@@ -256,14 +256,14 @@ function FeaturedProduct({ product }: { product: Product }) {
 
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
-      {/* Image — frame hugs the product so it doesn't float in empty space */}
-      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[340px]">
+      {/* Image — fills the whole frame edge to edge */}
+      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[360px]">
         {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-contain p-3 md:p-4"
+            className="object-cover"
             sizes="(max-width: 1024px) 100vw, 34vw"
           />
         )}
