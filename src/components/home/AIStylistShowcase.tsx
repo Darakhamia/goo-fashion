@@ -255,16 +255,16 @@ function FeaturedProduct({ product }: { product: Product }) {
   const retailers = (product.retailers ?? []).slice(0, 5);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-3 md:gap-4 p-3 md:p-4">
-      {/* Image */}
-      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 min-h-[320px] lg:min-h-[440px]">
+    <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
+      {/* Image — frame hugs the product so it doesn't float in empty space */}
+      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[340px]">
         {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-contain p-8"
-            sizes="(max-width: 1024px) 100vw, 40vw"
+            className="object-contain p-3 md:p-4"
+            sizes="(max-width: 1024px) 100vw, 34vw"
           />
         )}
         <button
