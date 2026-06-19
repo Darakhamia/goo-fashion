@@ -671,7 +671,7 @@ export default function SettingsPage() {
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-[12px] font-medium text-[var(--foreground)]">Brands (Where to buy)</span>
               <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
-                Up to {MAX_SHOWCASE_BRANDS} brands shown beside the item. Empty = the item’s retailers.
+                Up to {MAX_SHOWCASE_BRANDS} stores. Price shows when the store sells this item. Empty = the item’s retailers.
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
