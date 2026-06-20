@@ -20,13 +20,46 @@ function httpUrl(v: unknown): string {
   return /^https?:\/\//.test(s) ? s : "";
 }
 
+// Pretty display names for common multi-brand retailers, so the "Where to buy"
+// store name matches the store library (and its logo) instead of a raw domain.
+const KNOWN_STORES: Record<string, string> = {
+  farfetch: "Farfetch",
+  ssense: "SSENSE",
+  mrporter: "Mr Porter",
+  "net-a-porter": "Net-A-Porter",
+  endclothing: "END.",
+  matchesfashion: "Matches",
+  mytheresa: "Mytheresa",
+  nordstrom: "Nordstrom",
+  selfridges: "Selfridges",
+  zalando: "Zalando",
+  asos: "ASOS",
+};
+
+// The store the product is sold at, derived from the source URL's host (e.g.
+// a Farfetch link → "Farfetch"), NOT the brand. Falls back to the brand only
+// when the URL can't be parsed.
 function retailerNameFromUrl(url: string, fallback: string): string {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
-    const root = host.split(".").slice(-2, -1)[0] ?? host;
+    const root = (host.split(".").slice(-2, -1)[0] ?? host).toLowerCase();
+    if (root && KNOWN_STORES[root]) return KNOWN_STORES[root];
     return root ? root.charAt(0).toUpperCase() + root.slice(1) : (fallback || "Store");
   } catch {
     return fallback || "Store";
+  }
+}
+
+// "Official store" only when the source is the brand's own site (the host
+// contains the brand slug), e.g. versace.com for Versace — not a marketplace.
+function isOfficialStore(url: string, brand: string): boolean {
+  const b = brand.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (b.length < 3) return false;
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return host.includes(b);
+  } catch {
+    return false;
   }
 }
 
@@ -76,12 +109,12 @@ export async function POST(req: Request) {
 
   const retailers: Product["retailers"] = sourceUrl
     ? [{
-        name: brand || retailerNameFromUrl(sourceUrl, brand),
+        name: retailerNameFromUrl(sourceUrl, brand),
         url: sourceUrl,
         price,
         currency,
         availability: "in stock",
-        isOfficial: true,
+        isOfficial: isOfficialStore(sourceUrl, brand),
       }]
     : [];
 

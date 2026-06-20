@@ -402,13 +402,17 @@ export async function PUT(req: Request) {
     for (const row of colorRows) {
       if (row.referralUrl && !seenLinks.has(row.referralUrl)) {
         seenLinks.add(row.referralUrl);
+        // The store is the merchant (e.g. "Farfetch"), not the brand. Mark
+        // "Official store" only when the merchant is the brand's own store.
+        const storeName = row.merchant || row.brand || "Store";
+        const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
         retailers.push({
-          name: row.brand || row.merchant || "Store",
+          name: storeName,
           url: row.referralUrl,
           price: row.price,
           currency: (row.currency || "GBP").toUpperCase(),
           availability: "in stock",
-          isOfficial: true,
+          isOfficial: !!row.brand && slug(storeName) === slug(row.brand),
         });
       }
     }
