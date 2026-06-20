@@ -318,9 +318,12 @@ function ImageList({
 function RetailerList({
   retailers,
   onChange,
+  storeLibrary = [],
 }: {
   retailers: RetailerForm[];
   onChange: (r: RetailerForm[]) => void;
+  /** Stores (name + logo) from the admin library, used to pick a real store. */
+  storeLibrary?: { name: string; logoUrl: string | null }[];
 }) {
   const add = () =>
     onChange([...retailers, { name: "", url: "", price: "", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
@@ -328,8 +331,20 @@ function RetailerList({
   const set = (i: number, patch: Partial<RetailerForm>) =>
     onChange(retailers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  // Resolve a typed store name to its library logo (case-insensitive), so the
+  // admin sees which logo will appear on the storefront.
+  const logoFor = (name: string): string | null =>
+    storeLibrary.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase())?.logoUrl ?? null;
+
   return (
     <div className="flex flex-col gap-3">
+      {storeLibrary.length > 0 && (
+        <datalist id="retailer-store-library">
+          {storeLibrary.map((s) => (
+            <option key={s.name} value={s.name} />
+          ))}
+        </datalist>
+      )}
       {retailers.map((r, i) => (
         <div key={i} className="border border-[var(--border)] rounded-xl p-3 flex flex-col gap-2 relative">
           <button
@@ -343,14 +358,27 @@ function RetailerList({
           </button>
           <div className="grid grid-cols-2 gap-2 pr-5">
             <div>
-              <label className={labelCls}>Store name</label>
-              <input
-                type="text"
-                value={r.name}
-                onChange={(e) => set(i, { name: e.target.value })}
-                placeholder="Zara Official"
-                className={inputCls}
-              />
+              <label className={labelCls}>Store</label>
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center">
+                  {logoFor(r.name) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoFor(r.name)!} alt={r.name} className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <span className="text-[9px] font-semibold text-[var(--foreground-subtle)]">
+                      {r.name.trim() ? r.name.slice(0, 2).toUpperCase() : "—"}
+                    </span>
+                  )}
+                </span>
+                <input
+                  type="text"
+                  list="retailer-store-library"
+                  value={r.name}
+                  onChange={(e) => set(i, { name: e.target.value })}
+                  placeholder="Pick or type a store…"
+                  className={`${inputCls} flex-1`}
+                />
+              </div>
             </div>
             <div>
               <label className={labelCls}>Price ($)</label>
@@ -570,6 +598,9 @@ export default function AdminProductsPage() {
   // Brands fetched from /api/brands — starts with the static list as a fallback so the
   // datalist is never empty while the request is in flight.
   const [suggestedBrands, setSuggestedBrands] = useState<string[]>(SUGGESTED_BRANDS);
+  // Store library (name + logo) from /api/brands, used by the retailer editor so
+  // each "Where to buy" listing is a real store with its logo, not free text.
+  const [storeLibrary, setStoreLibrary] = useState<{ name: string; logoUrl: string | null }[]>([]);
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   const [addingBrand, setAddingBrand] = useState(false);
   const brandInputRef = useRef<HTMLInputElement>(null);
@@ -686,6 +717,12 @@ export default function AdminProductsPage() {
       .then((d) => {
         if (Array.isArray(d) && d.length > 0) {
           setSuggestedBrands(d.map((b: { name: string }) => b.name).sort());
+          setStoreLibrary(
+            d.map((b: { name: string; logoUrl?: string | null }) => ({
+              name: b.name,
+              logoUrl: b.logoUrl ?? null,
+            }))
+          );
         }
       })
       .catch(() => {});
@@ -1923,6 +1960,7 @@ export default function AdminProductsPage() {
                       <div className="px-4 pb-4">
                         <RetailerList
                           retailers={form.retailers}
+                          storeLibrary={storeLibrary}
                           onChange={(r) => {
                             const prices = r.map((x) => parseFloat(x.price)).filter((x) => x > 0);
                             setForm((f) => ({
