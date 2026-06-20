@@ -8,7 +8,7 @@ import { getHomepageStylistIds, type HomepageStylistIds } from "@/lib/data/db";
 
 const KEY = "homepage_stylist";
 const MAX_CHAT_LOOKS = 2;
-const MAX_SHOWCASE_BRANDS = 6;
+const MAX_SHOWCASE_STORES = 6;
 
 // GET /api/admin/homepage-stylist → { chatOutfits: string[], featuredProduct: string|null }
 export async function GET() {
@@ -34,7 +34,10 @@ export async function POST(req: Request) {
 
   const rawOutfits = (body as Record<string, unknown>).chatOutfits;
   const rawProduct = (body as Record<string, unknown>).featuredProduct;
-  const rawBrands = (body as Record<string, unknown>).brands;
+  const rawManualStores = (body as Record<string, unknown>).manualStores;
+  // `stores` is the current field; `brands` is accepted for back-compat.
+  const rawStores =
+    (body as Record<string, unknown>).stores ?? (body as Record<string, unknown>).brands;
 
   const clean: HomepageStylistIds = {
     chatOutfits: Array.isArray(rawOutfits)
@@ -44,10 +47,11 @@ export async function POST(req: Request) {
         )
       : [],
     featuredProduct: typeof rawProduct === "string" && rawProduct ? rawProduct : null,
-    brands: Array.isArray(rawBrands)
-      ? Array.from(new Set(rawBrands.filter((x): x is string => typeof x === "string"))).slice(
+    manualStores: rawManualStores === true,
+    stores: Array.isArray(rawStores)
+      ? Array.from(new Set(rawStores.filter((x): x is string => typeof x === "string"))).slice(
           0,
-          MAX_SHOWCASE_BRANDS
+          MAX_SHOWCASE_STORES
         )
       : [],
   };

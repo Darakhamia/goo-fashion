@@ -101,7 +101,7 @@ export default async function HomePage() {
         chatLooks={stylist.chatLooks}
         featuredProduct={stylist.featuredProduct}
         retailerLogos={stylist.retailerLogos}
-        showcaseBrands={stylist.showcaseBrands}
+        showcaseStores={stylist.showcaseStores}
       />
 
       {/* ── OUTFIT EXAMPLES ── */}
