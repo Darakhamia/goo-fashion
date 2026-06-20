@@ -964,10 +964,24 @@ export interface StylistChatLook {
   currency: string;
 }
 
-/** A store shown in the "Where to buy" list under the featured product. */
+/** A store in the admin logo library (name + optional logo). */
+export interface StoreLogo {
+  name: string;
+  logoUrl: string | null;
+}
+
+/** An admin-added extra store shown in the homepage "Where to buy" list. */
 export interface ShowcaseStore {
   name: string;
   logoUrl: string | null;
+  /** Admin-set price tag for this store, or null when not set. */
+  price: number | null;
+}
+
+/** One extra store as stored in settings (name + admin-set price). */
+export interface ExtraStore {
+  name: string;
+  price: number | null;
 }
 
 /** Raw ids stored in settings (used by the admin editor). */
@@ -975,12 +989,11 @@ export interface HomepageStylistIds {
   chatOutfits: string[];
   featuredProduct: string | null;
   /**
-   * When true, the "Where to buy" list uses the admin-curated `stores` below
-   * instead of the featured item's own retailers.
+   * Extra stores the admin added to the "Where to buy" list, on top of the
+   * featured item's own retailers (which always show automatically). Each has
+   * an admin-set price; the logo is pulled from the store library by name.
    */
-  manualStores: boolean;
-  /** Store names shown in the "Where to buy" list when `manualStores` is on. */
-  stores: string[];
+  extraStores: ExtraStore[];
 }
 
 /** Resolved data consumed by the public homepage. */
@@ -990,9 +1003,8 @@ export interface HomepageStylist {
   /** Lower-cased store name → logo URL, used to badge "Where to buy" rows. */
   retailerLogos: Record<string, string>;
   /**
-   * Admin-curated stores shown in the "Where to buy" list (logo + name). Only
-   * populated when the admin enabled manual store curation; otherwise empty and
-   * the homepage falls back to the featured item's own retailers.
+   * Admin-added extra stores shown after the featured item's own retailers in
+   * the "Where to buy" list (logo pulled from the library, admin-set price).
    */
   showcaseStores: ShowcaseStore[];
 }
@@ -1013,7 +1025,7 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
 }
 
 /** All stores with their (optional) logo, used to resolve curated store lists. */
-export async function getAllStoresWithLogos(): Promise<ShowcaseStore[]> {
+export async function getAllStoresWithLogos(): Promise<StoreLogo[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const withLogo = await supabase.from("brands").select("name, logo_url");
   if (!withLogo.error && withLogo.data) {
@@ -1029,7 +1041,28 @@ export async function getAllStoresWithLogos(): Promise<ShowcaseStore[]> {
 }
 
 function emptyStylistIds(): HomepageStylistIds {
-  return { chatOutfits: [], featuredProduct: null, manualStores: false, stores: [] };
+  return { chatOutfits: [], featuredProduct: null, extraStores: [] };
+}
+
+/** Coerce a stored value into an ExtraStore list, accepting legacy string[] names. */
+function asExtraStores(value: unknown): ExtraStore[] {
+  if (!Array.isArray(value)) return [];
+  const out: ExtraStore[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item.trim()) {
+      out.push({ name: item.trim(), price: null });
+    } else if (item && typeof item === "object") {
+      const name = (item as Record<string, unknown>).name;
+      const price = (item as Record<string, unknown>).price;
+      if (typeof name === "string" && name.trim()) {
+        out.push({
+          name: name.trim(),
+          price: typeof price === "number" && price > 0 ? price : null,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 /** Raw selection (used by the admin editor). */
@@ -1044,22 +1077,16 @@ export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
   if (!raw) return emptyStylistIds();
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    // `stores` is the current field; `brands` is the legacy name kept for
-    // back-compat with settings saved before the rename.
-    const stores = asStringArray(parsed.stores ?? parsed.brands).slice(
-      0,
-      MAX_SHOWCASE_STORES
-    );
-    const manualStores =
-      typeof parsed.manualStores === "boolean"
-        ? parsed.manualStores
-        : stores.length > 0; // legacy data had a curated list → treat as manual
+    // `extraStores` is the current field; legacy `stores`/`brands` were string
+    // arrays of names (no price) and are still read for back-compat.
+    const extraStores = asExtraStores(
+      parsed.extraStores ?? parsed.stores ?? parsed.brands
+    ).slice(0, MAX_SHOWCASE_STORES);
     return {
       chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
       featuredProduct:
         typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
-      manualStores,
-      stores,
+      extraStores,
     };
   } catch {
     return emptyStylistIds();
@@ -1104,16 +1131,17 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
 
   const retailerLogos = await getBrandLogos();
 
-  // Curated stores shown in the "Where to buy" list, resolved in the admin's
-  // chosen order with their logos attached. Only used when the admin opted into
-  // manual curation; otherwise the homepage falls back to the item's retailers.
+  // Extra stores the admin added on top of the item's own retailers, resolved
+  // in order with their logos pulled from the store library by name.
   let showcaseStores: ShowcaseStore[] = [];
-  if (ids.manualStores && ids.stores.length > 0) {
+  if (ids.extraStores.length > 0) {
     const all = await getAllStoresWithLogos();
     const byName = new Map(all.map((s) => [s.name.toLowerCase(), s]));
-    showcaseStores = ids.stores.map(
-      (name) => byName.get(name.toLowerCase()) ?? { name, logoUrl: null }
-    );
+    showcaseStores = ids.extraStores.map((e) => ({
+      name: e.name,
+      logoUrl: byName.get(e.name.toLowerCase())?.logoUrl ?? null,
+      price: e.price,
+    }));
   }
 
   return { chatLooks, featuredProduct, retailerLogos, showcaseStores };

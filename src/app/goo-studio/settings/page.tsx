@@ -33,18 +33,23 @@ const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: []
 
 // ── AI Stylist showcase ──────────────────────────────────────────────────────
 
+// An extra store added to the homepage "Where to buy" list (price as a string
+// for the input; "" = no price).
+interface ExtraStoreForm {
+  name: string;
+  price: string;
+}
+
 interface StylistIds {
   chatOutfits: string[];      // up to 2 outfits shown as cards in the chat
   featuredProduct: string | null; // product shown bottom-left with retailers
-  manualStores: boolean;      // curate the "Where to buy" stores by hand
-  stores: string[];           // store names shown when manualStores is on
+  extraStores: ExtraStoreForm[]; // stores added on top of the item's own retailers
 }
 
 const EMPTY_STYLIST: StylistIds = {
   chatOutfits: [],
   featuredProduct: null,
-  manualStores: false,
-  stores: [],
+  extraStores: [],
 };
 const MAX_CHAT_LOOKS = 2;
 const MAX_SHOWCASE_STORES = 6;
@@ -195,16 +200,29 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/homepage-stylist");
       if (!res.ok) return;
       const data = await res.json();
-      const stores = Array.isArray(data.stores)
-        ? data.stores
-        : Array.isArray(data.brands) // back-compat with pre-rename settings
-          ? data.brands
-          : [];
+      // `extraStores` is current; legacy `stores`/`brands` were string[] names.
+      const rawStores =
+        data.extraStores ?? data.stores ?? data.brands ?? [];
+      const extraStores: ExtraStoreForm[] = Array.isArray(rawStores)
+        ? rawStores
+            .map((s: unknown): ExtraStoreForm | null => {
+              if (typeof s === "string") return { name: s, price: "" };
+              if (s && typeof s === "object") {
+                const name = (s as Record<string, unknown>).name;
+                const price = (s as Record<string, unknown>).price;
+                if (typeof name === "string") {
+                  return { name, price: typeof price === "number" && price > 0 ? String(price) : "" };
+                }
+              }
+              return null;
+            })
+            .filter((x: ExtraStoreForm | null): x is ExtraStoreForm => x !== null)
+            .slice(0, MAX_SHOWCASE_STORES)
+        : [];
       setStylist({
         chatOutfits: Array.isArray(data.chatOutfits) ? data.chatOutfits.slice(0, 2) : [],
         featuredProduct: typeof data.featuredProduct === "string" ? data.featuredProduct : null,
-        manualStores: data.manualStores === true,
-        stores: stores.slice(0, MAX_SHOWCASE_STORES),
+        extraStores,
       });
     } catch { /* non-fatal */ }
   }
@@ -227,19 +245,31 @@ export default function SettingsPage() {
     }));
   }
 
+  // Add a store (from the library picker) if not already present.
   function toggleShowcaseStore(name: string) {
     setStylistOk(false);
     setStylist((prev) => {
-      if (prev.stores.includes(name)) {
-        return { ...prev, stores: prev.stores.filter((x) => x !== name) };
+      if (prev.extraStores.some((s) => s.name === name)) {
+        return { ...prev, extraStores: prev.extraStores.filter((s) => s.name !== name) };
       }
-      return { ...prev, stores: [...prev.stores, name].slice(0, MAX_SHOWCASE_STORES) };
+      return {
+        ...prev,
+        extraStores: [...prev.extraStores, { name, price: "" }].slice(0, MAX_SHOWCASE_STORES),
+      };
     });
   }
 
-  function setManualStores(on: boolean) {
+  function removeShowcaseStore(name: string) {
     setStylistOk(false);
-    setStylist((prev) => ({ ...prev, manualStores: on }));
+    setStylist((prev) => ({ ...prev, extraStores: prev.extraStores.filter((s) => s.name !== name) }));
+  }
+
+  function setShowcaseStorePrice(name: string, price: string) {
+    setStylistOk(false);
+    setStylist((prev) => ({
+      ...prev,
+      extraStores: prev.extraStores.map((s) => (s.name === name ? { ...s, price } : s)),
+    }));
   }
 
   async function saveStylist() {
@@ -247,10 +277,18 @@ export default function SettingsPage() {
     setStylistError("");
     setStylistOk(false);
     try {
+      const payload = {
+        chatOutfits: stylist.chatOutfits,
+        featuredProduct: stylist.featuredProduct,
+        extraStores: stylist.extraStores.map((s) => ({
+          name: s.name,
+          price: parseFloat(s.price) > 0 ? parseFloat(s.price) : null,
+        })),
+      };
       const res = await fetch("/api/admin/homepage-stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(stylist),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) { setStylistError(json.error ?? "Save failed"); return; }
@@ -685,93 +723,76 @@ export default function SettingsPage() {
 
           {/* Stores shown in "Where to buy" */}
           <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy (stores)</span>
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
               <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
-                By default shows the stores that actually sell this item.
+                Up to {MAX_SHOWCASE_STORES}
               </span>
             </div>
+            <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
+              The item’s own stores (and prices) always show automatically. Add extra stores here —
+              the logo is pulled from the library; set a price tag for each.
+            </p>
 
-            {/* Auto vs. manual toggle */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={stylist.manualStores}
-              onClick={() => setManualStores(!stylist.manualStores)}
-              className="flex items-center gap-2.5 group"
-            >
-              <span
-                className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-                  stylist.manualStores ? "bg-[var(--foreground)]" : "bg-[var(--border-strong)]"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-transform ${
-                    stylist.manualStores ? "translate-x-4" : ""
-                  }`}
-                />
-              </span>
-              <span className="text-[11px] text-[var(--foreground-muted)] group-hover:text-[var(--foreground)] transition-colors">
-                Pick stores manually instead
-              </span>
-            </button>
-
-            {stylist.manualStores && (
-              <div className="mt-3">
-                <p className="text-[10px] text-[var(--foreground-subtle)] mb-2">
-                  Up to {MAX_SHOWCASE_STORES} stores. Price shows when the store sells this item.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {stylist.stores.map((name) => {
-                    const b = brandList.find((x) => x.name === name);
-                    return (
-                      <div
-                        key={name}
-                        className="flex items-center gap-1.5 pl-1.5 pr-1 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
-                        title={name}
-                      >
-                        <span className="w-6 h-6 rounded bg-[var(--background)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
-                          {b?.logoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={b.logoUrl} alt={name} className="w-full h-full object-contain p-0.5" />
-                          ) : (
-                            <span className="text-[8px] font-semibold text-[var(--foreground-subtle)]">
-                              {name.slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
+            <div className="flex flex-col gap-2">
+              {stylist.extraStores.map(({ name, price }) => {
+                const b = brandList.find((x) => x.name === name);
+                return (
+                  <div
+                    key={name}
+                    className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                  >
+                    <span className="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
+                      {b?.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.logoUrl} alt={name} className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <span className="text-[9px] font-semibold text-[var(--foreground-subtle)]">
+                          {name.slice(0, 2).toUpperCase()}
                         </span>
-                        <span className="text-[11px] text-[var(--foreground)] max-w-[120px] truncate">{name}</span>
-                        <button
-                          onClick={() => toggleShowcaseStore(name)}
-                          className="w-4 h-4 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors"
-                          aria-label="Remove"
-                        >
-                          <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
-                            <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {stylist.stores.length < MAX_SHOWCASE_STORES && (
+                      )}
+                    </span>
+                    <span className="text-[12px] text-[var(--foreground)] flex-1 truncate" title={name}>{name}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[11px] text-[var(--foreground-subtle)]">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={price}
+                        onChange={(e) => setShowcaseStorePrice(name, e.target.value)}
+                        placeholder="Price"
+                        className="w-20 bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-2 py-1 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] rounded transition-colors"
+                      />
+                    </div>
                     <button
-                      onClick={() => { setStylistPicker("stores"); setStylistQuery(""); }}
-                      className="h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
-                      aria-label="Add a store"
+                      onClick={() => removeShowcaseStore(name)}
+                      className="w-5 h-5 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
+                      aria-label="Remove"
                     >
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                        <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                       </svg>
-                      Add store
                     </button>
-                  )}
-                </div>
-                {brandList.length === 0 && (
-                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
-                    Add stores and logos in the “Stores &amp; logos” section below first.
-                  </p>
-                )}
-              </div>
+                  </div>
+                );
+              })}
+              {stylist.extraStores.length < MAX_SHOWCASE_STORES && (
+                <button
+                  onClick={() => { setStylistPicker("stores"); setStylistQuery(""); }}
+                  className="self-start h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+                  aria-label="Add a store"
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                  Add store
+                </button>
+              )}
+            </div>
+            {brandList.length === 0 && (
+              <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+                Add stores and logos in the “Stores &amp; logos” section below first.
+              </p>
             )}
           </div>
         </div>
@@ -1230,14 +1251,14 @@ alter table settings enable row level security;`}</pre>
         const selectedIds = isChat
           ? stylist.chatOutfits
           : isStores
-            ? stylist.stores
+            ? stylist.extraStores.map((s) => s.name)
             : stylist.featuredProduct ? [stylist.featuredProduct] : [];
         const onPick = (id: string) =>
           isChat ? toggleChatOutfit(id) : isStores ? toggleShowcaseStore(id) : setFeaturedProduct(id);
         const count = isChat
           ? stylist.chatOutfits.length
           : isStores
-            ? stylist.stores.length
+            ? stylist.extraStores.length
             : stylist.featuredProduct ? 1 : 0;
         const max = isChat ? MAX_CHAT_LOOKS : isStores ? MAX_SHOWCASE_STORES : 1;
         const noun = isChat ? "look" : isStores ? "store" : "product";

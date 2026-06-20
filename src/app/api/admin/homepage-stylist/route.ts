@@ -34,10 +34,35 @@ export async function POST(req: Request) {
 
   const rawOutfits = (body as Record<string, unknown>).chatOutfits;
   const rawProduct = (body as Record<string, unknown>).featuredProduct;
-  const rawManualStores = (body as Record<string, unknown>).manualStores;
-  // `stores` is the current field; `brands` is accepted for back-compat.
+  // `extraStores` is the current field; legacy `stores`/`brands` (string[]) are
+  // accepted for back-compat.
   const rawStores =
-    (body as Record<string, unknown>).stores ?? (body as Record<string, unknown>).brands;
+    (body as Record<string, unknown>).extraStores ??
+    (body as Record<string, unknown>).stores ??
+    (body as Record<string, unknown>).brands;
+
+  // Normalize extra stores → { name, price }, dedupe by name, keep first.
+  const extraStores: HomepageStylistIds["extraStores"] = [];
+  if (Array.isArray(rawStores)) {
+    const seen = new Set<string>();
+    for (const item of rawStores) {
+      let name = "";
+      let price: number | null = null;
+      if (typeof item === "string") {
+        name = item.trim();
+      } else if (item && typeof item === "object") {
+        const n = (item as Record<string, unknown>).name;
+        const p = (item as Record<string, unknown>).price;
+        if (typeof n === "string") name = n.trim();
+        if (typeof p === "number" && p > 0) price = p;
+      }
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      extraStores.push({ name, price });
+      if (extraStores.length >= MAX_SHOWCASE_STORES) break;
+    }
+  }
 
   const clean: HomepageStylistIds = {
     chatOutfits: Array.isArray(rawOutfits)
@@ -47,13 +72,7 @@ export async function POST(req: Request) {
         )
       : [],
     featuredProduct: typeof rawProduct === "string" && rawProduct ? rawProduct : null,
-    manualStores: rawManualStores === true,
-    stores: Array.isArray(rawStores)
-      ? Array.from(new Set(rawStores.filter((x): x is string => typeof x === "string"))).slice(
-          0,
-          MAX_SHOWCASE_STORES
-        )
-      : [],
+    extraStores,
   };
 
   const { error } = await supabase

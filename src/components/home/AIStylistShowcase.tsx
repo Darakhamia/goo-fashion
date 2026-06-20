@@ -242,102 +242,81 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
 
 // ── Featured product + where to buy ──────────────────────────────────────────
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span className="flex items-center gap-1 text-white/70">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className="text-amber-300">
-        <path d="M6 1l1.5 3.2 3.5.3-2.7 2.3.9 3.4L6 8.7 2.8 10.2l.9-3.4L1 4.5l3.5-.3L6 1Z" />
-      </svg>
-      <span className="text-[12px] tabular-nums">{rating.toFixed(1)}</span>
-    </span>
-  );
+/** One resolved "Where to buy" row, from an item retailer or an extra store. */
+interface BuyRowData {
+  name: string;
+  logoUrl: string | null;
+  price: number | null;
+  currency: string;
+  availability: Retailer["availability"];
+  isOfficial: boolean;
+  url: string | null;
+  isBest: boolean;
 }
 
 /**
- * One "Where to buy" row. Shows the store logo + name; price/rating/availability
- * are rendered only when a matching retailer (with a price for this item) exists.
+ * One "Where to buy" card — mirrors the product page: store logo + name, an
+ * optional "Best"/"Official store" badge, the price and availability, and an
+ * arrow. Rows without a URL fall back to opening the stylist.
  */
-function BuyRow({
-  name,
-  logoUrl,
-  retailer,
-  onFallbackClick,
-}: {
-  name: string;
-  logoUrl: string | null;
-  retailer: Retailer | null;
-  onFallbackClick: () => void;
-}) {
+function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: () => void }) {
+  const { name, logoUrl, price, currency, availability, isOfficial, url, isBest } = row;
   return (
     <a
-      href={retailer?.url || undefined}
-      target={retailer?.url ? "_blank" : undefined}
+      href={url || undefined}
+      target={url ? "_blank" : undefined}
       rel="noopener noreferrer"
       onClick={(e) => {
-        if (!retailer?.url) {
+        if (!url) {
           e.preventDefault();
           onFallbackClick();
         }
       }}
-      className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3 border-t border-white/[0.07] first:border-t-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors"
+      className="group flex items-center justify-between gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
-        {logoUrl ? (
-          <span className="w-9 h-9 rounded-full bg-white border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
-            <Image src={logoUrl} alt={name} width={36} height={36} className="object-contain w-full h-full p-1" />
-          </span>
-        ) : (
-          <span className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-[12px] font-semibold text-white shrink-0">
-            {name.slice(0, 2).toUpperCase()}
-          </span>
-        )}
+        {/* Store logo — pulled from the library, matched by name */}
+        <span className="w-10 h-10 shrink-0 rounded-xl bg-white border border-white/10 overflow-hidden flex items-center justify-center">
+          {logoUrl ? (
+            <Image src={logoUrl} alt={name} width={40} height={40} className="object-contain w-full h-full p-1.5" />
+          ) : (
+            <span className="text-[12px] font-bold text-black/55">{name.slice(0, 2).toUpperCase()}</span>
+          )}
+        </span>
         <div className="min-w-0">
           <span className="flex items-center gap-2">
             <span className="text-[14px] font-medium text-white truncate">{name}</span>
-            {retailer?.isOfficial && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-white/70 shrink-0">
-                Official Store
+            {isBest && (
+              <span className="text-[9px] tracking-[0.12em] uppercase font-semibold text-rose-200 bg-rose-400/15 rounded-full px-2 py-0.5 shrink-0">
+                Best
               </span>
             )}
           </span>
-          {retailer?.rating ? (
-            <span className="mt-0.5 flex items-center gap-2">
-              <StarRating rating={retailer.rating} />
-              {retailer.reviewCount ? (
-                <span className="text-[11px] text-white/35">
-                  {retailer.reviewCount.toLocaleString()} reviews
-                </span>
-              ) : null}
-            </span>
-          ) : null}
+          {isOfficial && <p className="text-[11px] text-white/40 mt-0.5">Official store</p>}
         </div>
       </div>
 
-      {retailer && (
-        <span className="hidden sm:block text-[12px] text-white/40 justify-self-start">
-          {retailer.isOfficial ? "Fast delivery" : "Worldwide shipping"}
-        </span>
-      )}
-
-      <div className="flex items-center gap-3 justify-self-end col-start-3">
-        {retailer && (
-          <div className="text-right">
-            <p className="text-[14px] font-semibold text-white">
-              {money(retailer.price, retailer.currency)}
-            </p>
-            <p
-              className={`text-[11px] ${
-                retailer.availability === "sold out" ? "text-white/30" : "text-emerald-400"
-              }`}
-            >
-              {retailer.availability === "sold out"
-                ? "Sold out"
-                : retailer.availability === "low stock"
-                  ? "Low stock"
-                  : "In stock"}
-            </p>
-          </div>
-        )}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-right">
+          {price != null && (
+            <p className="text-[14px] font-semibold text-white">{money(price, currency)}</p>
+          )}
+          <p
+            className={`text-[11px] ${
+              availability === "sold out"
+                ? "text-white/30 line-through"
+                : availability === "low stock"
+                  ? "text-amber-300"
+                  : "text-white/45"
+            }`}
+          >
+            {availability === "sold out"
+              ? "Sold out"
+              : availability === "low stock"
+                ? "Low stock"
+                : "In stock"}
+          </p>
+        </div>
         <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -360,28 +339,39 @@ function FeaturedProduct({
   const { open } = useStylist();
   const [liked, setLiked] = useState(false);
 
-  // Match a store name to one of the product's retailers (case-insensitive),
-  // so a curated store shows this item's price when it actually sells it.
-  const matchRetailer = (n: string): Retailer | null =>
-    (product.retailers ?? []).find(
-      (r) => r.name.trim().toLowerCase() === n.trim().toLowerCase()
-    ) ?? null;
+  // The item's own retailers always show first (cheapest first), with logos
+  // pulled from the store library — exactly like the product page.
+  const autoRows: BuyRowData[] = [...(product.retailers ?? [])]
+    .sort((a, b) => a.price - b.price)
+    .map((r) => ({
+      name: r.name,
+      logoUrl: retailerLogos[r.name.trim().toLowerCase()] ?? null,
+      price: r.price,
+      currency: r.currency,
+      availability: r.availability,
+      isOfficial: r.isOfficial,
+      url: r.url || null,
+      isBest: false,
+    }));
 
-  // Admin-curated stores take priority; otherwise fall back to the item's own
-  // retailers — the stores that actually sell this product (with logos matched
-  // from the store logo library).
-  const rows =
-    showcaseStores.length > 0
-      ? showcaseStores.map((s) => ({
-          name: s.name,
-          logoUrl: s.logoUrl ?? retailerLogos[s.name.trim().toLowerCase()] ?? null,
-          retailer: matchRetailer(s.name),
-        }))
-      : (product.retailers ?? []).slice(0, 5).map((r) => ({
-          name: r.name,
-          logoUrl: retailerLogos[r.name.trim().toLowerCase()] ?? null,
-          retailer: r,
-        }));
+  // Admin-added extra stores append after them (skipping any the item already
+  // lists), with the admin-set price and the logo pulled from the library.
+  const seen = new Set(autoRows.map((r) => r.name.trim().toLowerCase()));
+  const extraRows: BuyRowData[] = showcaseStores
+    .filter((s) => !seen.has(s.name.trim().toLowerCase()))
+    .map((s) => ({
+      name: s.name,
+      logoUrl: s.logoUrl ?? retailerLogos[s.name.trim().toLowerCase()] ?? null,
+      price: s.price,
+      currency: product.currency,
+      availability: "in stock" as const,
+      isOfficial: false,
+      url: null,
+      isBest: false,
+    }));
+
+  const rows = [...autoRows, ...extraRows].slice(0, 6);
+  if (rows.length > 0) rows[0] = { ...rows[0], isBest: true };
 
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
@@ -422,20 +412,18 @@ function FeaturedProduct({
         <p className="text-xl text-white mt-2">{money(product.priceMin, product.currency)}</p>
 
         <div className="flex items-baseline justify-between mt-7 mb-3">
-          <p className="text-[13px] font-semibold text-white">Where to buy</p>
-          <p className="text-[11px] text-white/35">Prices may vary by retailer.</p>
+          <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">Where to buy</p>
+          {rows.length > 0 && (
+            <p className="text-[11px] text-white/35">
+              {rows.length} {rows.length === 1 ? "store" : "stores"}
+            </p>
+          )}
         </div>
 
         {rows.length > 0 ? (
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-2">
             {rows.map((row, i) => (
-              <BuyRow
-                key={`${row.name}-${i}`}
-                name={row.name}
-                logoUrl={row.logoUrl}
-                retailer={row.retailer}
-                onFallbackClick={open}
-              />
+              <BuyRow key={`${row.name}-${i}`} row={row} onFallbackClick={open} />
             ))}
           </div>
         ) : (
@@ -445,7 +433,7 @@ function FeaturedProduct({
         )}
 
         <p className="text-[11px] text-white/30 mt-5">
-          Prices updated regularly. Additional fees may apply.
+          Prices updated regularly. GOO is not responsible for pricing changes.
         </p>
       </div>
     </div>
