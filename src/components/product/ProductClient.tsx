@@ -23,9 +23,11 @@ interface Props {
   relatedProducts: Product[];
   outfitsWithProduct: Outfit[];
   lowestPrice: number;
+  /** Lower-cased store name → logo URL, from the admin store library. */
+  retailerLogos?: Record<string, string>;
 }
 
-export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice }: Props) {
+export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, retailerLogos = {} }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
@@ -303,6 +305,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   .map((retailer, i) => {
                     let domain = "";
                     try { domain = new URL(retailer.url).hostname.replace("www.", ""); } catch {}
+                    // Prefer the store logo from the admin library (matched by
+                    // name); fall back to the site favicon, then to initials.
+                    const libraryLogo = retailerLogos[retailer.name.trim().toLowerCase()] ?? null;
                     return (
                     <a
                       key={retailer.name}
@@ -314,7 +319,20 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       <div className="flex items-center gap-3">
                         {/* Retailer logo */}
                         <div className="w-10 h-10 shrink-0 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center overflow-hidden">
-                          {domain ? (
+                          {libraryLogo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={libraryLogo}
+                              alt={retailer.name}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-contain p-1.5"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                                (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = "flex");
+                              }}
+                            />
+                          ) : domain ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}

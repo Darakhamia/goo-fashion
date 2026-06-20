@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProductById, getAllProducts, getOutfitsByProductId } from "@/lib/data/db";
+import { getProductById, getAllProducts, getOutfitsByProductId, getBrandLogos } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
 import JsonLd from "@/components/seo/JsonLd";
 import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
@@ -48,9 +48,10 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const variantIds = [product.id, ...(product.variants?.map((v) => v.id) ?? [])];
 
-  const [allProducts, outfitsWithProduct] = await Promise.all([
+  const [allProducts, outfitsWithProduct, retailerLogos] = await Promise.all([
     getAllProducts(),
     getOutfitsByProductId(variantIds),
+    getBrandLogos(),
   ]);
   const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.category === product.category)
@@ -76,6 +77,7 @@ export default async function ProductDetailPage({ params }: Props) {
           relatedProducts={relatedProducts}
           outfitsWithProduct={outfitsWithProduct}
           lowestPrice={lowestPrice}
+          retailerLogos={retailerLogos}
         />
       </div>
     </div>
