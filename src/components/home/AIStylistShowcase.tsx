@@ -4,16 +4,16 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
 import type { Product, Retailer } from "@/lib/types";
-import type { StylistChatLook, ShowcaseBrand } from "@/lib/data/db";
+import type { StylistChatLook, ShowcaseStore } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
 
 interface AIStylistShowcaseProps {
   chatLooks: StylistChatLook[];
   featuredProduct: Product | null;
-  /** Lower-cased brand/store name → logo URL. */
+  /** Lower-cased store name → logo URL. */
   retailerLogos?: Record<string, string>;
-  /** Admin-curated brands shown in the "Where to buy" list. */
-  showcaseBrands?: ShowcaseBrand[];
+  /** Admin-curated stores shown in the "Where to buy" list. */
+  showcaseStores?: ShowcaseStore[];
 }
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
@@ -351,30 +351,31 @@ function BuyRow({
 function FeaturedProduct({
   product,
   retailerLogos = {},
-  showcaseBrands = [],
+  showcaseStores = [],
 }: {
   product: Product;
   retailerLogos?: Record<string, string>;
-  showcaseBrands?: ShowcaseBrand[];
+  showcaseStores?: ShowcaseStore[];
 }) {
   const { open } = useStylist();
   const [liked, setLiked] = useState(false);
 
   // Match a store name to one of the product's retailers (case-insensitive),
-  // so a curated brand shows this item's price when the store actually sells it.
+  // so a curated store shows this item's price when it actually sells it.
   const matchRetailer = (n: string): Retailer | null =>
     (product.retailers ?? []).find(
       (r) => r.name.trim().toLowerCase() === n.trim().toLowerCase()
     ) ?? null;
 
-  // Admin-curated brands take priority; otherwise fall back to the item's
-  // retailers directly (with logos matched from the brand library).
+  // Admin-curated stores take priority; otherwise fall back to the item's own
+  // retailers — the stores that actually sell this product (with logos matched
+  // from the store logo library).
   const rows =
-    showcaseBrands.length > 0
-      ? showcaseBrands.map((b) => ({
-          name: b.name,
-          logoUrl: b.logoUrl ?? retailerLogos[b.name.trim().toLowerCase()] ?? null,
-          retailer: matchRetailer(b.name),
+    showcaseStores.length > 0
+      ? showcaseStores.map((s) => ({
+          name: s.name,
+          logoUrl: s.logoUrl ?? retailerLogos[s.name.trim().toLowerCase()] ?? null,
+          retailer: matchRetailer(s.name),
         }))
       : (product.retailers ?? []).slice(0, 5).map((r) => ({
           name: r.name,
@@ -457,7 +458,7 @@ export default function AIStylistShowcase({
   chatLooks,
   featuredProduct,
   retailerLogos = {},
-  showcaseBrands = [],
+  showcaseStores = [],
 }: AIStylistShowcaseProps) {
   return (
     <section className="bg-[var(--background)] py-20 md:py-28">
@@ -479,7 +480,7 @@ export default function AIStylistShowcase({
             <FeaturedProduct
               product={featuredProduct}
               retailerLogos={retailerLogos}
-              showcaseBrands={showcaseBrands}
+              showcaseStores={showcaseStores}
             />
           </FadeCard>
         )}

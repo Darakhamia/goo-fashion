@@ -953,7 +953,7 @@ export async function getHomepageShowcase(): Promise<HomepageShowcase> {
 
 const STYLIST_KEY = "homepage_stylist";
 const MAX_CHAT_LOOKS = 2;
-const MAX_SHOWCASE_BRANDS = 6;
+const MAX_SHOWCASE_STORES = 6;
 
 /** A trending "look" card shown inside the chat preview. */
 export interface StylistChatLook {
@@ -964,8 +964,8 @@ export interface StylistChatLook {
   currency: string;
 }
 
-/** A brand shown in the "Where to buy" list under the featured product. */
-export interface ShowcaseBrand {
+/** A store shown in the "Where to buy" list under the featured product. */
+export interface ShowcaseStore {
   name: string;
   logoUrl: string | null;
 }
@@ -974,18 +974,27 @@ export interface ShowcaseBrand {
 export interface HomepageStylistIds {
   chatOutfits: string[];
   featuredProduct: string | null;
-  /** Brand names shown in the "Where to buy" list (admin-curated). */
-  brands: string[];
+  /**
+   * When true, the "Where to buy" list uses the admin-curated `stores` below
+   * instead of the featured item's own retailers.
+   */
+  manualStores: boolean;
+  /** Store names shown in the "Where to buy" list when `manualStores` is on. */
+  stores: string[];
 }
 
 /** Resolved data consumed by the public homepage. */
 export interface HomepageStylist {
   chatLooks: StylistChatLook[];
   featuredProduct: Product | null;
-  /** Lower-cased brand/store name → logo URL, used to badge "Where to buy" rows. */
+  /** Lower-cased store name → logo URL, used to badge "Where to buy" rows. */
   retailerLogos: Record<string, string>;
-  /** Admin-curated brands shown in the "Where to buy" list (logo + name). */
-  showcaseBrands: ShowcaseBrand[];
+  /**
+   * Admin-curated stores shown in the "Where to buy" list (logo + name). Only
+   * populated when the admin enabled manual store curation; otherwise empty and
+   * the homepage falls back to the featured item's own retailers.
+   */
+  showcaseStores: ShowcaseStore[];
 }
 
 /**
@@ -1003,8 +1012,8 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
   return map;
 }
 
-/** All brands with their (optional) logo, used to resolve curated brand lists. */
-export async function getAllBrandsWithLogos(): Promise<ShowcaseBrand[]> {
+/** All stores with their (optional) logo, used to resolve curated store lists. */
+export async function getAllStoresWithLogos(): Promise<ShowcaseStore[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const withLogo = await supabase.from("brands").select("name, logo_url");
   if (!withLogo.error && withLogo.data) {
@@ -1020,7 +1029,7 @@ export async function getAllBrandsWithLogos(): Promise<ShowcaseBrand[]> {
 }
 
 function emptyStylistIds(): HomepageStylistIds {
-  return { chatOutfits: [], featuredProduct: null, brands: [] };
+  return { chatOutfits: [], featuredProduct: null, manualStores: false, stores: [] };
 }
 
 /** Raw selection (used by the admin editor). */
@@ -1035,11 +1044,22 @@ export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
   if (!raw) return emptyStylistIds();
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
+    // `stores` is the current field; `brands` is the legacy name kept for
+    // back-compat with settings saved before the rename.
+    const stores = asStringArray(parsed.stores ?? parsed.brands).slice(
+      0,
+      MAX_SHOWCASE_STORES
+    );
+    const manualStores =
+      typeof parsed.manualStores === "boolean"
+        ? parsed.manualStores
+        : stores.length > 0; // legacy data had a curated list → treat as manual
     return {
       chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
       featuredProduct:
         typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
-      brands: asStringArray(parsed.brands).slice(0, MAX_SHOWCASE_BRANDS),
+      manualStores,
+      stores,
     };
   } catch {
     return emptyStylistIds();
@@ -1084,16 +1104,17 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
 
   const retailerLogos = await getBrandLogos();
 
-  // Curated brands shown in the "Where to buy" list, resolved in the admin's
-  // chosen order with their logos attached.
-  let showcaseBrands: ShowcaseBrand[] = [];
-  if (ids.brands.length > 0) {
-    const all = await getAllBrandsWithLogos();
-    const byName = new Map(all.map((b) => [b.name.toLowerCase(), b]));
-    showcaseBrands = ids.brands
-      .map((name) => byName.get(name.toLowerCase()) ?? { name, logoUrl: null })
-      .filter((b): b is ShowcaseBrand => Boolean(b));
+  // Curated stores shown in the "Where to buy" list, resolved in the admin's
+  // chosen order with their logos attached. Only used when the admin opted into
+  // manual curation; otherwise the homepage falls back to the item's retailers.
+  let showcaseStores: ShowcaseStore[] = [];
+  if (ids.manualStores && ids.stores.length > 0) {
+    const all = await getAllStoresWithLogos();
+    const byName = new Map(all.map((s) => [s.name.toLowerCase(), s]));
+    showcaseStores = ids.stores.map(
+      (name) => byName.get(name.toLowerCase()) ?? { name, logoUrl: null }
+    );
   }
 
-  return { chatLooks, featuredProduct, retailerLogos, showcaseBrands };
+  return { chatLooks, featuredProduct, retailerLogos, showcaseStores };
 }
