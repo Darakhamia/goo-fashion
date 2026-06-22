@@ -8,6 +8,7 @@ import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
 import { storeNameFromUrl, isOfficialStore, upscaleImageUrl } from "@/lib/server/product-fields";
+import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedStore } from "@/lib/stores";
 
 // Upgrade every image in a colorImages map to its higher-resolution variant.
 function upscaleColorImages(
@@ -996,14 +997,6 @@ export interface StylistChatLook {
   currency: string;
 }
 
-/** A store in the admin logo library (name + optional logo + optional link). */
-export interface StoreLogo {
-  name: string;
-  logoUrl: string | null;
-  /** Store homepage URL, used as the "Where to buy" redirect target. */
-  url: string | null;
-}
-
 /** An admin-added extra store shown in the homepage "Where to buy" list. */
 export interface ShowcaseStore {
   name: string;
@@ -1058,32 +1051,6 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
     if (row.name && row.logo_url) map[row.name.toLowerCase()] = row.logo_url;
   }
   return map;
-}
-
-/** All stores with their (optional) logo + link, used to resolve curated lists. */
-export async function getAllStoresWithLogos(): Promise<StoreLogo[]> {
-  if (!isSupabaseConfigured || !supabase) return [];
-  // Prefer name + logo_url + url, falling back as columns may not exist yet.
-  const withAll = await supabase.from("brands").select("name, logo_url, url");
-  if (!withAll.error && withAll.data) {
-    return (withAll.data as { name: string; logo_url: string | null; url: string | null }[]).map((r) => ({
-      name: r.name,
-      logoUrl: r.logo_url ?? null,
-      url: r.url ?? null,
-    }));
-  }
-  const withLogo = await supabase.from("brands").select("name, logo_url");
-  if (!withLogo.error && withLogo.data) {
-    return (withLogo.data as { name: string; logo_url: string | null }[]).map((r) => ({
-      name: r.name,
-      logoUrl: r.logo_url ?? null,
-      url: null,
-    }));
-  }
-  // logo_url column missing — fall back to names only
-  const nameOnly = await supabase.from("brands").select("name");
-  if (nameOnly.error || !nameOnly.data) return [];
-  return (nameOnly.data as { name: string }[]).map((r) => ({ name: r.name, logoUrl: null, url: null }));
 }
 
 function emptyStylistIds(): HomepageStylistIds {
@@ -1177,19 +1144,18 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
 
   const retailerLogos = await getBrandLogos();
 
-  // Extra stores the admin added on top of the item's own retailers, resolved
-  // in order with their logos pulled from the store library by name.
-  let showcaseStores: ShowcaseStore[] = [];
-  if (ids.extraStores.length > 0) {
-    const all = await getAllStoresWithLogos();
-    const byName = new Map(all.map((s) => [s.name.toLowerCase(), s]));
-    showcaseStores = ids.extraStores.map((e) => ({
-      name: e.name,
-      logoUrl: byName.get(e.name.toLowerCase())?.logoUrl ?? null,
+  // Extra stores the admin added on top of the item's own retailers. Only the
+  // supported (integrated) stores are kept; each resolves its logo from the
+  // store favicon and its link from the store homepage.
+  const showcaseStores: ShowcaseStore[] = ids.extraStores
+    .map((e) => ({ e, store: findSupportedStore(e.name) }))
+    .filter((x): x is { e: ExtraStore; store: SupportedStore } => Boolean(x.store))
+    .map(({ e, store }) => ({
+      name: store.name,
+      logoUrl: storeFaviconUrl(store.domain),
       price: e.price,
-      url: byName.get(e.name.toLowerCase())?.url ?? null,
+      url: storeHomepageUrl(store.domain),
     }));
-  }
 
   return { chatLooks, featuredProduct, retailerLogos, showcaseStores };
 }

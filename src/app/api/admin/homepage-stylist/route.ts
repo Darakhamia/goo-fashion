@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getHomepageStylistIds, type HomepageStylistIds } from "@/lib/data/db";
+import { isSupportedStore } from "@/lib/stores";
 
 const KEY = "homepage_stylist";
 const MAX_CHAT_LOOKS = 2;
@@ -57,7 +58,9 @@ export async function POST(req: Request) {
         if (typeof p === "number" && p > 0) price = p;
       }
       const key = name.toLowerCase();
-      if (!name || seen.has(key)) continue;
+      // Only integrated stores are allowed; ignore anything else (e.g. legacy
+      // brand entries from the old store library).
+      if (!name || seen.has(key) || !isSupportedStore(name)) continue;
       seen.add(key);
       extraStores.push({ name, price });
       if (extraStores.length >= MAX_SHOWCASE_STORES) break;
