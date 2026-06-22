@@ -223,9 +223,46 @@ export function upscaleImageUrl(url: string): string {
   let out = url;
 
   // Width-style query params: ?w=300, &width=200, &sw=150, &imwidth=250, &wid=…
+  // (sw/dw = Salesforce/Demandware, wid = Adobe Scene7, imwidth = Farfetch)
   out = out.replace(
-    /([?&](?:w|width|sw|wid|imwidth|mw|maxwidth|fit-width)=)(\d{2,4})\b/gi,
+    /([?&](?:w|width|sw|dw|wid|imwidth|mw|maxwidth|fit-width)=)(\d{2,4})\b/gi,
     (_m, prefix: string, n: string) => prefix + Math.max(Number(n), MIN_WIDTH),
+  );
+
+  // Height-style query params (sh/dh = Demandware, hei = Scene7). Bumped in
+  // lock-step with width so square-cropped CDNs don't return a tiny image.
+  out = out.replace(
+    /([?&](?:h|height|sh|dh|hei|imheight|mh|maxheight|fit-height)=)(\d{2,4})\b/gi,
+    (_m, prefix: string, n: string) => prefix + Math.max(Number(n), MIN_WIDTH),
+  );
+
+  // Cloudinary / imgix-style transform tokens in the path: .../w_100,h_100/...
+  // or .../w_100/... — bump any width/height token that's below the target.
+  out = out.replace(
+    /([,/](?:w|h)_)(\d{2,4})\b/gi,
+    (m, prefix: string, n: string) => (Number(n) < MIN_WIDTH ? prefix + MIN_WIDTH : m),
+  );
+
+  // Path-segment dimensions: .../300x400/..., .../300x/... (Thumbor, many shops).
+  out = out.replace(
+    /\/(\d{2,4})x(\d{0,4})\//g,
+    (m, w: string, h: string) =>
+      Number(w) < MIN_WIDTH ? `/${MIN_WIDTH}x${h ? MIN_WIDTH : ""}/` : m,
+  );
+
+  // Shopify-style numeric size suffix before the extension: _100x.jpg,
+  // _100x100.jpg, _100x150_crop_center.jpg → request the large variant.
+  out = out.replace(
+    /_(\d{2,4})x(\d{0,4})((?:_[a-z_]+)?\.(?:jpg|jpeg|png|webp|avif))(?=$|\?)/i,
+    (m, w: string, h: string, tail: string) =>
+      Number(w) < MIN_WIDTH ? `_${MIN_WIDTH}x${h ? MIN_WIDTH : ""}${tail}` : m,
+  );
+
+  // Named size suffixes (Shopify presets + common thumbnail tokens):
+  // _small.jpg, _medium.jpg, _large.jpg, _grande.jpg, _thumb.jpg, _tiny.jpg…
+  out = out.replace(
+    /_(pico|icon|thumb|thumbnail|tiny|mini|small|compact|medium|large|grande|preview)(\.(?:jpg|jpeg|png|webp|avif))(?=$|\?)/i,
+    (_m, _size: string, ext: string) => `_${MIN_WIDTH}x${ext}`,
   );
 
   // Farfetch CDN encodes width as a trailing _NNN before the extension.
