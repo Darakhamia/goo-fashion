@@ -59,6 +59,7 @@ type StylistPickerKind = "chat" | "featured" | "stores";
 interface StoreRow {
   name: string;
   logoUrl: string | null;
+  url: string | null;
 }
 
 export default function SettingsPage() {
@@ -125,9 +126,10 @@ export default function SettingsPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setBrandList(
-          data.map((b: { name: string; logoUrl?: string | null }) => ({
+          data.map((b: { name: string; logoUrl?: string | null; url?: string | null }) => ({
             name: b.name,
             logoUrl: b.logoUrl ?? null,
+            url: b.url ?? null,
           }))
         );
       }
@@ -188,6 +190,31 @@ export default function SettingsPage() {
         return;
       }
       setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: null } : b)));
+    } catch {
+      setBrandError("Network error. Try again.");
+    }
+  }
+
+  // Local edit of a store's link (kept in component state; persisted on blur).
+  function setBrandUrlLocal(name: string, url: string) {
+    setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, url } : b)));
+  }
+
+  async function saveBrandUrl(name: string, url: string) {
+    setBrandError("");
+    const clean = url.trim();
+    try {
+      const res = await fetch(`/api/brands/${encodeURIComponent(name)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: clean || null }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setBrandError(json.error ?? "Could not save store link");
+        return;
+      }
+      setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, url: clean || null } : b)));
     } catch {
       setBrandError("Network error. Try again.");
     }
@@ -731,7 +758,8 @@ export default function SettingsPage() {
             </div>
             <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
               The item’s own stores (and prices) always show automatically. Add extra stores here —
-              the logo is pulled from the library; set a price tag for each.
+              the logo and store link are pulled from the library; set an optional price tag for each.
+              Clicking a row opens that store’s link.
             </p>
 
             <div className="flex flex-col gap-2">
@@ -825,8 +853,9 @@ export default function SettingsPage() {
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Upload a logo for each store. On the homepage, a logo is shown next to a
-            “Where to buy” row when the store name matches one here.
+            Upload a logo and set a store link for each store. On the homepage, the
+            logo badges its “Where to buy” row, and the link is where the row sends
+            shoppers — even if the featured item isn’t sold there.
           </p>
         </div>
 
@@ -867,40 +896,58 @@ export default function SettingsPage() {
               {brandList
                 .filter((b) => b.name.toLowerCase().includes(brandQuery.trim().toLowerCase()))
                 .map((b) => (
-                  <div key={b.name} className="flex items-center gap-3 py-2.5">
-                    <div className="w-10 h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center shrink-0">
-                      {b.logoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.logoUrl} alt={b.name} className="w-full h-full object-contain p-1" />
-                      ) : (
-                        <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
-                          {b.name.slice(0, 2).toUpperCase()}
-                        </span>
+                  <div key={b.name} className="flex flex-col gap-2 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center shrink-0">
+                        {b.logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={b.logoUrl} alt={b.name} className="w-full h-full object-contain p-1" />
+                        ) : (
+                          <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
+                            {b.name.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span className="flex-1 text-[12px] text-[var(--foreground)] truncate">{b.name}</span>
+                      {b.logoUrl && (
+                        <button
+                          onClick={() => removeBrandLogo(b.name)}
+                          className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
+                        >
+                          Remove
+                        </button>
                       )}
+                      <label className="px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer shrink-0">
+                        {uploadingBrand === b.name ? "Uploading…" : b.logoUrl ? "Replace" : "Upload logo"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingBrand === b.name}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) uploadBrandLogo(b.name, f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
-                    <span className="flex-1 text-[12px] text-[var(--foreground)] truncate">{b.name}</span>
-                    {b.logoUrl && (
-                      <button
-                        onClick={() => removeBrandLogo(b.name)}
-                        className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    <label className="px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer shrink-0">
-                      {uploadingBrand === b.name ? "Uploading…" : b.logoUrl ? "Replace" : "Upload logo"}
+                    {/* Store link — used as the "Where to buy" redirect target */}
+                    <div className="flex items-center gap-2 pl-[52px]">
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-[var(--foreground-subtle)] shrink-0">
+                        <path d="M5.5 8.5l3-3M6 4l.7-.7a2.5 2.5 0 0 1 3.5 3.5l-.7.7M8 10l-.7.7a2.5 2.5 0 0 1-3.5-3.5L4.5 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                       <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={uploadingBrand === b.name}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) uploadBrandLogo(b.name, f);
-                          e.target.value = "";
+                        type="url"
+                        value={b.url ?? ""}
+                        onChange={(e) => setBrandUrlLocal(b.name, e.target.value)}
+                        onBlur={(e) => {
+                          if ((e.target.value.trim() || "") !== (b.url ?? "")) saveBrandUrl(b.name, e.target.value);
                         }}
+                        placeholder="https://store.com — store link for “Where to buy”"
+                        className="flex-1 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-2.5 py-1.5 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] rounded transition-colors"
                       />
-                    </label>
+                    </div>
                   </div>
                 ))}
             </div>

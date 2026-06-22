@@ -391,7 +391,9 @@ function FeaturedProduct({
     }));
 
   // Admin-added extra stores append after them (skipping any the item already
-  // lists), with the admin-set price and the logo pulled from the library.
+  // lists), with the admin-set price and the logo pulled from the library. The
+  // store's own link is used so clicking opens the store even when the featured
+  // item isn't actually sold there.
   const seen = new Set(autoRows.map((r) => r.name.trim().toLowerCase()));
   const extraRows: BuyRowData[] = showcaseStores
     .filter((s) => !seen.has(s.name.trim().toLowerCase()))
@@ -402,7 +404,7 @@ function FeaturedProduct({
       currency: product.currency,
       availability: "in stock" as const,
       isOfficial: false,
-      url: null,
+      url: s.url ?? null,
       isBest: false,
     }));
 

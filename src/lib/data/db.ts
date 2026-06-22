@@ -996,10 +996,12 @@ export interface StylistChatLook {
   currency: string;
 }
 
-/** A store in the admin logo library (name + optional logo). */
+/** A store in the admin logo library (name + optional logo + optional link). */
 export interface StoreLogo {
   name: string;
   logoUrl: string | null;
+  /** Store homepage URL, used as the "Where to buy" redirect target. */
+  url: string | null;
 }
 
 /** An admin-added extra store shown in the homepage "Where to buy" list. */
@@ -1008,6 +1010,8 @@ export interface ShowcaseStore {
   logoUrl: string | null;
   /** Admin-set price tag for this store, or null when not set. */
   price: number | null;
+  /** Store homepage URL — clicking the row opens this store. */
+  url: string | null;
 }
 
 /** One extra store as stored in settings (name + admin-set price). */
@@ -1056,20 +1060,30 @@ export async function getBrandLogos(): Promise<Record<string, string>> {
   return map;
 }
 
-/** All stores with their (optional) logo, used to resolve curated store lists. */
+/** All stores with their (optional) logo + link, used to resolve curated lists. */
 export async function getAllStoresWithLogos(): Promise<StoreLogo[]> {
   if (!isSupabaseConfigured || !supabase) return [];
+  // Prefer name + logo_url + url, falling back as columns may not exist yet.
+  const withAll = await supabase.from("brands").select("name, logo_url, url");
+  if (!withAll.error && withAll.data) {
+    return (withAll.data as { name: string; logo_url: string | null; url: string | null }[]).map((r) => ({
+      name: r.name,
+      logoUrl: r.logo_url ?? null,
+      url: r.url ?? null,
+    }));
+  }
   const withLogo = await supabase.from("brands").select("name, logo_url");
   if (!withLogo.error && withLogo.data) {
     return (withLogo.data as { name: string; logo_url: string | null }[]).map((r) => ({
       name: r.name,
       logoUrl: r.logo_url ?? null,
+      url: null,
     }));
   }
   // logo_url column missing — fall back to names only
   const nameOnly = await supabase.from("brands").select("name");
   if (nameOnly.error || !nameOnly.data) return [];
-  return (nameOnly.data as { name: string }[]).map((r) => ({ name: r.name, logoUrl: null }));
+  return (nameOnly.data as { name: string }[]).map((r) => ({ name: r.name, logoUrl: null, url: null }));
 }
 
 function emptyStylistIds(): HomepageStylistIds {
@@ -1173,6 +1187,7 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
       name: e.name,
       logoUrl: byName.get(e.name.toLowerCase())?.logoUrl ?? null,
       price: e.price,
+      url: byName.get(e.name.toLowerCase())?.url ?? null,
     }));
   }
 
