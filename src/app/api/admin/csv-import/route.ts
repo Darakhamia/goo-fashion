@@ -9,6 +9,8 @@ import {
   parseRetailCategory,
   inferCategoryFromName,
   colorToHex,
+  storeNameFromUrl,
+  isOfficialStore,
 } from "@/lib/server/product-fields";
 import type { Product, Category, Gender } from "@/lib/types";
 import type { CSVMappedRow } from "@/app/goo-studio/brightdata/page";
@@ -156,8 +158,12 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   const name = cleanName(rawName);
   if (!name) issues.push("missing name");
 
-  const merchant = resolve(row, "merchant_name", "brand_name", "brand", "manufacturer");
-  const brand = resolve(row, "brand_name", "brand", "merchant_name", "manufacturer");
+  // Store/merchant: ONLY real store columns — never the brand. Feeds that omit
+  // a merchant column (e.g. the Farfetch scraper) get their store derived from
+  // the affiliate link host below, so "Where to buy" shows the store, not the
+  // brand (which previously made rows read e.g. "Supreme" instead of "Farfetch").
+  const merchantColumn = resolve(row, "merchant_name", "merchant", "advertiser", "program_name", "programmename");
+  const brand = resolve(row, "brand_name", "brand", "manufacturer");
 
   // Farfetch: extract brand from available_sizes when brand column is empty
   // Sizes look like ["Brand Name | M", "Brand Name | S"]
@@ -194,6 +200,10 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   // Affiliate link: AWIN uses aw_deep_link; Farfetch scraper provides product_url
   const referralUrl = resolve(row, "aw_deep_link", "product_url");
   if (!referralUrl) issues.push("no affiliate link");
+
+  // Final store name: the merchant column when present, otherwise derived from
+  // the link host (the brand is intentionally NOT used as a fallback here).
+  const merchant = merchantColumn || storeNameFromUrl(referralUrl, "");
 
   // In-stock check
   const inStockRaw = resolve(row, "in_stock", "stock_status", "is_for_sale");
@@ -273,7 +283,7 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
   return {
     name,
     brand: brandFallback,
-    merchant: merchant || brandFallback,
+    merchant,
     category,
     gender,
     price,
@@ -402,17 +412,17 @@ export async function PUT(req: Request) {
     for (const row of colorRows) {
       if (row.referralUrl && !seenLinks.has(row.referralUrl)) {
         seenLinks.add(row.referralUrl);
-        // The store is the merchant (e.g. "Farfetch"), not the brand. Mark
-        // "Official store" only when the merchant is the brand's own store.
-        const storeName = row.merchant || row.brand || "Store";
-        const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+        // The store is the merchant (e.g. "Farfetch"), already resolved from the
+        // merchant column or the link host — never the brand. Mark "Official
+        // store" only when the link points at the brand's own website.
+        const storeName = row.merchant || storeNameFromUrl(row.referralUrl, "Store");
         retailers.push({
           name: storeName,
           url: row.referralUrl,
           price: row.price,
           currency: (row.currency || "GBP").toUpperCase(),
           availability: "in stock",
-          isOfficial: !!row.brand && slug(storeName) === slug(row.brand),
+          isOfficial: isOfficialStore(row.referralUrl, row.brand),
         });
       }
     }

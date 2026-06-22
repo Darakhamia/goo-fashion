@@ -151,6 +151,66 @@ export function colorToHex(colorName: string): string {
   return COLOR_HEX[key] ?? "#888888";
 }
 
+// ── Resolve the *store* name a product is sold at from its source URL ─────────
+// The store is where you buy it (e.g. a Farfetch link → "Farfetch"), which is
+// NOT the same as the brand. Affiliate feeds sometimes omit a merchant column,
+// and falling back to the brand makes the "Where to buy" row show the brand as
+// if it were the store — so we derive the store from the link host instead.
+
+// Pretty display names for common multi-brand retailers, so the resolved store
+// name matches the admin store library (and its logo) rather than a raw domain.
+const KNOWN_STORES: Record<string, string> = {
+  farfetch: "Farfetch",
+  ssense: "SSENSE",
+  mrporter: "Mr Porter",
+  "net-a-porter": "Net-A-Porter",
+  netaporter: "Net-A-Porter",
+  endclothing: "END.",
+  matchesfashion: "Matches",
+  mytheresa: "Mytheresa",
+  nordstrom: "Nordstrom",
+  selfridges: "Selfridges",
+  zalando: "Zalando",
+  asos: "ASOS",
+};
+
+// Affiliate-network tracker domains: a link host here is a redirect, not the
+// actual store, so we can't name the store from it — fall back to the caller's
+// fallback instead of showing e.g. "Awin1".
+const AFFILIATE_TRACKERS = new Set([
+  "awin1", "productserve", "prf", "zenaps", "webgains", "tradedoubler",
+  "linksynergy", "go", "click", "redirectingat", "dpbolvw", "anrdoezrs",
+  "jdoqocy", "kqzyfj", "tkqlhce",
+]);
+
+export function storeNameFromUrl(url: string, fallback = ""): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const root = (host.split(".").slice(-2, -1)[0] ?? host).toLowerCase();
+    if (!root || AFFILIATE_TRACKERS.has(root)) return fallback || "Store";
+    if (KNOWN_STORES[root]) return KNOWN_STORES[root];
+    return root.charAt(0).toUpperCase() + root.slice(1);
+  } catch {
+    return fallback || "Store";
+  }
+}
+
+// True only when the source link is the brand's own website (host contains the
+// brand slug), e.g. versace.com for Versace — never a multi-brand marketplace.
+export function isOfficialStore(url: string, brand: string): boolean {
+  const b = (brand ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (b.length < 3) return false;
+  try {
+    const host = new URL(url).hostname
+      .replace(/^www\./, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    return host.includes(b);
+  } catch {
+    return false;
+  }
+}
+
 // ── Request a higher-resolution variant of a product image URL ─────────────────
 // Many CDNs encode the width in the URL. og:image / JSON-LD thumbnails are often
 // small; bumping the obvious size token to ~1000px yields a sharper catalog image.

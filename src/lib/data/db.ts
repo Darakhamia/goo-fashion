@@ -7,6 +7,26 @@ import { supabase, isSupabaseConfigured, type DbBlogPost, type DbOutfit, type Db
 import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
+import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
+
+// Older imports stored the *brand* as the store name (so "Where to buy" rows
+// read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
+// only when a retailer's name matches the brand AND its link resolves to a
+// real, different store — leaving genuine official-store rows untouched.
+function normalizeRetailers(
+  retailers: Product["retailers"],
+  brand: string,
+): Product["retailers"] {
+  const slug = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const brandSlug = slug(brand);
+  if (!brandSlug || !Array.isArray(retailers)) return retailers ?? [];
+  return retailers.map((r) => {
+    if (!r?.url || slug(r.name) !== brandSlug) return r;
+    const derived = storeNameFromUrl(r.url, "");
+    if (!derived || derived === "Store" || slug(derived) === brandSlug) return r;
+    return { ...r, name: derived, isOfficial: isOfficialStore(r.url, brand) };
+  });
+}
 
 function isWithinLastWeek(dateStr?: string): boolean {
   if (!dateStr) return false;
@@ -42,7 +62,7 @@ export function dbToProduct(row: DbProduct): Product {
     colorImages: row.color_images ?? undefined,
     sizes: row.sizes ?? [],
     material: row.material ?? "",
-    retailers: (row.retailers as Product["retailers"]) ?? [],
+    retailers: normalizeRetailers((row.retailers as Product["retailers"]) ?? [], row.brand),
     priceMin: row.price_min,
     priceMax: row.price_max,
     currency: row.currency ?? "USD",
