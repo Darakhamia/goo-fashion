@@ -7,7 +7,19 @@ import { supabase, isSupabaseConfigured, type DbBlogPost, type DbOutfit, type Db
 import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
-import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
+import { storeNameFromUrl, isOfficialStore, upscaleImageUrl } from "@/lib/server/product-fields";
+
+// Upgrade every image in a colorImages map to its higher-resolution variant.
+function upscaleColorImages(
+  map: Record<string, string[]> | null | undefined,
+): Record<string, string[]> | undefined {
+  if (!map) return undefined;
+  const out: Record<string, string[]> = {};
+  for (const [color, urls] of Object.entries(map)) {
+    out[color] = (urls ?? []).map(upscaleImageUrl);
+  }
+  return out;
+}
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -56,10 +68,10 @@ export function dbToProduct(row: DbProduct): Product {
     brand: row.brand as Product["brand"],
     category: row.category as Product["category"],
     description: row.description ?? "",
-    imageUrl: row.image_url ?? "",
-    images: row.images ?? [],
+    imageUrl: upscaleImageUrl(row.image_url ?? ""),
+    images: (row.images ?? []).map(upscaleImageUrl),
     colors: row.colors ?? [],
-    colorImages: row.color_images ?? undefined,
+    colorImages: upscaleColorImages(row.color_images),
     sizes: row.sizes ?? [],
     material: row.material ?? "",
     retailers: normalizeRetailers((row.retailers as Product["retailers"]) ?? [], row.brand),
