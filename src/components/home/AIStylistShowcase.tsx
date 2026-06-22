@@ -261,6 +261,12 @@ interface BuyRowData {
  */
 function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: () => void }) {
   const { name, logoUrl, price, currency, availability, isOfficial, url, isBest } = row;
+  // Domain → favicon fallback, exactly like the product page "Where to buy" rows.
+  let domain = "";
+  if (url) {
+    try { domain = new URL(url).hostname.replace("www.", ""); } catch {}
+  }
+  const initials = name.slice(0, 2).toUpperCase();
   return (
     <a
       href={url || undefined}
@@ -275,13 +281,43 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
       className="group flex items-center justify-between gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
-        {/* Store logo — pulled from the library, matched by name */}
+        {/* Store logo — library logo first, then site favicon by domain, then initials */}
         <span className="w-10 h-10 shrink-0 rounded-xl bg-white border border-white/10 overflow-hidden flex items-center justify-center">
           {logoUrl ? (
-            <Image src={logoUrl} alt={name} width={40} height={40} className="object-contain w-full h-full p-1.5" />
-          ) : (
-            <span className="text-[12px] font-bold text-black/55">{name.slice(0, 2).toUpperCase()}</span>
-          )}
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={name}
+              width={40}
+              height={40}
+              className="object-contain w-full h-full p-1.5"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                const fallback = e.currentTarget.nextSibling as HTMLElement | null;
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+          ) : domain ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+              alt={name}
+              width={40}
+              height={40}
+              className="object-cover w-full h-full"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                const fallback = e.currentTarget.nextSibling as HTMLElement | null;
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+          ) : null}
+          <span
+            className="text-[12px] font-bold text-black/55 hidden items-center justify-center w-full h-full"
+            style={{ display: logoUrl || domain ? "none" : "flex" }}
+          >
+            {initials}
+          </span>
         </span>
         <div className="min-w-0">
           <span className="flex items-center gap-2">
@@ -375,14 +411,14 @@ function FeaturedProduct({
 
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
-      {/* Image — fills the whole frame edge to edge */}
-      <div className="relative rounded-3xl overflow-hidden bg-[#0F0F0F] border border-white/10 aspect-[4/5] lg:aspect-auto lg:min-h-[360px]">
+      {/* Image — white background, no frame, contained so the whole item shows */}
+      <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/5] lg:aspect-auto lg:min-h-[360px]">
         {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-cover"
+            className="object-contain p-5 md:p-7"
             sizes="(max-width: 1024px) 100vw, 34vw"
           />
         )}
@@ -390,7 +426,7 @@ function FeaturedProduct({
           type="button"
           onClick={() => setLiked((v) => !v)}
           aria-label={liked ? "Remove from favorites" : "Add to favorites"}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-black/70 hover:bg-black/10 transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill={liked ? "currentColor" : "none"}>
             <path
