@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
 
 interface KeyStatus {
   configured: boolean;
@@ -56,12 +57,6 @@ const MAX_SHOWCASE_STORES = 6;
 
 type StylistPickerKind = "chat" | "featured" | "stores";
 
-interface StoreRow {
-  name: string;
-  logoUrl: string | null;
-  url: string | null;
-}
-
 export default function SettingsPage() {
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -100,125 +95,13 @@ export default function SettingsPage() {
   const [stylistOk, setStylistOk] = useState(false);
   const [stylistError, setStylistError] = useState("");
 
-  // ── Stores & logos state ──────────────────────────────────────────────────
-  const [brandList, setBrandList] = useState<StoreRow[]>([]);
-  const [brandQuery, setBrandQuery] = useState("");
-  const [newBrandName, setNewBrandName] = useState("");
-  const [addingBrand, setAddingBrand] = useState(false);
-  const [uploadingBrand, setUploadingBrand] = useState<string | null>(null);
-  const [brandError, setBrandError] = useState("");
-
   useEffect(() => {
     loadShowcase();
     loadStylist();
     loadProducts();
     loadOutfits();
-    loadBrands();
     loadStatus();
   }, []);
-
-  // ── Brands loaders / handlers ─────────────────────────────────────────────
-
-  async function loadBrands() {
-    try {
-      const res = await fetch("/api/brands");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setBrandList(
-          data.map((b: { name: string; logoUrl?: string | null; url?: string | null }) => ({
-            name: b.name,
-            logoUrl: b.logoUrl ?? null,
-            url: b.url ?? null,
-          }))
-        );
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  async function addBrand() {
-    const name = newBrandName.trim();
-    if (!name) return;
-    setAddingBrand(true);
-    setBrandError("");
-    try {
-      const res = await fetch("/api/brands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setBrandError(json.error ?? "Could not add brand"); return; }
-      setNewBrandName("");
-      await loadBrands();
-    } catch {
-      setBrandError("Network error. Try again.");
-    } finally {
-      setAddingBrand(false);
-    }
-  }
-
-  async function uploadBrandLogo(name: string, file: File) {
-    setUploadingBrand(name);
-    setBrandError("");
-    try {
-      const fd = new FormData();
-      fd.append("name", name);
-      fd.append("file", file);
-      const res = await fetch("/api/admin/brand-logo", { method: "POST", body: fd });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) { setBrandError(json.error ?? "Upload failed"); return; }
-      setBrandList((prev) =>
-        prev.map((b) => (b.name === name ? { ...b, logoUrl: json.logoUrl } : b))
-      );
-    } catch {
-      setBrandError("Network error. Try again.");
-    } finally {
-      setUploadingBrand(null);
-    }
-  }
-
-  async function removeBrandLogo(name: string) {
-    setBrandError("");
-    try {
-      const res = await fetch(`/api/admin/brand-logo?name=${encodeURIComponent(name)}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setBrandError(json.error ?? "Could not remove logo");
-        return;
-      }
-      setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, logoUrl: null } : b)));
-    } catch {
-      setBrandError("Network error. Try again.");
-    }
-  }
-
-  // Local edit of a store's link (kept in component state; persisted on blur).
-  function setBrandUrlLocal(name: string, url: string) {
-    setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, url } : b)));
-  }
-
-  async function saveBrandUrl(name: string, url: string) {
-    setBrandError("");
-    const clean = url.trim();
-    try {
-      const res = await fetch(`/api/brands/${encodeURIComponent(name)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: clean || null }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setBrandError(json.error ?? "Could not save store link");
-        return;
-      }
-      setBrandList((prev) => prev.map((b) => (b.name === name ? { ...b, url: clean || null } : b)));
-    } catch {
-      setBrandError("Network error. Try again.");
-    }
-  }
 
   // ── Stylist loaders / handlers ────────────────────────────────────────────
 
@@ -244,6 +127,10 @@ export default function SettingsPage() {
               return null;
             })
             .filter((x: ExtraStoreForm | null): x is ExtraStoreForm => x !== null)
+            // Only keep stores we integrate with; legacy brand entries are dropped.
+            .filter((x: ExtraStoreForm) =>
+              SUPPORTED_STORES.some((s) => s.name.toLowerCase() === x.name.trim().toLowerCase())
+            )
             .slice(0, MAX_SHOWCASE_STORES)
         : [];
       setStylist({
@@ -764,16 +651,18 @@ export default function SettingsPage() {
 
             <div className="flex flex-col gap-2">
               {stylist.extraStores.map(({ name, price }) => {
-                const b = brandList.find((x) => x.name === name);
+                const store = SUPPORTED_STORES.find(
+                  (x) => x.name.toLowerCase() === name.toLowerCase()
+                );
                 return (
                   <div
                     key={name}
                     className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
                   >
-                    <span className="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
-                      {b?.logoUrl ? (
+                    <span className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
+                      {store ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.logoUrl} alt={name} className="w-full h-full object-contain p-1" />
+                        <img src={storeFaviconUrl(store.domain)} alt={name} className="w-full h-full object-contain p-1" />
                       ) : (
                         <span className="text-[9px] font-semibold text-[var(--foreground-subtle)]">
                           {name.slice(0, 2).toUpperCase()}
@@ -817,11 +706,6 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
-            {brandList.length === 0 && (
-              <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
-                Add stores and logos in the “Stores &amp; logos” section below first.
-              </p>
-            )}
           </div>
         </div>
 
@@ -836,122 +720,6 @@ export default function SettingsPage() {
           </button>
           {stylistOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
           {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
-        </div>
-      </div>
-
-      {/* ── Stores & logos ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
-        <div className="px-5 py-4 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h7A1.5 1.5 0 0 1 12 4.5v5A1.5 1.5 0 0 1 10.5 11h-7A1.5 1.5 0 0 1 2 9.5v-5Z" stroke="currentColor" strokeWidth="1.1" />
-              <circle cx="5" cy="6" r="1" stroke="currentColor" strokeWidth="1.1" />
-              <path d="M2.5 10l3-2.5 2.5 2 1.5-1.2L12 9.5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-            </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-              Stores &amp; logos
-            </p>
-          </div>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Upload a logo and set a store link for each store. On the homepage, the
-            logo badges its “Where to buy” row, and the link is where the row sends
-            shoppers — even if the featured item isn’t sold there.
-          </p>
-        </div>
-
-        {/* Add store */}
-        <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center gap-2">
-          <input
-            value={newBrandName}
-            onChange={(e) => { setNewBrandName(e.target.value); setBrandError(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter") addBrand(); }}
-            placeholder="New store name…"
-            className="flex-1 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-          />
-          <button
-            onClick={addBrand}
-            disabled={!newBrandName.trim() || addingBrand}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-          >
-            {addingBrand ? "Adding…" : "Add"}
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-5 py-3 border-b border-[var(--border)]">
-          <input
-            value={brandQuery}
-            onChange={(e) => setBrandQuery(e.target.value)}
-            placeholder="Search stores…"
-            className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-          />
-        </div>
-
-        <div className="px-5 py-4">
-          {brandError && <p className="text-[11px] text-red-500 mb-3">{brandError}</p>}
-          {brandList.length === 0 ? (
-            <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-6">No stores yet.</p>
-          ) : (
-            <div className="max-h-[360px] overflow-y-auto -mx-1 px-1 divide-y divide-[var(--border)]">
-              {brandList
-                .filter((b) => b.name.toLowerCase().includes(brandQuery.trim().toLowerCase()))
-                .map((b) => (
-                  <div key={b.name} className="flex flex-col gap-2 py-2.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden flex items-center justify-center shrink-0">
-                        {b.logoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={b.logoUrl} alt={b.name} className="w-full h-full object-contain p-1" />
-                        ) : (
-                          <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
-                            {b.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <span className="flex-1 text-[12px] text-[var(--foreground)] truncate">{b.name}</span>
-                      {b.logoUrl && (
-                        <button
-                          onClick={() => removeBrandLogo(b.name)}
-                          className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors"
-                        >
-                          Remove
-                        </button>
-                      )}
-                      <label className="px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer shrink-0">
-                        {uploadingBrand === b.name ? "Uploading…" : b.logoUrl ? "Replace" : "Upload logo"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          disabled={uploadingBrand === b.name}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) uploadBrandLogo(b.name, f);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                    </div>
-                    {/* Store link — used as the "Where to buy" redirect target */}
-                    <div className="flex items-center gap-2 pl-[52px]">
-                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-[var(--foreground-subtle)] shrink-0">
-                        <path d="M5.5 8.5l3-3M6 4l.7-.7a2.5 2.5 0 0 1 3.5 3.5l-.7.7M8 10l-.7.7a2.5 2.5 0 0 1-3.5-3.5L4.5 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <input
-                        type="url"
-                        value={b.url ?? ""}
-                        onChange={(e) => setBrandUrlLocal(b.name, e.target.value)}
-                        onBlur={(e) => {
-                          if ((e.target.value.trim() || "") !== (b.url ?? "")) saveBrandUrl(b.name, e.target.value);
-                        }}
-                        placeholder="https://store.com — store link for “Where to buy”"
-                        className="flex-1 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-2.5 py-1.5 text-[11px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] rounded transition-colors"
-                      />
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1288,7 +1056,7 @@ alter table settings enable row level security;`}</pre>
         const source: PickerItem[] = isChat
           ? outfits
           : isStores
-            ? brandList.map((b) => ({ id: b.name, name: b.name, imageUrl: b.logoUrl ?? "", sub: "store" }))
+            ? SUPPORTED_STORES.map((s) => ({ id: s.name, name: s.name, imageUrl: storeFaviconUrl(s.domain), sub: "store" }))
             : products;
         const filtered = stylistQuery.trim()
           ? source.filter((p) =>
@@ -1344,7 +1112,7 @@ alter table settings enable row level security;`}</pre>
               <div className="overflow-y-auto p-4">
                 {source.length === 0 ? (
                   <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
-                    {isChat ? "No outfits yet." : isStores ? "No stores yet — add some in “Stores & logos” below." : "No products found."}
+                    {isChat ? "No outfits yet." : isStores ? "No stores available." : "No products found."}
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
