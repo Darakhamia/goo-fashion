@@ -280,6 +280,7 @@ export default function BuilderPage() {
   const { isOpen: stylistOpen, toggle: toggleStylist, close: closeStylist } = useStylist();
   const router = useRouter();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const catalogScrollRef = useRef<HTMLDivElement>(null);
   const hasRestoredFromURL = useRef(false);
 
   // Generation state
@@ -317,9 +318,12 @@ export default function BuilderPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [sortDropOpen]);
 
-  // Reset mobile product scroll to start when category changes
+  // Reset product scroll to the start when the category changes, so each slot's
+  // list begins from the top (desktop) / left (mobile) instead of carrying over
+  // the previous slot's scroll position.
   useEffect(() => {
     mobileScrollRef.current?.scrollTo({ left: 0, behavior: "instant" });
+    catalogScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [catalogCategory]);
 
   // Reconcile this device with the account on entry: push up any look that
@@ -1300,7 +1304,7 @@ export default function BuilderPage() {
             </div>
 
             {/* Product grid — 4 columns */}
-            <div className="flex-1 overflow-y-auto p-3">
+            <div ref={catalogScrollRef} className="flex-1 overflow-y-auto p-3">
               {catalogProducts.length === 0 ? (
                 <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-4 px-8 bg-[var(--surface)]">
                   <div className="w-20 h-20 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
