@@ -30,7 +30,7 @@ export default function Navigation() {
   const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const { likedOutfits, likedProducts } = useLikes();
+  const { unseenCount } = useLikes();
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
   const { currency, setCurrency, formatPrice, convertToUsd } = useCurrency();
@@ -69,7 +69,6 @@ export default function Navigation() {
   const linkActiveClass = isDark ? "text-white" : "text-black";
   const linkMutedClass = isDark ? "text-white/40 hover:text-white/70" : "text-black/40 hover:text-black/70";
   const dotColor = isDark ? "white" : "black";
-  const totalLikes = likedOutfits.length + likedProducts.length;
   const cartCount = cartItems.length;
   const cartTotalUsd = cartItems.reduce(
     (sum, item) => sum + convertToUsd(item.price, item.currency || "USD"),
@@ -300,6 +299,20 @@ export default function Navigation() {
                   <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
+                {unseenCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: 1, right: 1,
+                    width: 15, height: 15,
+                    background: isDark ? "white" : "black",
+                    color: isDark ? "black" : "white",
+                    borderRadius: "50%",
+                    fontSize: 8, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    lineHeight: 1,
+                  }}>
+                    {unseenCount > 9 ? "9+" : unseenCount}
+                  </span>
+                )}
               </button>
 
               {profileOpen && (
@@ -349,8 +362,8 @@ export default function Navigation() {
                         </svg>
                         Wishlist
                       </span>
-                      {totalLikes > 0 && (
-                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{totalLikes > 9 ? "9+" : totalLikes}</span>
+                      {unseenCount > 0 && (
+                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{unseenCount > 9 ? "9+" : unseenCount}</span>
                       )}
                     </Link>
                   </div>
