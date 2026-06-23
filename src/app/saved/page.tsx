@@ -1376,10 +1376,12 @@ export default function SavedPage() {
   const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
   const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
+  // Counts mirror what's actually rendered: a liked id whose product/outfit is
+  // no longer in the catalog isn't shown, so it must not inflate the tab count.
   const tabs: { id: View; label: string; count: number; unseen: number }[] = [
     { id: "looks", label: "My Looks", count: myLooks.length, unseen: 0 },
-    { id: "pieces", label: "Pieces", count: likedProducts.length, unseen: unseenProducts },
-    { id: "outfits", label: "Outfits", count: likedOutfits.length, unseen: unseenOutfits },
+    { id: "pieces", label: "Pieces", count: savedProducts.length, unseen: unseenProducts },
+    { id: "outfits", label: "Outfits", count: savedOutfits.length, unseen: unseenOutfits },
   ];
 
   return (
