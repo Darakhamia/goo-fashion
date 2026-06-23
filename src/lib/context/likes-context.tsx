@@ -121,7 +121,19 @@ export function LikesProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, userId]);
 
+  // When an item leaves the wishlist we forget that we'd seen it, so re-adding
+  // it later counts as new again.
+  const forgetSeen = (key: string) => {
+    setSeenKeys((prev) => {
+      if (prev === null || !prev.includes(key)) return prev;
+      const next = prev.filter((k) => k !== key);
+      try { localStorage.setItem(seenStorageKey(userId), JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   const toggleOutfitLike = (id: string) => {
+    if (likedOutfits.includes(id)) forgetSeen(`${PREFIX.outfits}${id}`);
     setLikedOutfits((prev) => {
       const liked = !prev.includes(id);
       const next = liked ? [...prev, id] : prev.filter((x) => x !== id);
@@ -138,6 +150,7 @@ export function LikesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleProductLike = (id: string) => {
+    if (likedProducts.includes(id)) forgetSeen(`${PREFIX.products}${id}`);
     setLikedProducts((prev) => {
       const liked = !prev.includes(id);
       const next = liked ? [...prev, id] : prev.filter((x) => x !== id);
