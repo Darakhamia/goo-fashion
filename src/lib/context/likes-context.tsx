@@ -1,7 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+
+type WishlistCategory = "outfits" | "products";
 
 interface LikesContextValue {
   likedOutfits: string[];
@@ -10,10 +12,14 @@ interface LikesContextValue {
   toggleProductLike: (id: string) => void;
   isOutfitLiked: (id: string) => boolean;
   isProductLiked: (id: string) => boolean;
-  /** Wishlist items added since the user last opened their wishlist. */
+  /** Liked outfits added since the user last opened their Outfits tab. */
+  unseenOutfits: number;
+  /** Liked pieces added since the user last opened their Pieces tab. */
+  unseenProducts: number;
+  /** Total unseen items — drives the profile / nav wishlist badge. */
   unseenCount: number;
-  /** Mark every saved item as seen — clears the wishlist badge. */
-  markWishlistSeen: () => void;
+  /** Mark one wishlist tab's items as seen — clears just that tab's badge. */
+  markCategorySeen: (category: WishlistCategory) => void;
 }
 
 const LikesContext = createContext<LikesContextValue>({
@@ -23,14 +29,18 @@ const LikesContext = createContext<LikesContextValue>({
   toggleProductLike: () => {},
   isOutfitLiked: () => false,
   isProductLiked: () => false,
+  unseenOutfits: 0,
+  unseenProducts: 0,
   unseenCount: 0,
-  markWishlistSeen: () => {},
+  markCategorySeen: () => {},
 });
 
-// Stable, collision-free keys for the "seen" set (outfit vs product ids could
-// otherwise overlap).
+// Collision-free key prefixes for the "seen" set (an outfit id and a product
+// id could otherwise overlap).
+const PREFIX: Record<WishlistCategory, string> = { outfits: "o:", products: "p:" };
+
 function keysFrom(outfits: string[], products: string[]): string[] {
-  return [...outfits.map((o) => `o:${o}`), ...products.map((p) => `p:${p}`)];
+  return [...outfits.map((o) => `${PREFIX.outfits}${o}`), ...products.map((p) => `${PREFIX.products}${p}`)];
 }
 
 export function LikesProvider({ children }: { children: React.ReactNode }) {
@@ -143,17 +153,31 @@ export function LikesProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const markWishlistSeen = () => {
-    const keys = keysFrom(likedOutfits, likedProducts);
-    try { localStorage.setItem(seenStorageKey(userId), JSON.stringify(keys)); } catch {}
-    setSeenKeys(keys);
-  };
+  // Marking is idempotent: when nothing new is added we return the previous
+  // reference so React bails out — keeping the per-tab effect from looping.
+  const markCategorySeen = useCallback((category: WishlistCategory) => {
+    const ids = category === "outfits" ? likedOutfits : likedProducts;
+    const additions = ids.map((id) => `${PREFIX[category]}${id}`);
+    setSeenKeys((prev) => {
+      const set = new Set(prev ?? []);
+      let changed = false;
+      for (const k of additions) if (!set.has(k)) { set.add(k); changed = true; }
+      if (!changed && prev !== null) return prev;
+      const next = Array.from(set);
+      try { localStorage.setItem(seenStorageKey(userId), JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [likedOutfits, likedProducts, userId]);
 
-  const unseenCount = (() => {
+  const countUnseen = (prefix: string, ids: string[]): number => {
     if (seenKeys === null) return 0;
     const seen = new Set(seenKeys);
-    return keysFrom(likedOutfits, likedProducts).filter((k) => !seen.has(k)).length;
-  })();
+    return ids.filter((id) => !seen.has(`${prefix}${id}`)).length;
+  };
+
+  const unseenOutfits = countUnseen(PREFIX.outfits, likedOutfits);
+  const unseenProducts = countUnseen(PREFIX.products, likedProducts);
+  const unseenCount = unseenOutfits + unseenProducts;
 
   return (
     <LikesContext.Provider
@@ -164,8 +188,10 @@ export function LikesProvider({ children }: { children: React.ReactNode }) {
         toggleProductLike,
         isOutfitLiked: (id) => likedOutfits.includes(id),
         isProductLiked: (id) => likedProducts.includes(id),
+        unseenOutfits,
+        unseenProducts,
         unseenCount,
-        markWishlistSeen,
+        markCategorySeen,
       }}
     >
       {children}
