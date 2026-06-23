@@ -1272,7 +1272,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SavedPage() {
   const [view, setView] = useState<View>("looks");
-  const { likedOutfits, likedProducts, markWishlistSeen } = useLikes();
+  const { likedOutfits, likedProducts, unseenOutfits, unseenProducts, markCategorySeen } = useLikes();
   const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
@@ -1286,11 +1286,12 @@ export default function SavedPage() {
     if (params.get("tab") === "looks") setView("looks");
   }, []);
 
-  // Viewing the wishlist clears the "new items" badge. Re-runs as likes load /
-  // change while the page is open so anything seen here counts as seen.
+  // Opening a tab clears just that tab's "new items" badge. Re-runs as likes
+  // load / change while the tab is open so anything seen here counts as seen.
   useEffect(() => {
-    markWishlistSeen();
-  }, [markWishlistSeen, likedOutfits, likedProducts]);
+    if (view === "pieces") markCategorySeen("products");
+    else if (view === "outfits") markCategorySeen("outfits");
+  }, [view, likedOutfits, likedProducts, markCategorySeen]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -1375,10 +1376,10 @@ export default function SavedPage() {
   const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
   const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
 
-  const tabs: { id: View; label: string; count: number }[] = [
-    { id: "looks", label: "My Looks", count: myLooks.length },
-    { id: "pieces", label: "Pieces", count: likedProducts.length },
-    { id: "outfits", label: "Outfits", count: likedOutfits.length },
+  const tabs: { id: View; label: string; count: number; unseen: number }[] = [
+    { id: "looks", label: "My Looks", count: myLooks.length, unseen: 0 },
+    { id: "pieces", label: "Pieces", count: likedProducts.length, unseen: unseenProducts },
+    { id: "outfits", label: "Outfits", count: likedOutfits.length, unseen: unseenOutfits },
   ];
 
   return (
@@ -1411,6 +1412,18 @@ export default function SavedPage() {
                 />
               )}
               {t.label} ({t.count})
+              {t.unseen > 0 && (
+                <span
+                  className="ml-1.5 inline-flex items-center justify-center rounded-full font-bold align-middle"
+                  style={{
+                    minWidth: 16, height: 16, padding: "0 4px", fontSize: 9, lineHeight: 1,
+                    background: view === t.id ? "var(--background)" : "var(--foreground)",
+                    color: view === t.id ? "var(--foreground)" : "var(--background)",
+                  }}
+                >
+                  {t.unseen > 9 ? "9+" : t.unseen}
+                </span>
+              )}
             </button>
           ))}
         </div>
