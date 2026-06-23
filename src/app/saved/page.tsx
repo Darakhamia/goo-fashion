@@ -1272,7 +1272,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SavedPage() {
   const [view, setView] = useState<View>("looks");
-  const { likedOutfits, likedProducts } = useLikes();
+  const { likedOutfits, likedProducts, markWishlistSeen } = useLikes();
   const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
@@ -1285,6 +1285,12 @@ export default function SavedPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (params.get("tab") === "looks") setView("looks");
   }, []);
+
+  // Viewing the wishlist clears the "new items" badge. Re-runs as likes load /
+  // change while the page is open so anything seen here counts as seen.
+  useEffect(() => {
+    markWishlistSeen();
+  }, [markWishlistSeen, likedOutfits, likedProducts]);
 
   useEffect(() => {
     if (!isLoaded) return;

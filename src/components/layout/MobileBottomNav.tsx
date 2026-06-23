@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTheme } from "@/lib/context/theme-context";
+import { useLikes } from "@/lib/context/likes-context";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const { theme } = useTheme();
+  const { unseenCount } = useLikes();
   const isDark = theme === "dark";
 
   const tabs = [
@@ -100,6 +102,14 @@ export default function MobileBottomNav() {
                 }`}>
                   {icon(active)}
                 </span>
+                {href === "/saved" && unseenCount > 0 && (
+                  <span
+                    className="absolute z-20 flex items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] font-bold"
+                    style={{ top: -2, right: 4, minWidth: 16, height: 16, padding: "0 4px", fontSize: 9, lineHeight: 1 }}
+                  >
+                    {unseenCount > 9 ? "9+" : unseenCount}
+                  </span>
+                )}
               </span>
               <span className={`font-mono text-[10px] tracking-[0.1em] uppercase leading-none transition-colors duration-200 ${
                 active
