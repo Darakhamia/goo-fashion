@@ -259,12 +259,31 @@ export function StylistDrawer({
 
   // Lock background scroll while the mobile bottom sheet is open (desktop side
   // panel leaves the page scrollable so users can keep browsing while chatting).
+  // Pin the body with a saved offset rather than plain `overflow: hidden`:
+  // hiding overflow makes the body non-scrollable, which clamps the scroll
+  // position to 0 and dumps the page to the top when the sheet closes.
   useEffect(() => {
     if (!isOpen || position !== "fixed") return;
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
   }, [isOpen, position]);
 
   const contextId = focusProduct?.id ?? "";
