@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRef, useState, useEffect, useMemo } from "react";
+import ProductImage from "./ProductImage";
 import { motion } from "framer-motion";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
@@ -268,7 +268,7 @@ function CroppedImage({
   sizes?: string;
 }) {
   if (!cropData) {
-    return <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} />;
+    return <ProductImage src={src} alt={alt} fill className="object-contain" sizes={sizes} />;
   }
 
   // cropData zooms into a fraction of the image (e.g. width=0.3 → 3.3× zoom).
@@ -289,7 +289,7 @@ function CroppedImage({
         top: `${(-cropData.y / cropData.height) * 100}%`,
       }}
     >
-      <Image
+      <ProductImage
         src={src}
         alt={alt}
         fill

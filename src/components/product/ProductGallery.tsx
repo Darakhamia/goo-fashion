@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Image from "next/image";
+import ProductImage from "./ProductImage";
 
 interface ProductGalleryProps {
   images: string[];
@@ -46,7 +46,7 @@ export default function ProductGallery({
       {/* ── Main image ── */}
       <div className="relative aspect-[3/4] overflow-hidden bg-[var(--surface)]">
         {mainImage ? (
-          <Image
+          <ProductImage
             src={mainImage}
             alt={productName}
             fill
@@ -88,7 +88,7 @@ export default function ProductGallery({
                   : "opacity-60 hover:opacity-100"
               }`}
             >
-              <Image
+              <ProductImage
                 src={img}
                 alt={`${productName} view ${i + 1}`}
                 fill

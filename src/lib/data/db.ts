@@ -7,20 +7,8 @@ import { supabase, isSupabaseConfigured, type DbBlogPost, type DbOutfit, type Db
 import { products as staticProducts } from "./products";
 import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
-import { storeNameFromUrl, isOfficialStore, upscaleImageUrl } from "@/lib/server/product-fields";
+import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedStore } from "@/lib/stores";
-
-// Upgrade every image in a colorImages map to its higher-resolution variant.
-function upscaleColorImages(
-  map: Record<string, string[]> | null | undefined,
-): Record<string, string[]> | undefined {
-  if (!map) return undefined;
-  const out: Record<string, string[]> = {};
-  for (const [color, urls] of Object.entries(map)) {
-    out[color] = (urls ?? []).map(upscaleImageUrl);
-  }
-  return out;
-}
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -69,10 +57,13 @@ export function dbToProduct(row: DbProduct): Product {
     brand: row.brand as Product["brand"],
     category: row.category as Product["category"],
     description: row.description ?? "",
-    imageUrl: upscaleImageUrl(row.image_url ?? ""),
-    images: (row.images ?? []).map(upscaleImageUrl),
+    // Serve the exact stored URLs. Higher-resolution variants are requested at
+    // render time by the image component, which falls back to these originals
+    // if a CDN won't serve the upscaled size — so a photo never disappears.
+    imageUrl: row.image_url ?? "",
+    images: row.images ?? [],
     colors: row.colors ?? [],
-    colorImages: upscaleColorImages(row.color_images),
+    colorImages: row.color_images ?? undefined,
     sizes: row.sizes ?? [],
     material: row.material ?? "",
     retailers: normalizeRetailers((row.retailers as Product["retailers"]) ?? [], row.brand),
