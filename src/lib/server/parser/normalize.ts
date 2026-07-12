@@ -10,7 +10,6 @@ import {
   inferCategoryFromName,
   parseRetailCategory,
   inferGenderFromText,
-  upscaleImageUrl,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 
@@ -64,15 +63,16 @@ export function normalizeExtract(
     inferGenderFromText(sourceUrl) ??
     inferGenderFromText(`${name} ${raw.description ?? ""}`);
 
-  // Images: resolve → request higher-res → dedupe, cap at 12
+  // Images: resolve to absolute URLs → dedupe, cap at 12. Store the originals
+  // as-is; higher-resolution variants are requested at render time (with a
+  // fallback to these URLs) so a rewrite that a CDN rejects never loses a photo.
   const images = [...new Set(
     (raw.images ?? [])
       .map((u) => absoluteUrl(u, sourceUrl))
-      .filter((u): u is string => !!u)
-      .map(upscaleImageUrl),
+      .filter((u): u is string => !!u),
   )].slice(0, 12);
   const rawPrimary = raw.image && absoluteUrl(raw.image, sourceUrl);
-  const imageUrl = (rawPrimary && upscaleImageUrl(rawPrimary)) || images[0] || "";
+  const imageUrl = rawPrimary || images[0] || "";
   if (!imageUrl) issues.push("no image");
 
   const colors = raw.color ? [raw.color] : [];
