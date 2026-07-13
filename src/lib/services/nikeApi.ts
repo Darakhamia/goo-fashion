@@ -140,9 +140,10 @@ function guessCategory(raw: NikeRawProduct): Product["category"] {
   )
     return "tops";
 
+  if (name.includes("shorts")) return "shorts";
+
   if (
     type.includes("bottom") ||
-    name.includes("shorts") ||
     name.includes("tights") ||
     name.includes("leggings") ||
     name.includes("pants") ||

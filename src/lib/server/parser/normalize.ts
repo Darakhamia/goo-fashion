@@ -7,8 +7,7 @@ import {
   cleanName,
   parsePrice,
   extractCurrencyFromDisplay,
-  inferCategoryFromName,
-  parseRetailCategory,
+  matchCategory,
   inferGenderFromText,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
@@ -48,14 +47,14 @@ export function normalizeExtract(
 
   const currency = normalizeCurrency(raw.currency, raw.price);
 
-  // Category: explicit override → URL path hint → product name inference
-  let category = config?.categoryOverride;
-  if (!category) {
-    const fromUrl = parseRetailCategory(safePath(sourceUrl)).category;
-    const fromName = inferCategoryFromName(`${name} ${raw.description ?? ""}`);
-    // Prefer the name-based guess unless the URL path clearly says otherwise.
-    category = fromName !== "accessories" ? fromName : fromUrl;
-  }
+  // Category: explicit override → product name/description → URL path hint.
+  // Prefer the name-based guess; only fall back to the URL path when the name
+  // yields nothing, and to "accessories" only when neither signal matches.
+  const category =
+    config?.categoryOverride ??
+    matchCategory(`${name} ${raw.description ?? ""}`) ??
+    matchCategory(safePath(sourceUrl)) ??
+    "accessories";
 
   // Gender: explicit override → URL → name/description
   const gender =

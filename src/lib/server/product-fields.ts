@@ -70,6 +70,55 @@ export function extractCurrencyFromDisplay(raw: string): string {
   return "";
 }
 
+// ── Shared category keyword table ─────────────────────────────────────────────
+// One ordered rule list, used by BOTH retail-category parsing and product-name
+// inference, so a garment is classified the same way whichever field it comes
+// from. Rules are ordered **specific → general**: the first match wins, so
+// compound terms resolve correctly ("dress shirt" → shirts before dresses,
+// "swimsuit" → swimwear before the generic "suit" → blazers, "sweater vest" →
+// knitwear before the generic vest → tops, "denim shirt" → shirts before jeans).
+// Word boundaries (\b) keep e.g. "bootcut jeans" out of footwear and
+// "laptop bag" out of tops. `matchCategory` returns null when nothing matches so
+// callers can fall back to another signal instead of silently defaulting to the
+// "accessories" junk drawer.
+const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
+  // Compound trap: a "dress shirt" is a shirt, not a dress.
+  [/\bdress\s*shirt\b/, "shirts"],
+  // Swim/beach (before shorts & the generic "suit").
+  [/\b(swim(wear|suit|ming)?|bikini|beachwear|trunks|board\s*shorts?|rash\s*guard)\b/, "swimwear"],
+  // One-piece sets (before the generic "suit").
+  [/\b(jumpsuit|playsuit|dungarees?|overalls?|boilersuit|catsuit|romper|onesie)\b/, "jumpsuits"],
+  // Outerwear, incl. sleeveless outer layers (gilet / puffer vest).
+  [/\b(jacket|coat|outerwear|parka|anorak|windbreaker|bomber|trench|puffer|raincoat|overcoat|peacoat|mackintosh|poncho|cape|gilet|(puffer|padded|quilted|down|shell)\s*vest)\b/, "outerwear"],
+  // Tailoring / suiting (a waistcoat is a suit vest).
+  [/\b(blazer|waistcoat|tuxedo|suit\s*jacket|two-?piece\s*suit)\b/, "blazers"],
+  // Knitwear (before generic tops; catches sweater / knit vests too).
+  [/\b(knitwear|knit|sweater|jumper|cardigan|turtleneck|rollneck|roll\s*neck|polo\s*neck|funnel\s*neck|pullover|(sweater|knit)\s*vest)\b/, "knitwear"],
+  // Shorts (before trousers/jeans; require plural "shorts" to avoid "short sleeve").
+  [/\b(shorts|bermudas?|(chino|cargo|denim|cycling|running|sweat|board)\s*shorts?)\b/, "shorts"],
+  [/\b(skirt|kilt)\b/, "skirts"],
+  [/\b(dress|gown|frock|sundress|kaftan|caftan)\b/, "dresses"],
+  // Tees / tanks (before the generic "shirt", so "t-shirt" → tops not shirts).
+  [/\b(t-?shirt|tee|tank(\s*top)?|camisole|cami|singlet|crop\s*top|vest\s*top)\b/, "tops"],
+  [/\b(shirt|oxford|flannel|chambray)\b/, "shirts"],
+  // Remaining upper-body pieces.
+  [/\b(hoodie|sweatshirt|blouse|polo|bodysuit|tunic|bralette|\btop\b|vest)\b/, "tops"],
+  [/\b(jeans?|denim)\b(?!\s*jacket)/, "jeans"],
+  [/\b(trousers?|pants?(?!y)|chinos?|leggings?|joggers?|sweatpants?|tracksuit|culottes?|slacks)\b/, "bottoms"],
+  [/\b(footwear|shoes?|boots?|trainers?|sneakers?|sandals?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|oxford\s*shoes?|slippers?|flip-?flops?|clogs?)\b/, "footwear"],
+  [/\b(bag|backpack|rucksack|handbag|tote|clutch|satchel|holdall|luggage|suitcase|briefcase|crossbody|messenger\s*bag|duffel|pouch)\b/, "bags"],
+  // Explicit accessories (so ties/belts/hats are matched, not just left to fall through).
+  [/\b(belt|tie|bow\s*tie|scarf|scarves|hats?|caps?|beanie|gloves?|mittens?|socks?|sunglasses|jewellery|jewelry|necklace|bracelet|earrings?|watch|wallet|cardholder|purse|umbrella|keyring|headband|bandana|cufflinks?|suspenders?|braces)\b/, "accessories"],
+];
+
+/** First matching category for a free-text string, or null if none matched. */
+export function matchCategory(text: string): Category | null {
+  const t = (text ?? "").toLowerCase();
+  if (!t) return null;
+  for (const [re, cat] of CATEGORY_RULES) if (re.test(t)) return cat;
+  return null;
+}
+
 // ── Retail category path → { category, gender } ───────────────────────────────
 // Works for AWIN `category_name`, Farfetch breadcrumbs, generic category strings.
 
@@ -81,44 +130,13 @@ export function parseRetailCategory(raw: string): { category: Category; gender?:
   else if (/^(men|boys|homme|man\b)/.test(t)) gender = "men";
   else if (/unisex/.test(t)) gender = "unisex";
 
-  let category: Category = "accessories";
-  if (/trouser|pant(?!y)/.test(t))                                     category = "bottoms";
-  else if (/footwear|shoe|boot|trainer|sneaker|sandal|loafer/.test(t)) category = "footwear";
-  else if (/\bshirt\b/.test(t))                                        category = "shirts";
-  else if (/knitwear|knit|sweater|jumper|cardigan/.test(t))            category = "knitwear";
-  else if (/jacket|coat|outerwear|parka|anorak/.test(t))              category = "outerwear";
-  else if (/\bshorts?\b/.test(t))                                      category = "shorts";
-  else if (/skirt/.test(t))                                            category = "skirts";
-  else if (/dress/.test(t))                                            category = "dresses";
-  else if (/suit|blazer/.test(t))                                      category = "blazers";
-  else if (/t-shirt|top\b|blouse|polo/.test(t))                       category = "tops";
-  else if (/jeans|denim/.test(t))                                      category = "jeans";
-  else if (/bag|backpack|luggage|handbag/.test(t))                    category = "bags";
-  else if (/swim|bikini|beachwear/.test(t))                            category = "swimwear";
-  else if (/jumpsuit|playsuit|overall/.test(t))                       category = "jumpsuits";
-
-  return { category, gender };
+  return { category: matchCategory(t) ?? "accessories", gender };
 }
 
 // ── Fallback category from a free-text product name ───────────────────────────
 
 export function inferCategoryFromName(text: string): Category {
-  const t = (text ?? "").toLowerCase();
-  if (/jacket|coat|parka|anorak|windbreaker|bomber|trench/.test(t)) return "outerwear";
-  if (/blazer/.test(t)) return "blazers";
-  if (/sweater|knit|cardigan|jumper/.test(t)) return "knitwear";
-  if (/hoodie|sweatshirt|pullover|\btop\b|blouse|polo/.test(t)) return "tops";
-  if (/\bshirt\b/.test(t)) return "shirts";
-  if (/\bjeans?\b|denim(?! jacket)/.test(t)) return "jeans";
-  if (/trouser|pant|legging|jogger/.test(t)) return "bottoms";
-  if (/\bshorts?\b/.test(t)) return "shorts";
-  if (/skirt/.test(t)) return "skirts";
-  if (/dress|gown/.test(t)) return "dresses";
-  if (/jumpsuit|overall/.test(t)) return "jumpsuits";
-  if (/swimwear|bikini/.test(t)) return "swimwear";
-  if (/sneaker|trainer|boot|shoe|sandal|loafer|pump/.test(t)) return "footwear";
-  if (/\bbag\b|backpack|tote|clutch/.test(t)) return "bags";
-  return "accessories";
+  return matchCategory(text) ?? "accessories";
 }
 
 // ── Infer gender from free text (suitable-for field, URL segment, etc.) ───────
