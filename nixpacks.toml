@@ -1,0 +1,34 @@
+# Deterministic Railway / nixpacks build for this Next.js app.
+#
+# Without this file nixpacks auto-detects the build. On the hosted builder that
+# detection has intermittently failed (see the ECONNRESET note in .npmrc), and
+# the failing step is hard to pin down because the setup phase output is what
+# gets surfaced. This file pins the deploy to the exact phases that are known to
+# build the app (verified locally: `npm ci` then `next build`, both exit 0), so
+# the deploy is reproducible instead of relying on auto-detection.
+#
+# Resilience lives in two places:
+#   - .npmrc  → fetch-retries + backoff so a transient registry drop during
+#               `npm ci` retries instead of aborting the build.
+#   - here    → NPM_CONFIG_PRODUCTION=false guarantees the devDependencies that
+#               `next build` needs (typescript, tailwind, @types/*) are installed
+#               even though the builder runs with NODE_ENV=production.
+
+providers = ["node"]
+
+[variables]
+# Keep devDependencies at build time (belt-and-suspenders with .npmrc).
+NPM_CONFIG_PRODUCTION = "false"
+# Give `next build` headroom so a large compile isn't OOM-killed on the builder.
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+[phases.install]
+# Matches the verified local install; retry/backoff settings come from .npmrc.
+cmds = ["npm ci --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+# package.json's `start` already binds 0.0.0.0 and honours $PORT for Railway.
+cmd = "npm run start"
