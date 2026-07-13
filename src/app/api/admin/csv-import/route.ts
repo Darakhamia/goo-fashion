@@ -7,7 +7,7 @@ import {
   parsePrice,
   extractCurrencyFromDisplay,
   parseRetailCategory,
-  inferCategoryFromName,
+  matchCategory,
   colorToHex,
   storeNameFromUrl,
   isOfficialStore,
@@ -215,16 +215,18 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     "category_name", "merchant_category",
     "merchant_product_category_path", "product_type", "category",
   );
-  let category: Category;
-  let gender: Gender | undefined;
-
-  if (categoryRaw) {
-    const parsed = parseRetailCategory(categoryRaw);
-    category = parsed.category;
-    gender = parsed.gender;
-  } else {
-    category = inferCategoryFromName(name);
-  }
+  // Take gender from the feed's category path, but resolve the category from the
+  // strongest available signal: the feed category, then the product name, then
+  // the fashion_type hint. This stops an uninformative feed category (e.g.
+  // "New In", "SS24 Sale") from dumping an otherwise-recognisable garment into
+  // "accessories" — the name is tried before we give up.
+  const fashionTypeHint = resolve(row, "fashion_type", "fashion:category");
+  let gender: Gender | undefined = categoryRaw ? parseRetailCategory(categoryRaw).gender : undefined;
+  const category: Category =
+    (categoryRaw ? matchCategory(categoryRaw) : null) ??
+    matchCategory(name) ??
+    matchCategory(fashionTypeHint) ??
+    "accessories";
 
   // Farfetch: infer gender from input_url (e.g. /men/ or /women/)
   const inputUrl = resolve(row, "input_url");
@@ -242,12 +244,6 @@ function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     if (/women|female|ladies|girl/.test(sf)) gender = "women";
     else if (/\bmen\b|male|boy|homme/.test(sf)) gender = "men";
     else if (/unisex/.test(sf)) gender = "unisex";
-  }
-
-  // fashion_type as category hint when no category column
-  if (!categoryRaw) {
-    const fashionType = resolve(row, "fashion_type", "fashion:category");
-    if (fashionType) category = inferCategoryFromName(fashionType);
   }
 
   const colorRaw = resolve(row, "colour", "color", "description", "цвет");
