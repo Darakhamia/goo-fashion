@@ -1098,14 +1098,32 @@ export default function AdminProductsPage() {
       const dryRes = await fetch("/api/admin/recategorize?scope=all", { cache: "no-store" });
       const dry = await dryRes.json();
       if (!dryRes.ok) { showToast(dry.error || "Recategorize failed", "err"); return; }
-      if (!dry.wouldChange) { showToast("Nothing to recategorize — every product looks correct"); return; }
+
+      // Products the classifier can't place (no recognisable garment word). Show
+      // their names so the exact stragglers are visible and keywords can be added.
+      const stuck = (dry.stuckSample ?? []) as { name: string; category: string }[];
+      const showStuck = () => {
+        if (!stuck.length) return;
+        const lines = stuck.slice(0, 40).map((s) => `• ${s.name}  →  (${s.category})`).join("\n");
+        const more = dry.stillStuck > 40 ? `\n…and ${dry.stillStuck - 40} more.` : "";
+        window.alert(
+          `${dry.stillStuck} product(s) couldn't be auto-sorted — no recognisable garment word in the name — and were left as-is:\n\n${lines}${more}\n\nScreenshot this so keywords can be added for them.`,
+        );
+      };
+
+      if (!dry.wouldChange) {
+        showToast(dry.stillStuck ? `Nothing moved · ${dry.stillStuck} couldn't be sorted` : "Nothing to recategorize — every product looks correct");
+        showStuck();
+        return;
+      }
 
       const summary = Object.entries(dry.breakdown as Record<string, number>)
         .sort((a, b) => b[1] - a[1])
         .map(([k, n]) => `  ${k}: ${n}`)
         .join("\n");
+      const stuckNote = dry.stillStuck ? `\n\n${dry.stillStuck} product(s) can't be auto-sorted and will be left as-is.` : "";
       const ok = window.confirm(
-        `Recategorize ${dry.wouldChange} of ${dry.scanned} products across the whole catalog?\n\n${summary}\n\nThis updates the catalog.`,
+        `Recategorize ${dry.wouldChange} of ${dry.scanned} products across the whole catalog?\n\n${summary}${stuckNote}\n\nThis updates the catalog.`,
       );
       if (!ok) return;
 
@@ -1118,6 +1136,7 @@ export default function AdminProductsPage() {
       if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
       showToast(`Recategorized ${applied.applied} product${applied.applied === 1 ? "" : "s"}`);
       await fetchProducts();
+      showStuck();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Recategorize failed", "err");
     } finally {
