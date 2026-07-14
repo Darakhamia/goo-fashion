@@ -1088,30 +1088,31 @@ export default function AdminProductsPage() {
     setSeeding(false);
   };
 
-  // Re-run the category classifier over products already in the DB (the import
-  // fix only affects new imports). Dry-run first, show what would change, and
-  // only write after the admin confirms. Defaults to the "accessories" bucket.
+  // Re-run the category classifier over EVERY product already in the DB (the
+  // import fix only affects new imports). Dry-run first, show what would change,
+  // and only write after the admin confirms. scope=all re-evaluates the whole
+  // catalog, not just the accessories bucket.
   const handleRecategorize = async () => {
     setRecategorizing(true);
     try {
-      const dryRes = await fetch("/api/admin/recategorize", { cache: "no-store" });
+      const dryRes = await fetch("/api/admin/recategorize?scope=all", { cache: "no-store" });
       const dry = await dryRes.json();
       if (!dryRes.ok) { showToast(dry.error || "Recategorize failed", "err"); return; }
-      if (!dry.wouldChange) { showToast("Nothing to recategorize — accessories look correct"); return; }
+      if (!dry.wouldChange) { showToast("Nothing to recategorize — every product looks correct"); return; }
 
       const summary = Object.entries(dry.breakdown as Record<string, number>)
         .sort((a, b) => b[1] - a[1])
         .map(([k, n]) => `  ${k}: ${n}`)
         .join("\n");
       const ok = window.confirm(
-        `Recategorize ${dry.wouldChange} of ${dry.scanned} products currently in "accessories"?\n\n${summary}\n\nThis updates the catalog.`,
+        `Recategorize ${dry.wouldChange} of ${dry.scanned} products across the whole catalog?\n\n${summary}\n\nThis updates the catalog.`,
       );
       if (!ok) return;
 
       const applyRes = await fetch("/api/admin/recategorize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apply: true }),
+        body: JSON.stringify({ apply: true, scope: "all" }),
       });
       const applied = await applyRes.json();
       if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
@@ -1281,7 +1282,7 @@ export default function AdminProductsPage() {
           <button
             onClick={handleRecategorize}
             disabled={recategorizing || !dbConfigured}
-            title={dbConfigured ? "Re-run the category classifier on products currently in accessories" : "Requires Supabase"}
+            title={dbConfigured ? "Re-run the category classifier across the whole catalog" : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {recategorizing ? "Sorting…" : "Fix categories"}
