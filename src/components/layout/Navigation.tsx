@@ -57,9 +57,6 @@ export default function Navigation() {
   const showWhiteText = isHero && !scrolled && theme === "dark";
 
   const isDark = theme === "dark";
-  const navBg = isDark ? "#0a0a0a" : "#ffffff";
-  const navBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-  const navShadow = isDark ? "0 2px 20px rgba(0,0,0,0.4)" : "0 2px 20px rgba(0,0,0,0.08)";
   const navIconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)";
   const navIconColorHover = isDark ? "rgba(255,255,255,1)" : "rgba(0,0,0,0.9)";
   const navIconBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
@@ -132,13 +129,10 @@ export default function Navigation() {
       style={{ paddingTop: 10 }}>
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
       <nav
-        className="h-14 flex items-center justify-between px-6"
+        className="glass-nav h-14 flex items-center justify-between px-6"
         style={{
-          background: navBg,
           borderRadius: 50,
-          border: `1px solid ${navBorder}`,
-          boxShadow: navShadow,
-          transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s",
+          transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s, backdrop-filter 0.3s",
         }}
       >
         {/* Logo */}
@@ -151,14 +145,14 @@ export default function Navigation() {
         </Link>
 
         {/* Desktop Nav — centered links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="relative flex flex-col items-center gap-1.5 pb-0.5"
+                className="nav-glass-btn relative flex flex-col items-center gap-1.5 rounded-full px-4 py-2 transition-colors duration-300"
               >
                 <span className={`text-[11px] tracking-[0.14em] uppercase font-semibold transition-colors duration-200 ${
                   isActive ? linkActiveClass : linkMutedClass
@@ -169,7 +163,7 @@ export default function Navigation() {
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%",
                     background: dotColor, display: "block",
-                    position: "absolute", bottom: -6,
+                    position: "absolute", bottom: 2,
                   }} />
                 )}
               </Link>
@@ -186,7 +180,7 @@ export default function Navigation() {
               onMouseEnter={() => setAiHover(true)}
               onMouseLeave={() => setAiHover(false)}
               aria-label="Open AI Stylist"
-              className={`flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
+              className={`nav-glass-btn flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : aiHover ? navIconBorderHover : navIconBorder}`,
@@ -246,7 +240,7 @@ export default function Navigation() {
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
               aria-label="Open cart"
-              className="flex items-center justify-center transition-all duration-200"
+              className="nav-glass-btn flex items-center justify-center transition-all duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${cartOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : cartHover ? navIconBorderHover : navIconBorder}`,
@@ -287,7 +281,7 @@ export default function Navigation() {
                 onMouseEnter={() => setProfileHover(true)}
                 onMouseLeave={() => setProfileHover(false)}
                 aria-label="Profile menu"
-                className="flex items-center justify-center transition-all duration-200"
+                className="nav-glass-btn flex items-center justify-center transition-all duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
                   border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : profileHover ? navIconBorderHover : navIconBorder}`,
@@ -451,7 +445,7 @@ export default function Navigation() {
         {/* Mobile: icon buttons */}
         <div className="md:hidden flex items-center gap-1">
           <button onClick={toggleStylist} aria-label="Open AI Stylist"
-            className="flex items-center justify-center transition-all duration-200"
+            className="nav-glass-btn flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%",
               border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
               background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
@@ -461,7 +455,7 @@ export default function Navigation() {
           <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
           <button onClick={() => setCartOpen(true)} aria-label="Open cart"
-            className="relative flex items-center justify-center transition-all duration-200"
+            className="nav-glass-btn relative flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
               background:"transparent", color: navIconColor }}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
