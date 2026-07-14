@@ -65,13 +65,18 @@ async function run(apply: boolean, scope: Scope) {
   const rows = await fetchAll(scope);
 
   const changes: Change[] = [];
+  // Rows the classifier can't move (no keyword matched, or it resolves to the
+  // same category). Surfaced so we can see WHICH names still slip through and
+  // extend the keyword table for them.
+  const stuck: { name: string; category: string }[] = [];
   for (const r of rows) {
     const text = `${r.name ?? ""} ${r.description ?? ""}`.trim();
-    if (!text) continue;
-    const next = matchCategory(text);
+    const next = text ? matchCategory(text) : null;
     // Only act on a confident, different classification — never re-dump to accessories.
     if (next && next !== r.category) {
       changes.push({ id: r.id, name: r.name, from: r.category, to: next });
+    } else {
+      stuck.push({ name: r.name, category: r.category });
     }
   }
 
@@ -108,6 +113,8 @@ async function run(apply: boolean, scope: Scope) {
     breakdown,
     // A capped sample so the response stays readable on large catalogs.
     sample: changes.slice(0, 100),
+    stillStuck: stuck.length,
+    stuckSample: stuck.slice(0, 100),
   });
 }
 

@@ -84,8 +84,11 @@ export function extractCurrencyFromDisplay(raw: string): string {
 const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   // Compound trap: a "dress shirt" is a shirt, not a dress.
   [/\bdress\s*shirt\b/, "shirts"],
-  // Swim/beach (before shorts & the generic "suit").
-  [/\b(swim(wear|suit|ming)?|bikini|beachwear|trunks|board\s*shorts?|rash\s*guard)\b/, "swimwear"],
+  // Shorts first — "swim/swimming/board/beach shorts" should read as shorts, not
+  // swimwear. Require plural "shorts" (or a qualifier) to avoid "short sleeve".
+  [/\b(shorts|bermudas?|(chino|cargo|denim|cycling|running|sweat|board|swim|swimming|beach)\s*shorts?)\b/, "shorts"],
+  // True swimwear only (shorts already handled above).
+  [/\b(swim(wear|suit|ming)?|bikini|beachwear|trunks|rash\s*guard)\b/, "swimwear"],
   // One-piece sets (before the generic "suit").
   [/\b(jumpsuit|playsuit|dungarees?|overalls?|boilersuit|catsuit|romper|onesie)\b/, "jumpsuits"],
   // Outerwear, incl. sleeveless outer layers (gilet / puffer vest).
@@ -111,11 +114,37 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\b(belt|tie|bow\s*tie|scarf|scarves|hats?|caps?|beanie|gloves?|mittens?|socks?|sunglasses|jewellery|jewelry|necklace|bracelet|earrings?|watch|wallet|cardholder|purse|umbrella|keyring|headband|bandana|cufflinks?|suspenders?|braces)\b/, "accessories"],
 ];
 
+// Russian-language keywords. Much of the catalog is named/described in Russian,
+// which the English table above can't read. Cyrillic word boundaries aren't
+// handled by \b, so these are plain stem substrings (matched on lowercased
+// text), ordered specific → general and consulted ONLY when the English pass
+// finds nothing — so they never override an English match. "шорт" is checked
+// before swim/"купальн" so "купальные шорты" reads as shorts, mirroring English.
+const CATEGORY_RULES_RU: ReadonlyArray<readonly [RegExp, Category]> = [
+  [/шорт/, "shorts"],
+  [/купальник|плавк|купальн|бикини/, "swimwear"],
+  [/комбинезон/, "jumpsuits"],
+  [/куртк|пальто|плащ|парк|пухов|ветровк|бомбер|тренч|дублёнк|дубленк|шуба|шубы|анорак|пончо|накидк/, "outerwear"],
+  [/пиджак|блейзер|смокинг|жакет/, "blazers"],
+  [/кофт|свитер|джемпер|кардиган|водолазк|пуловер/, "knitwear"],
+  [/юбк/, "skirts"],
+  [/плать|сарафан/, "dresses"],
+  [/футболк|майк|блузк|худи|свитшот|толстовк|кроп.?топ/, "tops"],
+  [/рубашк|сорочк/, "shirts"],
+  [/джинс|деним/, "jeans"],
+  [/брюк|штан|легинс|лосин|джоггер|чинос/, "bottoms"],
+  [/обувь|ботинк|кроссовк|кеды|туфл|сапог|сандал|лофер|босонож|мокасин|балетк|\bугг/, "footwear"],
+  [/сумк|рюкзак|клатч|портфель|чемодан|барсетк/, "bags"],
+  [/ремень|ремни|галстук|шарф|платок|платк|шапк|кепк|берет|перчатк|варежк|носк|носок|очки|часы|кошел|бабочк|запонк|подтяжк|ободок/, "accessories"],
+];
+
 /** First matching category for a free-text string, or null if none matched. */
 export function matchCategory(text: string): Category | null {
   const t = (text ?? "").toLowerCase();
   if (!t) return null;
   for (const [re, cat] of CATEGORY_RULES) if (re.test(t)) return cat;
+  // Fall back to Russian keywords only when the English table matched nothing.
+  for (const [re, cat] of CATEGORY_RULES_RU) if (re.test(t)) return cat;
   return null;
 }
 
