@@ -93,8 +93,10 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\b(jumpsuit|playsuit|dungarees?|overalls?|boilersuit|catsuit|romper|onesie)\b/, "jumpsuits"],
   // Outerwear, incl. sleeveless outer layers (gilet / puffer vest).
   [/\b(jacket|coat|outerwear|parka|anorak|windbreaker|bomber|trench|puffer|raincoat|overcoat|peacoat|mackintosh|poncho|cape|gilet|(puffer|padded|quilted|down|shell)\s*vest)\b/, "outerwear"],
-  // Tailoring / suiting (a waistcoat is a suit vest).
-  [/\b(blazer|waistcoat|tuxedo|suit\s*jacket|two-?piece\s*suit)\b/, "blazers"],
+  // Tailoring / suiting. Bare "suit" is included but \b keeps it from matching
+  // swimsuit / jumpsuit / tracksuit / bodysuit (all handled by earlier rules) and
+  // from matching the verb "suits"/"suited".
+  [/\b(blazer|waistcoat|tuxedo|suit)\b/, "blazers"],
   // Knitwear (before generic tops; catches sweater / knit vests too).
   [/\b(knitwear|knit|sweater|jumper|cardigan|turtleneck|rollneck|roll\s*neck|polo\s*neck|funnel\s*neck|pullover|(sweater|knit)\s*vest)\b/, "knitwear"],
   // Shorts (before trousers/jeans; require plural "shorts" to avoid "short sleeve").
@@ -103,9 +105,11 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\b(dress|gown|frock|sundress|kaftan|caftan)\b/, "dresses"],
   // Tees / tanks (before the generic "shirt", so "t-shirt" → tops not shirts).
   [/\b(t-?shirt|tee|tank(\s*top)?|camisole|cami|singlet|crop\s*top|vest\s*top)\b/, "tops"],
-  [/\b(shirt|oxford|flannel|chambray)\b/, "shirts"],
+  [/\b(shirt|overshirt|shacket|oxford|flannel|chambray)\b/, "shirts"],
   // Remaining upper-body pieces.
   [/\b(hoodie|sweatshirt|blouse|polo|bodysuit|tunic|bralette|\btop\b|vest)\b/, "tops"],
+  // Crewnecks described only as "crew" (e.g. "long-sleeve crew"); never "crew socks".
+  [/\bcrew(?:neck)?\b(?!\s*socks?)|\bcrew[-\s]neck\b/, "tops"],
   [/\b(jeans?|denim)\b(?!\s*jacket)/, "jeans"],
   [/\b(trousers?|pants?(?!y)|chinos?|leggings?|joggers?|sweatpants?|tracksuit|culottes?|slacks)\b/, "bottoms"],
   [/\b(footwear|shoes?|boots?|trainers?|sneakers?|sandals?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|oxford\s*shoes?|slippers?|flip-?flops?|clogs?)\b/, "footwear"],
