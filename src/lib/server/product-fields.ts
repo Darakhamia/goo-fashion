@@ -84,6 +84,12 @@ export function extractCurrencyFromDisplay(raw: string): string {
 const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   // Compound trap: a "dress shirt" is a shirt, not a dress.
   [/\bdress\s*shirt\b/, "shirts"],
+  // Sneaker / shoe MODEL names that carry no generic garment word (e.g.
+  // "Air Max 90", "Adidas Samba", "Nike Dunk"). Placed high so a model name wins
+  // — including "Nike Blazer", which would otherwise read as the tailoring
+  // "blazer". Brand names alone are intentionally excluded (brands also make
+  // apparel: a "Vans tee" must stay a top).
+  [/\b(air\s*max|air\s*force|af1|air\s*jordan|jordan\s*\d|nike\s*blazer|\bdunk\b|cortez|vapormax|pegasus|samba|gazelle|superstar|stan\s*smith|ozweego|adilette|ultra\s?boost|nmd|yeezy\s*(?:boost|slide|foam|\d)|new\s*balance\s*\d+|chuck\s*taylor|sk8-?hi|old\s*skool|birkenstock|crocs|uggs?)\b/, "footwear"],
   // Shorts first — "swim/swimming/board/beach shorts" should read as shorts, not
   // swimwear. Require plural "shorts" (or a qualifier) to avoid "short sleeve".
   [/\b(shorts|bermudas?|(chino|cargo|denim|cycling|running|sweat|board|swim|swimming|beach)\s*shorts?)\b/, "shorts"],
@@ -99,8 +105,6 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\b(blazer|waistcoat|tuxedo|suit)\b/, "blazers"],
   // Knitwear (before generic tops; catches sweater / knit vests too).
   [/\b(knitwear|knit|sweater|jumper|cardigan|turtleneck|rollneck|roll\s*neck|polo\s*neck|funnel\s*neck|pullover|(sweater|knit)\s*vest)\b/, "knitwear"],
-  // Shorts (before trousers/jeans; require plural "shorts" to avoid "short sleeve").
-  [/\b(shorts|bermudas?|(chino|cargo|denim|cycling|running|sweat|board)\s*shorts?)\b/, "shorts"],
   [/\b(skirt|kilt)\b/, "skirts"],
   [/\b(dress|gown|frock|sundress|kaftan|caftan)\b/, "dresses"],
   // Tees / tanks (before the generic "shirt", so "t-shirt" → tops not shirts).
@@ -112,7 +116,7 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\bcrew(?:neck)?\b(?!\s*socks?)|\bcrew[-\s]neck\b/, "tops"],
   [/\b(jeans?|denim)\b(?!\s*jacket)/, "jeans"],
   [/\b(trousers?|pants?(?!y)|chinos?|leggings?|joggers?|sweatpants?|tracksuit|culottes?|slacks)\b/, "bottoms"],
-  [/\b(footwear|shoes?|boots?|trainers?|sneakers?|sandals?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|oxford\s*shoes?|slippers?|flip-?flops?|clogs?)\b/, "footwear"],
+  [/\b(footwear|shoes?|boots?|trainers?|sneakers?|runners?|sandals?|slides?|sliders?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|oxford\s*shoes?|plimsolls?|hi-?tops?|high-?tops?|low-?tops?|slippers?|flip-?flops?|clogs?)\b/, "footwear"],
   [/\b(bag|backpack|rucksack|handbag|tote|clutch|satchel|holdall|luggage|suitcase|briefcase|crossbody|messenger\s*bag|duffel|pouch)\b/, "bags"],
   // Explicit accessories (so ties/belts/hats are matched, not just left to fall through).
   [/\b(belt|tie|bow\s*tie|scarf|scarves|hats?|caps?|beanie|gloves?|mittens?|socks?|sunglasses|jewellery|jewelry|necklace|bracelet|earrings?|watch|wallet|cardholder|purse|umbrella|keyring|headband|bandana|cufflinks?|suspenders?|braces)\b/, "accessories"],
@@ -137,7 +141,7 @@ const CATEGORY_RULES_RU: ReadonlyArray<readonly [RegExp, Category]> = [
   [/рубашк|сорочк/, "shirts"],
   [/джинс|деним/, "jeans"],
   [/брюк|штан|легинс|лосин|джоггер|чинос/, "bottoms"],
-  [/обувь|ботинк|кроссовк|кеды|туфл|сапог|сандал|лофер|босонож|мокасин|балетк|\bугг/, "footwear"],
+  [/обувь|ботинк|кроссовк|кросс|кеды|туфл|сапог|сандал|лофер|босонож|мокасин|балетк|слайд|\bугг/, "footwear"],
   [/сумк|рюкзак|клатч|портфель|чемодан|барсетк/, "bags"],
   [/ремень|ремни|галстук|шарф|платок|платк|шапк|кепк|берет|перчатк|варежк|носк|носок|очки|часы|кошел|бабочк|запонк|подтяжк|ободок/, "accessories"],
 ];
