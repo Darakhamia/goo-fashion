@@ -166,6 +166,79 @@ body {
   animation: aiPulseRing 1.6s ease-out infinite;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Glass navigation bar + glass buttons
+   Frosted, translucent "plate" that floats over the page content,
+   with a soft white highlight that rises from the bottom of each
+   button on hover. Theme-aware (light default, .dark override).
+   No text-shimmer / no press animation — hover glow only.
+   ────────────────────────────────────────────────────────────── */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 8px 16px rgba(255, 255, 255, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.dark .glass-nav {
+  background: rgba(18, 18, 18, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.14),
+    inset 0 8px 20px rgba(255, 255, 255, 0.04),
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Transparent glass button — the white hover highlight lives on ::after so
+   it never fights the button's own inline background/border state styles. */
+.nav-glass-btn {
+  position: relative;
+  isolation: isolate;
+}
+
+.nav-glass-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background-image: linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.35) 14%,
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.nav-glass-btn:hover::after,
+.nav-glass-btn:focus-visible::after {
+  opacity: 0.55;
+}
+
+.dark .nav-glass-btn:hover::after,
+.dark .nav-glass-btn:focus-visible::after {
+  opacity: 0.7;
+}
+
+/* Subtle translucent fill on hover (nav links only — icon buttons keep their
+   own inline background, which takes precedence over this). */
+.nav-glass-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark .nav-glass-btn:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s ease forwards;
 }
