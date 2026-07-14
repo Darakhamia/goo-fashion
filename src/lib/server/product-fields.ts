@@ -90,6 +90,10 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   // "blazer". Brand names alone are intentionally excluded (brands also make
   // apparel: a "Vans tee" must stay a top).
   [/\b(air\s*max|air\s*force|af1|air\s*jordan|jordan\s*\d|nike\s*blazer|\bdunk\b|cortez|vapormax|pegasus|samba|gazelle|superstar|stan\s*smith|ozweego|adilette|ultra\s?boost|nmd|yeezy\s*(?:boost|slide|foam|\d)|new\s*balance\s*\d+|chuck\s*taylor|sk8-?hi|old\s*skool|birkenstock|crocs|uggs?)\b/, "footwear"],
+  // Footwear is high-priority so a shoe word beats garment words elsewhere in the
+  // name — "Bermuda Shoes" / "Denim Loafers" read as footwear, not shorts/jeans.
+  // "boot" is guarded against "boot cut" (jeans); "shoe" against "shoe bag/box".
+  [/\b(footwear|shoes?(?!\s*(?:bag|box|tree|horn|care|lace|rack))|boots?(?!\s*-?cut)|trainers?|sneakers?|sandals?|slides?|sliders?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|plimsolls?|hi-?tops?|high-?tops?|low-?tops?|slippers?|flip-?flops?|clogs?|moccasins?)\b/, "footwear"],
   // Shorts first — "swim/swimming/board/beach shorts" should read as shorts, not
   // swimwear. Require plural "shorts" (or a qualifier) to avoid "short sleeve".
   [/\b(shorts|bermudas?|(chino|cargo|denim|cycling|running|sweat|board|swim|swimming|beach)\s*shorts?)\b/, "shorts"],
@@ -108,7 +112,7 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\b(skirt|kilt)\b/, "skirts"],
   [/\b(dress|gown|frock|sundress|kaftan|caftan)\b/, "dresses"],
   // Tees / tanks (before the generic "shirt", so "t-shirt" → tops not shirts).
-  [/\b(t-?shirt|tee|tank(\s*top)?|camisole|cami|singlet|crop\s*top|vest\s*top)\b/, "tops"],
+  [/\b(t[-\s]?shirt|tee|tank(\s*top)?|camisole|cami|singlet|crop\s*top|vest\s*top)\b/, "tops"],
   [/\b(shirt|overshirt|shacket|oxford|flannel|chambray)\b/, "shirts"],
   // Remaining upper-body pieces.
   [/\b(hoodie|sweatshirt|blouse|polo|bodysuit|tunic|bralette|\btop\b|vest)\b/, "tops"],
@@ -116,7 +120,6 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   [/\bcrew(?:neck)?\b(?!\s*socks?)|\bcrew[-\s]neck\b/, "tops"],
   [/\b(jeans?|denim)\b(?!\s*jacket)/, "jeans"],
   [/\b(trousers?|pants?(?!y)|chinos?|leggings?|joggers?|sweatpants?|tracksuit|culottes?|slacks)\b/, "bottoms"],
-  [/\b(footwear|shoes?|boots?|trainers?|sneakers?|runners?|sandals?|slides?|sliders?|loafers?|heels?|pumps?|espadrilles?|mules?|brogues?|derbys?|oxford\s*shoes?|plimsolls?|hi-?tops?|high-?tops?|low-?tops?|slippers?|flip-?flops?|clogs?)\b/, "footwear"],
   [/\b(bag|backpack|rucksack|handbag|tote|clutch|satchel|holdall|luggage|suitcase|briefcase|crossbody|messenger\s*bag|duffel|pouch)\b/, "bags"],
   // Explicit accessories (so ties/belts/hats are matched, not just left to fall through).
   [/\b(belt|tie|bow\s*tie|scarf|scarves|hats?|caps?|beanie|gloves?|mittens?|socks?|sunglasses|jewellery|jewelry|necklace|bracelet|earrings?|watch|wallet|cardholder|purse|umbrella|keyring|headband|bandana|cufflinks?|suspenders?|braces)\b/, "accessories"],
