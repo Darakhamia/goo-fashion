@@ -1206,11 +1206,16 @@ export default function BuilderPage() {
                   Liked
                 </button>
 
+                {/* Values are SLOT ids (not bare categories) so filterByCategory
+                    expands them via slot.categories — identical to the left-hand
+                    slots and the mobile chips. This keeps "Bottoms" showing every
+                    leg piece (bottoms/jeans/shorts/skirts/dresses/jumpsuits) and
+                    "Shoes" showing only footwear, everywhere. */}
                 {([
-                  { label: "Tops", value: "tops" },
+                  { label: "Tops", value: "top" },
                   { label: "Outerwear", value: "outerwear" },
-                  { label: "Bottoms", value: "bottoms" },
-                  { label: "Shoes", value: "footwear" },
+                  { label: "Bottoms", value: "bottom" },
+                  { label: "Shoes", value: "shoes" },
                   { label: "Accessories", value: "accessories" },
                   { label: "Bags", value: "bags" },
                   { label: "New In", value: "new-in" },
