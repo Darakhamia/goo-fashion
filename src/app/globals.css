@@ -213,6 +213,33 @@ body {
     0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Liquid-glass refraction (real lens + chromatic dispersion).
+   Only enabled on Chromium via the `lg-refraction` class on <html>
+   (see the detector in app/layout.tsx). Everything above stays as the
+   frosted-glass fallback for Safari / iOS / Firefox.
+   ────────────────────────────────────────────────────────────── */
+html.lg-refraction .glass-nav {
+  background: rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: url(#lg);
+  backdrop-filter: url(#lg);
+}
+html.lg-refraction.dark .glass-nav {
+  background: rgba(20, 20, 20, 0.12);
+}
+
+/* Round icon buttons (AI / cart / profile) — frosted by default, refractive
+   glass on Chromium. Keeps whatever inline background/border state the button
+   sets in React. */
+.nav-glass-icon {
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+}
+html.lg-refraction .nav-glass-icon {
+  -webkit-backdrop-filter: url(#lgb);
+  backdrop-filter: url(#lgb);
+}
+
 /* Transparent glass button — the white hover highlight lives on ::after so
    it never fights the button's own inline background/border state styles. */
 .nav-glass-btn {

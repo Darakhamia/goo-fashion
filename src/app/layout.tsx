@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/lib/context/theme-context";
 import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
+import LiquidGlassFilters from "@/components/ui/LiquidGlassFilters";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import PostHogTracker from "@/components/analytics/PostHogTracker";
 import BugReportButton from "@/components/internal/BugReportButton";
@@ -81,8 +82,17 @@ export default function RootLayout({
               __html: `(function(){try{var t=localStorage.getItem('goo-theme');var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)||(t!=='light'&&t!=='system');if(dark){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
             }}
           />
+          {/* Enable real liquid-glass refraction only where SVG filters work in
+              backdrop-filter (Chromium desktop/Android). Safari/iOS/Firefox keep
+              the frosted-glass fallback. Runs pre-paint to avoid a flash. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var ua=navigator.userAgent;var iOS=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);var chromium=/Chrome\\/[0-9]/.test(ua)&&!/Firefox/.test(ua)&&!/CriOS|FxiOS|EdgiOS/.test(ua);if(chromium&&!iOS){document.documentElement.classList.add('lg-refraction')}}catch(e){}})()`,
+            }}
+          />
         </head>
         <body className="antialiased">
+          <LiquidGlassFilters />
           <ThemeProvider>
             <AuthProvider>
               <LikesProvider>
