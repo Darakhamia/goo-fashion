@@ -180,7 +180,7 @@ export default function Navigation() {
               onMouseEnter={() => setAiHover(true)}
               onMouseLeave={() => setAiHover(false)}
               aria-label="Open AI Stylist"
-              className={`nav-glass-btn flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
+              className={`nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : aiHover ? navIconBorderHover : navIconBorder}`,
@@ -240,7 +240,7 @@ export default function Navigation() {
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
               aria-label="Open cart"
-              className="nav-glass-btn flex items-center justify-center transition-all duration-200"
+              className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${cartOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : cartHover ? navIconBorderHover : navIconBorder}`,
@@ -281,7 +281,7 @@ export default function Navigation() {
                 onMouseEnter={() => setProfileHover(true)}
                 onMouseLeave={() => setProfileHover(false)}
                 aria-label="Profile menu"
-                className="nav-glass-btn flex items-center justify-center transition-all duration-200"
+                className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
                   border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : profileHover ? navIconBorderHover : navIconBorder}`,
@@ -445,7 +445,7 @@ export default function Navigation() {
         {/* Mobile: icon buttons */}
         <div className="md:hidden flex items-center gap-1">
           <button onClick={toggleStylist} aria-label="Open AI Stylist"
-            className="nav-glass-btn flex items-center justify-center transition-all duration-200"
+            className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%",
               border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
               background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
@@ -455,7 +455,7 @@ export default function Navigation() {
           <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
           <button onClick={() => setCartOpen(true)} aria-label="Open cart"
-            className="nav-glass-btn relative flex items-center justify-center transition-all duration-200"
+            className="nav-glass-btn nav-glass-icon relative flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
               background:"transparent", color: navIconColor }}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
