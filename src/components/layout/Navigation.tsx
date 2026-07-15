@@ -495,8 +495,7 @@ export default function Navigation() {
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
           <div ref={cartDrawerRef}
-            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
-            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
+            className="glass-panel fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 rounded-2xl flex flex-col animate-slide-in-right overflow-hidden">
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
               <div>
                 <p className="text-[13px] font-medium text-[var(--foreground)]">Cart</p>
@@ -561,13 +560,11 @@ export default function Navigation() {
         >
           <div
             onClick={e => e.stopPropagation()}
+            className="glass-panel"
             style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
               borderRadius: 20,
               padding: "28px 28px 24px",
               width: 300,
-              boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
               animation: "fadeInDown 0.2s ease",
             }}
           >
