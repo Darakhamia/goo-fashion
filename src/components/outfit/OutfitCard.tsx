@@ -103,7 +103,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="glass-btn block px-5 pt-4 pb-5">
+        <Link href={`/outfit/${outfit.id}`} className="glass-btn glass-card-foot block px-5 pt-4 pb-5">
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {outfit.name}
           </h3>
