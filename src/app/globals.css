@@ -276,6 +276,8 @@ html.lg-refraction.dark .glass-panel {
   position: relative;
   isolation: isolate;
   overflow: hidden; /* keep the glow strictly inside the button */
+  --gx: 50%; /* glow position — updated by GlassGlow to follow the cursor */
+  --gy: 100%;
   background: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   backdrop-filter: blur(12px) saturate(160%);
@@ -308,29 +310,18 @@ html.lg-refraction .glass-btn {
   border-radius: inherit;
   pointer-events: none;
   z-index: -1;
-  /* Always-on white bloom, clipped to the button (overflow:hidden above), that
-     slides side-to-side along the bottom edge on hover — never leaves the box. */
+  /* Soft white light that trails the cursor: its centre is (--gx,--gy), set by
+     GlassGlow with a smooth rAF lerp. Dimmer than before, and clipped to the
+     button (overflow:hidden) so it hugs the rounded edges without crossing them.
+     Rest position is bottom-centre (the default var values). */
   background: radial-gradient(
-    58% 72% at 50% 100%,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(255, 255, 255, 0.36) 20%,
-    rgba(255, 255, 255, 0.1) 46%,
+    46% 62% at var(--gx) var(--gy),
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.16) 28%,
+    rgba(255, 255, 255, 0.04) 54%,
     transparent 72%
   );
   opacity: 1;
-  transform: translateX(-20%);
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.glass-btn:hover::after,
-.glass-btn:focus-visible::after {
-  transform: translateX(20%);
-}
-
-/* Card foot: the always-on glow slides to the other side when the whole
-   card (.group) is hovered, not only when the pointer is over the bottom bar. */
-.group:hover .glass-card-foot::after,
-.group:focus-within .glass-card-foot::after {
-  transform: translateX(20%);
 }
 
 /* Transparent glass button — the white hover highlight lives on ::after so
