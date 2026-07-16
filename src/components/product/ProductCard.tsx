@@ -226,8 +226,8 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </svg>
       </button>
 
-      {/* Info — glass bottom */}
-      <Link href={linkHref} className="glass-btn block px-5 pt-4 pb-5">
+      {/* Info — glass bottom (glows on hover of the whole card) */}
+      <Link href={linkHref} className="glass-btn glass-card-foot block px-5 pt-4 pb-5">
         {showBrand && (
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {product.brand}

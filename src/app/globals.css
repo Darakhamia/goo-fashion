@@ -321,6 +321,13 @@ html.lg-refraction .glass-btn {
   opacity: 0.6;
 }
 
+/* Card foot: light up the bottom whenever the whole card (.group) is hovered,
+   not only when the pointer is over the bottom bar itself. */
+.group:hover .glass-card-foot::after,
+.group:focus-within .glass-card-foot::after {
+  opacity: 0.6;
+}
+
 /* Transparent glass button — the white hover highlight lives on ::after so
    it never fights the button's own inline background/border state styles. */
 .nav-glass-btn {
