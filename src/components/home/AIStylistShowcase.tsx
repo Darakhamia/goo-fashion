@@ -112,7 +112,7 @@ function Intro() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-3"
+            className="glass-panel rounded-2xl p-4 flex flex-col gap-3"
           >
             <span className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
               {f.icon}
@@ -135,7 +135,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left hover:bg-white/[0.07] transition-colors"
+      className="glass-btn group flex items-center gap-3 rounded-2xl p-3 text-left transition-colors"
     >
       <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
         {look.imageUrl && (
@@ -166,7 +166,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
   const { open } = useStylist();
   return (
-    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-3 md:m-4 min-h-[420px]">
+    <div className="glass-panel flex flex-col rounded-3xl overflow-hidden m-3 md:m-4 min-h-[420px]">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
@@ -226,7 +226,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
           type="button"
           onClick={open}
           aria-label="Ask your stylist"
-          className="group w-full h-12 rounded-2xl border border-white/10 bg-white/[0.04] pl-4 pr-1.5 flex items-center text-left hover:border-white/20 transition-colors"
+          className="glass-btn group w-full h-12 rounded-2xl pl-4 pr-1.5 flex items-center text-left transition-colors"
         >
           <span className="flex-1 text-[13px] text-white/40">Ask your stylist…</span>
           <span className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:opacity-90 transition-opacity">
@@ -278,7 +278,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
           onFallbackClick();
         }
       }}
-      className="group flex items-center justify-between gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
+      className="glass-btn group flex items-center justify-between gap-4 p-4 rounded-2xl transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
         {/* Store logo — library logo first, then site favicon by domain, then initials */}
