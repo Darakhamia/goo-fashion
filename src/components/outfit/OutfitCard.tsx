@@ -39,7 +39,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)]"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
@@ -103,7 +103,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block px-5 pt-4 pb-5">
+        <Link href={`/outfit/${outfit.id}`} className="glass-btn block px-5 pt-4 pb-5">
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {outfit.name}
           </h3>
