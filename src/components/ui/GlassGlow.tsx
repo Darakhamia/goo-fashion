@@ -83,8 +83,15 @@ export default function GlassGlow() {
       returning = false;
       const r = target.getBoundingClientRect();
       if (!r.width || !r.height) return;
-      tx = ((e.clientX - r.left) / r.width) * 100;
-      ty = ((e.clientY - r.top) / r.height) * 100;
+      // Project the cursor onto the button's border: the light rides the edge
+      // at the point that lies in the cursor's direction from the centre, so it
+      // travels along the rim (never inside, never outside) as the cursor moves.
+      let dx = e.clientX - r.left - r.width / 2;
+      let dy = e.clientY - r.top - r.height / 2;
+      if (dx === 0 && dy === 0) dy = 0.0001;
+      const scale = 1 / Math.max(Math.abs(dx) / (r.width / 2), Math.abs(dy) / (r.height / 2));
+      tx = ((r.width / 2 + dx * scale) / r.width) * 100;
+      ty = ((r.height / 2 + dy * scale) / r.height) * 100;
       kick();
     };
 
