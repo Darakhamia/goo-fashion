@@ -307,25 +307,33 @@ html.lg-refraction .glass-btn {
   border-radius: inherit;
   pointer-events: none;
   z-index: -1;
-  background-image: linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.35) 14%,
-    transparent 55%
+  /* Premium white bloom rising from the bottom edge; sweeps in on hover */
+  background: radial-gradient(
+    82% 116% at 50% 120%,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.5) 13%,
+    rgba(255, 255, 255, 0.16) 33%,
+    rgba(255, 255, 255, 0.04) 54%,
+    transparent 72%
   );
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transform: translateY(9px) rotate(-9deg) scale(1.05);
+  transform-origin: 50% 135%;
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 .glass-btn:hover::after,
 .glass-btn:focus-visible::after {
-  opacity: 0.6;
+  opacity: 1;
+  transform: translateY(0) rotate(0deg) scale(1);
 }
 
 /* Card foot: light up the bottom whenever the whole card (.group) is hovered,
    not only when the pointer is over the bottom bar itself. */
 .group:hover .glass-card-foot::after,
 .group:focus-within .glass-card-foot::after {
-  opacity: 0.6;
+  opacity: 1;
+  transform: translateY(0) rotate(0deg) scale(1);
 }
 
 /* Transparent glass button — the white hover highlight lives on ::after so
@@ -342,24 +350,26 @@ html.lg-refraction .glass-btn {
   border-radius: inherit;
   pointer-events: none;
   z-index: -1;
-  background-image: linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.35) 14%,
-    transparent 55%
+  /* Premium white bloom rising from the bottom edge (see .glass-glow-* below) */
+  background: radial-gradient(
+    82% 116% at 50% 120%,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.5) 13%,
+    rgba(255, 255, 255, 0.16) 33%,
+    rgba(255, 255, 255, 0.04) 54%,
+    transparent 72%
   );
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transform: translateY(9px) rotate(-9deg) scale(1.05);
+  transform-origin: 50% 135%;
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 
 .nav-glass-btn:hover::after,
 .nav-glass-btn:focus-visible::after {
-  opacity: 0.55;
-}
-
-.dark .nav-glass-btn:hover::after,
-.dark .nav-glass-btn:focus-visible::after {
-  opacity: 0.7;
+  opacity: 1;
+  transform: translateY(0) rotate(0deg) scale(1);
 }
 
 /* Subtle translucent fill on hover (nav links only — icon buttons keep their
