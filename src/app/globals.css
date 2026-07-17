@@ -240,44 +240,28 @@ html.lg-refraction.dark .glass-nav {
    ────────────────────────────────────────────────────────────── */
 .glass-nav-glow {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: -60px;
-  bottom: -60px;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden; /* clip to the bar — the glow stays on the element, no cloud */
   z-index: -1; /* over the glass surface, under the logo/links */
   pointer-events: none;
   mix-blend-mode: screen;
+  /* All sizes in %, so the glow scales with the element. White, layered:
+     rim (thin bright edge) + core (concentrated) + halo (soft aura), on the
+     bottom edge, plus a fainter core+halo on the top edge shifted left. */
   background:
-    /* 1 · bottom core — hard, bright, slightly warm-white */
-    radial-gradient(
-      closest-side,
-      rgba(255, 248, 232, 0.95),
-      rgba(255, 236, 205, 0.35) 45%,
-      transparent 78%
-    ) 64% calc(100% - 56px) / 140px 66px no-repeat,
-    /* 2 · bottom halo — large soft amber aura */
-    radial-gradient(
-      closest-side,
-      rgba(255, 194, 108, 0.4),
-      rgba(255, 168, 78, 0.11) 48%,
-      transparent 74%
-    ) 60% calc(100% - 44px) / 560px 250px no-repeat,
-    /* 3 · bottom rim — thin golden bevel line, brightest near the core */
-    linear-gradient(
-      90deg,
-      transparent 6%,
-      rgba(255, 210, 150, 0.08) 30%,
-      rgba(255, 234, 194, 0.5) 62%,
-      rgba(255, 214, 152, 0.14) 82%,
-      transparent 96%
-    ) 50% calc(100% - 58px) / 100% 3px no-repeat,
-    /* 4 · top edge — dimmer core+halo, shifted left */
-    radial-gradient(
-      closest-side,
-      rgba(255, 246, 228, 0.5),
-      rgba(255, 230, 196, 0.13) 46%,
-      transparent 76%
-    ) 44% calc(0% + 54px) / 380px 150px no-repeat;
+    /* bottom rim */
+    radial-gradient(46% 20% at 52% 100%,
+      rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 55%, transparent 76%),
+    /* bottom core */
+    radial-gradient(16% 70% at 52% 100%,
+      rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.13) 45%, transparent 72%),
+    /* bottom halo */
+    radial-gradient(46% 150% at 52% 100%,
+      rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 55%, transparent 72%),
+    /* top edge — fainter, shifted left */
+    radial-gradient(34% 120% at 44% 0%,
+      rgba(255, 255, 255, 0.13) 0%, transparent 74%);
 }
 
 /* Round icon buttons (AI / cart / profile) — frosted by default, refractive
@@ -366,13 +350,16 @@ html.lg-refraction .glass-btn {
      GlassGlow with a smooth rAF lerp. Dimmer than before, and clipped to the
      button (overflow:hidden) so it hugs the rounded edges without crossing them.
      Rest position is bottom-centre (the default var values). */
-  background: radial-gradient(
-    46% 44% at var(--gx) var(--gy),
-    rgba(255, 255, 255, 0.36) 0%,
-    rgba(255, 255, 255, 0.14) 30%,
-    rgba(255, 255, 255, 0.04) 56%,
-    transparent 74%
-  );
+  /* Layered white light (rim + core + halo), all sizes in % so it scales with
+     the element — small buttons get a small glow, never fully filled. Centre is
+     (--gx,--gy), driven by GlassGlow along the nearest horizontal edge. */
+  background:
+    radial-gradient(56% 16% at var(--gx) var(--gy),
+      rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 55%, transparent 76%),
+    radial-gradient(24% 46% at var(--gx) var(--gy),
+      rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.13) 45%, transparent 72%),
+    radial-gradient(56% 82% at var(--gx) var(--gy),
+      rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 52%, transparent 72%);
   opacity: 1;
 }
 
