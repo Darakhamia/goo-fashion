@@ -135,6 +135,9 @@ export default function Navigation() {
           transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s, backdrop-filter 0.3s",
         }}
       >
+        {/* Static layered edge glow (bottom + top-left), reference-photo style */}
+        <span className="glass-nav-glow" aria-hidden="true" />
+
         {/* Logo */}
         <Link
           href="/"
