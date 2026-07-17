@@ -315,11 +315,11 @@ html.lg-refraction .glass-btn {
      button (overflow:hidden) so it hugs the rounded edges without crossing them.
      Rest position is bottom-centre (the default var values). */
   background: radial-gradient(
-    46% 62% at var(--gx) var(--gy),
-    rgba(255, 255, 255, 0.4) 0%,
-    rgba(255, 255, 255, 0.16) 28%,
-    rgba(255, 255, 255, 0.04) 54%,
-    transparent 72%
+    46% 44% at var(--gx) var(--gy),
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(255, 255, 255, 0.14) 30%,
+    rgba(255, 255, 255, 0.04) 56%,
+    transparent 74%
   );
   opacity: 1;
 }
