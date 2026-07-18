@@ -252,31 +252,28 @@ html.lg-refraction.dark .glass-nav {
   transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
   /* Two parts. BOTTOM (big): large glow + small glow + core + rim. TOP (≈2.5×
      smaller, shifted left): small glow + core. All white. */
+  /* Positions mapped from a 1680×70 reference: x in % of the bar, y in px from
+     the edges (bar height is close to 70). Each part = core (blur10, ~1.0) +
+     rim (blur3, ~1.0) + small glow (blur20, ~0.25) + large glow (blur40, ~0.375). */
   background:
-    /* bottom · large glow */
-    radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05) 62%, transparent 82%)
-      50% calc(100% - 44px) / 500px 150px no-repeat,
-    /* bottom · small glow */
-    radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.34), transparent 74%)
-      51% calc(100% - 45px) / 200px 84px no-repeat,
-    /* bottom · core */
-    radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.4) 42%, transparent 74%)
-      52% calc(100% - 46px) / 70px 30px no-repeat,
-    /* bottom · rim (thin bright bevel line) */
-    linear-gradient(90deg,
-      transparent 20%, rgba(255, 255, 255, 0.85) 55%, transparent 88%)
-      50% calc(100% - 46px) / 360px 2px no-repeat,
-    /* top · small glow (≈2.5× smaller, just left of the bottom part) */
-    radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.24), transparent 78%)
-      44% 16px / 240px 72px no-repeat,
-    /* top · core */
-    radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.3) 44%, transparent 74%)
-      45% 15px / 58px 24px no-repeat;
+    /* ── bottom part (x ≈ 20–22%, on/under the bottom edge) ── */
+    radial-gradient(16px 8px at 22% calc(100% - 40px),
+      rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.42) 45%, transparent 82%),
+    radial-gradient(224px 9px at 20% calc(100% - 38px),
+      rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.22) 42%, transparent 74%),
+    radial-gradient(42px 18px at 22% calc(100% - 43px),
+      rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(140px 30px at 20% calc(100% - 31px),
+      rgba(255, 255, 255, 0.375) 0%, transparent 100%),
+    /* ── top part (≈2.5× smaller, upper-left ~2–6%) ── */
+    radial-gradient(7px 4px at 2% 21px,
+      rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 45%, transparent 82%),
+    radial-gradient(80px 4px at 6% 12px,
+      rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 74%),
+    radial-gradient(15px 6px at 6% 9px,
+      rgba(255, 255, 255, 0.2) 0%, transparent 100%),
+    radial-gradient(50px 11px at 6% 14px,
+      rgba(255, 255, 255, 0.3) 0%, transparent 100%);
 }
 
 /* Round icon buttons (AI / cart / profile) — frosted by default, refractive
