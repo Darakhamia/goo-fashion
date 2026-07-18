@@ -256,27 +256,27 @@ html.lg-refraction.dark .glass-nav {
     /* bottom · large glow */
     radial-gradient(closest-side,
       rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05) 62%, transparent 82%)
-      53% calc(100% - 44px) / 460px 150px no-repeat,
+      50% calc(100% - 44px) / 500px 150px no-repeat,
     /* bottom · small glow */
     radial-gradient(closest-side,
       rgba(255, 255, 255, 0.34), transparent 74%)
-      54% calc(100% - 45px) / 180px 84px no-repeat,
+      51% calc(100% - 45px) / 200px 84px no-repeat,
     /* bottom · core */
     radial-gradient(closest-side,
       rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.4) 42%, transparent 74%)
-      55% calc(100% - 46px) / 66px 30px no-repeat,
+      52% calc(100% - 46px) / 70px 30px no-repeat,
     /* bottom · rim (thin bright bevel line) */
     linear-gradient(90deg,
       transparent 20%, rgba(255, 255, 255, 0.85) 55%, transparent 88%)
-      52% calc(100% - 46px) / 340px 2px no-repeat,
-    /* top · small glow (shifted left) */
+      50% calc(100% - 46px) / 360px 2px no-repeat,
+    /* top · small glow (≈2.5× smaller, just left of the bottom part) */
     radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.22), transparent 78%)
-      30% 16px / 190px 66px no-repeat,
+      rgba(255, 255, 255, 0.24), transparent 78%)
+      44% 16px / 240px 72px no-repeat,
     /* top · core */
     radial-gradient(closest-side,
-      rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28) 44%, transparent 74%)
-      31% 15px / 48px 22px no-repeat;
+      rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.3) 44%, transparent 74%)
+      45% 15px / 58px 24px no-repeat;
 }
 
 /* Round icon buttons (AI / cart / profile) — frosted by default, refractive
@@ -370,14 +370,24 @@ html.lg-refraction .glass-btn {
   transform: translateX(var(--glow-tx, 0px));
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   background:
+    /* bottom · large glow */
     radial-gradient(58% 92% at 50% 100%,
       rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 55%, transparent 74%),
+    /* bottom · small glow */
     radial-gradient(30% 58% at 50% 100%,
       rgba(255, 255, 255, 0.16) 0%, transparent 72%),
+    /* bottom · core */
     radial-gradient(13% 40% at 50% 100%,
       rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.16) 45%, transparent 72%),
+    /* bottom · rim */
     radial-gradient(48% 13% at 50% 100%,
-      rgba(255, 255, 255, 0.32) 0%, transparent 70%);
+      rgba(255, 255, 255, 0.32) 0%, transparent 70%),
+    /* top · small glow (≈2.5× smaller, shifted left) */
+    radial-gradient(26% 44% at 40% 0%,
+      rgba(255, 255, 255, 0.11) 0%, transparent 74%),
+    /* top · core */
+    radial-gradient(9% 26% at 41% 0%,
+      rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.12) 45%, transparent 74%);
   opacity: 1;
 }
 
