@@ -238,41 +238,32 @@ html.lg-refraction.dark .glass-nav {
      3. rim   — thin golden line along the bottom bevel, brighter by the core
    Plus a fourth, dimmer core+halo on the TOP edge, shifted left.
    ────────────────────────────────────────────────────────────── */
+/* Fixed clip box = the bar. It never moves, so the glow inside can never spill
+   past the edges (same trick the buttons use with their own overflow:hidden). */
 .glass-nav-glow {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  overflow: hidden; /* keep the glow inside the bar, not spilling past the edges */
-  z-index: -1;   /* over the glass surface, under the logo/links */
+  overflow: hidden;
+  z-index: -1; /* over the glass surface, under the logo/links */
   pointer-events: none;
+}
+/* Edge glow only (no cores / small / large blobs). Lives on ::after so it can
+   translate with the cursor while the parent keeps clipping it to the bar. */
+.glass-nav-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   mix-blend-mode: screen;
-  /* Whole composite slides horizontally to follow the cursor (GlassGlow). */
   transform: translateX(var(--glow-tx, 0px));
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  /* Two parts. BOTTOM (big): large glow + small glow + core + rim. TOP (≈2.5×
-     smaller, shifted left): small glow + core. All white. */
-  /* Positions mapped from a 1680×70 reference: x in % of the bar, y in px from
-     the edges (bar height is close to 70). Each part = core (blur10, ~1.0) +
-     rim (blur3, ~1.0) + small glow (blur20, ~0.25) + large glow (blur40, ~0.375). */
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   background:
-    /* ── bottom part (x ≈ 20–22%, glowing up from the bottom edge) ── */
-    radial-gradient(16px 8px at 22% 100%,
-      rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.42) 45%, transparent 82%),
-    radial-gradient(224px 9px at 20% 100%,
-      rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.22) 42%, transparent 74%),
-    radial-gradient(42px 18px at 22% 100%,
-      rgba(255, 255, 255, 0.25) 0%, transparent 100%),
-    radial-gradient(140px 30px at 20% 100%,
-      rgba(255, 255, 255, 0.375) 0%, transparent 100%),
-    /* ── top part (≈2.5× smaller, upper-left ~6%; core aligned with its glows) ── */
-    radial-gradient(7px 4px at 6% 0%,
-      rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 45%, transparent 82%),
-    radial-gradient(80px 4px at 6% 0%,
-      rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 74%),
-    radial-gradient(15px 6px at 6% 0%,
-      rgba(255, 255, 255, 0.2) 0%, transparent 100%),
-    radial-gradient(50px 11px at 6% 0%,
-      rgba(255, 255, 255, 0.3) 0%, transparent 100%);
+    /* bottom edge glow */
+    radial-gradient(224px 10px at 20% 100%,
+      rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.25) 42%, transparent 76%),
+    /* top edge glow (smaller, upper-left) */
+    radial-gradient(80px 5px at 6% 0%,
+      rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 76%);
 }
 
 /* Round icon buttons (AI / cart / profile) — frosted by default, refractive
