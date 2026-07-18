@@ -3,59 +3,46 @@
 import { useEffect } from "react";
 
 /**
- * Makes the soft white light on every `.glass-btn` follow the cursor.
+ * Slides the layered light on a glass element horizontally to follow the
+ * cursor. The glow itself is a fixed composite (core + small glow + large glow
+ * + rim, in two parts — a big bottom one and a smaller top one shifted left);
+ * this controller only translates that whole composite on one axis via the
+ * `--glow-tx` CSS variable, easing it with a requestAnimationFrame lerp so the
+ * light trails the cursor smoothly and returns to centre on leave.
  *
- * One delegated `pointermove` listener on the document finds the glass button
- * under the pointer and drives its `--gx` / `--gy` CSS variables (the radial
- * light's centre, in %). A requestAnimationFrame lerp eases the light toward
- * the pointer so it trails smoothly instead of snapping, and eases back to the
- * bottom-centre rest position when the pointer leaves. The light itself is a
- * clipped radial gradient (see `.glass-btn::after` in globals.css), so it hugs
- * the rounded edges without ever crossing them.
- *
- * Global + delegated = it works on every current and future glass button
- * without wiring anything into individual components.
+ * Targets both `.glass-btn` (buttons/chips/card feet) and `.glass-nav` (the
+ * header bar). Global + delegated → works on every current/future element.
  */
 export default function GlassGlow() {
   useEffect(() => {
-    // Respect reduced-motion: leave the static rest glow, skip the follow.
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
 
-    const REST_X = 50;
-    const REST_Y = 100;
-    const EASE = 0.2;
+    const SELECTOR = ".glass-btn, .glass-nav";
+    const EASE = 0.18;
+    const MAX_FRACTION = 0.42; // cap the shift to 42% of the half-width
 
     let el: HTMLElement | null = null;
-    let tx = REST_X;
-    let ty = REST_Y;
-    let cx = REST_X;
-    let cy = REST_Y;
+    let tx = 0; // target shift (px)
+    let cx = 0; // current shift (px)
     let raf = 0;
     let returning = false;
 
     const apply = () => {
-      if (!el) return;
-      el.style.setProperty("--gx", `${cx.toFixed(2)}%`);
-      el.style.setProperty("--gy", `${cy.toFixed(2)}%`);
+      if (el) el.style.setProperty("--glow-tx", `${cx.toFixed(1)}px`);
     };
 
     const tick = () => {
       cx += (tx - cx) * EASE;
-      cy += (ty - cy) * EASE;
       apply();
-      if (Math.abs(tx - cx) > 0.15 || Math.abs(ty - cy) > 0.15) {
+      if (Math.abs(tx - cx) > 0.3) {
         raf = requestAnimationFrame(tick);
         return;
       }
       raf = 0;
       cx = tx;
-      cy = ty;
       apply();
-      // Settled back at rest → drop the inline vars so the element falls back
-      // to the CSS default without any visible jump.
       if (returning && el) {
-        el.style.removeProperty("--gx");
-        el.style.removeProperty("--gy");
+        el.style.removeProperty("--glow-tx");
         el = null;
         returning = false;
       }
@@ -68,38 +55,30 @@ export default function GlassGlow() {
     const onMove = (e: PointerEvent) => {
       const target =
         e.target instanceof Element
-          ? (e.target.closest(".glass-btn") as HTMLElement | null)
+          ? (e.target.closest(SELECTOR) as HTMLElement | null)
           : null;
       if (!target) return;
       if (target !== el) {
-        if (el) {
-          el.style.removeProperty("--gx");
-          el.style.removeProperty("--gy");
-        }
+        if (el) el.style.removeProperty("--glow-tx");
         el = target;
-        cx = REST_X;
-        cy = REST_Y;
+        cx = 0;
       }
       returning = false;
       const r = target.getBoundingClientRect();
-      if (!r.width || !r.height) return;
-      // One axis only: the light slides horizontally and sits on the nearest
-      // horizontal edge (top or bottom) — never the left/right sides.
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
-      tx = Math.max(0, Math.min(100, (mx / r.width) * 100));
-      ty = my < r.height / 2 ? 0 : 100;
+      if (!r.width) return;
+      const half = r.width / 2;
+      const cap = half * MAX_FRACTION;
+      tx = Math.max(-cap, Math.min(cap, e.clientX - r.left - half));
       kick();
     };
 
     const onOut = (e: PointerEvent) => {
       const target =
         e.target instanceof Element
-          ? (e.target.closest(".glass-btn") as HTMLElement | null)
+          ? (e.target.closest(SELECTOR) as HTMLElement | null)
           : null;
       if (target && target === el && !target.contains(e.relatedTarget as Node | null)) {
-        tx = REST_X;
-        ty = REST_Y;
+        tx = 0;
         returning = true;
         kick();
       }

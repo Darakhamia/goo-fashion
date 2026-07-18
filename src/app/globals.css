@@ -240,28 +240,43 @@ html.lg-refraction.dark .glass-nav {
    ────────────────────────────────────────────────────────────── */
 .glass-nav-glow {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden; /* clip to the bar — the glow stays on the element, no cloud */
-  z-index: -1; /* over the glass surface, under the logo/links */
+  left: 0;
+  right: 0;
+  top: -14px;    /* small bleed above (top part) */
+  bottom: -46px; /* larger bleed below (bottom part blooms under the bar) */
+  z-index: -1;   /* over the glass surface, under the logo/links */
   pointer-events: none;
   mix-blend-mode: screen;
-  /* All sizes in %, so the glow scales with the element. White, layered:
-     rim (thin bright edge) + core (concentrated) + halo (soft aura), on the
-     bottom edge, plus a fainter core+halo on the top edge shifted left. */
+  /* Whole composite slides horizontally to follow the cursor (GlassGlow). */
+  transform: translateX(var(--glow-tx, 0px));
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Two parts. BOTTOM (big): large glow + small glow + core + rim. TOP (≈2.5×
+     smaller, shifted left): small glow + core. All white. */
   background:
-    /* bottom rim */
-    radial-gradient(46% 20% at 52% 100%,
-      rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.08) 55%, transparent 76%),
-    /* bottom core */
-    radial-gradient(16% 70% at 52% 100%,
-      rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.13) 45%, transparent 72%),
-    /* bottom halo */
-    radial-gradient(46% 150% at 52% 100%,
-      rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 55%, transparent 72%),
-    /* top edge — fainter, shifted left */
-    radial-gradient(34% 120% at 44% 0%,
-      rgba(255, 255, 255, 0.13) 0%, transparent 74%);
+    /* bottom · large glow */
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05) 62%, transparent 82%)
+      53% calc(100% - 44px) / 460px 150px no-repeat,
+    /* bottom · small glow */
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.34), transparent 74%)
+      54% calc(100% - 45px) / 180px 84px no-repeat,
+    /* bottom · core */
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.4) 42%, transparent 74%)
+      55% calc(100% - 46px) / 66px 30px no-repeat,
+    /* bottom · rim (thin bright bevel line) */
+    linear-gradient(90deg,
+      transparent 20%, rgba(255, 255, 255, 0.85) 55%, transparent 88%)
+      52% calc(100% - 46px) / 340px 2px no-repeat,
+    /* top · small glow (shifted left) */
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.22), transparent 78%)
+      30% 16px / 190px 66px no-repeat,
+    /* top · core */
+    radial-gradient(closest-side,
+      rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28) 44%, transparent 74%)
+      31% 15px / 48px 22px no-repeat;
 }
 
 /* Round icon buttons (AI / cart / profile) — frosted by default, refractive
@@ -312,8 +327,6 @@ html.lg-refraction.dark .glass-panel {
   position: relative;
   isolation: isolate;
   overflow: hidden; /* keep the glow strictly inside the button */
-  --gx: 50%; /* glow position — updated by GlassGlow to follow the cursor */
-  --gy: 100%;
   background: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   backdrop-filter: blur(12px) saturate(160%);
@@ -350,16 +363,21 @@ html.lg-refraction .glass-btn {
      GlassGlow with a smooth rAF lerp. Dimmer than before, and clipped to the
      button (overflow:hidden) so it hugs the rounded edges without crossing them.
      Rest position is bottom-centre (the default var values). */
-  /* Layered white light (rim + core + halo), all sizes in % so it scales with
-     the element — small buttons get a small glow, never fully filled. Centre is
-     (--gx,--gy), driven by GlassGlow along the nearest horizontal edge. */
+  /* Layered white light (large glow + small glow + core + rim), all sizes in %
+     so it scales with the element — small buttons get a small glow, never fully
+     filled. The whole composite slides horizontally with the cursor (GlassGlow
+     sets --glow-tx); clipped to the button by overflow:hidden. */
+  transform: translateX(var(--glow-tx, 0px));
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   background:
-    radial-gradient(56% 16% at var(--gx) var(--gy),
-      rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 55%, transparent 76%),
-    radial-gradient(24% 46% at var(--gx) var(--gy),
-      rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.13) 45%, transparent 72%),
-    radial-gradient(56% 82% at var(--gx) var(--gy),
-      rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 52%, transparent 72%);
+    radial-gradient(58% 92% at 50% 100%,
+      rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 55%, transparent 74%),
+    radial-gradient(30% 58% at 50% 100%,
+      rgba(255, 255, 255, 0.16) 0%, transparent 72%),
+    radial-gradient(13% 40% at 50% 100%,
+      rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.16) 45%, transparent 72%),
+    radial-gradient(48% 13% at 50% 100%,
+      rgba(255, 255, 255, 0.32) 0%, transparent 70%);
   opacity: 1;
 }
 
