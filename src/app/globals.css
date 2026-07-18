@@ -240,10 +240,9 @@ html.lg-refraction.dark .glass-nav {
    ────────────────────────────────────────────────────────────── */
 .glass-nav-glow {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: -14px;    /* small bleed above (top part) */
-  bottom: -46px; /* larger bleed below (bottom part blooms under the bar) */
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden; /* keep the glow inside the bar, not spilling past the edges */
   z-index: -1;   /* over the glass surface, under the logo/links */
   pointer-events: none;
   mix-blend-mode: screen;
@@ -256,23 +255,23 @@ html.lg-refraction.dark .glass-nav {
      the edges (bar height is close to 70). Each part = core (blur10, ~1.0) +
      rim (blur3, ~1.0) + small glow (blur20, ~0.25) + large glow (blur40, ~0.375). */
   background:
-    /* ── bottom part (x ≈ 20–22%, on/under the bottom edge) ── */
-    radial-gradient(16px 8px at 22% calc(100% - 40px),
+    /* ── bottom part (x ≈ 20–22%, glowing up from the bottom edge) ── */
+    radial-gradient(16px 8px at 22% 100%,
       rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.42) 45%, transparent 82%),
-    radial-gradient(224px 9px at 20% calc(100% - 38px),
+    radial-gradient(224px 9px at 20% 100%,
       rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.22) 42%, transparent 74%),
-    radial-gradient(42px 18px at 22% calc(100% - 43px),
+    radial-gradient(42px 18px at 22% 100%,
       rgba(255, 255, 255, 0.25) 0%, transparent 100%),
-    radial-gradient(140px 30px at 20% calc(100% - 31px),
+    radial-gradient(140px 30px at 20% 100%,
       rgba(255, 255, 255, 0.375) 0%, transparent 100%),
-    /* ── top part (≈2.5× smaller, upper-left ~2–6%) ── */
-    radial-gradient(7px 4px at 2% 21px,
+    /* ── top part (≈2.5× smaller, upper-left ~6%; core aligned with its glows) ── */
+    radial-gradient(7px 4px at 6% 0%,
       rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 45%, transparent 82%),
-    radial-gradient(80px 4px at 6% 12px,
+    radial-gradient(80px 4px at 6% 0%,
       rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 42%, transparent 74%),
-    radial-gradient(15px 6px at 6% 9px,
+    radial-gradient(15px 6px at 6% 0%,
       rgba(255, 255, 255, 0.2) 0%, transparent 100%),
-    radial-gradient(50px 11px at 6% 14px,
+    radial-gradient(50px 11px at 6% 0%,
       rgba(255, 255, 255, 0.3) 0%, transparent 100%);
 }
 
