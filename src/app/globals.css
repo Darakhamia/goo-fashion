@@ -311,7 +311,8 @@ html.lg-refraction .glass-btn {
    background size/position, so it literally stretches (no cursor-follow, no idle
    rotation). Applied to buttons/chips/card feet and the header bar. */
 .glass-btn::after,
-.glass-nav::after {
+.glass-nav::after,
+.glass-edge::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -319,22 +320,28 @@ html.lg-refraction .glass-btn {
   padding: 1.5px;
   pointer-events: none;
   z-index: 1;
+  /* Anchored to the bottom edge; only the size grows, so the band lives at the
+     bottom and stretches up/around the border on hover. */
   background:
     radial-gradient(closest-side, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 100%)
-    no-repeat 50% 118% / 44% 150%;
+    no-repeat 50% 100% / 32% 46%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  transition: background-position 0.6s ease, background-size 0.6s ease;
+  transition: background-size 0.6s ease;
 }
 .glass-btn:hover::after,
 .glass-btn:focus-visible::after,
 .glass-nav:hover::after,
-.group:hover .glass-card-foot::after,
-.group:focus-within .glass-card-foot::after {
-  background-position: 50% 50%;
-  background-size: 200% 260%;
+.glass-edge:hover::after,
+.glass-edge:focus-within::after {
+  background-size: 220% 250%;
+}
+/* Cards carry the border-light on the whole card (.glass-edge on the container);
+   hide the foot's own light so the effect isn't clipped at the rounded corners. */
+.glass-card-foot::after {
+  content: none;
 }
 
 /* Transparent glass button — the white hover highlight lives on ::after so
