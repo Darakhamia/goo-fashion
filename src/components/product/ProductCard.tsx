@@ -128,7 +128,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   return (
     <motion.div
-      className="glass-edge group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)]"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)]"
       initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: "-40px" }}
@@ -227,7 +227,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       </button>
 
       {/* Info — glass bottom (glows on hover of the whole card) */}
-      <Link href={linkHref} className="glass-btn glass-card-foot block px-5 pt-4 pb-5">
+      <Link href={linkHref} className="glass-btn glass-card-foot block px-5 pt-4 pb-5 rounded-b-xl">
         {showBrand && (
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {product.brand}
