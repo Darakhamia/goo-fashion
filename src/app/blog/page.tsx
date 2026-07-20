@@ -170,7 +170,7 @@ export default async function BlogPage() {
             <input
               type="email"
               placeholder="your@email.com"
-              className="flex-1 md:w-64 px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors duration-200"
+              className="glass-field flex-1 md:w-64 px-4 py-3 text-sm rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none transition-colors duration-200"
             />
             <button className="px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity duration-200 shrink-0">
               Subscribe
