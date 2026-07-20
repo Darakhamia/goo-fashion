@@ -801,8 +801,8 @@ export function StylistDrawer({
 
           {/* Composer */}
           <div className="px-4 pb-4 pt-2 shrink-0 border-t border-[var(--border)]">
-            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-colors duration-150 ${
-              chatLoading ? "border-[var(--border)] opacity-60" : "border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
+            <div className={`glass-field flex items-center gap-2 rounded-2xl px-3 py-2 transition-colors duration-150 ${
+              chatLoading ? "opacity-60" : ""
             }`}>
               <input
                 type="text"

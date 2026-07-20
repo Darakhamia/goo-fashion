@@ -195,7 +195,7 @@ export default function ProductReviews({ productId }: Props) {
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Share your thoughts on the fit, quality, etc."
                   rows={3}
-                  className="w-full border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] resize-none placeholder:text-[var(--foreground-subtle)] transition-colors"
+                  className="glass-field w-full outline-none px-3 py-2 text-sm text-[var(--foreground)] resize-none placeholder:text-[var(--foreground-subtle)] transition-colors"
                 />
               </div>
               {submitMsg && (

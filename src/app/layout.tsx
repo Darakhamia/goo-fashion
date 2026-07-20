@@ -10,7 +10,6 @@ import { CartProvider } from "@/lib/context/cart-context";
 import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import LiquidGlassFilters from "@/components/ui/LiquidGlassFilters";
-import GlassGlow from "@/components/ui/GlassGlow";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import PostHogTracker from "@/components/analytics/PostHogTracker";
 import BugReportButton from "@/components/internal/BugReportButton";
@@ -94,7 +93,6 @@ export default function RootLayout({
         </head>
         <body className="antialiased">
           <LiquidGlassFilters />
-          <GlassGlow />
           <ThemeProvider>
             <AuthProvider>
               <LikesProvider>

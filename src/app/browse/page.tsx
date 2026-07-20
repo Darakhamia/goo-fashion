@@ -756,7 +756,7 @@ export default function BrowsePage() {
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
                 placeholder="Search brands…"
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                className="glass-field w-full rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none transition-colors"
               />
               {brandSearch && (
                 <button
@@ -998,7 +998,7 @@ export default function BrowsePage() {
                             animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
                             exit={{ opacity: 0, width: 80, scale: 0.96 }}
                             transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                            className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                            className="glass-field flex items-center rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
                           >
                             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
                               <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />

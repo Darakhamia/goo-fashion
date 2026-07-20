@@ -1163,7 +1163,7 @@ export default function BuilderPage() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search products, brands, or categories..."
-                  className="w-full h-10 bg-[var(--surface)] rounded-xl border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-10 pr-8 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                  className="glass-field w-full h-10 rounded-xl outline-none pl-10 pr-8 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
                 />
                 {search && (
                   <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
@@ -1763,7 +1763,7 @@ export default function BuilderPage() {
                       value={brandSearch}
                       onChange={e => setBrandSearch(e.target.value)}
                       placeholder="Search brands…"
-                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                      className="glass-field w-full rounded-lg px-3 py-2.5 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none transition-colors"
                     />
                     {brandSearch && (
                       <button
@@ -2711,7 +2711,7 @@ export default function BuilderPage() {
                     value={brandSearch}
                     onChange={e => setBrandSearch(e.target.value)}
                     placeholder="Search brand"
-                    className="w-full h-10 bg-[var(--surface)] border border-[var(--border)] rounded-xl pl-9 pr-4 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
+                    className="glass-field w-full h-10 rounded-xl pl-9 pr-4 text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none transition-colors"
                   />
                 </div>
                 {/* Brand list */}

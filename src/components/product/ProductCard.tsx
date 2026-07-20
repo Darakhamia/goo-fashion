@@ -9,6 +9,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
+import { usePressNavigate } from "@/lib/hooks/usePressNavigate";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -61,6 +62,9 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   const displayPriceMin = activeVariant ? activeVariant.priceMin : product.priceMin;
   const displayPriceMax = activeVariant ? activeVariant.priceMax : product.priceMax;
   const linkHref        = `/product/${activeVariant ? activeVariant.id : product.id}`;
+
+  // Play a quick glass "press" before the card navigates.
+  const { pressed, onClick: onPressNavigate } = usePressNavigate(linkHref);
 
   const allImages   = displayImages;
   const hasMultiple = allImages.length > 1;
@@ -133,10 +137,11 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ type: 'spring', bounce: 0.2, duration: 0.8 }}
+      whileTap={{ scale: 0.975, transition: { duration: 0.12, ease: "easeOut" } }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link href={linkHref} className="block">
+      <Link href={linkHref} className="block" onClick={onPressNavigate}>
         {/* Image */}
         <div className="relative bg-white overflow-hidden aspect-[3/4]">
           <div
@@ -199,6 +204,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       {/* Cart button */}
       <button
         onClick={handleAddToCart}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label={inCart ? "Remove from cart" : "Add to cart"}
         className={`absolute ${product.isNew ? "top-11" : "top-3"} left-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
@@ -213,6 +219,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       {/* Like button */}
       <button
         onClick={handleLike}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label={!isLoggedIn ? "Sign in to save item" : liked ? "Unlike item" : "Like item"}
         className={`absolute top-3 right-3 z-20 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
       >
@@ -226,8 +233,12 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
         </svg>
       </button>
 
-      {/* Info — glass bottom (glows on hover of the whole card) */}
-      <Link href={linkHref} className="glass-btn glass-card-foot block px-5 pt-4 pb-5">
+      {/* Info — glass bottom (contour lights on card hover, fill on foot hover, presses on click) */}
+      <Link
+        href={linkHref}
+        onClick={onPressNavigate}
+        className={`glass-btn glass-card-foot block px-5 pt-4 pb-5 rounded-b-xl${pressed ? " is-pressing" : ""}`}
+      >
         {showBrand && (
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {product.brand}
