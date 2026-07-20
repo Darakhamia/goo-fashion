@@ -253,6 +253,10 @@ html.lg-refraction.dark .glass-nav {
 .nav-glass-icon {
   -webkit-backdrop-filter: blur(10px) saturate(160%);
   backdrop-filter: blur(10px) saturate(160%);
+  /* Same liquid rim as the other glass buttons (badges stay visible — no
+     overflow clip here). The border-light contour + press are wired into the
+     shared .glass-btn rules below via the .nav-glass-icon selectors. */
+  box-shadow: var(--liquid-rim);
 }
 html.lg-refraction .nav-glass-icon {
   -webkit-backdrop-filter: url(#container-glass);
@@ -356,7 +360,8 @@ html.lg-refraction .glass-field {
    background size/position, so it literally stretches (no cursor-follow, no idle
    rotation). Applied to buttons/chips/card feet and the header bar. */
 .glass-btn::after,
-.glass-nav::after {
+.glass-nav::after,
+.nav-glass-icon::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -378,6 +383,8 @@ html.lg-refraction .glass-field {
 .glass-btn:hover::after,
 .glass-btn:focus-visible::after,
 .glass-nav:hover::after,
+.nav-glass-icon:hover::after,
+.nav-glass-icon:focus-visible::after,
 .group:hover .glass-card-foot::after,
 .group:focus-within .glass-card-foot::after {
   background-position: 50% 50%;
@@ -390,7 +397,9 @@ html.lg-refraction .glass-field {
    buttons. The glass dips in, the fill flashes and the border-light snaps to
    full brightness. */
 .glass-btn:active,
-.glass-btn.is-pressing {
+.glass-btn.is-pressing,
+.nav-glass-icon:active,
+.nav-glass-icon.is-pressing {
   transform: scale(0.96);
   background-color: rgba(255, 255, 255, 0.24);
   box-shadow: var(--liquid-rim), inset 0 3px 7px rgba(0, 0, 0, 0.22);
@@ -401,7 +410,9 @@ html.lg-refraction .glass-field {
   background-color: rgba(255, 255, 255, 0.16);
 }
 .glass-btn:active::after,
-.glass-btn.is-pressing::after {
+.glass-btn.is-pressing::after,
+.nav-glass-icon:active::after,
+.nav-glass-icon.is-pressing::after {
   background-position: 50% 50%;
   background-size: 240% 320%;
   filter: brightness(1.7);

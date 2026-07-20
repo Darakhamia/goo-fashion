@@ -490,7 +490,7 @@ export default function AIStylistShowcase({
     <section className="bg-[var(--background)] py-20 md:py-28">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-5 md:gap-6">
         {/* Top: intro + chat */}
-        <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
+        <FadeCard className="glass-panel rounded-[28px] overflow-hidden">
           <div className="grid lg:grid-cols-2">
             <Intro />
             <ChatPreview looks={chatLooks} />
@@ -501,7 +501,7 @@ export default function AIStylistShowcase({
         {featuredProduct && (
           <FadeCard
             delay={0.08}
-            className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
+            className="glass-panel rounded-[28px] overflow-hidden"
           >
             <FeaturedProduct
               product={featuredProduct}
