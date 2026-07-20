@@ -7,6 +7,7 @@ import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
+import { usePressNavigate } from "@/lib/hooks/usePressNavigate";
 import OutfitCollage from "./OutfitCollage";
 
 interface OutfitCardProps {
@@ -32,6 +33,11 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
 
+  const outfitHref = `/outfit/${outfit.id}`;
+  // Play a quick glass "press" before the card navigates (only when a foot exists).
+  const { pressed, onClick: onPressNavigate } = usePressNavigate(outfitHref);
+  const pressHandler = compact ? undefined : onPressNavigate;
+
   const handleLike = () => {
     if (!isLoggedIn) { login("", ""); return; }
     toggleOutfitLike(outfit.id);
@@ -45,7 +51,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
-      <Link href={`/outfit/${outfit.id}`} className="block relative">
+      <Link href={outfitHref} className="block relative" onClick={pressHandler}>
         <div className="img-zoom relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
@@ -103,7 +109,11 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="glass-btn glass-card-foot block px-5 pt-4 pb-5 rounded-b-2xl">
+        <Link
+          href={outfitHref}
+          onClick={onPressNavigate}
+          className={`glass-btn glass-card-foot block px-5 pt-4 pb-5 rounded-b-2xl${pressed ? " is-pressing" : ""}`}
+        >
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {outfit.name}
           </h3>
