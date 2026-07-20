@@ -216,7 +216,7 @@ export default function ReportPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Опиши что сломалось..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/25 resize-none transition-colors"
+              className="glass-field w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none resize-none transition-colors"
             />
           </div>
 
@@ -228,7 +228,7 @@ export default function ReportPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://goo-fashion.com/..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+              className="glass-field w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none transition-colors"
             />
           </div>
 
@@ -239,7 +239,7 @@ export default function ReportPage() {
               <select
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-colors appearance-none"
+                className="glass-field w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-colors appearance-none"
               >
                 {SECTIONS.map((s) => (
                   <option key={s} value={s} className="bg-[#1a1a1a]">{s}</option>
@@ -251,7 +251,7 @@ export default function ReportPage() {
               <select
                 value={reporter}
                 onChange={(e) => setReporter(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/25 transition-colors appearance-none"
+                className="glass-field w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-colors appearance-none"
               >
                 {REPORTERS.map((r) => (
                   <option key={r} value={r} className="bg-[#1a1a1a]">{r}</option>

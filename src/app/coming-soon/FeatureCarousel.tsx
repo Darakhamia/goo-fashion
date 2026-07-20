@@ -81,8 +81,8 @@ function EmailForm() {
           Get notified when<br className="hidden sm:block"/> we launch.
         </p>
       </div>
-      <form onSubmit={submit} className="flex-1 flex items-center"
-        style={{border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,background:"rgba(0,0,0,0.5)",overflow:"hidden"}}>
+      <form onSubmit={submit} className="glass-field flex-1 flex items-center"
+        style={{borderRadius:10,overflow:"hidden"}}>
         {state==="done"
           ? <p className="flex-1 px-5 py-3.5 text-[11px] text-white/45 tracking-[0.14em] uppercase">You&apos;re on the list ✓</p>
           : <>
