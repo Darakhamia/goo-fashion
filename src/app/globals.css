@@ -347,8 +347,7 @@ html.lg-refraction .glass-btn {
    navigates: `.is-pressing` is held by JS (usePressNavigate) for ~190ms so the
    effect isn't cut off by the route change, while `:active` covers plain
    buttons. The glass dips in, the fill flashes and the border-light snaps to
-   full brightness. Card feet skip the scale so they stay flush with the image
-   above them (scaling would open a hairline seam). */
+   full brightness. */
 .glass-btn:active,
 .glass-btn.is-pressing {
   transform: scale(0.96);
@@ -369,9 +368,34 @@ html.lg-refraction .glass-btn {
   filter: brightness(1.7);
   transition-duration: 0.11s;
 }
+/* A card foot never scales itself — the whole card dips instead (framer
+   whileTap), which keeps the foot flush with the image (no hairline seam). */
 .glass-card-foot:active,
 .glass-card-foot.is-pressing {
   transform: none;
+}
+
+/* --- Card foot reacts to the WHOLE card, not just itself --- */
+/* Fill (photo 4) appears when hovering anywhere on the card, matching the
+   contour band that already stretches on `.group:hover`. */
+.group:hover .glass-card-foot {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+.dark .group:hover .glass-card-foot {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+/* Press flashes stronger than hover. These are `.group`-scoped so they out-rank
+   the `.group:hover` fill/contour rules above (equal specificity, later wins). */
+.group .glass-card-foot.is-pressing {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+.dark .group .glass-card-foot.is-pressing {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.group .glass-card-foot.is-pressing::after {
+  background-position: 50% 50%;
+  background-size: 240% 320%;
+  filter: brightness(1.9);
 }
 
 /* Transparent glass button — the white hover highlight lives on ::after so

@@ -50,6 +50,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+      whileTap={compact ? undefined : { scale: 0.975, transition: { duration: 0.12, ease: "easeOut" } }}
     >
       <Link href={outfitHref} className="block relative" onClick={pressHandler}>
         <div className="img-zoom relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
@@ -93,6 +94,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       {/* Like button */}
       <button
         onClick={handleLike}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
         className="absolute top-3 right-3 z-20 w-9 h-9 md:w-8 md:h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 opacity-100 md:opacity-0 md:group-hover:opacity-100"
       >
