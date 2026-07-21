@@ -132,7 +132,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
 
   return (
     <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)]"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)] will-change-transform"
       initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: "-40px" }}

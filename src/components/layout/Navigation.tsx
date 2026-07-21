@@ -328,7 +328,7 @@ export default function Navigation() {
                         {CURRENCIES.map((c) => (
                           <button key={c.code}
                             onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--fg-overlay-08)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
                             <span>{c.code}</span>
                             <span className="opacity-50 text-[11px]">{c.symbol}</span>
                           </button>
@@ -340,7 +340,7 @@ export default function Navigation() {
                   {/* Profile & Wishlist */}
                   <div className="py-1.5">
                     <Link href="/profile" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                         <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                         <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -348,7 +348,7 @@ export default function Navigation() {
                       My profile
                     </Link>
                     <Link href="/saved" onClick={() => setProfileOpen(false)}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
                       <span className="flex items-center gap-3">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                           <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.2" />
@@ -364,7 +364,7 @@ export default function Navigation() {
                   <div className="border-t border-[var(--border)] py-1.5 relative">
                     {/* Currency — opens floating panel to the left */}
                     <button onClick={() => setCurrencySubmenu(v => !v)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
                       <span className="flex items-center gap-3">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="8" cy="8" r="6" />
@@ -386,7 +386,7 @@ export default function Navigation() {
                         {CURRENCIES.map((c) => (
                           <button key={c.code}
                             onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--fg-overlay-08)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
                             <span>{c.code}</span>
                             <span className="opacity-50">{c.symbol}</span>
                           </button>
@@ -394,7 +394,7 @@ export default function Navigation() {
                       </div>
                     )}
                     <button onClick={() => { toggleTheme(); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
                       <span className="flex items-center gap-3">
                         {theme === "dark" ? (
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -414,7 +414,7 @@ export default function Navigation() {
 
                   <div className="border-t border-[var(--border)] py-1.5">
                     <Link href="/settings" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -422,7 +422,7 @@ export default function Navigation() {
                       Settings
                     </Link>
                     <button onClick={() => { setProfileOpen(false); setLogoutConfirmOpen(true); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all w-full text-left">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--fg-overlay-08)] transition-all w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
                       </svg>
@@ -518,7 +518,7 @@ export default function Navigation() {
               ) : (
                 <ul className="flex flex-col gap-2 p-3">
                   {cartItems.map(item => (
-                    <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
+                    <li key={item.id} className="glass-panel flex gap-3 px-3 py-3 items-start rounded-xl transition-all duration-200">
                       <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
                         <Image src={item.imageUrl} alt={item.name} width={52} height={66} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg object-cover" />
                         <div className="flex-1 min-w-0 pt-0.5">
