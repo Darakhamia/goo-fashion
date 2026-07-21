@@ -258,10 +258,9 @@ html.lg-refraction.dark .glass-nav {
      shared .glass-btn rules below via the .nav-glass-icon selectors. */
   box-shadow: var(--liquid-rim);
 }
-html.lg-refraction .nav-glass-icon {
-  -webkit-backdrop-filter: url(#container-glass);
-  backdrop-filter: url(#container-glass);
-}
+/* Buttons/icons/fields stay PLAIN frosted glass (blur, no turbulence) for
+   readability + performance — only content surfaces (.glass-nav / .glass-panel)
+   carry the liquid #container-glass refraction. */
 
 /* ──────────────────────────────────────────────────────────────
    Reusable glass system for the site-wide rollout.
@@ -316,11 +315,6 @@ html.lg-refraction.dark .glass-panel {
 .dark .glass-btn:hover {
   background-color: rgba(255, 255, 255, 0.12);
 }
-html.lg-refraction .glass-btn {
-  -webkit-backdrop-filter: url(#container-glass);
-  backdrop-filter: url(#container-glass);
-  background: rgba(255, 255, 255, 0.05);
-}
 
 /* Glass input fields — same liquid material, tuned so typed text stays legible.
    Add `glass-field` to an <input>/<textarea>/<select> (and drop its own
@@ -348,10 +342,6 @@ html.lg-refraction .glass-btn {
   outline: none;
   border-color: rgba(255, 255, 255, 0.28);
   background-color: rgba(255, 255, 255, 0.12);
-}
-html.lg-refraction .glass-field {
-  -webkit-backdrop-filter: url(#container-glass);
-  backdrop-filter: url(#container-glass);
 }
 /* Border-light (from hover-border-gradient, kept white). A white glowing band on
    the element's border: idle = a small band at the bottom-centre; on hover it
