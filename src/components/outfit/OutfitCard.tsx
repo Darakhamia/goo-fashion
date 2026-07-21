@@ -45,7 +45,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] will-change-transform"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)]"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}

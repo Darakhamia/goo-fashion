@@ -415,6 +415,18 @@ html.lg-refraction.dark .glass-panel {
   transform: none;
 }
 
+/* Card feet drop the backdrop-filter entirely. A filtered foot is a composited
+   layer that Chrome fails to clip to the card's rounded overflow (the square
+   corner notch, worse at larger radii — why 16px outfit feet showed it and 12px
+   piece feet barely did). On the solid page background the blur was invisible
+   anyway, so the foot becomes an imitation glass (translucent fill + liquid rim
+   + border-light) whose rounded corners clip cleanly — no compositing, no
+   will-change needed. */
+.glass-card-foot {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* --- Card foot reacts to the WHOLE card, not just itself --- */
 /* Fill (photo 4) appears when hovering anywhere on the card, matching the
    contour band that already stretches on `.group:hover`. */
