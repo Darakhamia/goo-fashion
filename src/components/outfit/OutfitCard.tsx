@@ -46,8 +46,14 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
   return (
     <motion.div
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)]"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      // The blur filter is not just cosmetic: it leaves `filter: blur(0px)` on
+      // the container at rest, which composites it so its rounded overflow
+      // actually clips the card foot's bottom corners. Without a filter, the
+      // bare `y` transform leaves the foot's rounded corners unclipped (square
+      // notch) — this is exactly why ProductCard (which has this filter) was
+      // always clean and OutfitCard was not.
+      initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
       whileTap={compact ? undefined : { scale: 0.975, transition: { duration: 0.12, ease: "easeOut" } }}
