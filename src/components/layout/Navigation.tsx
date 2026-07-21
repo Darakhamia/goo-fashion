@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
@@ -26,10 +27,12 @@ export default function Navigation() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [currencySubmenu, setCurrencySubmenu] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { unseenCount } = useLikes();
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
@@ -91,13 +94,36 @@ export default function Navigation() {
   useEffect(() => {
     if (!profileOpen) return;
     const handler = (e: PointerEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (
+        profileRef.current && !profileRef.current.contains(t) &&
+        (!menuRef.current || !menuRef.current.contains(t))
+      ) {
         setProfileOpen(false);
         setCurrencySubmenu(false);
       }
     };
     document.addEventListener("pointerdown", handler);
     return () => document.removeEventListener("pointerdown", handler);
+  }, [profileOpen]);
+
+  // The profile menu is portaled to <body> so it escapes the nav's
+  // backdrop-filter root (nested backdrop-filters don't sample the page, so the
+  // liquid glass would be invisible inside the nav). Position it under its
+  // trigger with fixed coordinates from the button's rect.
+  useEffect(() => {
+    if (!profileOpen) { setMenuPos(null); return; }
+    const update = () => {
+      const r = profileRef.current?.getBoundingClientRect();
+      if (r) setMenuPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
   }, [profileOpen]);
 
   useEffect(() => {
@@ -309,8 +335,9 @@ export default function Navigation() {
                 )}
               </button>
 
-              {profileOpen && (
-                <div className="glass-panel absolute top-full right-0 mt-2 w-52 rounded-2xl z-50 overflow-hidden">
+              {profileOpen && menuPos && createPortal(
+                <div ref={menuRef} className="glass-panel fixed w-52 rounded-2xl z-[100] overflow-hidden"
+                  style={{ top: menuPos.top, right: menuPos.right }}>
 
                   {/* Currency overlay — covers entire panel */}
                   {currencySubmenu && (
@@ -429,7 +456,8 @@ export default function Navigation() {
                       Log out
                     </button>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           </SignedIn>
