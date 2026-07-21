@@ -181,7 +181,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
           type="button"
           onClick={open}
           aria-label="Open the AI Stylist"
-          className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+          className="glass-btn w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M5 3H3.5A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12h6A1.5 1.5 0 0 0 11 10.5V9M8 2h4m0 0v4m0-4L6 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />

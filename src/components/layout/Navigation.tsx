@@ -310,8 +310,7 @@ export default function Navigation() {
               </button>
 
               {profileOpen && (
-                <div className="absolute top-full right-0 mt-2 w-52 rounded-2xl border border-[var(--border)] bg-[var(--background)] z-50 overflow-hidden"
-                  style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
+                <div className="glass-panel absolute top-full right-0 mt-2 w-52 rounded-2xl z-50 overflow-hidden">
 
                   {/* Currency overlay — covers entire panel */}
                   {currencySubmenu && (
