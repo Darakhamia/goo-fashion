@@ -152,7 +152,7 @@ function ActiveChip({
   return (
     <button
       onClick={onRemove}
-      className="glass-btn flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase text-[var(--foreground)] px-2.5 py-1 transition-colors duration-200 capitalize rounded-full"
+      className="flex items-center gap-1.5 text-[9px] tracking-[0.10em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-2.5 py-1 hover:bg-[var(--fg-overlay-05)] transition-colors duration-200 capitalize rounded-full"
     >
       {label}
       <svg width="7" height="7" viewBox="0 0 7 7" fill="none">
@@ -756,7 +756,7 @@ export default function BrowsePage() {
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
                 placeholder="Search brands…"
-                className="glass-field w-full rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none transition-colors"
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors"
               />
               {brandSearch && (
                 <button
@@ -848,10 +848,10 @@ export default function BrowsePage() {
                 <button
                   key={label}
                   onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                  className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
                     maxPrice === max
-                      ? "border border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                      : "glass-btn text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                   }`}
                 >
                   {label}
@@ -917,7 +917,7 @@ export default function BrowsePage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -280, opacity: 0 }}
               transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
-              className="glass-panel fixed left-0 top-0 bottom-0 z-50 w-[280px] flex flex-col"
+              className="fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-[var(--background)] border-r border-[var(--border)] flex flex-col"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
@@ -955,10 +955,10 @@ export default function BrowsePage() {
                     {/* Filter */}
                     <button
                       onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
                         filtersOpen
-                          ? "border border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "glass-btn text-[var(--foreground)]"
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                       }`}
                     >
                       <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
@@ -983,7 +983,7 @@ export default function BrowsePage() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.92 }}
                             transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                            className="glass-btn flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] transition-colors duration-200"
+                            className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
                           >
                             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                               <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
@@ -998,7 +998,7 @@ export default function BrowsePage() {
                             animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
                             exit={{ opacity: 0, width: 80, scale: 0.96 }}
                             transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                            className="glass-field flex items-center rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                            className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
                           >
                             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
                               <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
@@ -1027,7 +1027,7 @@ export default function BrowsePage() {
                   </div>
 
                   {/* Pieces/Outfits pill — w-full fills column = Filter+Search width */}
-                  <div className="glass-btn w-full relative flex rounded-full overflow-hidden">
+                  <div className="w-full relative flex border border-[var(--foreground-muted)] rounded-full overflow-hidden">
                     <motion.div
                       className="absolute inset-y-0 w-1/2 bg-[var(--foreground)] rounded-full"
                       animate={{ x: view === "pieces" ? "0%" : "100%" }}
@@ -1065,10 +1065,10 @@ export default function BrowsePage() {
                     <button
                       key={style}
                       onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-[11px] tracking-[0.12em] uppercase font-bold transition-all duration-200 whitespace-nowrap ${
+                      className={`shrink-0 px-4 py-2 rounded-full text-[11px] tracking-[0.12em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
                         selectedStyle === style
-                          ? "border border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                          : "glass-btn text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                          ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                       }`}
                     >
                       {style}
@@ -1081,10 +1081,10 @@ export default function BrowsePage() {
                 <div className="relative shrink-0 self-end sm:self-start" ref={sortRef}>
                   <button
                     onClick={() => setSortOpen((o) => !o)}
-                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
                       sortOpen
-                        ? "border border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                        : "glass-btn text-[var(--foreground)]"
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                     }`}
                   >
                     <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
@@ -1108,7 +1108,7 @@ export default function BrowsePage() {
                     </svg>
                   </button>
                   {sortOpen && (
-                    <div className="glass-panel absolute right-0 top-full mt-2 z-50 min-w-[140px] rounded-2xl shadow-xl overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 z-50 min-w-[140px] bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden">
                       {([
                         { value: "featured", label: "Featured" },
                         { value: "price-asc", label: "Price ↑" },

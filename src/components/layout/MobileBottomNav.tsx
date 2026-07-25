@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTheme } from "@/lib/context/theme-context";
 import { useLikes } from "@/lib/context/likes-context";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const { theme } = useTheme();
   const { unseenCount } = useLikes();
+  const isDark = theme === "dark";
 
   const tabs = [
     {
@@ -69,7 +72,8 @@ export default function MobileBottomNav() {
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
     >
       <nav
-        className="glass-nav pointer-events-auto mx-auto max-w-md flex items-stretch h-14 rounded-full"
+        className="pointer-events-auto mx-auto max-w-md flex items-stretch h-14 rounded-full border border-[var(--border)] bg-[var(--bg-overlay-95)] backdrop-blur-md"
+        style={{ boxShadow: isDark ? "0 6px 28px rgba(0,0,0,0.55)" : "0 6px 28px rgba(0,0,0,0.12)" }}
       >
         {tabs.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));

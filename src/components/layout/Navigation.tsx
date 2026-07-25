@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
@@ -27,12 +26,10 @@ export default function Navigation() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [currencySubmenu, setCurrencySubmenu] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const { isOpen: stylistOpen, toggle: toggleStylist } = useStylist();
   const { signOut } = useClerk();
   const cartDrawerRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const { unseenCount } = useLikes();
   const { theme, toggleTheme } = useTheme();
   const { cartItems, removeFromCart } = useCart();
@@ -60,6 +57,9 @@ export default function Navigation() {
   const showWhiteText = isHero && !scrolled && theme === "dark";
 
   const isDark = theme === "dark";
+  const navBg = isDark ? "#0a0a0a" : "#ffffff";
+  const navBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const navShadow = isDark ? "0 2px 20px rgba(0,0,0,0.4)" : "0 2px 20px rgba(0,0,0,0.08)";
   const navIconColor = isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)";
   const navIconColorHover = isDark ? "rgba(255,255,255,1)" : "rgba(0,0,0,0.9)";
   const navIconBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)";
@@ -94,36 +94,13 @@ export default function Navigation() {
   useEffect(() => {
     if (!profileOpen) return;
     const handler = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (
-        profileRef.current && !profileRef.current.contains(t) &&
-        (!menuRef.current || !menuRef.current.contains(t))
-      ) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
         setCurrencySubmenu(false);
       }
     };
     document.addEventListener("pointerdown", handler);
     return () => document.removeEventListener("pointerdown", handler);
-  }, [profileOpen]);
-
-  // The profile menu is portaled to <body> so it escapes the nav's
-  // backdrop-filter root (nested backdrop-filters don't sample the page, so the
-  // liquid glass would be invisible inside the nav). Position it under its
-  // trigger with fixed coordinates from the button's rect.
-  useEffect(() => {
-    if (!profileOpen) { setMenuPos(null); return; }
-    const update = () => {
-      const r = profileRef.current?.getBoundingClientRect();
-      if (r) setMenuPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
-    };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
   }, [profileOpen]);
 
   useEffect(() => {
@@ -155,10 +132,13 @@ export default function Navigation() {
       style={{ paddingTop: 10 }}>
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
       <nav
-        className="glass-nav h-14 flex items-center justify-between px-6"
+        className="h-14 flex items-center justify-between px-6"
         style={{
+          background: navBg,
           borderRadius: 50,
-          transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s, backdrop-filter 0.3s",
+          border: `1px solid ${navBorder}`,
+          boxShadow: navShadow,
+          transition: "background 0.3s, border-color 0.3s, box-shadow 0.3s",
         }}
       >
         {/* Logo */}
@@ -171,14 +151,14 @@ export default function Navigation() {
         </Link>
 
         {/* Desktop Nav — centered links */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className="nav-glass-btn relative flex flex-col items-center gap-1.5 rounded-full px-4 py-2 transition-colors duration-300"
+                className="relative flex flex-col items-center gap-1.5 pb-0.5"
               >
                 <span className={`text-[11px] tracking-[0.14em] uppercase font-semibold transition-colors duration-200 ${
                   isActive ? linkActiveClass : linkMutedClass
@@ -189,7 +169,7 @@ export default function Navigation() {
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%",
                     background: dotColor, display: "block",
-                    position: "absolute", bottom: 2,
+                    position: "absolute", bottom: -6,
                   }} />
                 )}
               </Link>
@@ -206,7 +186,7 @@ export default function Navigation() {
               onMouseEnter={() => setAiHover(true)}
               onMouseLeave={() => setAiHover(false)}
               aria-label="Open AI Stylist"
-              className={`nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
+              className={`flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : aiHover ? navIconBorderHover : navIconBorder}`,
@@ -266,7 +246,7 @@ export default function Navigation() {
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
               aria-label="Open cart"
-              className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
+              className="flex items-center justify-center transition-all duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${cartOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : cartHover ? navIconBorderHover : navIconBorder}`,
@@ -307,7 +287,7 @@ export default function Navigation() {
                 onMouseEnter={() => setProfileHover(true)}
                 onMouseLeave={() => setProfileHover(false)}
                 aria-label="Profile menu"
-                className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
+                className="flex items-center justify-center transition-all duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
                   border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : profileHover ? navIconBorderHover : navIconBorder}`,
@@ -335,9 +315,9 @@ export default function Navigation() {
                 )}
               </button>
 
-              {profileOpen && menuPos && createPortal(
-                <div ref={menuRef} className="glass-panel fixed w-52 rounded-2xl z-[100] overflow-hidden"
-                  style={{ top: menuPos.top, right: menuPos.right }}>
+              {profileOpen && (
+                <div className="absolute top-full right-0 mt-2 w-52 rounded-2xl border border-[var(--border)] bg-[var(--background)] z-50 overflow-hidden"
+                  style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}>
 
                   {/* Currency overlay — covers entire panel */}
                   {currencySubmenu && (
@@ -355,7 +335,7 @@ export default function Navigation() {
                         {CURRENCIES.map((c) => (
                           <button key={c.code}
                             onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--fg-overlay-08)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
                             <span>{c.code}</span>
                             <span className="opacity-50 text-[11px]">{c.symbol}</span>
                           </button>
@@ -367,7 +347,7 @@ export default function Navigation() {
                   {/* Profile & Wishlist */}
                   <div className="py-1.5">
                     <Link href="/profile" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                         <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                         <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -375,7 +355,7 @@ export default function Navigation() {
                       My profile
                     </Link>
                     <Link href="/saved" onClick={() => setProfileOpen(false)}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
+                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <span className="flex items-center gap-3">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                           <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.2" />
@@ -391,7 +371,7 @@ export default function Navigation() {
                   <div className="border-t border-[var(--border)] py-1.5 relative">
                     {/* Currency — opens floating panel to the left */}
                     <button onClick={() => setCurrencySubmenu(v => !v)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <span className="flex items-center gap-3">
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="8" cy="8" r="6" />
@@ -413,7 +393,7 @@ export default function Navigation() {
                         {CURRENCIES.map((c) => (
                           <button key={c.code}
                             onClick={() => { setCurrency(c.code); setCurrencySubmenu(false); }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--fg-overlay-08)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-[12px] transition-colors hover:bg-[var(--surface)] ${currency === c.code ? "text-[var(--foreground)] font-bold" : "text-[var(--foreground)] opacity-55"}`}>
                             <span>{c.code}</span>
                             <span className="opacity-50">{c.symbol}</span>
                           </button>
@@ -421,7 +401,7 @@ export default function Navigation() {
                       </div>
                     )}
                     <button onClick={() => { toggleTheme(); }}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <span className="flex items-center gap-3">
                         {theme === "dark" ? (
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -441,7 +421,7 @@ export default function Navigation() {
 
                   <div className="border-t border-[var(--border)] py-1.5">
                     <Link href="/settings" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--fg-overlay-08)] transition-colors">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -449,15 +429,14 @@ export default function Navigation() {
                       Settings
                     </Link>
                     <button onClick={() => { setProfileOpen(false); setLogoutConfirmOpen(true); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--fg-overlay-08)] transition-all w-full text-left">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
                       </svg>
                       Log out
                     </button>
                   </div>
-                </div>,
-                document.body
+                </div>
               )}
             </div>
           </SignedIn>
@@ -472,7 +451,7 @@ export default function Navigation() {
         {/* Mobile: icon buttons */}
         <div className="md:hidden flex items-center gap-1">
           <button onClick={toggleStylist} aria-label="Open AI Stylist"
-            className="nav-glass-btn nav-glass-icon flex items-center justify-center transition-all duration-200"
+            className="flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%",
               border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
               background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
@@ -482,7 +461,7 @@ export default function Navigation() {
           <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
           <button onClick={() => setCartOpen(true)} aria-label="Open cart"
-            className="nav-glass-btn nav-glass-icon relative flex items-center justify-center transition-all duration-200"
+            className="relative flex items-center justify-center transition-all duration-200"
             style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
               background:"transparent", color: navIconColor }}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -522,7 +501,8 @@ export default function Navigation() {
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
           <div ref={cartDrawerRef}
-            className="glass-panel fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 rounded-2xl flex flex-col animate-slide-in-right overflow-hidden">
+            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
+            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
               <div>
                 <p className="text-[13px] font-medium text-[var(--foreground)]">Cart</p>
@@ -546,7 +526,7 @@ export default function Navigation() {
               ) : (
                 <ul className="flex flex-col gap-2 p-3">
                   {cartItems.map(item => (
-                    <li key={item.id} className="glass-panel flex gap-3 px-3 py-3 items-start rounded-xl transition-all duration-200">
+                    <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
                       <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
                         <Image src={item.imageUrl} alt={item.name} width={52} height={66} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg object-cover" />
                         <div className="flex-1 min-w-0 pt-0.5">
@@ -587,11 +567,13 @@ export default function Navigation() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="glass-panel"
             style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
               borderRadius: 20,
               padding: "28px 28px 24px",
               width: 300,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
               animation: "fadeInDown 0.2s ease",
             }}
           >

@@ -170,7 +170,7 @@ function SubscribeInner() {
           </p>
           <button
             onClick={() => router.push("/profile")}
-            className="glass-btn rounded-xl text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 transition-colors"
+            className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 hover:bg-[var(--surface)] transition-colors"
           >
             Go to profile
           </button>
@@ -212,13 +212,13 @@ function SubscribeInner() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push("/builder")}
-              className="glass-btn rounded-xl text-[var(--foreground)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 transition-opacity"
+              className="bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 hover:opacity-80 transition-opacity"
             >
               Open builder
             </button>
             <button
               onClick={() => router.push("/profile")}
-              className="glass-btn rounded-xl text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 transition-colors"
+              className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 hover:bg-[var(--surface)] transition-colors"
             >
               Go to profile
             </button>
@@ -302,7 +302,7 @@ function SubscribeInner() {
         <button
           onClick={handleSubscribe}
           disabled={submitting || !isLoaded || alreadyOnPlan}
-          className="glass-btn rounded-xl w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] px-6 py-4 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {alreadyOnPlan
             ? `You are on ${plan.name}`

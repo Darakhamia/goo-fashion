@@ -112,7 +112,7 @@ function Intro() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="glass-panel rounded-2xl p-4 flex flex-col gap-3"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-3"
           >
             <span className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
               {f.icon}
@@ -135,7 +135,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="glass-btn group flex items-center gap-3 rounded-2xl p-3 text-left transition-colors"
+      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left hover:bg-white/[0.07] transition-colors"
     >
       <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
         {look.imageUrl && (
@@ -166,7 +166,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
   const { open } = useStylist();
   return (
-    <div className="glass-panel flex flex-col rounded-3xl overflow-hidden m-3 md:m-4 min-h-[420px]">
+    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-3 md:m-4 min-h-[420px]">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
@@ -181,7 +181,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
           type="button"
           onClick={open}
           aria-label="Open the AI Stylist"
-          className="glass-btn w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white transition-colors"
+          className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M5 3H3.5A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12h6A1.5 1.5 0 0 0 11 10.5V9M8 2h4m0 0v4m0-4L6 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -226,7 +226,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
           type="button"
           onClick={open}
           aria-label="Ask your stylist"
-          className="glass-btn group w-full h-12 rounded-2xl pl-4 pr-1.5 flex items-center text-left transition-colors"
+          className="group w-full h-12 rounded-2xl border border-white/10 bg-white/[0.04] pl-4 pr-1.5 flex items-center text-left hover:border-white/20 transition-colors"
         >
           <span className="flex-1 text-[13px] text-white/40">Ask your stylist…</span>
           <span className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:opacity-90 transition-opacity">
@@ -278,7 +278,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
           onFallbackClick();
         }
       }}
-      className="glass-btn group flex items-center justify-between gap-4 p-4 rounded-2xl transition-colors"
+      className="group flex items-center justify-between gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
     >
       <div className="flex items-center gap-3 min-w-0">
         {/* Store logo — library logo first, then site favicon by domain, then initials */}
@@ -490,7 +490,7 @@ export default function AIStylistShowcase({
     <section className="bg-[var(--background)] py-20 md:py-28">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-5 md:gap-6">
         {/* Top: intro + chat */}
-        <FadeCard className="glass-panel rounded-[28px] overflow-hidden">
+        <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
           <div className="grid lg:grid-cols-2">
             <Intro />
             <ChatPreview looks={chatLooks} />
@@ -501,7 +501,7 @@ export default function AIStylistShowcase({
         {featuredProduct && (
           <FadeCard
             delay={0.08}
-            className="glass-panel rounded-[28px] overflow-hidden"
+            className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
           >
             <FeaturedProduct
               product={featuredProduct}

@@ -247,7 +247,11 @@ export default function PlansPage() {
               {/* CTA */}
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                className="glass-btn font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center text-[var(--foreground)] cursor-pointer"
+                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center transition-all duration-200 hover:opacity-80 cursor-pointer ${
+                  plan.highlighted
+                    ? "bg-[var(--background)] text-[var(--foreground)]"
+                    : "border border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--surface)]"
+                }`}
               >
                 {plan.cta}
               </button>
@@ -359,7 +363,7 @@ export default function PlansPage() {
           </p>
           <button
             onClick={() => handleSelectPlan("basic")}
-            className="glass-btn font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] px-8 py-4 rounded-xl cursor-pointer"
+            className="font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-8 py-4 rounded-xl hover:opacity-80 transition-opacity duration-200 cursor-pointer"
           >
             Start Basic →
           </button>

@@ -928,7 +928,7 @@ function StylistTab({
                   value={sizes[field.key]}
                   placeholder={field.placeholder}
                   onChange={(e) => setSizes({ ...sizes, [field.key]: e.target.value })}
-                  className="glass-field w-full rounded-lg text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none transition-colors duration-200"
+                  className="w-full bg-transparent border border-[var(--border)] rounded-lg text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
                 />
               </div>
             ))}

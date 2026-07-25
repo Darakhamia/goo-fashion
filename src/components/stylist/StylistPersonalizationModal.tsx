@@ -126,7 +126,7 @@ export function StylistPersonalizationModal({
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="Your name or nickname"
                   autoFocus
-                  className="glass-field w-full rounded-lg text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none transition-colors duration-200"
+                  className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200"
                 />
               </div>
               <div>
@@ -185,7 +185,7 @@ export function StylistPersonalizationModal({
                 onChange={(e) => setHardLimits(e.target.value)}
                 placeholder="e.g. no animal prints, nothing too revealing, avoid fast fashion brands..."
                 rows={5}
-                className="glass-field w-full rounded-lg text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none transition-colors duration-200 resize-none"
+                className="w-full bg-transparent border border-[var(--border)] text-sm text-[var(--foreground)] px-4 py-3 placeholder-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)] transition-colors duration-200 resize-none"
               />
               <p className="text-[10px] text-[var(--foreground-subtle)]">Optional — skip if nothing applies.</p>
             </div>
