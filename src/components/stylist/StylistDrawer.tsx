@@ -513,7 +513,7 @@ export function StylistDrawer({
       role="dialog"
       aria-modal={position === "fixed"}
       aria-label="AI Stylist chat"
-      className={`${positionClasses} glass-panel flex flex-col stylist-drawer-animate`}
+      className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
       style={{ boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined }}
     >
       {/* Mobile drag handle */}
@@ -543,7 +543,7 @@ export function StylistDrawer({
             onClick={startNewChat}
             title="New chat"
             aria-label="New chat"
-            className="glass-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
@@ -555,10 +555,10 @@ export function StylistDrawer({
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
             title={view === "history" ? "Back to chat" : "Chat history"}
             aria-label={view === "history" ? "Back to chat" : "Chat history"}
-            className={`glass-btn w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
               view === "history"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
             }`}
           >
             {view === "history" ? (
@@ -575,7 +575,7 @@ export function StylistDrawer({
           <button
             onClick={onClose}
             aria-label="Close stylist"
-            className="glass-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-all text-lg leading-none"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all text-lg leading-none"
           >
             ×
           </button>
@@ -792,7 +792,7 @@ export function StylistDrawer({
                 key={reply}
                 onClick={() => !chipsDrag.current.active && sendMessage(reply)}
                 disabled={chatLoading}
-                className="glass-btn shrink-0 px-3.5 py-1.5 rounded-full text-[10px] tracking-wide text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                className="shrink-0 px-3.5 py-1.5 rounded-full border border-[var(--border-strong)] text-[10px] tracking-wide text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {reply}
               </button>
@@ -801,8 +801,8 @@ export function StylistDrawer({
 
           {/* Composer */}
           <div className="px-4 pb-4 pt-2 shrink-0 border-t border-[var(--border)]">
-            <div className={`glass-field flex items-center gap-2 rounded-2xl px-3 py-2 transition-colors duration-150 ${
-              chatLoading ? "opacity-60" : ""
+            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition-colors duration-150 ${
+              chatLoading ? "border-[var(--border)] opacity-60" : "border-[var(--border-strong)] focus-within:border-[var(--foreground)]"
             }`}>
               <input
                 type="text"

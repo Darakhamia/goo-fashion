@@ -219,8 +219,8 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
           </p>
         </FadeInView>
 
-        {/* Liquid-glass panel sitting only behind the step cards and their labels. */}
-        <div className="glass-panel rounded-[28px] px-6 py-12 md:px-10 md:py-14">
+        {/* Soft gray panel sitting only behind the step cards and their labels. */}
+        <div className="rounded-[28px] bg-[#161616] px-6 py-12 md:px-10 md:py-14">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-20">
           {STEPS.map((step, i) => (
             <FadeInView key={step.n} delay={i * 0.08} className="flex flex-col">

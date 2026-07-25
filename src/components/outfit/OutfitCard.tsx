@@ -7,7 +7,6 @@ import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
-import { usePressNavigate } from "@/lib/hooks/usePressNavigate";
 import OutfitCollage from "./OutfitCollage";
 
 interface OutfitCardProps {
@@ -33,11 +32,6 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
 
-  const outfitHref = `/outfit/${outfit.id}`;
-  // Play a quick glass "press" before the card navigates (only when a foot exists).
-  const { pressed, onClick: onPressNavigate } = usePressNavigate(outfitHref);
-  const pressHandler = compact ? undefined : onPressNavigate;
-
   const handleLike = () => {
     if (!isLoggedIn) { login("", ""); return; }
     toggleOutfitLike(outfit.id);
@@ -45,20 +39,13 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
   return (
     <motion.div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)]"
-      // The blur filter is not just cosmetic: it leaves `filter: blur(0px)` on
-      // the container at rest, which composites it so its rounded overflow
-      // actually clips the card foot's bottom corners. Without a filter, the
-      // bare `y` transform leaves the foot's rounded corners unclipped (square
-      // notch) — this is exactly why ProductCard (which has this filter) was
-      // always clean and OutfitCard was not.
-      initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      whileTap={compact ? undefined : { scale: 0.975, transition: { duration: 0.12, ease: "easeOut" } }}
     >
-      <Link href={outfitHref} className="block relative" onClick={pressHandler}>
+      <Link href={`/outfit/${outfit.id}`} className="block relative">
         <div className="img-zoom relative bg-[var(--surface)] overflow-hidden aspect-[3/4]">
           {outfit.imageUrl ? (
             <div className="absolute inset-0">
@@ -100,7 +87,6 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       {/* Like button */}
       <button
         onClick={handleLike}
-        onPointerDown={(e) => e.stopPropagation()}
         aria-label={!isLoggedIn ? "Sign in to save outfit" : liked ? "Unlike outfit" : "Like outfit"}
         className="absolute top-3 right-3 z-20 w-9 h-9 md:w-8 md:h-8 flex items-center justify-center bg-[var(--bg-overlay-90)] backdrop-blur-sm rounded-full transition-opacity duration-200 opacity-100 md:opacity-0 md:group-hover:opacity-100"
       >
@@ -117,11 +103,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
 
       {/* Info */}
       {!compact && (
-        <Link
-          href={outfitHref}
-          onClick={onPressNavigate}
-          className={`glass-btn glass-card-foot block px-5 pt-4 pb-5 rounded-b-2xl${pressed ? " is-pressing" : ""}`}
-        >
+        <Link href={`/outfit/${outfit.id}`} className="block px-5 pt-4 pb-5">
           <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
             {outfit.name}
           </h3>

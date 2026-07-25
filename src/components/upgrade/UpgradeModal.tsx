@@ -50,7 +50,7 @@ export function UpgradeModal({ prompt, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="glass-panel rounded-2xl overflow-hidden w-full max-w-md"
+        className="border border-[var(--border)] w-full max-w-md bg-[var(--background)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 pt-6 pb-4">
@@ -85,13 +85,13 @@ export function UpgradeModal({ prompt, onClose }: Props) {
         <div className="px-6 pb-6 flex gap-3">
           <button
             onClick={handleUpgrade}
-            className="glass-btn flex-1 rounded-xl text-[var(--foreground)] font-mono text-[10px] tracking-[0.14em] uppercase py-3.5 font-semibold"
+            className="flex-1 bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase py-3.5 hover:opacity-80 transition-opacity"
           >
             {planName ? `Upgrade to ${planName}` : "See plans"}
           </button>
           <button
             onClick={onClose}
-            className="glass-btn rounded-xl px-5 py-3.5 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground)]"
+            className="border border-[var(--border)] px-5 py-3.5 font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
           >
             Not now
           </button>
