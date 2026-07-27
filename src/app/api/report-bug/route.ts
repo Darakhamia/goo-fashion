@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { checkIpRateLimit } from "@/lib/server/rate-limit";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -13,11 +15,28 @@ interface ClaudeResult {
 }
 
 export async function POST(req: NextRequest) {
+  // Internal tool: only signed-in users may file reports. The endpoint spends
+  // money (Claude call) and creates tracker issues, so it must not be public.
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Sign in to report a bug." }, { status: 401 });
+  }
+
+  // Per-IP throttle so a single account/session can't burn the AI budget or
+  // flood the issue tracker.
+  const limit = await checkIpRateLimit(req, "report-bug", 5, "1 m");
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many reports — wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
+
   try {
     const { description, url, section, reporter, priority, screenshotBase64, screenshotMime } =
       await req.json();
 
-    if (!description) {
+    if (!description || typeof description !== "string") {
       return NextResponse.json({ error: "Description is required" }, { status: 400 });
     }
 

@@ -269,9 +269,9 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
-    const tokenHint = `${apiToken.slice(0, 5)}…(len ${apiToken.length})`;
+    console.error("[generate-outfit] generation failed:", msg, { failedUrls });
     return NextResponse.json(
-      { error: msg, tokenHint, failedUrls },
+      { error: "Image generation failed. Please try again." },
       { status: 500 }
     );
   }

@@ -12,11 +12,12 @@ const ANON_REQUESTS_PER_DAY = 25;
 
 // Module-level singletons — created once per serverless function instance.
 // null when UPSTASH env vars are absent (dev / unconfigured deployments).
+let redis: Redis | null = null;
 let ratelimit: Ratelimit | null = null;
 let anonDailyLimit: Ratelimit | null = null;
 
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  const redis = new Redis({
+  redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
@@ -33,6 +34,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     prefix: "goo:stylist:anon-daily",
   });
 }
+
+// Lazily-built per-IP limiters for other public endpoints (waitlist, bug
+// reports, etc.). Keyed by name so each endpoint gets its own window/prefix.
+const genericLimiters = new Map<string, Ratelimit>();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -83,4 +88,31 @@ export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
 /** Daily cap for unauthenticated users — call only when there is no userId. */
 export async function checkAnonDailyLimit(req: Request): Promise<RateLimitResult> {
   return runLimit(anonDailyLimit, clientIp(req), ANON_REQUESTS_PER_DAY);
+}
+
+/**
+ * Generic per-IP sliding-window limiter for any public endpoint. Each `name`
+ * gets its own counter (e.g. "waitlist", "report-bug"). Passthrough when Upstash
+ * is not configured, matching the other limiters.
+ */
+export async function checkIpRateLimit(
+  req: Request,
+  name: string,
+  max: number,
+  window: `${number} ${"s" | "m" | "h" | "d"}` = "1 m"
+): Promise<RateLimitResult> {
+  if (!redis) {
+    return { allowed: true, retryAfterSeconds: 0, remaining: null, limit: null };
+  }
+  let limiter = genericLimiters.get(name);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(max, window),
+      analytics: false,
+      prefix: `goo:${name}`,
+    });
+    genericLimiters.set(name, limiter);
+  }
+  return runLimit(limiter, clientIp(req), max);
 }

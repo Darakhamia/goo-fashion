@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const BUCKET = "outfit-images";
 
+// Allowlist of raster image types we accept. SVG is intentionally excluded:
+// it can carry inline <script>, and the bucket is served publicly.
+const ALLOWED_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+
 export async function POST(req: Request) {
+  // Only admins may upload — this endpoint backs the admin outfit editor.
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 501 });
   }
@@ -20,8 +35,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "File must be an image" }, { status: 400 });
+  // Derive the extension from the verified MIME type, never from the (client
+  // controlled) filename — that prevents an attacker-chosen extension on a
+  // public URL.
+  const ext = ALLOWED_MIME[file.type];
+  if (!ext) {
+    return NextResponse.json(
+      { error: "Unsupported image type. Use JPEG, PNG, WebP, GIF, or AVIF." },
+      { status: 400 }
+    );
   }
 
   if (file.size > 10 * 1024 * 1024) {
@@ -37,7 +59,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
