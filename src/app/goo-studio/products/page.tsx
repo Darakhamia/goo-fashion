@@ -236,8 +236,11 @@ function ImageList({
 
   const handleBlur = async (i: number, url: string) => {
     if (!url || !url.startsWith("http")) return;
-    // skip if already stored in Supabase
-    if (url.includes("supabase.co/storage")) return;
+    // Skip if the image already lives in our own Storage. Matched on the
+    // Storage path rather than the supabase.co host so this keeps working on a
+    // self-hosted instance served from our own domain — otherwise the admin's
+    // own public URLs get re-uploaded into a second copy on every edit.
+    if (url.includes("/storage/v1/object/public/")) return;
     setUploading(i);
     try {
       const res = await fetch("/api/admin/upload-image", {
