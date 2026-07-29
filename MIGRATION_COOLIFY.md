@@ -111,8 +111,20 @@ order by 3 desc;
 ## 4. Поднять Supabase в Coolify
 
 1. Coolify → проект → **+ New** → **Service** → **Supabase**.
-2. Дать домен для Kong (например `supabase.goo-fashion.com`) — это и будет
-   новый `SUPABASE_URL`.
+2. Дать домен сервису **Supabase Kong** — **обязательно с портом 8000**:
+
+   ```
+   https://supabase.goo-fashion.com:8000
+   ```
+
+   Kong слушает 8000 внутри контейнера, и без суффикса Coolify не знает, в
+   какой из контейнеров стека роутить запрос. Наружу порт при этом не торчит —
+   публично остаётся обычный `https://supabase.goo-fashion.com` на 443, TLS
+   терминирует сам Coolify. Домен без порта Coolify встречает диалогом *Remove
+   Required Port?* — там нужно **Cancel - Keep Port** и правка домена, а не
+   удаление порта: удаление ровно и делает Kong недостижимым.
+
+   Этот же адрес (уже без `:8000`) станет новым `SUPABASE_URL`.
 3. Сохранить сгенерированные переменные: `POSTGRES_PASSWORD`, `JWT_SECRET`,
    `ANON_KEY`, `SERVICE_ROLE_KEY`, `DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD`.
 
@@ -122,7 +134,13 @@ order by 3 desc;
 4. Выключить `analytics` (Logflare), если он не нужен — на маленьком сервере он
    чаще всего и валит весь стек по памяти.
 5. Дождаться, пока контейнеры станут healthy, и проверить:
-   `curl https://supabase.goo-fashion.com/rest/v1/ -H "apikey: $SERVICE_ROLE_KEY"`.
+
+   ```bash
+   curl -i https://supabase.goo-fashion.com/rest/v1/ -H "apikey: $SERVICE_ROLE_KEY"
+   ```
+
+   Ожидается 200. `404` от Traefik — домен указан без `:8000`. `401` — Kong
+   отвечает, но ключ не сходится с `JWT_SECRET`.
 
 Postgres наружу Coolify по умолчанию не публикует. Для шагов 5–6 либо временно
 открыть порт 5432 в настройках сервиса, либо гонять `psql` внутри сети Docker
@@ -280,6 +298,9 @@ monobank — вне периметра миграции. `next.config.ts` уже
 
 ## 12. Грабли
 
+- **Домен Kong без `:8000`** — Coolify предложит «убрать обязательный порт».
+  Соглашаться нельзя: без порта прокси не знает, куда роутить, и API просто
+  недоступен.
 - **Transaction pooler (6543)** — `pg_dump` через него не работает. Только 5432.
 - **Пропущенные гранты** — самый частый симптом «всё сломалось после миграции»:
   PostgREST отвечает `permission denied for table products`. Лечится
