@@ -81,12 +81,12 @@ export default async function HomePage() {
       <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
-      <HomeSection label="How it works" className="bg-[#050505]">
+      <HomeSection className="bg-[#050505]">
         <HowItWorksSection showcase={showcase} />
       </HomeSection>
 
       {/* ── AI STYLIST SHOWCASE ── */}
-      <HomeSection label="AI stylist" className="bg-[var(--background)]">
+      <HomeSection className="bg-[var(--background)]">
         <AIStylistShowcase
           chatLooks={stylist.chatLooks}
           featuredProduct={stylist.featuredProduct}
@@ -96,7 +96,7 @@ export default async function HomePage() {
       </HomeSection>
 
       {/* ── OUTFIT EXAMPLES ── */}
-      <HomeSection label="Outfits" className="bg-[var(--background)]">
+      <HomeSection className="bg-[var(--background)]">
         <section className="py-10 md:py-12">
           <div className="max-w-[1280px] mx-auto px-6 md:px-12">
             <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">

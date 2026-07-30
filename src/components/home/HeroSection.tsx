@@ -11,7 +11,6 @@ export function HeroSection() {
     // rest of the first screen — putting the next section exactly one screen down.
     <section
       data-home-section
-      data-home-label="Home"
       className="bg-[var(--background)] min-h-[100svh] lg:min-h-[calc(100svh-var(--home-nav-h))] flex flex-col items-center justify-center relative overflow-hidden"
     >
       {/* Background — CSS blobs only, no SVG filter */}
