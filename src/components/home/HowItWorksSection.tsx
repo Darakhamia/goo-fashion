@@ -207,9 +207,9 @@ function buildSteps(showcase?: HomepageShowcase) {
 export default function HowItWorksSection({ showcase }: { showcase?: HomepageShowcase }) {
   const STEPS = buildSteps(showcase);
   return (
-    <section className="py-28 md:py-36 bg-[#050505]">
+    <section className="py-12 md:py-14">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-        <FadeInView className="text-center mb-20 md:mb-28">
+        <FadeInView className="text-center mb-8 md:mb-10">
           <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
             Everything you need
             <br className="hidden sm:block" /> to create better outfits.
@@ -220,17 +220,17 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
         </FadeInView>
 
         {/* Soft gray panel sitting only behind the step cards and their labels. */}
-        <div className="rounded-[28px] bg-[#161616] px-6 py-12 md:px-10 md:py-14">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-20">
+        <div className="rounded-[28px] bg-[#161616] px-6 py-8 md:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-14">
           {STEPS.map((step, i) => (
             <FadeInView key={step.n} delay={i * 0.08} className="flex flex-col">
-              <div className="lg:min-h-[108px]">
+              <div className="lg:min-h-[96px]">
                 <span className="text-[13px] text-white/40 tabular-nums">{step.n}</span>
                 <h3 className="mt-2 text-[19px] font-semibold text-white leading-snug">{step.title}</h3>
                 <p className="mt-2 text-[14px] text-white/50 leading-relaxed max-w-[210px]">{step.body}</p>
               </div>
 
-              <div className="relative mt-10 h-[280px] flex items-end justify-start">
+              <div className="relative mt-6 h-[280px] flex items-end justify-start">
                 <FloatLoop delay={i * 0.7} duration={5 + i * 0.4}>
                   {step.scene}
                 </FloatLoop>
@@ -241,7 +241,7 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
           </div>
         </div>
 
-        <FadeInView delay={0.1} className="mt-20 md:mt-24 flex justify-center">
+        <FadeInView delay={0.1} className="mt-8 md:mt-10 flex justify-center">
           <Link
             href="/builder"
             className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-all duration-300"

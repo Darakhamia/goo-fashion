@@ -615,7 +615,7 @@ export function StylistDrawer({
 
       {/* ── History panel ─────────────────────────────────────────────────── */}
       {view === "history" && (
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
           <div className="px-5 pt-4 pb-2">
             <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] mb-4">
               Past conversations
@@ -664,7 +664,7 @@ export function StylistDrawer({
           {/* Thread */}
           <div
             ref={chatThreadRef}
-            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 min-h-0"
+            className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-3 min-h-0"
           >
             {chatMessages.map(msg => (
               <div
