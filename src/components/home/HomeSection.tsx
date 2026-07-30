@@ -13,8 +13,6 @@ const FIT_FROM = 1024;
 const MIN_SCALE = 0.72;
 
 interface HomeSectionProps {
-  /** Shown in the section dots on the right. */
-  label: string;
   /** Applied to the full-screen wrapper — put the section background here so it
    *  covers the whole screen, not just the content. */
   className?: string;
@@ -28,7 +26,7 @@ interface HomeSectionProps {
  * would overflow is scaled down to fit rather than pushed off-screen, so every
  * section stays exactly one scroll away from the next one.
  */
-export default function HomeSection({ label, className = "", children }: HomeSectionProps) {
+export default function HomeSection({ className = "", children }: HomeSectionProps) {
   const innerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [natural, setNatural] = useState(0);
@@ -70,7 +68,7 @@ export default function HomeSection({ label, className = "", children }: HomeSec
   }, []);
 
   return (
-    <div data-home-section data-home-label={label} className={`home-section ${className}`}>
+    <div data-home-section className={`home-section ${className}`}>
       <div
         ref={innerRef}
         style={

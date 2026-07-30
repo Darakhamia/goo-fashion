@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /** Matches HomeSection's fit threshold — below it the page scrolls normally. */
 const ENABLE_FROM = 1024;
@@ -38,10 +38,6 @@ function classifyWheel(target: EventTarget | null, delta: number): "scroller" | 
   let overlay = false;
 
   while (el && el !== document.body && el !== document.documentElement) {
-    // The section rail is ours and floats over everything — wheeling across it
-    // should still move the page rather than hit the overlay branch below.
-    if (el.hasAttribute("data-home-rail")) return "page";
-
     const style = getComputedStyle(el);
     const { overflowY } = style;
     if (
@@ -66,48 +62,24 @@ function isTypingTarget(target: EventTarget | null) {
   return el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName);
 }
 
-function sameLabels(a: string[], b: string[]) {
-  return a.length === b.length && a.every((label, i) => label === b[i]);
-}
-
 /**
  * Turns the homepage into one screen per section: a single wheel notch, swipe
  * or arrow key travels to the next block of information instead of drifting
  * part-way into it.
  *
- * Only the homepage renders this, and only from {@link ENABLE_FROM} up — narrow
- * screens and "reduce motion" keep the browser's own scrolling.
+ * Renders nothing — it only installs the scroll behaviour, and only on the
+ * homepage from {@link ENABLE_FROM} up. Narrow screens and "reduce motion" keep
+ * the browser's own scrolling.
  */
 export default function HomeFullPageScroll() {
-  const [labels, setLabels] = useState<string[]>([]);
-  const [enabled, setEnabled] = useState(false);
-  const [activeSection, setActiveSection] = useState(0);
-
   /** Absolute scroll positions, in document order. */
   const stopsRef = useRef<number[]>([]);
-  /** Index into `stopsRef` of each section's own stop (a tall one adds extras). */
-  const sectionStopsRef = useRef<number[]>([]);
   const enabledRef = useRef(false);
   const lockedRef = useRef(false);
   const lastWheelRef = useRef(0);
   const rafRef = useRef(0);
   const unlockRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const touchStartRef = useRef(0);
-
-  // ── Where the dots are ─────────────────────────────────────────────────────
-
-  const syncActiveSection = useCallback(() => {
-    const stops = stopsRef.current;
-    const sectionStops = sectionStopsRef.current;
-    if (sectionStops.length === 0) return;
-
-    const y = window.scrollY;
-    let current = 0;
-    sectionStops.forEach((stopIndex, i) => {
-      if (y >= (stops[stopIndex] ?? 0) - 8) current = i;
-    });
-    setActiveSection(current);
-  }, []);
 
   // ── Stops ──────────────────────────────────────────────────────────────────
 
@@ -117,8 +89,6 @@ export default function HomeFullPageScroll() {
     );
     if (sections.length === 0) {
       stopsRef.current = [];
-      sectionStopsRef.current = [];
-      setLabels((prev) => (prev.length === 0 ? prev : []));
       return;
     }
 
@@ -136,14 +106,10 @@ export default function HomeFullPageScroll() {
     const screen = Math.max(240, window.innerHeight - nav);
 
     const stops: number[] = [];
-    const sectionStops: number[] = [];
     const push = (value: number) => {
       const y = Math.min(maxScroll, Math.max(0, Math.round(value)));
-      if (stops.length > 0 && Math.abs(stops[stops.length - 1] - y) <= 8) {
-        return stops.length - 1;
-      }
+      if (stops.length > 0 && Math.abs(stops[stops.length - 1] - y) <= 8) return;
       stops.push(y);
-      return stops.length - 1;
     };
 
     blocks.forEach((block, i) => {
@@ -152,7 +118,7 @@ export default function HomeFullPageScroll() {
       // fully in view at the top of the page. Every later block reserves a strip
       // for the pinned nav and therefore lines up with its own top.
       const top = i === 0 ? documentTop - nav : documentTop;
-      sectionStops.push(push(top));
+      push(top);
 
       // A block that genuinely can't fit one screen still has to be reachable,
       // so it gets intermediate stops a screen apart.
@@ -162,14 +128,7 @@ export default function HomeFullPageScroll() {
     });
 
     stopsRef.current = stops;
-    sectionStopsRef.current = sectionStops;
-
-    const next = blocks.map((block, i) =>
-      block.dataset.homeLabel || (block.tagName === "FOOTER" ? "More" : `Section ${i + 1}`)
-    );
-    setLabels((prev) => (sameLabels(prev, next) ? prev : next));
-    syncActiveSection();
-  }, [syncActiveSection]);
+  }, []);
 
   // ── Movement ───────────────────────────────────────────────────────────────
 
@@ -207,13 +166,12 @@ export default function HomeFullPageScroll() {
       const step = (now: number) => {
         const t = Math.min(1, (now - start) / ANIM_MS);
         window.scrollTo({ top: from + distance * easeInOutCubic(t), behavior: "instant" });
-        syncActiveSection();
         if (t < 1) rafRef.current = requestAnimationFrame(step);
         else unlockWhenIdle();
       };
       rafRef.current = requestAnimationFrame(step);
     },
-    [syncActiveSection, unlockWhenIdle]
+    [unlockWhenIdle]
   );
 
   const move = useCallback(
@@ -247,7 +205,6 @@ export default function HomeFullPageScroll() {
     const sync = () => {
       const on = wide.matches && !reduced.matches;
       enabledRef.current = on;
-      setEnabled(on);
       // The global `scroll-behavior: smooth` would fight the animation above.
       document.documentElement.classList.toggle("home-fullpage", on);
       if (on) measure();
@@ -319,11 +276,6 @@ export default function HomeFullPageScroll() {
       move(delta > 0 ? 1 : -1);
     };
 
-    // Keeps the dots honest when scrolling happens outside this controller.
-    const onScroll = () => {
-      if (enabledRef.current && !lockedRef.current) syncActiveSection();
-    };
-
     // The hero's scroll hint asks for the next section without reaching in here.
     const onNext = () => {
       if (enabledRef.current && !lockedRef.current) move(1);
@@ -333,7 +285,6 @@ export default function HomeFullPageScroll() {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("home-fullpage:next", onNext);
 
     return () => {
@@ -346,44 +297,13 @@ export default function HomeFullPageScroll() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
-      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("home-fullpage:next", onNext);
       cancelAnimationFrame(rafRef.current);
       clearTimeout(unlockRef.current);
       document.documentElement.classList.remove("home-fullpage");
       document.documentElement.style.removeProperty("--home-nav-h");
     };
-  }, [goToStop, measure, move, syncActiveSection]);
+  }, [goToStop, measure, move]);
 
-  if (!enabled || labels.length < 2) return null;
-
-  return (
-    <nav
-      data-home-rail
-      aria-label="Page sections"
-      // The rail is as wide as its longest label, so only the dots themselves
-      // take pointer events — the rest must not block the page underneath.
-      className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col items-end gap-4 mix-blend-difference pointer-events-none"
-    >
-      {labels.map((label, i) => (
-        <button
-          key={`${label}-${i}`}
-          type="button"
-          onClick={() => goToStop(sectionStopsRef.current[i] ?? 0)}
-          aria-label={`Go to ${label}`}
-          aria-current={i === activeSection ? "true" : undefined}
-          className="group flex items-center gap-2.5 cursor-pointer pointer-events-auto p-1 -m-1"
-        >
-          <span className="pointer-events-none text-[9px] tracking-[0.18em] uppercase text-white/0 group-hover:text-white/70 transition-colors duration-200 whitespace-nowrap">
-            {label}
-          </span>
-          <span
-            className={`block rounded-full bg-white transition-all duration-300 ${
-              i === activeSection ? "h-5 w-[3px] opacity-90" : "h-[3px] w-[3px] opacity-40"
-            }`}
-          />
-        </button>
-      ))}
-    </nav>
-  );
+  return null;
 }
