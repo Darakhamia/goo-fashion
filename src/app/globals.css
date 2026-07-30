@@ -70,6 +70,32 @@ html {
   background: var(--background);
 }
 
+/* ── Homepage: one screen per section ─────────────────────────────────────────
+   HomeFullPageScroll keeps --home-nav-h in sync with the real header height. */
+:root {
+  --home-nav-h: 66px;
+}
+
+/* Only from lg up, where HomeFullPageScroll runs — narrower screens keep the
+   sections at their natural height and scroll normally. Each section is a full
+   viewport tall and reserves the top strip for the pinned nav to sit over, so
+   the section's own background runs behind it instead of the previous one. */
+@media (min-width: 1024px) {
+  .home-section {
+    min-height: 100svh;
+    padding-top: var(--home-nav-h);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+/* The section-to-section move is animated frame by frame; the global smooth
+   behaviour would fight it. */
+html.home-fullpage {
+  scroll-behavior: auto;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

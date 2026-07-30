@@ -46,7 +46,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
       </AnimatePresence>
 
       {total > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-10">
+        <div className="flex items-center justify-center gap-4 mt-8">
           <button
             onClick={() => setPage((p) => (p - 1 + total) % total)}
             className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"

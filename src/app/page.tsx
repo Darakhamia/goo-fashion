@@ -5,6 +5,8 @@ export const revalidate = 60;
 import Link from "next/link";
 import FadeInView from "@/components/ui/FadeInView";
 import { HeroSection } from "@/components/home/HeroSection";
+import HomeSection from "@/components/home/HomeSection";
+import HomeFullPageScroll from "@/components/home/HomeFullPageScroll";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
 import AIStylistShowcase from "@/components/home/AIStylistShowcase";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
@@ -32,24 +34,6 @@ async function getData() {
 }
 
 // ── LAYOUT PRIMITIVES ────────────────────────────────────────────────────────
-
-function Section({
-  children,
-  soft,
-  className = "",
-}: {
-  children: React.ReactNode;
-  soft?: boolean;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`py-24 md:py-32 ${soft ? "bg-[var(--surface)]" : "bg-[var(--background)]"} ${className}`}
-    >
-      <div className="max-w-[1280px] mx-auto px-6 md:px-12">{children}</div>
-    </section>
-  );
-}
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
@@ -90,45 +74,56 @@ export default async function HomePage() {
       {/* Structured data: Organization + WebSite (with sitelinks SearchAction) */}
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
+      {/* One wheel notch / swipe / arrow key moves to the next section below. */}
+      <HomeFullPageScroll />
+
       {/* ── HERO ── */}
       <HeroSection />
 
       {/* ── HOW IT WORKS ── */}
-      <HowItWorksSection showcase={showcase} />
+      <HomeSection label="How it works" className="bg-[#050505]">
+        <HowItWorksSection showcase={showcase} />
+      </HomeSection>
 
       {/* ── AI STYLIST SHOWCASE ── */}
-      <AIStylistShowcase
-        chatLooks={stylist.chatLooks}
-        featuredProduct={stylist.featuredProduct}
-        retailerLogos={stylist.retailerLogos}
-        showcaseStores={stylist.showcaseStores}
-      />
+      <HomeSection label="AI stylist" className="bg-[var(--background)]">
+        <AIStylistShowcase
+          chatLooks={stylist.chatLooks}
+          featuredProduct={stylist.featuredProduct}
+          retailerLogos={stylist.retailerLogos}
+          showcaseStores={stylist.showcaseStores}
+        />
+      </HomeSection>
 
       {/* ── OUTFIT EXAMPLES ── */}
-      <Section>
-        <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-          <div>
-            <Kicker>Outfit examples</Kicker>
-            <SectionH2>Explore ready-made outfit ideas.</SectionH2>
+      <HomeSection label="Outfits" className="bg-[var(--background)]">
+        <section className="py-10 md:py-12">
+          <div className="max-w-[1280px] mx-auto px-6 md:px-12">
+            <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+              <div>
+                <Kicker>Outfit examples</Kicker>
+                <SectionH2>Explore ready-made outfit ideas.</SectionH2>
+              </div>
+              <Link
+                href="/browse"
+                className="text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
+              >
+                Browse all outfits
+              </Link>
+            </FadeInView>
+            {carouselOutfits.length > 0 ? (
+              <OutfitExamplesCarousel outfits={carouselOutfits} />
+            ) : (
+              <div className="py-20 text-center text-[var(--foreground-muted)] text-sm">
+                No outfits yet —{" "}
+                <Link href="/builder" className="underline">
+                  be the first to build one.
+                </Link>
+              </div>
+            )}
           </div>
-          <Link
-            href="/browse"
-            className="text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
-          >
-            Browse all outfits
-          </Link>
-        </FadeInView>
-        {carouselOutfits.length > 0 ? (
-          <OutfitExamplesCarousel outfits={carouselOutfits} />
-        ) : (
-          <div className="py-20 text-center text-[var(--foreground-muted)] text-sm">
-            No outfits yet —{" "}
-            <Link href="/builder" className="underline">
-              be the first to build one.
-            </Link>
-          </div>
-        )}
-      </Section>
+        </section>
+      </HomeSection>
 
     </>
   );

@@ -7,7 +7,13 @@ import { EtherealShadow } from "@/components/ui/etheral-shadow";
 
 export function HeroSection() {
   return (
-    <section className="bg-[var(--background)] min-h-[100svh] flex flex-col items-center justify-center relative overflow-hidden">
+    // The nav sits above the hero in the flow, so from lg up the hero takes the
+    // rest of the first screen — putting the next section exactly one screen down.
+    <section
+      data-home-section
+      data-home-label="Home"
+      className="bg-[var(--background)] min-h-[100svh] lg:min-h-[calc(100svh-var(--home-nav-h))] flex flex-col items-center justify-center relative overflow-hidden"
+    >
       {/* Background — CSS blobs only, no SVG filter */}
       <div className="absolute inset-0 z-0">
         <EtherealShadow />
@@ -44,8 +50,13 @@ export function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10">
+      {/* Scroll indicator — also a shortcut to the next section */}
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("home-fullpage:next"))}
+        aria-label="Go to the next section"
+        className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10 cursor-pointer hover:opacity-70 transition-opacity"
+      >
         <span className="text-[9px] tracking-[0.3em] uppercase text-[var(--foreground-subtle)]">
           scroll
         </span>
@@ -55,7 +66,7 @@ export function HeroSection() {
             <path d="M2 10L7 16L12 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-      </div>
+      </button>
     </section>
   );
 }
