@@ -912,642 +912,9 @@ export default function BuilderPage() {
           {/* 3 panels row */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* ── LEFT PANEL: In this look (300px) ─────────────────────────── */}
-          <aside className="flex flex-col border-r border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 300 }}>
-
-            {/* Header row 1 — aligned with center-panel search bar (h-[60px]) */}
-            <div className="px-6 h-[60px] shrink-0 flex items-center">
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">In this look</p>
-            </div>
-            {/* Header row 2 — aligned with center-panel category chips (h-[50px]) */}
-            <div className="px-6 h-[50px] shrink-0 border-b border-[var(--border)] flex items-center">
-              <p className="text-2xl font-bold text-[var(--foreground)]">
-                {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
-              </p>
-            </div>
-
-            {/* Slot cards */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
-              {SLOTS.map(slot => {
-                const picked = selection[slot.id];
-                const variantId = variantOverrides[slot.id];
-                const activeVariant = picked?.variants?.find(v => v.id === variantId);
-                const colorKey = colorImageOverrides[slot.id];
-                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
-
-                if (!picked) {
-                  return (
-                    <button
-                      key={slot.id}
-                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                      className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]/50 p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--foreground-muted)] transition-colors text-left w-full"
-                    >
-                      <div className="w-16 h-20 rounded-lg bg-[var(--surface)] flex items-center justify-center shrink-0 text-[var(--foreground-subtle)] opacity-40">
-                        <SlotIcon id={slot.id} size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
-                        <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
-                      </div>
-                    </button>
-                  );
-                }
-
-                return (
-                  <div
-                    key={slot.id}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-sm p-3 flex items-start gap-3 relative cursor-pointer hover:border-[var(--foreground-muted)] transition-colors"
-                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
-                  >
-                    {/* Thumbnail */}
-                    <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center">
-                      {displayImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={displayImage} src={displayImage} alt={picked!.name} className="swatch-img-enter w-full h-full object-contain" />
-                      ) : (
-                        <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={slot.id} size={16} /></div>
-                      )}
-                    </div>
-                    {/* Remove button top-right */}
-                    <button
-                      onClick={e => clearSlot(slot.id, e)}
-                      className="absolute top-2 right-2 w-7 h-7 md:w-5 md:h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
-                      aria-label={`Remove ${slot.label}`}
-                    >
-                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                    {/* Info */}
-                    <div className="min-w-0 flex-1 pr-4">
-                      <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
-                      {picked ? (
-                        <>
-                          <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{picked.name}</p>
-                          <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{picked.brand}</p>
-                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin, picked.currency)}</p>
-                          {/* Variant colour swatches (separate products) */}
-                          {(picked.variants?.length ?? 0) > 1 && (() => {
-                            const variants = picked.variants!;
-                            const MAX = 6;
-                            const visible = variants.slice(0, MAX);
-                            const hidden = variants.length - MAX;
-                            const popupKey = `slot-${slot.id}-variant`;
-                            return (
-                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                                {visible.map(sw => (
-                                  <button key={sw.id} title={sw.colorName}
-                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                    className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
-                                    style={{
-                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
-                                      boxShadow: (variantId ?? picked.id) === sw.id
-                                        ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
-                                        : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
-                                    }}
-                                  />
-                                ))}
-                                {hidden > 0 && (
-                                  <button
-                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
-                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
-                                  >
-                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                      <line x1="4" y1="1" x2="4" y2="7" />
-                                      <line x1="1" y1="4" x2="7" y2="4" />
-                                    </svg>
-                                  </button>
-                                )}
-                                {openSwatchPopup === popupKey && (
-                                  <div
-                                    onClick={e => e.stopPropagation()}
-                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
-                                    style={{ minWidth: "80px", maxWidth: "160px" }}
-                                  >
-                                    {variants.map(sw => (
-                                      <button key={sw.id} title={sw.colorName}
-                                        onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
-                                        className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
-                                        style={{
-                                          background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
-                                          boxShadow: (variantId ?? picked.id) === sw.id
-                                            ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
-                                            : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          {/* colorImages swatches (multiple colours within same product) */}
-                          {Object.keys(picked.colorImages ?? {}).length > 1 && (() => {
-                            const colorKeys = Object.keys(picked.colorImages!);
-                            const MAX = 6;
-                            const visibleKeys = colorKeys.slice(0, MAX);
-                            const hidden = colorKeys.length - MAX;
-                            const popupKey = `slot-${slot.id}-colorImage`;
-                            return (
-                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
-                                {visibleKeys.map(color => {
-                                  const img = picked.colorImages![color]?.[0];
-                                  const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
-                                  return (
-                                    <button key={color} title={color}
-                                      onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
-                                      className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
-                                    >
-                                      {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
-                                    </button>
-                                  );
-                                })}
-                                {hidden > 0 && (
-                                  <button
-                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
-                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
-                                  >
-                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                      <line x1="4" y1="1" x2="4" y2="7" />
-                                      <line x1="1" y1="4" x2="7" y2="4" />
-                                    </svg>
-                                  </button>
-                                )}
-                                {openSwatchPopup === popupKey && (
-                                  <div
-                                    onClick={e => e.stopPropagation()}
-                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
-                                    style={{ minWidth: "80px", maxWidth: "160px" }}
-                                  >
-                                    {colorKeys.map(color => {
-                                      const img = picked.colorImages![color]?.[0];
-                                      const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
-                                      return (
-                                        <button key={color} title={color}
-                                          onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
-                                          className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
-                                        >
-                                          {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </>
-                      ) : (
-                        <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Footer: Total + Share Look + Clear Look */}
-            <div className="shrink-0 border-t border-[var(--border)] px-6 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
-                <p className={`text-2xl font-bold transition-all ${selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>
-                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={shareOutfit}
-                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors"
-                >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.3" />
-                    <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.3" />
-                    <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
-                    <line x1="10.3" y1="5" x2="5.7" y2="7" stroke="currentColor" strokeWidth="1.3" />
-                    <line x1="5.7" y1="9" x2="10.3" y2="11" stroke="currentColor" strokeWidth="1.3" />
-                  </svg>
-                  {copied ? "Copied!" : "Share look"}
-                </button>
-                <button
-                  onClick={clearAll}
-                  disabled={selectedCount === 0}
-                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 6H13L12 14H4L3 6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-                    <path d="M1 3H15M6 3V2H10V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                  Clear look
-                </button>
-              </div>
-            </div>
-          </aside>
-
-          {/* ── CENTER PANEL: Search + chips + product grid (flex-1) ─────── */}
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--background)]">
-
-            {/* Search bar — h-[60px] aligns with left-panel row 1 */}
-            <div className="shrink-0 px-4 h-[60px] border-b border-[var(--border)] flex items-center">
-              <div className="relative w-full">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search products, brands, or categories..."
-                  className="w-full h-10 bg-[var(--surface)] rounded-xl border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-10 pr-8 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-                />
-                {search && (
-                  <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Category chips + sort/filter row — h-[50px] aligns with left-panel row 2 */}
-            <div className="shrink-0 px-4 h-[50px] border-b border-[var(--border)] flex items-center justify-between gap-4">
-              {/* Category chips — scrollable, no scrollbar */}
-              <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-                {/* All chip */}
-                <button
-                  onClick={() => { setCatalogCategory(null); setLikedOnly(false); }}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                    catalogCategory === null && !likedOnly
-                      ? "bg-[var(--foreground)] text-[var(--background)]"
-                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  All
-                </button>
-
-                {/* Liked chip — right after All */}
-                <button
-                  onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
-                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                    likedOnly
-                      ? "bg-[var(--foreground)] text-[var(--background)]"
-                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
-                  </svg>
-                  Liked
-                </button>
-
-                {/* Values are SLOT ids (not bare categories) so filterByCategory
-                    expands them via slot.categories — identical to the left-hand
-                    slots and the mobile chips. This keeps "Bottoms" showing every
-                    leg piece (bottoms/jeans/shorts/skirts/dresses/jumpsuits) and
-                    "Shoes" showing only footwear, everywhere. */}
-                {([
-                  { label: "Tops", value: "top" },
-                  { label: "Outerwear", value: "outerwear" },
-                  { label: "Bottoms", value: "bottom" },
-                  { label: "Shoes", value: "shoes" },
-                  { label: "Accessories", value: "accessories" },
-                  { label: "Bags", value: "bags" },
-                  { label: "New In", value: "new-in" },
-                ] as Array<{ label: string; value: string | null }>).map(({ label, value }) => {
-                  const isNewIn = value === "new-in";
-                  const isActive = isNewIn ? sortBy === "new-in" : catalogCategory === value;
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => {
-                        if (isNewIn) {
-                          setSortBy(sortBy === "new-in" ? "featured" : "new-in");
-                        } else {
-                          setCatalogCategory(isActive ? null : value);
-                          setSelectedSubcategories([]);
-                        }
-                      }}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
-                        isActive
-                          ? "bg-[var(--foreground)] text-[var(--background)]"
-                          : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-
-              </div>
-              {/* Right controls: sort + grid/list toggle + filters */}
-              <div className="shrink-0 flex items-center gap-2">
-                <div className="relative" ref={sortDropRef}>
-                  <button
-                    onClick={() => setSortDropOpen(v => !v)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all duration-150 ${
-                      sortDropOpen
-                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {sortBy === "featured" && "Featured"}
-                    {sortBy === "new-in" && "New In"}
-                    {sortBy === "price-asc" && "Price ↑"}
-                    {sortBy === "price-desc" && "Price ↓"}
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortDropOpen ? "rotate-180" : ""}`}>
-                      <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  {sortDropOpen && (
-                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
-                      {([
-                        { value: "featured", label: "Featured" },
-                        { value: "price-asc", label: "Price ↑" },
-                        { value: "price-desc", label: "Price ↓" },
-                      ] as { value: typeof sortBy; label: string }[]).map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => { setSortBy(opt.value); setSortDropOpen(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-[10px] tracking-[0.12em] uppercase transition-colors duration-150 ${
-                            sortBy === opt.value
-                              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
-                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {/* Filters toggle button */}
-                <button
-                  onClick={() => setFiltersOpen(v => !v)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all ${
-                    filtersOpen
-                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                      : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1" y1="3.5" x2="13" y2="3.5" />
-                    <line x1="3" y1="7" x2="11" y2="7" />
-                    <line x1="5" y1="10.5" x2="9" y2="10.5" />
-                  </svg>
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 absolute top-1 right-1" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Product grid — 4 columns */}
-            <div ref={catalogScrollRef} className="flex-1 overflow-y-auto p-3">
-              {catalogProducts.length === 0 ? (
-                <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-4 px-8 bg-[var(--surface)]">
-                  <div className="w-20 h-20 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
-                    <svg width="36" height="36" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
-                      <path d="M20 4C20 4 14 8 8 8V28C8 28 14 28 20 36C26 28 32 28 32 28V8C26 8 20 4 20 4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                      <path d="M20 4V36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      <path d="M14 16H26M14 22H22" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                  <div className="text-center space-y-1">
-                    <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
-                      {likedOnly ? "No saved items" : search ? "No results found" : "End of catalog"}
-                    </p>
-                    <p className="text-[11px] text-[var(--foreground-subtle)] opacity-60">
-                      {likedOnly ? "Like some items first" : search ? "Try a different search" : "That's all we have"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <motion.div
-                  className="grid grid-cols-4 gap-3"
-                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
-                  initial="hidden"
-                  animate="show"
-                >
-                    {expandedCatalogItems.map(item => {
-                      const { product, forcedVariant } = item;
-                      const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
-                      const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
-                      const isSelected = !!selectedSlot;
-                      const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
-                      const targetSlot = selectedSlot ?? matchingSlots[0];
-                      const previewVariantId = catalogPreviews[product.id];
-                      const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
-                      const colorImageKeys = Object.keys(product.colorImages ?? {});
-                      const hasColorImages = colorImageKeys.length > 1;
-                      const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
-                      const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
-                        ? product.colorImages![selectedColorKey][0]
-                        : null;
-                      const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
-                      const hasVariants = (product.variants?.length ?? 0) > 1;
-
-                      return (
-                        <motion.div
-                          key={item.key}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => selectProduct(product)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              selectProduct(product);
-                            }
-                          }}
-                          variants={{ hidden: { opacity: 0, y: 12, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.7 } } }}
-                          className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
-                            isSelected
-                              ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
-                              : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                          }`}
-                        >
-                          {/* Image */}
-                          <div className="relative aspect-[3/4] bg-white overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={displayImage}
-                              alt={product.name}
-                              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                            />
-                            {/* Top-left: + / ✓ add to outfit */}
-                            {!isSelected && (
-                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                  <line x1="5" y1="1" x2="5" y2="9" />
-                                  <line x1="1" y1="5" x2="9" y2="5" />
-                                </svg>
-                              </div>
-                            )}
-                            {isSelected && (
-                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                <svg width="10" height="8" viewBox="0 0 12 10" fill="none">
-                                  <path d="M1.5 5L4.5 8L10.5 1.5" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              </div>
-                            )}
-                            {/* Top-right: heart like button */}
-                            <button
-                              onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
-                              className={`absolute top-2 right-2 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
-                              aria-label={likedProducts.includes(product.id) ? "Unlike" : "Like"}
-                            >
-                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
-                                <path
-                                  d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.3"
-                                  fill={likedProducts.includes(product.id) ? "currentColor" : "none"}
-                                />
-                              </svg>
-                            </button>
-                            {/* Colour swatches — slide up on hover */}
-                            {hasColorImages && (
-                              <div
-                                className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
-                                  {colorImageKeys.map((color, idx) => {
-                                    const previewImg = product.colorImages![color]?.[0];
-                                    const isActive = selectedColorKey === color;
-                                    return (
-                                      <button
-                                        key={color}
-                                        title={color}
-                                        onClick={e => {
-                                          e.stopPropagation();
-                                          setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
-                                          if (isSelected && targetSlot) {
-                                            setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
-                                          }
-                                        }}
-                                        style={{ transitionDelay: `${idx * 25}ms` }}
-                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border rounded-full transition-all duration-200 ${
-                                          isActive
-                                            ? "border-white scale-110 shadow-md"
-                                            : "border-white/50 hover:border-white hover:scale-105"
-                                        }`}
-                                      >
-                                        {previewImg
-                                          // eslint-disable-next-line @next/next/no-img-element
-                                          ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
-                                          : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
-                                        }
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          {/* Info */}
-                          <div className="px-3 pt-3 pb-3.5">
-                            <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
-                            <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{product.name}</p>
-                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
-                            {hasVariants && (() => {
-                              const variants = product.variants!;
-                              const MAX = 5;
-                              const visible = variants.slice(0, MAX);
-                              const hidden = variants.length - MAX;
-                              const popupKey = `catalog-${product.id}-variant`;
-                              return (
-                                <div className="relative flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
-                                  {visible.map(swatch => {
-                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
-                                    const isSwatchActive = activeId === swatch.id;
-                                    return (
-                                      <button
-                                        key={swatch.id}
-                                        title={swatch.colorName}
-                                        onClick={e => {
-                                          e.stopPropagation();
-                                          setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-                                          if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
-                                        }}
-                                        className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                        style={{
-                                          background: swatch.colorHex === "#multicolor"
-                                            ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                            : swatch.colorHex,
-                                          boxShadow: isSwatchActive
-                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                        }}
-                                      />
-                                    );
-                                  })}
-                                  {hidden > 0 && (
-                                    <button
-                                      onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
-                                      className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
-                                      style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
-                                    >
-                                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                        <line x1="4" y1="1" x2="4" y2="7" />
-                                        <line x1="1" y1="4" x2="7" y2="4" />
-                                      </svg>
-                                    </button>
-                                  )}
-                                  {openSwatchPopup === popupKey && (
-                                    <div
-                                      onClick={e => e.stopPropagation()}
-                                      className="absolute bottom-full left-0 mb-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
-                                      style={{ minWidth: "80px", maxWidth: "140px" }}
-                                    >
-                                      {variants.map(swatch => {
-                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
-                                        const isSwatchActive = activeId === swatch.id;
-                                        return (
-                                          <button
-                                            key={swatch.id}
-                                            title={swatch.colorName}
-                                            onClick={e => {
-                                              e.stopPropagation();
-                                              setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
-                                              if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
-                                              setOpenSwatchPopup(null);
-                                            }}
-                                            className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
-                                            style={{
-                                              background: swatch.colorHex === "#multicolor"
-                                                ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
-                                                : swatch.colorHex,
-                                              boxShadow: isSwatchActive
-                                                ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
-                                                : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
-                                            }}
-                                          />
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                </motion.div>
-              )}
-            </div>
-          </div>
-
-          {/* ── FILTERS PANEL: slides in from right (280px) ───────────────── */}
+          {/* ── FILTERS PANEL: slides in from left (280px) ────────────────── */}
           <div
-            className="shrink-0 border-l border-[var(--border)] bg-[var(--background)] overflow-hidden transition-all duration-200 flex flex-col"
+            className="shrink-0 border-r border-[var(--border)] bg-[var(--background)] overflow-hidden transition-all duration-200 flex flex-col"
             style={{ width: filtersOpen ? 280 : 0 }}
           >
             <div className="w-[280px] flex flex-col h-full">
@@ -1890,19 +1257,649 @@ export default function BuilderPage() {
             </div>
           </div>
 
+          {/* ── CENTER PANEL: Search + chips + product grid (flex-1) ─────── */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--background)]">
+
+            {/* Search bar — h-[60px] aligns with left-panel row 1 */}
+            <div className="shrink-0 px-4 h-[60px] border-b border-[var(--border)] flex items-center">
+              <div className="relative w-full">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] pointer-events-none">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search products, brands, or categories..."
+                  className="w-full h-10 bg-[var(--surface)] rounded-xl border border-[var(--border)] focus:border-[var(--border-strong)] outline-none pl-10 pr-8 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
+                />
+                {search && (
+                  <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Category chips + sort/filter row — h-[50px] aligns with left-panel row 2 */}
+            <div className="shrink-0 px-4 h-[50px] border-b border-[var(--border)] flex items-center justify-between gap-4">
+              {/* Filter pill — sits in front of the All chip, same size/shape as Browse */}
+              <button
+                onClick={() => setFiltersOpen(v => !v)}
+                className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                  filtersOpen
+                    ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                    : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                }`}
+              >
+                <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                  <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+                Filter
+                {activeFilterCount > 0 && (
+                  <span className={`w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center ${
+                    filtersOpen
+                      ? "bg-[var(--background)] text-[var(--foreground)]"
+                      : "bg-[var(--foreground)] text-[var(--background)]"
+                  }`}>
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Category chips — scrollable, no scrollbar */}
+              <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {/* All chip */}
+                <button
+                  onClick={() => { setCatalogCategory(null); setLikedOnly(false); }}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                    catalogCategory === null && !likedOnly
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  All
+                </button>
+
+                {/* Liked chip — right after All */}
+                <button
+                  onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
+                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                    likedOnly
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.3" fill={likedOnly ? "currentColor" : "none"} />
+                  </svg>
+                  Liked
+                </button>
+
+                {/* Values are SLOT ids (not bare categories) so filterByCategory
+                    expands them via slot.categories — identical to the left-hand
+                    slots and the mobile chips. This keeps "Bottoms" showing every
+                    leg piece (bottoms/jeans/shorts/skirts/dresses/jumpsuits) and
+                    "Shoes" showing only footwear, everywhere. */}
+                {([
+                  { label: "Tops", value: "top" },
+                  { label: "Outerwear", value: "outerwear" },
+                  { label: "Bottoms", value: "bottom" },
+                  { label: "Shoes", value: "shoes" },
+                  { label: "Accessories", value: "accessories" },
+                  { label: "Bags", value: "bags" },
+                  { label: "New In", value: "new-in" },
+                ] as Array<{ label: string; value: string | null }>).map(({ label, value }) => {
+                  const isNewIn = value === "new-in";
+                  const isActive = isNewIn ? sortBy === "new-in" : catalogCategory === value;
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => {
+                        if (isNewIn) {
+                          setSortBy(sortBy === "new-in" ? "featured" : "new-in");
+                        } else {
+                          setCatalogCategory(isActive ? null : value);
+                          setSelectedSubcategories([]);
+                        }
+                      }}
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                        isActive
+                          ? "bg-[var(--foreground)] text-[var(--background)]"
+                          : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+
+              </div>
+              {/* Right controls: sort */}
+              <div className="shrink-0 flex items-center gap-2">
+                <div className="relative" ref={sortDropRef}>
+                  <button
+                    onClick={() => setSortDropOpen(v => !v)}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all duration-150 ${
+                      sortDropOpen
+                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {sortBy === "featured" && "Featured"}
+                    {sortBy === "new-in" && "New In"}
+                    {sortBy === "price-asc" && "Price ↑"}
+                    {sortBy === "price-desc" && "Price ↓"}
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className={`transition-transform duration-200 ${sortDropOpen ? "rotate-180" : ""}`}>
+                      <path d="M1 2.5L4 5.5L7 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {sortDropOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-[var(--background)] border border-[var(--border)] rounded-xl shadow-lg overflow-hidden">
+                      {([
+                        { value: "featured", label: "Featured" },
+                        { value: "price-asc", label: "Price ↑" },
+                        { value: "price-desc", label: "Price ↓" },
+                      ] as { value: typeof sortBy; label: string }[]).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSortBy(opt.value); setSortDropOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-[10px] tracking-[0.12em] uppercase transition-colors duration-150 ${
+                            sortBy === opt.value
+                              ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
+                              : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Product grid — 4 columns */}
+            <div ref={catalogScrollRef} className="flex-1 overflow-y-auto p-3">
+              {catalogProducts.length === 0 ? (
+                <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-4 px-8 bg-[var(--surface)]">
+                  <div className="w-20 h-20 border border-dashed border-[var(--border-strong)] flex items-center justify-center">
+                    <svg width="36" height="36" viewBox="0 0 40 40" fill="none" className="text-[var(--foreground-subtle)] opacity-30">
+                      <path d="M20 4C20 4 14 8 8 8V28C8 28 14 28 20 36C26 28 32 28 32 28V8C26 8 20 4 20 4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                      <path d="M20 4V36" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      <path d="M14 16H26M14 22H22" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                      {likedOnly ? "No saved items" : search ? "No results found" : "End of catalog"}
+                    </p>
+                    <p className="text-[11px] text-[var(--foreground-subtle)] opacity-60">
+                      {likedOnly ? "Like some items first" : search ? "Try a different search" : "That's all we have"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <motion.div
+                  className="grid grid-cols-4 gap-3"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+                  initial="hidden"
+                  animate="show"
+                >
+                    {expandedCatalogItems.map(item => {
+                      const { product, forcedVariant } = item;
+                      const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
+                      const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
+                      const isSelected = !!selectedSlot;
+                      const variantId = selectedSlot ? variantOverrides[selectedSlot.id] : undefined;
+                      const targetSlot = selectedSlot ?? matchingSlots[0];
+                      const previewVariantId = catalogPreviews[product.id];
+                      const activeVariant = product.variants?.find(v => v.id === (previewVariantId ?? variantId));
+                      const colorImageKeys = Object.keys(product.colorImages ?? {});
+                      const hasColorImages = colorImageKeys.length > 1;
+                      const selectedColorKey = catalogColorPreviews[product.id] ?? colorImageKeys[0];
+                      const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
+                        ? product.colorImages![selectedColorKey][0]
+                        : null;
+                      const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                      const hasVariants = (product.variants?.length ?? 0) > 1;
+
+                      return (
+                        <motion.div
+                          key={item.key}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => selectProduct(product)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              selectProduct(product);
+                            }
+                          }}
+                          variants={{ hidden: { opacity: 0, y: 12, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.7 } } }}
+                          className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
+                            isSelected
+                              ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
+                              : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
+                          }`}
+                        >
+                          {/* Image */}
+                          <div className="relative aspect-[3/4] bg-white overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={displayImage}
+                              alt={product.name}
+                              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            />
+                            {/* Top-left: + / ✓ add to outfit */}
+                            {!isSelected && (
+                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm border border-[var(--border)] shadow-sm flex items-center justify-center text-[var(--foreground-muted)] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                  <line x1="5" y1="1" x2="5" y2="9" />
+                                  <line x1="1" y1="5" x2="9" y2="5" />
+                                </svg>
+                              </div>
+                            )}
+                            {isSelected && (
+                              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                <svg width="10" height="8" viewBox="0 0 12 10" fill="none">
+                                  <path d="M1.5 5L4.5 8L10.5 1.5" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </div>
+                            )}
+                            {/* Top-right: heart like button */}
+                            <button
+                              onClick={e => { e.stopPropagation(); toggleProductLike(product.id); }}
+                              className={`absolute top-2 right-2 w-9 h-9 md:w-7 md:h-7 flex items-center justify-center bg-black/80 backdrop-blur-sm rounded-full transition-opacity duration-200 md:opacity-0 md:group-hover:opacity-100 opacity-100`}
+                              aria-label={likedProducts.includes(product.id) ? "Unlike" : "Like"}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-white">
+                                <path
+                                  d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.3"
+                                  fill={likedProducts.includes(product.id) ? "currentColor" : "none"}
+                                />
+                              </svg>
+                            </button>
+                            {/* Colour swatches — slide up on hover */}
+                            {hasColorImages && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 pointer-events-none group-hover:pointer-events-auto"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out flex gap-1 p-1.5 pt-5 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+                                  {colorImageKeys.map((color, idx) => {
+                                    const previewImg = product.colorImages![color]?.[0];
+                                    const isActive = selectedColorKey === color;
+                                    return (
+                                      <button
+                                        key={color}
+                                        title={color}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogColorPreviews(prev => ({ ...prev, [product.id]: color }));
+                                          if (isSelected && targetSlot) {
+                                            setColorImageOverrides(prev => ({ ...prev, [targetSlot.id]: color }));
+                                          }
+                                        }}
+                                        style={{ transitionDelay: `${idx * 25}ms` }}
+                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border rounded-full transition-all duration-200 ${
+                                          isActive
+                                            ? "border-white scale-110 shadow-md"
+                                            : "border-white/50 hover:border-white hover:scale-105"
+                                        }`}
+                                      >
+                                        {previewImg
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          ? <img src={previewImg} alt={color} className="w-full h-full object-cover" />
+                                          : <span className="text-[6px] text-white leading-none capitalize block mt-1 text-center">{color[0]}</span>
+                                        }
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Info */}
+                          <div className="px-3 pt-3 pb-3.5">
+                            <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
+                            <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{product.name}</p>
+                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
+                            {hasVariants && (() => {
+                              const variants = product.variants!;
+                              const MAX = 5;
+                              const visible = variants.slice(0, MAX);
+                              const hidden = variants.length - MAX;
+                              const popupKey = `catalog-${product.id}-variant`;
+                              return (
+                                <div className="relative flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
+                                  {visible.map(swatch => {
+                                    const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
+                                    const isSwatchActive = activeId === swatch.id;
+                                    return (
+                                      <button
+                                        key={swatch.id}
+                                        title={swatch.colorName}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                          if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                        }}
+                                        className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                        style={{
+                                          background: swatch.colorHex === "#multicolor"
+                                            ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                            : swatch.colorHex,
+                                          boxShadow: isSwatchActive
+                                            ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                            : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                  {hidden > 0 && (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                      className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                      style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
+                                    >
+                                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                        <line x1="4" y1="1" x2="4" y2="7" />
+                                        <line x1="1" y1="4" x2="7" y2="4" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                  {openSwatchPopup === popupKey && (
+                                    <div
+                                      onClick={e => e.stopPropagation()}
+                                      className="absolute bottom-full left-0 mb-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                      style={{ minWidth: "80px", maxWidth: "140px" }}
+                                    >
+                                      {variants.map(swatch => {
+                                        const activeId = catalogPreviews[product.id] ?? (isSelected ? variantId : null) ?? forcedVariant?.id ?? product.id;
+                                        const isSwatchActive = activeId === swatch.id;
+                                        return (
+                                          <button
+                                            key={swatch.id}
+                                            title={swatch.colorName}
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
+                                              if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
+                                              setOpenSwatchPopup(null);
+                                            }}
+                                            className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                            style={{
+                                              background: swatch.colorHex === "#multicolor"
+                                                ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
+                                                : swatch.colorHex,
+                                              boxShadow: isSwatchActive
+                                                ? "0 0 0 2px #fff, 0 0 0 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.08)"
+                                                : "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08)",
+                                            }}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {/* ── RIGHT PANEL: In this look (300px) ────────────────────────── */}
+          <aside className="flex flex-col border-l border-[var(--border)] bg-[var(--background)] min-h-0 overflow-hidden shrink-0" style={{ width: 300 }}>
+
+            {/* Header row 1 — aligned with center-panel search bar (h-[60px]) */}
+            <div className="px-6 h-[60px] shrink-0 flex items-center">
+              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">In this look</p>
+            </div>
+            {/* Header row 2 — aligned with center-panel category chips (h-[50px]) */}
+            <div className="px-6 h-[50px] shrink-0 border-b border-[var(--border)] flex items-center">
+              <p className="text-2xl font-bold text-[var(--foreground)]">
+                {selectedCount > 0 ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""}` : "0 pieces"}
+              </p>
+            </div>
+
+            {/* Slot cards */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+              {SLOTS.map(slot => {
+                const picked = selection[slot.id];
+                const variantId = variantOverrides[slot.id];
+                const activeVariant = picked?.variants?.find(v => v.id === variantId);
+                const colorKey = colorImageOverrides[slot.id];
+                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
+                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+
+                if (!picked) {
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                      className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]/50 p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--foreground-muted)] transition-colors text-left w-full"
+                    >
+                      <div className="w-16 h-20 rounded-lg bg-[var(--surface)] flex items-center justify-center shrink-0 text-[var(--foreground-subtle)] opacity-40">
+                        <SlotIcon id={slot.id} size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
+                        <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
+                      </div>
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={slot.id}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-sm p-3 flex items-start gap-3 relative cursor-pointer hover:border-[var(--foreground-muted)] transition-colors"
+                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center">
+                      {displayImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={displayImage} src={displayImage} alt={picked!.name} className="swatch-img-enter w-full h-full object-contain" />
+                      ) : (
+                        <div className="text-[var(--foreground-subtle)] opacity-30"><SlotIcon id={slot.id} size={16} /></div>
+                      )}
+                    </div>
+                    {/* Remove button top-right */}
+                    <button
+                      onClick={e => clearSlot(slot.id, e)}
+                      className="absolute top-2 right-2 w-7 h-7 md:w-5 md:h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
+                      aria-label={`Remove ${slot.label}`}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    {/* Info */}
+                    <div className="min-w-0 flex-1 pr-4">
+                      <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
+                      {picked ? (
+                        <>
+                          <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{picked.name}</p>
+                          <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{picked.brand}</p>
+                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin, picked.currency)}</p>
+                          {/* Variant colour swatches (separate products) */}
+                          {(picked.variants?.length ?? 0) > 1 && (() => {
+                            const variants = picked.variants!;
+                            const MAX = 6;
+                            const visible = variants.slice(0, MAX);
+                            const hidden = variants.length - MAX;
+                            const popupKey = `slot-${slot.id}-variant`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visible.map(sw => (
+                                  <button key={sw.id} title={sw.colorName}
+                                    onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
+                                    className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                    style={{
+                                      background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                      boxShadow: (variantId ?? picked.id) === sw.id
+                                        ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                                        : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
+                                    }}
+                                  />
+                                ))}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
+                                  >
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                      <line x1="4" y1="1" x2="4" y2="7" />
+                                      <line x1="1" y1="4" x2="7" y2="4" />
+                                    </svg>
+                                  </button>
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {variants.map(sw => (
+                                      <button key={sw.id} title={sw.colorName}
+                                        onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
+                                        className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                        style={{
+                                          background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
+                                          boxShadow: (variantId ?? picked.id) === sw.id
+                                            ? "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 2px var(--background), 0 0 0 3.5px var(--foreground)"
+                                            : "inset 0 0 0 1px rgba(0,0,0,0.22), 0 0 0 0.5px rgba(128,128,128,0.35)",
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {/* colorImages swatches (multiple colours within same product) */}
+                          {Object.keys(picked.colorImages ?? {}).length > 1 && (() => {
+                            const colorKeys = Object.keys(picked.colorImages!);
+                            const MAX = 6;
+                            const visibleKeys = colorKeys.slice(0, MAX);
+                            const hidden = colorKeys.length - MAX;
+                            const popupKey = `slot-${slot.id}-colorImage`;
+                            return (
+                              <div className="relative flex items-center gap-1 mt-1.5" onClick={e => e.stopPropagation()}>
+                                {visibleKeys.map(color => {
+                                  const img = picked.colorImages![color]?.[0];
+                                  const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                  return (
+                                    <button key={color} title={color}
+                                      onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
+                                      className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                    >
+                                      {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                    </button>
+                                  );
+                                })}
+                                {hidden > 0 && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setOpenSwatchPopup(openSwatchPopup === popupKey ? null : popupKey); }}
+                                    className="w-3.5 h-3.5 shrink-0 rounded-full flex items-center justify-center bg-[var(--foreground)] text-[var(--background)] hover:opacity-70 transition-opacity"
+                                    style={{ boxShadow: "0 0 0 1.5px #fff, 0 0 0 3px rgba(0,0,0,0.22)" }}
+                                  >
+                                    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                      <line x1="4" y1="1" x2="4" y2="7" />
+                                      <line x1="1" y1="4" x2="7" y2="4" />
+                                    </svg>
+                                  </button>
+                                )}
+                                {openSwatchPopup === popupKey && (
+                                  <div
+                                    onClick={e => e.stopPropagation()}
+                                    className="absolute top-full left-0 mt-1 bg-[var(--background)] border border-[var(--border)] p-2 shadow-lg z-50 flex flex-wrap gap-1.5"
+                                    style={{ minWidth: "80px", maxWidth: "160px" }}
+                                  >
+                                    {colorKeys.map(color => {
+                                      const img = picked.colorImages![color]?.[0];
+                                      const isActive = (colorImageOverrides[slot.id] ?? colorKeys[0]) === color;
+                                      return (
+                                        <button key={color} title={color}
+                                          onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
+                                          className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                        >
+                                          {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-[var(--foreground-subtle)] italic">Click to add</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer: Total + Share Look + Clear Look */}
+            <div className="shrink-0 border-t border-[var(--border)] px-6 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
+                <p className={`text-2xl font-bold transition-all ${selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>
+                  {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={shareOutfit}
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                    <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+                    <line x1="10.3" y1="5" x2="5.7" y2="7" stroke="currentColor" strokeWidth="1.3" />
+                    <line x1="5.7" y1="9" x2="10.3" y2="11" stroke="currentColor" strokeWidth="1.3" />
+                  </svg>
+                  {copied ? "Copied!" : "Share look"}
+                </button>
+                <button
+                  onClick={clearAll}
+                  disabled={selectedCount === 0}
+                  className="flex-1 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] rounded-lg py-2.5 text-[10px] tracking-[0.1em] uppercase font-bold text-[var(--foreground-muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 6H13L12 14H4L3 6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                    <path d="M1 3H15M6 3V2H10V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                  Clear look
+                </button>
+              </div>
+            </div>
+          </aside>
+
           </div>{/* end 3 panels row */}
 
           {/* ── DESKTOP BOTTOM ACTION BAR ───────────────────────────────────── */}
           <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] flex items-center">
-            {/* Left section matching left panel width */}
-            <div className="shrink-0 px-6 py-3 border-r border-[var(--border)]" style={{ width: 300 }}>
-              <p className={`text-[11px] text-[var(--foreground-muted)] ${selectedCount === 0 ? "italic" : ""}`}>
-                {selectedCount > 0
-                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} • ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
-                  : "Add pieces to build your look"}
-              </p>
-            </div>
-            {/* Right section: Save + Shop the Look */}
+            {/* Left section: Save + Shop the Look */}
             <div className="flex-1 flex items-center justify-end gap-3 px-5 py-3">
               {/* Shop the Look — secondary */}
               <button
@@ -1946,6 +1943,14 @@ export default function BuilderPage() {
                   View →
                 </Link>
               )}
+            </div>
+            {/* Right section matching the look panel width */}
+            <div className="shrink-0 px-6 py-3 border-l border-[var(--border)]" style={{ width: 300 }}>
+              <p className={`text-[11px] text-[var(--foreground-muted)] ${selectedCount === 0 ? "italic" : ""}`}>
+                {selectedCount > 0
+                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} • ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
+                  : "Add pieces to build your look"}
+              </p>
             </div>
           </div>
 
