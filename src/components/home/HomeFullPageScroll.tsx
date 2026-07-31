@@ -65,7 +65,8 @@ function isTypingTarget(target: EventTarget | null) {
 /**
  * Turns the homepage into one screen per section: a single wheel notch, swipe
  * or arrow key travels to the next block of information instead of drifting
- * part-way into it.
+ * part-way into it. The footer is left out of that sequence — past the last
+ * section the page scrolls the ordinary way.
  *
  * Renders nothing — it only installs the scroll behaviour, and only on the
  * homepage from {@link ENABLE_FROM} up. Narrow screens and "reduce motion" keep
@@ -95,9 +96,10 @@ export default function HomeFullPageScroll() {
     const nav = navHeight();
     document.documentElement.style.setProperty("--home-nav-h", `${nav}px`);
 
-    // The footer is the last stop — "everything else" lives there.
-    const footer = document.querySelector<HTMLElement>("footer");
-    const blocks: HTMLElement[] = footer ? [...sections, footer] : sections;
+    // The footer is deliberately not a stop: it is reference material — links,
+    // legal, the copyright line — rather than another block of the pitch, so it
+    // is scrolled to normally instead of being snapped onto its own screen.
+    const blocks = sections;
 
     const maxScroll = Math.max(
       0,
@@ -145,12 +147,8 @@ export default function HomeFullPageScroll() {
     unlockRef.current = setTimeout(tick, WHEEL_IDLE_MS);
   }, []);
 
-  const goToStop = useCallback(
-    (index: number) => {
-      const stops = stopsRef.current;
-      if (stops.length === 0) return;
-
-      const target = stops[Math.min(stops.length - 1, Math.max(0, index))];
+  const animateTo = useCallback(
+    (target: number) => {
       const from = window.scrollY;
       const distance = target - from;
 
@@ -173,6 +171,27 @@ export default function HomeFullPageScroll() {
     },
     [unlockWhenIdle]
   );
+
+  const goToStop = useCallback(
+    (index: number) => {
+      const stops = stopsRef.current;
+      if (stops.length === 0) return;
+      animateTo(stops[Math.min(stops.length - 1, Math.max(0, index))]);
+    },
+    [animateTo]
+  );
+
+  /**
+   * Whether this gesture belongs to the footer rather than to the section
+   * sequence: once the last section is on screen, going further down — and
+   * coming back up from anywhere below it — is ordinary browser scrolling.
+   */
+  const isFooterGesture = useCallback((direction: number) => {
+    const stops = stopsRef.current;
+    if (stops.length === 0) return false;
+    const last = stops[stops.length - 1];
+    return direction > 0 ? window.scrollY >= last - 2 : window.scrollY > last + 2;
+  }, []);
 
   const move = useCallback(
     (direction: 1 | -1) => {
@@ -235,6 +254,10 @@ export default function HomeFullPageScroll() {
       // wheels that land on it.
       const where = classifyWheel(e.target, e.deltaY);
       if (where === "scroller") return;
+      // Hand the footer back to the browser — but only between gestures, so the
+      // momentum of the flick that landed on the last section doesn't carry
+      // straight on into it.
+      if (where === "page" && !lockedRef.current && isFooterGesture(e.deltaY)) return;
       e.preventDefault();
       if (where === "overlay") return;
 
@@ -254,11 +277,13 @@ export default function HomeFullPageScroll() {
         return;
       } else if (e.key === "End") {
         e.preventDefault();
-        goToStop(stopsRef.current.length - 1);
+        // End means the bottom of the page, which is now the foot of the footer.
+        animateTo(document.documentElement.scrollHeight - window.innerHeight);
         return;
       }
       if (direction === 0) return;
 
+      if (!lockedRef.current && isFooterGesture(direction)) return;
       e.preventDefault();
       if (lockedRef.current) return;
       move(direction);
@@ -273,6 +298,7 @@ export default function HomeFullPageScroll() {
       const delta = touchStartRef.current - (e.changedTouches[0]?.clientY ?? 0);
       if (Math.abs(delta) < TOUCH_MIN_DELTA) return;
       if (classifyWheel(e.target, delta) !== "page") return;
+      if (isFooterGesture(delta)) return;
       move(delta > 0 ? 1 : -1);
     };
 
@@ -303,7 +329,7 @@ export default function HomeFullPageScroll() {
       document.documentElement.classList.remove("home-fullpage");
       document.documentElement.style.removeProperty("--home-nav-h");
     };
-  }, [goToStop, measure, move]);
+  }, [animateTo, goToStop, isFooterGesture, measure, move]);
 
   return null;
 }
