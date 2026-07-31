@@ -359,10 +359,6 @@ export default function BuilderPage() {
 
   const selectedCount = Object.values(selection).filter(Boolean).length;
 
-  const uniqueBrandCount = useMemo(() =>
-    new Set(Object.values(selection).filter(Boolean).map(p => p!.brand)).size,
-  [selection]);
-
   const [lookNumber] = useState(() => String(Math.floor(Math.random() * 999) + 1).padStart(3, "0"));
 
   // ── URL persistence ───────────────────────────────────────────────────────
@@ -1291,18 +1287,18 @@ export default function BuilderPage() {
               {/* Filter pill — sits in front of the All chip, same size/shape as Browse */}
               <button
                 onClick={() => setFiltersOpen(v => !v)}
-                className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-5 py-2.5 transition-all duration-200 ${
+                className={`shrink-0 flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase font-bold border rounded-full px-3.5 py-1.5 transition-all duration-200 ${
                   filtersOpen
                     ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                     : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
                 }`}
               >
-                <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+                <svg width="11" height="9" viewBox="0 0 13 10" fill="none">
                   <path d="M1 1.5H12M3 5H10M5 8.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
                 Filter
                 {activeFilterCount > 0 && (
-                  <span className={`w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center ${
+                  <span className={`w-3.5 h-3.5 rounded-full text-[8px] font-bold flex items-center justify-center ${
                     filtersOpen
                       ? "bg-[var(--background)] text-[var(--foreground)]"
                       : "bg-[var(--foreground)] text-[var(--background)]"
@@ -1898,14 +1894,14 @@ export default function BuilderPage() {
           </div>{/* end 3 panels row */}
 
           {/* ── DESKTOP BOTTOM ACTION BAR ───────────────────────────────────── */}
-          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] flex items-center">
-            {/* Left section: Save + Shop the Look */}
-            <div className="flex-1 flex items-center justify-end gap-3 px-5 py-3">
+          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--background)] flex items-center justify-end">
+            {/* Actions — sit in the column under the look panel */}
+            <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-l border-[var(--border)]" style={{ width: 300 }}>
               {/* Shop the Look — secondary */}
               <button
                 onClick={shopTheLook}
                 disabled={selectedCount === 0}
-                className="flex items-center gap-2 border border-[var(--border-strong)] text-[var(--foreground-muted)] px-4 py-2.5 rounded-xl text-[11px] font-semibold hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex-1 min-w-0 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] text-[var(--foreground-muted)] px-3 py-2.5 rounded-xl text-[11px] font-semibold whitespace-nowrap hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {shopAdded ? (
                   <span>Added ✓</span>
@@ -1920,7 +1916,7 @@ export default function BuilderPage() {
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
-                className={`px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 ${
+                className={`flex-1 min-w-0 px-3 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
                   saved
                     ? "bg-[var(--foreground)]/70 text-[var(--background)]"
                     : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
@@ -1938,19 +1934,11 @@ export default function BuilderPage() {
               {saved && (
                 <Link
                   href="/saved?tab=looks"
-                  className="text-[11px] font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="shrink-0 text-[11px] font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   View →
                 </Link>
               )}
-            </div>
-            {/* Right section matching the look panel width */}
-            <div className="shrink-0 px-6 py-3 border-l border-[var(--border)]" style={{ width: 300 }}>
-              <p className={`text-[11px] text-[var(--foreground-muted)] ${selectedCount === 0 ? "italic" : ""}`}>
-                {selectedCount > 0
-                  ? `${selectedCount} piece${selectedCount !== 1 ? "s" : ""} • ${uniqueBrandCount} brand${uniqueBrandCount !== 1 ? "s" : ""}`
-                  : "Add pieces to build your look"}
-              </p>
             </div>
           </div>
 
