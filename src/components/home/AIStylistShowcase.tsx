@@ -91,7 +91,7 @@ const FEATURES = [
 
 function Intro() {
   return (
-    <div className="flex flex-col justify-center p-6 md:p-7 lg:p-8">
+    <div className="flex flex-col justify-center p-5 md:p-6 lg:p-7">
       <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-3">
         <span className="text-white/70">✦</span> AI Stylist
       </p>
@@ -108,7 +108,7 @@ function Intro() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex flex-col gap-2.5"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col gap-2"
           >
             <span className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
               {f.icon}
@@ -163,7 +163,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
   const { open } = useStylist();
   return (
-    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-3 min-h-[300px]">
+    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-2.5 min-h-[280px]">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
@@ -276,7 +276,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
           onFallbackClick();
         }
       }}
-      className="group flex items-center gap-3 p-2.5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
+      className="group flex items-center gap-3 p-2 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
     >
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {/* Store logo — library logo first, then site favicon by domain, then initials */}
@@ -426,7 +426,7 @@ function FeaturedProduct({
   if (rows.length > 0) rows[0] = { ...rows[0], isBest: true };
 
   return (
-    <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 p-3 items-stretch">
+    <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-2.5 p-2.5 items-stretch">
       {/* Image — white background, no frame, contained so the whole item shows */}
       <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/5] lg:aspect-auto lg:min-h-[290px]">
         {product.imageUrl && (
@@ -456,7 +456,7 @@ function FeaturedProduct({
       </div>
 
       {/* Where to buy */}
-      <div className="flex flex-col min-w-0 p-4 md:p-5">
+      <div className="flex flex-col min-w-0 p-4">
         <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">{product.brand}</p>
         <h3
           className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 truncate"
@@ -487,7 +487,7 @@ function FeaturedProduct({
           </p>
         )}
 
-        <p className="text-[11px] text-white/30 mt-3">
+        <p className="text-[11px] text-white/30 mt-2">
           Prices updated regularly. GOO is not responsible for pricing changes.
         </p>
       </div>
@@ -504,7 +504,7 @@ export default function AIStylistShowcase({
   showcaseStores = [],
 }: AIStylistShowcaseProps) {
   return (
-    <section className="py-5 md:py-6">
+    <section className="py-4 md:py-5">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-3">
         {/* Top: intro + chat */}
         <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
