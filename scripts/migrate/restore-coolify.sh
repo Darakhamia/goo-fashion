@@ -49,16 +49,29 @@ psql_file() {
   pg_in_docker psql "$TARGET_DB_URL" -v ON_ERROR_STOP="$stop" -f "$file"
 }
 
+echo "==> Target server version"
+pg_in_docker psql "$TARGET_DB_URL" -At -c 'show server_version'
+
 echo "==> Prerequisites (extensions the dump assumes already exist)"
 pg_in_docker psql "$TARGET_DB_URL" -v ON_ERROR_STOP=1 -c '
   create extension if not exists vector;
   create extension if not exists pg_trgm;'
 
+# pg_dump 17 opens every file with `SET transaction_timeout = 0;`, a GUC that
+# does not exist before PG 17. Supabase Cloud runs 17 while the self-hosted
+# image is older, so the data pass dies on line 13 — before a single row loads.
+# Stripping the line is better than relaxing ON_ERROR_STOP on that pass, which
+# would also swallow genuine failures. Originals are left untouched.
+echo "==> Stripping SET directives the older target does not know"
+for f in schema data; do
+  grep -v '^SET transaction_timeout' "$ABS_DUMP/$f.sql" > "$ABS_DUMP/$f.restore.sql"
+done
+
 echo "==> Restoring schema (benign duplicate-object errors are expected)"
-psql_file 0 /dump/schema.sql
+psql_file 0 /dump/schema.restore.sql
 
 echo "==> Restoring data"
-psql_file 1 /dump/data.sql
+psql_file 1 /dump/data.restore.sql
 
 echo "==> Re-applying PostgREST grants"
 # --no-owner keeps the dump portable but leaves the API roles without access on
