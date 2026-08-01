@@ -12,6 +12,17 @@ const FIT_FROM = 1024;
 /** Scaling further than this stops reading as "smaller" and starts reading as broken. */
 const MIN_SCALE = 0.72;
 
+/**
+ * Breathing room kept between the content and the top/bottom edges.
+ *
+ * Fitting to exactly 100% of the available height leaves no tolerance: the
+ * measured nav height, sub-pixel rounding and the moment `fit` happens to run
+ * all have to agree perfectly, and when they don't the last row of a section
+ * is clipped by the viewport edge. Reserving a gutter absorbs that, and stops
+ * a section from sitting flush against the nav.
+ */
+const GUTTER = 24;
+
 interface HomeSectionProps {
   /** Applied to the full-screen wrapper — put the section background here so it
    *  covers the whole screen, not just the content. */
@@ -50,7 +61,7 @@ export default function HomeSection({ className = "", children }: HomeSectionPro
         parseFloat(
           getComputedStyle(document.documentElement).getPropertyValue("--home-nav-h")
         ) || 0;
-      const available = window.innerHeight - nav;
+      const available = Math.max(0, window.innerHeight - nav - GUTTER);
       setScale(height <= available ? 1 : Math.max(MIN_SCALE, available / height));
     };
 
