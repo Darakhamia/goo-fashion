@@ -52,6 +52,26 @@ psql_file() {
 echo "==> Target server version"
 pg_in_docker psql "$TARGET_DB_URL" -At -c 'show server_version'
 
+# The data dump carries `ALTER TABLE ... DISABLE TRIGGER ALL` (from
+# --disable-triggers), and disabling a foreign key's system trigger is
+# superuser-only. In a self-hosted Supabase `postgres` is NOT a superuser —
+# `supabase_admin` is. Connecting as postgres gets six tables in and then dies
+# on the first table another table references, so check up front.
+echo "==> Checking the connecting role is a superuser"
+if [ "$(pg_in_docker psql "$TARGET_DB_URL" -At -c 'select usesuper from pg_user where usename = current_user')" != "t" ]; then
+  cat >&2 <<'HINT'
+ERROR: the role in TARGET_DB_URL is not a superuser.
+
+The data pass has to disable foreign-key triggers, which only a superuser may
+do. In a self-hosted Supabase that role is supabase_admin, not postgres:
+
+  export TARGET_DB_URL='postgresql://supabase_admin@supabase-db-<id>:5432/postgres'
+
+The password is the same POSTGRES_PASSWORD.
+HINT
+  exit 1
+fi
+
 echo "==> Prerequisites (extensions the dump assumes already exist)"
 pg_in_docker psql "$TARGET_DB_URL" -v ON_ERROR_STOP=1 -c '
   create extension if not exists vector;
@@ -69,6 +89,9 @@ done
 
 echo "==> Restoring schema (benign duplicate-object errors are expected)"
 psql_file 0 /dump/schema.restore.sql
+
+echo "==> Clearing existing rows (COPY appends, so a re-run would double them)"
+psql_file 1 /scripts/truncate-public.sql
 
 echo "==> Restoring data"
 psql_file 1 /dump/data.restore.sql
