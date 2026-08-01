@@ -95,26 +95,26 @@ const FEATURES = [
 
 function Intro() {
   return (
-    <div className="flex flex-col justify-center p-8 md:p-9 lg:p-10">
-      <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-4">
+    <div className="flex flex-col justify-center p-6 md:p-7 lg:p-8">
+      <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-3">
         <span className="text-white/70">✦</span> AI Stylist
       </p>
-      <h2 className="text-4xl md:text-5xl lg:text-[52px] font-bold tracking-[-0.04em] leading-[1.02] text-white">
+      <h2 className="text-3xl md:text-4xl lg:text-[38px] font-bold tracking-[-0.04em] leading-[1.02] text-white">
         Your style.
         <br />
         Found by AI.
       </h2>
-      <p className="text-[15px] text-white/55 leading-relaxed mt-4 max-w-sm">
+      <p className="text-[14px] text-white/55 leading-relaxed mt-3 max-w-sm">
         AI looks at what&apos;s trending and creates outfit ideas just for you.
       </p>
 
-      <div className="grid grid-cols-3 gap-3 mt-7 max-w-md">
+      <div className="grid grid-cols-3 gap-2.5 mt-5 max-w-md">
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-3"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex flex-col gap-2.5"
           >
-            <span className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
+            <span className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
               {f.icon}
             </span>
             <div>
@@ -135,9 +135,9 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left hover:bg-white/[0.07] transition-colors"
+      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-left hover:bg-white/[0.07] transition-colors"
     >
-      <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
         {look.imageUrl && (
           <Image
             src={look.imageUrl}
@@ -166,7 +166,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
   const { open } = useStylist();
   return (
-    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-3 md:m-4 min-h-[360px]">
+    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-3 min-h-[300px]">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
@@ -278,11 +278,11 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
           onFallbackClick();
         }
       }}
-      className="group flex items-center justify-between gap-4 p-3.5 rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
+      className="group flex items-center gap-3 p-2.5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 transition-colors"
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
         {/* Store logo — library logo first, then site favicon by domain, then initials */}
-        <span className="w-9 h-9 shrink-0 rounded-xl bg-white border border-white/10 overflow-hidden flex items-center justify-center">
+        <span className="w-9 h-9 shrink-0 rounded-full bg-white border border-white/10 overflow-hidden flex items-center justify-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -321,41 +321,53 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
         </span>
         <div className="min-w-0">
           <span className="flex items-center gap-2">
-            <span className="text-[14px] font-medium text-white truncate">{name}</span>
+            <span className="text-[14px] text-white truncate">{name}</span>
             {isBest && (
-              <span className="text-[9px] tracking-[0.12em] uppercase font-semibold text-rose-200 bg-rose-400/15 rounded-full px-2 py-0.5 shrink-0">
+              <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-white bg-white/10 rounded-full px-2 py-0.5 shrink-0">
                 Best
               </span>
             )}
           </span>
-          {isOfficial && <p className="text-[11px] text-white/40 mt-0.5">Official store</p>}
+          {isOfficial && <p className="text-[11px] text-white/40 mt-0.5">Official Store</p>}
         </div>
       </div>
 
+      {/* Divider between the store block and the buy block — mirrors the product page */}
+      <div className="hidden sm:block self-stretch w-px bg-white/10 shrink-0" />
+
       <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right">
-          {price != null && (
-            <p className="text-[14px] font-semibold text-white">{money(price, currency)}</p>
-          )}
-          <p
-            className={`text-[11px] ${
-              availability === "sold out"
-                ? "text-white/30 line-through"
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`text-[9px] tracking-[0.12em] uppercase ${
+                availability === "sold out" ? "text-white/30 line-through" : "text-white/50"
+              }`}
+            >
+              {availability === "sold out"
+                ? "Sold out"
                 : availability === "low stock"
-                  ? "text-amber-300"
-                  : "text-white/45"
-            }`}
-          >
-            {availability === "sold out"
-              ? "Sold out"
-              : availability === "low stock"
-                ? "Low stock"
-                : "In stock"}
-          </p>
+                  ? "Low stock"
+                  : "In stock"}
+            </span>
+            <span
+              className={`w-1 h-1 rounded-full shrink-0 ${
+                availability === "in stock"
+                  ? "bg-green-500"
+                  : availability === "low stock"
+                    ? "bg-amber-500"
+                    : "bg-white/30"
+              }`}
+            />
+          </div>
+          {price != null && (
+            <p className="text-[16px] font-medium text-white mt-0.5">{money(price, currency)}</p>
+          )}
         </div>
-        <span className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/60 group-hover:bg-white/10 transition-colors">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-            <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+
+        <span className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full border border-white/20 text-white/60 text-xs px-3 py-1.5 group-hover:border-white group-hover:text-white transition-colors">
+          View on Store
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden>
+            <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </div>
@@ -410,19 +422,20 @@ function FeaturedProduct({
 
   // The homepage showcase keeps this to one screen, so it shows the cheapest
   // few; the product page still lists every store.
-  const rows = [...autoRows, ...extraRows].slice(0, 5);
+  // Three keeps the whole section inside one screen; the product page lists all.
+  const rows = [...autoRows, ...extraRows].slice(0, 3);
   if (rows.length > 0) rows[0] = { ...rows[0], isBest: true };
 
   return (
-    <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 md:gap-4 p-3 md:p-4 items-stretch">
+    <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-3 p-3 items-stretch">
       {/* Image — white background, no frame, contained so the whole item shows */}
-      <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/5] lg:aspect-auto lg:min-h-[360px]">
+      <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/5] lg:aspect-auto lg:min-h-[290px]">
         {product.imageUrl && (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-contain p-5 md:p-7"
+            className="object-contain p-4 md:p-5"
             sizes="(max-width: 1024px) 100vw, 34vw"
           />
         )}
@@ -444,14 +457,14 @@ function FeaturedProduct({
       </div>
 
       {/* Where to buy */}
-      <div className="flex flex-col p-5 md:p-6">
+      <div className="flex flex-col p-4 md:p-5">
         <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">{product.brand}</p>
-        <h3 className="text-2xl md:text-3xl font-bold text-white tracking-[-0.02em] mt-1.5">
+        <h3 className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-xl text-white mt-2">{money(product.priceMin, product.currency)}</p>
+        <p className="text-lg text-white mt-1.5">{money(product.priceMin, product.currency)}</p>
 
-        <div className="flex items-baseline justify-between mt-5 mb-3">
+        <div className="flex items-baseline justify-between mt-4 mb-2">
           <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">Where to buy</p>
           {rows.length > 0 && (
             <p className="text-[11px] text-white/35">
@@ -461,7 +474,7 @@ function FeaturedProduct({
         </div>
 
         {rows.length > 0 ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {rows.map((row, i) => (
               <BuyRow key={`${row.name}-${i}`} row={row} onFallbackClick={open} />
             ))}
@@ -472,7 +485,7 @@ function FeaturedProduct({
           </p>
         )}
 
-        <p className="text-[11px] text-white/30 mt-4">
+        <p className="text-[11px] text-white/30 mt-3">
           Prices updated regularly. GOO is not responsible for pricing changes.
         </p>
       </div>
@@ -489,8 +502,8 @@ export default function AIStylistShowcase({
   showcaseStores = [],
 }: AIStylistShowcaseProps) {
   return (
-    <section className="py-8 md:py-10">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-4">
+    <section className="py-5 md:py-6">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-3">
         {/* Top: intro + chat */}
         <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
           <div className="grid lg:grid-cols-2">
