@@ -85,16 +85,20 @@ export default function HomeFullPageScroll() {
   // ── Stops ──────────────────────────────────────────────────────────────────
 
   const measure = useCallback(() => {
+    // Blocks that only exist on phones (the featured product gets its own
+    // screen there) are still in the DOM at this width, just hidden — a
+    // zero-height section would otherwise add a stop at the top of the page.
     const sections = Array.from(
       document.querySelectorAll<HTMLElement>("[data-home-section]")
-    );
+    ).filter((el) => el.offsetHeight > 0);
     if (sections.length === 0) {
       stopsRef.current = [];
       return;
     }
 
-    const nav = navHeight();
-    document.documentElement.style.setProperty("--home-nav-h", `${nav}px`);
+    const nav = navHeight() || parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--home-nav-h")
+    ) || 0;
 
     // The footer is deliberately not a stop: it is reference material — links,
     // legal, the copyright line — rather than another block of the pitch, so it
@@ -221,11 +225,23 @@ export default function HomeFullPageScroll() {
     const wide = window.matchMedia(`(min-width: ${ENABLE_FROM}px)`);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+    /** Every section is sized off the nav's real height, at every width. */
+    const syncNav = () => {
+      const nav = navHeight();
+      if (nav > 0) {
+        document.documentElement.style.setProperty("--home-nav-h", `${nav}px`);
+      }
+    };
+
     const sync = () => {
       const on = wide.matches && !reduced.matches;
       enabledRef.current = on;
       // The global `scroll-behavior: smooth` would fight the animation above.
       document.documentElement.classList.toggle("home-fullpage", on);
+      // Where the wheel-driven jump is off, CSS scroll-snap keeps one block per
+      // screen instead — see `html.home-snap` in globals.css.
+      document.documentElement.classList.toggle("home-snap", !on);
+      syncNav();
       if (on) measure();
     };
 
@@ -235,6 +251,7 @@ export default function HomeFullPageScroll() {
 
     // Sections settle after images and fonts load, and reflow on every resize.
     const remeasure = () => {
+      syncNav();
       if (enabledRef.current) measure();
     };
     const observer = new ResizeObserver(remeasure);
@@ -327,6 +344,7 @@ export default function HomeFullPageScroll() {
       cancelAnimationFrame(rafRef.current);
       clearTimeout(unlockRef.current);
       document.documentElement.classList.remove("home-fullpage");
+      document.documentElement.classList.remove("home-snap");
       document.documentElement.style.removeProperty("--home-nav-h");
     };
   }, [animateTo, goToStop, isFooterGesture, measure, move]);

@@ -31,36 +31,36 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
   return (
     <div>
       <AnimatePresence mode="wait">
+        {/* Phones run the page as a swipeable rail that bleeds past the gutter,
+            so the next card peeks in and the row reads as "there's more". Wide
+            screens keep the three-up grid. */}
         <motion.div
           key={page}
-          className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5"
+          className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mr-6 pr-6 pb-1 no-scrollbar md:mr-0 md:pr-0 md:pb-0 md:overflow-visible md:grid md:grid-cols-3 md:gap-5"
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -16 }}
           transition={{ duration: 0.38, ease: EASE }}
         >
           {visible.map((outfit) => (
-            <OutfitCard key={outfit.id} outfit={outfit} />
+            <div
+              key={outfit.id}
+              className="snap-start shrink-0 w-[43%] min-w-[140px] md:w-auto md:min-w-0"
+            >
+              <OutfitCard outfit={outfit} />
+            </div>
           ))}
         </motion.div>
       </AnimatePresence>
 
       {total > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <button
-            onClick={() => setPage((p) => (p - 1 + total) % total)}
-            className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M7.5 2L4.5 6L7.5 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          <div className="flex gap-2">
+        <div className="mt-6 md:mt-8 flex flex-col items-center gap-4 md:flex-row md:justify-center">
+          <div className="flex gap-2 order-1 md:order-2">
             {Array.from({ length: total }, (_, i) => (
               <button
                 key={i}
                 onClick={() => setPage(i)}
+                aria-label={`Go to page ${i + 1} of ${total}`}
                 className="rounded-full bg-[var(--foreground)] transition-all"
                 style={{
                   width: i === page ? 24 : 8,
@@ -71,14 +71,29 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
             ))}
           </div>
 
-          <button
-            onClick={() => setPage((p) => (p + 1) % total)}
-            className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M4.5 2L7.5 6L4.5 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+          {/* `md:contents` drops this wrapper at desktop, so the two arrows land
+              either side of the dots instead of on a row of their own. */}
+          <div className="order-2 flex items-center gap-4 md:contents">
+            <button
+              onClick={() => setPage((p) => (p - 1 + total) % total)}
+              aria-label="Previous outfits"
+              className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-1"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M7.5 2L4.5 6L7.5 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => setPage((p) => (p + 1) % total)}
+              aria-label="Next outfits"
+              className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-3"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 2L7.5 6L4.5 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

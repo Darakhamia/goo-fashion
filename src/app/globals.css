@@ -74,19 +74,40 @@ html {
    HomeFullPageScroll keeps --home-nav-h in sync with the real header height. */
 :root {
   --home-nav-h: 66px;
+  /* The floating mobile bottom nav's strip — matches the padding <main> keeps
+     for it, so a section centres its content in the room that's actually free. */
+  --home-bottom-nav-h: calc(4.5rem + env(safe-area-inset-bottom));
 }
 
-/* Only from lg up, where HomeFullPageScroll runs — narrower screens keep the
-   sections at their natural height and scroll normally. Each section is a full
-   viewport tall and reserves the top strip for the pinned nav to sit over, so
-   the section's own background runs behind it instead of the previous one. */
-@media (min-width: 1024px) {
+/* Every homepage block owns exactly one screen, phone and desktop alike. The
+   top strip is reserved for the pinned nav to sit over, so the section's own
+   background runs behind it instead of the previous one's. */
+.home-section {
+  min-height: 100svh;
+  padding-top: var(--home-nav-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Phones also have the bottom nav floating over the last strip of the screen.
+   It hides at the same width <main>'s own padding for it does. */
+@media (max-width: 767px) {
   .home-section {
-    min-height: 100svh;
-    padding-top: var(--home-nav-h);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    padding-bottom: var(--home-bottom-nav-h);
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Below lg the wheel-driven jump is off, so the browser's own snapping does
+     the same job — with native momentum and no gesture handling of our own.
+     `proximity` rather than `mandatory`: a block that outgrows its screen on a
+     small phone stays scrollable, and the footer is never snapped away from. */
+  html.home-snap {
+    scroll-snap-type: y proximity;
+  }
+  html.home-snap .home-section {
+    scroll-snap-align: start;
   }
 }
 
@@ -94,6 +115,16 @@ html {
    behaviour would fight it. */
 html.home-fullpage {
   scroll-behavior: auto;
+}
+
+/* Swipeable rails carry their own affordance (the peeking next card), so the
+   bar underneath them is only noise. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 body {
