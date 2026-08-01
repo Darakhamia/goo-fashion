@@ -352,13 +352,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Where to buy */}
           {product.retailers.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <h2 className="text-lg md:text-xl font-bold uppercase tracking-[0.06em] text-[var(--foreground)]">
                   Where to buy
-                </p>
-                <p className="text-[10px] text-[var(--foreground-subtle)]">
+                </h2>
+                <span className="shrink-0 text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border-strong)] rounded-full px-2.5 py-1">
                   {product.retailers.length} stores
-                </p>
+                </span>
               </div>
 
               <div className="space-y-2">
@@ -376,7 +376,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={retailer.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center justify-between gap-4 p-4 border border-[var(--border)] rounded-xl hover:shadow-sm hover:border-[var(--foreground-muted)] transition-all duration-200"
+                      className="group flex items-center justify-between gap-4 p-4 border-2 border-[var(--border-strong)] rounded-xl hover:border-[var(--foreground)] hover:bg-[var(--surface)] hover:shadow-md transition-all duration-200"
                     >
                       <div className="flex items-center gap-3">
                         {/* Retailer logo */}
@@ -461,10 +461,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                             {retailer.availability}
                           </p>
                         </div>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                          className="text-[var(--foreground-subtle)] group-hover:text-[var(--foreground)] transition-colors duration-200">
-                          <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <span className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)] group-hover:border-[var(--foreground)] group-hover:bg-[var(--foreground)] group-hover:text-[var(--background)] transition-all duration-200">
+                          <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
                       </div>
                     </a>
                   );
