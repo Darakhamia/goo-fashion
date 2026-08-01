@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Outfit, Product, ProductSwatch } from "@/lib/types";
@@ -47,6 +47,24 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultColor);
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
+
+  // Collapsed description: only the first line stays readable, the rest is
+  // veiled behind a blur until the user opens it with the chevron.
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [descOverflows, setDescOverflows] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  // Measure only while collapsed — once open, scrollHeight === clientHeight and
+  // the check would wrongly report that there is nothing left to reveal.
+  useEffect(() => {
+    if (descExpanded) return;
+    const el = descRef.current;
+    if (!el) return;
+    const check = () => setDescOverflows(el.scrollHeight > el.clientHeight + 2);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [descExpanded, product.description]);
 
   useEffect(() => {
     track("product_view", { targetId: product.id });
@@ -98,12 +116,14 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       </div>
 
       {/* Main grid */}
-      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+      {/* Left column is sized to the (now smaller) photo so the info panel takes
+          the remaining width instead of leaving a gap beside the image. */}
+      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[380px_minmax(0,1fr)] lg:grid-cols-[440px_minmax(0,1fr)] gap-6 md:gap-10">
 
         {/* ── Left: Image gallery ── */}
         <div>
           {/* Main image */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-white max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] mx-auto md:mx-0">
             <div className="relative aspect-[3/4] overflow-hidden bg-white">
               {mainImage ? (
                 <Image
@@ -111,7 +131,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   alt={`${product.name} by ${product.brand}`}
                   fill
                   priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 640px) 320px, (max-width: 1024px) 380px, 440px"
                   className="object-contain transition-opacity duration-[260ms] ease-in-out"
                   style={{ opacity: imgVisible ? 1 : 0 }}
                 />
@@ -146,16 +166,16 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
           {/* Thumbnail strip — only when there are multiple images */}
           {displayImages.length > 1 && (
-            <div className="flex gap-2 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3 max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] mx-auto md:mx-0">
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
                   onClick={() => goTo(i)}
-                  className={`relative flex-1 aspect-square rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
+                  className={`relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
                 >
-                  <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="120px" className="object-contain" />
+                  <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="64px" className="object-contain" />
                 </button>
               ))}
             </div>
@@ -185,12 +205,54 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             </p>
           </div>
 
-          {/* Description */}
-          <div className="mb-8">
-            <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-              {product.description}
-            </p>
-          </div>
+          {/* Description — collapsed to one line, rest blurred behind a veil */}
+          {product.description && (
+            <div className="mb-8">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`relative flex-1 min-w-0 ${!descExpanded && descOverflows ? "cursor-pointer" : ""}`}
+                  onClick={() => { if (!descExpanded && descOverflows) setDescExpanded(true); }}
+                >
+                  <p
+                    ref={descRef}
+                    className={`text-sm text-[var(--foreground-muted)] leading-[1.6] ${
+                      descExpanded ? "" : "max-h-[2.8rem] overflow-hidden"
+                    }`}
+                  >
+                    {product.description}
+                  </p>
+
+                  {/* Blur veil covering everything past the first line */}
+                  {!descExpanded && descOverflows && (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-[1.4rem] backdrop-blur-[3px] bg-gradient-to-b from-transparent to-[var(--background)]"
+                    />
+                  )}
+                </div>
+
+                {descOverflows && (
+                  <button
+                    type="button"
+                    onClick={() => setDescExpanded((v) => !v)}
+                    aria-expanded={descExpanded}
+                    aria-label={descExpanded ? "Hide full description" : "Show full description"}
+                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors duration-200"
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      className={`transition-transform duration-300 ${descExpanded ? "rotate-180" : ""}`}
+                    >
+                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
 
           {/* Material */}
