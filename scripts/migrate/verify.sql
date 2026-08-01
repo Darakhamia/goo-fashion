@@ -13,18 +13,30 @@ select extname, extversion from pg_extension where extname in ('vector', 'pg_trg
 
 \echo ''
 \echo '== RPCs called from the app =='
--- match_products + search_products come from supabase/migrations; run_sql was
--- created by hand in the Supabase SQL editor and exists in no migration file,
--- so it only survives if the database was moved with pg_dump rather than by
--- replaying the repo's migrations.
+-- Both come from supabase/migrations and must be present: the stylist calls
+-- them by name for vector and full-text search.
 select
   expected.name,
   case when p.proname is null then 'MISSING' else 'ok' end as status
-from (values ('match_products'), ('search_products'), ('run_sql')) as expected(name)
+from (values ('match_products'), ('search_products')) as expected(name)
 left join pg_proc p
   on p.proname = expected.name
  and p.pronamespace = 'public'::regnamespace
 order by expected.name;
+
+\echo ''
+\echo '== run_sql (absent is the healthy state) =='
+-- /api/products/group calls run_sql, but it exists in no migration and was
+-- absent from the production database too — that code path was already dead
+-- before the migration. It only ever added three columns to products that the
+-- schema has carried for a long time, so nothing depends on it.
+--
+-- Do not "fix" a MISSING here by creating it: an RPC that executes SQL handed
+-- to it by a caller is a hole, and its absence is the safer state.
+select
+  case when count(*) = 0 then 'absent (expected)' else 'PRESENT - review it' end as status
+from pg_proc
+where proname = 'run_sql' and pronamespace = 'public'::regnamespace;
 
 \echo ''
 \echo '== Vector / FTS indexes =='

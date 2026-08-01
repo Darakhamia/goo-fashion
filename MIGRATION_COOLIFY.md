@@ -246,9 +246,15 @@ psql "$TARGET_DB_URL" -f scripts/migrate/verify.sql
 ```
 
 Проверяет то, что не ловится сверкой количества строк: расширения, наличие RPC
-(`match_products`, `search_products`, `run_sql`), индексы `products_fts_idx` и
+`match_products` и `search_products`, индексы `products_fts_idx` и
 `products_embedding_hnsw_idx`, гранты для `service_role`, отсутствие
 недопереписанных `supabase.co`-ссылок и покрытие эмбеддингами.
+
+Про `run_sql` отдельно: его отсутствие — **нормальное** состояние. Он вызывается
+из `/api/products/group`, но его не было и в проде — этот путь не работал ещё до
+миграции. Добавлял он три колонки в `products`, которые в схеме есть давно, так
+что от него ничего не зависит. Создавать его не надо: RPC, исполняющий
+присланный ему SQL, — это дыра, и его отсутствие безопаснее.
 
 Если `with_embedding` заметно меньше `products` — прогнать
 `POST /api/admin/embeddings`, иначе векторный поиск стилиста деградирует до
