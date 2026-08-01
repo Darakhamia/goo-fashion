@@ -24,14 +24,24 @@ PG_IMAGE=${PG_IMAGE:-postgres:17}
 ABS_DUMP=$(cd "$DUMP_DIR" && pwd)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# PGPASSWORD is forwarded so the password can stay out of TARGET_DB_URL — see
+# the same note in dump-supabase.sh. Coolify-generated passwords hit this too.
+pg_in_docker() {
+  docker run --rm \
+    -v "$ABS_DUMP:/dump" \
+    -v "$SCRIPT_DIR:/scripts" \
+    -e PGCONNECT_TIMEOUT=30 \
+    -e PGPASSWORD \
+    "$PG_IMAGE" "$@"
+}
+
 psql_file() {
   local stop=$1 file=$2
-  docker run --rm -v "$ABS_DUMP:/dump" -v "$SCRIPT_DIR:/scripts" \
-    "$PG_IMAGE" psql "$TARGET_DB_URL" -v ON_ERROR_STOP="$stop" -f "$file"
+  pg_in_docker psql "$TARGET_DB_URL" -v ON_ERROR_STOP="$stop" -f "$file"
 }
 
 echo "==> Prerequisites (extensions the dump assumes already exist)"
-docker run --rm "$PG_IMAGE" psql "$TARGET_DB_URL" -v ON_ERROR_STOP=1 -c '
+pg_in_docker psql "$TARGET_DB_URL" -v ON_ERROR_STOP=1 -c '
   create extension if not exists vector;
   create extension if not exists pg_trgm;'
 
@@ -48,8 +58,7 @@ echo "==> Re-applying PostgREST grants"
 psql_file 1 /scripts/grants.sql
 
 echo "==> Row counts (target)"
-docker run --rm -v "$ABS_DUMP:/dump" -v "$SCRIPT_DIR:/scripts" "$PG_IMAGE" \
-  psql "$TARGET_DB_URL" -At -F',' -o /dump/rowcounts-target.csv -f /scripts/rowcounts.sql
+pg_in_docker psql "$TARGET_DB_URL" -At -F',' -o /dump/rowcounts-target.csv -f /scripts/rowcounts.sql
 
 echo "==> Diff against the source counts"
 if diff -u "$ABS_DUMP/rowcounts-source.csv" "$ABS_DUMP/rowcounts-target.csv"; then

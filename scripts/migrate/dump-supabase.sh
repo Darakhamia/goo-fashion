@@ -23,15 +23,26 @@ mkdir -p "$OUT_DIR"
 ABS_OUT=$(cd "$OUT_DIR" && pwd)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-run_pg_dump() {
+# PGPASSWORD is forwarded so the password can be kept out of SOURCE_DB_URL.
+# Supabase generates passwords containing @ / # / ? — all of which are URI
+# syntax, so pasting one into the connection string silently produces a
+# malformed URI and a "password authentication failed" that looks like a wrong
+# password. Setting PGPASSWORD separately sidesteps percent-encoding entirely.
+pg_in_docker() {
   docker run --rm \
     -v "$ABS_OUT:/dump" \
+    -v "$SCRIPT_DIR:/scripts" \
     -e PGCONNECT_TIMEOUT=30 \
-    "$PG_IMAGE" pg_dump "$SOURCE_DB_URL" "$@"
+    -e PGPASSWORD \
+    "$PG_IMAGE" "$@"
+}
+
+run_pg_dump() {
+  pg_in_docker pg_dump "$SOURCE_DB_URL" "$@"
 }
 
 echo "==> Server version"
-docker run --rm "$PG_IMAGE" psql "$SOURCE_DB_URL" -At -c 'show server_version'
+pg_in_docker psql "$SOURCE_DB_URL" -At -c 'show server_version'
 
 # Schema and data are dumped separately so the restore can tolerate benign
 # errors in the schema pass (extensions/roles that already exist in a
@@ -54,8 +65,7 @@ run_pg_dump \
   --file=/dump/data.sql
 
 echo "==> Row counts (source, for the post-restore comparison)"
-docker run --rm -v "$ABS_OUT:/dump" -v "$SCRIPT_DIR:/scripts" "$PG_IMAGE" \
-  psql "$SOURCE_DB_URL" -At -F',' -o /dump/rowcounts-source.csv -f /scripts/rowcounts.sql
+pg_in_docker psql "$SOURCE_DB_URL" -At -F',' -o /dump/rowcounts-source.csv -f /scripts/rowcounts.sql
 
 cat "$ABS_OUT/rowcounts-source.csv"
 
