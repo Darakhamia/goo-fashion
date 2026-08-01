@@ -70,6 +70,17 @@ function HandCursor({ className = "" }: { className?: string }) {
   );
 }
 
+// Connector between two stacked steps on phones, where the flow reads downwards.
+function StepArrowDown() {
+  return (
+    <div className="flex justify-center py-0.5" aria-hidden>
+      <svg width="12" height="14" viewBox="0 0 12 14" fill="none" className="text-white/25">
+        <path d="M6 1v11M1.5 8.5 6 13l4.5-4.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
 // Circular connector arrow — small, thin, low opacity.
 function StepArrow() {
   return (
@@ -207,20 +218,45 @@ function buildSteps(showcase?: HomepageShowcase) {
 export default function HowItWorksSection({ showcase }: { showcase?: HomepageShowcase }) {
   const STEPS = buildSteps(showcase);
   return (
-    <section className="py-12 md:py-14">
+    <section className="py-4 lg:py-14">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-        <FadeInView className="text-center mb-8 md:mb-10">
-          <h2 className="text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
+        <FadeInView className="text-left md:text-center mb-4 lg:mb-10">
+          <h2 className="text-[26px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-white">
             Everything you need
             <br className="hidden sm:block" /> to create better outfits.
           </h2>
-          <p className="mt-5 text-lg md:text-xl text-white/45">
+          <p className="mt-2 lg:mt-5 text-[13px] sm:text-lg md:text-xl text-white/45">
             Visualize. Get inspired. Shop the look.
           </p>
         </FadeInView>
 
+        {/* Phones read the flow top to bottom: one card per step, the artwork
+            beside its own label, an arrow pointing at what happens next. */}
+        <div className="lg:hidden max-w-[560px] mx-auto">
+          {STEPS.map((step, i) => (
+            <FadeInView key={step.n} delay={i * 0.06} y={12}>
+              <div className="flex items-center gap-3 rounded-2xl bg-[#161616] pl-4 pr-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-white/40 tabular-nums">{step.n}</span>
+                  <h3 className="mt-0.5 text-[15px] font-semibold text-white leading-snug">{step.title}</h3>
+                  <p className="mt-1 text-[11px] text-white/50 leading-[1.45]">{step.body}</p>
+                </div>
+
+                {/* The scenes are drawn at one fixed size (210 × 280); scaling
+                    the whole composition keeps every card's proportions intact. */}
+                <div className="relative w-[76px] h-[102px] shrink-0">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 origin-center scale-[0.363]">
+                    {step.scene}
+                  </div>
+                </div>
+              </div>
+              {i < STEPS.length - 1 && <StepArrowDown />}
+            </FadeInView>
+          ))}
+        </div>
+
         {/* Soft gray panel sitting only behind the step cards and their labels. */}
-        <div className="rounded-[28px] bg-[#161616] px-6 py-8 md:px-10">
+        <div className="hidden lg:block rounded-[28px] bg-[#161616] px-6 py-8 md:px-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-14">
           {STEPS.map((step, i) => (
             <FadeInView key={step.n} delay={i * 0.08} className="flex flex-col">
@@ -241,7 +277,9 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
           </div>
         </div>
 
-        <FadeInView delay={0.1} className="mt-8 md:mt-10 flex justify-center">
+        {/* Phones keep the screen to the four steps — the Builder is one tap
+            away in the bottom nav there. */}
+        <FadeInView delay={0.1} className="hidden lg:flex mt-10 justify-center">
           <Link
             href="/builder"
             className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-all duration-300"

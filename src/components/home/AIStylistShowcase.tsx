@@ -91,26 +91,28 @@ const FEATURES = [
 
 function Intro() {
   return (
-    <div className="flex flex-col justify-center p-5 md:p-6 lg:p-7">
-      <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-3">
+    // On phones the intro sits straight on the page background — the chat below
+    // is the only thing that needs a card of its own.
+    <div className="flex flex-col justify-center p-0 lg:p-7">
+      <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] uppercase font-medium text-white/40 mb-2 lg:mb-3">
         <span className="text-white/70">✦</span> AI Stylist
       </p>
-      <h2 className="text-3xl md:text-4xl lg:text-[38px] font-bold tracking-[-0.04em] leading-[1.02] text-white">
+      <h2 className="text-[26px] sm:text-3xl md:text-4xl lg:text-[38px] font-bold tracking-[-0.04em] leading-[1.02] text-white">
         Your style.
         <br />
         Found by AI.
       </h2>
-      <p className="text-[14px] text-white/55 leading-relaxed mt-3 max-w-sm">
+      <p className="text-[13px] lg:text-[14px] text-white/55 leading-snug lg:leading-relaxed mt-2 lg:mt-3 max-w-sm">
         AI looks at what&apos;s trending and creates outfit ideas just for you.
       </p>
 
-      <div className="grid grid-cols-3 gap-2.5 mt-5 max-w-md">
+      <div className="grid grid-cols-3 gap-2 lg:gap-2.5 mt-4 lg:mt-5 max-w-md">
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col gap-2"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-2 lg:p-2.5 flex flex-col gap-1.5 lg:gap-2"
           >
-            <span className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
+            <span className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-white">
               {f.icon}
             </span>
             <div>
@@ -132,9 +134,9 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
     <button
       type="button"
       onClick={onOpen}
-      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5 text-left hover:bg-white/[0.07] transition-colors"
+      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-2 lg:p-2.5 text-left hover:bg-white/[0.07] transition-colors"
     >
-      <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
+      <div className="w-11 h-11 lg:w-12 lg:h-12 rounded-xl overflow-hidden bg-white/[0.06] shrink-0">
         {look.imageUrl && (
           <Image
             src={look.imageUrl}
@@ -163,9 +165,9 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
 function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
   const { open } = useStylist();
   return (
-    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden m-2.5 min-h-[280px]">
+    <div className="flex flex-col rounded-3xl border border-white/10 bg-[#0F0F0F] overflow-hidden mt-4 lg:m-2.5 min-h-[280px]">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 lg:px-5 lg:py-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
           <span className="text-white/80">✦</span>
           <span className="text-[14px] font-semibold text-white">AI Stylist</span>
@@ -187,7 +189,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 flex flex-col gap-4 px-5 py-5">
+      <div className="flex-1 flex flex-col gap-3 lg:gap-4 px-4 py-4 lg:px-5 lg:py-5">
         {/* User bubble */}
         <div className="flex justify-end items-end gap-2">
           <div className="max-w-[78%] rounded-2xl rounded-br-md bg-white/[0.09] px-4 py-2.5">
@@ -209,7 +211,7 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
 
         {/* Look cards */}
         {looks.length > 0 && (
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 gap-2 lg:gap-3">
             {looks.map((look) => (
               <LookCard key={look.id} look={look} onOpen={open} />
             ))}
@@ -218,15 +220,15 @@ function ChatPreview({ looks }: { looks: StylistChatLook[] }) {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-3 lg:pb-4">
         <button
           type="button"
           onClick={open}
           aria-label="Ask your stylist"
-          className="group w-full h-12 rounded-2xl border border-white/10 bg-white/[0.04] pl-4 pr-1.5 flex items-center text-left hover:border-white/20 transition-colors"
+          className="group w-full h-11 lg:h-12 rounded-2xl border border-white/10 bg-white/[0.04] pl-4 pr-1.5 flex items-center text-left hover:border-white/20 transition-colors"
         >
           <span className="flex-1 text-[13px] text-white/40">Ask your stylist…</span>
-          <span className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:opacity-90 transition-opacity">
+          <span className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-white text-black flex items-center justify-center group-hover:opacity-90 transition-opacity">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -333,7 +335,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
       {/* Divider between the store block and the buy block — mirrors the product page */}
       <div className="hidden sm:block self-stretch w-px bg-white/10 shrink-0" />
 
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         <div>
           <div className="flex items-center gap-1.5">
             <span
@@ -368,6 +370,14 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
             <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
+
+        {/* Phones have no room for the labelled pill, so the row ends in the
+            same arrow the rest of the mobile lists use. */}
+        <span className="sm:hidden shrink-0 w-8 h-8 rounded-full border border-white/15 flex items-center justify-center text-white/60">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden>
+            <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
       </div>
     </a>
   );
@@ -385,6 +395,13 @@ function FeaturedProduct({
   const { open } = useStylist();
   const { formatPrice } = useCurrency();
   const [liked, setLiked] = useState(false);
+  const [shot, setShot] = useState(0);
+
+  // A few of the item's own photos, so the dots under the card actually move it.
+  const gallery = (product.images?.length ? product.images : [product.imageUrl])
+    .filter(Boolean)
+    .slice(0, 4);
+  const current = gallery[Math.min(shot, gallery.length - 1)] ?? product.imageUrl;
 
   // The item's own retailers always show first (cheapest first), with logos
   // pulled from the store library — exactly like the product page.
@@ -428,45 +445,65 @@ function FeaturedProduct({
   return (
     <div className="grid lg:grid-cols-[0.82fr_1.18fr] gap-2.5 p-2.5 items-stretch">
       {/* Image — white background, no frame, contained so the whole item shows */}
-      <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/5] lg:aspect-auto lg:min-h-[290px]">
-        {product.imageUrl && (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            className="object-contain p-4 md:p-5"
-            sizes="(max-width: 1024px) 100vw, 34vw"
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => setLiked((v) => !v)}
-          aria-label={liked ? "Remove from favorites" : "Add to favorites"}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-black/70 hover:bg-black/10 transition-colors"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill={liked ? "currentColor" : "none"}>
-            <path
-              d="M9 15.5S2.5 11.4 2.5 6.9A3.4 3.4 0 0 1 9 5.3a3.4 3.4 0 0 1 6.5 1.6c0 4.5-6.5 8.6-6.5 8.6Z"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinejoin="round"
+      <div className="flex flex-col gap-2 lg:gap-3">
+        <div className="relative rounded-3xl overflow-hidden bg-white aspect-[4/3] sm:aspect-[4/5] lg:aspect-auto lg:flex-1 lg:min-h-[290px]">
+          {current && (
+            <Image
+              src={current}
+              alt={product.name}
+              fill
+              className="object-contain p-4 md:p-5"
+              sizes="(max-width: 1024px) 100vw, 34vw"
             />
-          </svg>
-        </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setLiked((v) => !v)}
+            aria-label={liked ? "Remove from favorites" : "Add to favorites"}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/5 border border-black/10 flex items-center justify-center text-black/70 hover:bg-black/10 transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill={liked ? "currentColor" : "none"}>
+              <path
+                d="M9 15.5S2.5 11.4 2.5 6.9A3.4 3.4 0 0 1 9 5.3a3.4 3.4 0 0 1 6.5 1.6c0 4.5-6.5 8.6-6.5 8.6Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {gallery.length > 1 && (
+          <div className="flex justify-center gap-1.5">
+            {gallery.map((src, i) => (
+              <button
+                key={`${src}-${i}`}
+                type="button"
+                onClick={() => setShot(i)}
+                aria-label={`Show photo ${i + 1} of ${gallery.length}`}
+                aria-current={i === shot ? "true" : undefined}
+                className="rounded-full bg-white transition-all"
+                style={{ width: i === shot ? 18 : 6, height: 6, opacity: i === shot ? 0.9 : 0.25 }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Where to buy */}
-      <div className="flex flex-col min-w-0 p-4">
+      <div className="flex flex-col min-w-0 px-4 pb-4 pt-1 lg:p-4">
         <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">{product.brand}</p>
+        {/* Phones have the width to wrap the full name; the desktop column is
+            one line in a two-up grid, so it keeps clipping. */}
         <h3
-          className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 truncate"
+          className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 line-clamp-3 lg:truncate"
           title={product.name}
         >
           {product.name}
         </h3>
         <p className="text-lg text-white mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
 
-        <div className="flex items-baseline justify-between mt-4 mb-2">
+        <div className="flex items-baseline justify-between mt-3 lg:mt-4 mb-2">
           <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">Where to buy</p>
           {rows.length > 0 && (
             <p className="text-[11px] text-white/35">
@@ -504,29 +541,60 @@ export default function AIStylistShowcase({
   showcaseStores = [],
 }: AIStylistShowcaseProps) {
   return (
-    <section className="py-4 md:py-5">
+    <section className="py-2 lg:py-5">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-3">
         {/* Top: intro + chat */}
-        <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
+        <FadeCard className="rounded-none lg:rounded-[28px] bg-transparent lg:bg-[#0A0A0A] border-0 lg:border lg:border-white/10 overflow-hidden lg:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
           <div className="grid lg:grid-cols-2">
             <Intro />
             <ChatPreview looks={chatLooks} />
           </div>
         </FadeCard>
 
-        {/* Bottom: featured product + where to buy */}
+        {/* Bottom: featured product + where to buy. Phones give it a screen of
+            its own instead — see FeaturedProductShowcase, rendered from the page. */}
         {featuredProduct && (
-          <FadeCard
-            delay={0.08}
-            className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
-          >
-            <FeaturedProduct
-              product={featuredProduct}
-              retailerLogos={retailerLogos}
-              showcaseStores={showcaseStores}
-            />
-          </FadeCard>
+          <div className="hidden lg:block">
+            <FadeCard
+              delay={0.08}
+              className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]"
+            >
+              <FeaturedProduct
+                product={featuredProduct}
+                retailerLogos={retailerLogos}
+                showcaseStores={showcaseStores}
+              />
+            </FadeCard>
+          </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The featured item as a screen of its own — what the phone storyboard shows
+ * after the stylist chat. Wide layouts keep it inside {@link AIStylistShowcase}.
+ */
+export function FeaturedProductShowcase({
+  product,
+  retailerLogos = {},
+  showcaseStores = [],
+}: {
+  product: Product;
+  retailerLogos?: Record<string, string>;
+  showcaseStores?: ShowcaseStore[];
+}) {
+  return (
+    <section className="py-2">
+      <div className="max-w-[1280px] mx-auto px-6">
+        <FadeCard className="rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
+          <FeaturedProduct
+            product={product}
+            retailerLogos={retailerLogos}
+            showcaseStores={showcaseStores}
+          />
+        </FadeCard>
       </div>
     </section>
   );

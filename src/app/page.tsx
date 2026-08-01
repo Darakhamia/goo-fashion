@@ -8,7 +8,9 @@ import { HeroSection } from "@/components/home/HeroSection";
 import HomeSection from "@/components/home/HomeSection";
 import HomeFullPageScroll from "@/components/home/HomeFullPageScroll";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
-import AIStylistShowcase from "@/components/home/AIStylistShowcase";
+import AIStylistShowcase, {
+  FeaturedProductShowcase,
+} from "@/components/home/AIStylistShowcase";
 import OutfitExamplesCarousel from "@/components/home/OutfitExamplesCarousel";
 import {
   getAllOutfits,
@@ -37,7 +39,7 @@ async function getData() {
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] tracking-[0.22em] uppercase font-medium mb-4 text-[var(--foreground-subtle)]">
+    <p className="text-[11px] tracking-[0.22em] uppercase font-medium mb-2.5 md:mb-4 text-[var(--foreground-subtle)]">
       {children}
     </p>
   );
@@ -52,7 +54,7 @@ function SectionH2({
 }) {
   return (
     <h2
-      className={`text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-[var(--foreground)] ${
+      className={`text-[30px] sm:text-4xl md:text-5xl lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.04] text-[var(--foreground)] ${
         centered ? "text-center" : ""
       }`}
     >
@@ -95,18 +97,33 @@ export default async function HomePage() {
         />
       </HomeSection>
 
+      {/* ── FEATURED ITEM ──
+          Its own screen on phones, where it can't share one with the stylist
+          chat. Wide layouts keep it inside the stylist section above. */}
+      {stylist.featuredProduct && (
+        <div className="lg:hidden">
+          <HomeSection className="bg-[var(--background)]">
+            <FeaturedProductShowcase
+              product={stylist.featuredProduct}
+              retailerLogos={stylist.retailerLogos}
+              showcaseStores={stylist.showcaseStores}
+            />
+          </HomeSection>
+        </div>
+      )}
+
       {/* ── OUTFIT EXAMPLES ── */}
       <HomeSection className="bg-[var(--background)]">
-        <section className="py-10 md:py-12">
+        <section className="py-4 md:py-12">
           <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-            <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <FadeInView className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-3 md:gap-4">
               <div>
                 <Kicker>Outfit examples</Kicker>
                 <SectionH2>Explore ready-made outfit ideas.</SectionH2>
               </div>
               <Link
                 href="/browse"
-                className="text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
+                className="self-end md:self-auto text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4 shrink-0"
               >
                 Browse all outfits
               </Link>

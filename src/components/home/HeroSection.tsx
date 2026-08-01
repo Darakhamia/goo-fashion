@@ -7,11 +7,13 @@ import { EtherealShadow } from "@/components/ui/etheral-shadow";
 
 export function HeroSection() {
   return (
-    // The nav sits above the hero in the flow, so from lg up the hero takes the
-    // rest of the first screen — putting the next section exactly one screen down.
+    // The nav sits above the hero in the flow, so the hero takes the rest of the
+    // first screen — putting the next section exactly one screen down. On phones
+    // the floating bottom nav claims the last strip, so the content centres in
+    // what's left rather than behind it.
     <section
       data-home-section
-      className="bg-[var(--background)] min-h-[100svh] lg:min-h-[calc(100svh-var(--home-nav-h))] flex flex-col items-center justify-center relative overflow-hidden"
+      className="bg-[var(--background)] min-h-[calc(100svh-var(--home-nav-h))] pb-[var(--home-bottom-nav-h)] md:pb-0 flex flex-col items-center justify-center relative overflow-hidden"
     >
       {/* Background — CSS blobs only, no SVG filter */}
       <div className="absolute inset-0 z-0">
@@ -19,15 +21,26 @@ export function HeroSection() {
       </div>
 
       {/* Center content */}
-      <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
-        <GooeyText
-          texts={["GOO", "Outfits", "Looks", "Style", "Fits"]}
-          morphTime={1}
-          cooldownTime={0.35}
-          firstTextCooldown={2.2}
-          className="h-[76px] md:h-[120px] lg:h-[148px] w-full"
-          textClassName="text-[64px] md:text-[100px] lg:text-[128px]"
-        />
+      <div className="relative z-10 flex flex-col items-center gap-7 md:gap-8 px-6 text-center">
+        <div className="flex flex-col items-center gap-3 w-full">
+          <GooeyText
+            texts={["GOO", "Outfits", "Looks", "Style", "Fits"]}
+            morphTime={1}
+            cooldownTime={0.35}
+            firstTextCooldown={2.2}
+            className="h-[86px] md:h-[120px] lg:h-[148px] w-full"
+            textClassName="text-[72px] md:text-[100px] lg:text-[128px]"
+          />
+
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-[15px] md:text-base tracking-[-0.01em] text-[var(--foreground-muted)]"
+          >
+            Build your look
+          </motion.p>
+        </div>
 
         {/* CTA */}
         <motion.div
@@ -56,8 +69,8 @@ export function HeroSection() {
         aria-label="Go to the next section"
         className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2.5 z-10 cursor-pointer hover:opacity-70 transition-opacity"
       >
-        <span className="text-[9px] tracking-[0.3em] uppercase text-[var(--foreground-subtle)]">
-          scroll
+        <span className="text-[10px] tracking-[0.14em] text-[var(--foreground-subtle)]">
+          Scroll to explore
         </span>
         <div className="animate-scroll-hint text-[var(--foreground-subtle)]">
           <svg width="14" height="22" viewBox="0 0 14 22" fill="none">
