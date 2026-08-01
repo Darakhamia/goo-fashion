@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { Product, Retailer } from "@/lib/types";
 import type { StylistChatLook, ShowcaseStore } from "@/lib/data/db";
 import { useStylist } from "@/lib/context/stylist-context";
+import { useCurrency } from "@/lib/context/currency-context";
 
 interface AIStylistShowcaseProps {
   chatLooks: StylistChatLook[];
@@ -17,11 +18,6 @@ interface AIStylistShowcaseProps {
 }
 
 const EASE = [0.25, 0.46, 0.45, 0.94] as const;
-
-function money(value: number, currency = "USD") {
-  const symbol = currency === "USD" || !currency ? "$" : `${currency} `;
-  return `${symbol}${Math.round(value).toLocaleString()}`;
-}
 
 function FadeCard({
   children,
@@ -131,6 +127,7 @@ function Intro() {
 // ── Chat preview ─────────────────────────────────────────────────────────────
 
 function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void }) {
+  const { formatPrice } = useCurrency();
   return (
     <button
       type="button"
@@ -151,7 +148,7 @@ function LookCard({ look, onOpen }: { look: StylistChatLook; onOpen: () => void 
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-white truncate leading-snug">{look.name}</p>
         {look.price > 0 && (
-          <p className="text-[13px] text-white/50 mt-0.5">{money(look.price, look.currency)}</p>
+          <p className="text-[13px] text-white/50 mt-0.5">{formatPrice(look.price, look.currency)}</p>
         )}
       </div>
       <span className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/70 group-hover:bg-white/10 transition-colors shrink-0">
@@ -260,6 +257,7 @@ interface BuyRowData {
  * arrow. Rows without a URL fall back to opening the stylist.
  */
 function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: () => void }) {
+  const { formatPrice } = useCurrency();
   const { name, logoUrl, price, currency, availability, isOfficial, url, isBest } = row;
   // Domain → favicon fallback, exactly like the product page "Where to buy" rows.
   let domain = "";
@@ -360,7 +358,7 @@ function BuyRow({ row, onFallbackClick }: { row: BuyRowData; onFallbackClick: ()
             />
           </div>
           {price != null && (
-            <p className="text-[16px] font-medium text-white mt-0.5">{money(price, currency)}</p>
+            <p className="text-[16px] font-medium text-white mt-0.5">{formatPrice(price, currency)}</p>
           )}
         </div>
 
@@ -385,6 +383,7 @@ function FeaturedProduct({
   showcaseStores?: ShowcaseStore[];
 }) {
   const { open } = useStylist();
+  const { formatPrice } = useCurrency();
   const [liked, setLiked] = useState(false);
 
   // The item's own retailers always show first (cheapest first), with logos
@@ -457,12 +456,15 @@ function FeaturedProduct({
       </div>
 
       {/* Where to buy */}
-      <div className="flex flex-col p-4 md:p-5">
+      <div className="flex flex-col min-w-0 p-4 md:p-5">
         <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">{product.brand}</p>
-        <h3 className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 line-clamp-2">
+        <h3
+          className="text-xl md:text-2xl font-bold text-white tracking-[-0.02em] mt-1 truncate"
+          title={product.name}
+        >
           {product.name}
         </h3>
-        <p className="text-lg text-white mt-1.5">{money(product.priceMin, product.currency)}</p>
+        <p className="text-lg text-white mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
 
         <div className="flex items-baseline justify-between mt-4 mb-2">
           <p className="text-[11px] tracking-[0.18em] uppercase text-white/40">Where to buy</p>
