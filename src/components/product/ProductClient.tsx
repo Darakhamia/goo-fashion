@@ -116,14 +116,32 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       </div>
 
       {/* Main grid */}
-      {/* Left column is sized to the (now smaller) photo so the info panel takes
-          the remaining width instead of leaving a gap beside the image. */}
-      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[380px_minmax(0,1fr)] lg:grid-cols-[440px_minmax(0,1fr)] gap-6 md:gap-10">
+      <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">
 
-        {/* ── Left: Image gallery ── */}
-        <div>
-          {/* Main image */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-white max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] mx-auto md:mx-0">
+        {/* ── Left: Image gallery — thumbnail rail beside the photo, top-left ── */}
+        <div className="flex gap-2 sm:gap-3">
+
+          {/* Thumbnail rail — only when there are multiple images */}
+          {displayImages.length > 1 && (
+            <div className="flex flex-col gap-2 shrink-0 self-start">
+              {displayImages.map((img, i) => (
+                <button
+                  key={`${img}-${i}`}
+                  onClick={() => goTo(i)}
+                  className={`relative w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
+                    i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
+                  }`}
+                >
+                  <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="80px" className="object-contain" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Main image. Kept at 3:4 rather than stretched to the info panel's
+              full height — product shots are portrait and use object-contain, so
+              a full-height box would be mostly empty white. */}
+          <div className="flex-1 min-w-0 self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
             <div className="relative aspect-[3/4] overflow-hidden bg-white">
               {mainImage ? (
                 <Image
@@ -131,7 +149,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   alt={`${product.name} by ${product.brand}`}
                   fill
                   priority
-                  sizes="(max-width: 640px) 320px, (max-width: 1024px) 380px, 440px"
+                  sizes="(max-width: 768px) 100vw, 480px"
                   className="object-contain transition-opacity duration-[260ms] ease-in-out"
                   style={{ opacity: imgVisible ? 1 : 0 }}
                 />
@@ -163,23 +181,6 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               </button>
             </div>
           </div>
-
-          {/* Thumbnail strip — only when there are multiple images */}
-          {displayImages.length > 1 && (
-            <div className="flex flex-wrap gap-2 mt-3 max-w-[320px] sm:max-w-[380px] lg:max-w-[440px] mx-auto md:mx-0">
-              {displayImages.map((img, i) => (
-                <button
-                  key={`${img}-${i}`}
-                  onClick={() => goTo(i)}
-                  className={`relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
-                    i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
-                  }`}
-                >
-                  <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="64px" className="object-contain" />
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ── Right: Product info ── */}
@@ -376,11 +377,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={retailer.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-center justify-between gap-4 p-4 border-2 border-[var(--border-strong)] rounded-xl hover:border-[var(--foreground)] hover:bg-[var(--surface)] hover:shadow-md transition-all duration-200"
+                      className="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 border border-[var(--border-strong)] rounded-2xl hover:border-[var(--foreground)] hover:bg-[var(--surface)] transition-all duration-200"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Retailer logo */}
-                        <div className="w-10 h-10 shrink-0 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center overflow-hidden">
+                        <div className="w-14 h-14 shrink-0 rounded-full bg-white border border-[var(--border)] flex items-center justify-center overflow-hidden">
                           {libraryLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -415,55 +416,66 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                             {retailer.name.slice(0, 2).toUpperCase()}
                           </span>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm text-[var(--foreground)]">{retailer.name}</p>
+                            <p className="text-[15px] font-medium text-[var(--foreground)] truncate">{retailer.name}</p>
                             {i === 0 && (
-                              <span className="text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] rounded-full px-2 py-0.5">
+                              <span className="shrink-0 text-[9px] tracking-[0.14em] uppercase font-semibold text-[var(--background)] bg-[var(--foreground)] rounded-full px-2 py-0.5">
                                 Best
                               </span>
                             )}
                           </div>
                           {retailer.isOfficial && (
-                            <p className="text-[9px] tracking-[0.1em] text-[var(--foreground-subtle)] mt-0.5">
-                              Official store
+                            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+                              Official Store
                             </p>
                           )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 shrink-0">
-                        {retailer.rating != null && (
-                          <div className="text-right hidden sm:block">
-                            <div className="flex items-center gap-1 justify-end">
+                          {retailer.rating != null && (
+                            <div className="flex items-center gap-1 mt-1.5">
                               {[1,2,3,4,5].map((s) => (
                                 <svg key={s} width="9" height="9" viewBox="0 0 12 12" fill={s <= Math.round(retailer.rating!) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" className="text-[var(--foreground-muted)]">
                                   <polygon points="6,1 7.5,4.5 11,4.8 8.5,7 9.3,10.5 6,8.7 2.7,10.5 3.5,7 1,4.8 4.5,4.5" />
                                 </svg>
                               ))}
+                              {retailer.reviewCount != null && (
+                                <span className="text-[10px] text-[var(--foreground-subtle)] ml-1">{retailer.reviewCount.toLocaleString()}</span>
+                              )}
                             </div>
-                            {retailer.reviewCount != null && (
-                              <p className="text-[8px] text-[var(--foreground-subtle)] mt-0.5 text-right">{retailer.reviewCount.toLocaleString()} reviews</p>
-                            )}
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Divider between the store block and the buy block */}
+                      <div className="hidden sm:block self-stretch w-px bg-[var(--border-strong)] shrink-0" />
+
+                      <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] tracking-[0.12em] uppercase font-medium ${
+                              retailer.availability === "sold out"
+                                ? "text-[var(--foreground-subtle)] line-through"
+                                : "text-[var(--foreground)]"
+                            }`}>
+                              {retailer.availability}
+                            </span>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              retailer.availability === "in stock"
+                                ? "bg-green-500"
+                                : retailer.availability === "low stock"
+                                ? "bg-amber-500"
+                                : "bg-[var(--foreground-subtle)]"
+                            }`} />
                           </div>
-                        )}
-                        <div className="text-right">
-                          <p className="text-sm text-[var(--foreground)] font-medium">
+                          <p className="text-2xl font-bold text-[var(--foreground)] mt-0.5">
                             {formatPrice(retailer.price, retailer.currency)}
                           </p>
-                          <p className={`text-[9px] tracking-[0.1em] mt-0.5 ${
-                            retailer.availability === "in stock"
-                              ? "text-[var(--foreground-subtle)]"
-                              : retailer.availability === "low stock"
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-[var(--foreground-subtle)] line-through"
-                          }`}>
-                            {retailer.availability}
-                          </p>
                         </div>
-                        <span className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)] group-hover:border-[var(--foreground)] group-hover:bg-[var(--foreground)] group-hover:text-[var(--background)] transition-all duration-200">
-                          <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                        {/* Primary CTA — inverts with the theme, so it reads as a solid button */}
+                        <span className="shrink-0 flex items-center gap-2 rounded-full bg-[var(--foreground)] text-[var(--background)] font-medium text-sm px-5 py-3 group-hover:opacity-90 transition-opacity duration-200">
+                          View on Store
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+                            <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
                       </div>
