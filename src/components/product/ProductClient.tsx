@@ -354,10 +354,10 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {product.retailers.length > 0 && (
             <div>
               <div className="flex items-center justify-between gap-3 mb-5">
-                <h2 className="text-lg md:text-xl font-bold uppercase tracking-[0.06em] text-[var(--foreground)]">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--foreground)]">
                   Where to buy
                 </h2>
-                <span className="shrink-0 text-[10px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border-strong)] rounded-full px-2.5 py-1">
+                <span className="shrink-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-2.5 py-1">
                   {product.retailers.length} stores
                 </span>
               </div>
@@ -377,11 +377,11 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={retailer.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 border border-[var(--border-strong)] rounded-2xl hover:border-[var(--foreground)] hover:bg-[var(--surface)] transition-all duration-200"
+                      className="group flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Retailer logo */}
-                        <div className="w-14 h-14 shrink-0 rounded-full bg-white border border-[var(--border)] flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-white border border-[var(--border)] flex items-center justify-center overflow-hidden">
                           {libraryLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -418,15 +418,15 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-[15px] font-medium text-[var(--foreground)] truncate">{retailer.name}</p>
+                            <p className="text-sm text-[var(--foreground)] truncate">{retailer.name}</p>
                             {i === 0 && (
-                              <span className="shrink-0 text-[9px] tracking-[0.14em] uppercase font-semibold text-[var(--background)] bg-[var(--foreground)] rounded-full px-2 py-0.5">
+                              <span className="shrink-0 text-[8px] tracking-[0.14em] uppercase font-medium text-[var(--foreground)] bg-[var(--fg-overlay-08)] rounded-full px-2 py-0.5">
                                 Best
                               </span>
                             )}
                           </div>
                           {retailer.isOfficial && (
-                            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+                            <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
                               Official Store
                             </p>
                           )}
@@ -446,19 +446,19 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       </div>
 
                       {/* Divider between the store block and the buy block */}
-                      <div className="hidden sm:block self-stretch w-px bg-[var(--border-strong)] shrink-0" />
+                      <div className="hidden sm:block self-stretch w-px bg-[var(--border)] shrink-0" />
 
                       <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className={`text-[10px] tracking-[0.12em] uppercase font-medium ${
+                            <span className={`text-[9px] tracking-[0.12em] uppercase ${
                               retailer.availability === "sold out"
                                 ? "text-[var(--foreground-subtle)] line-through"
-                                : "text-[var(--foreground)]"
+                                : "text-[var(--foreground-muted)]"
                             }`}>
                               {retailer.availability}
                             </span>
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                            <span className={`w-1 h-1 rounded-full shrink-0 ${
                               retailer.availability === "in stock"
                                 ? "bg-green-500"
                                 : retailer.availability === "low stock"
@@ -466,16 +466,16 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                                 : "bg-[var(--foreground-subtle)]"
                             }`} />
                           </div>
-                          <p className="text-2xl font-bold text-[var(--foreground)] mt-0.5">
+                          <p className="text-base font-medium text-[var(--foreground)] mt-0.5">
                             {formatPrice(retailer.price, retailer.currency)}
                           </p>
                         </div>
 
-                        {/* Primary CTA — inverts with the theme, so it reads as a solid button */}
-                        <span className="shrink-0 flex items-center gap-2 rounded-full bg-[var(--foreground)] text-[var(--background)] font-medium text-sm px-5 py-3 group-hover:opacity-90 transition-opacity duration-200">
+                        {/* Outlined CTA — reads as a button without competing with the page */}
+                        <span className="shrink-0 flex items-center gap-1.5 rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)] text-xs px-3.5 py-2 group-hover:border-[var(--foreground)] group-hover:text-[var(--foreground)] transition-colors duration-200">
                           View on Store
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                            <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden>
+                            <path d="M4 10L10 4M10 4H5M10 4V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
                       </div>
