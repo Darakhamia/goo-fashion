@@ -24,10 +24,19 @@ PG_IMAGE=${PG_IMAGE:-postgres:17}
 ABS_DUMP=$(cd "$DUMP_DIR" && pwd)
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# Coolify does not publish the Postgres port on the host, so the client has to
+# join the service's own Docker network and address the database by container
+# name. Set DOCKER_NETWORK to that network (docker ps --format '{{.Networks}}').
+DOCKER_ARGS=()
+if [ -n "${DOCKER_NETWORK:-}" ]; then
+  DOCKER_ARGS+=(--network "$DOCKER_NETWORK")
+fi
+
 # PGPASSWORD is forwarded so the password can stay out of TARGET_DB_URL — see
 # the same note in dump-supabase.sh. Coolify-generated passwords hit this too.
 pg_in_docker() {
   docker run --rm \
+    "${DOCKER_ARGS[@]}" \
     -v "$ABS_DUMP:/dump" \
     -v "$SCRIPT_DIR:/scripts" \
     -e PGCONNECT_TIMEOUT=30 \
