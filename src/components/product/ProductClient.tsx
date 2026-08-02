@@ -15,7 +15,10 @@ import dynamic from "next/dynamic";
 // critical product UI instead of shipping them in the page bundle.
 const PriceHistoryChart = dynamic(() => import("./PriceHistoryChart"), { ssr: false });
 const ProductReviews = dynamic(() => import("./ProductReviews"), { ssr: false });
+// Reads localStorage and fetches its own products, so it can only run client-side.
+const RecentlyViewed = dynamic(() => import("./RecentlyViewed"), { ssr: false });
 import { track } from "@/lib/analytics/track";
+import { recordProductView } from "@/lib/recently-viewed";
 import { buildStylingNotes } from "@/lib/seo";
 
 /**
@@ -98,6 +101,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
   useEffect(() => {
     track("product_view", { targetId: product.id });
+    recordProductView(product.id);
   }, [product.id]);
 
   // Resolve which images to display
@@ -614,6 +618,9 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
         </section>
       )}
+
+      {/* Recently viewed — last, and only if this browser has a history */}
+      <RecentlyViewed currentId={product.id} />
     </>
   );
 }
