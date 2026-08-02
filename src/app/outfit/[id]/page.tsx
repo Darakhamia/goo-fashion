@@ -6,6 +6,9 @@ import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
 import OutfitActions from "@/components/outfit/OutfitActions";
+import RecordRecentView from "@/components/RecordRecentView";
+import RecentlyViewed from "@/components/product/RecentlyViewed";
+import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
@@ -46,7 +49,7 @@ export default async function OutfitDetailPage({ params }: Props) {
 
   const relatedOutfits = allOutfits
     .filter((o) => o.id !== outfit.id && o.occasion === outfit.occasion)
-    .slice(0, 3);
+    .slice(0, 4);
 
   const { heading, description: seoDescription } = buildOutfitSeo(outfit);
   const breadcrumb = breadcrumbJsonLd([
@@ -59,23 +62,30 @@ export default async function OutfitDetailPage({ params }: Props) {
     <div className="min-h-screen">
       <JsonLd data={[outfitJsonLd(outfit, heading), breadcrumb]} />
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
-        {/* Breadcrumb */}
-        <div className="pt-8 flex items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-          <Link href="/" className="hover:text-[var(--foreground)] transition-colors duration-200">
+        <RecordRecentView kind="outfit" id={outfit.id} />
+
+        {/* Breadcrumb — one line at any width: the trail keeps its full labels
+            and the outfit name, the only arbitrarily long part, takes the
+            ellipsis. */}
+        <div className="pt-8 flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+          <Link href="/" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">
             Home
           </Link>
-          <span>/</span>
-          <Link href="/browse" className="hover:text-[var(--foreground)] transition-colors duration-200">
+          <span className="shrink-0">/</span>
+          <Link href="/browse" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">
             Outfits
           </Link>
-          <span>/</span>
-          <span className="text-[var(--foreground)]">{heading}</span>
+          <span className="shrink-0">/</span>
+          <span className="min-w-0 truncate text-[var(--foreground-muted)]" title={heading}>
+            {heading}
+          </span>
         </div>
 
-        {/* Main layout */}
-        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        {/* Main layout — same column sizing as the product page, so the image
+            keeps a sane width and the info panel takes the rest. */}
+        <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">
           {/* Left: Editorial Image */}
-          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)]">
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--background)] md:self-start">
             <div className="relative aspect-[3/4] overflow-hidden">
               {outfit.imageUrl ? (
                 <Image
@@ -110,12 +120,14 @@ export default async function OutfitDetailPage({ params }: Props) {
               <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 capitalize">
                 {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
               </p>
-              <h1 className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight mb-4">
-                {heading}
-              </h1>
-              <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-w-sm">
-                {outfit.description || seoDescription}
-              </p>
+              <div className="mb-4">
+                <ClampedHeading
+                  text={heading}
+                  label="outfit name"
+                  className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight"
+                />
+              </div>
+              <ClampedDescription text={outfit.description || seoDescription} />
 
               <div className="mt-6 flex items-center gap-6">
                 <div>
@@ -211,7 +223,7 @@ export default async function OutfitDetailPage({ params }: Props) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {relatedOutfits.map((related) => (
                 <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
                   <OutfitCard outfit={related} />
@@ -220,6 +232,9 @@ export default async function OutfitDetailPage({ params }: Props) {
             </div>
           </section>
         )}
+
+        {/* Recently viewed — last, and only if this browser has a history */}
+        <RecentlyViewed kind="outfit" currentId={outfit.id} />
       </div>
     </div>
   );

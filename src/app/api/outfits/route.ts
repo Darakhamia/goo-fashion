@@ -4,8 +4,22 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { getAllOutfits, createOutfit, outfitToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
-export async function GET() {
+/** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
+const MAX_IDS = 24;
+
+export async function GET(req: Request) {
   const outfits = await getAllOutfits();
+
+  // ids=a,b,c → just those outfits, in the order asked for. Used by the
+  // "Recently viewed" row, which holds ids and needs them back as outfits.
+  const idsParam = new URL(req.url).searchParams.get("ids");
+  if (idsParam) {
+    const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean).slice(0, MAX_IDS);
+    const byId = new Map(outfits.map((o) => [o.id, o]));
+    const picked = ids.map((id) => byId.get(id)).filter((o): o is NonNullable<typeof o> => Boolean(o));
+    return NextResponse.json(picked);
+  }
+
   return NextResponse.json(outfits);
 }
 
