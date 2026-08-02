@@ -14,6 +14,17 @@ export default function MobileBottomNav() {
 
   const tabs = [
     {
+      href: "/browse",
+      label: "Browse",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.3"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
+          <path d="M17 17l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
       href: "/builder",
       label: "Builder",
       icon: (active: boolean) => (
@@ -35,17 +46,6 @@ export default function MobileBottomNav() {
             stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
             fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.85 : 0}
           />
-        </svg>
-      ),
-    },
-    {
-      href: "/browse",
-      label: "Browse",
-      icon: (active: boolean) => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="7.5" stroke="currentColor" strokeWidth="1.3"
-            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0} />
-          <path d="M17 17l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       ),
     },
