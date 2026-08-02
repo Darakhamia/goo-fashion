@@ -115,14 +115,15 @@ html {
     scroll-snap-stop: always;
   }
 
-  /* The footer is reference material, not a slide — but under `mandatory` it
-     needs a resting place of its own or it can't be scrolled to at all. It
-     rests against the bottom of the page, which is always reachable however
-     short the footer turns out to be; the margin holds its last row clear of
-     the bottom nav floating over that strip. */
-  html.home-snap footer {
-    scroll-snap-align: end;
-    scroll-margin-bottom: var(--home-bottom-nav-h);
+  /* The footer is reference material, not a slide. Snapping it into place made
+     it a sixth stop you jumped to and were held at; past the last slide the
+     page should just scroll, at whatever pace the reader likes, and let them
+     drift back up again — which is the deal the desktop sequence gives it.
+     Snapping is a property of the whole scroller, so it can't be dropped for
+     one region in CSS alone: HomeFullPageScroll adds this class for the run of
+     any gesture that starts at or below the last slide. */
+  html.home-snap.home-snap-free {
+    scroll-snap-type: none;
   }
 
   /* Snapping moves the page on the reader's behalf, which is exactly what this
