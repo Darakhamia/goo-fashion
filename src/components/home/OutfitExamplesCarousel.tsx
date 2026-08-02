@@ -14,13 +14,22 @@ interface Props {
 
 export default function OutfitExamplesCarousel({ outfits }: Props) {
   const [page, setPage] = useState(0);
+  // The rail is swipeable on phones, and a page that turns itself under the
+  // finger is worse than one that never turned at all — so the moment the
+  // reader takes the wheel, the carousel stops driving.
+  const [taken, setTaken] = useState(false);
   const total = Math.ceil(outfits.length / PER_PAGE);
 
   useEffect(() => {
-    if (total <= 1) return;
+    if (total <= 1 || taken) return;
     const t = setInterval(() => setPage((p) => (p + 1) % total), 5000);
     return () => clearInterval(t);
-  }, [total]);
+  }, [total, taken]);
+
+  const goTo = (next: number) => {
+    setTaken(true);
+    setPage(next);
+  };
 
   const visible = outfits.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
@@ -32,11 +41,16 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
     <div>
       <AnimatePresence mode="wait">
         {/* Phones run the page as a swipeable rail that bleeds past the gutter,
-            so the next card peeks in and the row reads as "there's more". Wide
-            screens keep the three-up grid. */}
+            so the third card peeks in and the row reads as "there's more" —
+            nudge it across to see that card whole; the dots below turn the page.
+            Deliberately unsnapped: three cards at this width leave less than one
+            card of travel, so the last card's snap position sits past the end of
+            the rail and mandatory snapping would spring every swipe back to the
+            start. Wide screens keep the three-up grid. */}
         <motion.div
           key={page}
-          className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mr-6 pr-6 pb-1 no-scrollbar md:mr-0 md:pr-0 md:pb-0 md:overflow-visible md:grid md:grid-cols-3 md:gap-5"
+          onPointerDown={() => setTaken(true)}
+          className="flex gap-3 overflow-x-auto overscroll-x-contain -mr-6 pr-6 pb-1 no-scrollbar md:mr-0 md:pr-0 md:pb-0 md:overflow-visible md:grid md:grid-cols-3 md:gap-5"
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -16 }}
@@ -45,7 +59,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
           {visible.map((outfit) => (
             <div
               key={outfit.id}
-              className="snap-start shrink-0 w-[43%] min-w-[140px] md:w-auto md:min-w-0"
+              className="shrink-0 w-[43%] min-w-[140px] md:w-auto md:min-w-0"
             >
               <OutfitCard outfit={outfit} />
             </div>
@@ -59,7 +73,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
             {Array.from({ length: total }, (_, i) => (
               <button
                 key={i}
-                onClick={() => setPage(i)}
+                onClick={() => goTo(i)}
                 aria-label={`Go to page ${i + 1} of ${total}`}
                 className="rounded-full bg-[var(--foreground)] transition-all"
                 style={{
@@ -75,7 +89,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
               either side of the dots instead of on a row of their own. */}
           <div className="order-2 flex items-center gap-4 md:contents">
             <button
-              onClick={() => setPage((p) => (p - 1 + total) % total)}
+              onClick={() => goTo((page - 1 + total) % total)}
               aria-label="Previous outfits"
               className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-1"
             >
@@ -85,7 +99,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
             </button>
 
             <button
-              onClick={() => setPage((p) => (p + 1) % total)}
+              onClick={() => goTo((page + 1) % total)}
               aria-label="Next outfits"
               className="w-9 h-9 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors md:order-3"
             >
