@@ -135,14 +135,18 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   return (
     <>
       {/* Breadcrumb */}
-      <div className="pt-8 flex items-center gap-3 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-        <Link href="/" className="hover:text-[var(--foreground)] transition-colors duration-200">Home</Link>
-        <span>/</span>
-        <Link href="/browse" className="hover:text-[var(--foreground)] transition-colors duration-200">Browse</Link>
-        <span>/</span>
-        <span className="text-[var(--foreground)] capitalize">{product.category}</span>
-        <span>/</span>
-        <span className="text-[var(--foreground-muted)]">{product.name}</span>
+      {/* One line at any width: the trail keeps its full labels and the product
+          name — the only part that can be arbitrarily long — takes the ellipsis. */}
+      <div className="pt-8 flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+        <Link href="/" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">Home</Link>
+        <span className="shrink-0">/</span>
+        <Link href="/browse" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">Browse</Link>
+        <span className="shrink-0">/</span>
+        <span className="shrink-0 text-[var(--foreground)] capitalize">{product.category}</span>
+        <span className="shrink-0">/</span>
+        <span className="min-w-0 truncate text-[var(--foreground-muted)]" title={product.name}>
+          {product.name}
+        </span>
       </div>
 
       {/* Main grid */}
