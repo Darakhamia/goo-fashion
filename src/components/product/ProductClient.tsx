@@ -152,17 +152,19 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
       {/* Main grid */}
       <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">
 
-        {/* ── Left: Image gallery — thumbnail rail beside the photo, top-left ── */}
-        <div className="flex gap-2 sm:gap-3">
+        {/* ── Left: Image gallery. Phones get the thumbnails as a row under the
+            photo, so the photo keeps the full width; from md up they become the
+            rail beside it, top-left. ── */}
+        <div className="flex flex-col md:flex-row gap-3">
 
-          {/* Thumbnail rail — only when there are multiple images */}
+          {/* Thumbnails — only when there are multiple images */}
           {displayImages.length > 1 && (
-            <div className="flex flex-col gap-2 shrink-0 self-start">
+            <div className="order-2 md:order-1 flex flex-wrap md:flex-col md:flex-nowrap gap-2 shrink-0 self-stretch md:self-start">
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
                   onClick={() => goTo(i)}
-                  className={`relative w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
+                  className={`relative w-16 h-16 lg:w-20 lg:h-20 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
                 >
@@ -175,7 +177,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Main image. Kept at 3:4 rather than stretched to the info panel's
               full height — product shots are portrait and use object-contain, so
               a full-height box would be mostly empty white. */}
-          <div className="flex-1 min-w-0 self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
+          <div className="order-1 md:order-2 flex-1 min-w-0 md:self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
             <div className="relative aspect-[3/4] overflow-hidden bg-white">
               {mainImage ? (
                 <Image
