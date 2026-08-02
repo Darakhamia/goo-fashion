@@ -321,7 +321,19 @@ export default function HomeFullPageScroll() {
 
     // The hero's scroll hint asks for the next section without reaching in here.
     const onNext = () => {
-      if (enabledRef.current && !lockedRef.current) move(1);
+      if (enabledRef.current) {
+        if (!lockedRef.current) move(1);
+        return;
+      }
+      // Phones do the travelling natively: the snap points already sit where
+      // each slide starts, so the browser only has to be pointed at the next
+      // one. "Next" is measured past the stuck nav — from the top of the page
+      // the hero's own top still sits below it, and would match itself.
+      const past = navHeight() + 8;
+      const next = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-home-section]")
+      ).find((el) => el.offsetHeight > 0 && el.getBoundingClientRect().top > past);
+      next?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     window.addEventListener("wheel", onWheel, { passive: false });

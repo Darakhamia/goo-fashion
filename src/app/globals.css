@@ -99,15 +99,39 @@ html {
 }
 
 @media (max-width: 1023px) {
-  /* Below lg the wheel-driven jump is off, so the browser's own snapping does
-     the same job — with native momentum and no gesture handling of our own.
-     `proximity` rather than `mandatory`: a block that outgrows its screen on a
-     small phone stays scrollable, and the footer is never snapped away from. */
+  /* Below lg the wheel-driven jump is off, so the browser's own snapping runs
+     the slides instead — native momentum, no gesture handling of our own.
+     `mandatory` plus `scroll-snap-stop: always` is what makes it read as
+     slides rather than as magnetism: every swipe, however hard it's thrown,
+     travels exactly one screen and eases into it, instead of coasting past two
+     or three and then being yanked back to the nearest one.
+     A block too tall for its screen isn't trapped by this — a snap area larger
+     than the scrollport stays freely scrollable while it covers the viewport. */
   html.home-snap {
-    scroll-snap-type: y proximity;
+    scroll-snap-type: y mandatory;
   }
-  html.home-snap .home-section {
+  html.home-snap [data-home-section] {
     scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* The footer is reference material, not a slide — but under `mandatory` it
+     needs a resting place of its own or it can't be scrolled to at all. It
+     rests against the bottom of the page, which is always reachable however
+     short the footer turns out to be; the margin holds its last row clear of
+     the bottom nav floating over that strip. */
+  html.home-snap footer {
+    scroll-snap-align: end;
+    scroll-margin-bottom: var(--home-bottom-nav-h);
+  }
+
+  /* Snapping moves the page on the reader's behalf, which is exactly what this
+     preference asks us not to do. The sections are still one screen each, so
+     it degrades to ordinary scrolling. */
+  @media (prefers-reduced-motion: reduce) {
+    html.home-snap {
+      scroll-snap-type: none;
+    }
   }
 }
 
