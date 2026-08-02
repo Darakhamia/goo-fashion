@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type RefObject } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Outfit, Product, ProductSwatch } from "@/lib/types";
@@ -17,6 +17,46 @@ const PriceHistoryChart = dynamic(() => import("./PriceHistoryChart"), { ssr: fa
 const ProductReviews = dynamic(() => import("./ProductReviews"), { ssr: false });
 import { track } from "@/lib/analytics/track";
 import { buildStylingNotes } from "@/lib/seo";
+
+/**
+ * Drives a "clamped until you open it" block: whether it is expanded, and
+ * whether there is anything still hidden — so the toggle only appears when it
+ * would actually do something.
+ *
+ * Measures only while collapsed. Once expanded scrollHeight === clientHeight,
+ * and re-checking then would wrongly report that nothing is left to reveal.
+ */
+function useClampToggle(ref: RefObject<HTMLElement | null>, content: string) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    if (expanded) return;
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflows(el.scrollHeight > el.clientHeight + 2);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [ref, expanded, content]);
+
+  return { expanded, setExpanded, overflows };
+}
+
+/** Chevron that flips when its block is open. */
+function ToggleChevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 12 12"
+      fill="none"
+      className={`transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+    >
+      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 interface Props {
   product: Product;
@@ -48,23 +88,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const [activeIdx, setActiveIdx] = useState(0);
   const [imgVisible, setImgVisible] = useState(true);
 
-  // Collapsed description: only the first line stays readable, the rest is
-  // veiled behind a blur until the user opens it with the chevron.
-  const [descExpanded, setDescExpanded] = useState(false);
-  const [descOverflows, setDescOverflows] = useState(false);
+  // Long catalog names run to several lines, so the title clamps to two with an
+  // ellipsis. The description keeps only its first line readable, the rest
+  // veiled behind a blur. Both open with the chevron beside them.
+  const nameRef = useRef<HTMLHeadingElement>(null);
   const descRef = useRef<HTMLParagraphElement>(null);
-
-  // Measure only while collapsed — once open, scrollHeight === clientHeight and
-  // the check would wrongly report that there is nothing left to reveal.
-  useEffect(() => {
-    if (descExpanded) return;
-    const el = descRef.current;
-    if (!el) return;
-    const check = () => setDescOverflows(el.scrollHeight > el.clientHeight + 2);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, [descExpanded, product.description]);
+  const name = useClampToggle(nameRef, product.name);
+  const desc = useClampToggle(descRef, product.description);
 
   useEffect(() => {
     track("product_view", { targetId: product.id });
@@ -191,9 +221,29 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             <p className="text-[10px] tracking-[0.2em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">
               {product.brand}
             </p>
-            <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)] leading-tight">
-              {product.name}
-            </h1>
+            <div className="flex items-start gap-3">
+              <h1
+                ref={nameRef}
+                onClick={() => { if (!name.expanded && name.overflows) name.setExpanded(true); }}
+                className={`flex-1 min-w-0 text-3xl md:text-4xl font-bold text-[var(--foreground)] leading-tight ${
+                  name.expanded ? "" : "line-clamp-2"
+                } ${!name.expanded && name.overflows ? "cursor-pointer" : ""}`}
+              >
+                {product.name}
+              </h1>
+
+              {name.overflows && (
+                <button
+                  type="button"
+                  onClick={() => name.setExpanded((v) => !v)}
+                  aria-expanded={name.expanded}
+                  aria-label={name.expanded ? "Hide full product name" : "Show full product name"}
+                  className="shrink-0 mt-2 w-7 h-7 flex items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors duration-200"
+                >
+                  <ToggleChevron expanded={name.expanded} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Price */}
@@ -211,20 +261,20 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             <div className="mb-8">
               <div className="flex items-start gap-3">
                 <div
-                  className={`relative flex-1 min-w-0 ${!descExpanded && descOverflows ? "cursor-pointer" : ""}`}
-                  onClick={() => { if (!descExpanded && descOverflows) setDescExpanded(true); }}
+                  className={`relative flex-1 min-w-0 ${!desc.expanded && desc.overflows ? "cursor-pointer" : ""}`}
+                  onClick={() => { if (!desc.expanded && desc.overflows) desc.setExpanded(true); }}
                 >
                   <p
                     ref={descRef}
                     className={`text-sm text-[var(--foreground-muted)] leading-[1.6] ${
-                      descExpanded ? "" : "max-h-[2.8rem] overflow-hidden"
+                      desc.expanded ? "" : "max-h-[2.8rem] overflow-hidden"
                     }`}
                   >
                     {product.description}
                   </p>
 
                   {/* Blur veil covering everything past the first line */}
-                  {!descExpanded && descOverflows && (
+                  {!desc.expanded && desc.overflows && (
                     <div
                       aria-hidden
                       className="pointer-events-none absolute inset-x-0 bottom-0 h-[1.4rem] backdrop-blur-[3px] bg-gradient-to-b from-transparent to-[var(--background)]"
@@ -232,23 +282,15 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   )}
                 </div>
 
-                {descOverflows && (
+                {desc.overflows && (
                   <button
                     type="button"
-                    onClick={() => setDescExpanded((v) => !v)}
-                    aria-expanded={descExpanded}
-                    aria-label={descExpanded ? "Hide full description" : "Show full description"}
+                    onClick={() => desc.setExpanded((v) => !v)}
+                    aria-expanded={desc.expanded}
+                    aria-label={desc.expanded ? "Hide full description" : "Show full description"}
                     className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors duration-200"
                   >
-                    <svg
-                      width="11"
-                      height="11"
-                      viewBox="0 0 12 12"
-                      fill="none"
-                      className={`transition-transform duration-300 ${descExpanded ? "rotate-180" : ""}`}
-                    >
-                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <ToggleChevron expanded={desc.expanded} />
                   </button>
                 )}
               </div>
