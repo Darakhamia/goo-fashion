@@ -1,42 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Product } from "@/lib/types";
-import { getRecentlyViewed } from "@/lib/recently-viewed";
+import type { Outfit, Product } from "@/lib/types";
+import { getRecentlyViewed, type ViewKind } from "@/lib/recently-viewed";
 import ProductCard from "./ProductCard";
+import OutfitCard from "@/components/outfit/OutfitCard";
 
 interface Props {
-  /** The product being viewed — it is in the history but not worth showing. */
+  kind: ViewKind;
+  /** The item being viewed — it is in the history but not worth showing. */
   currentId: string;
 }
+
+const ENDPOINT: Record<ViewKind, string> = {
+  product: "/api/products",
+  outfit: "/api/outfits",
+};
 
 /**
  * The items this browser opened before this one. Renders nothing at all until
  * there is something to show, so a first-time visitor sees no empty heading.
  */
-export default function RecentlyViewed({ currentId }: Props) {
-  const [products, setProducts] = useState<Product[]>([]);
+export default function RecentlyViewed({ kind, currentId }: Props) {
+  const [items, setItems] = useState<(Product | Outfit)[]>([]);
 
   useEffect(() => {
-    const ids = getRecentlyViewed().filter((id) => id !== currentId);
+    const ids = getRecentlyViewed(kind).filter((id) => id !== currentId);
     const controller = new AbortController();
     let cancelled = false;
 
-    // Ids can outlive the products they point at — something delisted stays in
-    // this browser's history forever — so the response drives the row, not the
+    // Ids can outlive what they point at — something delisted stays in this
+    // browser's history forever — so the response drives the row, not the
     // stored list. An empty history resolves to an empty row rather than
-    // returning early, which keeps every setProducts off the synchronous path
+    // returning early, which keeps every setItems off the synchronous path
     // through the effect.
-    const load: Promise<Product[]> =
+    const load: Promise<(Product | Outfit)[]> =
       ids.length === 0
         ? Promise.resolve([])
-        : fetch(`/api/products?ids=${ids.map(encodeURIComponent).join(",")}`, {
+        : fetch(`${ENDPOINT[kind]}?ids=${ids.map(encodeURIComponent).join(",")}`, {
             signal: controller.signal,
           }).then((res) => (res.ok ? res.json() : []));
 
     load
       .then((data) => {
-        if (!cancelled) setProducts(Array.isArray(data) ? data : []);
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
       })
       .catch(() => {
         /* aborted or offline — leave the row out */
@@ -46,9 +53,9 @@ export default function RecentlyViewed({ currentId }: Props) {
       cancelled = true;
       controller.abort();
     };
-  }, [currentId]);
+  }, [kind, currentId]);
 
-  if (products.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <section className="mt-20 md:mt-28 mb-4">
@@ -61,12 +68,16 @@ export default function RecentlyViewed({ currentId }: Props) {
         </h2>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.slice(0, 4).map((product) => (
+        {items.slice(0, 4).map((item) => (
           <div
-            key={product.id}
+            key={item.id}
             className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
           >
-            <ProductCard product={product} />
+            {kind === "product" ? (
+              <ProductCard product={item as Product} />
+            ) : (
+              <OutfitCard outfit={item as Outfit} />
+            )}
           </div>
         ))}
       </div>
