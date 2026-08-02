@@ -16,7 +16,7 @@ const navLinks = [
   { href: "/browse", label: "Browse" },
   { href: "/builder", label: "Builder" },
   { href: "/blog", label: "Journal" },
-  { href: "/plans", label: "Plans" },
+  { href: "/saved", label: "My Likes" },
 ];
 
 export default function Navigation() {

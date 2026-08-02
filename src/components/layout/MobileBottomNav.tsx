@@ -38,6 +38,22 @@ export default function MobileBottomNav() {
       ),
     },
     {
+      href: "/blog",
+      label: "Journal",
+      icon: (active: boolean) => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5v-14Z"
+            stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"
+            fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.14 : 0}
+          />
+          <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5Z"
+            stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+          <path d="M9 7.5h6M9 10.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
       href: "/saved",
       label: "My Likes",
       icon: (active: boolean) => (
@@ -87,7 +103,7 @@ export default function MobileBottomNav() {
               {/* Active icon sits in the same subtle highlight (fg overlay +
                   border) the desktop header's icon buttons use; it slides
                   between tabs with the spring the Browse toggle uses. */}
-              <span className="relative flex items-center justify-center w-11 h-7 transition-transform duration-200 active:scale-90">
+              <span className="relative flex items-center justify-center w-10 h-7 transition-transform duration-200 active:scale-90">
                 {active && (
                   <motion.span
                     layoutId="bottomNavHighlight"
@@ -111,7 +127,7 @@ export default function MobileBottomNav() {
                   </span>
                 )}
               </span>
-              <span className={`font-mono text-[10px] tracking-[0.1em] uppercase leading-none transition-colors duration-200 ${
+              <span className={`font-mono text-[9px] tracking-[0.06em] uppercase leading-none transition-colors duration-200 ${
                 active
                   ? "text-[var(--foreground)]"
                   : "text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
