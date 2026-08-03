@@ -13,9 +13,9 @@ export function HeroSection() {
     // what's left rather than behind it.
     <section
       data-home-section
-      // scroll-mt: the hero sits below the nav's own place in the flow, so its
-      // snap area has to reach back up over it for the first slide to rest at
-      // the very top of the page instead of 66px into it.
+      // scroll-mt: the hero sits below the nav's own place in the flow, so
+      // anything scrolling to it has to reach back up over the nav for it to
+      // rest at the very top of the page instead of 66px into it.
       className="bg-[var(--background)] min-h-[calc(100svh-var(--home-nav-h))] scroll-mt-[var(--home-nav-h)] pb-[var(--home-bottom-nav-h)] md:pb-0 flex flex-col items-center justify-center relative overflow-hidden"
     >
       {/* Background — CSS blobs only, no SVG filter */}
