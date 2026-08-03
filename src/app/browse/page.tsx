@@ -1361,11 +1361,11 @@ export default function BrowsePage() {
                   <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
                     Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of {count} {view === "outfits" ? "outfits" : "pieces"}
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center justify-center gap-1 max-w-full">
                     <button
                       onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === 1}
-                      className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
                       <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M6 1L1 5.5L6 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
@@ -1381,13 +1381,13 @@ export default function BrowsePage() {
                         p = i === 0 ? 1 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages : page + i - 3;
                       }
                       if (p === -1) {
-                        return <span key={`ellipsis-${i}`} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
+                        return <span key={`ellipsis-${i}`} className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[9px] text-[var(--foreground-subtle)]">…</span>;
                       }
                       return (
                         <button
                           key={p}
                           onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                          className={`w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
+                          className={`w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
                             page === p
                               ? "bg-[var(--foreground)] text-[var(--background)] rounded-lg"
                               : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -1400,7 +1400,7 @@ export default function BrowsePage() {
                     <button
                       onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === totalPages}
-                      className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
+                      className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
                       <svg width="7" height="11" viewBox="0 0 7 11" fill="none"><path d="M1 1L6 5.5L1 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </button>
