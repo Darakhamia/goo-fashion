@@ -96,6 +96,11 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* Rails inside bleed to the screen edge with a negative margin, and during
+     their auto-advance they momentarily reach past it. Contain that here so a
+     transient overflow never reaches the document and flashes a scrollbar.
+     `clip` keeps this from becoming a scroll container. */
+  overflow-x: clip;
 }
 
 /* Phones also have the bottom nav floating over the last strip of the screen.

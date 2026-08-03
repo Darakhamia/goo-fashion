@@ -1064,7 +1064,7 @@ export default function BrowsePage() {
                     <button
                       key={style}
                       onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
-                      className={`shrink-0 px-4 py-2 rounded-full text-[11px] tracking-[0.12em] uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
+                      className={`shrink-0 px-3 py-1.5 text-[10px] tracking-[0.08em] sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.12em] rounded-full uppercase font-bold border transition-all duration-200 whitespace-nowrap ${
                         selectedStyle === style
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
