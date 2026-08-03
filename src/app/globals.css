@@ -68,6 +68,14 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--background);
+  /* A single stray element must never make the whole page wider than the
+     screen and hand a phone a horizontal scrollbar. `clip` rather than
+     `hidden`: `hidden` would turn the document into a scroll container, which
+     breaks the sticky header and the homepage's frame-by-frame scrolling.
+     `clip` also leaves overflow-y `visible`, so vertical scrolling stays
+     native. Deliberate horizontal rails set their own overflow and are
+     unaffected. */
+  overflow-x: clip;
 }
 
 /* ── Homepage: one screen per section ─────────────────────────────────────────
