@@ -167,10 +167,12 @@ export default async function BlogPage() {
             </p>
           </div>
           <div className="flex gap-2 w-full md:w-auto">
+            {/* min-w-0: an input's min-width defaults to its intrinsic size, so
+                flex-1 alone won't let it shrink and the row pushes the page wide. */}
             <input
               type="email"
               placeholder="your@email.com"
-              className="flex-1 md:w-64 px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors duration-200"
+              className="flex-1 min-w-0 md:w-64 px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--foreground-muted)] transition-colors duration-200"
             />
             <button className="px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity duration-200 shrink-0">
               Subscribe
