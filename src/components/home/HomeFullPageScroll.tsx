@@ -14,13 +14,6 @@ const WHEEL_IDLE_MS = 150;
 const WHEEL_MIN_DELTA = 4;
 const TOUCH_MIN_DELTA = 50;
 
-/**
- * How still the page has to be before a scroll counts as finished and its
- * resting position becomes the start of the next gesture. Long enough to sit
- * out the tail of a fling, short enough not to swallow a quick second swipe.
- */
-const SETTLE_MS = 160;
-
 const easeInOutCubic = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
@@ -38,17 +31,6 @@ function visibleSections() {
   return Array.from(
     document.querySelectorAll<HTMLElement>("[data-home-section]")
   ).filter((el) => el.offsetHeight > 0);
-}
-
-/**
- * The scroll position the last slide comes to rest at — the point past which
- * the page belongs to the footer rather than to the sequence.
- */
-function lastSlideTop() {
-  const sections = visibleSections();
-  const last = sections[sections.length - 1];
-  if (!last) return Infinity;
-  return Math.round(last.getBoundingClientRect().top + window.scrollY);
 }
 
 /**
@@ -94,8 +76,11 @@ function isTypingTarget(target: EventTarget | null) {
  * section the page scrolls the ordinary way.
  *
  * Renders nothing — it only installs the scroll behaviour, and only on the
- * homepage from {@link ENABLE_FROM} up. Narrow screens and "reduce motion" keep
- * the browser's own scrolling.
+ * homepage from {@link ENABLE_FROM} up. Below that width — phones and tablets —
+ * and under "reduce motion", scrolling is left entirely to the browser: no
+ * gesture handling and no snapping, just a stack of full-screen sections. The
+ * one thing that still runs at every width is keeping `--home-nav-h` in step
+ * with the real header height, which is what sizes those sections.
  */
 export default function HomeFullPageScroll() {
   /** Absolute scroll positions, in document order. */
@@ -261,19 +246,6 @@ export default function HomeFullPageScroll() {
       enabledRef.current = on;
       // The global `scroll-behavior: smooth` would fight the animation above.
       document.documentElement.classList.toggle("home-fullpage", on);
-      // Where the wheel-driven jump is off, CSS scroll-snap keeps one block per
-      // screen instead — see `html.home-snap` in globals.css.
-      document.documentElement.classList.toggle("home-snap", !on);
-      // Desktop drives the sequence itself, so the footer exemption below has
-      // nothing to exempt — leaving it set would outlive the width that set it.
-      // On phones it has to be decided in the same breath as snapping is turned
-      // on: a reload restores its scroll position before any gesture happens,
-      // and if that position is already in the footer, a snapping that arrives
-      // even a frame earlier drags the reader back up to the last slide.
-      document.documentElement.classList.toggle(
-        "home-snap-free",
-        !on && window.scrollY > lastSlideTop() + 2
-      );
       syncNav();
       if (on) measure();
     };
@@ -352,53 +324,17 @@ export default function HomeFullPageScroll() {
       move(delta > 0 ? 1 : -1);
     };
 
-    // ── The footer, on phones ────────────────────────────────────────────────
-    // Snapping runs the slides, but the footer isn't one of them: past the last
-    // slide the page scrolls the ordinary way, and drifts back up the same way,
-    // exactly as it does on desktop. Since `scroll-snap-type` belongs to the
-    // whole scroller, that region is freed by dropping snapping for the run of
-    // the gesture instead.
-    //
-    // The test is the desktop one, and for the same reason it is made against
-    // where the page was *resting* when the gesture began rather than against
-    // where it is right now: a fling that starts three slides up merely passes
-    // the last slide on its way to it, and reading the live position would free
-    // that fling to sail on into the footer.
-    let restY = window.scrollY;
-    let settleTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const setFree = (free: boolean) =>
-      document.documentElement.classList.toggle("home-snap-free", free);
-
-    const onScroll = () => {
-      if (enabledRef.current) return;
-      const last = lastSlideTop();
-      const y = window.scrollY;
-
-      // Down: free once the last slide is where we started from. Up: free only
-      // from below it — leaving the last slide upwards is still a slide move.
-      if (y > restY ? restY >= last - 2 : restY > last + 2) setFree(true);
-
-      clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => {
-        restY = window.scrollY;
-        // Back among the slides, snapping resumes. Doing it only once the page
-        // is still keeps the property change from yanking a gesture still in
-        // flight, and at a resting slide the change moves nothing at all.
-        setFree(restY > lastSlideTop() + 2);
-      }, SETTLE_MS);
-    };
-
     // The hero's scroll hint asks for the next section without reaching in here.
     const onNext = () => {
       if (enabledRef.current) {
         if (!lockedRef.current) move(1);
         return;
       }
-      // Phones do the travelling natively: the snap points already sit where
-      // each slide starts, so the browser only has to be pointed at the next
-      // one. "Next" is measured past the stuck nav — from the top of the page
-      // the hero's own top still sits below it, and would match itself.
+      // Where the sequence is off, this is the one deliberate jump left: the
+      // reader asked for it by tapping, so the browser is pointed at the next
+      // section and takes it from there. "Next" is measured past the stuck nav —
+      // from the top of the page the hero's own top still sits below it, and
+      // would match itself.
       const past = navHeight() + 8;
       const next = Array.from(
         document.querySelectorAll<HTMLElement>("[data-home-section]")
@@ -406,7 +342,6 @@ export default function HomeFullPageScroll() {
       next?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -419,7 +354,6 @@ export default function HomeFullPageScroll() {
       observer.disconnect();
       clearTimeout(settle);
       window.removeEventListener("load", remeasure);
-      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("touchstart", onTouchStart);
@@ -427,10 +361,7 @@ export default function HomeFullPageScroll() {
       window.removeEventListener("home-fullpage:next", onNext);
       cancelAnimationFrame(rafRef.current);
       clearTimeout(unlockRef.current);
-      clearTimeout(settleTimer);
       document.documentElement.classList.remove("home-fullpage");
-      document.documentElement.classList.remove("home-snap");
-      document.documentElement.classList.remove("home-snap-free");
       document.documentElement.style.removeProperty("--home-nav-h");
     };
   }, [animateTo, goToStop, isFooterGesture, measure, move]);

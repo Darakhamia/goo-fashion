@@ -111,43 +111,10 @@ html {
   }
 }
 
-@media (max-width: 1023px) {
-  /* Below lg the wheel-driven jump is off, so the browser's own snapping runs
-     the slides instead — native momentum, no gesture handling of our own.
-     `mandatory` plus `scroll-snap-stop: always` is what makes it read as
-     slides rather than as magnetism: every swipe, however hard it's thrown,
-     travels exactly one screen and eases into it, instead of coasting past two
-     or three and then being yanked back to the nearest one.
-     A block too tall for its screen isn't trapped by this — a snap area larger
-     than the scrollport stays freely scrollable while it covers the viewport. */
-  html.home-snap {
-    scroll-snap-type: y mandatory;
-  }
-  html.home-snap [data-home-section] {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-  }
-
-  /* The footer is reference material, not a slide. Snapping it into place made
-     it a sixth stop you jumped to and were held at; past the last slide the
-     page should just scroll, at whatever pace the reader likes, and let them
-     drift back up again — which is the deal the desktop sequence gives it.
-     Snapping is a property of the whole scroller, so it can't be dropped for
-     one region in CSS alone: HomeFullPageScroll adds this class for the run of
-     any gesture that starts at or below the last slide. */
-  html.home-snap.home-snap-free {
-    scroll-snap-type: none;
-  }
-
-  /* Snapping moves the page on the reader's behalf, which is exactly what this
-     preference asks us not to do. The sections are still one screen each, so
-     it degrades to ordinary scrolling. */
-  @media (prefers-reduced-motion: reduce) {
-    html.home-snap {
-      scroll-snap-type: none;
-    }
-  }
-}
+/* Below lg there is deliberately no snapping of any kind: touch scrolling stays
+   entirely the reader's, so a swipe travels as far as it was thrown and stops
+   where it was let go, instead of being carried on to the next section. The
+   sections are still one screen each — they just scroll past like any page. */
 
 /* The section-to-section move is animated frame by frame; the global smooth
    behaviour would fight it. */

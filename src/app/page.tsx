@@ -76,7 +76,8 @@ export default async function HomePage() {
       {/* Structured data: Organization + WebSite (with sitelinks SearchAction) */}
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
-      {/* One wheel notch / swipe / arrow key moves to the next section below. */}
+      {/* On wide screens, one wheel notch / swipe / arrow key moves to the next
+          section below; phones and tablets scroll normally. */}
       <HomeFullPageScroll />
 
       {/* ── HERO ── */}
