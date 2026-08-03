@@ -209,6 +209,9 @@ export default function BrowsePage() {
   const sortRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
   const [page, setPage] = useState(1);
+  // Pages appended below the current one via "Show more". Reset whenever the
+  // page or the filters change, so it never silently carries over.
+  const [extraPages, setExtraPages] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [likedOnly, setLikedOnly] = useState(false);
   const { likedProducts } = useLikes();
@@ -461,16 +464,20 @@ export default function BrowsePage() {
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
   // Reset to page 1 whenever filters/sort/view change
-  useEffect(() => { setPage(1); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle]);
+  useEffect(() => { setPage(1); setExtraPages(0); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle]);
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
+  // One index past the last item on screen — the current page plus anything
+  // "Show more" has appended.
+  const shownEnd = Math.min((page + extraPages) * PAGE_SIZE, count);
+  const hasMore = shownEnd < count;
   const pagedItems = useMemo(
-    () => displayItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [displayItems, page, PAGE_SIZE]
+    () => displayItems.slice((page - 1) * PAGE_SIZE, (page + extraPages) * PAGE_SIZE),
+    [displayItems, page, extraPages, PAGE_SIZE]
   );
   const pagedOutfits = useMemo(
-    () => filteredOutfits.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filteredOutfits, page, PAGE_SIZE]
+    () => filteredOutfits.slice((page - 1) * PAGE_SIZE, (page + extraPages) * PAGE_SIZE),
+    [filteredOutfits, page, extraPages, PAGE_SIZE]
   );
 
   /* Browse context passed to the AI Stylist — mirrors active filter state */
@@ -1355,15 +1362,28 @@ export default function BrowsePage() {
                 <EmptyState onClear={clearAll} noun="pieces" />
               )}
 
+              {/* ── Show more — appends the next page below the current one, so the
+                  catalog can be read straight through without paging ── */}
+              {hasMore && (
+                <div className="flex justify-center pt-10">
+                  <button
+                    onClick={() => setExtraPages((n) => n + 1)}
+                    className="rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] px-6 py-3 text-xs tracking-[0.14em] uppercase font-medium transition-colors duration-200"
+                  >
+                    Show more
+                  </button>
+                </div>
+              )}
+
               {/* ── Pagination ── */}
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-6 border-t border-[var(--border)] mt-6">
                   <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                    Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, count)} of {count} {view === "outfits" ? "outfits" : "pieces"}
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{shownEnd} of {count} {view === "outfits" ? "outfits" : "pieces"}
                   </span>
                   <div className="flex flex-wrap items-center justify-center gap-1 max-w-full">
                     <button
-                      onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      onClick={() => { setPage((p) => Math.max(1, p - 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === 1}
                       className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
@@ -1386,7 +1406,7 @@ export default function BrowsePage() {
                       return (
                         <button
                           key={p}
-                          onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          onClick={() => { setPage(p); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                           className={`w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[10px] tracking-[0.08em] transition-colors duration-150 ${
                             page === p
                               ? "bg-[var(--foreground)] text-[var(--background)] rounded-lg"
@@ -1398,7 +1418,7 @@ export default function BrowsePage() {
                       );
                     })}
                     <button
-                      onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setExtraPages(0); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                       disabled={page === totalPages}
                       className="w-9 h-9 md:w-8 md:h-8 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-30 transition-colors"
                     >
