@@ -1057,8 +1057,7 @@ export default function BrowsePage() {
 
                 {/* Divider + style chips — centered with Pieces/Outfits pill, scrollable */}
                 <div
-                  className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto self-end pb-[1px]"
-                  style={{ scrollbarWidth: "none" }}
+                  className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto self-end pb-[1px] no-scrollbar"
                 >
                   <div className="hidden sm:block w-px h-5 shrink-0 bg-[var(--border)]" />
                   {STYLE_FILTERS.map((style) => (

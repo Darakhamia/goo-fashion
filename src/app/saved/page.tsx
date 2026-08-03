@@ -1397,12 +1397,12 @@ export default function SavedPage() {
         </div>
 
         {/* Toggle */}
-        <div className="flex gap-0 mb-10 w-fit bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
+        <div className="flex gap-0 mb-10 w-fit max-w-full overflow-x-auto no-scrollbar bg-[var(--surface)] rounded-full p-1 border border-[var(--border)]">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setView(t.id)}
-              className="relative px-5 py-2 text-xs tracking-[0.12em] uppercase font-medium rounded-full z-10 transition-colors duration-200"
+              className="relative shrink-0 px-5 py-2 text-xs tracking-[0.12em] uppercase font-medium rounded-full z-10 transition-colors duration-200"
               style={{ color: view === t.id ? "var(--background)" : "var(--foreground-muted)" }}
             >
               {view === t.id && (
