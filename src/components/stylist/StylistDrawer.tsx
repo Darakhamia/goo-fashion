@@ -689,7 +689,7 @@ export function StylistDrawer({
                 {/* Suggestion strip */}
                 {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
                   <div className="w-full flex flex-col gap-2">
-                    <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                       {msg.suggestions.map(product => {
                         const isSelected = Object.values(selection ?? {}).some(p => p?.id === product.id);
                         const cardInner = (
@@ -780,8 +780,8 @@ export function StylistDrawer({
           {/* Quick-reply chips */}
           <div
             ref={chipsRef}
-            className="px-4 py-3 shrink-0 flex gap-2 overflow-x-auto select-none"
-            style={{ scrollbarWidth: "none", cursor: "grab" }}
+            className="px-4 py-3 shrink-0 flex gap-2 overflow-x-auto select-none no-scrollbar"
+            style={{ cursor: "grab" }}
             onMouseDown={onChipsMouseDown}
             onMouseMove={onChipsMouseMove}
             onMouseUp={onChipsMouseUp}

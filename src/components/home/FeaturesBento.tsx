@@ -278,7 +278,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
           </button>
 
           {/* Chips — nowrap, guaranteed single row; each opens the AI Stylist */}
-          <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {STYLIST_CHIPS.map((chip) => (
               <button
                 key={chip.label}

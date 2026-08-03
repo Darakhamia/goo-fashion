@@ -1309,7 +1309,7 @@ export default function BuilderPage() {
               </button>
 
               {/* Category chips — scrollable, no scrollbar */}
-              <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {/* All chip */}
                 <button
                   onClick={() => { setCatalogCategory(null); setLikedOnly(false); }}
@@ -2141,7 +2141,7 @@ export default function BuilderPage() {
           <div className="shrink-0 flex flex-col bg-[var(--background)] pb-3">
 
             {/* Filters + category chips in one scrollable row */}
-            <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setMobileFiltersOpen(true)}
                 className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full border text-[11px] font-medium transition-all active:scale-95 mr-1 ${
@@ -2190,7 +2190,7 @@ export default function BuilderPage() {
 
             {/* Horizontal product scroll — fixed height that fits a card
                 (image + brand/name/price), keeping the catalog compact. */}
-            <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none", height: 188 }}>
+            <div ref={mobileScrollRef} className="shrink-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ height: 188 }}>
               {expandedCatalogItems.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] opacity-50">
@@ -2826,7 +2826,7 @@ export default function BuilderPage() {
 
               {/* Variant swatches (separate product entries per color) */}
               {useVariants && (
-                <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
                   {variantSwatches.map(swatch => {
                     const isActive = activeVariantId === swatch.id;
                     return (
@@ -2869,7 +2869,7 @@ export default function BuilderPage() {
 
               {/* colorImages swatches (multiple colorways within same product) */}
               {useColorImages && (
-                <div className={`flex gap-3 overflow-x-auto pb-1 ${useVariants ? "mt-3 pt-3 border-t border-[var(--border)]" : ""}`} style={{ scrollbarWidth: "none" }}>
+                <div className={`flex gap-3 overflow-x-auto pb-1 no-scrollbar ${useVariants ? "mt-3 pt-3 border-t border-[var(--border)]" : ""}`}>
                   {colorImageKeys.map(color => {
                     const img = slotProduct.colorImages![color]?.[0];
                     const isActive = activeColorKey === color;
@@ -3148,7 +3148,7 @@ export default function BuilderPage() {
 
             {/* Outfit thumbnails */}
             {Object.values(selection).filter(Boolean).length > 0 && (
-              <div className="flex gap-2 mb-5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
                 {(Object.entries(selection) as [SlotId, Product][])
                   .filter(([, p]) => p != null)
                   .map(([slotId, product]) => {
