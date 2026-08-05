@@ -83,6 +83,7 @@ export type DbProduct = {
   name: string;
   brand: string;
   category: string;
+  subcategory?: string | null;
   description: string;
   image_url: string;
   images: string[];

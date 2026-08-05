@@ -94,17 +94,36 @@ export function groupForCategory(category: string): CategoryGroup | undefined {
   return CATEGORY_GROUPS.find((g) => g.items.some((i) => i.value === category));
 }
 
-/**
- * The subcategory label for a stored value, but only when it is unambiguous.
- *
- * `blazers` is only ever "Blazers", so it resolves. `footwear` is claimed by
- * Sneakers, Sandals and Boots alike, so the product itself cannot say which —
- * distinguishing those needs a subcategory field on the product, which the
- * schema does not have.
- */
-export function subcategoryForCategory(category: string): string | undefined {
-  const labels = CATEGORY_GROUPS.flatMap((g) => g.items)
+/** Every subcategory label a stored category value can carry. */
+export function subcategoriesForCategory(category: string): string[] {
+  return CATEGORY_GROUPS.flatMap((g) => g.items)
     .filter((i) => i.value === category)
     .map((i) => i.label);
+}
+
+/**
+ * The subcategory label implied by a stored value, when only one claims it.
+ *
+ * `blazers` is only ever "Blazers", so it resolves. `footwear` is claimed by
+ * Sneakers, Sandals and Boots alike, so the category alone cannot say which —
+ * that is what a product's own `subcategory` records. This stays as the
+ * fallback for rows saved before the field existed.
+ */
+export function subcategoryForCategory(category: string): string | undefined {
+  const labels = subcategoriesForCategory(category);
   return labels.length === 1 ? labels[0] : undefined;
+}
+
+/**
+ * The subcategory to show for a product: its own if set, otherwise the one its
+ * category implies. Returns undefined when neither can name it.
+ */
+export function resolveSubcategory(
+  category: string,
+  subcategory?: string,
+): string | undefined {
+  if (subcategory && subcategoriesForCategory(category).includes(subcategory)) {
+    return subcategory;
+  }
+  return subcategoryForCategory(category);
 }

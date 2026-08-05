@@ -22,7 +22,7 @@ import { recordView } from "@/lib/recently-viewed";
 import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
-import { groupForCategory, subcategoryForCategory } from "@/lib/categories";
+import { groupForCategory, resolveSubcategory } from "@/lib/categories";
 
 interface Props {
   product: Product;
@@ -92,7 +92,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   // optional ones are dropped when the product doesn't carry them.
   const productCrumbs: Crumb[] = useMemo(() => {
     const group = groupForCategory(product.category);
-    const subcategory = subcategoryForCategory(product.category);
+    const subcategory = resolveSubcategory(product.category, product.subcategory);
     const colour = product.colors?.[0];
     const q = (params: Record<string, string>) =>
       `/browse?${new URLSearchParams({ view: "pieces", ...params })}`;

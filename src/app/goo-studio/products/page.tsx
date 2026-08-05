@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
+import { resolveSubcategory, subcategoriesForCategory, subcategoryForCategory } from "@/lib/categories";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
@@ -106,6 +107,8 @@ interface ProductFormState {
   name: string;
   brand: string;
   category: Category;
+  /** Filter subcategory, e.g. "Sneakers" under footwear. "" = not set. */
+  subcategory: string;
   gender: Gender | "";
   description: string;
   priceMin: string;
@@ -129,6 +132,7 @@ const defaultForm: ProductFormState = {
   name: "",
   brand: "",
   category: "outerwear",
+  subcategory: "",
   gender: "",
   description: "",
   priceMin: "",
@@ -812,6 +816,7 @@ export default function AdminProductsPage() {
       name: product.name,
       brand: product.brand,
       category: product.category,
+      subcategory: resolveSubcategory(product.category, product.subcategory) ?? "",
       gender: (product.gender ?? "") as Gender | "",
       description: product.description ?? "",
       priceMin: String(product.priceMin),
@@ -846,6 +851,7 @@ export default function AdminProductsPage() {
       name: `${product.name} (Copy)`,
       brand: product.brand,
       category: product.category,
+      subcategory: resolveSubcategory(product.category, product.subcategory) ?? "",
       gender: (product.gender ?? "") as Gender | "",
       description: product.description ?? "",
       priceMin: String(product.priceMin),
@@ -895,6 +901,8 @@ export default function AdminProductsPage() {
       name: form.name.trim(),
       brand: form.brand as Product["brand"],
       category: form.category,
+      // Always sent, so clearing it in the form clears it on the row too.
+      subcategory: form.subcategory,
       gender: form.gender ? (form.gender as Gender) : undefined,
       description: form.description.trim(),
       priceMin: parseFloat(form.priceMin) || 0,
@@ -1055,6 +1063,9 @@ export default function AdminProductsPage() {
         name: p.name ?? "",
         brand: (p.brand as Product["brand"]) ?? "Zara" as Product["brand"],
         category: (p.category as Category) ?? "tops",
+        // Validated against the category, so a stray label in pasted JSON
+        // doesn't produce a subcategory the filters can never match.
+        subcategory: resolveSubcategory((p.category as Category) ?? "tops", p.subcategory),
         description: p.description ?? "",
         imageUrl: p.imageUrl ?? "",
         images: p.images ?? [],
@@ -1753,7 +1764,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Category ── */}
                   <div>
-                    <SecHead id="category" label="Category" hint={`— ${CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}`} />
+                    <SecHead id="category" label="Category" hint={`— ${CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}${form.subcategory ? ` › ${form.subcategory}` : ""}`} />
                     {!collapsed.has("category") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
@@ -1764,12 +1775,22 @@ export default function AdminProductsPage() {
                           const groupNames = Object.keys(groups);
                           const activeGroup = CATEGORY_CONFIG.find((c) => c.value === form.category)?.group ?? groupNames[0];
                           const subcats = groups[activeGroup] ?? [];
+                          // Changing the category invalidates the subcategory, so
+                          // re-derive it: pre-select the only option when there is
+                          // one, and otherwise leave it for the editor to pick.
+                          const pickCategory = (value: Category) =>
+                            setForm((f) => ({
+                              ...f,
+                              category: value,
+                              subcategory: subcategoryForCategory(value) ?? "",
+                            }));
+                          const subcategoryOptions = subcategoriesForCategory(form.category);
                           return (
                             <>
                               <div className="grid grid-cols-4 gap-1">
                                 {groupNames.map((g) => (
                                   <button key={g} type="button"
-                                    onClick={() => { const first = groups[g]?.[0]; if (first) setForm((f) => ({ ...f, category: first.value })); }}
+                                    onClick={() => { const first = groups[g]?.[0]; if (first) pickCategory(first.value); }}
                                     className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup === g ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                   >{g}</button>
                                 ))}
@@ -1777,11 +1798,35 @@ export default function AdminProductsPage() {
                               <div className="flex flex-wrap gap-1.5">
                                 {subcats.map((c) => (
                                   <button key={c.value} type="button"
-                                    onClick={() => setForm((f) => ({ ...f, category: c.value }))}
+                                    onClick={() => pickCategory(c.value)}
                                     className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.category === c.value ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                   >{c.label}</button>
                                 ))}
                               </div>
+
+                              {/* The catalog's own filter subcategories. Only the
+                                  categories that carry more than one need a choice —
+                                  the rest are already decided by the category. */}
+                              {subcategoryOptions.length > 1 && (
+                                <div className="mt-1 flex flex-col gap-1.5">
+                                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                                    Subcategory <span className="text-[var(--foreground-subtle)] opacity-70">— shown in filters &amp; breadcrumbs</span>
+                                  </p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {subcategoryOptions.map((label) => (
+                                      <button key={label} type="button"
+                                        onClick={() => setForm((f) => ({ ...f, subcategory: f.subcategory === label ? "" : label }))}
+                                        className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.subcategory === label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      >{label}</button>
+                                    ))}
+                                  </div>
+                                  {!form.subcategory && (
+                                    <p className="text-[9px] text-[var(--foreground-subtle)]">
+                                      Not set — this piece shows under every {CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category} filter.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </>
                           );
                         })()}
