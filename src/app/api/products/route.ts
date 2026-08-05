@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getAllProducts } from "@/lib/data/db";
-import { productToDb, dbToProduct } from "@/lib/data/db";
+import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
@@ -53,12 +53,16 @@ export async function POST(req: Request) {
   }
   const body = await req.json();
   const row = productToDb(body);
-  const { data, error } = await supabase
-    .from("products")
-    .insert(row)
-    .select()
-    .single();
+  const { data, error, dropped } = await writeProductRow<DbProduct>(row, (payload) =>
+    supabase!.from("products").insert(payload).select().single(),
+  );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   revalidatePath("/");
-  return NextResponse.json(dbToProduct(data as DbProduct), { status: 201 });
+  return NextResponse.json(
+    {
+      ...dbToProduct(data as DbProduct),
+      ...(dropped.length && { warning: missingColumnWarning(dropped) }),
+    },
+    { status: 201 },
+  );
 }

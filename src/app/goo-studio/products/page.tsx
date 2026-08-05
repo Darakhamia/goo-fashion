@@ -966,7 +966,10 @@ export default function AdminProductsPage() {
       } else {
         setProducts((prev) => [saved, ...prev]);
       }
-      showToast(editingProduct ? "Product updated." : "Product added.");
+      // The API drops columns the database does not have rather than failing
+      // the save outright — say so, so a missing migration is never silent.
+      if (saved.warning) showToast(saved.warning, "err");
+      else showToast(editingProduct ? "Product updated." : "Product added.");
 
       // ── Link color variants if requested ─────────────────────────────────
       if (savedId && form.linkedProductIds.length > 0) {

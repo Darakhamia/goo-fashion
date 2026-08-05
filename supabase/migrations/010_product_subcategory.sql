@@ -32,3 +32,8 @@ update products set subcategory = 'Skirts'     where category = 'skirts'     and
 update products set subcategory = 'Dresses'    where category = 'dresses'    and subcategory is null;
 update products set subcategory = 'Jumpsuits'  where category = 'jumpsuits'  and subcategory is null;
 update products set subcategory = 'Bags'       where category = 'bags'       and subcategory is null;
+
+-- PostgREST answers writes from a cached schema and reports an unknown column
+-- as "Could not find the 'subcategory' column of 'products' in the schema
+-- cache". It normally reloads on DDL; this makes it immediate.
+notify pgrst, 'reload schema';

@@ -120,6 +120,65 @@ export function productToDb(p: Partial<Product>) {
   return { ...base, ...extras };
 }
 
+/**
+ * Columns that arrived with a migration and may not exist yet on a database
+ * the code has been deployed ahead of.
+ */
+const OPTIONAL_COLUMNS = [
+  "subcategory",
+  "color_group_ids",
+  "crop_data",
+  "color_images",
+  "variant_group_id",
+  "color_hex",
+  "is_group_primary",
+];
+
+/** PostgREST's code for "the payload names a column I don't know about". */
+const UNKNOWN_COLUMN = "PGRST204";
+
+interface WriteError {
+  code?: string;
+  message: string;
+}
+
+/**
+ * Runs a product write, dropping optional columns the database does not have
+ * and retrying rather than failing the whole save.
+ *
+ * Without this, deploying before running a migration takes down the entire
+ * product editor — every save carries the new column, so nothing can be saved
+ * at all, not just the field the migration added. The dropped names come back
+ * so the caller can say what did not persist instead of silently losing it.
+ */
+export async function writeProductRow<T>(
+  row: Record<string, unknown>,
+  // Supabase query builders are thenable rather than real Promises.
+  write: (row: Record<string, unknown>) => PromiseLike<{ data: T | null; error: WriteError | null }>,
+): Promise<{ data: T | null; error: WriteError | null; dropped: string[] }> {
+  const payload = { ...row };
+  const dropped: string[] = [];
+
+  for (;;) {
+    const { data, error } = await write(payload);
+    if (!error) return { data, error: null, dropped };
+
+    const missing =
+      error.code === UNKNOWN_COLUMN
+        ? OPTIONAL_COLUMNS.find((c) => c in payload && error.message.includes(`'${c}'`))
+        : undefined;
+    if (!missing) return { data, error, dropped };
+
+    delete payload[missing];
+    dropped.push(missing);
+  }
+}
+
+/** Names the columns a save could not write, and why. */
+export function missingColumnWarning(dropped: string[]): string {
+  return `Saved, but ${dropped.join(", ")} ${dropped.length > 1 ? "were" : "was"} not stored — the database is missing ${dropped.length > 1 ? "those columns" : "that column"}. Run the pending migration in supabase/migrations.`;
+}
+
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 1,  name: "White",      hexCode: "#ffffff",     sortOrder: 1 },
   { id: 2,  name: "Multicolor", hexCode: "#multicolor", sortOrder: 2 },
