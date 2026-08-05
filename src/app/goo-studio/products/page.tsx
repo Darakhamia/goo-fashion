@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
-import { resolveSubcategory, subcategoriesForCategory, subcategoryForCategory } from "@/lib/categories";
+import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE, groupForCategory, resolveSubcategory } from "@/lib/categories";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
@@ -33,38 +33,39 @@ const SUGGESTED_BRANDS = [
   "Toteme", "Valentino", "Zara",
 ];
 
-const CATEGORY_CONFIG: {
-  value: Category;
-  label: string;
-  group: string;
-  sizes: string[];
-  sizeType: "letter" | "number" | "eu" | "one-size";
-}[] = [
-  // ── Tops
-  { value: "tops",       label: "T-Shirts & Tops",        group: "Tops",      sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL","XXXL"] },
-  { value: "shirts",     label: "Shirts & Blouses",        group: "Tops",      sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL"] },
-  { value: "knitwear",   label: "Knitwear & Sweaters",     group: "Tops",      sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  // ── Bottoms
-  { value: "bottoms",    label: "Trousers & Pants",        group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  { value: "jeans",      label: "Jeans & Denim",           group: "Bottoms",   sizeType: "number",   sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38"] },
-  { value: "shorts",     label: "Shorts",                  group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  { value: "skirts",     label: "Skirts",                  group: "Bottoms",   sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
-  // ── Outerwear
-  { value: "outerwear",  label: "Jackets & Coats",         group: "Outerwear", sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  { value: "blazers",    label: "Blazers & Suits",         group: "Outerwear", sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  // ── Dresses
-  { value: "dresses",    label: "Dresses",                 group: "Dresses",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  { value: "jumpsuits",  label: "Jumpsuits & Overalls",    group: "Dresses",   sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  // ── Footwear
-  { value: "footwear",   label: "Footwear",                group: "Footwear",  sizeType: "eu",       sizes: ["35","36","37","38","39","40","41","42","43","44","45","46"] },
-  // ── Accessories
-  { value: "accessories",label: "Accessories",             group: "Accessories",sizeType:"one-size", sizes: ["One Size","XS/S","S/M","M/L","L/XL"] },
-  { value: "bags",       label: "Bags & Luggage",          group: "Accessories",sizeType:"one-size", sizes: ["One Size"] },
-  // ── Other
-  { value: "swimwear",   label: "Swimwear",                group: "Other",     sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
-];
+/**
+ * Size presets per stored category value.
+ *
+ * The category tree itself lives in lib/categories.ts and is shared with the
+ * catalog filters and the breadcrumbs — this table only carries what the admin
+ * needs on top of it. `swimwear` is not in that tree (nothing on the site
+ * filters by it) but keeps its sizes so an existing piece still edits cleanly.
+ */
+const SIZE_PRESETS: Record<string, { sizeType: "letter" | "number" | "eu" | "one-size"; sizes: string[] }> = {
+  tops:        { sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL","XXXL"] },
+  shirts:      { sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL"] },
+  knitwear:    { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  bottoms:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  jeans:       { sizeType: "number",   sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38"] },
+  shorts:      { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  skirts:      { sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
+  outerwear:   { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  blazers:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  dresses:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  jumpsuits:   { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
+  footwear:    { sizeType: "eu",       sizes: ["35","36","37","38","39","40","41","42","43","44","45","46"] },
+  accessories: { sizeType: "one-size", sizes: ["One Size","XS/S","S/M","M/L","L/XL"] },
+  bags:        { sizeType: "one-size", sizes: ["One Size"] },
+  swimwear:    { sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
+};
 
-const CATEGORIES: Category[] = CATEGORY_CONFIG.map((c) => c.value);
+/** "Footwear › Boots" for a stored pair, for the table and section headers. */
+function categoryPath(category: string, subcategory?: string): string {
+  const group = groupForCategory(category);
+  const sub = resolveSubcategory(category, subcategory);
+  if (!group) return category;
+  return sub ? `${group.label} › ${sub}` : group.label;
+}
 
 const STYLE_KEYWORDS: StyleKeyword[] = [
   "minimal", "streetwear", "classic", "avant-garde", "romantic",
@@ -132,7 +133,7 @@ const defaultForm: ProductFormState = {
   name: "",
   brand: "",
   category: "outerwear",
-  subcategory: "",
+  subcategory: "Jackets",
   gender: "",
   description: "",
   priceMin: "",
@@ -634,7 +635,8 @@ export default function AdminProductsPage() {
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const [filterCategory, setFilterCategory] = useState<Category | "">("");
+  const [filterGroup, setFilterGroup] = useState<string>("");
+  const [filterSubcategory, setFilterSubcategory] = useState<string>("");
   const [filterNew, setFilterNew] = useState<boolean | null>(null);
   // Default to newest-first so the table mirrors the DB order (created_at desc).
   const [sortKey, setSortKey] = useState<SortColumn>("createdAt");
@@ -775,7 +777,19 @@ export default function AdminProductsPage() {
         p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    if (filterCategory) list = list.filter((p) => p.category === filterCategory);
+    if (filterGroup) {
+      const values = CATEGORY_GROUPS.find((g) => g.id === filterGroup)?.items.map((i) => i.value) ?? [];
+      list = list.filter((p) => values.includes(p.category));
+    }
+    if (filterSubcategory) {
+      // Same forgiving rule as the catalog: a piece that records no
+      // subcategory still answers to its whole category.
+      list = list.filter((p) => {
+        if (p.category !== SUBCATEGORY_TO_VALUE[filterSubcategory]) return false;
+        const sub = resolveSubcategory(p.category, p.subcategory);
+        return !sub || sub === filterSubcategory;
+      });
+    }
     if (filterNew !== null) list = list.filter((p) => p.isNew === filterNew);
     if (sortKey) {
       list = [...list].sort((a, b) => {
@@ -792,7 +806,7 @@ export default function AdminProductsPage() {
       });
     }
     return list;
-  }, [products, searchQuery, filterCategory, filterNew, sortKey, sortDir]);
+  }, [products, searchQuery, filterGroup, filterSubcategory, filterNew, sortKey, sortDir]);
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -1360,20 +1374,42 @@ export default function AdminProductsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Filter:</span>
 
-          {/* Category chips */}
-          {CATEGORY_CONFIG.map((cat) => (
+          {/* Group chips, then the active group's subcategories — the same two
+              levels the edit form and the catalog filters use. */}
+          {CATEGORY_GROUPS.map((g) => (
             <button
-              key={cat.value}
-              onClick={() => setFilterCategory((prev) => (prev === cat.value ? "" : cat.value))}
+              key={g.id}
+              onClick={() => {
+                setFilterGroup((prev) => (prev === g.id ? "" : g.id));
+                setFilterSubcategory("");
+              }}
               className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
-                filterCategory === cat.value
+                filterGroup === g.id
                   ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                   : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
               }`}
             >
-              {cat.label}
+              {g.label}
             </button>
           ))}
+          {filterGroup && (
+            <>
+              <span className="text-[var(--foreground-subtle)] mx-1">·</span>
+              {(CATEGORY_GROUPS.find((g) => g.id === filterGroup)?.items ?? []).map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setFilterSubcategory((prev) => (prev === item.label ? "" : item.label))}
+                  className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+                    filterSubcategory === item.label
+                      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </>
+          )}
 
           {/* Divider */}
           <span className="w-px h-4 bg-[var(--border)]" />
@@ -1412,9 +1448,9 @@ export default function AdminProductsPage() {
           </label>
 
           {/* Clear filters */}
-          {(filterCategory || filterNew !== null || !isDefaultSort) && (
+          {(filterGroup || filterSubcategory || filterNew !== null || !isDefaultSort) && (
             <button
-              onClick={() => { setFilterCategory(""); setFilterNew(null); setSortKey("createdAt"); setSortDir("desc"); }}
+              onClick={() => { setFilterGroup(""); setFilterSubcategory(""); setFilterNew(null); setSortKey("createdAt"); setSortDir("desc"); }}
               className="ml-1 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
             >
               Clear
@@ -1568,7 +1604,7 @@ export default function AdminProductsPage() {
                       <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
                     </td>
                     <td className="px-2 py-3 hidden lg:table-cell">
-                      <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{product.category}</span>
+                      <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory)}</span>
                     </td>
                     <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">
@@ -1764,68 +1800,51 @@ export default function AdminProductsPage() {
 
                   {/* ── Category ── */}
                   <div>
-                    <SecHead id="category" label="Category" hint={`— ${CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category}${form.subcategory ? ` › ${form.subcategory}` : ""}`} />
+                    <SecHead id="category" label="Category" hint={`— ${categoryPath(form.category, form.subcategory)}`} />
                     {!collapsed.has("category") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
-                          const groups = CATEGORY_CONFIG.reduce<Record<string, typeof CATEGORY_CONFIG>>((acc, c) => {
-                            (acc[c.group] ??= []).push(c);
-                            return acc;
-                          }, {});
-                          const groupNames = Object.keys(groups);
-                          const activeGroup = CATEGORY_CONFIG.find((c) => c.value === form.category)?.group ?? groupNames[0];
-                          const subcats = groups[activeGroup] ?? [];
-                          // Changing the category invalidates the subcategory, so
-                          // re-derive it: pre-select the only option when there is
-                          // one, and otherwise leave it for the editor to pick.
-                          const pickCategory = (value: Category) =>
+                          // One tree, the same one the catalog filters and the
+                          // breadcrumbs read. Picking a subcategory sets the stored
+                          // category too, so the two can never disagree.
+                          const activeGroup = groupForCategory(form.category);
+                          const pick = (label: string) =>
                             setForm((f) => ({
                               ...f,
-                              category: value,
-                              subcategory: subcategoryForCategory(value) ?? "",
+                              category: SUBCATEGORY_TO_VALUE[label] as Category,
+                              subcategory: label,
                             }));
-                          const subcategoryOptions = subcategoriesForCategory(form.category);
                           return (
                             <>
-                              <div className="grid grid-cols-4 gap-1">
-                                {groupNames.map((g) => (
-                                  <button key={g} type="button"
-                                    onClick={() => { const first = groups[g]?.[0]; if (first) pickCategory(first.value); }}
-                                    className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup === g ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                  >{g}</button>
-                                ))}
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {subcats.map((c) => (
-                                  <button key={c.value} type="button"
-                                    onClick={() => pickCategory(c.value)}
-                                    className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.category === c.value ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                  >{c.label}</button>
+                              <div className="grid grid-cols-3 gap-1">
+                                {CATEGORY_GROUPS.map((g) => (
+                                  <button key={g.id} type="button"
+                                    onClick={() => pick(g.items[0].label)}
+                                    className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                  >{g.label}</button>
                                 ))}
                               </div>
 
-                              {/* The catalog's own filter subcategories. Only the
-                                  categories that carry more than one need a choice —
-                                  the rest are already decided by the category. */}
-                              {subcategoryOptions.length > 1 && (
-                                <div className="mt-1 flex flex-col gap-1.5">
-                                  <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-                                    Subcategory <span className="text-[var(--foreground-subtle)] opacity-70">— shown in filters &amp; breadcrumbs</span>
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {subcategoryOptions.map((label) => (
-                                      <button key={label} type="button"
-                                        onClick={() => setForm((f) => ({ ...f, subcategory: f.subcategory === label ? "" : label }))}
-                                        className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.subcategory === label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                      >{label}</button>
-                                    ))}
-                                  </div>
-                                  {!form.subcategory && (
-                                    <p className="text-[9px] text-[var(--foreground-subtle)]">
-                                      Not set — this piece shows under every {CATEGORY_CONFIG.find((c) => c.value === form.category)?.label ?? form.category} filter.
-                                    </p>
-                                  )}
+                              {activeGroup ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {activeGroup.items.map((item) => (
+                                    <button key={item.label} type="button"
+                                      onClick={() => pick(item.label)}
+                                      className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                    >{item.label}</button>
+                                  ))}
                                 </div>
+                              ) : (
+                                <p className="text-[10px] text-[var(--foreground-subtle)]">
+                                  Stored as <code className="font-mono">{form.category}</code>, which is not in the catalog&apos;s
+                                  filter tree — pick a group above to make this piece filterable.
+                                </p>
+                              )}
+
+                              {activeGroup && !form.subcategory && (
+                                <p className="text-[9px] text-[var(--foreground-subtle)]">
+                                  No subcategory yet — this piece answers to every {activeGroup.label} filter until you pick one.
+                                </p>
                               )}
                             </>
                           );
@@ -1840,8 +1859,7 @@ export default function AdminProductsPage() {
                     {!collapsed.has("sizes") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
-                          const catCfg = CATEGORY_CONFIG.find((c) => c.value === form.category);
-                          const preset = catCfg?.sizes ?? [];
+                          const preset = SIZE_PRESETS[form.category]?.sizes ?? [];
                           const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
                           const toggle = (size: string) => {
                             const next = selected.includes(size) ? selected.filter((s) => s !== size) : [...selected, size];
