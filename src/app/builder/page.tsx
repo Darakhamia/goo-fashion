@@ -3184,17 +3184,18 @@ export default function BuilderPage() {
         </div>
       )}
 
-      {/* Mobile AI Stylist drawer — always mounted so chat history persists on open/close */}
-      <div className="md:hidden">
-        <StylistDrawer
-          isOpen={stylistOpen}
-          onClose={closeStylist}
-          surface="builder"
-          products={products}
-          position="fixed"
-          selection={selection}
-        />
-      </div>
+      {/* AI Stylist — always mounted so chat history persists on open/close.
+          The site layout skips its own drawer here so this one can carry the
+          builder surface and the current selection; it must therefore render at
+          every breakpoint, or the header's AI button opens nothing on desktop. */}
+      <StylistDrawer
+        isOpen={stylistOpen}
+        onClose={closeStylist}
+        surface="builder"
+        products={products}
+        position="fixed"
+        selection={selection}
+      />
 
       {/* ── Upgrade modal (402 from /api/generate-outfit) ─────────────────────── */}
       <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
