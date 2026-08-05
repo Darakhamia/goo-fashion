@@ -56,6 +56,7 @@ export function dbToProduct(row: DbProduct): Product {
     name: row.name,
     brand: row.brand as Product["brand"],
     category: row.category as Product["category"],
+    subcategory: row.subcategory ?? undefined,
     description: row.description ?? "",
     // Serve the exact stored URLs. Higher-resolution variants are requested at
     // render time by the image component, which falls back to these originals
@@ -107,6 +108,10 @@ export function productToDb(p: Partial<Product>) {
     extras.color_images = p.colorImages;
   }
   if (p.gender) extras.gender = p.gender;
+  // Sent only when the caller has an opinion, so importers that predate the
+  // column keep working against a database that has not run migration 010.
+  // An empty string means "cleared", which is a null rather than a no-op.
+  if (p.subcategory !== undefined) extras.subcategory = p.subcategory || null;
   if (p.variantGroupId !== undefined) extras.variant_group_id = p.variantGroupId ?? null;
   if (p.colorHex !== undefined)       extras.color_hex = p.colorHex ?? null;
   if (p.isGroupPrimary !== undefined) extras.is_group_primary = p.isGroupPrimary ?? false;

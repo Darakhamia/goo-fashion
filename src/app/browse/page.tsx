@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
-import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE } from "@/lib/categories";
+import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE, resolveSubcategory } from "@/lib/categories";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
@@ -327,7 +327,12 @@ export default function BrowsePage() {
       .filter((p) => {
         if (!selectedSubcategories.length) return true;
         const vals = [...new Set(selectedSubcategories.map(l => BROWSE_SUBCAT_TO_VALUE[l]).filter(Boolean))];
-        return vals.includes(p.category);
+        if (!vals.includes(p.category)) return false;
+        // Narrow by subcategory only for pieces that record one. A piece
+        // without it still answers to its whole category, so nothing vanishes
+        // from the catalog while the field is being filled in.
+        const sub = resolveSubcategory(p.category, p.subcategory);
+        return !sub || selectedSubcategories.includes(sub);
       })
       .filter(
         (p) =>

@@ -138,6 +138,12 @@ export interface Product {
   name: string;
   brand: Brand;
   category: Category;
+  /**
+   * The filter subcategory this product sits under, e.g. "Sneakers" within
+   * `footwear`. Optional: several categories only have one, and rows saved
+   * before the field existed do not carry it — see resolveSubcategory().
+   */
+  subcategory?: string;
   description: string;
   imageUrl: string;
   images: string[];
