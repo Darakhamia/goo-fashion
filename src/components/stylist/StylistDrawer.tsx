@@ -143,6 +143,93 @@ function relativeDate(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// ── Floating window geometry ──────────────────────────────────────────────────
+
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Edge/corner being dragged, or "move" for a whole-window drag. */
+type Gesture = "move" | "n" | "s" | "e" | "w" | "nw" | "ne" | "sw" | "se";
+
+const WIN_MIN_W = 320;
+const WIN_MIN_H = 280;
+const WIN_DEFAULT_W = 380;
+/** Matches the docked panel's old offsets so the window opens where users expect it. */
+const WIN_MARGIN = 16;
+const WIN_TOP = 72;
+const WIN_BOTTOM_GAP = 88;
+
+/** Where the window sits before the user has moved it — the old docked position. */
+function defaultRect(): Rect {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const width = Math.min(WIN_DEFAULT_W, Math.max(WIN_MIN_W, vw - WIN_MARGIN * 2));
+  const height = Math.max(WIN_MIN_H, vh - WIN_TOP - WIN_BOTTOM_GAP);
+  return { x: Math.max(0, vw - width - WIN_MARGIN), y: WIN_TOP, width, height };
+}
+
+/** Keep the whole window on screen so it can never be dragged out of reach. */
+function clampRect(r: Rect): Rect {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const width = Math.min(Math.max(r.width, WIN_MIN_W), vw);
+  const height = Math.min(Math.max(r.height, WIN_MIN_H), vh);
+  return {
+    width,
+    height,
+    x: Math.min(Math.max(r.x, 0), Math.max(0, vw - width)),
+    y: Math.min(Math.max(r.y, 0), Math.max(0, vh - height)),
+  };
+}
+
+/**
+ * Apply a pointer delta to the rect the gesture started from. Resizing from a
+ * top/left edge anchors the opposite edge, so the window grows in place instead
+ * of drifting once it hits its minimum size.
+ */
+function applyGesture(start: Rect, gesture: Gesture, dx: number, dy: number): Rect {
+  if (gesture === "move") return { ...start, x: start.x + dx, y: start.y + dy };
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let { x, y, width, height } = start;
+
+  if (gesture.includes("e")) {
+    width = Math.max(WIN_MIN_W, Math.min(start.width + dx, vw - start.x));
+  }
+  if (gesture.includes("s")) {
+    height = Math.max(WIN_MIN_H, Math.min(start.height + dy, vh - start.y));
+  }
+  if (gesture.includes("w")) {
+    const right = start.x + start.width;
+    width = Math.max(WIN_MIN_W, Math.min(start.width - dx, right));
+    x = right - width;
+  }
+  if (gesture.includes("n")) {
+    const bottom = start.y + start.height;
+    height = Math.max(WIN_MIN_H, Math.min(start.height - dy, bottom));
+    y = bottom - height;
+  }
+
+  return { x, y, width, height };
+}
+
+/** Edges first, corners last, so a corner wins where the two overlap. */
+const RESIZE_HANDLES: readonly { dir: Gesture; className: string; cursor: string }[] = [
+  { dir: "n", className: "top-0 left-0 right-0 h-1.5", cursor: "ns-resize" },
+  { dir: "s", className: "bottom-0 left-0 right-0 h-1.5", cursor: "ns-resize" },
+  { dir: "w", className: "top-0 bottom-0 left-0 w-1.5", cursor: "ew-resize" },
+  { dir: "e", className: "top-0 bottom-0 right-0 w-1.5", cursor: "ew-resize" },
+  { dir: "nw", className: "top-0 left-0 w-3 h-3", cursor: "nwse-resize" },
+  { dir: "ne", className: "top-0 right-0 w-3 h-3", cursor: "nesw-resize" },
+  { dir: "sw", className: "bottom-0 left-0 w-3 h-3", cursor: "nesw-resize" },
+  { dir: "se", className: "bottom-0 right-0 w-3 h-3", cursor: "nwse-resize" },
+];
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface StylistDrawerProps {
@@ -191,6 +278,78 @@ export function StylistDrawer({
   const [dailyLimit, setDailyLimit] = useState<number | null>(null);
   const chatThreadRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // ── Floating window ───────────────────────────────────────────────────────
+  // Only the site-wide (`fixed`) drawer becomes a window, and only from md up:
+  // below that it stays the modal bottom sheet, where a draggable window would
+  // be unusable. Read the query eagerly so the sheet never flashes on desktop.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
+  );
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [isGesturing, setIsGesturing] = useState(false);
+  const gestureRef = useRef<{ gesture: Gesture; pointerId: number; startX: number; startY: number; start: Rect } | null>(null);
+
+  const isWindow = position === "fixed" && isDesktop;
+  // Materialised lazily: until the user drags, the window simply renders at the
+  // position the docked panel used to occupy.
+  const winRect = isWindow ? rect ?? defaultRect() : null;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // A shrinking viewport must not strand the window off screen.
+  useEffect(() => {
+    if (!isWindow) return;
+    const onResize = () => setRect((prev) => clampRect(prev ?? defaultRect()));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isWindow]);
+
+  // Suppress text selection for the duration of a drag/resize.
+  useEffect(() => {
+    if (!isGesturing) return;
+    const prev = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    return () => { document.body.style.userSelect = prev; };
+  }, [isGesturing]);
+
+  const beginGesture = useCallback((e: React.PointerEvent, gesture: Gesture) => {
+    if (e.button !== 0) return;
+    const start = clampRect(rect ?? defaultRect());
+    gestureRef.current = { gesture, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start };
+    setRect(start);
+    setIsGesturing(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }, [rect]);
+
+  const onGestureMove = useCallback((e: React.PointerEvent) => {
+    const g = gestureRef.current;
+    if (!g || g.pointerId !== e.pointerId) return;
+    setRect(clampRect(applyGesture(g.start, g.gesture, e.clientX - g.startX, e.clientY - g.startY)));
+  }, []);
+
+  const endGesture = useCallback((e: React.PointerEvent) => {
+    const g = gestureRef.current;
+    if (!g || g.pointerId !== e.pointerId) return;
+    gestureRef.current = null;
+    setIsGesturing(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
+
+  // The header doubles as the title bar — but its buttons still have to click.
+  const onHeaderPointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea")) return;
+    beginGesture(e, "move");
+  }, [beginGesture]);
 
   // Escape closes the drawer; Tab cycles focus inside it (focus trap).
   useEffect(() => {
@@ -489,6 +648,9 @@ export function StylistDrawer({
 
   const positionClasses = position === "absolute"
     ? "absolute top-0 right-0 bottom-0 z-20 w-full md:w-[380px]"
+    : isWindow
+    // Geometry comes from `winRect` — no edge offsets to fight with it.
+    ? "fixed z-[60] rounded-2xl overflow-hidden"
     : "fixed bottom-14 left-0 right-0 z-[60] w-full h-[58dvh] rounded-t-2xl md:top-[72px] md:bottom-[88px] md:left-auto md:right-4 md:w-[380px] md:h-auto md:rounded-2xl md:overflow-hidden";
 
   const quickReplies = QUICK_REPLIES[surface];
@@ -511,10 +673,14 @@ export function StylistDrawer({
     <div
       ref={drawerRef}
       role="dialog"
-      aria-modal={position === "fixed"}
+      // A floating window leaves the rest of the page usable, so it isn't modal.
+      aria-modal={position === "fixed" && !isWindow}
       aria-label="AI Stylist chat"
       className={`${positionClasses} bg-[var(--background)] border-t border-[var(--border-strong)] md:border md:border-[var(--border-strong)] flex flex-col stylist-drawer-animate`}
-      style={{ boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined }}
+      style={{
+        boxShadow: position === "fixed" ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.12)" : undefined,
+        ...(winRect && { left: winRect.x, top: winRect.y, width: winRect.width, height: winRect.height }),
+      }}
     >
       {/* Mobile drag handle */}
       {position === "fixed" && (
@@ -522,8 +688,15 @@ export function StylistDrawer({
           <div className="w-9 h-1 rounded-full bg-[var(--border-strong)]" />
         </div>
       )}
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+      {/* ── Header (doubles as the window title bar) ───────────────────────── */}
+      <div
+        className={`px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 ${isWindow ? "cursor-move select-none" : ""}`}
+        style={isWindow ? { touchAction: "none" } : undefined}
+        onPointerDown={isWindow ? onHeaderPointerDown : undefined}
+        onPointerMove={isWindow ? onGestureMove : undefined}
+        onPointerUp={isWindow ? endGesture : undefined}
+        onPointerCancel={isWindow ? endGesture : undefined}
+      >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center text-[14px] font-bold">
             G
@@ -828,6 +1001,20 @@ export function StylistDrawer({
           </div>
         </>
       )}
+
+      {/* ── Resize handles ────────────────────────────────────────────────── */}
+      {isWindow && RESIZE_HANDLES.map(h => (
+        <div
+          key={h.dir}
+          aria-hidden="true"
+          className={`absolute z-10 ${h.className}`}
+          style={{ cursor: h.cursor, touchAction: "none" }}
+          onPointerDown={e => beginGesture(e, h.dir)}
+          onPointerMove={onGestureMove}
+          onPointerUp={endGesture}
+          onPointerCancel={endGesture}
+        />
+      ))}
     </div>
     </>
   );
