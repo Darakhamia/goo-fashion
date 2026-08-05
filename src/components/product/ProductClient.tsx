@@ -21,6 +21,8 @@ import { track } from "@/lib/analytics/track";
 import { recordView } from "@/lib/recently-viewed";
 import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
+import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
+import { groupForCategory, subcategoryForCategory } from "@/lib/categories";
 
 interface Props {
   product: Product;
@@ -85,26 +87,37 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
   const mainImage = displayImages[activeIdx] || product.imageUrl || "";
 
+  // Home / Browse / Pieces / Category / Subcategory / Gender / Colour / Brand /
+  // Name. Every step links back into the catalog with that filter applied; the
+  // optional ones are dropped when the product doesn't carry them.
+  const productCrumbs: Crumb[] = useMemo(() => {
+    const group = groupForCategory(product.category);
+    const subcategory = subcategoryForCategory(product.category);
+    const colour = product.colors?.[0];
+    const q = (params: Record<string, string>) =>
+      `/browse?${new URLSearchParams({ view: "pieces", ...params })}`;
+
+    const items: Crumb[] = [
+      { label: "Home", href: "/" },
+      { label: "Browse", href: "/browse" },
+      { label: "Pieces", href: q({}) },
+    ];
+    if (group) items.push({ label: group.label, href: q({ category: group.id }) });
+    if (subcategory) items.push({ label: subcategory, href: q({ subcat: subcategory }) });
+    if (product.gender) items.push({ label: product.gender, href: q({ gender: product.gender }) });
+    if (colour) items.push({ label: colour, href: q({ color: colour }) });
+    if (product.brand) items.push({ label: product.brand, href: q({ brand: product.brand }) });
+    items.push({ label: product.name });
+    return items;
+  }, [product]);
+
   // Unique, data-derived styling copy so the page isn't a thin duplicate of the
   // source catalog feed.
   const styling = useMemo(() => buildStylingNotes(product), [product]);
 
   return (
     <>
-      {/* Breadcrumb */}
-      {/* One line at any width: the trail keeps its full labels and the product
-          name — the only part that can be arbitrarily long — takes the ellipsis. */}
-      <div className="pt-8 flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-        <Link href="/" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">Home</Link>
-        <span className="shrink-0">/</span>
-        <Link href="/browse" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">Browse</Link>
-        <span className="shrink-0">/</span>
-        <span className="shrink-0 text-[var(--foreground)] capitalize">{product.category}</span>
-        <span className="shrink-0">/</span>
-        <span className="min-w-0 truncate text-[var(--foreground-muted)]" title={product.name}>
-          {product.name}
-        </span>
-      </div>
+      <Breadcrumbs items={productCrumbs} />
 
       {/* Main grid */}
       <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-6 md:gap-10">

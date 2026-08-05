@@ -9,6 +9,7 @@ import OutfitActions from "@/components/outfit/OutfitActions";
 import RecordRecentView from "@/components/RecordRecentView";
 import RecentlyViewed from "@/components/product/RecentlyViewed";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
+import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { getOutfitById, getAllOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
@@ -52,6 +53,20 @@ export default async function OutfitDetailPage({ params }: Props) {
     .slice(0, 4);
 
   const { heading, description: seoDescription } = buildOutfitSeo(outfit);
+  // Home / Browse / Outfits / Occasion / AI / Name — the optional steps drop
+  // out when the outfit doesn't carry them, and each links back into the
+  // catalog with that filter applied.
+  const q = (params: Record<string, string>) =>
+    `/browse?${new URLSearchParams({ view: "outfits", ...params })}`;
+  const outfitCrumbs: Crumb[] = [
+    { label: "Home", href: "/" },
+    { label: "Browse", href: "/browse" },
+    { label: "Outfits", href: q({}) },
+  ];
+  if (outfit.occasion) outfitCrumbs.push({ label: outfit.occasion, href: q({ occasion: outfit.occasion }) });
+  if (outfit.isAIGenerated) outfitCrumbs.push({ label: "AI", href: q({ ai: "1" }) });
+  outfitCrumbs.push({ label: heading });
+
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
     { name: "Outfits", url: absoluteUrl("/browse") },
@@ -64,22 +79,7 @@ export default async function OutfitDetailPage({ params }: Props) {
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
         <RecordRecentView kind="outfit" id={outfit.id} />
 
-        {/* Breadcrumb — one line at any width: the trail keeps its full labels
-            and the outfit name, the only arbitrarily long part, takes the
-            ellipsis. */}
-        <div className="pt-8 flex items-center gap-3 overflow-hidden whitespace-nowrap text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
-          <Link href="/" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">
-            Home
-          </Link>
-          <span className="shrink-0">/</span>
-          <Link href="/browse" className="shrink-0 hover:text-[var(--foreground)] transition-colors duration-200">
-            Outfits
-          </Link>
-          <span className="shrink-0">/</span>
-          <span className="min-w-0 truncate text-[var(--foreground-muted)]" title={heading}>
-            {heading}
-          </span>
-        </div>
+        <Breadcrumbs items={outfitCrumbs} />
 
         {/* Main layout — same column sizing as the product page, so the image
             keeps a sane width and the info panel takes the rest. */}
