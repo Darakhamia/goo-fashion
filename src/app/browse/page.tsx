@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
+import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE } from "@/lib/categories";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
@@ -37,110 +38,54 @@ const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 13, name: "Beige",      hexCode: "#d4c5a9", sortOrder: 13 },
 ];
 
-const BROWSE_CATEGORY_GROUPS = [
-  {
-    id: "outerwear",
-    label: "Outerwear",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
-          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
-    ),
-    items: [
-      { label: "Jackets", value: "outerwear" },
-      { label: "Coats", value: "outerwear" },
-      { label: "Parkas", value: "outerwear" },
-      { label: "Vests", value: "outerwear" },
-      { label: "Bomber Jackets", value: "outerwear" },
-      { label: "Raincoats", value: "outerwear" },
-      { label: "Blazers", value: "blazers" },
-    ],
-  },
-  {
-    id: "tops",
-    label: "Tops",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
-          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-      </svg>
-    ),
-    items: [
-      { label: "T-Shirts", value: "tops" },
-      { label: "Hoodies & Sweatshirts", value: "tops" },
-      { label: "Shirts", value: "shirts" },
-      { label: "Knitwear", value: "knitwear" },
-    ],
-  },
-  {
-    id: "bottoms",
-    label: "Bottoms",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M4 2H12L13 8H9L8 14H8L7 8H3L4 2Z"
-          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-      </svg>
-    ),
-    items: [
-      { label: "Pants", value: "bottoms" },
-      { label: "Jeans", value: "jeans" },
-      { label: "Shorts", value: "shorts" },
-      { label: "Skirts", value: "skirts" },
-    ],
-  },
-  {
-    id: "dresses",
-    label: "Dresses",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M6 2H10M8 2V5M5 5C5 5 4 7 3 9C2 11 2 14 2 14H14C14 14 14 11 13 9C12 7 11 5 11 5C10.5 6 9.5 7 8 7C6.5 7 5.5 6 5 5Z"
-          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
-    ),
-    items: [
-      { label: "Dresses", value: "dresses" },
-      { label: "Jumpsuits", value: "jumpsuits" },
-    ],
-  },
-  {
-    id: "footwear",
-    label: "Footwear",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 11.5C2 11.5 4 10 7 10C9 10 10 11 11 11H13.5C13.5 11 14 11 14 12V13H2V11.5Z"
-          stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-        <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-      </svg>
-    ),
-    items: [
-      { label: "Sneakers", value: "footwear" },
-      { label: "Sandals", value: "footwear" },
-      { label: "Boots", value: "footwear" },
-    ],
-  },
-  {
-    id: "accessories",
-    label: "Accessories",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
-        <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
-      </svg>
-    ),
-    items: [
-      { label: "Bags", value: "bags" },
-      { label: "Hats", value: "accessories" },
-      { label: "Belts", value: "accessories" },
-      { label: "Sunglasses", value: "accessories" },
-      { label: "Watches", value: "accessories" },
-    ],
-  },
-];
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  outerwear: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
+  tops: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  ),
+  bottoms: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M4 2H12L13 8H9L8 14H8L7 8H3L4 2Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+    </svg>
+  ),
+  dresses: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 2H10M8 2V5M5 5C5 5 4 7 3 9C2 11 2 14 2 14H14C14 14 14 11 13 9C12 7 11 5 11 5C10.5 6 9.5 7 8 7C6.5 7 5.5 6 5 5Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
+  footwear: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 11.5C2 11.5 4 10 7 10C9 10 10 11 11 11H13.5C13.5 11 14 11 14 12V13H2V11.5Z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  ),
+  accessories: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  ),
+};
 
-const BROWSE_SUBCAT_TO_VALUE: Record<string, string> = Object.fromEntries(
-  BROWSE_CATEGORY_GROUPS.flatMap(g => g.items.map(i => [i.label, i.value]))
-);
+// The filter tree is the shared one, so a breadcrumb that links to
+// ?category=bottoms always names a group this list actually has.
+const BROWSE_CATEGORY_GROUPS = CATEGORY_GROUPS.map((g) => ({
+  ...g,
+  icon: CATEGORY_ICONS[g.id],
+}));
+
+const BROWSE_SUBCAT_TO_VALUE = SUBCATEGORY_TO_VALUE;
 
 function ActiveChip({
   label,
@@ -192,18 +137,6 @@ export default function BrowsePage() {
     return () => clearTimeout(id);
   }, [searchQuery]);
 
-  // Restore tab from URL on mount (survives browser back navigation)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const v = params.get("view");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (v === "pieces" || v === "outfits") setView(v);
-    // Seed the search box from ?search= so the WebSite SearchAction (and shared
-    // links) land on a pre-filtered catalog.
-    const q = params.get("search");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (q) setSearchQuery(q);
-  }, []);
   const [sort, setSort] = useState<SortOption>("featured");
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
@@ -285,6 +218,62 @@ export default function BrowsePage() {
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<StyleFilter | null>(null);
+  // A ?color= link names a colour group, but the groups arrive from the API —
+  // hold the name until they do, then resolve it to an id.
+  const [pendingColorName, setPendingColorName] = useState<string | null>(null);
+
+  // Restore tab and filters from the URL on mount — survives browser back
+  // navigation, lets the WebSite SearchAction land pre-filtered, and is what
+  // the breadcrumbs on a product or outfit page link into.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    const v = params.get("view");
+    if (v === "pieces" || v === "outfits") setView(v);
+
+    const q = params.get("search");
+    if (q) setSearchQuery(q);
+
+    // ?category= is a group id and selects every subcategory under it;
+    // ?subcat= picks a single one. A breadcrumb uses whichever it means.
+    const group = params.get("category");
+    const subcat = params.get("subcat");
+    const labels = subcat
+      ? [subcat]
+      : CATEGORY_GROUPS.find((g) => g.id === group)?.items.map((i) => i.label) ?? [];
+    if (labels.length) setSelectedSubcategories(labels);
+
+    const gender = params.get("gender");
+    if (gender === "women" || gender === "men" || gender === "unisex") setSelectedGender(gender);
+
+    const brand = params.get("brand");
+    if (brand) setSelectedBrands([brand]);
+
+    const occasion = params.get("occasion");
+    if (occasion && (OCCASIONS as string[]).includes(occasion)) setSelectedOccasions([occasion as Occasion]);
+
+    if (params.get("ai") === "1") setAiOnly(true);
+
+    const style = params.get("style");
+    if (style && (STYLE_FILTERS as readonly string[]).includes(style)) setSelectedStyle(style as StyleFilter);
+
+    // Colours are stored as groups; the link carries the group's name.
+    const color = params.get("color");
+    if (color) setPendingColorName(color);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (!pendingColorName) return;
+    const match = colorGroups.find(
+      (g) => g.name.toLowerCase() === pendingColorName.toLowerCase(),
+    );
+    if (!match) return;
+    setSelectedColorGroupIds([match.id]);
+    setPendingColorName(null);
+  }, [pendingColorName, colorGroups]);
+
   const [brandSearch, setBrandSearch] = useState("");
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllColors, setShowAllColors] = useState(false);
@@ -519,6 +508,25 @@ export default function BrowsePage() {
 
       {view === "outfits" ? (
         <>
+          {/* AI ONLY */}
+          <div className="border-b border-[var(--border)] px-5 py-4">
+            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
+            <button
+              onClick={() => setAiOnly((v) => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+                aiOnly
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <span className="text-[11px] font-semibold">AI outfits only</span>
+              {aiOnly && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          </div>
           {/* OCCASION */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Occasion</p>
@@ -563,25 +571,6 @@ export default function BrowsePage() {
                 })}
               </div>
             )}
-          </div>
-          {/* AI ONLY */}
-          <div className="border-b border-[var(--border)] px-5 py-4">
-            <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
-            <button
-              onClick={() => setAiOnly((v) => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
-                aiOnly
-                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
-                  : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <span className="text-[11px] font-semibold">AI outfits only</span>
-              {aiOnly && (
-                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                  <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
           </div>
         </>
       ) : (
