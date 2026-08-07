@@ -48,7 +48,11 @@ export type BillingEventType =
   /** A previously missing card token was recovered by the daily sweep. */
   | "card_token_recovered"
   /** A renewal the cron declined to attempt, with the reason. */
-  | "renewal_skipped";
+  | "renewal_skipped"
+  /** Heartbeat: the renewal cron actually executed. Absence is the signal. */
+  | "cron_run"
+  /** The cron was reachable but CRON_SECRET is unset, so it can only 401. */
+  | "cron_misconfigured";
 
 /**
  * Append a row to the billing_events audit log.
@@ -317,6 +321,62 @@ export async function attachCardToken(
     .select("user_id");
   if (error) throw new Error(error.message);
   return (data?.length ?? 0) > 0;
+}
+
+export interface BillingEventRow {
+  event_type: string;
+  kind: string | null;
+  plan: string | null;
+  amount: number | null;
+  status: string | null;
+  detail: string | null;
+  created_at: string;
+}
+
+/**
+ * When an event of this type last happened. Used to notice gaps: the renewal
+ * cron writes a heartbeat, so the age of the last one says whether the schedule
+ * is actually firing. Returns null if it never has — or if the log is missing,
+ * which this deliberately does not distinguish, because both mean "no evidence
+ * the cron ran" and both deserve the same alert.
+ */
+export async function getLastEventAt(eventType: BillingEventType): Promise<Date | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("created_at")
+    .eq("event_type", eventType)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return new Date(data[0].created_at as string);
+}
+
+/** Billing events since a cut-off, newest first — powers the weekly summary. */
+export async function getEventsSince(since: Date): Promise<BillingEventRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("event_type,kind,plan,amount,status,detail,created_at")
+    .gte("created_at", since.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(2_000);
+  if (error) {
+    console.error(`[billing] could not read billing_events for the summary: ${error.message}`);
+    return [];
+  }
+  return (data as BillingEventRow[]) ?? [];
+}
+
+/** How many subscriptions are in each status right now. */
+export async function countSubscriptionsByStatus(): Promise<Record<string, number>> {
+  const { data, error } = await db().from("subscriptions").select("status");
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { status: string }[]) {
+    counts[row.status] = (counts[row.status] ?? 0) + 1;
+  }
+  return counts;
 }
 
 const MAX_FAILED_CHARGES = 3;

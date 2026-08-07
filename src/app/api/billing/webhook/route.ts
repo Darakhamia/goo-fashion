@@ -11,6 +11,7 @@ import {
   parseReference,
   recordRenewalFailure,
 } from "@/lib/server/subscriptions";
+import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 /**
  * monobank acquiring webhook.
@@ -136,6 +137,17 @@ export async function POST(req: Request) {
         status: payload.status,
         detail: payload.failureReason ?? null,
       });
+      await sendBillingAlert(
+        failedRenewal ? "Renewal payment failed" : "First payment failed",
+        [
+          `User ${userId} on the ${plan} plan — monobank reported "${payload.status}".`,
+          payload.failureReason ? `Reason: ${payload.failureReason}` : "No failure reason given.",
+          `Invoice ${payload.invoiceId}, ${Math.round((payload.amount ?? 0) / 100)} UAH.`,
+          failedRenewal
+            ? "Three consecutive failures downgrade the subscription to free."
+            : "This was a first payment, so no subscription was active to lose.",
+        ],
+      );
       return NextResponse.json({ ok: true });
     }
 

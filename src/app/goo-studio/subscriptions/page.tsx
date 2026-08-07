@@ -70,6 +70,8 @@ const EVENT_STYLE: Record<string, string> = {
   card_token_missing: "text-amber-600 border-amber-500/30 bg-amber-500/10",
   card_token_recovered: "text-emerald-600 border-emerald-500/30 bg-emerald-500/10",
   renewal_skipped: "text-amber-600 border-amber-500/30 bg-amber-500/10",
+  cron_run: "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--surface)]",
+  cron_misconfigured: "text-red-500 border-red-500/30 bg-red-500/10",
 };
 const EVENT_LABEL: Record<string, string> = {
   payment_success: "Payment",
@@ -81,6 +83,8 @@ const EVENT_LABEL: Record<string, string> = {
   card_token_missing: "No card",
   card_token_recovered: "Card found",
   renewal_skipped: "Skipped",
+  cron_run: "Cron ran",
+  cron_misconfigured: "Cron broken",
 };
 
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {

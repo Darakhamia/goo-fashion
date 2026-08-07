@@ -20,7 +20,7 @@
     "semantic_hash": "1a610db9548a6d8c7401b59b142bb753"
   },
   "package.json": {
-    "mtime": 1786127271.4476979,
+    "mtime": 1786128385.3762758,
     "ast_hash": "18e51e1a11c5d27967c38ff3ad59f197",
     "semantic_hash": "18e51e1a11c5d27967c38ff3ad59f197"
   },
@@ -210,8 +210,8 @@
     "semantic_hash": "5e1e63d180cbc4cf69fe7b0b087be1e0"
   },
   "src/app/api/billing/cron/renew/route.ts": {
-    "mtime": 1786127199.3716996,
-    "ast_hash": "ec906f4756ab53935063050433c59285",
+    "mtime": 1786128376.8922758,
+    "ast_hash": "0d04dc5e631d0ae9124328b33083e75c",
     "semantic_hash": ""
   },
   "src/app/api/billing/status/route.ts": {
@@ -220,8 +220,8 @@
     "semantic_hash": "8cab816f6a5ee44b795dd91bc7045f07"
   },
   "src/app/api/billing/webhook/route.ts": {
-    "mtime": 1786127020.1077032,
-    "ast_hash": "43bd6475381bacc7f5bbd7f72b773fb2",
+    "mtime": 1786128235.5722787,
+    "ast_hash": "a6a8a7bd1057905dd4bce91c63a7570f",
     "semantic_hash": ""
   },
   "src/app/api/blog/[id]/route.ts": {
@@ -520,8 +520,8 @@
     "semantic_hash": "d6b6315a1e1510606a23e15d678a11c1"
   },
   "src/app/goo-studio/subscriptions/page.tsx": {
-    "mtime": 1786127205.8436995,
-    "ast_hash": "a9eec5fd86fa0fba8e4c292dac0ca498",
+    "mtime": 1786128243.9682786,
+    "ast_hash": "5030d2feb9a81597bcea92a0a6a4366c",
     "semantic_hash": ""
   },
   "src/app/goo-studio/users/page.tsx": {
@@ -1010,8 +1010,8 @@
     "semantic_hash": "865b932aaca8148312d461022fa5da2f"
   },
   "src/lib/server/subscriptions.ts": {
-    "mtime": 1786127195.0996995,
-    "ast_hash": "4f0acdec5abc98359d17d335c2299f66",
+    "mtime": 1786128161.6802804,
+    "ast_hash": "01331dbe9dac9f464624a10c257f3f42",
     "semantic_hash": ""
   },
   "src/lib/services/nikeApi.ts": {
@@ -1300,8 +1300,8 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1786127363.543696,
-    "ast_hash": "ef621ee52bfc5dde24f6acf59b6f5c12",
+    "mtime": 1786128481.0002737,
+    "ast_hash": "96d3ba38701ae03f820524de2b45039b",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1437,6 +1437,11 @@
   "src/app/icon.png": {
     "mtime": 1786059806.8700414,
     "ast_hash": "174297486da29cb99ab48200d0fa6e7e",
+    "semantic_hash": ""
+  },
+  "src/lib/server/billing-alerts.ts": {
+    "mtime": 1786128146.9242806,
+    "ast_hash": "6a86c89a167241a31509f4591ca906f3",
     "semantic_hash": ""
   }
 }
