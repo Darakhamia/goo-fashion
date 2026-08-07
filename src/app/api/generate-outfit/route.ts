@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { requirePlan } from "@/lib/server/require-plan";
+import { checkNamedRateLimit } from "@/lib/server/rate-limit";
+import { releaseUsage, reserveUsage } from "@/lib/server/usage";
+import { MONTHLY_IMAGE_QUOTA } from "@/lib/plans";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 import { getPrompt } from "@/lib/server/get-prompt";
@@ -128,9 +131,29 @@ async function buildPrompt(pieces: SlotProduct[], style: Style): Promise<string>
   return fill(flatlay);
 }
 
+/**
+ * A burst ceiling on top of the monthly quota. The month's allowance is the
+ * money limit; this is the "no one drains a month in ninety seconds" limit,
+ * which also keeps a runaway client from stacking Replicate calls.
+ */
+const GENERATIONS_PER_MINUTE = 4;
+
 export async function POST(req: Request) {
   const gate = await requirePlan("imageGeneration");
   if (!gate.ok) return gate.response;
+
+  const burst = await checkNamedRateLimit(req, {
+    name: "generate-outfit",
+    requests: GENERATIONS_PER_MINUTE,
+    window: "1 m",
+    key: gate.userId,
+  });
+  if (!burst.allowed) {
+    return NextResponse.json(
+      { error: `Too many generations at once. Try again in ${burst.retryAfterSeconds}s.` },
+      { status: 429, headers: { "Retry-After": String(burst.retryAfterSeconds) } },
+    );
+  }
 
   const apiToken = process.env.REPLICATE_API_TOKEN?.trim();
   if (!apiToken) {
@@ -189,6 +212,34 @@ export async function POST(req: Request) {
 
   const prompt = await buildPrompt(pieces, style);
 
+  // Claim a slot from this month's allowance *before* calling Replicate. The
+  // reservation is what makes the quota hold under concurrency: the database
+  // hands out a distinct position per request, so parallel calls cannot all
+  // read the same count and all pass. Released below if generation fails.
+  const reservation = await reserveUsage(
+    gate.userId,
+    gate.plan,
+    "images",
+    MONTHLY_IMAGE_QUOTA[gate.plan],
+  );
+  if (!reservation.ok) {
+    return NextResponse.json(
+      {
+        error: reservation.message,
+        reason: reservation.reason,
+        usage: reservation.usage,
+        upgradeUrl: "/plans",
+      },
+      { status: reservation.reason === "quota_exceeded" ? 402 : 503 },
+    );
+  }
+  let slotHeld = true;
+  const release = async () => {
+    if (!slotHeld) return;
+    slotHeld = false;
+    await releaseUsage(gate.userId, "images");
+  };
+
   // Replicate v1 SDK returns a FileOutput (or array) with .url() method.
   // Older models return string or string[]. Handle all shapes.
   const extractUrl = (item: unknown): string | undefined => {
@@ -225,6 +276,7 @@ export async function POST(req: Request) {
 
     if (!imageUrl) {
       console.error("[nano-banana-2] unexpected output shape:", output);
+      await release();
       return NextResponse.json(
         {
           error: "No image returned from Replicate.",
@@ -266,8 +318,11 @@ export async function POST(req: Request) {
       style,
       referencesUsed: imageInput.length,
       referencesFailed: failedUrls.length,
+      usage: reservation.usage,
     });
   } catch (err: unknown) {
+    // The customer got no image, so the slot goes back.
+    await release();
     const msg = err instanceof Error ? err.message : "Generation failed.";
     const tokenHint = `${apiToken.slice(0, 5)}…(len ${apiToken.length})`;
     return NextResponse.json(

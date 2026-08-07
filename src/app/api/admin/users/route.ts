@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { coercePlan, MONTHLY_IMAGE_QUOTA } from "@/lib/plans";
+import { currentPeriod } from "@/lib/server/usage";
 
 export interface AdminUserSubscription {
   plan: string;
@@ -30,6 +32,9 @@ export interface AdminUserRow {
   plan: "free" | "basic" | "pro" | "premium" | string;
   isAdmin: boolean;
   subscription: AdminUserSubscription | null;
+  /** This month's image generations against the plan's allowance. */
+  imagesUsed: number;
+  imageQuota: number;
 }
 
 // GET /api/admin/users?q=<query>&plan=<plan>&limit=<n>&offset=<n>
@@ -81,6 +86,20 @@ export async function GET(req: Request) {
       }
     }
 
+    // This month's generation counts for the same page of users — the number
+    // that says whether a plan's allowance is being used or blown through.
+    const imagesByUser = new Map<string, number>();
+    if (isSupabaseConfigured && supabase && result.data.length > 0) {
+      const { data: usageRows } = await supabase
+        .from("usage_monthly")
+        .select("user_id,images_used")
+        .eq("period", currentPeriod())
+        .in("user_id", result.data.map((u) => u.id));
+      for (const r of (usageRows ?? []) as { user_id: string; images_used: number }[]) {
+        imagesByUser.set(r.user_id, r.images_used);
+      }
+    }
+
     let rows: AdminUserRow[] = result.data.map((u) => {
       const meta = (u.publicMetadata ?? {}) as { plan?: string; isAdmin?: boolean };
       return {
@@ -97,6 +116,8 @@ export async function GET(req: Request) {
         plan: meta.plan ?? "free",
         isAdmin: meta.isAdmin === true || adminIds.includes(u.id),
         subscription: subsByUser.get(u.id) ?? null,
+        imagesUsed: imagesByUser.get(u.id) ?? 0,
+        imageQuota: MONTHLY_IMAGE_QUOTA[coercePlan(meta.plan)],
       };
     });
 

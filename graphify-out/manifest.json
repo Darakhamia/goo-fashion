@@ -20,7 +20,7 @@
     "semantic_hash": "1a610db9548a6d8c7401b59b142bb753"
   },
   "package.json": {
-    "mtime": 1786128385.3762758,
+    "mtime": 1786133951.1466587,
     "ast_hash": "18e51e1a11c5d27967c38ff3ad59f197",
     "semantic_hash": "18e51e1a11c5d27967c38ff3ad59f197"
   },
@@ -175,9 +175,9 @@
     "semantic_hash": "4cc253bc3dbb897208e8fdda92bbb09d"
   },
   "src/app/api/admin/users/route.ts": {
-    "mtime": 1786059806.8296726,
-    "ast_hash": "6c94c1d06c0b5f6702f169fe3af7b352",
-    "semantic_hash": "6c94c1d06c0b5f6702f169fe3af7b352"
+    "mtime": 1786133810.914655,
+    "ast_hash": "0802ace50187cddf1b1b7d06df9d16ac",
+    "semantic_hash": ""
   },
   "src/app/api/admin/waitlist/route.ts": {
     "mtime": 1786059806.8296726,
@@ -255,9 +255,9 @@
     "semantic_hash": "14aa5f32354c8fde625d0b1560e9b14c"
   },
   "src/app/api/generate-outfit/route.ts": {
-    "mtime": 1786059806.837878,
-    "ast_hash": "a30f729354602fe28bfe4ad5c94c48d5",
-    "semantic_hash": "a30f729354602fe28bfe4ad5c94c48d5"
+    "mtime": 1786133413.9186451,
+    "ast_hash": "933a88891525aa7a8f5f3af8174414f0",
+    "semantic_hash": ""
   },
   "src/app/api/health/route.ts": {
     "mtime": 1786059806.837878,
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "src/app/builder/page.tsx": {
-    "mtime": 1786132329.7624862,
-    "ast_hash": "22e341cc0caa5874fd6e72a018ae133b",
+    "mtime": 1786133581.2386494,
+    "ast_hash": "4a438cb98b124c7857d68d06bd9da7cf",
     "semantic_hash": ""
   },
   "src/app/coming-soon/FeatureCarousel.tsx": {
@@ -525,9 +525,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/users/page.tsx": {
-    "mtime": 1786059806.8700414,
-    "ast_hash": "f11bf0f2370fa972629f338ae90bf8b0",
-    "semantic_hash": "f11bf0f2370fa972629f338ae90bf8b0"
+    "mtime": 1786133842.2426558,
+    "ast_hash": "85d5a1ff0b1ac0901334988fbbe074af",
+    "semantic_hash": ""
   },
   "src/app/goo-studio/waitlist/page.tsx": {
     "mtime": 1786059806.8700414,
@@ -590,9 +590,9 @@
     "semantic_hash": "76a6976baddab703bad85a10b1082905"
   },
   "src/app/profile/page.tsx": {
-    "mtime": 1786059806.8806796,
-    "ast_hash": "14629557fc6439516880538110db797f",
-    "semantic_hash": "14629557fc6439516880538110db797f"
+    "mtime": 1786133679.5346518,
+    "ast_hash": "18d39040e570b787a231a06d754bb1cc",
+    "semantic_hash": ""
   },
   "src/app/register/[[...sign-up]]/page.tsx": {
     "mtime": 1786124626.7902048,
@@ -920,9 +920,9 @@
     "semantic_hash": ""
   },
   "src/lib/plans.ts": {
-    "mtime": 1786059806.9059145,
-    "ast_hash": "f9ea9cbd499046fc4c1ab140f0f16626",
-    "semantic_hash": "f9ea9cbd499046fc4c1ab140f0f16626"
+    "mtime": 1786133333.5706432,
+    "ast_hash": "e88d15e322430c9db90bc9071b1e4743",
+    "semantic_hash": ""
   },
   "src/lib/seo.ts": {
     "mtime": 1786059806.9059145,
@@ -1300,8 +1300,8 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1786132619.4744935,
-    "ast_hash": "5593652619067d6d40c8b90ea5a60222",
+    "mtime": 1786134046.138661,
+    "ast_hash": "fe2f0118289aa67f1334f96f1e0af917",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1442,6 +1442,21 @@
   "src/lib/server/billing-alerts.ts": {
     "mtime": 1786128146.9242806,
     "ast_hash": "6a86c89a167241a31509f4591ca906f3",
+    "semantic_hash": ""
+  },
+  "src/app/api/user/usage/route.ts": {
+    "mtime": 1786133438.0666456,
+    "ast_hash": "c935fcbdf0ca9eabdcea8ae48e8a5c6f",
+    "semantic_hash": ""
+  },
+  "src/lib/server/usage.ts": {
+    "mtime": 1786133377.8666441,
+    "ast_hash": "de81c416a853ec14c6b5c721d88c41fd",
+    "semantic_hash": ""
+  },
+  "supabase-migration-usage-monthly.sql": {
+    "mtime": 1786133346.5546434,
+    "ast_hash": "e60a06068198478fe7166b8bab627efe",
     "semantic_hash": ""
   }
 }

@@ -233,6 +233,8 @@ export default function BuilderPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  /** This month's image allowance — so the ceiling is visible before it is hit. */
+  const [imageUsage, setImageUsage] = useState<{ imagesRemaining: number; imageQuota: number } | null>(null);
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalLookName, setModalLookName] = useState("");
@@ -278,6 +280,16 @@ export default function BuilderPage() {
   useEffect(() => {
     if (!isLoggedIn) return;
     void syncLooks(true);
+  }, [isLoggedIn]);
+
+  // This month's image allowance, so the number is on screen before the ceiling
+  // is reached rather than only in the error that reports hitting it.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetch("/api/user/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.imagesRemaining === "number") setImageUsage(d); })
+      .catch(() => {});
   }, [isLoggedIn]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -828,6 +840,9 @@ export default function BuilderPage() {
       if (!res.ok) {
         setGenerateError(json.error ?? "Generation failed. Try again.");
       } else {
+        // The route returns the post-generation counters, so the remaining
+        // count updates without a second round trip.
+        if (json.usage) setImageUsage(json.usage);
         setGeneratedImage(json.imageUrl);
         // Auto-save the look (with its generated image) to the account right away
         // so it's persisted to the database the moment it's created — no second
@@ -2888,6 +2903,16 @@ export default function BuilderPage() {
                 <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                   Save look
                 </p>
+              )}
+              {imageUsage && imageUsage.imageQuota > 0 && (
+                <span
+                  className={`font-mono text-[9px] tracking-[0.14em] uppercase ${
+                    imageUsage.imagesRemaining === 0 ? "text-red-500" : "text-[var(--foreground-subtle)]"
+                  }`}
+                  title="Image generations left this month"
+                >
+                  {imageUsage.imagesRemaining}/{imageUsage.imageQuota} left
+                </span>
               )}
               <button
                 onClick={() => { setShowStylePicker(false); setTryonStep(false); setUserPhotoDataUri(null); }}
