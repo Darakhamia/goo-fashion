@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { checkNamedRateLimit } from "@/lib/server/rate-limit";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// This route spends money on someone else's behalf: it hands user-supplied text
+// and an image straight to the Anthropic API. Left open it is a faucet anyone
+// on the internet can turn on, so it is gated three ways — sign-in, a per-user
+// hourly cap, and hard limits on how much text and image a single call may
+// carry. The description and screenshot caps are what bound the token cost of
+// one accepted request; the hourly cap bounds how many of those a person gets.
+const REPORTS_PER_HOUR = 5;
+const MAX_DESCRIPTION_CHARS = 4_000;
+// ~3.6 MB of image once decoded, comfortably under Anthropic's own 5 MB ceiling.
+const MAX_SCREENSHOT_BASE64_CHARS = 5_000_000;
 
 interface ClaudeResult {
   title: string;
@@ -14,12 +25,50 @@ interface ClaudeResult {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Sign in to report a bug." }, { status: 401 });
+    }
+
+    const limit = await checkNamedRateLimit(req, {
+      name: "report-bug",
+      requests: REPORTS_PER_HOUR,
+      window: "1 h",
+      key: userId,
+    });
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: `Too many bug reports. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} min.` },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      );
+    }
+
     const { description, url, section, reporter, priority, screenshotBase64, screenshotMime } =
       await req.json();
 
     if (!description) {
       return NextResponse.json({ error: "Description is required" }, { status: 400 });
     }
+    if (typeof description !== "string" || description.length > MAX_DESCRIPTION_CHARS) {
+      return NextResponse.json(
+        { error: `Description must be under ${MAX_DESCRIPTION_CHARS} characters.` },
+        { status: 413 },
+      );
+    }
+    if (typeof screenshotBase64 === "string" && screenshotBase64.length > MAX_SCREENSHOT_BASE64_CHARS) {
+      return NextResponse.json({ error: "Screenshot is too large." }, { status: 413 });
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      // Without the key the Anthropic client throws on construction, which used
+      // to surface as an unexplained 500. Say what is actually wrong instead.
+      console.error("report-bug: ANTHROPIC_API_KEY is not set");
+      return NextResponse.json(
+        { error: "Bug reporting is not configured on this deployment." },
+        { status: 503 },
+      );
+    }
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const textPrompt = `Analyze this bug report and return ONLY a JSON object with:
 - title: short bug title in Russian (max 60 chars)

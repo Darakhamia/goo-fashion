@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Link from "next/link";
+import { SignedOut } from "@clerk/nextjs";
 
 const SECTIONS = [
   "AI Stylist",
@@ -56,8 +58,10 @@ export default function ReportPage() {
 
   function processFile(file: File) {
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Screenshot must be under 10MB");
+    // Matches the server's base64 ceiling in /api/report-bug — a bigger file
+    // would sail past this check and be rejected only after the upload.
+    if (file.size > 3.5 * 1024 * 1024) {
+      setError("Screenshot must be under 3.5MB");
       return;
     }
     const reader = new FileReader();
@@ -203,6 +207,18 @@ export default function ReportPage() {
             Internal Tool
           </span>
         </div>
+
+        {/* Filing a report spends Anthropic credit, so the API requires a signed-in
+            user. Say so up front rather than letting someone write a report and
+            collect a 401 on submit. */}
+        <SignedOut>
+          <div className="mb-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+            <Link href="/login?redirect_url=%2Freport" className="text-white underline underline-offset-2">
+              Sign in
+            </Link>{" "}
+            to file a bug report.
+          </div>
+        </SignedOut>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Description */}

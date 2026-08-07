@@ -1,4 +1,4 @@
-import { Ratelimit } from "@upstash/ratelimit";
+import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 // 10 messages per IP per sliding minute window.
@@ -14,12 +14,16 @@ const ANON_REQUESTS_PER_DAY = 25;
 // null when UPSTASH env vars are absent (dev / unconfigured deployments).
 let ratelimit: Ratelimit | null = null;
 let anonDailyLimit: Ratelimit | null = null;
+// Shared connection, so limiters added later (see checkNamedRateLimit) don't
+// each open their own.
+let redisClient: Redis | null = null;
 
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
+  redisClient = redis;
   ratelimit = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(REQUESTS_PER_MINUTE, "1 m"),
@@ -83,4 +87,39 @@ export async function checkRateLimit(req: Request): Promise<RateLimitResult> {
 /** Daily cap for unauthenticated users — call only when there is no userId. */
 export async function checkAnonDailyLimit(req: Request): Promise<RateLimitResult> {
   return runLimit(anonDailyLimit, clientIp(req), ANON_REQUESTS_PER_DAY);
+}
+
+// Buckets for endpoints other than the stylist. Each name gets its own Redis
+// prefix, so filing a bug report cannot eat someone's stylist allowance and
+// vice versa. Built lazily and cached — a serverless instance only pays for
+// the limiters the routes it actually served asked for.
+const namedLimiters = new Map<string, Ratelimit>();
+
+export interface NamedRateLimit {
+  /** Redis prefix for this bucket — keep it stable, it is the storage key. */
+  name: string;
+  requests: number;
+  window: Duration;
+  /** What to count per: a userId where there is one, otherwise the client IP. */
+  key?: string | null;
+}
+
+export async function checkNamedRateLimit(
+  req: Request,
+  { name, requests, window, key }: NamedRateLimit,
+): Promise<RateLimitResult> {
+  if (!redisClient) return { allowed: true, retryAfterSeconds: 0, remaining: null, limit: null };
+
+  let limiter = namedLimiters.get(name);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: redisClient,
+      limiter: Ratelimit.slidingWindow(requests, window),
+      analytics: false,
+      prefix: `goo:${name}`,
+    });
+    namedLimiters.set(name, limiter);
+  }
+
+  return runLimit(limiter, key || clientIp(req), requests);
 }
