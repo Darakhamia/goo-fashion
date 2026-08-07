@@ -12,6 +12,7 @@ interface Summary {
   canceled: number;
   pending: number;
   autoRenewOff: number;
+  activeWithoutCard: number;
   earnedTotalUah: number;
   earnedThisMonthUah: number;
   paymentsTotal: number;
@@ -26,6 +27,7 @@ interface SubItem {
   amountUah: number;
   autoRenew: boolean;
   maskedPan: string | null;
+  hasCardToken: boolean;
   currentPeriodEnd: string | null;
   startedAt: string;
 }
@@ -65,6 +67,8 @@ const EVENT_STYLE: Record<string, string> = {
   checkout_started: "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--surface)]",
   canceled: "text-amber-600 border-amber-500/30 bg-amber-500/10",
   ledger_error: "text-red-500 border-red-500/30 bg-red-500/10",
+  card_token_missing: "text-amber-600 border-amber-500/30 bg-amber-500/10",
+  card_token_recovered: "text-emerald-600 border-emerald-500/30 bg-emerald-500/10",
 };
 const EVENT_LABEL: Record<string, string> = {
   payment_success: "Payment",
@@ -73,6 +77,8 @@ const EVENT_LABEL: Record<string, string> = {
   canceled: "Canceled",
   // Money moved but the subscription row did not — must not read as routine.
   ledger_error: "Ledger error",
+  card_token_missing: "No card",
+  card_token_recovered: "Card found",
 };
 
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
@@ -153,6 +159,15 @@ export default function SubscriptionsPage() {
         />
       </div>
 
+      {summary.activeWithoutCard > 0 && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-500">
+          {summary.activeWithoutCard} active {summary.activeWithoutCard === 1 ? "subscription has" : "subscriptions have"} no
+          saved card. The renewal sweep skips these, so they will never be charged again — they are
+          paid plans running for free. The daily cron retries the card lookup; if the number does not
+          fall, the card was never tokenized and the customer has to re-subscribe.
+        </div>
+      )}
+
       {!summary.eventsAvailable && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-600">
           The <code>billing_events</code> table isn&apos;t set up yet — run
@@ -189,7 +204,11 @@ export default function SubscriptionsPage() {
                     <td className="px-4 py-3"><Badge value={s.status} map={STATUS_STYLE} /></td>
                     <td className="px-4 py-3 text-[var(--foreground)]">{uah(s.amountUah)}/mo</td>
                     <td className="px-4 py-3 text-[var(--foreground-muted)]">
-                      {s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "—"}
+                      {/* The token, not the masked number, is what renewal needs —
+                          report on that so a display-only gap doesn't read as broken. */}
+                      {s.hasCardToken
+                        ? s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "saved"
+                        : <span className="text-red-500">no card</span>}
                     </td>
                     <td className="px-4 py-3 text-[var(--foreground-muted)]">
                       {s.autoRenew ? fmtDate(s.currentPeriodEnd) : <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>}

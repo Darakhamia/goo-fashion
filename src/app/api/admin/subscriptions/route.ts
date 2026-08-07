@@ -15,6 +15,8 @@ interface SubRow {
   amount: number;
   auto_renew: boolean;
   masked_pan: string | null;
+  /** Never leaves the server — only the boolean derived from it is returned. */
+  card_token: string | null;
   current_period_end: string | null;
   created_at: string;
 }
@@ -44,7 +46,7 @@ export async function GET() {
   const [subsQ, eventsQ] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("user_id,plan,status,amount,auto_renew,masked_pan,current_period_end,created_at")
+      .select("user_id,plan,status,amount,auto_renew,masked_pan,card_token,current_period_end,created_at")
       .order("created_at", { ascending: false })
       .limit(5_000),
     // billing_events may not exist yet if the migration hasn't been run.
@@ -103,6 +105,10 @@ export async function GET() {
     canceled: subs.filter((s) => s.status === "canceled").length,
     pending: subs.filter((s) => s.status === "pending").length,
     autoRenewOff: activeSubs.filter((s) => !s.auto_renew).length,
+    // Active, auto-renew on, but no saved card: the renewal sweep filters these
+    // out, so each one is a customer who paid once and is now using the plan
+    // for free. Should be zero.
+    activeWithoutCard: activeSubs.filter((s) => s.auto_renew && !s.card_token).length,
     // "Earned" reflects logged successful payments — only complete once the
     // billing_events migration has run and payments have flowed through it.
     earnedTotalUah: toUah(earnedTotal),
@@ -124,6 +130,7 @@ export async function GET() {
     amountUah: toUah(s.amount),
     autoRenew: s.auto_renew,
     maskedPan: s.masked_pan,
+    hasCardToken: !!s.card_token,
     currentPeriodEnd: s.current_period_end,
     startedAt: s.created_at,
   }));

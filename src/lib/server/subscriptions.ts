@@ -42,7 +42,11 @@ export type BillingEventType =
   | "payment_failed"
   | "canceled"
   /** The ledger and the entitlement disagree — money moved, the row did not. */
-  | "ledger_error";
+  | "ledger_error"
+  /** Active subscription with no saved card: it can never come up for renewal. */
+  | "card_token_missing"
+  /** A previously missing card token was recovered by the daily sweep. */
+  | "card_token_recovered";
 
 /**
  * Append a row to the billing_events audit log. Best-effort: logging must never
@@ -249,6 +253,50 @@ export async function getDueSubscriptions(now = new Date()): Promise<Subscriptio
     .not("card_token", "is", null);
   if (error) throw new Error(error.message);
   return (data as SubscriptionRow[]) ?? [];
+}
+
+/**
+ * Active subscriptions with no saved card.
+ *
+ * These are the dangerous ones: `getDueSubscriptions()` filters on a non-null
+ * `card_token`, so a subscription that activated without one never comes up for
+ * renewal. It stays `active` forever and the customer keeps a paid plan they
+ * paid for exactly once. Nothing surfaces them on its own — hence this query.
+ */
+export async function getTokenlessSubscriptions(): Promise<SubscriptionRow[]> {
+  const { data, error } = await db()
+    .from("subscriptions")
+    .select("*")
+    .eq("status", "active")
+    .eq("auto_renew", true)
+    .is("card_token", null);
+  if (error) throw new Error(error.message);
+  return (data as SubscriptionRow[]) ?? [];
+}
+
+/**
+ * Store a card token recovered after activation. Returns whether a row was
+ * actually updated, for the same reason activateSubscription checks: Supabase
+ * reports no error when an UPDATE matches nothing.
+ */
+export async function attachCardToken(
+  userId: string,
+  cardToken: string,
+  maskedPan?: string | null,
+): Promise<boolean> {
+  const patch: Record<string, unknown> = {
+    card_token: cardToken,
+    updated_at: new Date().toISOString(),
+  };
+  if (maskedPan) patch.masked_pan = maskedPan;
+
+  const { data, error } = await db()
+    .from("subscriptions")
+    .update(patch)
+    .eq("user_id", userId)
+    .select("user_id");
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
 }
 
 const MAX_FAILED_CHARGES = 3;
