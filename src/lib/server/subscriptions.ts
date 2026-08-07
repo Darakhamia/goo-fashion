@@ -40,7 +40,9 @@ export type BillingEventType =
   | "checkout_started"
   | "payment_success"
   | "payment_failed"
-  | "canceled";
+  | "canceled"
+  /** The ledger and the entitlement disagree — money moved, the row did not. */
+  | "ledger_error";
 
 /**
  * Append a row to the billing_events audit log. Best-effort: logging must never
@@ -124,6 +126,21 @@ function addOneMonth(from: Date): Date {
  * Mark a subscription active after a successful payment and unlock the plan in
  * Clerk. Extends the billing period by one month from the later of now / the
  * current period end (so an early renewal doesn't lose paid time).
+ *
+ * Writes the ledger first and only unlocks Clerk once that write is confirmed
+ * to have touched a row. The two must not drift: Clerk is what the paywall
+ * reads, but `getDueSubscriptions()` renews from this table, so a plan open in
+ * Clerk with no row here is a customer who pays once and then uses the paid
+ * tier forever — the exact "charged once and never again" symptom.
+ *
+ * An `UPDATE ... WHERE user_id = X` that matches nothing is not an error as far
+ * as Supabase is concerned: it returns `error === null`. So this upserts and
+ * checks that a row actually came back. Upsert rather than update because by
+ * the time we get here the money has already moved — healing a missing row
+ * serves the customer better than refusing to record the payment. The row is
+ * normally created at checkout, but the invoice is created *before* that write
+ * (see api/billing/checkout), so a failure in between leaves a payable invoice
+ * with no ledger row behind it.
  */
 export async function activateSubscription(args: {
   userId: string;
@@ -141,38 +158,71 @@ export async function activateSubscription(args: {
       : new Date();
   const periodEnd = addOneMonth(base).toISOString();
   const now = new Date().toISOString();
+  const chargedAmount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
 
-  const update: Record<string, unknown> = {
+  const row: Record<string, unknown> = {
+    user_id: args.userId,
     plan: args.plan,
     status: "active",
+    // Required on insert (NOT NULL, no default). On conflict these simply
+    // restate the current plan's price, which is what was just charged.
+    ccy: BILLING_CCY,
+    amount: chargedAmount,
+    wallet_id: args.userId,
     last_invoice_id: args.invoiceId,
     current_period_end: periodEnd,
     failed_charges: 0,
     updated_at: now,
   };
   // Only overwrite the stored token when we actually have a fresh one.
-  if (args.cardToken) update.card_token = args.cardToken;
-  if (args.maskedPan) update.masked_pan = args.maskedPan;
+  // `auto_renew` is deliberately absent: omitted columns keep their existing
+  // value on conflict, so this cannot silently re-enable a cancelled renewal.
+  if (args.cardToken) row.card_token = args.cardToken;
+  if (args.maskedPan) row.masked_pan = args.maskedPan;
 
-  const { error } = await db()
+  const { data, error } = await db()
     .from("subscriptions")
-    .update(update)
-    .eq("user_id", args.userId);
-  if (error) throw new Error(error.message);
+    .upsert(row, { onConflict: "user_id" })
+    .select("user_id");
+
+  const wrote = !error && (data?.length ?? 0) > 0;
+  if (!wrote) {
+    const detail = error
+      ? error.message
+      : "upsert reported no error but returned no row";
+    // Loud on both channels: the event survives for the admin screen, the
+    // console line survives even when billing_events itself is missing.
+    console.error(
+      `[billing] ledger write failed for ${args.userId} on invoice ${args.invoiceId}: ${detail}`,
+    );
+    await logBillingEvent({
+      userId: args.userId,
+      eventType: "ledger_error",
+      kind: args.kind ?? "initial",
+      plan: args.plan,
+      invoiceId: args.invoiceId,
+      amount: chargedAmount,
+      ccy: BILLING_CCY,
+      status: "error",
+      detail,
+    });
+    // Deliberately before setClerkPlan: better a payment the webhook retries
+    // than an entitlement no renewal sweep can ever see.
+    throw new Error(`Could not record subscription for ${args.userId}: ${detail}`);
+  }
 
   await setClerkPlan(args.userId, args.plan);
 
   // Single chokepoint for "money received" — logged exactly once per charge
   // (webhook initial payments and cron renewals both funnel through here, and
   // duplicate webhooks are filtered out before this is called).
-  const amount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
   await logBillingEvent({
     userId: args.userId,
     eventType: "payment_success",
     kind: args.kind ?? "initial",
     plan: args.plan,
     invoiceId: args.invoiceId,
-    amount,
+    amount: chargedAmount,
     ccy: BILLING_CCY,
     status: "success",
   });

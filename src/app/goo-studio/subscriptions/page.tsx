@@ -64,12 +64,15 @@ const EVENT_STYLE: Record<string, string> = {
   payment_failed: "text-red-500 border-red-500/30 bg-red-500/10",
   checkout_started: "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--surface)]",
   canceled: "text-amber-600 border-amber-500/30 bg-amber-500/10",
+  ledger_error: "text-red-500 border-red-500/30 bg-red-500/10",
 };
 const EVENT_LABEL: Record<string, string> = {
   payment_success: "Payment",
   payment_failed: "Failed",
   checkout_started: "Checkout",
   canceled: "Canceled",
+  // Money moved but the subscription row did not — must not read as routine.
+  ledger_error: "Ledger error",
 };
 
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
