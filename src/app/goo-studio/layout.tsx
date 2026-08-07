@@ -79,6 +79,17 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/goo-studio/categories",
+    label: "Categories",
+    category: "catalog",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 3.5H5.5M2 8H8M2 12.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M10.5 3.5H14M10.5 8V3.5M10.5 12.5V8M10.5 8H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/goo-studio/blog",
     label: "Blog",
     category: "content",
@@ -224,6 +235,7 @@ const pageTitles: Record<string, string> = {
   "/goo-studio/subscriptions": "Subscriptions",
   "/goo-studio/users": "Users",
   "/goo-studio/brands": "Brands",
+  "/goo-studio/categories": "Categories",
   "/goo-studio/waitlist": "Waitlist",
   "/goo-studio/email": "Email",
   "/goo-studio/brightdata": "Import",

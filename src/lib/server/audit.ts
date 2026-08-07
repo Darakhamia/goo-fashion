@@ -13,7 +13,8 @@ export type AdminAction =
   | "settings.homepage_showcase_updated"
   | "settings.homepage_stylist_updated"
   | "parser.config_updated"
-  | "parser.product_imported";
+  | "parser.product_imported"
+  | "categories.updated";
 
 interface AuditEntry {
   admin_id: string;

@@ -23,6 +23,7 @@ import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { groupForCategory, resolveSubcategory } from "@/lib/categories";
+import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 interface Props {
   product: Product;
@@ -38,6 +39,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
   const { isProductLiked, toggleProductLike } = useLikes();
+  const categoryGroups = useCategoryTree();
   const { isLoggedIn, login } = useAuth();
   const liked = isProductLiked(product.id);
 
@@ -91,8 +93,8 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   // Name. Every step links back into the catalog with that filter applied; the
   // optional ones are dropped when the product doesn't carry them.
   const productCrumbs: Crumb[] = useMemo(() => {
-    const group = groupForCategory(product.category);
-    const subcategory = resolveSubcategory(product.category, product.subcategory);
+    const group = groupForCategory(product.category, categoryGroups);
+    const subcategory = resolveSubcategory(product.category, product.subcategory, categoryGroups);
     const colour = product.colors?.[0];
     const q = (params: Record<string, string>) =>
       `/browse?${new URLSearchParams({ view: "pieces", ...params })}`;
@@ -109,7 +111,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     if (product.brand) items.push({ label: product.brand, href: q({ brand: product.brand }) });
     items.push({ label: product.name });
     return items;
-  }, [product]);
+  }, [product, categoryGroups]);
 
   // Unique, data-derived styling copy so the page isn't a thin duplicate of the
   // source catalog feed.

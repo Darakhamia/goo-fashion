@@ -13,6 +13,8 @@ import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/componen
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
 import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type SavedLook } from "@/lib/looks-storage";
+import { subcategoryToValue } from "@/lib/categories";
+import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -94,110 +96,47 @@ const MOBILE_CHIPS: Array<{ label: string; value: string | null }> = [
   { label: "Accessories", value: "accessories" },
 ];
 
-// Category accordion groups for the filter sidebar / mobile drawer
-const CATEGORY_GROUPS = [
-  {
-    id: "outerwear",
-    label: "Outerwear",
-    icon: (
+// Icons for the category accordion. The tree itself is the shared one the
+// admin panel edits; only the artwork is keyed by group id here.
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  outerwear: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M5 2L2 5V7.5L4 6.5V14H12V6.5L14 7.5V5L11 2C11 2 10.2 3.5 8 3.5C5.8 3.5 5 2 5 2ZM6 2.5V7M10 2.5V7"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
-    ),
-    items: [
-      { label: "Jackets", value: "outerwear" },
-      { label: "Coats", value: "outerwear" },
-      { label: "Parkas", value: "outerwear" },
-      { label: "Vests", value: "outerwear" },
-      { label: "Bomber Jackets", value: "outerwear" },
-      { label: "Raincoats", value: "outerwear" },
-      { label: "Blazers", value: "blazers" },
-    ],
-  },
-  {
-    id: "tops",
-    label: "Tops",
-    icon: (
+  ),
+  tops: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M6 2L2 5V7L4 6V14H12V6L14 7V5L10 2C10 2 9.5 4 8 4C6.5 4 6 2 6 2Z"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
       </svg>
-    ),
-    items: [
-      { label: "T-Shirts", value: "tops" },
-      { label: "Hoodies & Sweatshirts", value: "tops" },
-      { label: "Shirts", value: "shirts" },
-    ],
-  },
-  {
-    id: "bottoms",
-    label: "Bottoms",
-    icon: (
+  ),
+  bottoms: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M4 2H12L13 8H9L8 14H8L7 8H3L4 2Z"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
       </svg>
-    ),
-    items: [
-      { label: "Pants", value: "bottoms" },
-      { label: "Jeans", value: "jeans" },
-      { label: "Shorts", value: "shorts" },
-      { label: "Skirts", value: "skirts" },
-    ],
-  },
-  {
-    id: "dresses",
-    label: "Dresses",
-    icon: (
+  ),
+  dresses: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M6 2H10M8 2V5M5 5C5 5 4 7 3 9C2 11 2 14 2 14H14C14 14 14 11 13 9C12 7 11 5 11 5C10.5 6 9.5 7 8 7C6.5 7 5.5 6 5 5Z"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
-    ),
-    items: [
-      { label: "Dresses", value: "dresses" },
-      { label: "Jumpsuits", value: "jumpsuits" },
-    ],
-  },
-  {
-    id: "footwear",
-    label: "Footwear",
-    icon: (
+  ),
+  footwear: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 11.5C2 11.5 4 10 7 10C9 10 10 11 11 11H13.5C13.5 11 14 11 14 12V13H2V11.5Z"
           stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
         <path d="M7 10V7.5C7 7.5 7.5 5 10 5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
       </svg>
-    ),
-    items: [
-      { label: "Sneakers", value: "footwear" },
-      { label: "Sandals", value: "footwear" },
-      { label: "Boots", value: "footwear" },
-    ],
-  },
-  {
-    id: "accessories",
-    label: "Accessories",
-    icon: (
+  ),
+  accessories: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
         <path d="M6 6V4.5C6 3.7 6.7 3 7.5 3H8.5C9.3 3 10 3.7 10 4.5V6" stroke="currentColor" strokeWidth="1.1" />
       </svg>
-    ),
-    items: [
-      { label: "Bags", value: "bags" },
-      { label: "Hats", value: "accessories" },
-      { label: "Belts", value: "accessories" },
-      { label: "Sunglasses", value: "accessories" },
-      { label: "Watches", value: "accessories" },
-    ],
-  },
-];
-
-const SUBCAT_LABEL_TO_VALUE: Record<string, string> = Object.fromEntries(
-  CATEGORY_GROUPS.flatMap(g => g.items.map(i => [i.label, i.value]))
-);
+  ),
+};
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
 
@@ -232,6 +171,13 @@ function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function BuilderPage() {
+  // The catalog's filter tree, as edited in the admin panel under Categories.
+  const categoryTree = useCategoryTree();
+  const categoryGroups = useMemo(
+    () => categoryTree.map((g) => ({ ...g, icon: CATEGORY_ICONS[g.id] })),
+    [categoryTree],
+  );
+  const subcatToValue = useMemo(() => subcategoryToValue(categoryTree), [categoryTree]);
   // ── State ────────────────────────────────────────────────────────────────
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
@@ -430,7 +376,7 @@ export default function BuilderPage() {
 
   const filterByCategory = (list: Product[], cat: string | null, subs: string[] = []) => {
     if (subs.length > 0) {
-      const vals = [...new Set(subs.map(l => SUBCAT_LABEL_TO_VALUE[l]).filter(Boolean))];
+      const vals = [...new Set(subs.map(l => subcatToValue[l]).filter(Boolean))];
       return list.filter(p => vals.includes(p.category));
     }
     if (!cat) return list;
@@ -972,7 +918,7 @@ export default function BuilderPage() {
                         </svg>
                       )}
                     </button>
-                    {CATEGORY_GROUPS.map(group => {
+                    {categoryGroups.map(group => {
                       const grpOpen = expandedCategoryGroups.has(group.id);
                       const grpLabels = group.items.map(i => i.label);
                       const grpUniqueVals = [...new Set(group.items.map(i => i.value))];
@@ -2539,7 +2485,7 @@ export default function BuilderPage() {
                     )}
                   </button>
                   {/* Group rows */}
-                  {CATEGORY_GROUPS.map(group => {
+                  {categoryGroups.map(group => {
                     const isOpen = expandedCategoryGroups.has(group.id);
                     const groupLabels = group.items.map(i => i.label);
                     const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
