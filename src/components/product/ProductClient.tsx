@@ -22,7 +22,7 @@ import { recordView } from "@/lib/recently-viewed";
 import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
-import { groupForCategory, resolveSubcategory } from "@/lib/categories";
+import { groupForProduct, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 interface Props {
@@ -93,7 +93,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   // Name. Every step links back into the catalog with that filter applied; the
   // optional ones are dropped when the product doesn't carry them.
   const productCrumbs: Crumb[] = useMemo(() => {
-    const group = groupForCategory(product.category, categoryGroups);
+    const group = groupForProduct(product.category, product.subcategory, categoryGroups);
     const subcategory = resolveSubcategory(product.category, product.subcategory, categoryGroups);
     const colour = product.colors?.[0];
     const q = (params: Record<string, string>) =>

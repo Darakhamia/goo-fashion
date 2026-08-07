@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
-import { subcategoryToValue, groupForCategory, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
+import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
@@ -62,7 +62,7 @@ const SIZE_PRESETS: Record<string, { sizeType: "letter" | "number" | "eu" | "one
 
 /** "Footwear › Boots" for a stored pair, for the table and section headers. */
 function categoryPath(category: string, subcategory: string | undefined, tree: CategoryGroup[]): string {
-  const group = groupForCategory(category, tree);
+  const group = groupForProduct(category, subcategory, tree);
   const sub = resolveSubcategory(category, subcategory, tree);
   if (!group) return category;
   return sub ? `${group.label} › ${sub}` : group.label;
@@ -1814,7 +1814,11 @@ export default function AdminProductsPage() {
                           // One tree, the same one the catalog filters and the
                           // breadcrumbs read. Picking a subcategory sets the stored
                           // category too, so the two can never disagree.
-                          const activeGroup = groupForCategory(form.category, categoryGroups);
+                          // Resolved from the subcategory, not the category —
+                          // a group added alongside an existing one can share
+                          // its category value, and only the label says which
+                          // of the two a piece is in.
+                          const activeGroup = groupForProduct(form.category, form.subcategory, categoryGroups);
                           const pick = (label: string) =>
                             setForm((f) => ({
                               ...f,
@@ -1824,12 +1828,20 @@ export default function AdminProductsPage() {
                           return (
                             <>
                               <div className="grid grid-cols-3 gap-1">
-                                {categoryGroups.map((g) => (
-                                  <button key={g.id} type="button"
-                                    onClick={() => pick(g.items[0].label)}
-                                    className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                  >{g.label}</button>
-                                ))}
+                                {categoryGroups.map((g) => {
+                                  // Picking a group means picking its first
+                                  // subcategory, so an empty one has nothing to
+                                  // select until it gets one.
+                                  const first = g.items[0];
+                                  return (
+                                    <button key={g.id} type="button"
+                                      disabled={!first}
+                                      title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
+                                      onClick={() => first && pick(first.label)}
+                                      className={`py-1.5 text-[10px] border transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                    >{g.label}</button>
+                                  );
+                                })}
                               </div>
 
                               {activeGroup ? (

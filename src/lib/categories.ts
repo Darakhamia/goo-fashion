@@ -129,6 +129,32 @@ export function groupForCategory(
   return tree.find((g) => g.items.some((i) => i.value === category));
 }
 
+/**
+ * The group a product belongs to.
+ *
+ * Prefer its subcategory label, and only fall back to the category value. Two
+ * groups may point at the same value — a "Sport" group whose Leggings are
+ * stored as `bottoms` sits alongside the Bottoms group — and the value alone
+ * cannot tell them apart, so resolving by it would always name whichever group
+ * comes first and strand the other. Labels are unique across the whole tree
+ * (the `category_subcategories` table enforces it), so one names its group
+ * exactly.
+ *
+ * A piece with no subcategory yet genuinely could be in either, so the value's
+ * first group is the right answer there.
+ */
+export function groupForProduct(
+  category: string,
+  subcategory: string | undefined,
+  tree: CategoryGroup[] = DEFAULT_CATEGORY_GROUPS,
+): CategoryGroup | undefined {
+  if (subcategory) {
+    const owner = tree.find((g) => g.items.some((i) => i.label === subcategory));
+    if (owner) return owner;
+  }
+  return groupForCategory(category, tree);
+}
+
 /** Every subcategory label a stored category value can carry. */
 export function subcategoriesForCategory(
   category: string,
