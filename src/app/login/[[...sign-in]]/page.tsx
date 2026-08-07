@@ -30,7 +30,11 @@ export default function LoginPage() {
             socialButtonsBlockButton: "border-[#E8E6E0] rounded-none",
           },
         }}
-        redirectUrl="/"
+        // `fallbackRedirectUrl`, not `redirectUrl`: the payment funnel arrives here
+        // as `/login?redirect_url=/subscribe?plan=basic` and has to land back on
+        // that page. The legacy `redirectUrl` outranks the query parameter and
+        // would drop every paying customer on the homepage instead.
+        fallbackRedirectUrl="/"
       />
     </div>
   );
