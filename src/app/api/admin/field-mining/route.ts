@@ -28,6 +28,9 @@ import {
   applyMultiRules,
   applyRules,
   colorGroupPairs,
+  labelFrequency,
+  majorityLabels,
+  majorityValue,
   mineRules,
   nearest,
   scoreMultiLabel,
@@ -69,16 +72,48 @@ function parseEmbedding(raw: unknown): number[] | null {
   }
 }
 
+function words(text: string): string[] {
+  return (text ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 /** Brand words, so a brand that sells one kind of thing cannot mine into a rule. */
 function brandTokens(brand: string): Set<string> {
-  return new Set(
-    (brand ?? "")
-      .toLowerCase()
-      .replace(/[^a-z0-9а-яё]+/g, " ")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean),
-  );
+  return new Set(words(brand));
+}
+
+/** Size vocabulary — "Size: L" is in half the names and means nothing here. */
+const SIZE_NOISE = new Set([
+  "size", "sizes", "xxs", "xs", "sm", "md", "lg", "xl", "xxl", "xxxl",
+  "eu", "uk", "us", "cm", "mm", "one", "onesize", "fit", "regular", "oversized",
+]);
+
+/** Words that name a gender, kept out of garment mining but central to its own. */
+const GENDER_NOISE = new Set([
+  "women", "womens", "woman", "female", "ladies", "girl", "girls",
+  "men", "mens", "man", "male", "boy", "boys", "unisex",
+  "женск", "мужск",
+]);
+
+/**
+ * Colour vocabulary, taken from the catalogue rather than a fixed list.
+ *
+ * The first run mined "cloud white → footwear" and "core black → footwear":
+ * real colourways of one brand's line, useless on anyone else's products. The
+ * words to exclude are exactly the ones the catalogue already uses as colour
+ * names, so it can say them itself.
+ */
+function colourNoise(rows: Row[]): Set<string> {
+  const noise = new Set<string>();
+  for (const row of rows) {
+    for (const colour of row.colors) for (const w of words(colour)) noise.add(w);
+    for (const group of row.colorGroups) for (const w of words(group)) noise.add(w);
+  }
+  return noise;
 }
 
 async function loadRows(withEmbedding: boolean): Promise<Row[] | { error: string }> {
@@ -164,12 +199,26 @@ export async function GET(req: Request) {
   // which reads to a token counter as evidence for the wrong bucket. Style
   // keywords are the opposite case — the aesthetic lives in that prose — so
   // they get both fields.
-  const nameKeys = (r: Row) => tokenize(r.name, brandTokens(r.brand));
-  const proseKeys = (r: Row) => tokenize(`${r.name} ${r.description}`, brandTokens(r.brand));
+  //
+  // Garment mining also drops the brand's own words, the catalogue's colour
+  // vocabulary, size boilerplate and gender words: none of them says what a
+  // thing IS, and all four mined into confident nonsense on the first run.
+  // Gender mining keeps the gender words, obviously — they turned out to be
+  // the whole signal.
+  const colours = colourNoise(loaded);
+  const garmentNoise = (r: Row) =>
+    new Set([...brandTokens(r.brand), ...colours, ...SIZE_NOISE, ...GENDER_NOISE]);
+  const genderNoise = (r: Row) =>
+    new Set([...brandTokens(r.brand), ...colours, ...SIZE_NOISE]);
+
+  const nameKeys = (r: Row) => tokenize(r.name, garmentNoise(r));
+  const proseKeys = (r: Row) => tokenize(`${r.name} ${r.description}`, garmentNoise(r));
+  const genderKeys = (r: Row) => tokenize(`${r.name} ${r.description}`, genderNoise(r));
 
   const categoryRules = mineRules(train, nameKeys, (r) => [r.category], { ...opts, topOnly: true });
   const subcategoryRules = mineRules(train, nameKeys, (r) => (r.subcategory ? [r.subcategory] : []), { ...opts, topOnly: true });
   const genderByBrand = mineRules(train, (r) => (r.brand ? [r.brand] : []), (r) => (r.gender ? [r.gender] : []), { ...opts, topOnly: true });
+  const genderByName = mineRules(train, genderKeys, (r) => (r.gender ? [r.gender] : []), { ...opts, topOnly: true });
   const styleRules = mineRules(train, proseKeys, (r) => r.styleKeywords, opts);
   const colorRules = mineRules(
     colorGroupPairs(train),
@@ -183,11 +232,30 @@ export async function GET(req: Request) {
   // three times.
   const holdoutColorPairs = colorGroupPairs(holdout);
 
+  // What a mechanism has to beat to have learned anything: always answer with
+  // whatever the catalogue says most often.
+  const majorityCategory = majorityValue(train, (r) => r.category);
+  const majoritySubcategory = majorityValue(train, (r) => r.subcategory);
+  const majorityGender = majorityValue(train, (r) => r.gender);
+  const majorityColourGroup = majorityValue(colorGroupPairs(train), (p) => p.group);
+  const majorityStyle = majorityLabels(train, (r) => r.styleKeywords);
+
+  // A catalogue leaning hard on one brand mines that brand's vocabulary rather
+  // than the language of clothes, so the concentration belongs in the report.
+  const brandCounts = new Map<string, number>();
+  for (const r of loaded) if (r.brand) brandCounts.set(r.brand, (brandCounts.get(r.brand) ?? 0) + 1);
+  const brands = [...brandCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([brand, count]) => ({ brand, count, share: count / loaded.length }));
+
   const report = {
     catalogue: {
       products: loaded.length,
       trained_on: train.length,
       held_out: holdout.length,
+      distinct_brands: brands.length,
+      top_brands: brands.slice(0, 10),
+      style_label_frequency: labelFrequency(loaded, (r) => r.styleKeywords),
       labelled: {
         category: loaded.filter((r) => r.category).length,
         subcategory: loaded.filter((r) => r.subcategory).length,
@@ -202,22 +270,43 @@ export async function GET(req: Request) {
       category_mined: scoreSingleLabel(holdout, (r) => r.category, (r) => applyRules(categoryRules, nameKeys(r))?.value ?? null, (r) => r.name),
       // The table already in the code, on the same rows — the bar to beat.
       category_existing_keywords: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategory(`${r.name} ${r.description}`), (r) => r.name),
+      category_majority: scoreSingleLabel(holdout, (r) => r.category, () => majorityCategory, () => "", 0),
       subcategory_mined: scoreSingleLabel(holdout, (r) => r.subcategory, (r) => applyRules(subcategoryRules, nameKeys(r))?.value ?? null, (r) => r.name),
+      subcategory_majority: scoreSingleLabel(holdout, (r) => r.subcategory, () => majoritySubcategory, () => "", 0),
+      gender_by_name: scoreSingleLabel(holdout, (r) => r.gender, (r) => applyRules(genderByName, genderKeys(r))?.value ?? null, (r) => r.name),
       gender_by_brand: scoreSingleLabel(holdout, (r) => r.gender, (r) => applyRules(genderByBrand, r.brand ? [r.brand] : [])?.value ?? null, (r) => r.name),
       gender_existing_text: scoreSingleLabel(holdout, (r) => r.gender, (r) => inferGenderFromText(`${r.name} ${r.description}`) ?? null, (r) => r.name),
+      // Name first, then the hand-written text rule, then the brand as a last
+      // resort — each step is weaker than the one before, so nothing overrides
+      // a better signal.
+      gender_combined: scoreSingleLabel(
+        holdout,
+        (r) => r.gender,
+        (r) =>
+          applyRules(genderByName, genderKeys(r))?.value ??
+          inferGenderFromText(`${r.name} ${r.description}`) ??
+          applyRules(genderByBrand, r.brand ? [r.brand] : [])?.value ??
+          null,
+        (r) => r.name,
+      ),
+      gender_majority: scoreSingleLabel(holdout, (r) => r.gender, () => majorityGender, () => "", 0),
       colour_group_mined: scoreSingleLabel(holdoutColorPairs, (p) => p.group, (p) => applyRules(colorRules, [p.color])?.value ?? null, (p) => p.color),
+      colour_group_majority: scoreSingleLabel(holdoutColorPairs, (p) => p.group, () => majorityColourGroup, () => "", 0),
       style_mined: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => applyMultiRules(styleRules, proseKeys(r))),
+      style_majority: scoreMultiLabel(holdout, (r) => r.styleKeywords, () => majorityStyle),
     } as Record<string, unknown>,
     rules: {
       counts: {
         category: categoryRules.length,
         subcategory: subcategoryRules.length,
+        gender_by_name: genderByName.length,
         gender_by_brand: genderByBrand.length,
         colour_group: colorRules.length,
         style: styleRules.length,
       },
       category: allRules ? categoryRules : categoryRules.slice(0, 80),
       subcategory: allRules ? subcategoryRules : subcategoryRules.slice(0, 80),
+      gender_by_name: genderByName,
       gender_by_brand: genderByBrand,
       colour_group: colorRules,
       style: allRules ? styleRules : styleRules.slice(0, 80),
@@ -254,7 +343,19 @@ export async function GET(req: Request) {
     lines.push(`  ${"embeddings".padEnd(16)} ${String(c.embeddings_present).padStart(4)} of ${c.products}`);
   }
   lines.push("");
+  lines.push(`BRAND MIX  (${c.distinct_brands} brands)`);
+  for (const b of c.top_brands) {
+    lines.push(`  ${b.brand.slice(0, 28).padEnd(30)} ${String(b.count).padStart(4)}  ${pct(b.share)}`);
+  }
+  lines.push("");
+  lines.push("STYLE KEYWORD FREQUENCY  (how often each is used at all)");
+  for (const f of c.style_label_frequency.slice(0, 15)) {
+    lines.push(`  ${f.value.padEnd(30)} ${String(f.count).padStart(4)}  ${pct(f.share)}`);
+  }
+  lines.push("");
   lines.push("SCORES  (on held-out products the rules never saw)");
+  lines.push("  *_majority = always answer with the catalogue's most common value.");
+  lines.push("  A mechanism that does not beat its majority line has learned nothing.");
   lines.push(`  ${"mechanism".padEnd(30)} ${"answers".padStart(8)} ${"correct".padStart(8)} ${"overall".padStart(8)}`);
   for (const [name, raw] of Object.entries(report.scores)) {
     const s = raw as Record<string, number>;
@@ -273,7 +374,7 @@ export async function GET(req: Request) {
   for (const [field, count] of Object.entries(report.rules.counts)) {
     lines.push(`  ${field.padEnd(16)} ${count}`);
   }
-  for (const field of ["colour_group", "gender_by_brand", "category", "subcategory", "style"] as const) {
+  for (const field of ["colour_group", "gender_by_name", "gender_by_brand", "category", "subcategory", "style"] as const) {
     const rules = report.rules[field] as MinedRule[];
     if (!rules.length) continue;
     lines.push("");

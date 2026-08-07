@@ -18,29 +18,39 @@
  */
 
 /**
- * Words too common to carry a signal. Deliberately short — an aggressive list
- * would drop the very terms that distinguish garments ("long sleeve", "high
- * waist"), and the support/precision thresholds already discard noise.
+ * Function words, which cannot carry a signal about a garment.
+ *
+ * The list has to include the very short ones. A first pass kept a bigram
+ * whenever either half was meaningful, and left "a", "s" and "it" out of this
+ * set on the grounds that they are too short to stand alone — with the result
+ * that "with a", "on the" and "it s" mined into confident-looking rules over
+ * dozens of products. A phrase made only of these words is noise no matter how
+ * consistently it co-occurs with a label.
+ *
+ * "t" is deliberately absent: it has to survive for "t shirt".
  */
 const STOPWORDS = new Set([
-  "the", "and", "for", "with", "from", "this", "that", "your", "our",
-  "new", "sale", "off", "all", "any", "you", "are", "its", "was",
-  "или", "для", "это", "как", "так", "все", "его",
+  "a", "an", "and", "are", "as", "at", "be", "but", "by", "do", "for", "from",
+  "has", "have", "if", "in", "is", "it", "its", "of", "on", "or", "our", "s",
+  "so", "that", "the", "then", "this", "to", "was", "we", "with", "you", "your",
+  "all", "any", "new", "off", "sale",
+  "или", "для", "это", "как", "так", "все", "его", "она", "они",
 ]);
 
-/** Tokens shorter than this are dropped as unigrams; bigrams keep them. */
+/** Tokens shorter than this are dropped as unigrams; bigrams may keep them. */
 const MIN_UNIGRAM = 3;
 
 /**
- * Unigrams and bigrams of a piece of text.
+ * Unigrams and bigrams of a piece of text, with `skip` tokens removed entirely.
  *
- * Bigrams are built from the raw word stream rather than the filtered one, so
- * "t shirt" and "air max" survive even though "t" is too short to stand alone
- * and "air" carries nothing by itself. `skip` takes the row's own brand: a
- * brand that happens to sell one kind of thing would otherwise mine into a
- * rule that says so, and the next brand to break the pattern breaks the rule.
- * A bigram is kept when at least one half is meaningful, which is what lets
- * "nike blazer" stay a useful footwear signal.
+ * Bigrams are built from the raw word stream so "t shirt" survives even though
+ * "t" is too short to stand alone. A bigram containing a skipped or stop word
+ * is dropped outright rather than kept for its meaningful half: a first pass
+ * kept those, and mined "originals womens → footwear" and "cloud white →
+ * footwear" — the brand's own vocabulary and a colourway, both of which say
+ * nothing about the next brand's products. Losing a genuine "nike blazer"
+ * along with them is the price, and a cheap one, since the hand-written table
+ * covers model names already.
  */
 export function tokenize(text: string, skip: Set<string> = new Set()): string[] {
   const words = (text ?? "")
@@ -50,19 +60,68 @@ export function tokenize(text: string, skip: Set<string> = new Set()): string[] 
     .split(/\s+/)
     .filter((w) => w && !/^\d+$/.test(w));
 
+  const dead = (w: string) => STOPWORDS.has(w) || skip.has(w);
   const out = new Set<string>();
   for (const w of words) {
-    if (w.length >= MIN_UNIGRAM && !STOPWORDS.has(w) && !skip.has(w)) out.add(w);
+    if (w.length >= MIN_UNIGRAM && !dead(w)) out.add(w);
   }
   for (let i = 0; i + 1 < words.length; i++) {
     const a = words[i];
     const b = words[i + 1];
-    const aDead = STOPWORDS.has(a) || skip.has(a);
-    const bDead = STOPWORDS.has(b) || skip.has(b);
-    if (aDead && bDead) continue;
+    if (dead(a) || dead(b)) continue;
     out.add(`${a} ${b}`);
   }
   return [...out];
+}
+
+/**
+ * The single most common value, as a baseline to judge everything else by.
+ *
+ * A mechanism that scores well on a catalogue where nearly every product
+ * carries the same label has not necessarily learned anything — it may have
+ * learned the label's frequency. Reporting this alongside is what tells the
+ * two apart.
+ */
+export function majorityValue<T>(
+  rows: T[],
+  valueOf: (row: T) => string | null | undefined,
+): string | null {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const value = valueOf(row);
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  if (!counts.size) return null;
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/** How often each label appears, most common first. */
+export function labelFrequency<T>(
+  rows: T[],
+  valuesOf: (row: T) => string[],
+): { value: string; count: number; share: number }[] {
+  const counts = new Map<string, number>();
+  let labelled = 0;
+  for (const row of rows) {
+    const values = new Set(valuesOf(row).filter(Boolean));
+    if (!values.size) continue;
+    labelled++;
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, count, share: labelled ? count / labelled : 0 }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/** The labels common enough to be worth guessing for every product. */
+export function majorityLabels<T>(
+  rows: T[],
+  valuesOf: (row: T) => string[],
+  threshold = 0.5,
+): string[] {
+  const frequency = labelFrequency(rows, valuesOf);
+  const common = frequency.filter((f) => f.share >= threshold).map((f) => f.value);
+  return common.length ? common : frequency.slice(0, 1).map((f) => f.value);
 }
 
 export interface MinedRule {
