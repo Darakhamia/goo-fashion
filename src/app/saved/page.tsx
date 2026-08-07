@@ -10,6 +10,7 @@ import { useCart } from "@/lib/context/cart-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import ProductCard from "@/components/product/ProductCard";
+import { UpgradeModal, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import {
   loadLocalLooks,
   saveLocalLooks,
@@ -1277,6 +1278,7 @@ export default function SavedPage() {
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
+  const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
 
   // Load saved looks — from API when logged in, else from localStorage
@@ -1348,7 +1350,9 @@ export default function SavedPage() {
       saveLocalLooks(next);
       if (user) {
         const look = next.find((l) => l.id === id);
-        if (look) void pushLook(look);
+        // Renaming writes the look back to the account, which is Pro+. The
+        // rename is already applied locally; offer the upgrade for the sync.
+        if (look) void pushLook(look).then((r) => { if (r.upgrade) setUpgradePrompt(r.upgrade); });
       }
       return next;
     });
@@ -1559,6 +1563,8 @@ export default function SavedPage() {
         </motion.div>
         </AnimatePresence>
       </div>
+
+      <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
     </div>
   );
 }

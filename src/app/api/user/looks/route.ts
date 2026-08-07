@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { requirePlan } from "@/lib/server/require-plan";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+/**
+ * Saved looks — the account-side store behind /saved and the builder.
+ *
+ * /plans sells "Save outfits" from Pro upwards, so reading and writing the
+ * account copy are gated on that feature. DELETE deliberately is not: see the
+ * note on that handler.
+ */
+
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requirePlan("saveOutfits");
+  if (!gate.ok) return gate.response;
+  const { userId } = gate;
 
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json([]);
@@ -35,8 +45,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requirePlan("saveOutfits");
+  if (!gate.ok) return gate.response;
+  const { userId } = gate;
 
   const body = await req.json().catch(() => null);
   if (!body?.id || !body?.pieces) {
@@ -91,6 +102,16 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * Not gated on the plan, unlike GET and POST.
+ *
+ * Removing your own data must not require a subscription. There is also a
+ * concrete failure behind the principle: `deleteLookFromServer` discards the
+ * response, so a 402 here would delete the look on the device while silently
+ * leaving the account copy behind — and the next sync on a resubscribe would
+ * resurrect it. Signing in is still required, and the delete is still scoped to
+ * the caller's own rows.
+ */
 export async function DELETE(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

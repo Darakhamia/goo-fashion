@@ -713,7 +713,13 @@ export default function BuilderPage() {
       // was killed when the page was backgrounded mid-navigation.
       if (isLoggedIn) {
         const look = (updated as unknown as SavedLook[]).find((o) => o.id === savedId);
-        if (look) return await pushLook(look);
+        if (look) {
+          const pushed = await pushLook(look);
+          // Saving to the account is Pro+. The look is already in local storage,
+          // so offer the upgrade rather than reporting a plain failure.
+          if (pushed.upgrade) setUpgradePrompt(pushed.upgrade);
+          return pushed.ok;
+        }
       }
       return true;
     } catch {
