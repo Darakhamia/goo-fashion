@@ -40,12 +40,28 @@ export type BillingEventType =
   | "checkout_started"
   | "payment_success"
   | "payment_failed"
-  | "canceled";
+  | "canceled"
+  /** The ledger and the entitlement disagree — money moved, the row did not. */
+  | "ledger_error"
+  /** Active subscription with no saved card: it can never come up for renewal. */
+  | "card_token_missing"
+  /** A previously missing card token was recovered by the daily sweep. */
+  | "card_token_recovered"
+  /** A renewal the cron declined to attempt, with the reason. */
+  | "renewal_skipped"
+  /** Heartbeat: the renewal cron actually executed. Absence is the signal. */
+  | "cron_run"
+  /** The cron was reachable but CRON_SECRET is unset, so it can only 401. */
+  | "cron_misconfigured";
 
 /**
- * Append a row to the billing_events audit log. Best-effort: logging must never
- * break the payment flow, so failures here are swallowed (the table may also not
- * exist yet if the migration hasn't been run).
+ * Append a row to the billing_events audit log.
+ *
+ * Best-effort by design — logging must never break a payment — but "best
+ * effort" is not the same as "silent". A missing table or a rejected insert
+ * used to leave no trace at all: supabase-js reports those in the returned
+ * `error` rather than by throwing, and the old `catch {}` only covered throws,
+ * so the audit log could be entirely absent with nothing to say so.
  */
 export async function logBillingEvent(args: {
   userId: string;
@@ -58,9 +74,16 @@ export async function logBillingEvent(args: {
   status?: string | null;
   detail?: string | null;
 }): Promise<void> {
+  const describe = () =>
+    `${args.eventType}${args.kind ? `/${args.kind}` : ""} user=${args.userId}` +
+    `${args.invoiceId ? ` invoice=${args.invoiceId}` : ""}`;
+
+  if (!supabase) {
+    console.error(`[billing] billing_events not written (Supabase unconfigured): ${describe()}`);
+    return;
+  }
   try {
-    if (!supabase) return;
-    await supabase.from("billing_events").insert({
+    const { error } = await supabase.from("billing_events").insert({
       user_id: args.userId,
       event_type: args.eventType,
       kind: args.kind ?? null,
@@ -71,8 +94,15 @@ export async function logBillingEvent(args: {
       status: args.status ?? null,
       detail: args.detail ?? null,
     });
-  } catch {
-    // best-effort
+    if (error) {
+      // Carries the event itself, so the console is a usable fallback ledger
+      // when the table is missing — which is the case this exists for.
+      console.error(`[billing] billing_events insert failed (${error.message}): ${describe()}`);
+    }
+  } catch (err) {
+    console.error(
+      `[billing] billing_events insert threw (${err instanceof Error ? err.message : String(err)}): ${describe()}`,
+    );
   }
 }
 
@@ -124,6 +154,21 @@ function addOneMonth(from: Date): Date {
  * Mark a subscription active after a successful payment and unlock the plan in
  * Clerk. Extends the billing period by one month from the later of now / the
  * current period end (so an early renewal doesn't lose paid time).
+ *
+ * Writes the ledger first and only unlocks Clerk once that write is confirmed
+ * to have touched a row. The two must not drift: Clerk is what the paywall
+ * reads, but `getDueSubscriptions()` renews from this table, so a plan open in
+ * Clerk with no row here is a customer who pays once and then uses the paid
+ * tier forever — the exact "charged once and never again" symptom.
+ *
+ * An `UPDATE ... WHERE user_id = X` that matches nothing is not an error as far
+ * as Supabase is concerned: it returns `error === null`. So this upserts and
+ * checks that a row actually came back. Upsert rather than update because by
+ * the time we get here the money has already moved — healing a missing row
+ * serves the customer better than refusing to record the payment. The row is
+ * normally created at checkout, but the invoice is created *before* that write
+ * (see api/billing/checkout), so a failure in between leaves a payable invoice
+ * with no ledger row behind it.
  */
 export async function activateSubscription(args: {
   userId: string;
@@ -141,38 +186,71 @@ export async function activateSubscription(args: {
       : new Date();
   const periodEnd = addOneMonth(base).toISOString();
   const now = new Date().toISOString();
+  const chargedAmount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
 
-  const update: Record<string, unknown> = {
+  const row: Record<string, unknown> = {
+    user_id: args.userId,
     plan: args.plan,
     status: "active",
+    // Required on insert (NOT NULL, no default). On conflict these simply
+    // restate the current plan's price, which is what was just charged.
+    ccy: BILLING_CCY,
+    amount: chargedAmount,
+    wallet_id: args.userId,
     last_invoice_id: args.invoiceId,
     current_period_end: periodEnd,
     failed_charges: 0,
     updated_at: now,
   };
   // Only overwrite the stored token when we actually have a fresh one.
-  if (args.cardToken) update.card_token = args.cardToken;
-  if (args.maskedPan) update.masked_pan = args.maskedPan;
+  // `auto_renew` is deliberately absent: omitted columns keep their existing
+  // value on conflict, so this cannot silently re-enable a cancelled renewal.
+  if (args.cardToken) row.card_token = args.cardToken;
+  if (args.maskedPan) row.masked_pan = args.maskedPan;
 
-  const { error } = await db()
+  const { data, error } = await db()
     .from("subscriptions")
-    .update(update)
-    .eq("user_id", args.userId);
-  if (error) throw new Error(error.message);
+    .upsert(row, { onConflict: "user_id" })
+    .select("user_id");
+
+  const wrote = !error && (data?.length ?? 0) > 0;
+  if (!wrote) {
+    const detail = error
+      ? error.message
+      : "upsert reported no error but returned no row";
+    // Loud on both channels: the event survives for the admin screen, the
+    // console line survives even when billing_events itself is missing.
+    console.error(
+      `[billing] ledger write failed for ${args.userId} on invoice ${args.invoiceId}: ${detail}`,
+    );
+    await logBillingEvent({
+      userId: args.userId,
+      eventType: "ledger_error",
+      kind: args.kind ?? "initial",
+      plan: args.plan,
+      invoiceId: args.invoiceId,
+      amount: chargedAmount,
+      ccy: BILLING_CCY,
+      status: "error",
+      detail,
+    });
+    // Deliberately before setClerkPlan: better a payment the webhook retries
+    // than an entitlement no renewal sweep can ever see.
+    throw new Error(`Could not record subscription for ${args.userId}: ${detail}`);
+  }
 
   await setClerkPlan(args.userId, args.plan);
 
   // Single chokepoint for "money received" — logged exactly once per charge
   // (webhook initial payments and cron renewals both funnel through here, and
   // duplicate webhooks are filtered out before this is called).
-  const amount = args.plan === "free" ? 0 : planPriceMinor(args.plan);
   await logBillingEvent({
     userId: args.userId,
     eventType: "payment_success",
     kind: args.kind ?? "initial",
     plan: args.plan,
     invoiceId: args.invoiceId,
-    amount,
+    amount: chargedAmount,
     ccy: BILLING_CCY,
     status: "success",
   });
@@ -199,6 +277,106 @@ export async function getDueSubscriptions(now = new Date()): Promise<Subscriptio
     .not("card_token", "is", null);
   if (error) throw new Error(error.message);
   return (data as SubscriptionRow[]) ?? [];
+}
+
+/**
+ * Active subscriptions with no saved card.
+ *
+ * These are the dangerous ones: `getDueSubscriptions()` filters on a non-null
+ * `card_token`, so a subscription that activated without one never comes up for
+ * renewal. It stays `active` forever and the customer keeps a paid plan they
+ * paid for exactly once. Nothing surfaces them on its own — hence this query.
+ */
+export async function getTokenlessSubscriptions(): Promise<SubscriptionRow[]> {
+  const { data, error } = await db()
+    .from("subscriptions")
+    .select("*")
+    .eq("status", "active")
+    .eq("auto_renew", true)
+    .is("card_token", null);
+  if (error) throw new Error(error.message);
+  return (data as SubscriptionRow[]) ?? [];
+}
+
+/**
+ * Store a card token recovered after activation. Returns whether a row was
+ * actually updated, for the same reason activateSubscription checks: Supabase
+ * reports no error when an UPDATE matches nothing.
+ */
+export async function attachCardToken(
+  userId: string,
+  cardToken: string,
+  maskedPan?: string | null,
+): Promise<boolean> {
+  const patch: Record<string, unknown> = {
+    card_token: cardToken,
+    updated_at: new Date().toISOString(),
+  };
+  if (maskedPan) patch.masked_pan = maskedPan;
+
+  const { data, error } = await db()
+    .from("subscriptions")
+    .update(patch)
+    .eq("user_id", userId)
+    .select("user_id");
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
+export interface BillingEventRow {
+  event_type: string;
+  kind: string | null;
+  plan: string | null;
+  amount: number | null;
+  status: string | null;
+  detail: string | null;
+  created_at: string;
+}
+
+/**
+ * When an event of this type last happened. Used to notice gaps: the renewal
+ * cron writes a heartbeat, so the age of the last one says whether the schedule
+ * is actually firing. Returns null if it never has — or if the log is missing,
+ * which this deliberately does not distinguish, because both mean "no evidence
+ * the cron ran" and both deserve the same alert.
+ */
+export async function getLastEventAt(eventType: BillingEventType): Promise<Date | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("created_at")
+    .eq("event_type", eventType)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data?.length) return null;
+  return new Date(data[0].created_at as string);
+}
+
+/** Billing events since a cut-off, newest first — powers the weekly summary. */
+export async function getEventsSince(since: Date): Promise<BillingEventRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("billing_events")
+    .select("event_type,kind,plan,amount,status,detail,created_at")
+    .gte("created_at", since.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(2_000);
+  if (error) {
+    console.error(`[billing] could not read billing_events for the summary: ${error.message}`);
+    return [];
+  }
+  return (data as BillingEventRow[]) ?? [];
+}
+
+/** How many subscriptions are in each status right now. */
+export async function countSubscriptionsByStatus(): Promise<Record<string, number>> {
+  const { data, error } = await db().from("subscriptions").select("status");
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { status: string }[]) {
+    counts[row.status] = (counts[row.status] ?? 0) + 1;
+  }
+  return counts;
 }
 
 const MAX_FAILED_CHARGES = 3;

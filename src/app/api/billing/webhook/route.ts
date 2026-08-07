@@ -11,6 +11,7 @@ import {
   parseReference,
   recordRenewalFailure,
 } from "@/lib/server/subscriptions";
+import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 /**
  * monobank acquiring webhook.
@@ -64,20 +65,44 @@ export async function POST(req: Request) {
       }
 
       // Grab the freshly tokenized card so we can auto-renew next month.
+      // Failing to get one is non-fatal — the customer has paid and must get
+      // their plan — but it must not pass silently: getDueSubscriptions() skips
+      // rows without a token, so this subscription would stay active and never
+      // be charged again. The daily cron retries the lookup; this records why
+      // it needs to.
       let cardToken: string | null = null;
       let maskedPan: string | null = null;
+      let tokenProblem: string | null = null;
       try {
         const cards = await listWalletCards(userId);
         cardToken = cards[0]?.cardToken ?? null;
         maskedPan = cards[0]?.maskedPan ?? null;
-      } catch {
-        // Non-fatal: activation should still succeed even if token lookup fails.
-        cardToken = null;
+        if (!cardToken) tokenProblem = "monobank returned no saved card for this wallet";
+      } catch (err) {
+        tokenProblem = err instanceof Error ? err.message : "wallet lookup failed";
       }
 
       // If the user was already active, this webhook reflects a renewal that
       // the cron sweep didn't resolve synchronously; otherwise it's the first payment.
       const kind = existing && existing.status === "active" ? "renewal" : "initial";
+
+      if (tokenProblem) {
+        // Recorded before activation on purpose. If activation fails later,
+        // monobank retries — and by then the duplicate check above may short
+        // circuit, so a warning logged after activation would be lost exactly
+        // in the case that needs it most.
+        console.warn(`[billing] no card token for ${userId} on invoice ${payload.invoiceId}: ${tokenProblem}`);
+        await logBillingEvent({
+          userId,
+          eventType: "card_token_missing",
+          kind,
+          plan,
+          invoiceId: payload.invoiceId,
+          status: "warning",
+          detail: tokenProblem,
+        });
+      }
+
       await activateSubscription({
         userId,
         plan,
@@ -86,7 +111,7 @@ export async function POST(req: Request) {
         maskedPan,
         kind,
       });
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, cardToken: !!cardToken });
     }
 
     if (
@@ -112,6 +137,17 @@ export async function POST(req: Request) {
         status: payload.status,
         detail: payload.failureReason ?? null,
       });
+      await sendBillingAlert(
+        failedRenewal ? "Renewal payment failed" : "First payment failed",
+        [
+          `User ${userId} on the ${plan} plan — monobank reported "${payload.status}".`,
+          payload.failureReason ? `Reason: ${payload.failureReason}` : "No failure reason given.",
+          `Invoice ${payload.invoiceId}, ${Math.round((payload.amount ?? 0) / 100)} UAH.`,
+          failedRenewal
+            ? "Three consecutive failures downgrade the subscription to free."
+            : "This was a first payment, so no subscription was active to lose.",
+        ],
+      );
       return NextResponse.json({ ok: true });
     }
 

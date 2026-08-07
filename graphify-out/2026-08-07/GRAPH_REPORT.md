@@ -1,16 +1,16 @@
 # Graph Report - goo-fashion  (2026-08-07)
 
 ## Corpus Check
-- 271 files · ~606,699 words
+- 271 files · ~606,114 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2049 nodes · 3749 edges · 171 communities (136 shown, 35 thin omitted)
+- 2048 nodes · 3748 edges · 172 communities (137 shown, 35 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 24 edges (avg confidence: 0.56)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6d58b631`
+- Built from commit: `f8d4eb64`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -36,7 +36,7 @@
 - Phase 3 — Builder Page Restructure
 - subscriptions.ts
 - What You Must Do When Invoked
-- saved/page.tsx
+- plans.ts
 - builder/page.tsx
 - app/layout.tsx
 - outfits/page.tsx
@@ -49,18 +49,18 @@
 - HowItWorksSection.tsx
 - Outfit
 - lib/types.ts
-- AIStylistShowcase.tsx
+- product/[id]/page.tsx
 - activity/page.tsx
 - dependencies
 - devDependencies
 - browse/page.tsx
 - users/page.tsx
-- plans.ts
+- plans/page.tsx
 - [slug]/page.tsx
 - subscriptions/page.tsx
 - nikeApi.ts
-- import/route.ts
-- dbToProduct
+- logAdminAction
+- db.ts
 - FeatureCarousel.tsx
 - Журнал изменений
 - ProductClient.tsx
@@ -76,12 +76,12 @@
 - goo-studio/blog/page.tsx
 - RecentlyViewed.tsx
 - 🧠 Features
-- outfits/[id]/route.ts
+- categories.ts
 - _detect_bbox
 - goo-studio/layout.tsx
 - proxy.ts
-- db.ts
-- currency-context.tsx
+- blog/[id]/route.ts
+- useCurrency
 - fetch.ts
 - Follow-up Phase E1 — Extract StylistDrawer as Reusable Component ✅
 - graphify reference: extra exports and benchmark
@@ -120,8 +120,8 @@
 - Change 1 — Reduce Center Canvas Visual Dominance
 - Recommended Execution Phases
 - render
-- useStylist
-- admin-auth.ts
+- categories/route.ts
+- users/[id]/route.ts
 - image-tools/route.ts
 - email/route.ts
 - group/route.ts
@@ -178,7 +178,8 @@
 - @vercel/analytics
 - @vercel/speed-insights
 - web-vitals
-- AuthForm.tsx
+- color-groups/route.ts
+- ImageCropEditor.tsx
 - sendBillingAlert
 - Phase 2 — Stylist Page Typography ✅
 
@@ -209,31 +210,31 @@
 ## Import Cycles
 - None detected.
 
-## Communities (171 total, 35 thin omitted)
+## Communities (172 total, 35 thin omitted)
 
 ### Community 0 - "csv-import/route.ts"
 Cohesion: 0.06
-Nodes (51): boostAwinkImageUrl(), cleanName(), collectImages(), getBaseProductName(), getGroupKeys(), mapCSVRow(), parseCSV(), parseJsonArray() (+43 more)
+Nodes (56): boostAwinkImageUrl(), cleanName(), collectImages(), getBaseProductName(), getGroupKeys(), mapCSVRow(), parseCSV(), parseJsonArray() (+48 more)
 
 ### Community 1 - "chat/route.ts"
 Cohesion: 0.06
 Nodes (56): ClaudeResult, POST(), augmentQuery(), BrowseContext, buildBrowseContext(), buildCatalogBlock(), buildFocusContext(), buildOutfitContext() (+48 more)
 
 ### Community 2 - "theme-context.tsx"
-Cohesion: 0.22
-Nodes (10): MobileBottomNav(), HeroBackground(), HeroBackgroundProps, getSystemTheme(), Theme, ThemeContext, ThemeContextValue, ThemePreference (+2 more)
+Cohesion: 0.12
+Nodes (15): metadata, AuthForm(), ELEMENTS, Palette, PALETTES, MobileBottomNav(), HeroBackground(), HeroBackgroundProps (+7 more)
 
 ### Community 3 - "package.json"
 Cohesion: 0.18
 Nodes (10): engines, node, name, private, scripts, build, dev, lint (+2 more)
 
 ### Community 4 - "supabase.ts"
-Cohesion: 0.06
-Nodes (22): POST(), GET(), UserStats, POST(), ALLOWED_EVENTS, POST(), POST(), resolveCountry() (+14 more)
+Cohesion: 0.07
+Nodes (20): POST(), AdminUserRow, AdminUserSubscription, GET(), ALLOWED_EVENTS, POST(), POST(), resolveCountry() (+12 more)
 
 ### Community 5 - "seo.ts"
-Cohesion: 0.12
-Nodes (23): generateMetadata(), ProductDetailPage(), Props, JsonLd(), JsonLdProps, getBrandLogos(), getOutfitsByProductId(), getProductById() (+15 more)
+Cohesion: 0.17
+Nodes (14): AVAILABILITY, availabilityUrl(), buildOffers(), COMPLEMENTARY, CURRENCY_SYMBOL, formatMetaPrice(), GENERIC_OUTFIT_NAMES, isGenericName() (+6 more)
 
 ### Community 6 - "AI Stylist Architecture — GOO Fashion"
 Cohesion: 0.04
@@ -241,23 +242,23 @@ Nodes (44): 1. Current State Audit, 2. Real API Architecture, 3. Admin Key Manag
 
 ### Community 7 - "generate-outfit/route.ts"
 Cohesion: 0.09
-Nodes (36): POST(), fetchPageText(), isAllowedExternalUrl(), POST(), slugify(), DELETE(), GET(), POST() (+28 more)
+Nodes (35): POST(), fetchPageText(), isAllowedExternalUrl(), POST(), slugify(), DELETE(), GET(), POST() (+27 more)
 
 ### Community 8 - "cn"
-Cohesion: 0.08
-Nodes (31): react, react, CSVImportPage(), HeroHeader(), Logo(), menuItems, transitionVariants, HeroSection() (+23 more)
+Cohesion: 0.09
+Nodes (28): react, react, CSVImportPage(), HeroHeader(), Logo(), menuItems, transitionVariants, AnimatedGroup() (+20 more)
 
 ### Community 9 - "analytics/page.tsx"
 Cohesion: 0.06
 Nodes (25): CountriesChart(), COUNTRY_NAMES, countryFlag(), countryLabel(), formatBucket(), PALETTE, PieItem, tooltipStyle (+17 more)
 
 ### Community 10 - "ConditionalSiteLayout.tsx"
-Cohesion: 0.19
-Nodes (9): ConditionalSiteLayout(), ConditionalSiteLayoutProps, StylistDrawer, Footer(), footerLinks, PageTransition(), StylistContext, StylistCtx (+1 more)
+Cohesion: 0.11
+Nodes (19): ChatPreview(), EASE, FeaturesBento(), FeaturesBentoProps, STYLIST_CHIPS, ConditionalSiteLayout(), ConditionalSiteLayoutProps, SiteLayout() (+11 more)
 
 ### Community 11 - "requireAdmin"
-Cohesion: 0.10
-Nodes (24): DELETE(), POST(), slug(), buildEmbedText(), GET(), POST(), ProductRow, DELETE() (+16 more)
+Cohesion: 0.08
+Nodes (29): GET(), DELETE(), POST(), slug(), buildEmbedText(), GET(), POST(), ProductRow (+21 more)
 
 ### Community 12 - "config/route.ts"
 Cohesion: 0.15
@@ -268,16 +269,16 @@ Cohesion: 0.10
 Nodes (19): CATEGORIES, ConfigState, Diagnostics, GENDERS, IMPERSONATE, ParseResponse, PROVIDERS, RULE_FIELDS (+11 more)
 
 ### Community 14 - "getAllProducts"
-Cohesion: 0.16
-Nodes (15): GET(), GET(), BlogPage(), formatDate(), metadata, revalidate, metadata, revalidate (+7 more)
+Cohesion: 0.14
+Nodes (18): GET(), BlogPage(), formatDate(), metadata, revalidate, metadata, revalidate, SITE_SECTIONS (+10 more)
 
 ### Community 15 - "extract.ts"
 Cohesion: 0.17
 Nodes (29): allMeta(), applyRule(), asString(), brandName(), decodeEntities(), dedupeRaw(), extractProduct(), extractProductLinks() (+21 more)
 
 ### Community 16 - "profile/page.tsx"
-Cohesion: 0.11
-Nodes (23): ALL_FEATURES, BillingStatus, BODY_TYPES, BodyType, BUDGET_OPTIONS, COLOR_PALETTE, formatDate(), PLAN_FEATURE_LABELS (+15 more)
+Cohesion: 0.10
+Nodes (22): ALL_FEATURES, BODY_TYPES, BodyType, BUDGET_OPTIONS, COLOR_PALETTE, formatDate(), PLAN_FEATURE_LABELS, PlanTab() (+14 more)
 
 ### Community 17 - "StylistDrawer.tsx"
 Cohesion: 0.17
@@ -288,32 +289,32 @@ Cohesion: 0.08
 Nodes (25): File Change Summary, IMPLEMENTATION PLAN — GOO Outfit Builder Redesign, Phase 1 — Global Font System, Phase 2 — Stylist Page Typography, Phase 3 — Builder Page Restructure, Phase 4 — QA and Polish, Step 1.1 — Load new fonts via `next/font/google`, Step 1.2 — Update `globals.css` font variables (+17 more)
 
 ### Community 19 - "subscriptions.ts"
-Cohesion: 0.16
-Nodes (29): POST(), dynamic, GET(), maxDuration, GET(), POST(), AuthProvider(), coercePlan() (+21 more)
+Cohesion: 0.18
+Nodes (26): POST(), dynamic, GET(), maxDuration, GET(), POST(), chargeWallet(), listWalletCards() (+18 more)
 
 ### Community 20 - "What You Must Do When Invoked"
 Cohesion: 0.08
 Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
 
-### Community 21 - "saved/page.tsx"
-Cohesion: 0.17
-Nodes (9): CATEGORY_TO_SLOT, isProductAvailable(), LookCard(), LookSubmission, PublicationStatus, SavedOutfitCard(), View, useCart() (+1 more)
+### Community 21 - "plans.ts"
+Cohesion: 0.13
+Nodes (22): GET(), BillingStatus, AuthContext, AuthContextValue, AuthProvider(), AuthUser, BILLING_CCY, BILLING_CCY_SYMBOL (+14 more)
 
 ### Community 22 - "builder/page.tsx"
-Cohesion: 0.18
-Nodes (23): BuilderPage(), CATALOG_CHIPS, CatalogItem, CATEGORY_ICONS, FIGURE_SLOTS, MOBILE_CHIPS, PRICE_BUCKETS, SlotId (+15 more)
+Cohesion: 0.10
+Nodes (32): BuilderPage(), CATALOG_CHIPS, CatalogItem, CATEGORY_ICONS, FIGURE_SLOTS, MOBILE_CHIPS, PRICE_BUCKETS, SlotId (+24 more)
 
 ### Community 23 - "app/layout.tsx"
-Cohesion: 0.11
-Nodes (16): interTight, metadata, poppins, viewport, PostHogTracker(), BugReportButton(), CartContext, CartContextValue (+8 more)
+Cohesion: 0.15
+Nodes (10): interTight, metadata, poppins, viewport, PostHogTracker(), BugReportButton(), CartContext, CartContextValue (+2 more)
 
 ### Community 24 - "outfits/page.tsx"
 Cohesion: 0.16
 Nodes (12): CATEGORIES, defaultForm, OCCASIONS, OutfitFormState, OutfitRole, PendingLook, ROLES, Season (+4 more)
 
 ### Community 25 - "products/page.tsx"
-Cohesion: 0.06
-Nodes (56): cleanLabel(), DELETE(), dynamic, GET(), Guard, isKnownValue(), isTableMissing(), normalizeGroupId() (+48 more)
+Cohesion: 0.11
+Nodes (20): AdminProductsPage(), AVAILABILITY_OPTIONS, categoryPath(), DEFAULT_COLOR_GROUPS, defaultForm, deriveColors(), fmtDate(), fmtPrice() (+12 more)
 
 ### Community 26 - "compilerOptions"
 Cohesion: 0.07
@@ -321,11 +322,11 @@ Nodes (29): dom, dom.iterable, esnext, goo-fashion, **/*.mts, .next/dev/types/**
 
 ### Community 27 - "monobank.ts"
 Cohesion: 0.12
-Nodes (21): POST(), BILLING_CCY, planPriceMinor(), API_BASE, call(), ChargeWalletParams, ChargeWalletResult, createInvoice() (+13 more)
+Nodes (21): POST(), PAID_PLAN_IDS, planPriceMinor(), API_BASE, call(), ChargeWalletParams, ChargeWalletResult, createInvoice() (+13 more)
 
 ### Community 28 - "app/page.tsx"
-Cohesion: 0.23
-Nodes (11): getData(), HomePage(), revalidate, HomeSection(), HomeSectionProps, smallViewportHeight(), getAllOutfits(), getHomepageShowcase() (+3 more)
+Cohesion: 0.16
+Nodes (12): getData(), HomePage(), revalidate, AIStylistShowcase(), HeroSection(), HomeSection(), HomeSectionProps, smallViewportHeight() (+4 more)
 
 ### Community 29 - "BUILD PROGRESS — GOO Outfit Builder Redesign"
 Cohesion: 0.10
@@ -340,16 +341,16 @@ Cohesion: 0.11
 Nodes (8): buildSteps(), HowItWorksSection(), FadeInView(), FadeInViewProps, FloatLoop(), FloatLoopProps, HomepageShowcase, ShowcaseItem
 
 ### Community 32 - "Outfit"
-Cohesion: 0.16
-Nodes (13): EASE, OutfitExamplesCarousel(), Props, OutfitCardProps, CardProps, CarouselCard(), getTags(), Props (+5 more)
+Cohesion: 0.14
+Nodes (15): EASE, OutfitExamplesCarousel(), Props, OutfitCardProps, CardProps, CarouselCard(), getTags(), Props (+7 more)
 
 ### Community 33 - "lib/types.ts"
 Cohesion: 0.14
 Nodes (8): Props, blogPosts, BlogPost, BodyType, FilterState, Plan, ProductReview, UserProfile
 
-### Community 34 - "AIStylistShowcase.tsx"
-Cohesion: 0.18
-Nodes (11): AIStylistShowcase(), AIStylistShowcaseProps, BuyRow(), BuyRowData, EASE, FeaturedProductShowcase(), FEATURES, LookCard() (+3 more)
+### Community 34 - "product/[id]/page.tsx"
+Cohesion: 0.28
+Nodes (11): generateMetadata(), ProductDetailPage(), Props, JsonLd(), JsonLdProps, getBrandLogos(), getHomepageStylist(), getOutfitsByProductId() (+3 more)
 
 ### Community 35 - "activity/page.tsx"
 Cohesion: 0.28
@@ -364,36 +365,36 @@ Cohesion: 0.11
 Nodes (19): eslint, eslint-config-next, devDependencies, eslint, eslint-config-next, tailwindcss, @tailwindcss/postcss, @types/node (+11 more)
 
 ### Community 38 - "browse/page.tsx"
-Cohesion: 0.13
-Nodes (14): BrowsePage(), CATEGORY_ICONS, DEFAULT_COLOR_GROUPS, GENDERS, OCCASIONS, SortOption, STYLE_FILTERS, StyleFilter (+6 more)
+Cohesion: 0.15
+Nodes (11): BrowsePage(), CATEGORY_ICONS, DEFAULT_COLOR_GROUPS, GENDERS, OCCASIONS, SortOption, STYLE_FILTERS, StyleFilter (+3 more)
 
 ### Community 39 - "users/page.tsx"
 Cohesion: 0.18
 Nodes (15): AdminUsersPage(), filterBtnCls(), fmtDate(), fmtDuration(), fmtRelative(), initials(), PLAN_OPTIONS, planBadge (+7 more)
 
-### Community 40 - "plans.ts"
-Cohesion: 0.08
-Nodes (31): GET(), Cell, COMPARISON, FAQ_ITEMS, PLANS, PlansPage(), PLAN_COPY, SubscribeInner() (+23 more)
+### Community 40 - "plans/page.tsx"
+Cohesion: 0.12
+Nodes (15): Cell, COMPARISON, FAQ_ITEMS, PLANS, PlansPage(), SubscribeInner(), parseUpgradePrompt(), Props (+7 more)
 
 ### Community 41 - "[slug]/page.tsx"
-Cohesion: 0.27
-Nodes (11): BlogPostPage(), formatDate(), generateMetadata(), Props, revalidate, escapeHtml(), renderBlogBody(), SANITIZE_OPTIONS (+3 more)
+Cohesion: 0.23
+Nodes (12): BlogPostPage(), formatDate(), generateMetadata(), Props, revalidate, escapeHtml(), renderBlogBody(), SANITIZE_OPTIONS (+4 more)
 
 ### Community 42 - "subscriptions/page.tsx"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (14): approxUsd(), ByPlan, EVENT_LABEL, EVENT_STYLE, fmtDate(), fmtDateTime(), Payload, STATUS_STYLE (+6 more)
 
 ### Community 43 - "nikeApi.ts"
 Cohesion: 0.20
 Nodes (16): extractColors(), extractId(), extractImage(), extractName(), extractPrice(), extractProductsFromResponse(), extractSizes(), extractUrl() (+8 more)
 
-### Community 44 - "import/route.ts"
-Cohesion: 0.17
-Nodes (15): POST(), STEPS, CATEGORIES, GENDERS, httpUrl(), POST(), DELETE(), GET() (+7 more)
+### Community 44 - "logAdminAction"
+Cohesion: 0.15
+Nodes (16): POST(), STEPS, GET(), POST(), DELETE(), GET(), maskKey(), POST() (+8 more)
 
-### Community 45 - "dbToProduct"
-Cohesion: 0.23
-Nodes (14): POST(), DELETE(), noDb(), PATCH(), PUT(), POST(), POST(), dbToProduct() (+6 more)
+### Community 45 - "db.ts"
+Cohesion: 0.09
+Nodes (41): GET(), PATCH(), PUT(), GET(), POST(), POST(), DELETE(), noDb() (+33 more)
 
 ### Community 46 - "FeatureCarousel.tsx"
 Cohesion: 0.13
@@ -404,16 +405,16 @@ Cohesion: 0.12
 Nodes (15): AI Stylist — журнал улучшений, Блок 1 — релевантность поиска (2026-06-04), Блок 1 (улучшение) — эмбеддинги переведены на OpenAI (2026-06-04), Блок 1 (фикс 2) — устойчивость бэкфилла к rate limit Replicate (2026-06-04), Блок 1 (фикс 3) — таймаут на эмбеддинг запроса в чате (2026-06-04), Блок 1 (фикс) — генерация эмбеддингов падала (2026-06-04), Блок 2 — модель и формат вызова (2026-06-04), Блок 3 — мобильный доступ / мёртвый код (2026-06-04) (+7 more)
 
 ### Community 48 - "ProductClient.tsx"
-Cohesion: 0.18
-Nodes (18): AccountTab(), OutfitActions(), OutfitActionsProps, OutfitCard(), ProductCard(), ProductCardProps, PriceHistoryChart, ProductClient() (+10 more)
+Cohesion: 0.14
+Nodes (20): ProfilePage(), OutfitActions(), OutfitActionsProps, OutfitCard(), ProductCard(), ProductCardProps, PriceHistoryChart, ProductClient() (+12 more)
 
 ### Community 49 - "GOO AI Stylist — Architecture"
 Cohesion: 0.14
 Nodes (13): GOO AI Stylist — Architecture, Как поменять модель, Как работает поиск по каталогу, Лимиты сообщений, Обзор, Переменные окружения, Персонализация, Почему это масштабируется (+5 more)
 
 ### Community 51 - "look/[id]/page.tsx"
-Cohesion: 0.22
-Nodes (12): dynamic, generateMetadata(), loadLook, lookHeading(), Props, resolveLook(), SharedLookPage(), SLOT_PRIORITY (+4 more)
+Cohesion: 0.29
+Nodes (10): dynamic, generateMetadata(), loadLook, lookHeading(), Props, resolveLook(), SharedLookPage(), SLOT_PRIORITY (+2 more)
 
 ### Community 52 - "Universal Product Parser"
 Cohesion: 0.15
@@ -451,9 +452,9 @@ Nodes (9): ENDPOINT, Props, RecentlyViewed(), RecordRecentView(), getRecentlyVie
 Cohesion: 0.18
 Nodes (10): 🚀 About the Project, 👗 AI Outfit Generator, 🤖 AI Stylist, 🛍 Fashion Discovery, 🧠 Features, 🛠 Getting Started, Goo Fashion 👕✨, 🧩 Outfit Builder (+2 more)
 
-### Community 61 - "outfits/[id]/route.ts"
-Cohesion: 0.23
-Nodes (11): DELETE(), PATCH(), PUT(), GET(), POST(), createOutfit(), dbToOutfit(), getFeaturedOutfits() (+3 more)
+### Community 61 - "categories.ts"
+Cohesion: 0.17
+Nodes (17): AdminCategoriesPage(), Counts, TreeResponse, CATEGORY_VALUES, CategoryGroup, CategoryItem, DEFAULT_CATEGORY_GROUPS, resolveSubcategory() (+9 more)
 
 ### Community 62 - "_detect_bbox"
 Cohesion: 0.47
@@ -467,13 +468,13 @@ Nodes (6): AdminLayout(), darkVars, NAV_CATEGORIES, NAV_ITEMS, NavItem, pageTitl
 Cohesion: 0.40
 Nodes (5): clerk, config, isProtectedRoute, isPublicRoute, proxy()
 
-### Community 65 - "db.ts"
-Cohesion: 0.08
-Nodes (38): GET(), GET(), POST(), DELETE(), PUT(), POST(), GET(), POST() (+30 more)
+### Community 65 - "blog/[id]/route.ts"
+Cohesion: 0.31
+Nodes (8): DELETE(), PUT(), GET(), POST(), blogPostToDb(), createBlogPost(), deleteBlogPost(), updateBlogPost()
 
-### Community 66 - "currency-context.tsx"
-Cohesion: 0.16
-Nodes (13): PAD, PriceHistoryChart(), Props, applyFormat(), CURRENCIES, CurrencyCode, CurrencyContext, CurrencyContextValue (+5 more)
+### Community 66 - "useCurrency"
+Cohesion: 0.09
+Nodes (26): AccountTab(), AIStylistShowcaseProps, BuyRow(), BuyRowData, EASE, FeaturedProduct(), FeaturedProductShowcase(), FEATURES (+18 more)
 
 ### Community 67 - "fetch.ts"
 Cohesion: 0.31
@@ -533,7 +534,7 @@ Nodes (8): Available retailer data per product, Change 5 — Clarify and Impleme
 
 ### Community 81 - "AnalyticsTracker.tsx"
 Cohesion: 0.25
-Nodes (15): AnalyticsTracker(), Metric, reportVital(), shouldSkip(), beacon(), detectBrowser(), detectDevice(), detectOS() (+7 more)
+Nodes (16): AnalyticsTracker(), Metric, reportVital(), shouldSkip(), beacon(), detectBrowser(), detectDevice(), detectOS() (+8 more)
 
 ### Community 82 - "image-tools/page.tsx"
 Cohesion: 0.25
@@ -556,8 +557,8 @@ Cohesion: 0.29
 Nodes (7): Change 3 — Add Useful Product Filters to Right Catalog Panel, Files involved, Implementation approach, Size / Risk, What needs product/UX decision, What the problem is, What to add
 
 ### Community 91 - "outfit/[id]/page.tsx"
-Cohesion: 0.21
-Nodes (12): generateMetadata(), OutfitDetailPage(), Props, Breadcrumbs(), Crumb, ClampedDescription(), ClampedHeading(), useClampToggle() (+4 more)
+Cohesion: 0.22
+Nodes (11): generateMetadata(), OutfitDetailPage(), Props, Breadcrumbs(), Crumb, ClampedDescription(), ClampedHeading(), useClampToggle() (+3 more)
 
 ### Community 92 - "admin/stats/route.ts"
 Cohesion: 0.38
@@ -611,13 +612,13 @@ Nodes (6): Phase A — Quick wins, no product decisions needed (1–2 sessions),
 Cohesion: 0.47
 Nodes (5): Image, load_font_bytes(), main(), Отрисовать иконку size×size со сглаживанием через суперсэмплинг., render()
 
-### Community 105 - "useStylist"
-Cohesion: 0.20
-Nodes (8): ChatPreview(), FeaturedProduct(), EASE, FeaturesBento(), FeaturesBentoProps, STYLIST_CHIPS, SiteLayout(), useStylist()
-
-### Community 106 - "admin-auth.ts"
+### Community 105 - "categories/route.ts"
 Cohesion: 0.29
-Nodes (10): GET(), GET(), ClerkError, DELETE(), errMsg(), GET(), PATCH(), getSuperAdminId() (+2 more)
+Nodes (14): cleanLabel(), DELETE(), dynamic, GET(), Guard, isKnownValue(), isTableMissing(), normalizeGroupId() (+6 more)
+
+### Community 106 - "users/[id]/route.ts"
+Cohesion: 0.36
+Nodes (8): GET(), ClerkError, DELETE(), errMsg(), GET(), PATCH(), getSuperAdminId(), isSuperAdminId()
 
 ### Community 107 - "image-tools/route.ts"
 Cohesion: 0.60
@@ -723,9 +724,13 @@ Nodes (5): DELETE(), GET(), loadTemplates(), POST(), saveTemplates()
 Cohesion: 0.67
 Nodes (3): Phase 3a — Builder Shell + Layout Foundation ✅, What did NOT change, What was done
 
-### Community 168 - "AuthForm.tsx"
-Cohesion: 0.24
-Nodes (5): metadata, AuthForm(), ELEMENTS, Palette, PALETTES
+### Community 168 - "color-groups/route.ts"
+Cohesion: 0.53
+Nodes (5): GET(), POST(), getAllColorGroups(), DbColorGroup, dbToColorGroup()
+
+### Community 169 - "ImageCropEditor.tsx"
+Cohesion: 0.47
+Nodes (5): clamp(), DEFAULT_CROP, ImageCropEditor(), Props, CropData
 
 ### Community 170 - "sendBillingAlert"
 Cohesion: 0.70
@@ -743,17 +748,17 @@ Nodes (3): Phase 2 — Stylist Page Typography ✅, Step count, What was done
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `requireAdmin()` connect `requireAdmin` to `csv-import/route.ts`, `db.ts`, `chat/route.ts`, `preview/route.ts`, `supabase.ts`, `generate-outfit/route.ts`, `templates/route.ts`, `admin-auth.ts`, `image-tools/route.ts`, `email/route.ts`, `import/route.ts`, `config/route.ts`, `dbToProduct`, `group/route.ts`, `analytics/route.ts`, `products/page.tsx`, `admin/stats/route.ts`, `outfits/[id]/route.ts`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
-- **Why does `supabase` connect `supabase.ts` to `csv-import/route.ts`, `chat/route.ts`, `generate-outfit/route.ts`, `templates/route.ts`, `requireAdmin`, `config/route.ts`, `subscriptions.ts`, `products/page.tsx`, `lib/types.ts`, `plans.ts`, `import/route.ts`, `dbToProduct`, `analytics/route.ts`, `outfits/[id]/route.ts`, `db.ts`, `admin/stats/route.ts`, `share/route.ts`, `admin-auth.ts`, `image-tools/route.ts`, `group/route.ts`?**
+- **Why does `requireAdmin()` connect `requireAdmin` to `csv-import/route.ts`, `blog/[id]/route.ts`, `chat/route.ts`, `preview/route.ts`, `supabase.ts`, `generate-outfit/route.ts`, `color-groups/route.ts`, `templates/route.ts`, `users/[id]/route.ts`, `image-tools/route.ts`, `email/route.ts`, `logAdminAction`, `db.ts`, `config/route.ts`, `categories/route.ts`, `group/route.ts`, `analytics/route.ts`, `admin/stats/route.ts`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `supabase` connect `supabase.ts` to `csv-import/route.ts`, `chat/route.ts`, `generate-outfit/route.ts`, `templates/route.ts`, `requireAdmin`, `config/route.ts`, `subscriptions.ts`, `plans.ts`, `lib/types.ts`, `color-groups/route.ts`, `logAdminAction`, `db.ts`, `analytics/route.ts`, `categories.ts`, `admin/stats/route.ts`, `share/route.ts`, `categories/route.ts`, `users/[id]/route.ts`, `image-tools/route.ts`, `group/route.ts`?**
   _High betweenness centrality (0.035) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `dependencies` to `@vercel/analytics`, `@vercel/speed-insights`, `web-vitals`, `package.json`, `cn`, `class-variance-authority`, `@clerk/nextjs`, `clsx`, `openai`, `@radix-ui/react-slot`, `recharts`, `replicate`, `resend`, `@supabase/supabase-js`, `@upstash/redis`?**
   _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **What connects `eslintConfig`, `nextConfig`, `name` to the rest of the system?**
   _802 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `csv-import/route.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06284153005464481 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05879692446856626 - nodes in this community are weakly interconnected._
 - **Should `chat/route.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.061581920903954805 - nodes in this community are weakly interconnected._
-- **Should `supabase.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06397306397306397 - nodes in this community are weakly interconnected._
+- **Should `theme-context.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.1225296442687747 - nodes in this community are weakly interconnected._
