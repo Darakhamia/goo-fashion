@@ -79,7 +79,7 @@ function SubscribeInner() {
   // ── Kick off checkout: create a monobank invoice and redirect to its page ──
   const handleSubscribe = async () => {
     if (!isSignedIn) {
-      router.push(`/sign-in?redirect_url=${encodeURIComponent(`/subscribe?plan=${planId}`)}`);
+      router.push(`/login?redirect_url=${encodeURIComponent(`/subscribe?plan=${planId}`)}`);
       return;
     }
     setSubmitting(true);

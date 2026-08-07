@@ -445,6 +445,12 @@ export default function Navigation() {
               className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
               Sign in
             </Link>
+            {/* Registering is its own door, not a link buried inside the sign-in
+                card — /register is where ads and bookmarks land. */}
+            <Link href="/register"
+              className={`ml-3 text-[11px] tracking-[0.12em] uppercase font-medium px-3 py-2 transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
+              Sign up
+            </Link>
           </SignedOut>
         </div>
 
@@ -487,8 +493,12 @@ export default function Navigation() {
           <SignedOut>
             <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
             <Link href="/login"
-              className={`text-[11px] tracking-[0.12em] uppercase font-medium transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
+              className={`text-[10px] tracking-[0.08em] uppercase font-medium whitespace-nowrap transition-colors ${isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"}`}>
               Sign in
+            </Link>
+            <Link href="/register"
+              className={`ml-1.5 text-[10px] tracking-[0.08em] uppercase font-medium whitespace-nowrap px-2.5 py-2 transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
+              Sign up
             </Link>
           </SignedOut>
         </div>

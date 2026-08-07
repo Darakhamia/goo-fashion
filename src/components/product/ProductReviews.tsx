@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import type { ProductReview } from "@/lib/types";
 
@@ -180,7 +181,7 @@ export default function ProductReviews({ productId }: Props) {
           </p>
           {!user ? (
             <p className="text-sm text-[var(--foreground-muted)]">
-              <a href="/sign-in" className="underline hover:text-[var(--foreground)] transition-colors">Sign in</a> to leave a review.
+              <Link href="/login" className="underline hover:text-[var(--foreground)] transition-colors">Sign in</Link> to leave a review.
             </p>
           ) : (
             <div className="flex flex-col gap-4 max-w-lg">
