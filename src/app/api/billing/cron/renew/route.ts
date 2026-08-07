@@ -92,7 +92,22 @@ export async function GET(req: Request) {
   const results: Array<{ userId: string; plan: PlanId; outcome: string }> = [];
 
   for (const sub of due) {
-    if (!sub.card_token) continue;
+    if (!sub.card_token) {
+      // getDueSubscriptions already filters these out, so reaching here means
+      // the query and this loop disagree. It used to `continue` in silence,
+      // which is how a subscription could stop renewing with nothing to show
+      // for it. Leave a mark instead.
+      await logBillingEvent({
+        userId: sub.user_id,
+        eventType: "renewal_skipped",
+        kind: "renewal",
+        plan: sub.plan,
+        status: "warning",
+        detail: "due for renewal but no card token on the row",
+      });
+      results.push({ userId: sub.user_id, plan: sub.plan, outcome: "skipped" });
+      continue;
+    }
     const plan = sub.plan as Exclude<PlanId, "free">;
     try {
       const charge = await chargeWallet({

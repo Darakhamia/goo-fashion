@@ -46,12 +46,18 @@ export type BillingEventType =
   /** Active subscription with no saved card: it can never come up for renewal. */
   | "card_token_missing"
   /** A previously missing card token was recovered by the daily sweep. */
-  | "card_token_recovered";
+  | "card_token_recovered"
+  /** A renewal the cron declined to attempt, with the reason. */
+  | "renewal_skipped";
 
 /**
- * Append a row to the billing_events audit log. Best-effort: logging must never
- * break the payment flow, so failures here are swallowed (the table may also not
- * exist yet if the migration hasn't been run).
+ * Append a row to the billing_events audit log.
+ *
+ * Best-effort by design — logging must never break a payment — but "best
+ * effort" is not the same as "silent". A missing table or a rejected insert
+ * used to leave no trace at all: supabase-js reports those in the returned
+ * `error` rather than by throwing, and the old `catch {}` only covered throws,
+ * so the audit log could be entirely absent with nothing to say so.
  */
 export async function logBillingEvent(args: {
   userId: string;
@@ -64,9 +70,16 @@ export async function logBillingEvent(args: {
   status?: string | null;
   detail?: string | null;
 }): Promise<void> {
+  const describe = () =>
+    `${args.eventType}${args.kind ? `/${args.kind}` : ""} user=${args.userId}` +
+    `${args.invoiceId ? ` invoice=${args.invoiceId}` : ""}`;
+
+  if (!supabase) {
+    console.error(`[billing] billing_events not written (Supabase unconfigured): ${describe()}`);
+    return;
+  }
   try {
-    if (!supabase) return;
-    await supabase.from("billing_events").insert({
+    const { error } = await supabase.from("billing_events").insert({
       user_id: args.userId,
       event_type: args.eventType,
       kind: args.kind ?? null,
@@ -77,8 +90,15 @@ export async function logBillingEvent(args: {
       status: args.status ?? null,
       detail: args.detail ?? null,
     });
-  } catch {
-    // best-effort
+    if (error) {
+      // Carries the event itself, so the console is a usable fallback ledger
+      // when the table is missing — which is the case this exists for.
+      console.error(`[billing] billing_events insert failed (${error.message}): ${describe()}`);
+    }
+  } catch (err) {
+    console.error(
+      `[billing] billing_events insert threw (${err instanceof Error ? err.message : String(err)}): ${describe()}`,
+    );
   }
 }
 

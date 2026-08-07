@@ -1,7 +1,7 @@
 # Graph Report - goo-fashion  (2026-08-07)
 
 ## Corpus Check
-- 270 files · ~604,031 words
+- 270 files · ~604,326 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2b997a6a`
+- Built from commit: `9c0f3ff9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
