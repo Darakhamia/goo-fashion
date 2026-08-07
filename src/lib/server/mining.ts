@@ -262,6 +262,15 @@ export function colorGroupPairs(
  * threshold change moves the score because the rules changed, not because the
  * split did.
  */
+function hashId(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
 export function splitHoldout<T>(
   rows: T[],
   idOf: (row: T) => string,
@@ -270,15 +279,25 @@ export function splitHoldout<T>(
   const train: T[] = [];
   const holdout: T[] = [];
   for (const row of rows) {
-    let hash = 0x811c9dc5;
-    const id = idOf(row);
-    for (let i = 0; i < id.length; i++) {
-      hash ^= id.charCodeAt(i);
-      hash = Math.imul(hash, 0x01000193) >>> 0;
-    }
-    (hash % 1000 < share * 1000 ? holdout : train).push(row);
+    (hashId(idOf(row)) % 1000 < share * 1000 ? holdout : train).push(row);
   }
   return { train, holdout };
+}
+
+/**
+ * Splits rows into folds so every one of them can be judged by rules mined
+ * without it.
+ *
+ * Auditing labels against rules mined from the whole catalogue is circular: a
+ * mislabelled product helps build the very rule that would otherwise catch it,
+ * and the worst mistakes hide themselves best. Judging each fold with rules
+ * mined from the others removes that entirely, and costs only a few more
+ * passes over a few hundred rows.
+ */
+export function kFold<T>(rows: T[], idOf: (row: T) => string, folds: number): T[][] {
+  const buckets: T[][] = Array.from({ length: folds }, () => []);
+  for (const row of rows) buckets[hashId(idOf(row)) % folds].push(row);
+  return buckets;
 }
 
 export interface SingleLabelScore {

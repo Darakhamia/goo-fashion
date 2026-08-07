@@ -25,6 +25,11 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { matchCategory, inferGenderFromText } from "@/lib/server/product-fields";
 import {
+  loadLabelledProducts,
+  makeKeyBuilders,
+  type LabelledProduct as Row,
+} from "@/lib/server/catalogue-labels";
+import {
   applyMultiRules,
   applyRules,
   colorGroupPairs,
@@ -36,130 +41,12 @@ import {
   scoreMultiLabel,
   scoreSingleLabel,
   splitHoldout,
-  tokenize,
   voteMulti,
   voteSingle,
   type MinedRule,
 } from "@/lib/server/mining";
 
 export const dynamic = "force-dynamic";
-
-const PAGE = 1000;
-
-interface Row {
-  id: string;
-  name: string;
-  description: string;
-  brand: string;
-  gender: string | null;
-  category: string;
-  subcategory: string | null;
-  colors: string[];
-  colorGroups: string[];
-  styleKeywords: string[];
-  embedding: number[] | null;
-}
-
-/** A vector column comes back from PostgREST as "[0.1,0.2,…]". */
-function parseEmbedding(raw: unknown): number[] | null {
-  if (Array.isArray(raw)) return raw as number[];
-  if (typeof raw !== "string" || !raw.startsWith("[")) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function words(text: string): string[] {
-  return (text ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9а-яё]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-/** Brand words, so a brand that sells one kind of thing cannot mine into a rule. */
-function brandTokens(brand: string): Set<string> {
-  return new Set(words(brand));
-}
-
-/** Size vocabulary — "Size: L" is in half the names and means nothing here. */
-const SIZE_NOISE = new Set([
-  "size", "sizes", "xxs", "xs", "sm", "md", "lg", "xl", "xxl", "xxxl",
-  "eu", "uk", "us", "cm", "mm", "one", "onesize", "fit", "regular", "oversized",
-]);
-
-/** Words that name a gender, kept out of garment mining but central to its own. */
-const GENDER_NOISE = new Set([
-  "women", "womens", "woman", "female", "ladies", "girl", "girls",
-  "men", "mens", "man", "male", "boy", "boys", "unisex",
-  "женск", "мужск",
-]);
-
-/**
- * Colour vocabulary, taken from the catalogue rather than a fixed list.
- *
- * The first run mined "cloud white → footwear" and "core black → footwear":
- * real colourways of one brand's line, useless on anyone else's products. The
- * words to exclude are exactly the ones the catalogue already uses as colour
- * names, so it can say them itself.
- */
-function colourNoise(rows: Row[]): Set<string> {
-  const noise = new Set<string>();
-  for (const row of rows) {
-    for (const colour of row.colors) for (const w of words(colour)) noise.add(w);
-    for (const group of row.colorGroups) for (const w of words(group)) noise.add(w);
-  }
-  return noise;
-}
-
-async function loadRows(withEmbedding: boolean): Promise<Row[] | { error: string }> {
-  const groups = await supabase!.from("color_groups").select("id, name");
-  const groupName = new Map<number, string>();
-  for (const g of (groups.data ?? []) as { id: number; name: string }[]) {
-    groupName.set(g.id, g.name);
-  }
-
-  const columns = [
-    "id", "name", "description", "brand", "gender",
-    "category", "subcategory", "colors", "color_group_ids", "style_keywords",
-    ...(withEmbedding ? ["embedding"] : []),
-  ].join(", ");
-
-  const rows: Row[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase!
-      .from("products")
-      .select(columns)
-      .order("id")
-      .range(from, from + PAGE - 1);
-    if (error) return { error: error.message };
-
-    const batch = (data ?? []) as unknown as Record<string, unknown>[];
-    for (const r of batch) {
-      rows.push({
-        id: String(r.id),
-        name: String(r.name ?? ""),
-        description: String(r.description ?? ""),
-        brand: String(r.brand ?? ""),
-        gender: (r.gender as string) ?? null,
-        category: String(r.category ?? ""),
-        subcategory: (r.subcategory as string) ?? null,
-        colors: (r.colors as string[]) ?? [],
-        colorGroups: ((r.color_group_ids as number[]) ?? [])
-          .map((id) => groupName.get(id))
-          .filter((n): n is string => !!n),
-        styleKeywords: (r.style_keywords as string[]) ?? [],
-        embedding: withEmbedding ? parseEmbedding(r.embedding) : null,
-      });
-    }
-    if (batch.length < PAGE) break;
-  }
-  return rows;
-}
 
 function pct(n: number): string {
   return `${(n * 100).toFixed(0)}%`;
@@ -180,7 +67,7 @@ export async function GET(req: Request) {
   const wantKnn = params.get("knn") === "1";
   const allRules = params.get("rules") === "all";
 
-  const loaded = await loadRows(wantKnn);
+  const loaded = await loadLabelledProducts(wantKnn);
   if ("error" in loaded) {
     return NextResponse.json(
       { error: `Could not read products: ${loaded.error}` },
@@ -194,26 +81,10 @@ export async function GET(req: Request) {
   const { train, holdout } = splitHoldout(loaded, (r) => r.id, holdoutShare);
   const opts = { minSupport, minPrecision };
 
-  // Category and subcategory are mined from the NAME only. A description is
-  // marketing copy that name-drops other garments ("wears well with jeans"),
-  // which reads to a token counter as evidence for the wrong bucket. Style
-  // keywords are the opposite case — the aesthetic lives in that prose — so
-  // they get both fields.
-  //
-  // Garment mining also drops the brand's own words, the catalogue's colour
-  // vocabulary, size boilerplate and gender words: none of them says what a
-  // thing IS, and all four mined into confident nonsense on the first run.
-  // Gender mining keeps the gender words, obviously — they turned out to be
-  // the whole signal.
-  const colours = colourNoise(loaded);
-  const garmentNoise = (r: Row) =>
-    new Set([...brandTokens(r.brand), ...colours, ...SIZE_NOISE, ...GENDER_NOISE]);
-  const genderNoise = (r: Row) =>
-    new Set([...brandTokens(r.brand), ...colours, ...SIZE_NOISE]);
-
-  const nameKeys = (r: Row) => tokenize(r.name, garmentNoise(r));
-  const proseKeys = (r: Row) => tokenize(`${r.name} ${r.description}`, garmentNoise(r));
-  const genderKeys = (r: Row) => tokenize(`${r.name} ${r.description}`, genderNoise(r));
+  // The shared builders: name-only for garments with brand, colour, size and
+  // gender words dropped; name plus description for style; gender words kept
+  // for gender, where they turned out to be the whole signal.
+  const { garmentKeys: nameKeys, proseKeys, genderKeys } = makeKeyBuilders(loaded);
 
   const categoryRules = mineRules(train, nameKeys, (r) => [r.category], { ...opts, topOnly: true });
   const subcategoryRules = mineRules(train, nameKeys, (r) => (r.subcategory ? [r.subcategory] : []), { ...opts, topOnly: true });
