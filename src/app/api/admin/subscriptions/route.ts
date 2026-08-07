@@ -17,6 +17,7 @@ interface SubRow {
   masked_pan: string | null;
   /** Never leaves the server — only the boolean derived from it is returned. */
   card_token: string | null;
+  failed_charges: number;
   current_period_end: string | null;
   created_at: string;
 }
@@ -46,7 +47,7 @@ export async function GET() {
   const [subsQ, eventsQ] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("user_id,plan,status,amount,auto_renew,masked_pan,card_token,current_period_end,created_at")
+      .select("user_id,plan,status,amount,auto_renew,masked_pan,card_token,failed_charges,current_period_end,created_at")
       .order("created_at", { ascending: false })
       .limit(5_000),
     // billing_events may not exist yet if the migration hasn't been run.
@@ -59,6 +60,18 @@ export async function GET() {
 
   const subs = (subsQ.error ? [] : (subsQ.data ?? [])) as SubRow[];
   const events = (eventsQ.error ? [] : (eventsQ.data ?? [])) as EventRow[];
+  // The heartbeat may be older than the 200 events fetched above, so it is
+  // looked up on its own rather than searched for in that window.
+  const lastCronRun = eventsQ.error
+    ? null
+    : ((
+        await supabase
+          .from("billing_events")
+          .select("created_at")
+          .eq("event_type", "cron_run")
+          .order("created_at", { ascending: false })
+          .limit(1)
+      ).data?.[0] as { created_at: string } | undefined) ?? null;
 
   // ── Resolve emails for everyone referenced (subs + events) ────────────────
   const userIds = Array.from(
@@ -109,6 +122,18 @@ export async function GET() {
     // out, so each one is a customer who paid once and is now using the plan
     // for free. Should be zero.
     activeWithoutCard: activeSubs.filter((s) => s.auto_renew && !s.card_token).length,
+    // Active, paid period already ended, still not renewed. The cron should
+    // clear these within a day, so a standing number means it is not working.
+    overdue: activeSubs.filter(
+      (s) => s.current_period_end && new Date(s.current_period_end) < new Date(),
+    ).length,
+    failedCharges: subs.reduce((sum, s) => sum + (s.failed_charges ?? 0), 0),
+    // The renewal cron's heartbeat. A cron that never fires cannot report
+    // itself, so a stale timestamp here is the only sign it stopped.
+    lastCronRunAt: lastCronRun?.created_at ?? null,
+    hoursSinceCronRun: lastCronRun
+      ? Math.floor((Date.now() - new Date(lastCronRun.created_at).getTime()) / 3_600_000)
+      : null,
     // "Earned" reflects logged successful payments — only complete once the
     // billing_events migration has run and payments have flowed through it.
     earnedTotalUah: toUah(earnedTotal),
@@ -131,6 +156,9 @@ export async function GET() {
     autoRenew: s.auto_renew,
     maskedPan: s.masked_pan,
     hasCardToken: !!s.card_token,
+    failedCharges: s.failed_charges ?? 0,
+    overdue:
+      s.status === "active" && !!s.current_period_end && new Date(s.current_period_end) < new Date(),
     currentPeriodEnd: s.current_period_end,
     startedAt: s.created_at,
   }));

@@ -13,6 +13,10 @@ interface Summary {
   pending: number;
   autoRenewOff: number;
   activeWithoutCard: number;
+  overdue: number;
+  failedCharges: number;
+  lastCronRunAt: string | null;
+  hoursSinceCronRun: number | null;
   earnedTotalUah: number;
   earnedThisMonthUah: number;
   paymentsTotal: number;
@@ -28,6 +32,8 @@ interface SubItem {
   autoRenew: boolean;
   maskedPan: string | null;
   hasCardToken: boolean;
+  failedCharges: number;
+  overdue: boolean;
   currentPeriodEnd: string | null;
   startedAt: string;
 }
@@ -93,6 +99,18 @@ function Badge({ value, map }: { value: string; map: Record<string, string> }) {
     <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border rounded-md leading-none ${cls}`}>
       {EVENT_LABEL[value] ?? value.replace(/_/g, " ")}
     </span>
+  );
+}
+
+/** Like StatCard, but the number carries a verdict: green is fine, red is not. */
+function HealthCard({ label, value, bad, note }: { label: string; value: string; bad: boolean; note: string }) {
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${bad ? "border-red-500/30 bg-red-500/5" : "border-[var(--border)]"}`}
+      style={bad ? undefined : { background: "var(--background)" }}>
+      <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5">{label}</p>
+      <p className={`text-xl font-semibold ${bad ? "text-red-500" : "text-emerald-600"}`}>{value}</p>
+      <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">{note}</p>
+    </div>
   );
 }
 
@@ -165,12 +183,60 @@ export default function SubscriptionsPage() {
         />
       </div>
 
+      {/* Billing health — the answer to "is billing working?" without opening SQL. */}
+      <section>
+        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+          Billing health
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <HealthCard
+            label="Renewal cron"
+            value={summary.hoursSinceCronRun === null ? "never ran" : summary.hoursSinceCronRun < 1 ? "just now" : `${summary.hoursSinceCronRun}h ago`}
+            bad={summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36}
+            note={summary.lastCronRunAt ? fmtDateTime(summary.lastCronRunAt) : "no heartbeat recorded"}
+          />
+          <HealthCard
+            label="Active without card"
+            value={summary.activeWithoutCard.toLocaleString()}
+            bad={summary.activeWithoutCard > 0}
+            note="never come up for renewal"
+          />
+          <HealthCard
+            label="Overdue"
+            value={summary.overdue.toLocaleString()}
+            bad={summary.overdue > 0}
+            note="paid period ended, not renewed"
+          />
+          <HealthCard
+            label="Failed charges"
+            value={summary.failedCharges.toLocaleString()}
+            bad={summary.failedCharges > 0}
+            note="consecutive, across all subscribers"
+          />
+        </div>
+      </section>
+
       {summary.activeWithoutCard > 0 && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-500">
           {summary.activeWithoutCard} active {summary.activeWithoutCard === 1 ? "subscription has" : "subscriptions have"} no
           saved card. The renewal sweep skips these, so they will never be charged again — they are
           paid plans running for free. The daily cron retries the card lookup; if the number does not
           fall, the card was never tokenized and the customer has to re-subscribe.
+        </div>
+      )}
+
+      {summary.hoursSinceCronRun !== null && summary.hoursSinceCronRun >= 36 && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-500">
+          The renewal cron last ran {summary.hoursSinceCronRun} hours ago; it is scheduled daily.
+          Nothing is being charged in the meantime. Check the Vercel cron logs and that
+          <code className="mx-1">CRON_SECRET</code> is set in Production.
+        </div>
+      )}
+
+      {summary.hoursSinceCronRun === null && summary.activeSubscriptions > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-600">
+          No renewal-cron heartbeat has ever been recorded. Either the schedule has never fired, or
+          <code className="mx-1">CRON_SECRET</code> is unset and every call is rejected with 401.
         </div>
       )}
 
@@ -217,7 +283,20 @@ export default function SubscriptionsPage() {
                         : <span className="text-red-500">no card</span>}
                     </td>
                     <td className="px-4 py-3 text-[var(--foreground-muted)]">
-                      {s.autoRenew ? fmtDate(s.currentPeriodEnd) : <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>}
+                      {s.overdue ? (
+                        <span className="text-red-500" title="Paid period ended and the renewal has not gone through">
+                          overdue — {fmtDate(s.currentPeriodEnd)}
+                        </span>
+                      ) : s.autoRenew ? (
+                        fmtDate(s.currentPeriodEnd)
+                      ) : (
+                        <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>
+                      )}
+                      {s.failedCharges > 0 && (
+                        <span className="ml-2 text-[10px] text-amber-600" title="Consecutive failed charges; three downgrades to free">
+                          {s.failedCharges} failed
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
