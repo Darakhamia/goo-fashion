@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
 import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
-import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE, resolveSubcategory } from "@/lib/categories";
+import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
+import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
@@ -78,14 +79,6 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-// The filter tree is the shared one, so a breadcrumb that links to
-// ?category=bottoms always names a group this list actually has.
-const BROWSE_CATEGORY_GROUPS = CATEGORY_GROUPS.map((g) => ({
-  ...g,
-  icon: CATEGORY_ICONS[g.id],
-}));
-
-const BROWSE_SUBCAT_TO_VALUE = SUBCATEGORY_TO_VALUE;
 
 function ActiveChip({
   label,
@@ -221,6 +214,18 @@ export default function BrowsePage() {
   // A ?color= link names a colour group, but the groups arrive from the API —
   // hold the name until they do, then resolve it to an id.
   const [pendingColorName, setPendingColorName] = useState<string | null>(null);
+  // Same for ?category=: it names a group in a tree the admin panel edits, so
+  // the group it points at may only exist once /api/categories has answered.
+  const [pendingCategoryGroup, setPendingCategoryGroup] = useState<string | null>(null);
+
+  // The filter tree is the shared one, so a breadcrumb that links to
+  // ?category=bottoms always names a group this list actually has.
+  const categoryGroups = useCategoryTree();
+  const browseCategoryGroups = useMemo(
+    () => categoryGroups.map((g) => ({ ...g, icon: CATEGORY_ICONS[g.id] })),
+    [categoryGroups],
+  );
+  const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
 
   // Restore tab and filters from the URL on mount — survives browser back
   // navigation, lets the WebSite SearchAction land pre-filtered, and is what
@@ -239,10 +244,8 @@ export default function BrowsePage() {
     // ?subcat= picks a single one. A breadcrumb uses whichever it means.
     const group = params.get("category");
     const subcat = params.get("subcat");
-    const labels = subcat
-      ? [subcat]
-      : CATEGORY_GROUPS.find((g) => g.id === group)?.items.map((i) => i.label) ?? [];
-    if (labels.length) setSelectedSubcategories(labels);
+    if (subcat) setSelectedSubcategories([subcat]);
+    else if (group) setPendingCategoryGroup(group);
 
     const gender = params.get("gender");
     if (gender === "women" || gender === "men" || gender === "unisex") setSelectedGender(gender);
@@ -264,6 +267,10 @@ export default function BrowsePage() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  // Both of these resolve a URL parameter against a list that arrives from the
+  // API, so they can only set the filter once that list is in — same reason
+  // the mount effect above sets state directly.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!pendingColorName) return;
     const match = colorGroups.find(
@@ -273,6 +280,15 @@ export default function BrowsePage() {
     setSelectedColorGroupIds([match.id]);
     setPendingColorName(null);
   }, [pendingColorName, colorGroups]);
+
+  useEffect(() => {
+    if (!pendingCategoryGroup) return;
+    const match = categoryGroups.find((g) => g.id === pendingCategoryGroup);
+    if (!match) return;
+    setSelectedSubcategories(match.items.map((i) => i.label));
+    setPendingCategoryGroup(null);
+  }, [pendingCategoryGroup, categoryGroups]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const [brandSearch, setBrandSearch] = useState("");
   const [showAllBrands, setShowAllBrands] = useState(false);
@@ -326,12 +342,12 @@ export default function BrowsePage() {
       .filter((p) => !selectedBrands.length || selectedBrands.includes(p.brand))
       .filter((p) => {
         if (!selectedSubcategories.length) return true;
-        const vals = [...new Set(selectedSubcategories.map(l => BROWSE_SUBCAT_TO_VALUE[l]).filter(Boolean))];
+        const vals = [...new Set(selectedSubcategories.map(l => subcatToValue[l]).filter(Boolean))];
         if (!vals.includes(p.category)) return false;
         // Narrow by subcategory only for pieces that record one. A piece
         // without it still answers to its whole category, so nothing vanishes
         // from the catalog while the field is being filled in.
-        const sub = resolveSubcategory(p.category, p.subcategory);
+        const sub = resolveSubcategory(p.category, p.subcategory, categoryGroups);
         return !sub || selectedSubcategories.includes(sub);
       })
       .filter(
@@ -365,7 +381,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedSubcategories, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
+  }, [products, selectedBrands, selectedSubcategories, subcatToValue, categoryGroups, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -603,7 +619,7 @@ export default function BrowsePage() {
                   <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 )}
               </button>
-              {BROWSE_CATEGORY_GROUPS.map(group => {
+              {browseCategoryGroups.map(group => {
                 const grpOpen = expandedCategoryGroups.has(group.id);
                 const grpLabels = group.items.map(i => i.label);
                 const grpViewAllChecked = grpLabels.every(l => selectedSubcategories.includes(l));

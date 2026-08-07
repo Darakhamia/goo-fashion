@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
-import { CATEGORY_GROUPS, SUBCATEGORY_TO_VALUE, groupForCategory, resolveSubcategory } from "@/lib/categories";
+import { subcategoryToValue, groupForCategory, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
+import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
@@ -60,9 +61,9 @@ const SIZE_PRESETS: Record<string, { sizeType: "letter" | "number" | "eu" | "one
 };
 
 /** "Footwear › Boots" for a stored pair, for the table and section headers. */
-function categoryPath(category: string, subcategory?: string): string {
-  const group = groupForCategory(category);
-  const sub = resolveSubcategory(category, subcategory);
+function categoryPath(category: string, subcategory: string | undefined, tree: CategoryGroup[]): string {
+  const group = groupForCategory(category, tree);
+  const sub = resolveSubcategory(category, subcategory, tree);
   if (!group) return category;
   return sub ? `${group.label} › ${sub}` : group.label;
 }
@@ -596,6 +597,9 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AdminProductsPage() {
+  // The tree the Categories page edits — the chips below are whatever it says.
+  const categoryGroups = useCategoryTree();
+  const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
@@ -778,15 +782,15 @@ export default function AdminProductsPage() {
         p.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
     if (filterGroup) {
-      const values = CATEGORY_GROUPS.find((g) => g.id === filterGroup)?.items.map((i) => i.value) ?? [];
+      const values = categoryGroups.find((g) => g.id === filterGroup)?.items.map((i) => i.value) ?? [];
       list = list.filter((p) => values.includes(p.category));
     }
     if (filterSubcategory) {
       // Same forgiving rule as the catalog: a piece that records no
       // subcategory still answers to its whole category.
       list = list.filter((p) => {
-        if (p.category !== SUBCATEGORY_TO_VALUE[filterSubcategory]) return false;
-        const sub = resolveSubcategory(p.category, p.subcategory);
+        if (p.category !== subcatToValue[filterSubcategory]) return false;
+        const sub = resolveSubcategory(p.category, p.subcategory, categoryGroups);
         return !sub || sub === filterSubcategory;
       });
     }
@@ -830,7 +834,7 @@ export default function AdminProductsPage() {
       name: product.name,
       brand: product.brand,
       category: product.category,
-      subcategory: resolveSubcategory(product.category, product.subcategory) ?? "",
+      subcategory: resolveSubcategory(product.category, product.subcategory, categoryGroups) ?? "",
       gender: (product.gender ?? "") as Gender | "",
       description: product.description ?? "",
       priceMin: String(product.priceMin),
@@ -865,7 +869,7 @@ export default function AdminProductsPage() {
       name: `${product.name} (Copy)`,
       brand: product.brand,
       category: product.category,
-      subcategory: resolveSubcategory(product.category, product.subcategory) ?? "",
+      subcategory: resolveSubcategory(product.category, product.subcategory, categoryGroups) ?? "",
       gender: (product.gender ?? "") as Gender | "",
       description: product.description ?? "",
       priceMin: String(product.priceMin),
@@ -1082,7 +1086,7 @@ export default function AdminProductsPage() {
         category: (p.category as Category) ?? "tops",
         // Validated against the category, so a stray label in pasted JSON
         // doesn't produce a subcategory the filters can never match.
-        subcategory: resolveSubcategory((p.category as Category) ?? "tops", p.subcategory),
+        subcategory: resolveSubcategory((p.category as Category) ?? "tops", p.subcategory, categoryGroups),
         description: p.description ?? "",
         imageUrl: p.imageUrl ?? "",
         images: p.images ?? [],
@@ -1379,7 +1383,7 @@ export default function AdminProductsPage() {
 
           {/* Group chips, then the active group's subcategories — the same two
               levels the edit form and the catalog filters use. */}
-          {CATEGORY_GROUPS.map((g) => (
+          {categoryGroups.map((g) => (
             <button
               key={g.id}
               onClick={() => {
@@ -1398,7 +1402,7 @@ export default function AdminProductsPage() {
           {filterGroup && (
             <>
               <span className="text-[var(--foreground-subtle)] mx-1">·</span>
-              {(CATEGORY_GROUPS.find((g) => g.id === filterGroup)?.items ?? []).map((item) => (
+              {(categoryGroups.find((g) => g.id === filterGroup)?.items ?? []).map((item) => (
                 <button
                   key={item.label}
                   onClick={() => setFilterSubcategory((prev) => (prev === item.label ? "" : item.label))}
@@ -1607,7 +1611,7 @@ export default function AdminProductsPage() {
                       <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
                     </td>
                     <td className="px-2 py-3 hidden lg:table-cell">
-                      <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory)}</span>
+                      <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory, categoryGroups)}</span>
                     </td>
                     <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">
@@ -1803,24 +1807,24 @@ export default function AdminProductsPage() {
 
                   {/* ── Category ── */}
                   <div>
-                    <SecHead id="category" label="Category" hint={`— ${categoryPath(form.category, form.subcategory)}`} />
+                    <SecHead id="category" label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
                     {!collapsed.has("category") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
                           // One tree, the same one the catalog filters and the
                           // breadcrumbs read. Picking a subcategory sets the stored
                           // category too, so the two can never disagree.
-                          const activeGroup = groupForCategory(form.category);
+                          const activeGroup = groupForCategory(form.category, categoryGroups);
                           const pick = (label: string) =>
                             setForm((f) => ({
                               ...f,
-                              category: SUBCATEGORY_TO_VALUE[label] as Category,
+                              category: subcatToValue[label] as Category,
                               subcategory: label,
                             }));
                           return (
                             <>
                               <div className="grid grid-cols-3 gap-1">
-                                {CATEGORY_GROUPS.map((g) => (
+                                {categoryGroups.map((g) => (
                                   <button key={g.id} type="button"
                                     onClick={() => pick(g.items[0].label)}
                                     className={`py-1.5 text-[10px] border transition-colors text-center leading-tight ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
