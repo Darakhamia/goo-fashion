@@ -37,11 +37,17 @@ export interface CategoryGroup {
 }
 
 /**
- * Every category value a product may store.
+ * The category values the code itself knows about.
  *
- * The admin panel offers these when pointing a subcategory at a bucket, so
- * the list has to stay in step with the `Category` union in types.ts — the
- * `satisfies` clause is what makes a drift there a compile error here.
+ * These are the buckets the importer's keyword classifier can assign, the
+ * outfit builder slots pieces into, and the size presets and "wear it with"
+ * hints are keyed by. The list has to stay in step with the `Category` union
+ * in types.ts — the `satisfies` clause makes a drift there a compile error
+ * here.
+ *
+ * The admin panel can point a subcategory at a bucket outside this list; see
+ * `bucketsInTree`. Such a bucket works everywhere the catalog reads the tree,
+ * and is simply unknown to the features above.
  */
 export const CATEGORY_VALUES = [
   "outerwear", "tops", "shirts", "knitwear", "blazers",
@@ -49,6 +55,36 @@ export const CATEGORY_VALUES = [
   "dresses", "jumpsuits",
   "footwear", "bags", "accessories", "swimwear",
 ] as const satisfies readonly Category[];
+
+export function isBuiltInBucket(value: string): boolean {
+  return (CATEGORY_VALUES as readonly string[]).includes(value);
+}
+
+/**
+ * Every bucket the tree currently points at, built-in or not.
+ *
+ * A custom bucket has no table of its own: it exists exactly as long as a
+ * subcategory names it, so re-pointing or deleting the last one that uses it
+ * retires it with no leftovers to clean up.
+ */
+export function bucketsInTree(tree: CategoryGroup[]): string[] {
+  const seen = new Set<string>();
+  for (const group of tree) for (const item of group.items) seen.add(item.value);
+  return [...seen].sort();
+}
+
+/** Buckets and group ids both end up in URLs, so hold them to a plain slug. */
+export function normalizeSlug(raw: unknown): string {
+  return String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function isValidSlug(value: string): boolean {
+  return /^[a-z][a-z0-9-]*$/.test(value) && value.length >= 2 && value.length <= 32;
+}
 
 export const DEFAULT_CATEGORY_GROUPS: CategoryGroup[] = [
   {

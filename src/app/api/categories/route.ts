@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { loadCategoryTree, loadSubcategoryCounts } from "@/lib/server/category-tree";
-import { CATEGORY_VALUES } from "@/lib/categories";
+import { normalizeSlug, isValidSlug } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -54,21 +54,26 @@ async function guard(): Promise<Guard> {
   return admin;
 }
 
-/** Group ids end up in ?category= URLs, so keep them to a plain slug. */
-function normalizeGroupId(raw: unknown): string {
-  return String(raw ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function cleanLabel(raw: unknown): string {
   return String(raw ?? "").trim().replace(/\s+/g, " ");
 }
 
-function isKnownValue(value: string): boolean {
-  return (CATEGORY_VALUES as readonly string[]).includes(value);
+/**
+ * A subcategory's bucket, normalized.
+ *
+ * Any slug is allowed, not just the ones in `CATEGORY_VALUES`: the admin panel
+ * can invent a bucket for a group the built-in list has no name for. It works
+ * everywhere the catalog reads the tree; the importer's classifier and the
+ * outfit builder only know the built-in ones, which the editor says out loud
+ * before you pick one.
+ */
+function readBucket(raw: unknown): { value: string } | { error: string } {
+  const value = normalizeSlug(raw);
+  if (!value) return { error: "Pick a category value." };
+  if (!isValidSlug(value)) {
+    return { error: `"${value}" is not a usable category value — letters, digits and dashes, 2–32 characters.` };
+  }
+  return { value };
 }
 
 /**
@@ -104,7 +109,7 @@ export async function POST(req: Request) {
   const kind = body.kind === "group" ? "group" : "subcategory";
 
   if (kind === "group") {
-    const id = normalizeGroupId(body.id ?? body.label);
+    const id = normalizeSlug(body.id ?? body.label);
     const label = cleanLabel(body.label);
     if (!id || !label) {
       return NextResponse.json({ error: "A group needs a name." }, { status: 400 });
@@ -133,16 +138,12 @@ export async function POST(req: Request) {
   }
 
   const label = cleanLabel(body.label);
-  const groupId = normalizeGroupId(body.groupId);
-  const value = String(body.value ?? "").trim();
+  const groupId = normalizeSlug(body.groupId);
   if (!label) return NextResponse.json({ error: "A subcategory needs a name." }, { status: 400 });
   if (!groupId) return NextResponse.json({ error: "Pick a group." }, { status: 400 });
-  if (!isKnownValue(value)) {
-    return NextResponse.json(
-      { error: `"${value}" is not a category the catalog stores.` },
-      { status: 400 },
-    );
-  }
+  const bucket = readBucket(body.value);
+  if ("error" in bucket) return NextResponse.json({ error: bucket.error }, { status: 400 });
+  const value = bucket.value;
 
   const { data, error } = await supabase!
     .from("category_subcategories")
@@ -235,17 +236,12 @@ export async function PATCH(req: Request) {
     patch.label = label;
   }
   if (body.value !== undefined) {
-    const value = String(body.value).trim();
-    if (!isKnownValue(value)) {
-      return NextResponse.json(
-        { error: `"${value}" is not a category the catalog stores.` },
-        { status: 400 },
-      );
-    }
-    patch.value = value;
+    const bucket = readBucket(body.value);
+    if ("error" in bucket) return NextResponse.json({ error: bucket.error }, { status: 400 });
+    patch.value = bucket.value;
   }
   if (body.groupId !== undefined) {
-    const groupId = normalizeGroupId(body.groupId);
+    const groupId = normalizeSlug(body.groupId);
     if (!groupId) return NextResponse.json({ error: "Pick a group." }, { status: 400 });
     patch.group_id = groupId;
   }
