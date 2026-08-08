@@ -36,6 +36,7 @@ import { loadLabelledProducts, makeKeyBuilders } from "@/lib/server/catalogue-la
 import {
   applyRules,
   colorGroupPairs,
+  findSplitLabels,
   kFold,
   mineRules,
   type MinedRule,
@@ -137,7 +138,11 @@ export async function GET(req: Request) {
       // catalogue, and the hand-written keyword table, which scored highest of
       // anything measured and never saw this product either.
       const mined = applyRules(categoryRules, garmentKeys(p));
-      const keyworded = matchCategory(`${p.name} ${p.description}`);
+      // The NAME only. Fed the description as well, this accused a tee of
+      // being shorts and a pair of jeans of being a blazer: descriptions are
+      // marketing copy that name-drops other garments, and a keyword table
+      // cannot tell "pairs well with shorts" from "is shorts".
+      const keyworded = matchCategory(p.name);
 
       const disagreeing: { value: string; evidence: string }[] = [];
       if (mined && mined.value !== p.category) {
@@ -198,6 +203,32 @@ export async function GET(req: Request) {
     }
   }
 
+  /* ── 3. Phrases the catalogue files two ways ──────────────────────────── */
+
+  // Needs no folding: this compares the catalogue against itself rather than
+  // against a rule, so there is nothing that could have been trained on it.
+  const categorySplits = findSplitLabels(loaded, garmentKeys, (p) => p.category, { minSupport });
+  const subcategorySplits = findSplitLabels(loaded, garmentKeys, (p) => p.subcategory, { minSupport });
+
+  const splitSuspects: Suspect[] = [];
+  for (const [field, splits] of [["category", categorySplits], ["subcategory", subcategorySplits]] as const) {
+    for (const split of splits) {
+      for (const { value, row } of split.odd) {
+        splitSuspects.push({
+          id: row.id,
+          name: row.name,
+          field,
+          stored: value,
+          suggested: split.majority.value,
+          evidence: [
+            `"${split.key}" is filed as ${split.majority.value} on ${split.majority.count} of ${split.support} products`,
+          ],
+          agreement: 1,
+        });
+      }
+    }
+  }
+
   // Gender needs no folding: the keyword rule is hand-written, so it never saw
   // any of this. Only where it fires — it is precise but quiet.
   const genderSuspects: Suspect[] = [];
@@ -224,6 +255,7 @@ export async function GET(req: Request) {
   const sections = {
     subcategory_not_in_tree: orphaned,
     category_contradicts_subcategory: contradicting,
+    same_phrase_filed_two_ways: splitSuspects.sort(byConfidence),
     category_disputed_by_name: categoryList,
     subcategory_disputed_by_name: subcategorySuspects.sort(byConfidence),
     gender_disputed_by_name: genderSuspects.sort(byConfidence),
@@ -258,6 +290,7 @@ export async function GET(req: Request) {
   const titles: Record<string, string> = {
     subcategory_not_in_tree: "SUBCATEGORY NOT IN THE TREE  (exact — the label does not exist)",
     category_contradicts_subcategory: "CATEGORY CONTRADICTS SUBCATEGORY  (exact — the tree disagrees)",
+    same_phrase_filed_two_ways: "SAME PHRASE, DIFFERENT LABEL  (the catalogue disagreeing with itself)",
     category_disputed_by_name: "CATEGORY DISPUTED BY THE NAME  (2 = both mechanisms agree)",
     subcategory_disputed_by_name: "SUBCATEGORY DISPUTED BY THE NAME",
     gender_disputed_by_name: "GENDER DISPUTED BY THE NAME",
@@ -268,10 +301,24 @@ export async function GET(req: Request) {
     if (!list.length) continue;
     lines.push("");
     lines.push(`── ${titles[name] ?? name} ── ${list.length}`);
+
+    // Grouped by the change being proposed, because that is the unit of the
+    // decision: ten polo shirts moving from tops to shirts is one call to
+    // make, not ten. A flat list hides that they are the same question.
+    const byChange = new Map<string, Suspect[]>();
     for (const s of list.slice(0, limit)) {
-      const mark = s.agreement > 1 ? `[${s.agreement}] ` : "    ";
-      lines.push(`  ${mark}${s.name.slice(0, 44).padEnd(46)} ${s.stored.slice(0, 18).padEnd(20)} → ${s.suggested}`);
-      for (const e of s.evidence) lines.push(`        ${e}`);
+      const change = `${s.stored} → ${s.suggested}`;
+      byChange.set(change, [...(byChange.get(change) ?? []), s]);
+    }
+    const ordered = [...byChange.entries()].sort((a, b) => b[1].length - a[1].length);
+
+    for (const [change, group] of ordered) {
+      lines.push(`  ${change}   (${group.length})`);
+      for (const s of group) {
+        const mark = s.agreement > 1 ? `[${s.agreement}]` : "   ";
+        lines.push(`    ${mark} ${s.name.slice(0, 50).padEnd(52)} ${s.id}`);
+        for (const e of s.evidence) lines.push(`          ${e}`);
+      }
     }
     if (list.length > limit) lines.push(`  …and ${list.length - limit} more (raise &limit=)`);
   }

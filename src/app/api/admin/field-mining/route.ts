@@ -140,7 +140,12 @@ export async function GET(req: Request) {
     scores: {
       category_mined: scoreSingleLabel(holdout, (r) => r.category, (r) => applyRules(categoryRules, nameKeys(r))?.value ?? null, (r) => r.name),
       // The table already in the code, on the same rows — the bar to beat.
+      // Scored on both inputs because the importer feeds it name AND
+      // description, and the audit found that costing it: a tee read as shorts
+      // because its description mentioned them. If name-only scores at least
+      // as well here, the importer should stop passing the description too.
       category_existing_keywords: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategory(`${r.name} ${r.description}`), (r) => r.name),
+      category_existing_keywords_name_only: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategory(r.name), (r) => r.name),
       category_majority: scoreSingleLabel(holdout, (r) => r.category, () => majorityCategory, () => "", 0),
       subcategory_mined: scoreSingleLabel(holdout, (r) => r.subcategory, (r) => applyRules(subcategoryRules, nameKeys(r))?.value ?? null, (r) => r.name),
       subcategory_majority: scoreSingleLabel(holdout, (r) => r.subcategory, () => majoritySubcategory, () => "", 0),
