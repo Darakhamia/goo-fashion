@@ -280,7 +280,13 @@ export function findSplitLabels<T>(
   opts: { minSupport?: number; maxMinorityShare?: number } = {},
 ): SplitLabel<T>[] {
   const minSupport = opts.minSupport ?? 4;
-  const maxMinorityShare = opts.maxMinorityShare ?? 0.35;
+  // A phrase has to be an overwhelming pattern before breaking it counts as a
+  // slip. At a third, this reported "print is filed as tops on 13 of 19" and
+  // "adv on 6 of 9" — words from a brand's product lines, which say nothing
+  // about what a garment is and are split simply because the line spans
+  // several. Only a phrase the catalogue files one way almost every time can
+  // make the exceptions look like mistakes.
+  const maxMinorityShare = opts.maxMinorityShare ?? 0.15;
 
   const byKey = new Map<string, { value: string; row: T }[]>();
   for (const row of rows) {

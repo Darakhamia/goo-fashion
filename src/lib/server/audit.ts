@@ -14,7 +14,9 @@ export type AdminAction =
   | "settings.homepage_stylist_updated"
   | "parser.config_updated"
   | "parser.product_imported"
-  | "categories.updated";
+  | "categories.updated"
+  | "products.recategorized"
+  | "products.recategorize_undone";
 
 interface AuditEntry {
   admin_id: string;

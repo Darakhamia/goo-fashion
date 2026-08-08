@@ -1175,21 +1175,22 @@ export default function AdminProductsPage() {
       const dry = await dryRes.json();
       if (!dryRes.ok) { showToast(dry.error || "Recategorize failed", "err"); return; }
 
-      // Products the classifier can't place (no recognisable garment word). Show
-      // their names so the exact stragglers are visible and keywords can be added.
-      const stuck = (dry.stuckSample ?? []) as { name: string; category: string }[];
-      const showStuck = () => {
-        if (!stuck.length) return;
-        const lines = stuck.slice(0, 40).map((s) => `• ${s.name}  →  (${s.category})`).join("\n");
-        const more = dry.stillStuck > 40 ? `\n…and ${dry.stillStuck - 40} more.` : "";
-        window.alert(
-          `${dry.stillStuck} product(s) couldn't be auto-sorted — no recognisable garment word in the name — and were left as-is:\n\n${lines}${more}\n\nScreenshot this so keywords can be added for them.`,
-        );
-      };
+      // Products the classifier left alone, and why. Worth stating up front:
+      // the whole worry about this button is that it overwrites hand-filed work,
+      // and the answer is that it refuses to look at it.
+      const guarded = (dry.skippedBreakdown ?? []) as { reason: string; explanation: string; count: number }[];
+      const guardNote = guarded
+        .filter((g) => g.count > 0)
+        .map((g) => `  ${g.count} left untouched — ${g.explanation}`)
+        .join("\n");
 
       if (!dry.wouldChange) {
-        showToast(dry.stillStuck ? `Nothing moved · ${dry.stillStuck} couldn't be sorted` : "Nothing to recategorize — every product looks correct");
-        showStuck();
+        showToast(
+          dry.protected
+            ? `Nothing to change · ${dry.protected} product${dry.protected === 1 ? "" : "s"} protected`
+            : "Nothing to recategorize — every product looks correct",
+        );
+        if (guardNote) window.alert(`No changes to make.\n\n${guardNote}`);
         return;
       }
 
@@ -1197,9 +1198,9 @@ export default function AdminProductsPage() {
         .sort((a, b) => b[1] - a[1])
         .map(([k, n]) => `  ${k}: ${n}`)
         .join("\n");
-      const stuckNote = dry.stillStuck ? `\n\n${dry.stillStuck} product(s) can't be auto-sorted and will be left as-is.` : "";
       const ok = window.confirm(
-        `Recategorize ${dry.wouldChange} of ${dry.scanned} products across the whole catalog?\n\n${summary}${stuckNote}\n\nThis updates the catalog.`,
+        `Recategorize ${dry.wouldChange} of ${dry.scanned} products?\n\n${summary}\n\n${guardNote}\n\n` +
+        `Only products with no subcategory can be changed. This can be undone.`,
       );
       if (!ok) return;
 
@@ -1210,11 +1211,40 @@ export default function AdminProductsPage() {
       });
       const applied = await applyRes.json();
       if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
-      showToast(`Recategorized ${applied.applied} product${applied.applied === 1 ? "" : "s"}`);
+      showToast(
+        applied.undoable
+          ? `Recategorized ${applied.applied} · use Undo to revert`
+          : `Recategorized ${applied.applied} — NOT recorded, so it cannot be undone`,
+        applied.undoable ? "ok" : "err",
+      );
       await fetchProducts();
-      showStuck();
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Recategorize failed", "err");
+    } finally {
+      setRecategorizing(false);
+    }
+  };
+
+  /** Puts back whatever the last "Fix categories" run changed. */
+  const handleUndoRecategorize = async () => {
+    if (!confirm("Undo the last category fix?\n\nProducts edited since that run are left as they are.")) return;
+    setRecategorizing(true);
+    try {
+      const res = await fetch("/api/admin/recategorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
+      showToast(
+        json.movedSince
+          ? `Restored ${json.restored} · ${json.movedSince} changed since and left alone`
+          : `Restored ${json.restored} product${json.restored === 1 ? "" : "s"}`,
+      );
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Undo failed", "err");
     } finally {
       setRecategorizing(false);
     }
@@ -1377,10 +1407,20 @@ export default function AdminProductsPage() {
           <button
             onClick={handleRecategorize}
             disabled={recategorizing || !dbConfigured}
-            title={dbConfigured ? "Re-run the category classifier across the whole catalog" : "Requires Supabase"}
+            title={dbConfigured ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {recategorizing ? "Sorting…" : "Fix categories"}
+          </button>
+          {/* Always available, not just after a run in this tab: the run to
+              regret is usually the one from before the page was reloaded. */}
+          <button
+            onClick={handleUndoRecategorize}
+            disabled={recategorizing || !dbConfigured}
+            title={dbConfigured ? "Put back what the last category fix changed" : "Requires Supabase"}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Undo fix
           </button>
           <button
             onClick={handleSeed}

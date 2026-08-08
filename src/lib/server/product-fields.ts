@@ -84,6 +84,11 @@ export function extractCurrencyFromDisplay(raw: string): string {
 const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, Category]> = [
   // Compound trap: a "dress shirt" is a shirt, not a dress.
   [/\bdress\s*shirt\b/, "shirts"],
+  // A polo shirt is a top, not a shirt — it carries "shirt" in its name but the
+  // catalogue's own tree files "Polo Shirts" under tops, and this rule read it
+  // as `shirts` on every polo in it. Must precede the generic shirt rule below,
+  // and must not swallow a "polo neck", which is knitwear.
+  [/\bpolo\b(?!\s*neck)/, "tops"],
   // Sneaker / shoe MODEL names that carry no generic garment word (e.g.
   // "Air Max 90", "Adidas Samba", "Nike Dunk"). Placed high so a model name wins
   // — including "Nike Blazer", which would otherwise read as the tailoring
