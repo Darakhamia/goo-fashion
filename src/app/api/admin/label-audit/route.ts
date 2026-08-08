@@ -210,24 +210,34 @@ export async function GET(req: Request) {
   const categorySplits = findSplitLabels(loaded, garmentKeys, (p) => p.category, { minSupport });
   const subcategorySplits = findSplitLabels(loaded, garmentKeys, (p) => p.subcategory, { minSupport });
 
-  const splitSuspects: Suspect[] = [];
+  // One entry per product per field, keeping the best-attested phrase. A name
+  // contains several phrases, and listing a product once per phrase turned two
+  // dozen findings into a hundred lines saying the same thing.
+  const splitBest = new Map<string, { suspect: Suspect; support: number }>();
   for (const [field, splits] of [["category", categorySplits], ["subcategory", subcategorySplits]] as const) {
     for (const split of splits) {
       for (const { value, row } of split.odd) {
-        splitSuspects.push({
-          id: row.id,
-          name: row.name,
-          field,
-          stored: value,
-          suggested: split.majority.value,
-          evidence: [
-            `"${split.key}" is filed as ${split.majority.value} on ${split.majority.count} of ${split.support} products`,
-          ],
-          agreement: 1,
+        const key = `${field}:${row.id}`;
+        const existing = splitBest.get(key);
+        if (existing && existing.support >= split.support) continue;
+        splitBest.set(key, {
+          support: split.support,
+          suspect: {
+            id: row.id,
+            name: row.name,
+            field,
+            stored: value,
+            suggested: split.majority.value,
+            evidence: [
+              `"${split.key}" is filed as ${split.majority.value} on ${split.majority.count} of ${split.support} products`,
+            ],
+            agreement: 1,
+          },
         });
       }
     }
   }
+  const splitSuspects = [...splitBest.values()].map((e) => e.suspect);
 
   // Gender needs no folding: the keyword rule is hand-written, so it never saw
   // any of this. Only where it fires — it is precise but quiet.
