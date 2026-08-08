@@ -16,7 +16,8 @@ export type AdminAction =
   | "parser.product_imported"
   | "categories.updated"
   | "products.recategorized"
-  | "products.recategorize_undone";
+  | "products.recategorize_undone"
+  | "products.label_fixed";
 
 interface AuditEntry {
   admin_id: string;
