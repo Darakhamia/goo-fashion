@@ -68,6 +68,27 @@ function categoryPath(category: string, subcategory: string | undefined, tree: C
   return sub ? `${group.label} › ${sub}` : group.label;
 }
 
+/**
+ * The "show me what still needs filling in" filter.
+ *
+ * Sorting a catalogue out means finding the gaps, and a gap is invisible in a
+ * list that only lets you filter by what a product *has*. Each entry answers
+ * "which pieces are still missing this?".
+ */
+const MISSING_FILTERS: { value: string; label: string; test: (p: Product) => boolean }[] = [
+  { value: "subcategory", label: "No subcategory", test: (p) => !p.subcategory },
+  { value: "colorGroups", label: "No colour filter", test: (p) => !p.colorGroupIds?.length },
+  { value: "colors", label: "No colours", test: (p) => !p.colors?.length },
+  { value: "style", label: "No style keywords", test: (p) => !p.styleKeywords?.length },
+  { value: "gender", label: "No gender", test: (p) => !p.gender },
+  { value: "description", label: "No description", test: (p) => !p.description?.trim() },
+  { value: "sizes", label: "No sizes", test: (p) => !p.sizes?.length },
+  { value: "image", label: "No image", test: (p) => !p.imageUrl?.trim() },
+];
+
+const filterSelectCls =
+  "rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
+
 const STYLE_KEYWORDS: StyleKeyword[] = [
   "minimal", "streetwear", "classic", "avant-garde", "romantic",
   "utilitarian", "bohemian", "preppy", "sporty", "dark", "maximalist", "coastal", "academic",
@@ -641,6 +662,12 @@ export default function AdminProductsPage() {
 
   const [filterGroup, setFilterGroup] = useState<string>("");
   const [filterSubcategory, setFilterSubcategory] = useState<string>("");
+  const [filterBrand, setFilterBrand] = useState<string>("");
+  const [filterColorGroup, setFilterColorGroup] = useState<string>("");
+  const [filterStyle, setFilterStyle] = useState<string>("");
+  const [filterGender, setFilterGender] = useState<string>("");
+  /** Which field to show only the products *missing* — see MISSING_FILTERS. */
+  const [filterMissing, setFilterMissing] = useState<string>("");
   const [filterNew, setFilterNew] = useState<boolean | null>(null);
   // Default to newest-first so the table mirrors the DB order (created_at desc).
   const [sortKey, setSortKey] = useState<SortColumn>("createdAt");
@@ -794,6 +821,17 @@ export default function AdminProductsPage() {
         return !sub || sub === filterSubcategory;
       });
     }
+    if (filterBrand) list = list.filter((p) => p.brand === filterBrand);
+    if (filterColorGroup) {
+      const id = Number(filterColorGroup);
+      list = list.filter((p) => p.colorGroupIds?.includes(id));
+    }
+    if (filterStyle) list = list.filter((p) => p.styleKeywords?.includes(filterStyle as StyleKeyword));
+    if (filterGender) list = list.filter((p) => p.gender === filterGender);
+    if (filterMissing) {
+      const missing = MISSING_FILTERS.find((m) => m.value === filterMissing);
+      if (missing) list = list.filter(missing.test);
+    }
     if (filterNew !== null) list = list.filter((p) => p.isNew === filterNew);
     if (sortKey) {
       list = [...list].sort((a, b) => {
@@ -810,7 +848,13 @@ export default function AdminProductsPage() {
       });
     }
     return list;
-  }, [products, searchQuery, filterGroup, filterSubcategory, filterNew, sortKey, sortDir]);
+  }, [products, searchQuery, filterGroup, filterSubcategory, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, filterNew, sortKey, sortDir]);
+
+  /** Brands actually present in the catalogue, so the list can't offer a dead end. */
+  const brandsInCatalogue = useMemo(
+    () => [...new Set(products.map((p) => p.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [products],
+  );
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -1421,6 +1465,76 @@ export default function AdminProductsPage() {
           {/* Divider */}
           <span className="w-px h-4 bg-[var(--border)]" />
 
+          {/* The rest of a product's fields, as dropdowns — too many values for
+              chips, and each one narrows the list independently of the others. */}
+          <select
+            value={filterBrand}
+            onChange={(e) => setFilterBrand(e.target.value)}
+            className={filterSelectCls}
+            title="Brand"
+          >
+            <option value="">All brands</option>
+            {brandsInCatalogue.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterColorGroup}
+            onChange={(e) => setFilterColorGroup(e.target.value)}
+            className={filterSelectCls}
+            title="Colour filter group"
+          >
+            <option value="">All colours</option>
+            {colorGroups.map((g) => (
+              <option key={g.id} value={String(g.id)}>{g.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterStyle}
+            onChange={(e) => setFilterStyle(e.target.value)}
+            className={filterSelectCls}
+            title="Style keyword"
+          >
+            <option value="">All styles</option>
+            {STYLE_KEYWORDS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterGender}
+            onChange={(e) => setFilterGender(e.target.value)}
+            className={filterSelectCls}
+            title="Gender"
+          >
+            <option value="">All genders</option>
+            <option value="women">Women</option>
+            <option value="men">Men</option>
+            <option value="unisex">Unisex</option>
+          </select>
+
+          {/* Divider */}
+          <span className="w-px h-4 bg-[var(--border)]" />
+
+          {/* The gaps. Filtering by what a product HAS cannot find what it is
+              missing, which is most of the work when tidying a catalogue. */}
+          <select
+            value={filterMissing}
+            onChange={(e) => setFilterMissing(e.target.value)}
+            className={`${filterSelectCls} ${filterMissing ? "border-amber-500/60 text-amber-600" : ""}`}
+            title="Show only products missing a field"
+          >
+            <option value="">Missing: anything</option>
+            {MISSING_FILTERS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+
+          {/* Divider */}
+          <span className="w-px h-4 bg-[var(--border)]" />
+
           {/* New chip */}
           <button
             onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
@@ -1455,9 +1569,14 @@ export default function AdminProductsPage() {
           </label>
 
           {/* Clear filters */}
-          {(filterGroup || filterSubcategory || filterNew !== null || !isDefaultSort) && (
+          {(filterGroup || filterSubcategory || filterBrand || filterColorGroup || filterStyle || filterGender || filterMissing || filterNew !== null || !isDefaultSort) && (
             <button
-              onClick={() => { setFilterGroup(""); setFilterSubcategory(""); setFilterNew(null); setSortKey("createdAt"); setSortDir("desc"); }}
+              onClick={() => {
+                setFilterGroup(""); setFilterSubcategory("");
+                setFilterBrand(""); setFilterColorGroup(""); setFilterStyle(""); setFilterGender("");
+                setFilterMissing(""); setFilterNew(null);
+                setSortKey("createdAt"); setSortDir("desc");
+              }}
               className="ml-1 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
             >
               Clear
