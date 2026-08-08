@@ -253,6 +253,70 @@ export function colorGroupPairs(
   return pairs;
 }
 
+export interface SplitLabel<T> {
+  key: string;
+  support: number;
+  majority: { value: string; count: number };
+  /** The rows that break the pattern their own phrase follows. */
+  odd: { value: string; row: T }[];
+}
+
+/**
+ * Phrases the catalogue files inconsistently.
+ *
+ * Ten polo shirts under `tops` and one under `shirts` is not eleven separate
+ * judgements to review — it is one decision about polos, and one row that got
+ * the other answer. Rules cannot see this: a rule mined at 91% precision is
+ * simply a rule, and the 9% it is wrong about never surfaces.
+ *
+ * Reported only where the minority is small enough to look like a slip. A
+ * phrase split evenly is a genuine ambiguity in the taxonomy, and telling
+ * someone to "fix" it would be telling them to guess.
+ */
+export function findSplitLabels<T>(
+  rows: T[],
+  keysOf: (row: T) => string[],
+  valueOf: (row: T) => string | null | undefined,
+  opts: { minSupport?: number; maxMinorityShare?: number } = {},
+): SplitLabel<T>[] {
+  const minSupport = opts.minSupport ?? 4;
+  const maxMinorityShare = opts.maxMinorityShare ?? 0.35;
+
+  const byKey = new Map<string, { value: string; row: T }[]>();
+  for (const row of rows) {
+    const value = valueOf(row);
+    if (!value) continue;
+    for (const key of new Set(keysOf(row))) {
+      byKey.set(key, [...(byKey.get(key) ?? []), { value, row }]);
+    }
+  }
+
+  const splits: SplitLabel<T>[] = [];
+  for (const [key, entries] of byKey) {
+    if (entries.length < minSupport) continue;
+
+    const counts = new Map<string, number>();
+    for (const e of entries) counts.set(e.value, (counts.get(e.value) ?? 0) + 1);
+    if (counts.size < 2) continue;
+
+    const [top] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const minorityCount = entries.length - top[1];
+    if (minorityCount / entries.length > maxMinorityShare) continue;
+
+    splits.push({
+      key,
+      support: entries.length,
+      majority: { value: top[0], count: top[1] },
+      odd: entries.filter((e) => e.value !== top[0]),
+    });
+  }
+
+  // The most lopsided splits first: those are the likeliest slips.
+  return splits.sort(
+    (a, b) => a.odd.length / a.support - b.odd.length / b.support || b.support - a.support,
+  );
+}
+
 /* ── Scoring ──────────────────────────────────────────────────────────────── */
 
 /**
