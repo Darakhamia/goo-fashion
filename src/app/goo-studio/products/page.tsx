@@ -850,6 +850,15 @@ export default function AdminProductsPage() {
     return list;
   }, [products, searchQuery, filterGroup, filterSubcategory, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, filterNew, sortKey, sortDir]);
 
+  // The Audit page links a suspect straight here by name, so the list opens
+  // already narrowed to the piece being fixed.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const search = new URLSearchParams(window.location.search).get("search");
+    if (search) setSearchQuery(search);
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   /** Brands actually present in the catalogue, so the list can't offer a dead end. */
   const brandsInCatalogue = useMemo(
     () => [...new Set(products.map((p) => p.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
