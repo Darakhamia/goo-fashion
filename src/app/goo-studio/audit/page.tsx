@@ -24,12 +24,14 @@ interface Suspect {
   suggested: string;
   evidence: string[];
   agreement: number;
+  dismissed?: boolean;
 }
 
 interface AuditReport {
   catalogue: { products: number; category_tree: string };
   totals: Record<string, number>;
   suspects: Record<string, Suspect[]>;
+  dismissed: number;
 }
 
 /** Section copy: what the check is, and how much it can be trusted. */
@@ -78,6 +80,8 @@ export default function AdminAuditPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [showDismissed, setShowDismissed] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
@@ -85,11 +89,14 @@ export default function AdminAuditPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (withDismissed: boolean) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/label-audit?limit=300", { cache: "no-store" });
+      const res = await fetch(
+        `/api/admin/label-audit?limit=300${withDismissed ? "&includeDismissed=1" : ""}`,
+        { cache: "no-store" },
+      );
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? "Could not run the audit.");
@@ -97,6 +104,7 @@ export default function AdminAuditPage() {
       } else {
         setReport(json);
         setDone(new Set());
+        setHidden(new Set());
       }
     } catch {
       setError("Could not reach the server.");
@@ -106,8 +114,8 @@ export default function AdminAuditPage() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(showDismissed);
+  }, [load, showDismissed]);
 
   const apply = async (s: Suspect) => {
     const key = `${s.field}:${s.id}`;
@@ -135,6 +143,64 @@ export default function AdminAuditPage() {
     }
   };
 
+  const claimBody = (s: Suspect) => ({
+    id: s.id,
+    field: s.field,
+    stored: s.stored,
+    suggested: s.suggested,
+  });
+
+  /** Rejects this suggestion for good, so re-running stops raising it. */
+  const dismiss = async (s: Suspect) => {
+    const key = `${s.field}:${s.id}`;
+    setBusyId(key);
+    try {
+      const res = await fetch("/api/admin/label-audit/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(claimBody(s)),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        showToast(
+          json.code === "TABLE_MISSING"
+            ? "Dismissals need migration 012 — run it in Supabase first."
+            : json.error ?? "Could not dismiss.",
+          "err",
+        );
+        return;
+      }
+      // Hidden rather than removed, so the row stays where it was until the
+      // next re-check and the list does not jump under the cursor.
+      setHidden((prev) => new Set(prev).add(key));
+      showToast(`Dismissed — "${s.stored} → ${s.suggested}" won't be raised again`);
+    } catch {
+      showToast("Could not reach the server.", "err");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const restore = async (s: Suspect) => {
+    const key = `${s.field}:${s.id}`;
+    setBusyId(key);
+    try {
+      const q = new URLSearchParams(claimBody(s)).toString();
+      const res = await fetch(`/api/admin/label-audit/dismiss?${q}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        showToast(json.error ?? "Could not restore.", "err");
+        return;
+      }
+      setHidden((prev) => new Set(prev).add(key));
+      showToast("Restored — it will be raised again on the next check.");
+    } catch {
+      showToast("Could not reach the server.", "err");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const total = report ? Object.values(report.totals).reduce((n, v) => n + v, 0) : 0;
 
   return (
@@ -148,13 +214,27 @@ export default function AdminAuditPage() {
               : "Checking the catalogue's labelling…"}
           </p>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="shrink-0 border border-[var(--border)] rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
-        >
-          {loading ? "Checking…" : "Re-check"}
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => setShowDismissed((v) => !v)}
+            disabled={loading}
+            title="Suggestions you rejected. Shown so a dismissal can be undone."
+            className={`border rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase transition-colors disabled:opacity-40 ${
+              showDismissed
+                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
+            }`}
+          >
+            Dismissed{report ? ` (${report.dismissed})` : ""}
+          </button>
+          <button
+            onClick={() => load(showDismissed)}
+            disabled={loading}
+            className="border border-[var(--border)] rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+          >
+            {loading ? "Checking…" : "Re-check"}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -202,17 +282,19 @@ export default function AdminAuditPage() {
                   {list.map((s) => {
                     const rowKey = `${s.field}:${s.id}`;
                     const applied = done.has(rowKey);
+                    const gone = hidden.has(rowKey);
+                    const faded = applied || gone || s.dismissed;
                     const canApply = APPLIABLE.has(s.field) && s.suggested && s.suggested !== "—";
                     return (
                       <li
                         key={rowKey}
-                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start justify-between gap-4 ${applied ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
+                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start justify-between gap-4 ${faded ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Link
                               href={`/goo-studio/products?search=${encodeURIComponent(s.name)}`}
-                              className={`text-sm text-[var(--foreground)] hover:underline ${applied ? "line-through" : ""}`}
+                              className={`text-sm text-[var(--foreground)] hover:underline ${applied || gone ? "line-through" : ""}`}
                             >
                               {s.name || "(no name)"}
                             </Link>
@@ -234,19 +316,40 @@ export default function AdminAuditPage() {
                           ))}
                         </div>
 
-                        <div className="shrink-0 pt-0.5">
+                        <div className="shrink-0 pt-0.5 flex items-center gap-3">
                           {applied ? (
                             <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">Applied</span>
-                          ) : canApply ? (
-                            <button
-                              onClick={() => apply(s)}
-                              disabled={busyId === rowKey}
-                              className="border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40"
-                            >
-                              {busyId === rowKey ? "…" : "Apply"}
-                            </button>
+                          ) : gone ? (
+                            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+                              {s.dismissed ? "Restored" : "Dismissed"}
+                            </span>
                           ) : (
-                            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">Edit by hand</span>
+                            <>
+                              {canApply && !s.dismissed && (
+                                <button
+                                  onClick={() => apply(s)}
+                                  disabled={busyId === rowKey}
+                                  className="border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40"
+                                >
+                                  {busyId === rowKey ? "…" : "Apply"}
+                                </button>
+                              )}
+                              {!canApply && !s.dismissed && (
+                                <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">Edit by hand</span>
+                              )}
+                              <button
+                                onClick={() => (s.dismissed ? restore(s) : dismiss(s))}
+                                disabled={busyId === rowKey}
+                                title={
+                                  s.dismissed
+                                    ? "Raise this again on future checks"
+                                    : "This suggestion is wrong — stop raising it"
+                                }
+                                className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                              >
+                                {s.dismissed ? "Restore" : "Dismiss"}
+                              </button>
+                            </>
                           )}
                         </div>
                       </li>
