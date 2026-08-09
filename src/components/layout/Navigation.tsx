@@ -447,8 +447,10 @@ export default function Navigation() {
             </Link>
             {/* Registering is its own door, not a link buried inside the sign-in
                 card — /register is where ads and bookmarks land. */}
+            {/* Pill, 38px tall — same shape language as the nav bar itself and
+                the icon circles it sits next to. */}
             <Link href="/register"
-              className={`ml-3 text-[11px] tracking-[0.12em] uppercase font-medium px-3 py-2 transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
+              className={`ml-3 inline-flex items-center justify-center h-[38px] px-5 rounded-full text-[11px] tracking-[0.12em] uppercase font-medium leading-none transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
               Sign up
             </Link>
           </SignedOut>
@@ -497,7 +499,7 @@ export default function Navigation() {
               Sign in
             </Link>
             <Link href="/register"
-              className={`ml-1.5 text-[10px] tracking-[0.08em] uppercase font-medium whitespace-nowrap px-2.5 py-2 transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
+              className={`ml-1.5 inline-flex items-center justify-center h-9 px-4 rounded-full text-[10px] tracking-[0.08em] uppercase font-medium leading-none whitespace-nowrap transition-opacity hover:opacity-80 ${isDark ? "bg-white text-black" : "bg-black text-white"}`}>
               Sign up
             </Link>
           </SignedOut>
