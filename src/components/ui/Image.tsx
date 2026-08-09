@@ -23,7 +23,6 @@ export default function Image({ src, unoptimized, referrerPolicy, ...rest }: Ima
 
   return (
     // `alt` is required by ImageProps and always supplied via {...rest}.
-    // eslint-disable-next-line jsx-a11y/alt-text
     <NextImage
       {...rest}
       src={src}
