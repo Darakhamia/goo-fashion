@@ -33,6 +33,28 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Catalog photos are hosted on the retailers' CDNs, which rate-limit Next's
+  // image optimizer and answer 429 — the product then renders as alt text.
+  // @/components/ui/Image decides per host whether the optimizer may be used;
+  // a raw next/image import silently opts back out of that decision.
+  {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
+    ignores: ["src/components/ui/Image.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "next/image",
+              message:
+                "Import Image from @/components/ui/Image — partner-CDN photos must render unoptimized.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

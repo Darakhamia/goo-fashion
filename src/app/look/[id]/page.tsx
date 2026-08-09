@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import Price from "@/components/ui/Price";
 import { getUserLookById, sharedLookFromShareData, type SharedLook } from "@/lib/data/db";
 import { SITE_URL } from "@/lib/seo";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";

@@ -1,6 +1,6 @@
 "use client";
 
-import Image, { type ImageProps } from "next/image";
+import Image, { type ImageProps } from "@/components/ui/Image";
 import { useState } from "react";
 import { upscaleImageUrl } from "@/lib/image";
 

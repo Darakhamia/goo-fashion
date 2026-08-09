@@ -12,6 +12,42 @@
 
 export const MIN_WIDTH = 1000;
 
+/**
+ * Hosts we own or pay for, and are therefore allowed through Next's image
+ * optimizer. Everything else — partner CDNs like Farfetch or the AWIN proxy —
+ * is served straight to the browser instead.
+ *
+ * The reason is not cost, it's that the optimizer *cannot fetch* some of them.
+ * The optimizer pulls the source image server-side, from a datacenter IP with
+ * no browser headers, and Farfetch's CDN rate-limits exactly that: it answered
+ * 429 to 6/6 optimizer requests while serving the same file to a direct request
+ * with 200. Our own downloader already works around this by faking a browser
+ * User-Agent and Referer (see api/admin/image-tools), which the optimizer has
+ * no way to do. So partner images go direct — the browser is the one client
+ * those CDNs are happy to serve.
+ *
+ * Keep this list in sync with `images.remotePatterns` in next.config.ts: a host
+ * that reaches the optimizer without a matching pattern gets a hard 400.
+ */
+const OWN_IMAGE_HOSTNAME = /(^|\.)(supabase\.co|replicate\.delivery)$/i;
+
+/**
+ * Whether `src` may be routed through `/_next/image`. Local paths ("/hero.png")
+ * and our own storage are optimized; partner CDNs, `blob:` previews and `data:`
+ * URIs are not. A src we can't parse is treated as foreign — failing towards
+ * "render it directly" keeps a broken URL from turning into a missing image.
+ */
+export function shouldOptimizeImage(src: string): boolean {
+  if (src.startsWith("/")) return true;
+  try {
+    const { protocol, hostname } = new URL(src);
+    if (protocol !== "https:" && protocol !== "http:") return false;
+    return OWN_IMAGE_HOSTNAME.test(hostname);
+  } catch {
+    return false;
+  }
+}
+
 // Query strings that sign or lock a URL to a specific rendition. Rewriting the
 // width/height on any of these breaks the signature (imgix `s=`, AWS presigned,
 // CloudFront `Key-Pair-Id`, and generic signed CDNs) — so leave them untouched.

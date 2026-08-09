@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 
