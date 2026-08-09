@@ -76,6 +76,32 @@ function readBucket(raw: unknown): { value: string } | { error: string } {
   return { value };
 }
 
+const SIZE_TYPES = new Set(["letter", "number", "eu", "one-size"]);
+
+/**
+ * The size chart fields, when the caller sent them.
+ *
+ * Sizes arrive as free text ("XS, S, M") because that is how they are typed;
+ * an empty list clears the chart so the subcategory falls back to its
+ * category's, which is a real thing to want rather than a mistake.
+ */
+function readSizeChart(body: Record<string, unknown>): Record<string, unknown> | { error: string } {
+  const patch: Record<string, unknown> = {};
+  if (body.sizeType !== undefined) {
+    const sizeType = String(body.sizeType ?? "").trim();
+    if (sizeType && !SIZE_TYPES.has(sizeType)) {
+      return { error: `"${sizeType}" is not a size type.` };
+    }
+    patch.size_type = sizeType || null;
+  }
+  if (body.sizes !== undefined) {
+    const raw = Array.isArray(body.sizes) ? body.sizes : String(body.sizes ?? "").split(",");
+    const sizes = raw.map((v) => String(v).trim()).filter(Boolean);
+    patch.sizes = sizes.length ? sizes : null;
+  }
+  return patch;
+}
+
 /**
  * Rewrites the products a subcategory edit leaves behind.
  *
@@ -145,9 +171,12 @@ export async function POST(req: Request) {
   if ("error" in bucket) return NextResponse.json({ error: bucket.error }, { status: 400 });
   const value = bucket.value;
 
+  const chart = readSizeChart(body);
+  if ("error" in chart) return NextResponse.json({ error: chart.error }, { status: 400 });
+
   const { data, error } = await supabase!
     .from("category_subcategories")
-    .insert({ group_id: groupId, label, value, sort_order: Number(body.sortOrder) || 0 })
+    .insert({ group_id: groupId, label, value, sort_order: Number(body.sortOrder) || 0, ...chart })
     .select()
     .single();
   if (error) {
@@ -246,6 +275,9 @@ export async function PATCH(req: Request) {
     patch.group_id = groupId;
   }
   if (body.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder) || 0;
+  const chart = readSizeChart(body);
+  if ("error" in chart) return NextResponse.json({ error: chart.error }, { status: 400 });
+  Object.assign(patch, chart);
   if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
 
   const { data, error } = await supabase!

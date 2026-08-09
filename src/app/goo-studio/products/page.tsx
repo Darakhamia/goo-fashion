@@ -2046,7 +2046,16 @@ export default function AdminProductsPage() {
                     {!collapsed.has("sizes") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
-                          const preset = SIZE_PRESETS[form.category]?.sizes ?? [];
+                          // The subcategory's own chart wins: Belts and
+                          // Watches are both `accessories`, and only one of
+                          // them has sizes. The category's chart stays as the
+                          // fallback for pieces with no subcategory yet.
+                          const sub = categoryGroups
+                            .flatMap((g) => g.items)
+                            .find((i) => i.label === form.subcategory);
+                          const preset = sub?.sizes?.length
+                            ? sub.sizes
+                            : SIZE_PRESETS[form.category]?.sizes ?? [];
                           const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
                           const toggle = (size: string) => {
                             const next = selected.includes(size) ? selected.filter((s) => s !== size) : [...selected, size];

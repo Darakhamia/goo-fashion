@@ -7,7 +7,7 @@
  * the admin panel can say which of the two it is showing.
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { DEFAULT_CATEGORY_GROUPS, type CategoryGroup } from "@/lib/categories";
+import { DEFAULT_CATEGORY_GROUPS, type CategoryGroup, type CategoryItem } from "@/lib/categories";
 
 export type TreeSource = "db" | "default";
 
@@ -19,7 +19,30 @@ export interface CategoryTree {
 }
 
 type GroupRow = { id: string; label: string; sort_order: number };
-type SubRow = { id: number; group_id: string; label: string; value: string; sort_order: number };
+type SubRow = {
+  id: number;
+  group_id: string;
+  label: string;
+  value: string;
+  sort_order: number;
+  size_type?: string | null;
+  sizes?: string[] | null;
+};
+
+const SUB_COLUMNS = "id, group_id, label, value, sort_order, size_type, sizes";
+/** Without the size chart, for a database that has not run migration 013. */
+const SUB_COLUMNS_LEGACY = "id, group_id, label, value, sort_order";
+
+/**
+ * Reads the subcategories, retrying without the size columns if they are not
+ * there yet. Deploying ahead of a migration should cost the size charts, not
+ * the entire category tree.
+ */
+async function selectSubcategories() {
+  const full = await supabase!.from("category_subcategories").select(SUB_COLUMNS).order("sort_order");
+  if (!full.error) return full;
+  return supabase!.from("category_subcategories").select(SUB_COLUMNS_LEGACY).order("sort_order");
+}
 
 export async function loadCategoryTree(): Promise<CategoryTree> {
   if (!isSupabaseConfigured || !supabase) {
@@ -28,10 +51,7 @@ export async function loadCategoryTree(): Promise<CategoryTree> {
 
   const [groupsRes, subsRes] = await Promise.all([
     supabase.from("category_groups").select("id, label, sort_order").order("sort_order"),
-    supabase
-      .from("category_subcategories")
-      .select("id, group_id, label, value, sort_order")
-      .order("sort_order"),
+    selectSubcategories(),
   ]);
 
   // Either table missing means the migration has not run; a half-created tree
@@ -54,7 +74,13 @@ export async function loadCategoryTree(): Promise<CategoryTree> {
     label: g.label,
     items: subRows
       .filter((s) => s.group_id === g.id)
-      .map((s) => ({ id: s.id, label: s.label, value: s.value })),
+      .map((s) => ({
+        id: s.id,
+        label: s.label,
+        value: s.value,
+        ...(s.size_type ? { sizeType: s.size_type as CategoryItem["sizeType"] } : {}),
+        ...(s.sizes?.length ? { sizes: s.sizes } : {}),
+      })),
   }));
 
   return { groups, source: "db" };
