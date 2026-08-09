@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";

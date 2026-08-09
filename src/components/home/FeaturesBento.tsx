@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import type { Outfit } from "@/lib/types";

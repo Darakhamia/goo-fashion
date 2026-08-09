@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import type { Metadata } from "next";
 import { getAllBlogPosts } from "@/lib/data/db";
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import type { Outfit, Product, ProductSwatch } from "@/lib/types";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useLikes } from "@/lib/context/likes-context";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import FadeInView from "@/components/ui/FadeInView";
 import FloatLoop from "@/components/ui/FloatLoop";
 import type { HomepageShowcase, ShowcaseItem } from "@/lib/data/db";

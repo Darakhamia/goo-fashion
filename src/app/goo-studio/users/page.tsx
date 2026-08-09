@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 
 const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const PAGE_SIZE = 25;

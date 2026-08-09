@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import type { BlogPost } from "@/lib/types";
 import { estimateReadTime } from "@/lib/blog-render";
 

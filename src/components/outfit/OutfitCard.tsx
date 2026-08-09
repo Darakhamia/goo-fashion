@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ui/Image";
 import { motion } from "framer-motion";
 import { Outfit } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
