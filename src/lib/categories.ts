@@ -19,6 +19,8 @@
  */
 import type { Category } from "@/lib/types";
 
+export type SizeType = "letter" | "number" | "eu" | "one-size";
+
 export interface CategoryItem {
   label: string;
   value: string;
@@ -28,6 +30,13 @@ export interface CategoryItem {
    * and its absence is what marks the built-in default as read-only.
    */
   id?: number;
+  /**
+   * The sizes this kind of thing comes in. A subcategory knows this and a
+   * category does not — Belts and Watches are both `accessories`, and only one
+   * of them has sizes. Absent means "fall back to the category's chart".
+   */
+  sizeType?: SizeType;
+  sizes?: string[];
 }
 
 export interface CategoryGroup {
