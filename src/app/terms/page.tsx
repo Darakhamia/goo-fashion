@@ -91,7 +91,7 @@ const SECTIONS = [
           ]}
         />
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          All purchases made through third-party websites are governed by the third party's own terms and policies. Goo Fashion is not responsible for third-party websites, products, services, payments, delivery, returns, refunds, or disputes.
+          All purchases made through third-party websites are governed by the third party&rsquo;s own terms and policies. Goo Fashion is not responsible for third-party websites, products, services, payments, delivery, returns, refunds, or disputes.
         </p>
       </div>
     ),
@@ -262,10 +262,18 @@ const SECTIONS = [
     content: (
       <div className="space-y-3">
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Goo Fashion may offer premium subscriptions or paid digital services. Subscription terms, billing intervals, renewal rules, and pricing will be disclosed before purchase.
+          Goo Fashion offers paid subscription plans with monthly billing. Prices are shown on the Plans page
+          and at checkout; billing is in Ukrainian hryvnia (UAH). Payments are processed by monobank (Plata by
+          mono) on its secure hosted payment page — Goo Fashion never receives your full card number.
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Subscriptions renew automatically unless cancelled.
+          Subscriptions renew automatically each month until cancelled. You can cancel auto-renewal at any
+          time in your Profile; you keep access to paid features until the end of the paid period. Full
+          billing, cancellation and renewal details are in our{" "}
+          <Link href="/refund" className="text-[var(--foreground)] link-underline">
+            Subscription &amp; Refund Policy
+          </Link>
+          .
         </p>
       </div>
     ),
@@ -275,7 +283,14 @@ const SECTIONS = [
     title: "Refunds",
     content: (
       <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-        Digital services, AI credits, subscriptions, and premium features may be non-refundable once activated or used unless required by law.
+        Paid features are digital services that begin immediately after payment, so fees for a started billing
+        period are generally non-refundable — except for erroneous or duplicate charges, significant service
+        unavailability caused by us, or where a refund is required by applicable consumer law. The full rules,
+        including how to request a refund, are in our{" "}
+        <Link href="/refund" className="text-[var(--foreground)] link-underline">
+          Subscription &amp; Refund Policy
+        </Link>
+        .
       </p>
     ),
   },
@@ -297,7 +312,11 @@ const SECTIONS = [
     title: "Cookies and Tracking",
     content: (
       <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-        Goo Fashion may use cookies, analytics, and affiliate tracking technologies. More details are provided in our Cookie Policy.
+        Goo Fashion uses essential cookies, analytics, and affiliate tracking technologies as described in our{" "}
+        <Link href="/cookie" className="text-[var(--foreground)] link-underline">
+          Cookie Policy
+        </Link>
+        .
       </p>
     ),
   },
@@ -315,7 +334,7 @@ const SECTIONS = [
     title: "Disclaimer",
     content: (
       <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-        Goo Fashion is provided "as is" and "as available." We disclaim all warranties to the maximum extent permitted by law. Use of the platform is at your own risk.
+        Goo Fashion is provided &ldquo;as is&rdquo; and &ldquo;as available.&rdquo; We disclaim all warranties to the maximum extent permitted by law. Use of the platform is at your own risk.
       </p>
     ),
   },
@@ -416,7 +435,7 @@ export default function TermsPage() {
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
               Terms &amp; Conditions
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: April 25, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: August 10, 2026</p>
           </div>
 
           {/* Intro */}
@@ -465,6 +484,12 @@ export default function TermsPage() {
           <div className="mt-20 pt-10 border-t border-[var(--border)] flex flex-wrap gap-6">
             <Link href="/privacy" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
               Privacy Policy
+            </Link>
+            <Link href="/cookie" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+              Cookie Policy
+            </Link>
+            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+              Refund Policy
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
               Back to GOO
