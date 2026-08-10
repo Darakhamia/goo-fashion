@@ -54,6 +54,12 @@ const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] 
     note: "A t-shirt among the watches, or filed as knitwear. Its category and subcategory agree with each other, so the checks below stay quiet about it — only its own name gives it away. The subcategory is what has to change, so fix it in the product editor and the category will follow.",
   },
   {
+    key: "subcategory_named_in_the_name",
+    title: "The name names a different subcategory",
+    note: "The name says one thing and the label says another — a piece called “T-Shirt” filed as Hoodies. Both may sit in the same category, which is why nothing else notices. Where a name mentions two, the more specific one wins, so a “Long Sleeve T-Shirt” is read as Long Sleeves. Applying sets the category to match.",
+    exact: true,
+  },
+  {
     key: "same_phrase_filed_two_ways",
     title: "Filed differently from its near-identical siblings",
     note: "The catalogue disagreeing with itself: this piece's name matches a phrase that is filed the other way almost every time.",

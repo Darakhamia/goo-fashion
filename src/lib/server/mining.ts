@@ -253,6 +253,56 @@ export function colorGroupPairs(
   return pairs;
 }
 
+/**
+ * Words reduced to a single form, so "boots" and "boot" compare equal.
+ *
+ * Not linguistics — consistency. The same crude rule is applied to the name and
+ * to the label, so whether "sunglasses" becomes "sunglasse" does not matter as
+ * long as both sides become it. Short words are left alone, or "as" would lose
+ * its "s" and "hat" would start matching "hats" inside "chatham".
+ */
+function singularWords(text: string): string {
+  return (text ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w.length >= 4 && w.endsWith("s") ? w.slice(0, -1) : w))
+    .join(" ");
+}
+
+/**
+ * The subcategory a product's own name names, if any.
+ *
+ * Statistics cannot see this class of mistake. A t-shirt filed as Hoodies sits
+ * in the right category — both labels are `tops` — so the keyword table has no
+ * opinion, and the mined rule for "t shirt" hovers under any sensible
+ * threshold because long-sleeve tees carry the phrase too. But the name says
+ * "T-Shirt" and the tree has a subcategory called "T-Shirts", which is a
+ * contradiction needing no evidence beyond itself.
+ *
+ * The longest match wins, and that is what makes it safe: "Long Sleeve T-Shirt"
+ * resolves to Long Sleeves rather than T-Shirts, and "bomber jacket" to Bomber
+ * Jackets rather than Jackets, because the more specific label is the longer
+ * one. Matching on whole words keeps "Hats" out of "Chatham".
+ */
+export function subcategoryNamedIn(name: string, labels: string[]): string | null {
+  // Padded both ends so a phrase at the start or finish still sits between
+  // spaces, which is what makes the whole-word match work.
+  const haystack = ` ${singularWords(name)} `;
+  let best: string | null = null;
+  let bestLength = 0;
+  for (const label of labels) {
+    const needle = singularWords(label);
+    if (!needle || needle.length <= bestLength) continue;
+    if (haystack.includes(` ${needle} `)) {
+      best = label;
+      bestLength = needle.length;
+    }
+  }
+  return best;
+}
+
 export interface SplitLabel<T> {
   key: string;
   support: number;
