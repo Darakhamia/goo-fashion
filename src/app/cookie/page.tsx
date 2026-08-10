@@ -3,166 +3,192 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Cookie Policy — GOO",
-  description: "How Goo Fashion uses cookies and similar tracking technologies.",
+  description: "Every cookie and browser-storage key Goo Fashion uses, and how to manage them.",
 };
 
-function Bullet({ items }: { items: string[] }) {
+function P({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">{children}</p>;
+}
+
+function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="list-none space-y-2">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-3 text-sm text-[var(--foreground-muted)] leading-relaxed">
-          <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0" />
-          {item}
-        </li>
-      ))}
-    </ul>
+    <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+      {children}
+    </p>
+  );
+}
+
+function StorageKey({ name, purpose }: { name: string; purpose: string }) {
+  return (
+    <li className="flex items-start gap-3 text-sm leading-relaxed">
+      <span className="mt-2 w-1 h-1 rounded-full bg-[var(--foreground-subtle)] shrink-0" />
+      <span className="text-[var(--foreground-muted)]">
+        <span className="font-mono text-xs text-[var(--foreground)]">{name}</span>
+        {" — "}
+        {purpose}
+      </span>
+    </li>
   );
 }
 
 const SECTIONS = [
   {
     number: "1",
-    title: "What Are Cookies",
+    title: "Cookies and Similar Technologies",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-        Cookies are small text files placed on your device when you visit a website. They help websites function properly, remember preferences, improve user experience, and collect analytics data.
-      </p>
+      <div className="space-y-3">
+        <P>
+          Cookies are small text files a website places on your device. Browsers also offer local storage and
+          session storage — key-value stores that stay on your device and, unlike cookies, are not sent to
+          servers with every request.
+        </P>
+        <P>
+          Goo Fashion deliberately keeps cookies to a minimum. Most of what we remember about your visit lives
+          in local storage on your own device, and our first-party analytics works without any cookies at all.
+        </P>
+      </div>
     ),
   },
   {
     number: "2",
-    title: "Types of Cookies We Use",
+    title: "Cookies We Set",
     content: (
       <div className="space-y-6">
         <div>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            Essential Cookies
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-2">
-            These cookies are necessary for the operation of Goo Fashion and cannot be disabled in our systems.
-          </p>
-          <Bullet
-            items={[
-              "Authentication and login sessions",
-              "Security and fraud prevention",
-              "Saving user preferences",
-              "Website functionality",
-            ]}
-          />
+          <SubLabel>Essential — sign-in (Clerk)</SubLabel>
+          <P>
+            Our authentication provider Clerk sets cookies (names beginning with{" "}
+            <span className="font-mono text-xs text-[var(--foreground)]">__session</span>,{" "}
+            <span className="font-mono text-xs text-[var(--foreground)]">__client_uat</span> and other{" "}
+            <span className="font-mono text-xs text-[var(--foreground)]">__clerk</span>-prefixed names) to keep
+            you signed in and protect your account against forged requests. These are strictly necessary and
+            cannot be switched off while using an account.
+          </P>
         </div>
         <div>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            Analytics Cookies
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-2">
-            These cookies help us understand how users interact with Goo Fashion.
-          </p>
-          <Bullet
-            items={[
-              "Page visits",
-              "Session duration",
-              "Click behavior",
-              "Feature usage",
-              "Traffic sources",
-            ]}
-          />
+          <SubLabel>Essential — private preview</SubLabel>
+          <P>
+            During closed-preview periods a{" "}
+            <span className="font-mono text-xs text-[var(--foreground)]">goo_preview</span> cookie marks that
+            you have access. Outside preview periods this cookie is not set.
+          </P>
         </div>
         <div>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            Functional Cookies
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-2">
-            These cookies allow Goo Fashion to remember choices you make and provide enhanced features.
-          </p>
-          <Bullet
-            items={[
-              "Language settings",
-              "Theme preferences",
-              "Saved filters and preferences",
-            ]}
-          />
-        </div>
-        <div>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            Affiliate / Tracking Cookies
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-            These cookies may be used to track referrals to third-party retailers or affiliate partners. They help attribute purchases or clicks originating from Goo Fashion.
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
-            Marketing Cookies
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-            These cookies may be used to personalize ads, retarget visitors, and measure campaign performance.
-          </p>
+          <SubLabel>Analytics — PostHog (when enabled)</SubLabel>
+          <P>
+            When our product analytics is active, PostHog stores an anonymous visitor identifier in a cookie
+            and local storage (names beginning with{" "}
+            <span className="font-mono text-xs text-[var(--foreground)]">ph_</span>) to understand how features
+            are used. Data is processed on PostHog&rsquo;s EU servers and we do not attach your name or email to
+            it. Where the law of your region requires consent for such cookies, they are used only with your
+            consent.
+          </P>
         </div>
       </div>
     ),
   },
   {
     number: "3",
-    title: "Third-Party Cookies",
+    title: "Analytics Without Cookies",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Third-party service providers may place cookies through Goo Fashion, including but not limited to:
-        </p>
-        <Bullet
-          items={[
-            "Analytics providers",
-            "Payment providers",
-            "Affiliate networks",
-            "Advertising partners",
-            "Embedded third-party tools and services",
-          ]}
-        />
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          We do not control third-party cookies directly.
-        </p>
+        <P>
+          Our own traffic measurement is cookieless. It uses a random session identifier kept in local storage
+          for a rolling 30-minute session, and records pages viewed, referrer, coarse device class and country.
+          It does not store your IP address or full browser signature.
+        </P>
+        <P>
+          We also use Vercel Analytics and Vercel Speed Insights, which measure traffic and performance without
+          setting any cookies.
+        </P>
       </div>
     ),
   },
   {
     number: "4",
-    title: "Managing Cookies",
+    title: "Local Storage We Use",
     content: (
-      <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Most browsers allow you to control or disable cookies through browser settings.
-        </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Please note that disabling certain cookies may affect the functionality of Goo Fashion.
-        </p>
+      <div className="space-y-6">
+        <div>
+          <SubLabel>Preferences</SubLabel>
+          <ul className="list-none space-y-2">
+            <StorageKey name="goo-theme" purpose="light or dark theme" />
+            <StorageKey name="goo-currency" purpose="your display currency" />
+            <StorageKey name="goo-exchange-rates" purpose="cached exchange rates (1 hour)" />
+            <StorageKey name="ai-tooltip-dismissed" purpose="remembers a dismissed hint" />
+          </ul>
+        </div>
+        <div>
+          <SubLabel>Shopping and looks — stays on your device</SubLabel>
+          <ul className="list-none space-y-2">
+            <StorageKey name="goo-cart" purpose="your shopping cart (never sent to our servers)" />
+            <StorageKey name="goo-recently-viewed" purpose="recently viewed products" />
+            <StorageKey name="goo-recently-viewed-outfits" purpose="recently viewed outfits" />
+            <StorageKey name="goo-liked-outfits / goo-liked-products" purpose="likes while browsing as a guest" />
+            <StorageKey name="goo-saved-outfits / goo-synced-looks" purpose="builder looks saved locally and sync markers" />
+          </ul>
+        </div>
+        <div>
+          <SubLabel>Analytics session</SubLabel>
+          <ul className="list-none space-y-2">
+            <StorageKey name="goo_sid / goo_sid_ts" purpose="pseudonymous session id, rolling 30 minutes" />
+            <StorageKey name="goo_country / goo_country_ts" purpose="your country code, cached 24 hours" />
+          </ul>
+        </div>
+        <div>
+          <SubLabel>Session storage</SubLabel>
+          <ul className="list-none space-y-2">
+            <StorageKey name="stylist_chat_v1" purpose="keeps your AI Stylist conversation while you move between pages; cleared when the tab closes" />
+          </ul>
+        </div>
       </div>
     ),
   },
   {
     number: "5",
-    title: "Consent",
+    title: "Third-Party Cookies After You Leave",
     content: (
       <div className="space-y-3">
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Where required by law, Goo Fashion will request your consent before placing non-essential cookies.
-        </p>
-        <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          You may withdraw or modify cookie consent at any time through available cookie settings tools, where implemented.
-        </p>
+        <P>
+          Retailer links on Goo Fashion (&ldquo;Where to buy&rdquo;) route through affiliate networks such as
+          Awin. After you click, the network and the retailer set their own cookies on their domains to
+          attribute the referral. Those cookies are governed by their policies, not ours — we never see them.
+        </P>
+        <P>
+          Payment pages are hosted by monobank, which applies its own cookies on its domain during checkout.
+        </P>
       </div>
     ),
   },
   {
     number: "6",
-    title: "Changes to This Policy",
+    title: "Managing Cookies and Storage",
     content: (
-      <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-        We may update this Cookie Policy from time to time. Updated versions become effective upon publication on the website.
-      </p>
+      <div className="space-y-3">
+        <P>
+          You can delete or block cookies and clear local storage in your browser settings at any time.
+          Blocking essential cookies will sign you out and may break account features; clearing local storage
+          resets your cart, likes and preferences on that device.
+        </P>
+        <P>
+          To object to analytics altogether, see &ldquo;Your Rights&rdquo; in our{" "}
+          <Link href="/privacy" className="text-[var(--foreground)] link-underline">Privacy Policy</Link>.
+        </P>
+      </div>
     ),
   },
   {
     number: "7",
+    title: "Changes to This Policy",
+    content: (
+      <P>
+        We may update this Cookie Policy from time to time — for example if we add or remove a tool. The
+        current version is always published on this page with its &ldquo;last updated&rdquo; date.
+      </P>
+    ),
+  },
+  {
+    number: "8",
     title: "Contact Information",
     content: (
       <div className="space-y-1">
@@ -198,13 +224,15 @@ export default function CookiePage() {
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
               Cookie Policy
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: April 25, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: August 10, 2026</p>
           </div>
 
           {/* Intro */}
           <div className="mb-16 pb-16 border-b border-[var(--border)]">
             <p className="text-base text-[var(--foreground-muted)] leading-relaxed">
-              This Cookie Policy explains how Goo Fashion uses cookies and similar tracking technologies when you visit or use our website and related services. By continuing to use Goo Fashion, you consent to the use of cookies as described in this Policy, except where consent is required separately by applicable law.
+              This Cookie Policy lists every cookie and browser-storage key Goo Fashion actually uses, what
+              each one is for, and how you can control them. It supplements our{" "}
+              <Link href="/privacy" className="text-[var(--foreground)] link-underline">Privacy Policy</Link>.
             </p>
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-6 border-t border-[var(--border)]">
               <div>
@@ -250,6 +278,9 @@ export default function CookiePage() {
             </Link>
             <Link href="/terms" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
               Terms &amp; Conditions
+            </Link>
+            <Link href="/refund" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
+              Refund Policy
             </Link>
             <Link href="/" className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors link-underline">
               Back to GOO

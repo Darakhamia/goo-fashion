@@ -33,6 +33,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/sitemap-page`, lastModified: now, changeFrequency: "weekly",  priority: 0.3 },
     { url: `${SITE_URL}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/terms`,  lastModified: now, changeFrequency: "yearly",  priority: 0.2 },
+    { url: `${SITE_URL}/cookie`, lastModified: now, changeFrequency: "yearly",  priority: 0.2 },
+    { url: `${SITE_URL}/refund`, lastModified: now, changeFrequency: "yearly",  priority: 0.2 },
   ];
 
   const [products, outfits, blogPosts] = await Promise.all([
