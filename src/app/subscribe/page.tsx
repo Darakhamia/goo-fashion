@@ -170,7 +170,7 @@ function SubscribeInner() {
           </p>
           <button
             onClick={() => router.push("/profile")}
-            className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 hover:bg-[var(--surface)] transition-colors"
+            className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 rounded-xl hover:bg-[var(--surface)] transition-colors"
           >
             Go to profile
           </button>
@@ -194,7 +194,7 @@ function SubscribeInner() {
     return (
       <div className="min-h-screen">
         <div className="max-w-[520px] mx-auto px-6 md:px-8 py-16 md:py-24 text-center">
-          <div className="w-14 h-14 mx-auto mb-8 border border-[var(--foreground)] flex items-center justify-center">
+          <div className="w-14 h-14 mx-auto mb-8 border border-[var(--foreground)] rounded-full flex items-center justify-center">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M5 12.5L10 17.5L19 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -212,13 +212,13 @@ function SubscribeInner() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => router.push("/builder")}
-              className="bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 hover:opacity-80 transition-opacity"
+              className="bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] tracking-[0.14em] uppercase px-6 py-4 rounded-xl hover:opacity-80 transition-opacity"
             >
               Open builder
             </button>
             <button
               onClick={() => router.push("/profile")}
-              className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 hover:bg-[var(--surface)] transition-colors"
+              className="border border-[var(--border-strong)] text-[var(--foreground)] font-mono text-[10px] tracking-[0.12em] uppercase px-6 py-4 rounded-xl hover:bg-[var(--surface)] transition-colors"
             >
               Go to profile
             </button>
@@ -264,7 +264,7 @@ function SubscribeInner() {
         </div>
 
         {/* Summary block */}
-        <div className="border border-[var(--border)] p-6 mb-8">
+        <div className="border border-[var(--border)] rounded-2xl p-6 mb-8">
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed mb-1">
             You are subscribing to
           </p>
@@ -293,7 +293,7 @@ function SubscribeInner() {
 
         {/* Error toast */}
         {error && (
-          <p className="mb-4 text-xs text-red-500 border border-red-300 px-3 py-2">
+          <p className="mb-4 text-xs text-red-500 border border-red-300 rounded-xl px-3 py-2">
             {error}
           </p>
         )}
@@ -302,7 +302,7 @@ function SubscribeInner() {
         <button
           onClick={handleSubscribe}
           disabled={submitting || !isLoaded || alreadyOnPlan}
-          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full font-mono text-[10px] tracking-[0.14em] uppercase font-medium text-[var(--background)] bg-[var(--foreground)] px-6 py-4 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {alreadyOnPlan
             ? `You are on ${plan.name}`
