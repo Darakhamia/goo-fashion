@@ -446,15 +446,45 @@ function buildSearchQuery(
 const PRODUCT_COLUMNS =
   "id, name, brand, category, price_min, style_keywords, description, image_url, currency";
 
+/** Genders the catalog stores. Anything else is treated as "no preference". */
+const GENDERS = new Set(["women", "men", "unisex"]);
+
+function normalizeGender(raw: string | undefined): string | null {
+  const g = (raw ?? "").trim().toLowerCase();
+  return GENDERS.has(g) ? g : null;
+}
+
+/**
+ * PostgREST `or` filter matching the browse grid's rule
+ * (src/app/browse/page.tsx:356-358): a product is shown when it carries no
+ * gender, matches the user's, or is unisex. Untagged products stay visible —
+ * most of the catalog has no gender, and excluding those would empty the
+ * stylist rather than filter it.
+ *
+ * `gender.eq.` (empty) is listed alongside `is.null` so this agrees exactly with
+ * the SQL in migration 014, which tolerates both. Current code cannot write an
+ * empty gender, but legacy rows predating the migration's normalisation can
+ * still carry one, and dropping them here while the RPCs keep them would make
+ * the same catalog look different depending on which retrieval path answered.
+ */
+function genderOrFilter(gender: string): string {
+  return `gender.is.null,gender.eq.,gender.eq.${gender},gender.eq.unisex`;
+}
+
 /**
  * Find relevant products for a user message. Robust against the FTS migration
  * not being applied: combines (1) PostgreSQL full-text search, (2) a direct
  * fetch of any category the user named (so "кроссовки" always surfaces footwear),
  * and (3) a recency fallback. Results are merged and de-duplicated.
+ *
+ * `gender` narrows every path. It must be applied to all of them: leaving one
+ * unfiltered is enough to put dresses in a man's recommendations, since the
+ * paths merge into a single slate.
  */
 async function findRelevantProducts(
   searchQuery: string,
-  fullLook: boolean
+  fullLook: boolean,
+  gender?: string
 ): Promise<{ products: MatchedProduct[]; debug: Record<string, unknown> }> {
   if (!isSupabaseConfigured || !supabase) {
     return { products: [], debug: { supabase: false } };
@@ -463,18 +493,20 @@ async function findRelevantProducts(
   const query = searchQuery.slice(0, 500);
   const categories = detectCategories(query);
   const merged = new Map<string, MatchedProduct>();
-  const debug: Record<string, unknown> = { query, categories, fullLook };
+  const g = normalizeGender(gender);
+  const debug: Record<string, unknown> = { query, categories, fullLook, gender: g };
 
   // (1) Direct category fetch FIRST — the user explicitly named a category, so
   //     these are the most relevant. Inserted first so they can never be sliced
   //     off, and they appear regardless of the FTS column / RPC state.
   if (categories.length > 0) {
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from("products")
         .select(PRODUCT_COLUMNS)
-        .in("category", categories)
-        .limit(SEARCH_MATCH_COUNT);
+        .in("category", categories);
+      if (g) q = q.or(genderOrFilter(g));
+      const { data, error } = await q.limit(SEARCH_MATCH_COUNT);
       if (error) throw error;
       for (const p of ((data ?? []) as unknown as MatchedProduct[])) {
         merged.set(p.id, { ...p, rank: 2 });
@@ -494,13 +526,14 @@ async function findRelevantProducts(
     const lookCats = CORE_LOOK_CATEGORIES.filter((c) => !categories.includes(c));
     try {
       const results = await Promise.all(
-        lookCats.map((cat) =>
-          supabase!
+        lookCats.map((cat) => {
+          let q = supabase!
             .from("products")
             .select(PRODUCT_COLUMNS)
-            .eq("category", cat)
-            .limit(LOOK_ITEMS_PER_CATEGORY)
-        )
+            .eq("category", cat);
+          if (g) q = q.or(genderOrFilter(g));
+          return q.limit(LOOK_ITEMS_PER_CATEGORY);
+        })
       );
       let added = 0;
       for (const { data } of results) {
@@ -526,9 +559,13 @@ async function findRelevantProducts(
     try {
       const queryVec = await embedText(query, { timeoutMs: SEMANTIC_EMBED_TIMEOUT_MS });
       if (queryVec) {
+        // filter_gender is only sent when there is one to apply: migration 014
+        // adds the parameter, and omitting it keeps this call working against a
+        // database where 014 has not been applied yet.
         const { data, error } = await supabase.rpc("match_products", {
           query_embedding: queryVec,
           match_count: SEARCH_MATCH_COUNT,
+          ...(g ? { filter_gender: g } : {}),
         });
         if (error) throw error;
         let added = 0;
@@ -555,6 +592,7 @@ async function findRelevantProducts(
     const { data, error } = await supabase.rpc("search_products", {
       query_text: query,
       match_count: SEARCH_MATCH_COUNT,
+      ...(g ? { filter_gender: g } : {}),
     });
     if (error) throw error;
     for (const p of (data ?? []) as MatchedProduct[]) {
@@ -576,10 +614,9 @@ async function findRelevantProducts(
 
   // (4) Recency fallback — nothing matched, show recent products
   try {
-    const { data } = await supabase
-      .from("products")
-      .select(PRODUCT_COLUMNS)
-      .limit(SEARCH_MATCH_COUNT);
+    let q = supabase.from("products").select(PRODUCT_COLUMNS);
+    if (g) q = q.or(genderOrFilter(g));
+    const { data } = await q.limit(SEARCH_MATCH_COUNT);
     const products = ((data ?? []) as unknown as MatchedProduct[]).map((p) => ({ ...p, rank: 1 }));
     debug.fallbackCount = products.length;
     return { products, debug };
@@ -972,8 +1009,11 @@ export async function POST(req: Request) {
   // ── Catalog search: relevant products for this turn ──────────────────────
   const fullLook    = wantsFullLook(userMessage);
   const searchQuery = buildSearchQuery(userMessage, conversationHistory);
+  // The gender the user picked on the browse grid also narrows what the stylist
+  // may recommend. Without it the stylist would keep suggesting menswear to a
+  // shopper who has explicitly filtered the catalog to womenswear.
   const { products: relevantProducts, debug: searchDebug } =
-    await findRelevantProducts(searchQuery, fullLook);
+    await findRelevantProducts(searchQuery, fullLook, browseContext?.gender);
   const catalogIds = new Set(relevantProducts.map((p) => p.id));
 
   // Diagnostic: ?debug=1 returns what the catalog search produced. Admin-only —
