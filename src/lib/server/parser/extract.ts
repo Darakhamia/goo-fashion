@@ -10,6 +10,7 @@
  * No DOM library — pure regex/JSON parsing so it runs in any serverless route.
  */
 import type { ParserSiteConfig, RawExtract, ParserRuleField } from "./types";
+import { harvestGalleryImages } from "./gallery";
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
 
@@ -393,7 +394,11 @@ function applyRule(html: string, regex: string | undefined): string | undefined 
  * Run every strategy and merge with the documented precedence.
  * `config` is the matched per-site recipe (optional).
  */
-export function extractProduct(html: string, config?: ParserSiteConfig | null): RawExtract {
+export function extractProduct(
+  html: string,
+  config?: ParserSiteConfig | null,
+  baseUrl?: string,
+): RawExtract {
   const strategies: string[] = [];
   const jsonld = fromJsonLd(html);
   if (jsonld.found) strategies.push("json-ld");
@@ -420,6 +425,19 @@ export function extractProduct(html: string, config?: ParserSiteConfig | null): 
 
   const image = pick(ruleVal("image"), jsonld.image, meta.image, images[0]);
 
+  // Structured data routinely advertises a single photo for a page that shows
+  // a full gallery (an OpenGraph-only page always does — there is one og:image).
+  // Harvest the rest from the markup, anchored to what we already trust so the
+  // recommendations carousel and page furniture stay out. Trusted images keep
+  // their position, so the primary photo never changes.
+  let galleryImages: string[] = [];
+  if (baseUrl) {
+    const anchor = image ? [image, ...images] : images;
+    const productName = pick(ruleVal("name"), jsonld.name, meta.name, micro.name) ?? "";
+    galleryImages = harvestGalleryImages(html, baseUrl, anchor, productName);
+    if (galleryImages.length) strategies.push("gallery");
+  }
+
   return {
     name: pick(ruleVal("name"), jsonld.name, meta.name, micro.name),
     brand: pick(ruleVal("brand"), jsonld.brand, meta.brand, micro.brand),
@@ -427,7 +445,10 @@ export function extractProduct(html: string, config?: ParserSiteConfig | null): 
     priceOriginal: jsonld.priceOriginal,
     currency: pick(ruleVal("currency"), jsonld.currency, meta.currency, micro.currency),
     image,
-    images: image && !images.includes(image) ? [image, ...images] : images,
+    images: [
+      ...(image && !images.includes(image) ? [image, ...images] : images),
+      ...galleryImages,
+    ],
     sizes,
     color: pick(ruleVal("color"), jsonld.color),
     material: pick(ruleVal("material"), jsonld.material),
