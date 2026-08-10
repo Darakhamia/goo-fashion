@@ -494,7 +494,7 @@ export default function BuilderPage() {
     if (!selectedColors.length) {
       return catalogProducts.map(product => ({ kind: "product", key: product.id, product, forcedVariant: null }));
     }
-    const selectedIds = selectedColors.map(n => STANDARD_COLORS.find(c => c.name === n)?.id).filter(Boolean) as number[];
+    const selectedIds = selectedColors.map(n => availableColors.find(c => c.name === n)?.id).filter(Boolean) as number[];
     const items: CatalogItem[] = [];
     const seen = new Set<string>();
     for (const product of catalogProducts) {
@@ -516,7 +516,7 @@ export default function BuilderPage() {
       }
     }
     return items;
-  }, [catalogProducts, selectedColors]);
+  }, [catalogProducts, selectedColors, availableColors]);
 
   const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || sortBy !== "featured" || likedOnly || catalogCategory !== null || selectedSubcategories.length > 0;
   const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
@@ -1415,11 +1415,16 @@ export default function BuilderPage() {
               ) : (
                 <motion.div
                   className="grid grid-cols-4 gap-3"
-                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+                  // No staggerChildren: at 0.05s each, the last of a few hundred
+                  // cards began appearing sixteen seconds in, which is the
+                  // "cards take forever" feeling. The children stagger
+                  // themselves off their index instead, capped, so the ramp is a
+                  // third of a second however many there are.
+                  variants={{ hidden: {}, show: {} }}
                   initial="hidden"
                   animate="show"
                 >
-                    {expandedCatalogItems.map(item => {
+                    {expandedCatalogItems.map((item, cardIndex) => {
                       const { product, forcedVariant } = item;
                       const matchingSlots = SLOTS.filter(s => s.categories.includes(product.category));
                       const selectedSlot = matchingSlots.find(s => selection[s.id]?.id === product.id);
@@ -1449,7 +1454,15 @@ export default function BuilderPage() {
                               selectProduct(product);
                             }
                           }}
-                          variants={{ hidden: { opacity: 0, y: 12, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.7 } } }}
+                          custom={cardIndex}
+                          variants={{
+                            hidden: { opacity: 0, y: 10 },
+                            show: (i: number) => ({
+                              opacity: 1,
+                              y: 0,
+                              transition: { duration: 0.28, ease: 'easeOut' as const, delay: Math.min(i, 12) * 0.025 },
+                            }),
+                          }}
                           className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
                             isSelected
                               ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
@@ -1462,6 +1475,8 @@ export default function BuilderPage() {
                             <img
                               src={displayImage}
                               alt={product.name}
+                              loading="lazy"
+                              decoding="async"
                               className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                             />
                             {/* Top-left: + / ✓ add to outfit */}
