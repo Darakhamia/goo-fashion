@@ -184,11 +184,16 @@ export async function fetchHtml(
       headers: directHeaders,
     });
     const html = await res.text();
+    // Only a direct fetch can report a meaningful final URL. In provider mode
+    // `res.url` is the SCRAPING SERVICE's endpoint, and using it would resolve
+    // every relative link and image against the provider's domain instead of the
+    // store's — so the target URL stands.
+    const finalUrl = settings.provider === "direct" ? res.url || target : target;
     return {
       ok: res.ok,
       status: res.status,
       html,
-      finalUrl: res.url || target,
+      finalUrl,
       error: res.ok ? undefined : `Upstream responded ${res.status}`,
     };
   } catch (err) {

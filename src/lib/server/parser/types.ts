@@ -119,6 +119,38 @@ export interface ParsedProduct {
   valid: boolean;
 }
 
+/**
+ * AI-assisted extraction. Uses the site's existing OpenAI key. `auto` (the
+ * default) only spends a call when the deterministic pass came back thin —
+ * missing name, price or images — which is exactly the case structured-data-less
+ * brand stores hit.
+ */
+export interface ParserAiSettings {
+  /** Master switch for the AI fallback. */
+  enabled: boolean;
+  /** `auto` — only on weak pages; `always` — on every page. */
+  mode: "auto" | "always";
+  /** Mirror product photos into our Supabase Storage on import. */
+  downloadImages: boolean;
+}
+
+export const DEFAULT_AI_SETTINGS: ParserAiSettings = {
+  enabled: true,
+  mode: "auto",
+  downloadImages: true,
+};
+
+/** Per-product outcome of a crawl run. */
+export interface CrawlItemResult {
+  url: string;
+  status: "imported" | "updated" | "skipped" | "failed";
+  productId?: string;
+  name?: string;
+  reason?: string;
+  usedAi?: boolean;
+  imagesMirrored?: number;
+}
+
 export const DEFAULT_FETCH_SETTINGS: ParserFetchSettings = {
   provider: "direct",
   endpoint: "",

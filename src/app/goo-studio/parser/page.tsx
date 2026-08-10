@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ParserFetchSettings,
   ParserSiteConfig,
+  ParserAiSettings,
   ParsedProduct,
   FetchProvider,
   ParserRuleField,
+  CrawlItemResult,
 } from "@/lib/server/parser/types";
 import type { Category, Gender } from "@/lib/types";
 
@@ -33,6 +35,8 @@ interface ConfigState {
   fetchSettings: ParserFetchSettings;
   key: { configured: boolean; source: "env" | "database" | null; masked: string };
   siteConfigs: ParserSiteConfig[];
+  aiSettings: ParserAiSettings;
+  openai: { configured: boolean };
 }
 
 type Diagnostics = {
@@ -42,6 +46,8 @@ type Diagnostics = {
   finalUrl: string;
   matchedConfig: { id: string; name: string; domain: string } | null;
   strategies?: string[];
+  aiFields?: string[];
+  aiError?: string;
 };
 
 interface ParseResponse {
@@ -54,7 +60,7 @@ interface ParseResponse {
   diagnostics?: Diagnostics;
 }
 
-type Tab = "parse" | "recipes" | "fetch";
+type Tab = "collect" | "parse" | "recipes" | "fetch";
 
 // ── Tiny styled primitives ───────────────────────────────────────────────────
 
@@ -72,7 +78,7 @@ const Spinner = () => (
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ParserPage() {
-  const [tab, setTab] = useState<Tab>("parse");
+  const [tab, setTab] = useState<Tab>("collect");
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [loadError, setLoadError] = useState("");
   const [unauthorized, setUnauthorized] = useState(false);
@@ -112,7 +118,7 @@ export default function ParserPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mt-6 mb-6 border-b border-[var(--border)]">
-        {([["parse", "Parse URL"], ["recipes", "Site Recipes"], ["fetch", "Fetch & Anti-bot"]] as [Tab, string][]).map(
+        {([["collect", "Collect catalog"], ["parse", "Parse URL"], ["recipes", "Site Recipes"], ["fetch", "Fetch & Anti-bot"]] as [Tab, string][]).map(
           ([key, label]) => (
             <button
               key={key}
@@ -131,6 +137,7 @@ export default function ParserPage() {
 
       {loadError && <p className="text-[12px] text-red-500 mb-4">{loadError}</p>}
 
+      {tab === "collect" && <CollectTab config={config} />}
       {tab === "parse" && <ParseTab config={config} />}
       {tab === "recipes" && config && (
         <RecipesTab config={config} onSaved={(c) => setConfig((s) => (s ? { ...s, siteConfigs: c } : s))} />
@@ -148,10 +155,282 @@ function Header() {
       <p className="text-[9px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-1">Admin / Import</p>
       <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Universal Parser</h1>
       <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
-        Import a single product from any store URL (Farfetch, SSENSE, brand sites). Reads JSON-LD, OpenGraph and
-        microdata, with per-site recipes and a pluggable anti-bot fetcher.
+        Paste any store URL — a category page or a single product — and pull it into the catalog. Reads JSON-LD,
+        OpenGraph and microdata, falls back to AI for stores with no structured data, and copies every photo to our
+        own storage.
       </p>
     </div>
+  );
+}
+
+// ── Collect tab (bulk crawl) ─────────────────────────────────────────────────
+
+/** URLs sent per batch request — must match MAX_BATCH on the crawl route. */
+const BATCH_SIZE = 5;
+
+type CrawlPhase = "idle" | "discovering" | "importing" | "done" | "stopped";
+
+function CollectTab({ config }: { config: ConfigState | null }) {
+  const [url, setUrl] = useState("");
+  const [limit, setLimit] = useState(40);
+  const [maxPages, setMaxPages] = useState(1);
+  // null = follow the saved default; a boolean = the admin overrode it for this run.
+  const [useAiOverride, setUseAiOverride] = useState<boolean | null>(null);
+  const [mirrorOverride, setMirrorOverride] = useState<boolean | null>(null);
+
+  const [phase, setPhase] = useState<CrawlPhase>("idle");
+  const [error, setError] = useState("");
+  const [hint, setHint] = useState("");
+  const [discovered, setDiscovered] = useState<string[]>([]);
+  const [results, setResults] = useState<CrawlItemResult[]>([]);
+  const stopRef = useRef(false);
+
+  const useAi = useAiOverride ?? config?.aiSettings.enabled ?? true;
+  const mirrorImages = mirrorOverride ?? config?.aiSettings.downloadImages ?? true;
+
+  const running = phase === "discovering" || phase === "importing";
+  const done = results.length;
+  const imported = results.filter((r) => r.status === "imported").length;
+  const updated = results.filter((r) => r.status === "updated").length;
+  const failed = results.filter((r) => r.status === "failed" || r.status === "skipped").length;
+  const aiUsed = results.filter((r) => r.usedAi).length;
+  const photos = results.reduce((n, r) => n + (r.imagesMirrored ?? 0), 0);
+
+  async function start() {
+    const target = url.trim();
+    if (!target) return;
+
+    stopRef.current = false;
+    setError(""); setHint(""); setResults([]); setDiscovered([]);
+    setPhase("discovering");
+
+    let urls: string[] = [];
+    try {
+      const res = await fetch("/api/admin/parser/crawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "discover", url: target, limit, maxPages }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError(data.error ?? "Could not read that page");
+        setHint(data.hint ?? "");
+        setPhase("idle");
+        return;
+      }
+      urls = data.urls ?? [];
+      setDiscovered(urls);
+      if (data.hint) setHint(data.hint);
+      if (!urls.length) { setPhase("idle"); return; }
+    } catch {
+      setError("Network error while reading the page");
+      setPhase("idle");
+      return;
+    }
+
+    setPhase("importing");
+    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      if (stopRef.current) { setPhase("stopped"); return; }
+      const slice = urls.slice(i, i + BATCH_SIZE);
+      try {
+        const res = await fetch("/api/admin/parser/crawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "batch", urls: slice, useAi, mirrorImages }),
+        });
+        const data = await res.json();
+        if (data?.results) setResults((prev) => [...prev, ...(data.results as CrawlItemResult[])]);
+        else {
+          setResults((prev) => [
+            ...prev,
+            ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: data?.error ?? "Batch failed" })),
+          ]);
+        }
+      } catch {
+        setResults((prev) => [
+          ...prev,
+          ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: "Network error" })),
+        ]);
+      }
+    }
+    setPhase(stopRef.current ? "stopped" : "done");
+  }
+
+  const pct = discovered.length ? Math.round((done / discovered.length) * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className={labelCls}>Store URL — category, brand page or single product</label>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !running && start()}
+              placeholder="https://www.balenciaga.com/en-us/men/ready-to-wear"
+              spellCheck={false}
+              disabled={running}
+              className={inputCls}
+            />
+          </div>
+          {running ? (
+            <button onClick={() => { stopRef.current = true; }} className={btnGhost}>Stop</button>
+          ) : (
+            <button onClick={start} disabled={!url.trim()} className={btnPrimary}>Collect</button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Field label="Max products">
+            <input
+              type="number" min={1} max={500} value={limit} disabled={running}
+              onChange={(e) => setLimit(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Listing pages">
+            <input
+              type="number" min={1} max={20} value={maxPages} disabled={running}
+              onChange={(e) => setMaxPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              className={inputCls}
+            />
+          </Field>
+          <div className="col-span-2 flex flex-col justify-end gap-2 pb-0.5">
+            <Toggle
+              on={useAi && !!config?.openai.configured}
+              disabled={running || !config?.openai.configured}
+              onChange={setUseAiOverride}
+              label={config?.openai.configured ? "Use AI for stores without structured data" : "AI unavailable — no OpenAI key"}
+            />
+            <Toggle
+              on={mirrorImages}
+              disabled={running}
+              onChange={setMirrorOverride}
+              label="Copy photos to our storage"
+            />
+          </div>
+        </div>
+
+        <p className="text-[10px] text-[var(--foreground-subtle)] leading-relaxed">
+          Fetch mode <span className="text-[var(--foreground-muted)]">{config?.fetchSettings.provider ?? "direct"}</span>.
+          Luxury sites block plain server requests — if collection comes back empty, set a scraping provider and turn on
+          Render JS in the Fetch &amp; Anti-bot tab. Re-running the same URL updates existing products instead of duplicating them.
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
+          <p>{error}</p>
+          {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
+        </div>
+      )}
+      {!error && hint && (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-[12px] text-amber-500">{hint}</div>
+      )}
+
+      {/* Progress */}
+      {(running || results.length > 0) && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
+            <div className="flex items-center gap-4 flex-wrap">
+              <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+                {phase === "discovering" && "Reading the page…"}
+                {phase === "importing" && `Collecting ${done}/${discovered.length}`}
+                {phase === "done" && "Finished"}
+                {phase === "stopped" && "Stopped"}
+              </p>
+              <div className="ml-auto flex items-center gap-3 text-[11px] tabular-nums">
+                <span className="text-emerald-500">{imported} new</span>
+                <span className="text-[var(--foreground-muted)]">{updated} updated</span>
+                {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
+                {(phase === "done" || phase === "stopped") && (
+                  <a href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">View products →</a>
+                )}
+              </div>
+            </div>
+            <div className="h-1 rounded-full bg-[var(--fg-overlay-08)] overflow-hidden">
+              <div
+                className="h-full bg-[var(--foreground)] transition-[width] duration-300"
+                style={{ width: `${phase === "discovering" ? 4 : pct}%` }}
+              />
+            </div>
+            {(photos > 0 || aiUsed > 0) && (
+              <p className="text-[10px] text-[var(--foreground-subtle)]">
+                {photos > 0 && `${photos} photo${photos === 1 ? "" : "s"} copied to our storage`}
+                {photos > 0 && aiUsed > 0 && " · "}
+                {aiUsed > 0 && `${aiUsed} product${aiUsed === 1 ? "" : "s"} needed AI`}
+              </p>
+            )}
+          </div>
+
+          {results.length > 0 && (
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border)]">
+              {results.map((r, i) => (
+                <div key={`${r.url}-${i}`} className="px-5 py-2.5 flex items-center gap-3 text-[11px]">
+                  <StatusPill status={r.status} />
+                  <span className="text-[var(--foreground)] truncate flex-1 min-w-0">
+                    {r.name || r.url.replace(/^https?:\/\/(www\.)?/, "")}
+                  </span>
+                  {r.usedAi && (
+                    <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] flex-shrink-0">ai</span>
+                  )}
+                  {r.reason && (
+                    <span className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[220px] flex-shrink-0" title={r.reason}>
+                      {r.reason}
+                    </span>
+                  )}
+                  <a
+                    href={r.url} target="_blank" rel="noreferrer"
+                    className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
+                  >↗</a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
+  const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
+    imported: { label: "new", cls: "text-emerald-500 bg-emerald-500/10" },
+    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)]" },
+    skipped: { label: "skip", cls: "text-amber-500 bg-amber-500/10" },
+    failed: { label: "fail", cls: "text-red-400 bg-red-500/10" },
+  };
+  const { label, cls } = map[status];
+  return (
+    <span className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded flex-shrink-0 w-10 text-center ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function Toggle({
+  on, onChange, label, disabled,
+}: {
+  on: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={`flex items-center gap-2.5 ${disabled ? "opacity-50" : "cursor-pointer"}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        disabled={disabled}
+        onClick={() => onChange(!on)}
+        className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
+      >
+        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+      </button>
+      <span className="text-[11px] text-[var(--foreground)] leading-tight">{label}</span>
+    </label>
   );
 }
 
@@ -609,6 +888,10 @@ function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
       {diag.strategies && diag.strategies.length === 0 && (
         <span className="text-amber-500">No structured data found — add a recipe regex</span>
       )}
+      {diag.aiFields && diag.aiFields.length > 0 && (
+        <span>AI filled <span className="text-[var(--foreground)]">{diag.aiFields.join(", ")}</span></span>
+      )}
+      {diag.aiError && <span className="text-amber-500">{diag.aiError}</span>}
     </div>
   );
 }
@@ -782,6 +1065,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 
 function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: ConfigState) => void }) {
   const [settings, setSettings] = useState<ParserFetchSettings>(config.fetchSettings);
+  const [ai, setAi] = useState<ParserAiSettings>(config.aiSettings);
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -796,7 +1080,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
   async function save() {
     setSaving(true); setError(""); setSaved(false);
     try {
-      const payload: Record<string, unknown> = { fetchSettings: settings };
+      const payload: Record<string, unknown> = { fetchSettings: settings, aiSettings: ai };
       if (!keyFromEnv && keyInput.trim()) payload.fetchKey = keyInput.trim();
       const res = await fetch("/api/admin/parser/config", {
         method: "POST",
@@ -879,6 +1163,44 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
           </button>
           <span className="text-[12px] text-[var(--foreground)]">Render JS (headless browser — slower, needed for SPA stores)</span>
         </label>
+      </div>
+
+      {/* AI extraction + image storage */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">AI &amp; images</p>
+          {config.openai.configured ? (
+            <span className="text-[10px] tracking-[0.1em] uppercase text-emerald-500">OpenAI key found</span>
+          ) : (
+            <span className="text-[10px] tracking-[0.1em] uppercase text-amber-500">No OpenAI key</span>
+          )}
+        </div>
+
+        <Toggle
+          on={ai.enabled}
+          disabled={!config.openai.configured}
+          onChange={(v) => setAi((s) => ({ ...s, enabled: v }))}
+          label="Read pages with AI when structured data is missing"
+        />
+
+        {ai.enabled && (
+          <Field label="When to call AI">
+            <select className={inputCls} value={ai.mode} onChange={(e) => setAi((s) => ({ ...s, mode: e.target.value as ParserAiSettings["mode"] }))}>
+              <option value="auto">Auto — only when name, price or images are missing (cheaper)</option>
+              <option value="always">Always — on every page (slower, costs more)</option>
+            </select>
+          </Field>
+        )}
+
+        <Toggle
+          on={ai.downloadImages}
+          onChange={(v) => setAi((s) => ({ ...s, downloadImages: v }))}
+          label="Copy product photos into our Supabase storage on import"
+        />
+        <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed -mt-1">
+          Photos are downloaded with browser headers, so retailer CDNs that block hotlinking still work. A photo that
+          fails to download keeps its original URL instead of disappearing.
+        </p>
       </div>
 
       {/* API key */}

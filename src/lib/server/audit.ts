@@ -14,6 +14,7 @@ export type AdminAction =
   | "settings.homepage_stylist_updated"
   | "parser.config_updated"
   | "parser.product_imported"
+  | "parser.crawl_batch"
   | "categories.updated"
   | "products.recategorized"
   | "products.recategorize_undone"

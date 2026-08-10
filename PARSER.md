@@ -99,12 +99,82 @@ out-of-the-box via JSON-LD) plus a disabled single-brand template.
 
 ---
 
+## 4. AI fallback — stores with no structured data
+
+A brand's own store (Shopify, Webflow, bespoke) often ships **no** JSON-LD, no
+product OpenGraph tags and no microdata. The deterministic pass returns a name at
+best, and the product is not importable.
+
+`src/lib/server/parser/ai-extract.ts` closes that gap using the **OpenAI key the
+site already has** (`getOpenAIKey()` — env `OPENAI_API_KEY`, else the `settings`
+table, same as embeddings and the stylist).
+
+- **When it runs.** `auto` (default) spends a call only when the deterministic
+  pass is missing name, price *or* images — so Farfetch/SSENSE stay free.
+  `always` runs it on every page. Both switchable in **Fetch & Anti-bot → AI &
+  images**.
+- **What it gets.** `condenseHtml()` strips scripts, styles, SVG and data-URIs
+  first — that is the bulk of a retail page and none of the facts. Typical
+  reduction is large enough to keep a page inside one cheap `gpt-4o-mini` call.
+- **Structured data always wins.** `mergeAiIntoRaw()` fills **only empty**
+  fields. A real JSON-LD price is never overwritten by a model's reading.
+- **No invented photos.** Any image URL the model returns must literally occur
+  in the page HTML or it is dropped — a hallucinated photo would otherwise stay
+  invisible until the catalog rendered a broken card.
+- **Degrades, never breaks.** No key, a malformed reply or an API error leaves
+  the deterministic result untouched and reports the reason in diagnostics.
+
+Products touched by AI carry an `ai` entry in `strategies`, and the admin screen
+shows exactly which fields the model supplied.
+
+---
+
+## 5. Collecting a whole catalog — "Collect catalog" tab
+
+Paste one URL — a category page, a brand's listing, or a single product — and the
+screen fills the catalog on its own:
+
+```
+discover ─▶ product URLs (incl. pagination) ─▶ batch(5) ─▶ parse ─▶ AI ─▶ mirror photos ─▶ upsert
+```
+
+- **discover** (`crawl.ts`) walks the listing, following `rel="next"` and
+  page-numbered anchors up to the page cap, and returns product URLs. A pasted
+  PDP is detected and collected on its own.
+- **batch** parses and imports 5 URLs per request. The loop lives in the browser,
+  so progress is live, **Stop** works immediately, and no request ever runs past
+  the route's `maxDuration`.
+- Re-running the same URL **updates** existing products (dedupe by `source_url`)
+  rather than duplicating them, so a collection run is safe to repeat.
+
+Per-product outcomes (`new` / `updated` / `skipped` / `failed`, with the reason
+and whether AI was needed) stream into the screen as they land.
+
+---
+
+## 6. Photos live on our storage
+
+Catalog rows must not hotlink retailer CDNs: those URLs rot, and Farfetch already
+answers `429` to our image optimiser. On import,
+`src/lib/server/storage/product-images.ts` downloads every photo with browser
+headers and a per-site `Referer` — which also defeats hotlink protection — and
+re-uploads it to the public `product-images` bucket.
+
+- 3 downloads run in parallel; a photo already on our storage is skipped.
+- A download that fails **keeps its original URL** instead of vanishing, so a
+  rejected mirror degrades to a hotlink rather than a blank card.
+- The background-removal tool (`/api/admin/image-tools`) shares these primitives.
+
+Toggle: **Fetch & Anti-bot → AI & images → Copy product photos…**
+
+---
+
 ## Importing
 
 The **Parse URL** tab fetches → extracts → shows an **editable preview** (every
-field, image picker, diagnostics: HTTP status, HTML size, which strategies hit).
-**Import** writes one product, deduped by `source_url` (re-importing the same URL
-updates in place), and records an `import_jobs` row.
+field, image picker, diagnostics: HTTP status, HTML size, which strategies hit,
+which fields AI supplied). **Import** writes one product, deduped by `source_url`
+(re-importing the same URL updates in place), and records an `import_jobs` row.
 
 ### Listing / category pages
 
@@ -135,9 +205,11 @@ No new migration. Config lives in the existing `settings` key/value table:
 | `parser_fetch_settings` | JSON `ParserFetchSettings` |
 | `parser_fetch_key` | provider API key (secret) |
 | `parser_site_configs` | JSON `ParserSiteConfig[]` |
+| `parser_ai_settings` | JSON `ParserAiSettings` (AI mode + image mirroring) |
 
 Imports use the `products.source_url` column and the `import_jobs` table from
-migration `004_import_tables.sql`.
+migration `004_import_tables.sql`. Mirrored photos go to the public
+`product-images` Storage bucket, created on first use.
 
 ---
 
@@ -145,21 +217,33 @@ migration `004_import_tables.sql`.
 
 ```
 src/lib/server/product-fields.ts            ← shared field normalisers (CSV + URL)
+src/lib/server/storage/product-images.ts    ← download + mirror photos to our bucket
 src/lib/server/parser/
 ├── types.ts                                ← config + result types
 ├── fetch.ts                                ← pluggable fetcher + SSRF guard
 ├── extract.ts                              ← JSON-LD / OG / microdata / recipe
+├── ai-extract.ts                           ← AI fallback (condense → model → merge)
 ├── normalize.ts                            ← raw → Product
+├── parse-page.ts                           ← one URL → products (shared pipeline)
+├── crawl.ts                                ← listing → product URLs + pagination
+├── import-product.ts                       ← ParsedProduct → catalog row
 └── configs.ts                              ← settings-backed config + site match
 src/app/api/admin/parser/
-├── config/route.ts                         ← GET/POST fetch settings, key, recipes
+├── config/route.ts                         ← GET/POST fetch settings, key, recipes, AI
 ├── parse/route.ts                          ← POST { url } → preview (no write)
+├── crawl/route.ts                          ← POST discover | batch → bulk collect
 └── import/route.ts                         ← POST { product } → upsert product
-src/app/goo-studio/parser/page.tsx          ← admin screen (3 tabs)
+src/app/goo-studio/parser/page.tsx          ← admin screen (4 tabs)
 ```
 
 ## Security
 
 All routes are gated by `requireAdmin`. `direct` fetches block private/loopback/
 link-local hosts (SSRF). The provider API key is never returned raw to the
-browser — only a masked form.
+browser — only a masked form; the OpenAI key is only ever reported as
+configured/not configured.
+
+Note on `finalUrl`: only a `direct` fetch reports a meaningful final URL. In
+provider mode the response URL belongs to the **scraping service**, so
+`fetch.ts` keeps the target URL — otherwise every relative link and image would
+resolve against the provider's domain.

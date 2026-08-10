@@ -11,12 +11,13 @@
  * exactly like getOpenAIKey() does for OPENAI_API_KEY.
  */
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_FETCH_SETTINGS } from "./types";
-import type { ParserFetchSettings, ParserSiteConfig } from "./types";
+import { DEFAULT_FETCH_SETTINGS, DEFAULT_AI_SETTINGS } from "./types";
+import type { ParserFetchSettings, ParserSiteConfig, ParserAiSettings } from "./types";
 
 export const SETTING_FETCH = "parser_fetch_settings";
 export const SETTING_FETCH_KEY = "parser_fetch_key";
 export const SETTING_CONFIGS = "parser_site_configs";
+export const SETTING_AI = "parser_ai_settings";
 
 /**
  * Seed recipes. Farfetch (and most luxury retailers) embed a schema.org Product
@@ -84,6 +85,21 @@ export async function getFetchSettings(): Promise<ParserFetchSettings> {
 
 export async function saveFetchSettings(settings: ParserFetchSettings) {
   return writeSetting(SETTING_FETCH, JSON.stringify(settings));
+}
+
+export async function getAiSettings(): Promise<ParserAiSettings> {
+  const raw = await readSetting(SETTING_AI);
+  if (!raw) return { ...DEFAULT_AI_SETTINGS };
+  try {
+    const parsed = JSON.parse(raw) as Partial<ParserAiSettings>;
+    return { ...DEFAULT_AI_SETTINGS, ...parsed };
+  } catch {
+    return { ...DEFAULT_AI_SETTINGS };
+  }
+}
+
+export async function saveAiSettings(settings: ParserAiSettings) {
+  return writeSetting(SETTING_AI, JSON.stringify(settings));
 }
 
 /** Resolve the provider API key: env var first, then the settings table. */
