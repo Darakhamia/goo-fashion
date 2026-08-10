@@ -11,6 +11,7 @@ import { CurrencyProvider } from "@/lib/context/currency-context";
 import ConditionalSiteLayout from "@/components/layout/ConditionalSiteLayout";
 import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 import PostHogTracker from "@/components/analytics/PostHogTracker";
+import CookieConsentBanner from "@/components/consent/CookieConsentBanner";
 import BugReportButton from "@/components/internal/BugReportButton";
 import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
@@ -97,6 +98,7 @@ export default function RootLayout({
                     <Analytics />
                     <SpeedInsights />
                     <BugReportButton />
+                    <CookieConsentBanner />
                   </CurrencyProvider>
                 </CartProvider>
               </LikesProvider>

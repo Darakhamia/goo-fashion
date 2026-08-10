@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CookieSettings from "@/components/consent/CookieSettings";
 
 export const metadata: Metadata = {
   title: "Cookie Policy — GOO",
@@ -74,14 +75,15 @@ const SECTIONS = [
           </P>
         </div>
         <div>
-          <SubLabel>Analytics — PostHog (when enabled)</SubLabel>
+          <SubLabel>Analytics — PostHog (only with your consent)</SubLabel>
           <P>
-            When our product analytics is active, PostHog stores an anonymous visitor identifier in a cookie
+            When product analytics is enabled, a banner asks for your consent before anything loads. Only
+            after you press &ldquo;Accept&rdquo; does PostHog store an anonymous visitor identifier in a cookie
             and local storage (names beginning with{" "}
             <span className="font-mono text-xs text-[var(--foreground)]">ph_</span>) to understand how features
             are used. Data is processed on PostHog&rsquo;s EU servers and we do not attach your name or email to
-            it. Where the law of your region requires consent for such cookies, they are used only with your
-            consent.
+            it. If you decline — or simply ignore the banner — PostHog is never loaded and sets nothing. You can
+            change your choice at any time in section 6 below.
           </P>
         </div>
       </div>
@@ -113,6 +115,7 @@ const SECTIONS = [
           <SubLabel>Preferences</SubLabel>
           <ul className="list-none space-y-2">
             <StorageKey name="goo-theme" purpose="light or dark theme" />
+            <StorageKey name="goo-cookie-consent" purpose="your analytics-cookie choice from the consent banner" />
             <StorageKey name="goo-currency" purpose="your display currency" />
             <StorageKey name="goo-exchange-rates" purpose="cached exchange rates (1 hour)" />
             <StorageKey name="ai-tooltip-dismissed" purpose="remembers a dismissed hint" />
@@ -164,14 +167,18 @@ const SECTIONS = [
     number: "6",
     title: "Managing Cookies and Storage",
     content: (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <P>
-          You can delete or block cookies and clear local storage in your browser settings at any time.
+          Your analytics-cookie choice can be reviewed and changed right here — it applies immediately:
+        </P>
+        <CookieSettings />
+        <P>
+          You can also delete or block cookies and clear local storage in your browser settings at any time.
           Blocking essential cookies will sign you out and may break account features; clearing local storage
           resets your cart, likes and preferences on that device.
         </P>
         <P>
-          To object to analytics altogether, see &ldquo;Your Rights&rdquo; in our{" "}
+          For your broader rights over personal data, see &ldquo;Your Rights&rdquo; in our{" "}
           <Link href="/privacy" className="text-[var(--foreground)] link-underline">Privacy Policy</Link>.
         </P>
       </div>
@@ -196,9 +203,10 @@ const SECTIONS = [
           David Arakhamia, Sole Trader
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Вадима Благовисного 62<br />
-          54001, Mykolaiv<br />
-          Ukraine
+          Mykolaiv, Ukraine
+        </p>
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+          Registered address available on request.
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">

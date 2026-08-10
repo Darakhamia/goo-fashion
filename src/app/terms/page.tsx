@@ -407,9 +407,10 @@ const SECTIONS = [
           David Arakhamia, Sole Trader
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-          Вадима Благовисного 62<br />
-          54001, Mykolaiv<br />
-          Ukraine
+          Mykolaiv, Ukraine
+        </p>
+        <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+          Registered address available on request.
         </p>
         <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
           <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">

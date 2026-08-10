@@ -54,9 +54,10 @@ const SECTIONS = [
         <div className="space-y-1">
           <p className="text-sm font-medium text-[var(--foreground)]">David Arakhamia, Sole Trader</p>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-            Вадима Благовисного 62<br />
-            54001, Mykolaiv<br />
-            Ukraine
+            Mykolaiv, Ukraine
+          </p>
+          <p className="text-sm text-[var(--foreground-subtle)] leading-relaxed">
+            Registered address available on request.
           </p>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed pt-1">
             <a href="mailto:anything@goo-fashion.com" className="text-[var(--foreground)] link-underline">
@@ -196,9 +197,10 @@ const SECTIONS = [
     title: "Cookies and Similar Technologies",
     content: (
       <P>
-        We keep cookies to a minimum: essential sign-in cookies, and analytics as described in our{" "}
-        <Link href="/cookie" className="text-[var(--foreground)] link-underline">Cookie Policy</Link>, which
-        lists every cookie and browser-storage key we use and how to manage them.
+        We keep cookies to a minimum: essential sign-in cookies, and an optional analytics cookie set only
+        after you accept it in our consent banner. Our{" "}
+        <Link href="/cookie" className="text-[var(--foreground)] link-underline">Cookie Policy</Link> lists
+        every cookie and browser-storage key we use, and lets you change your analytics choice at any time.
       </P>
     ),
   },
@@ -221,7 +223,7 @@ const SECTIONS = [
           <Processor name="Anthropic (USA)" purpose="Structuring bug reports." data="report text, page address, optional screenshot" />
           <Processor name="Resend (USA)" purpose="Email delivery." data="email address, message content" />
           <Processor name="Upstash" purpose="Rate limiting to prevent abuse." data="IP addresses and account identifiers, kept from about a minute up to one day" />
-          <Processor name="PostHog (EU hosting)" purpose="Product analytics, when enabled." data="usage events and visited page addresses" />
+          <Processor name="PostHog (EU hosting)" purpose="Product analytics — loaded only after you accept analytics cookies in the consent banner." data="usage events and visited page addresses" />
           <Processor name="Cloudflare / ipapi.co" purpose="Resolving your country for regional statistics." data="IP address, used transiently for the lookup and never stored by us" />
           <Processor name="Google (favicon service)" purpose="Loading retailer logos on product pages." data="your browser requests the logo image directly from Google" />
         </div>
