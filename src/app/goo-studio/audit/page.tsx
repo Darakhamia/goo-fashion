@@ -49,6 +49,11 @@ const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] 
     exact: true,
   },
   {
+    key: "filed_under_the_wrong_group",
+    title: "Filed in the wrong part of the catalogue",
+    note: "The name reads as one group and the piece sits in another — a t-shirt among the watches. Its category and subcategory agree with each other, which is why the checks below stay quiet about it. Both need changing, so fix it in the product editor by picking the right subcategory.",
+  },
+  {
     key: "same_phrase_filed_two_ways",
     title: "Filed differently from its near-identical siblings",
     note: "The catalogue disagreeing with itself: this piece's name matches a phrase that is filed the other way almost every time.",
@@ -70,6 +75,27 @@ const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] 
     note: "A colour this piece has is reliably filed under a group it does not carry, so it may be invisible to that colour filter. Applying adds the group without removing any.",
   },
 ];
+
+/** Title for a section this page has no copy for, from its key. */
+function fallbackTitle(key: string): string {
+  const words = key.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * Known sections in their reading order, then anything else the audit reported.
+ *
+ * The page used to render a fixed list, so a section added to the API without
+ * copy added here vanished from the list while still counting in the header.
+ * Unknown is now merely unexplained, not invisible.
+ */
+function sectionsToRender(report: AuditReport) {
+  const known = new Set(SECTIONS.map((s) => s.key));
+  const extra = Object.keys(report.suspects)
+    .filter((key) => !known.has(key))
+    .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false }));
+  return [...SECTIONS, ...extra];
+}
 
 /** Fields this page can write. Anything else is for the product editor. */
 const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group"]);
@@ -258,7 +284,7 @@ export default function AdminAuditPage() {
 
       <div className="flex flex-col gap-5">
         {report &&
-          SECTIONS.map(({ key, title, note, exact }) => {
+          sectionsToRender(report).map(({ key, title, note, exact }) => {
             const list = report.suspects[key] ?? [];
             if (!list.length) return null;
             return (
@@ -275,7 +301,7 @@ export default function AdminAuditPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed max-w-3xl">{note}</p>
+                  {note && <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed max-w-3xl">{note}</p>}
                 </header>
 
                 <ul>
