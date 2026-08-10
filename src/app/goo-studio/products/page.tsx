@@ -1177,6 +1177,85 @@ export default function AdminProductsPage() {
   // import fix only affects new imports). Dry-run first, show what would change,
   // and only write after the admin confirms. scope=all re-evaluates the whole
   // catalog, not just the accessories bucket.
+  /* ── Autofill: what the catalogue can work out about a draft ──────────── */
+
+  interface FieldSuggestion {
+    field: "category" | "subcategory" | "gender" | "colorGroups";
+    value: string | string[];
+    confidence: "high" | "low";
+    why: string;
+    replaces?: string;
+    alsoSetsCategory?: string;
+  }
+
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<FieldSuggestion[] | null>(null);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+
+  const runSuggest = async () => {
+    if (!form.name.trim()) { showToast("Give it a name first — that is what the suggestions read.", "err"); return; }
+    setSuggesting(true);
+    try {
+      const res = await fetch("/api/admin/suggest-fields", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description,
+          brand: form.brand,
+          colors: form.colorsRaw.split(",").map((c) => c.trim()).filter(Boolean),
+          category: form.category,
+          subcategory: form.subcategory,
+          gender: form.gender,
+          colorGroups: form.colorGroupIds
+            .map((id) => colorGroups.find((g) => g.id === id)?.name)
+            .filter(Boolean),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error ?? "Could not suggest anything.", "err"); return; }
+      const found = (json.suggestions ?? []) as FieldSuggestion[];
+      setSuggestions(found);
+      // Only the confident ones start ticked. A low-confidence field left
+      // empty is obviously unfinished; one filled in wrongly is not.
+      setChosen(new Set(found.filter((s) => s.confidence === "high").map((s) => s.field)));
+      if (!found.length) showToast("Nothing to suggest — either it is already filled in or the name says too little.");
+    } catch {
+      showToast("Could not reach the server.", "err");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const applySuggestions = () => {
+    const taking = (suggestions ?? []).filter((s) => chosen.has(s.field));
+    if (!taking.length) return;
+    setForm((f) => {
+      const next = { ...f };
+      for (const s of taking) {
+        if (s.field === "subcategory") {
+          next.subcategory = String(s.value);
+          // The tree says which category the label belongs to, so the pair
+          // cannot be left contradicting itself.
+          if (s.alsoSetsCategory) next.category = s.alsoSetsCategory as Category;
+        } else if (s.field === "category") {
+          next.category = String(s.value) as Category;
+        } else if (s.field === "gender") {
+          next.gender = String(s.value) as Gender;
+        } else if (s.field === "colorGroups") {
+          const ids = (s.value as string[])
+            .map((name) => colorGroups.find((g) => g.name.toLowerCase() === name.toLowerCase())?.id)
+            .filter((id): id is number => typeof id === "number");
+          next.colorGroupIds = [...new Set([...f.colorGroupIds, ...ids])];
+        }
+      }
+      return next;
+    });
+    showToast(`Filled ${taking.length} field${taking.length === 1 ? "" : "s"} — nothing saved yet.`);
+    setSuggestions(null);
+    setChosen(new Set());
+  };
+
   const handleRecategorize = async () => {
     setRecategorizing(true);
     try {
@@ -1862,15 +1941,77 @@ export default function AdminProductsPage() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                  {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
+                </h2>
+                <button
+                  onClick={runSuggest}
+                  disabled={suggesting || !dbConfigured}
+                  title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
+                  className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {suggesting ? "Reading…" : "Suggest fields"}
+                </button>
+              </div>
               <button onClick={closeModal} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
+
+            {/* Suggestions — spans the modal, above both columns, because the
+                fields they land in live in different ones. */}
+            {suggestions && suggestions.length > 0 && (
+              <div className="shrink-0 border-b border-[var(--border)] px-6 py-3 bg-[var(--surface)]">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                    From how the catalogue is filed
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button onClick={applySuggestions} disabled={!chosen.size}
+                      className="border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40">
+                      Fill {chosen.size || ""} selected
+                    </button>
+                    <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
+                      className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {suggestions.map((s) => {
+                    const shown = Array.isArray(s.value) ? s.value.join(", ") : s.value;
+                    return (
+                      <label key={s.field} className="flex items-start gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={chosen.has(s.field)}
+                          onChange={() => setChosen((prev) => {
+                            const next = new Set(prev);
+                            next.has(s.field) ? next.delete(s.field) : next.add(s.field);
+                            return next;
+                          })}
+                          className="mt-0.5 accent-[var(--foreground)]"
+                        />
+                        <span className="text-[11px] leading-relaxed">
+                          <span className="tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">{s.field}</span>{" "}
+                          <span className="font-mono text-[var(--foreground)]">{shown}</span>
+                          {s.replaces && <span className="text-amber-600"> — replaces {s.replaces}</span>}
+                          {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
+                          {s.confidence === "low" && <span className="text-amber-600"> · unsure</span>}
+                          <span className="block text-[10px] text-[var(--foreground-subtle)]">{s.why}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[10px] text-[var(--foreground-subtle)]">
+                  Unsure ones start unticked. Filling a field changes nothing until you save.
+                </p>
+              </div>
+            )}
 
             {/* Body — two-column */}
             <div className="grid grid-cols-[220px_1fr] flex-1 min-h-0 divide-x divide-[var(--border)]">
