@@ -75,6 +75,38 @@ precedence first:
 No DOM library — pure regex/JSON, so it runs in any serverless route. Handles
 `@graph`, `Offer`/`AggregateOffer` arrays, nested `Brand`, and HTML entities.
 
+### Gallery harvesting
+
+Structured data is reliable but thin about photography: OpenGraph carries a
+single `og:image`, and stores ship JSON-LD with one photo for a page showing
+eight. So `src/lib/server/parser/gallery.ts` also scrapes `<img>`, `srcset`,
+`<link rel=preload as=image>` and inline JSON for the rest of the gallery.
+
+The hard part is that a product page is full of images that are *not* this
+product — a recommendations carousel, nav banners, material icons, review photos
+on a third-party host. A wrong photo is worse than a missing one, so a candidate
+is kept only when it is on the same host as a trusted image **and** passes one
+of two identity tests:
+
+1. **Numbered sibling** — its filename shares ≥10 characters with a trusted
+   image's and differs only by a short tail (`All-birds_0010` → `All-birds_0017`).
+2. **Named after the product** — it contains two *adjacent* words of the product
+   name (`Classic Easy Tote` → `…_ClassicEasyToteV2_…`). Adjacency matters:
+   scattered-word matching filed the separate "Classic Tote Insert" accessory
+   under the tote.
+
+Measured on live pages: Allbirds 1 → 5 photos, Cuyana 1 → 12, no foreign
+products in either.
+
+**Resolution.** Harvested URLs carry whatever size the page asked for
+(`?width=300`), and CDNs serve renditions (`_1024x`, `_600x600_crop_center`,
+`_grande`). Both are stripped to fetch the original — measured 34 KB → 642 KB on
+Allbirds. The same normalisation is the dedupe key, so one photo offered at
+three sizes is stored once instead of three times.
+
+> JS-rendered galleries are still invisible to a plain fetch. Enable **Render JS**
+> in Fetch & Anti-bot for those stores.
+
 ## 3. Normalizer
 
 `src/lib/server/parser/normalize.ts` maps the raw fields to a `Product`, reusing

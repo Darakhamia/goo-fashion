@@ -11,6 +11,7 @@ import {
   inferGenderFromText,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
+import { upgradeImageUrl, imageKey } from "./gallery";
 
 /** Resolve a possibly-relative image URL against the page URL. */
 function absoluteUrl(src: string, base: string): string | null {
@@ -65,15 +66,27 @@ export function normalizeExtract(
     inferGenderFromText(sourceUrl) ??
     inferGenderFromText(`${name} ${raw.description ?? ""}`);
 
-  // Images: resolve to absolute URLs → dedupe, cap at 12. Store the originals
-  // as-is; higher-resolution variants are requested at render time (with a
-  // fallback to these URLs) so a rewrite that a CDN rejects never loses a photo.
-  const images = [...new Set(
-    (raw.images ?? [])
-      .map((u) => absoluteUrl(u, sourceUrl))
-      .filter((u): u is string => !!u),
-  )].slice(0, 12);
-  const rawPrimary = raw.image && absoluteUrl(raw.image, sourceUrl);
+  // Images: resolve to absolute URLs, ask the CDN for the full-resolution
+  // original, then dedupe by photo identity rather than by string.
+  //
+  // Both steps earn their keep. Structured data hands back the same photo at
+  // several renditions — a live Cuyana page advertises `…_2785_1024x.jpg`,
+  // `…_2785.jpg` and `…_2785_600x600_crop_center.jpg` as three separate images —
+  // so string dedupe stored one photo three times and mirrored it three times.
+  // And a page that requests `?width=300` markup would otherwise have its
+  // gallery mirrored at 300px, which is useless for a catalog.
+  const byPhoto = new Map<string, string>();
+  for (const u of raw.images ?? []) {
+    const abs = absoluteUrl(u, sourceUrl);
+    if (!abs) continue;
+    const full = upgradeImageUrl(abs, sourceUrl) ?? abs;
+    const key = imageKey(full);
+    if (!byPhoto.has(key)) byPhoto.set(key, full);
+  }
+  const images = [...byPhoto.values()].slice(0, 12);
+
+  const rawAbs = raw.image && absoluteUrl(raw.image, sourceUrl);
+  const rawPrimary = rawAbs ? (upgradeImageUrl(rawAbs, sourceUrl) ?? rawAbs) : null;
   const imageUrl = rawPrimary || images[0] || "";
   if (!imageUrl) issues.push("no image");
 

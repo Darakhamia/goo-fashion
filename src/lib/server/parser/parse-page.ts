@@ -109,7 +109,9 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
 
   /** Single-product path: deterministic extract, then AI for whatever is missing. */
   const single = async (): Promise<ParsedProduct[]> => {
-    let raw = extractProduct(fetched.html, matched);
+    // pageUrl lets the extractor harvest the gallery out of the markup —
+    // relative and protocol-relative image URLs need a base to resolve against.
+    let raw = extractProduct(fetched.html, matched, pageUrl);
 
     const aiAllowed = opts.useAi ?? opts.aiSettings.enabled;
     const aiWanted = aiAllowed && (opts.aiSettings.mode === "always" || shouldUseAi(raw));
