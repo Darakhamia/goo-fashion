@@ -1,0 +1,268 @@
+/**
+ * AI fallback for the universal parser.
+ *
+ * The deterministic extractor (JSON-LD → OpenGraph → microdata) covers most
+ * retailers and costs nothing, so it always runs first. But a brand's own
+ * Shopify/Webflow/bespoke store often ships no structured data at all, and then
+ * we get a name and nothing else. This module hands a stripped-down slice of the
+ * page to the OpenAI key already configured for the site and asks for the same
+ * fields back as JSON.
+ *
+ * Two rules keep it cheap and safe:
+ *   1. It only fills fields the deterministic pass left EMPTY — real structured
+ *      data always wins over a model's reading of the page.
+ *   2. It never invents. The prompt requires null for anything not literally on
+ *      the page, and any image URL the model returns must appear in the HTML.
+ */
+import OpenAI from "openai";
+import { getOpenAIKey } from "@/lib/server/get-openai-key";
+import type { RawExtract } from "./types";
+
+/** Cheap, fast, and good at reading messy markup. */
+const MODEL = "gpt-4o-mini";
+
+/** Upper bound on the page slice we send (roughly 25k tokens of HTML). */
+const MAX_HTML_CHARS = 90_000;
+
+/**
+ * Strip a page down to the parts that can carry product facts.
+ *
+ * Scripts, styles, SVG paths and inline data-URIs are pure token burn — they are
+ * the bulk of a modern retail page and contain no prose. What survives is text
+ * nodes, image sources and prices.
+ */
+export function condenseHtml(html: string, maxChars = MAX_HTML_CHARS): string {
+  let s = html;
+
+  // Keep JSON-LD out of the strip below — it is the densest source of truth and
+  // is tiny; if it were parseable we would not be here, but partial/broken
+  // blocks still help the model.
+  const jsonLd: string[] = [];
+  s = s.replace(
+    /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+    (_m, body: string) => {
+      if (jsonLd.length < 3) jsonLd.push(String(body).slice(0, 4_000));
+      return " ";
+    },
+  );
+
+  s = s
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    // data: URIs (inline base64 images) — megabytes of noise
+    .replace(/(?:src|href)\s*=\s*(["'])data:[^"']*\1/gi, " ")
+    // Collapse attributes we never need, keeping src/alt/content/href/itemprop
+    .replace(/\s(?:class|style|srcset|sizes|data-[\w-]+|aria-[\w-]+|id|role|tabindex)\s*=\s*(["'])[\s\S]*?\1/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const head = jsonLd.length ? `<!-- json-ld -->${jsonLd.join("\n")}\n<!-- /json-ld -->\n` : "";
+  const budget = Math.max(1_000, maxChars - head.length);
+
+  // Keep the head (meta/title) and the start of the body — product facts sit
+  // near the top on virtually every PDP; trailing footers/recommendations don't.
+  return head + (s.length > budget ? s.slice(0, budget) : s);
+}
+
+/** Shape the model is asked to return. Every field is nullable by design. */
+interface AiFields {
+  name?: string | null;
+  brand?: string | null;
+  price?: string | null;
+  priceOriginal?: string | null;
+  currency?: string | null;
+  images?: string[] | null;
+  sizes?: string[] | null;
+  color?: string | null;
+  material?: string | null;
+  description?: string | null;
+}
+
+const SYSTEM_PROMPT = `You read raw HTML from an online fashion store and return the product's facts as JSON.
+
+Rules:
+- Return ONLY what is literally present in the HTML. If a field is not there, return null. Never guess, never invent, never fill from world knowledge about the brand.
+- price and priceOriginal: digits only, e.g. "1290" or "1290.50". No currency symbol, no thousands separator. price is the CURRENT (discounted) price; priceOriginal is the pre-discount price and is null when there is no discount.
+- currency: 3-letter ISO code (USD, EUR, GBP, UAH…), inferred from the symbol or explicit code on the page.
+- images: absolute or root-relative URLs of the PRODUCT's own photos, largest variant available, in page order, max 10. Exclude logos, icons, payment badges, banners and photos of other products.
+- name: the product title WITHOUT the brand name prefix.
+- description: the product's own copy as plain text, max 800 characters. No marketing boilerplate about shipping or returns.
+- sizes: available size labels as shown (e.g. ["XS","S","M"] or ["40","41"]).
+- color and material: as stated on the page.
+
+Respond with a single JSON object and nothing else.`;
+
+export interface AiExtractResult {
+  fields: AiFields;
+  /** Fields the model actually contributed (for admin diagnostics). */
+  filled: string[];
+  error?: string;
+}
+
+/** Which RawExtract fields are still missing after deterministic extraction. */
+export function missingFields(raw: RawExtract): string[] {
+  const missing: string[] = [];
+  if (!raw.name) missing.push("name");
+  if (!raw.brand) missing.push("brand");
+  if (!raw.price) missing.push("price");
+  if (!raw.currency) missing.push("currency");
+  if (!raw.images?.length) missing.push("images");
+  if (!raw.sizes?.length) missing.push("sizes");
+  if (!raw.color) missing.push("color");
+  if (!raw.material) missing.push("material");
+  if (!raw.description) missing.push("description");
+  return missing;
+}
+
+/**
+ * Is the deterministic result weak enough to be worth an AI call?
+ * A page missing name, price or images is the case AI actually rescues.
+ */
+export function shouldUseAi(raw: RawExtract): boolean {
+  return !raw.name || !raw.price || !raw.images?.length;
+}
+
+function asTrimmedString(v: unknown, max = 5_000): string | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "n/a") return undefined;
+  return s.slice(0, max);
+}
+
+function asStringArray(v: unknown, max: number): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const item of v) {
+    const s = asTrimmedString(item, 500);
+    if (s && !out.includes(s)) out.push(s);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/**
+ * Ask the model to read a page. Returns `{ fields: {} }` with an `error` when no
+ * key is configured or the call fails — the caller keeps its deterministic
+ * result either way, so AI is strictly additive.
+ */
+export async function aiExtract(
+  html: string,
+  pageUrl: string,
+  opts?: { timeoutMs?: number },
+): Promise<AiExtractResult> {
+  const apiKey = await getOpenAIKey();
+  if (!apiKey) {
+    return { fields: {}, filled: [], error: "OpenAI key not configured (env OPENAI_API_KEY or Settings)." };
+  }
+
+  const condensed = condenseHtml(html);
+  if (condensed.length < 200) {
+    return { fields: {}, filled: [], error: "Page had no readable content to analyse." };
+  }
+
+  const client = new OpenAI({ apiKey, timeout: opts?.timeoutMs ?? 45_000, maxRetries: 1 });
+
+  let content: string;
+  try {
+    const res = await client.chat.completions.create({
+      model: MODEL,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Page URL: ${pageUrl}\n\nHTML:\n${condensed}`,
+        },
+      ],
+    });
+    content = res.choices[0]?.message?.content ?? "";
+  } catch (err) {
+    return {
+      fields: {},
+      filled: [],
+      error: err instanceof Error ? `AI extraction failed: ${err.message}` : "AI extraction failed",
+    };
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    return { fields: {}, filled: [], error: "AI returned malformed JSON." };
+  }
+
+  // Only keep image URLs that genuinely occur in the page — the one field where
+  // a hallucination would be invisible until the catalog renders a broken card.
+  const rawImages = asStringArray(parsed.images, 10);
+  const images = rawImages.filter((u) => {
+    if (!/^(https?:)?\/\/|^\//.test(u)) return false;
+    const needle = u.replace(/^https?:/, "").slice(0, 120);
+    return html.includes(needle);
+  });
+
+  const price = asTrimmedString(parsed.price, 40)?.replace(/[^\d.,]/g, "");
+  const priceOriginal = asTrimmedString(parsed.priceOriginal, 40)?.replace(/[^\d.,]/g, "");
+  const currency = asTrimmedString(parsed.currency, 10)?.toUpperCase();
+
+  const fields: AiFields = {
+    name: asTrimmedString(parsed.name, 300),
+    brand: asTrimmedString(parsed.brand, 80),
+    price: price || undefined,
+    priceOriginal: priceOriginal || undefined,
+    currency: currency && /^[A-Z]{3}$/.test(currency) ? currency : undefined,
+    images: images.length ? images : undefined,
+    sizes: asStringArray(parsed.sizes, 40),
+    color: asTrimmedString(parsed.color, 60),
+    material: asTrimmedString(parsed.material, 300),
+    description: asTrimmedString(parsed.description, 2_000),
+  };
+
+  const filled = Object.entries(fields)
+    .filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!v))
+    .map(([k]) => k);
+
+  return { fields, filled };
+}
+
+/**
+ * Merge AI output into a deterministic extract. Structured data always wins;
+ * AI only fills holes. Returns a new RawExtract plus the fields it contributed.
+ */
+export function mergeAiIntoRaw(raw: RawExtract, ai: AiFields): { raw: RawExtract; used: string[] } {
+  const used: string[] = [];
+  const next: RawExtract = { ...raw, images: [...(raw.images ?? [])], sizes: [...(raw.sizes ?? [])] };
+
+  const take = <K extends keyof RawExtract>(key: K, value: RawExtract[K] | undefined | null) => {
+    if (value === undefined || value === null || value === "") return;
+    if (next[key]) return; // deterministic value present — keep it
+    next[key] = value;
+    used.push(String(key));
+  };
+
+  take("name", ai.name ?? undefined);
+  take("brand", ai.brand ?? undefined);
+  take("price", ai.price ?? undefined);
+  take("priceOriginal", ai.priceOriginal ?? undefined);
+  take("currency", ai.currency ?? undefined);
+  take("color", ai.color ?? undefined);
+  take("material", ai.material ?? undefined);
+  take("description", ai.description ?? undefined);
+
+  if (!next.images.length && ai.images?.length) {
+    next.images = ai.images;
+    used.push("images");
+  }
+  if (!next.image && next.images.length) next.image = next.images[0];
+  if (!next.sizes.length && ai.sizes?.length) {
+    next.sizes = ai.sizes;
+    used.push("sizes");
+  }
+
+  if (used.length) next.strategies = [...(next.strategies ?? []), "ai"];
+  return { raw: next, used };
+}

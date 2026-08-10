@@ -10,9 +10,17 @@ import {
   deleteFetchApiKey,
   getSiteConfigs,
   saveSiteConfigs,
+  getAiSettings,
+  saveAiSettings,
 } from "@/lib/server/parser/configs";
-import { DEFAULT_FETCH_SETTINGS } from "@/lib/server/parser/types";
-import type { FetchProvider, ParserFetchSettings, ParserSiteConfig } from "@/lib/server/parser/types";
+import { getOpenAIKey } from "@/lib/server/get-openai-key";
+import { DEFAULT_FETCH_SETTINGS, DEFAULT_AI_SETTINGS } from "@/lib/server/parser/types";
+import type {
+  FetchProvider,
+  ParserAiSettings,
+  ParserFetchSettings,
+  ParserSiteConfig,
+} from "@/lib/server/parser/types";
 
 const PROVIDERS: FetchProvider[] = ["direct", "scrapingbee", "scraperapi", "zenrows", "custom"];
 const IMPERSONATE = ["chrome", "safari", "firefox", "edge"];
@@ -24,10 +32,12 @@ function maskKey(key: string): string {
 }
 
 async function buildState() {
-  const [fetchSettings, keyInfo, siteConfigs] = await Promise.all([
+  const [fetchSettings, keyInfo, siteConfigs, aiSettings, openaiKey] = await Promise.all([
     getFetchSettings(),
     getFetchApiKey(),
     getSiteConfigs(),
+    getAiSettings(),
+    getOpenAIKey(),
   ]);
   return {
     fetchSettings,
@@ -37,6 +47,10 @@ async function buildState() {
       masked: keyInfo.key ? maskKey(keyInfo.key) : "",
     },
     siteConfigs,
+    aiSettings,
+    // The AI fallback rides on the site's existing OpenAI key — the screen needs
+    // to say whether one is actually there before promising AI extraction.
+    openai: { configured: !!openaiKey },
   };
 }
 
@@ -62,6 +76,16 @@ function sanitizeFetchSettings(input: unknown): ParserFetchSettings {
     renderJs: !!o.renderJs,
     impersonate,
     timeoutMs,
+  };
+}
+
+function sanitizeAiSettings(input: unknown): ParserAiSettings {
+  const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  return {
+    enabled: typeof o.enabled === "boolean" ? o.enabled : DEFAULT_AI_SETTINGS.enabled,
+    mode: o.mode === "always" ? "always" : "auto",
+    downloadImages:
+      typeof o.downloadImages === "boolean" ? o.downloadImages : DEFAULT_AI_SETTINGS.downloadImages,
   };
 }
 
@@ -117,6 +141,11 @@ export async function POST(req: Request) {
   if ("fetchKey" in body && typeof body.fetchKey === "string") {
     const value = body.fetchKey.trim();
     const { error } = value ? await saveFetchApiKey(value) : await deleteFetchApiKey();
+    if (error) errors.push(error);
+  }
+
+  if ("aiSettings" in body) {
+    const { error } = await saveAiSettings(sanitizeAiSettings(body.aiSettings));
     if (error) errors.push(error);
   }
 

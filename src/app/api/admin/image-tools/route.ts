@@ -2,63 +2,7 @@ import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-const BUCKET = "product-images";
-
-// ── Supabase upload ───────────────────────────────────────────────────────────
-
-async function ensureProductImagesBucket() {
-  if (!supabase) return;
-  const { error } = await supabase.storage.createBucket(BUCKET, {
-    public: true,
-    fileSizeLimit: 20 * 1024 * 1024,
-  });
-  if (error && !error.message.includes("already exists")) {
-    throw new Error(`Bucket error: ${error.message}`);
-  }
-}
-
-async function uploadToStorage(buffer: Buffer, ext: string, contentType: string): Promise<string> {
-  if (!supabase) throw new Error("Supabase not configured");
-  await ensureProductImagesBucket();
-  const path = `products/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, buffer, { contentType, upsert: false });
-  if (error) throw new Error(`Upload failed: ${error.message}`);
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
-}
-
-// ── Download image with browser-like headers (bypasses CDN hotlink protection) ─
-
-async function fetchImageBuffer(url: string): Promise<{ buffer: Buffer; contentType: string }> {
-  let referer = "https://www.google.com/";
-  try {
-    const { origin, hostname } = new URL(url);
-    if (hostname.includes("farfetch")) referer = "https://www.farfetch.com/";
-    else if (hostname.includes("ssense")) referer = "https://www.ssense.com/";
-    else if (hostname.includes("mytheresa")) referer = "https://www.mytheresa.com/";
-    else referer = origin + "/";
-  } catch {}
-
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Referer": referer,
-      "Sec-Fetch-Dest": "image",
-      "Sec-Fetch-Mode": "no-cors",
-      "Sec-Fetch-Site": "cross-site",
-    },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const contentType = res.headers.get("content-type") ?? "image/jpeg";
-  const buffer = Buffer.from(await res.arrayBuffer());
-  return { buffer, contentType };
-}
+import { fetchImageBuffer, uploadToStorage } from "@/lib/server/storage/product-images";
 
 // ── Replicate: remove background ─────────────────────────────────────────────
 
