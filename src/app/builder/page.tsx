@@ -13,7 +13,7 @@ import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/componen
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
 import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type SavedLook } from "@/lib/looks-storage";
-import { subcategoryToValue } from "@/lib/categories";
+import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -377,7 +377,17 @@ export default function BuilderPage() {
   const filterByCategory = (list: Product[], cat: string | null, subs: string[] = []) => {
     if (subs.length > 0) {
       const vals = [...new Set(subs.map(l => subcatToValue[l]).filter(Boolean))];
-      return list.filter(p => vals.includes(p.category));
+      return list.filter(p => {
+        if (!vals.includes(p.category)) return false;
+        // The step this was missing. Matching the category alone means picking
+        // "T-Shirts" shows every top there is — hoodies, sweatshirts, polos —
+        // because they all store `tops`, which reads as the filter doing
+        // nothing at all. A piece that records no subcategory still answers to
+        // its whole category, so nothing disappears while the field is being
+        // filled in. Same rule as the catalog's filters.
+        const sub = resolveSubcategory(p.category, p.subcategory, categoryTree);
+        return !sub || subs.includes(sub);
+      });
     }
     if (!cat) return list;
     const slot = SLOTS.find(s => s.id === cat);
@@ -397,10 +407,24 @@ export default function BuilderPage() {
   const availableBrands = useMemo(() =>
     Array.from(new Set(filterByCategory(products, catalogCategory, selectedSubcategories).map(p => p.brand))).sort() as Brand[],
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [catalogCategory, selectedSubcategories, products]);
+  [catalogCategory, selectedSubcategories, categoryTree, products]);
 
-  // Always show all 13 standard color groups (same as Browse)
-  const availableColors = STANDARD_COLORS;
+  // The same colour groups the catalog filters by, from the admin's own list,
+  // so a group added there shows up here too. The built-in list is the fallback
+  // until the request lands.
+  const [colorGroups, setColorGroups] = useState<{ id: number; name: string; hexCode: string }[]>(
+    () => STANDARD_COLORS.map(c => ({ id: c.id, name: c.name, hexCode: c.hex })),
+  );
+  useEffect(() => {
+    fetch("/api/color-groups")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d) && d.length) setColorGroups(d); })
+      .catch(() => {});
+  }, []);
+  const availableColors = useMemo(
+    () => colorGroups.map(g => ({ id: g.id, name: g.name, hex: g.hexCode })),
+    [colorGroups],
+  );
 
   const [shuffleSeed] = useState(() => Math.random());
 
@@ -428,7 +452,7 @@ export default function BuilderPage() {
     }
 
     if (selectedColors.length > 0) {
-      const selectedIds = selectedColors.map(n => STANDARD_COLORS.find(c => c.name === n)?.id).filter(Boolean) as number[];
+      const selectedIds = selectedColors.map(n => availableColors.find(c => c.name === n)?.id).filter(Boolean) as number[];
       list = list.filter(p => {
         // Prefer colorGroupIds (Supabase products), fall back to colors string array
         if (p.colorGroupIds?.length) {
@@ -462,7 +486,9 @@ export default function BuilderPage() {
     }
 
     return list;
-  }, [catalogCategory, selectedSubcategories, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, selectedGender, sortBy, shuffleSeed]);
+    // categoryTree and availableColors both arrive from the network after the
+    // first paint, so the list has to recompute when they do.
+  }, [catalogCategory, selectedSubcategories, categoryTree, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, availableColors, selectedGender, sortBy, shuffleSeed]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
     if (!selectedColors.length) {
