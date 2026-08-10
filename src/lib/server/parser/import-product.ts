@@ -137,8 +137,12 @@ export async function importParsedProduct(
       const { data: existing } = await supabase
         .from("products").select("id").eq("source_url", sourceUrl).maybeSingle();
       if (existing?.id) {
-        const { data } = await supabase
+        // PostgREST reports failures in `error` rather than throwing, so an
+        // unchecked update reads as success while writing nothing (the silent
+        // failure pattern audit item Б1-3 called out on the billing ledger).
+        const { data, error } = await supabase
           .from("products").update(dbRow).eq("id", existing.id).select("id").maybeSingle();
+        if (error) throw new Error(error.message);
         productId = (data as { id: string } | null)?.id ?? existing.id;
         updated = true;
       } else {
