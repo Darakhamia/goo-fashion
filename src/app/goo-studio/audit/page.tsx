@@ -50,8 +50,8 @@ const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] 
   },
   {
     key: "filed_under_the_wrong_group",
-    title: "Filed in the wrong part of the catalogue",
-    note: "The name reads as one group and the piece sits in another — a t-shirt among the watches. Its category and subcategory agree with each other, which is why the checks below stay quiet about it. Both need changing, so fix it in the product editor by picking the right subcategory.",
+    title: "The name says a different kind of thing",
+    note: "A t-shirt among the watches, or filed as knitwear. Its category and subcategory agree with each other, so the checks below stay quiet about it — only its own name gives it away. The subcategory is what has to change, so fix it in the product editor and the category will follow.",
   },
   {
     key: "same_phrase_filed_two_ways",
