@@ -1177,6 +1177,106 @@ export default function AdminProductsPage() {
   // import fix only affects new imports). Dry-run first, show what would change,
   // and only write after the admin confirms. scope=all re-evaluates the whole
   // catalog, not just the accessories bucket.
+  /* ── Bulk edit: one set of changes across a selection ─────────────────── */
+
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  /** Every field starts blank, and a blank field is left alone. */
+  const [bulk, setBulk] = useState({
+    brand: "",
+    gender: "",
+    subcategory: "",
+    styleKeywords: [] as StyleKeyword[],
+    styleMode: "add" as "add" | "replace",
+    colorGroupIds: [] as number[],
+    colorMode: "add" as "add" | "replace",
+    namePrefix: "",
+    nameSuffix: "",
+    nameFind: "",
+    nameReplace: "",
+  });
+
+  const resetBulk = () => setBulk({
+    brand: "", gender: "", subcategory: "",
+    styleKeywords: [], styleMode: "add",
+    colorGroupIds: [], colorMode: "add",
+    namePrefix: "", nameSuffix: "", nameFind: "", nameReplace: "",
+  });
+
+  const bulkChangeCount =
+    (bulk.brand.trim() ? 1 : 0) +
+    (bulk.gender ? 1 : 0) +
+    (bulk.subcategory ? 1 : 0) +
+    (bulk.styleKeywords.length ? 1 : 0) +
+    (bulk.colorGroupIds.length ? 1 : 0) +
+    (bulk.namePrefix || bulk.nameSuffix || bulk.nameFind ? 1 : 0);
+
+  const applyBulkEdit = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length || !bulkChangeCount) return;
+
+    const set: Record<string, unknown> = {};
+    const add: Record<string, unknown> = {};
+    if (bulk.brand.trim()) set.brand = bulk.brand.trim();
+    if (bulk.gender) set.gender = bulk.gender;
+    if (bulk.subcategory) set.subcategory = bulk.subcategory;
+    if (bulk.styleKeywords.length) {
+      (bulk.styleMode === "replace" ? set : add).styleKeywords = bulk.styleKeywords;
+    }
+    if (bulk.colorGroupIds.length) {
+      (bulk.colorMode === "replace" ? set : add).colorGroupIds = bulk.colorGroupIds;
+    }
+
+    const summary = [
+      bulk.brand.trim() && `brand → ${bulk.brand.trim()}`,
+      bulk.gender && `gender → ${bulk.gender}`,
+      bulk.subcategory && `subcategory → ${bulk.subcategory} (and its category)`,
+      bulk.styleKeywords.length && `${bulk.styleMode === "replace" ? "replace" : "add"} styles: ${bulk.styleKeywords.join(", ")}`,
+      bulk.colorGroupIds.length && `${bulk.colorMode === "replace" ? "replace" : "add"} ${bulk.colorGroupIds.length} colour filter(s)`,
+      bulk.nameFind && `rename: "${bulk.nameFind}" → "${bulk.nameReplace}"`,
+      bulk.namePrefix && `prefix "${bulk.namePrefix}"`,
+      bulk.nameSuffix && `suffix "${bulk.nameSuffix}"`,
+    ].filter(Boolean).join("\n  ");
+
+    if (!confirm(`Apply to ${ids.length} product${ids.length === 1 ? "" : "s"}?\n\n  ${summary}\n\nFields left blank are not touched.`)) return;
+
+    setBulkSaving(true);
+    try {
+      const res = await fetch("/api/products/bulk-edit", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids,
+          set,
+          add,
+          name: {
+            prefix: bulk.namePrefix,
+            suffix: bulk.nameSuffix,
+            find: bulk.nameFind,
+            replace: bulk.nameReplace,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error ?? "Bulk edit failed.", "err"); return; }
+      const failed = (json.failures ?? []).length;
+      showToast(
+        failed
+          ? `Updated ${json.updated} of ${json.requested} — ${failed} failed`
+          : `Updated ${json.updated} product${json.updated === 1 ? "" : "s"}`,
+        failed ? "err" : "ok",
+      );
+      setBulkOpen(false);
+      resetBulk();
+      setSelectedIds(new Set());
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Bulk edit failed.", "err");
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   /* ── Autofill: what the catalogue can work out about a draft ──────────── */
 
   interface FieldSuggestion {
@@ -1713,6 +1813,167 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Bulk edit modal */}
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setBulkOpen(false)}>
+          <div
+            className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
+            style={{ background: "var(--background)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+              <div>
+                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                  Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
+                </h2>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                  Anything left blank is not touched.
+                </p>
+              </div>
+              <button onClick={() => setBulkOpen(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 flex flex-col gap-5">
+              {/* Brand + gender */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Brand</label>
+                  <input
+                    list="bulk-brands"
+                    value={bulk.brand}
+                    onChange={(e) => setBulk((b) => ({ ...b, brand: e.target.value }))}
+                    placeholder="Leave blank to keep"
+                    className={inputCls}
+                  />
+                  <datalist id="bulk-brands">
+                    {brandsInCatalogue.map((b) => <option key={b} value={b} />)}
+                  </datalist>
+                </div>
+                <div>
+                  <label className={labelCls}>Gender</label>
+                  <select value={bulk.gender} onChange={(e) => setBulk((b) => ({ ...b, gender: e.target.value }))} className={selectCls}>
+                    <option value="">Keep as is</option>
+                    <option value="women">Women</option>
+                    <option value="men">Men</option>
+                    <option value="unisex">Unisex</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Subcategory — sets the category with it */}
+              <div>
+                <label className={labelCls}>Subcategory</label>
+                <select
+                  value={bulk.subcategory}
+                  onChange={(e) => setBulk((b) => ({ ...b, subcategory: e.target.value }))}
+                  className={selectCls}
+                >
+                  <option value="">Keep as is</option>
+                  {categoryGroups.map((g) => (
+                    <optgroup key={g.id} label={g.label}>
+                      {g.items.map((i) => <option key={i.label} value={i.label}>{i.label}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">
+                  Sets the category to match, since the tree says where the label belongs.
+                </p>
+              </div>
+
+              {/* Style keywords */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelCls}>Style keywords</label>
+                  <div className="flex gap-1">
+                    {(["add", "replace"] as const).map((mode) => (
+                      <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                      >{mode}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {STYLE_KEYWORDS.map((k) => {
+                    const on = bulk.styleKeywords.includes(k);
+                    return (
+                      <button key={k} onClick={() => setBulk((b) => ({
+                        ...b,
+                        styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
+                      }))}
+                        className={`px-2.5 py-1 text-[11px] border transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                      >{k}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Colour filters */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelCls}>Colour filters</label>
+                  <div className="flex gap-1">
+                    {(["add", "replace"] as const).map((mode) => (
+                      <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                      >{mode}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {colorGroups.map((g) => {
+                    const on = bulk.colorGroupIds.includes(g.id);
+                    return (
+                      <button key={g.id} onClick={() => setBulk((b) => ({
+                        ...b,
+                        colorGroupIds: on ? b.colorGroupIds.filter((x) => x !== g.id) : [...b.colorGroupIds, g.id],
+                      }))}
+                        className={`px-2.5 py-1 text-[11px] border transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                      >{g.name}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Names */}
+              <div>
+                <label className={labelCls}>Names</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
+                  <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
+                  <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
+                  <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder="Add after…" className={inputCls} />
+                </div>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">
+                  There is no &ldquo;set the same name&rdquo;: identical names across a selection destroy the ones they replace.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-[var(--border)]">
+              <span className="text-[11px] text-[var(--foreground-muted)]">
+                {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
+              </span>
+              <div className="flex items-center gap-3">
+                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className="text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={applyBulkEdit}
+                  disabled={bulkSaving || !bulkChangeCount}
+                  className="bg-[var(--foreground)] text-[var(--background)] px-5 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                >
+                  {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bulk action bar */}
       {someSelected && (
         <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
@@ -1732,6 +1993,15 @@ export default function AdminProductsPage() {
               Group variants
             </button>
           )}
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+            </svg>
+            Edit {selectedIds.size}
+          </button>
           <button
             onClick={handleBulkDelete}
             className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors rounded-lg"
