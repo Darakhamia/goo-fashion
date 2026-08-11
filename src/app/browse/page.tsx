@@ -965,11 +965,9 @@ export default function BrowsePage() {
             <div className="pt-4 pb-4 border-b border-[var(--border)]">
               <div className="flex flex-wrap items-end gap-x-3 gap-y-3 sm:flex-nowrap">
 
-                {/* Left column: Filter on top, Pieces/Outfits below. Full width on
-                    mobile so the segmented toggle never clips; on desktop the fixed
-                    width keeps the pill at the size it had when Search shared this
-                    column. */}
-                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-[230px]">
+                {/* Left column: Filter+Search on top, Pieces/Outfits below.
+                    Full width on mobile so the segmented toggle never clips. */}
+                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-auto">
                   <div className="flex gap-2 items-center">
                     {/* Filter */}
                     <button
@@ -990,6 +988,59 @@ export default function BrowsePage() {
                         </span>
                       )}
                     </button>
+
+                    {/* Search */}
+                    <div className="shrink-0 relative">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!searchOpen ? (
+                          <motion.button
+                            key="search-btn"
+                            onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <span className="hidden sm:inline">Search</span>
+                          </motion.button>
+                        ) : (
+                          <motion.div
+                            key="search-input"
+                            initial={{ opacity: 0, width: 80, scale: 0.96 }}
+                            animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
+                            exit={{ opacity: 0, width: 80, scale: 0.96 }}
+                            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
+                              <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                            </svg>
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="Search…"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-base md:text-[11px] mx-2 min-w-0 flex-1"
+                            />
+                            <button
+                              onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                              className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
+                            >
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
+                              </svg>
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
                   {/* Pieces/Outfits pill — w-full fills column = Filter+Search width */}
@@ -1021,65 +1072,9 @@ export default function BrowsePage() {
                   </div>
                 </div>
 
-                {/* Divider + Search — sits where the style chips used to, on the
-                    same line as the Pieces/Outfits pill */}
-                <div className="flex items-center gap-2 flex-1 min-w-0 self-end">
-                  <div className="hidden sm:block w-px h-5 shrink-0 bg-[var(--border)]" />
-                  <div className="shrink-0 relative">
-                    <AnimatePresence mode="wait" initial={false}>
-                      {!searchOpen ? (
-                        <motion.button
-                          key="search-btn"
-                          onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                          initial={{ opacity: 0, scale: 0.92 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.92 }}
-                          transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-                          className="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border border-[var(--foreground-muted)] rounded-full px-3 sm:px-5 py-2.5 text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors duration-200"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                          </svg>
-                          <span className="hidden sm:inline">Search</span>
-                        </motion.button>
-                      ) : (
-                        <motion.div
-                          key="search-input"
-                          initial={{ opacity: 0, width: 80, scale: 0.96 }}
-                          animate={{ opacity: 1, width: searchExpandedWidth, scale: 1 }}
-                          exit={{ opacity: 0, width: 80, scale: 0.96 }}
-                          transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                          className="flex items-center border border-[var(--foreground)] rounded-full pl-3.5 pr-1.5 py-1.5 overflow-hidden"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0 text-[var(--foreground-muted)]">
-                            <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-                            <path d="M11 11L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                          </svg>
-                          <input
-                            ref={searchInputRef}
-                            type="text"
-                            placeholder="Search…"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-transparent outline-none text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] text-base md:text-[11px] mx-2 min-w-0 flex-1"
-                          />
-                          <button
-                            onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
-                            className="w-6 h-6 rounded-full bg-[var(--border)] hover:bg-[var(--border-strong)] flex items-center justify-center shrink-0 transition-colors"
-                          >
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                              <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="text-[var(--foreground)]" />
-                            </svg>
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {/* Sort — self-end keeps it on the Pieces/Outfits line */}
-                <div className="relative shrink-0 self-end" ref={sortRef}>
+                {/* Sort — ml-auto holds the right edge now that nothing fills the
+                    middle; self-end keeps it on the Pieces/Outfits line */}
+                <div className="relative shrink-0 ml-auto self-end" ref={sortRef}>
                   <button
                     onClick={() => setSortOpen((o) => !o)}
                     className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
