@@ -70,18 +70,28 @@ function Toggle({
 }
 
 /**
- * A page title clamped to two lines with an ellipsis, opened by the chevron
- * beside it. Catalog names carry colour and size, so left alone they run to
- * three lines and push everything below them down the page.
+ * How many lines a clamped block keeps visible. Spelled out as whole classes
+ * because Tailwind only ships the utilities it can see written down.
+ */
+const CLAMP_CLASS = { 1: "line-clamp-1", 2: "line-clamp-2" } as const;
+export type ClampLines = keyof typeof CLAMP_CLASS;
+
+/**
+ * A page title clamped with an ellipsis, opened by the chevron beside it.
+ * Catalog names carry colour and size, so left alone they run to three lines
+ * and push everything below them down the page. Two lines by default; pass
+ * `lines={1}` where the panel below the title matters more than the title.
  */
 export function ClampedHeading({
   text,
   className = "",
   label = "name",
+  lines = 2,
 }: {
   text: string;
   className?: string;
   label?: string;
+  lines?: ClampLines;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
   const { expanded, setExpanded, overflows } = useClampToggle(ref, text);
@@ -91,7 +101,7 @@ export function ClampedHeading({
       <h1
         ref={ref}
         onClick={() => { if (!expanded && overflows) setExpanded(true); }}
-        className={`flex-1 min-w-0 ${expanded ? "" : "line-clamp-2"} ${
+        className={`flex-1 min-w-0 ${expanded ? "" : CLAMP_CLASS[lines]} ${
           !expanded && overflows ? "cursor-pointer" : ""
         } ${className}`}
       >
@@ -107,20 +117,27 @@ export function ClampedHeading({
 /**
  * Body copy with only its first line readable, the rest behind a blur veil
  * until the chevron opens it.
+ *
+ * At `lines={1}` there is no second line to veil — the one line would end up
+ * blurred and unreadable — so that variant ends in an ellipsis instead.
  */
 export function ClampedDescription({
   text,
   className = "",
   label = "description",
+  lines = 2,
 }: {
   text: string;
   className?: string;
   label?: string;
+  lines?: ClampLines;
 }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const { expanded, setExpanded, overflows } = useClampToggle(ref, text);
 
   if (!text) return null;
+
+  const veiled = lines === 2;
 
   return (
     <div className="flex items-start gap-3">
@@ -131,14 +148,14 @@ export function ClampedDescription({
         <p
           ref={ref}
           className={`text-sm text-[var(--foreground-muted)] leading-[1.6] ${
-            expanded ? "" : "max-h-[2.8rem] overflow-hidden"
+            expanded ? "" : veiled ? "max-h-[2.8rem] overflow-hidden" : CLAMP_CLASS[lines]
           } ${className}`}
         >
           {text}
         </p>
 
         {/* Blur veil covering everything past the first line */}
-        {!expanded && overflows && (
+        {veiled && !expanded && overflows && (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[1.4rem] backdrop-blur-[3px] bg-gradient-to-b from-transparent to-[var(--background)]"

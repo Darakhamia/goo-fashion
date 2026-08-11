@@ -9,6 +9,7 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
+import { isProductAvailable } from "@/lib/availability";
 import ProductCard from "@/components/product/ProductCard";
 import {
   loadLocalLooks,
@@ -31,13 +32,6 @@ interface LookSubmission {
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
-
-/** A piece counts as unavailable only when we know it's sold out everywhere. */
-function isProductAvailable(product: Product | undefined): boolean {
-  if (!product) return true; // unknown product — don't penalise while data loads
-  if (!product.retailers || product.retailers.length === 0) return true;
-  return product.retailers.some((r) => r.availability !== "sold out");
-}
 
 const CATEGORY_TO_SLOT: Record<string, string> = {
   outerwear: "outerwear",

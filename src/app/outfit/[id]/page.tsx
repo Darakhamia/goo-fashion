@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import Image from "@/components/ui/Image";
-import ProductCard from "@/components/product/ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import OutfitCollage from "@/components/outfit/OutfitCollage";
 import OutfitActions from "@/components/outfit/OutfitActions";
+import OutfitLikeButton from "@/components/outfit/OutfitLikeButton";
+import OutfitPieces from "@/components/outfit/OutfitPieces";
 import RecordRecentView from "@/components/RecordRecentView";
 import RecentlyViewed from "@/components/product/RecentlyViewed";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
@@ -110,6 +110,8 @@ export default async function OutfitDetailPage({ params }: Props) {
                   </span>
                 </div>
               )}
+
+              <OutfitLikeButton outfitId={outfit.id} />
             </div>
           </div>
 
@@ -120,14 +122,18 @@ export default async function OutfitDetailPage({ params }: Props) {
               <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3 capitalize">
                 {outfit.occasion} · {outfit.season !== "all" ? outfit.season : "All Season"}
               </p>
+              {/* One line each, chevron for the rest: outfit names and blurbs are
+                  generated from the pieces, so they run long and would otherwise
+                  push the bag button and the piece list off the screen. */}
               <div className="mb-4">
                 <ClampedHeading
                   text={heading}
                   label="outfit name"
+                  lines={1}
                   className="text-3xl md:text-4xl font-bold uppercase text-[var(--foreground)] leading-tight"
                 />
               </div>
-              <ClampedDescription text={outfit.description || seoDescription} />
+              <ClampedDescription text={outfit.description || seoDescription} lines={1} />
 
               <div className="mt-6 flex items-center gap-6">
                 <div>
@@ -166,48 +172,10 @@ export default async function OutfitDetailPage({ params }: Props) {
             </div>
 
             {/* Actions */}
-            <OutfitActions outfitId={outfit.id} />
+            <OutfitActions outfitId={outfit.id} items={outfit.items} />
 
             {/* Items in outfit */}
-            <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-6">
-                Pieces in this outfit
-              </p>
-
-              <div className="space-y-2">
-                {outfit.items.map(({ product, role }) => (
-                  <Link
-                    key={product.id}
-                    href={`/product/${product.id}`}
-                    className="group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-sm bg-[var(--background)] hover:bg-[var(--surface)] transition-all duration-200"
-                  >
-                    <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-[var(--surface)] rounded-lg">
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                        sizes="48px"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-0.5">
-                        {product.brand}
-                      </p>
-                      <p className="text-sm text-[var(--foreground)] truncate">{product.name}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm text-[var(--foreground)]">
-                        From <Price amount={product.priceMin} />
-                      </p>
-                      <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
-                        {product.retailers.length} stores
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <OutfitPieces items={outfit.items} />
           </div>
         </div>
 
