@@ -120,6 +120,12 @@ export interface ProductSwatch {
   images: string[];
   sizes: string[];
   colorGroupIds?: number[];
+  /**
+   * The variant's own measured backdrop. A colour variant is a separate row
+   * with its own photos, so it can have been shot on a different backdrop than
+   * the card's primary product — see `Product.bgColor`.
+   */
+  bgColor?: string;
 }
 
 export interface CropData {
@@ -177,6 +183,13 @@ export interface Product {
   colorGroupIds?: number[];
   /** ISO date string from DB — used to auto-expire the NEW badge after 7 days */
   createdAt?: string;
+  /**
+   * `#rrggbb` measured from the four corners of the product photo, used behind
+   * the image where `object-contain` leaves padding. Absent when the corners
+   * disagreed — a lifestyle shot, a cutout, a photo that bleeds to the edge —
+   * in which case the box keeps its own background. See lib/server/bg-color.
+   */
+  bgColor?: string;
 }
 
 export interface OutfitItem {

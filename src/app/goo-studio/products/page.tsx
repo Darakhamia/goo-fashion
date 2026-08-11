@@ -96,6 +96,14 @@ const STYLE_KEYWORDS: StyleKeyword[] = [
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
 
+/**
+ * Photo-backdrop sampling sizes. Small enough that the dry run answers "how
+ * many photos have a backdrop" in a few seconds; the batch is the most the API
+ * will take in one call.
+ */
+const BACKDROP_SAMPLE = 40;
+const BACKDROP_BATCH = 300;
+
 // Static fallback color groups — shown even before Supabase is configured.
 // IDs match the seed data in supabase-schema.sql (sort_order order).
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
@@ -654,6 +662,7 @@ export default function AdminProductsPage() {
   const [importing, setImporting] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [recategorizing, setRecategorizing] = useState(false);
+  const [sampling, setSampling] = useState(false);
   const [importError, setImportError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1438,6 +1447,130 @@ export default function AdminProductsPage() {
     }
   };
 
+  /**
+   * Measures the backdrop each product photo was shot on, so cards can pad with
+   * that instead of with white.
+   *
+   * Runs in batches because it downloads images: one pass over the whole
+   * catalogue would outlast any request. Clicking again picks up where it left
+   * off — nothing is measured twice.
+   *
+   * The dry run deliberately covers a sample rather than everything. It exists
+   * to answer "how many photos actually have a backdrop", which is a rate, and
+   * measuring a rate over forty photos costs forty downloads instead of ten
+   * thousand.
+   */
+  const handleSampleBackdrops = async () => {
+    setSampling(true);
+    try {
+      const chosenIds = selectedIds.size ? [...selectedIds] : [];
+
+      const post = (body: Record<string, unknown>) =>
+        fetch("/api/admin/product-bg-color", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+      if (!chosenIds.length) {
+        const progressRes = await fetch("/api/admin/product-bg-color", { cache: "no-store" });
+        const p = await progressRes.json();
+        if (!progressRes.ok) { showToast(p.error || "Could not read progress", "err"); return; }
+        if (!p.progress.unmeasured) {
+          showToast(
+            `All ${p.progress.total} measured · ${p.progress.measured} have a backdrop, ` +
+            `${p.progress.declined} have none`,
+          );
+          return;
+        }
+      }
+
+      const dryRes = await post({ limit: BACKDROP_SAMPLE, ids: chosenIds });
+      const dry = await dryRes.json();
+      if (!dryRes.ok) { showToast(dry.error || "Sampling failed", "err"); return; }
+
+      if (!dry.scanned) { showToast("Nothing left to measure"); return; }
+
+      const examples = (dry.measuredSample as { name: string; color: string }[])
+        .slice(0, 6)
+        .map((m) => `  ${m.color}  ${m.name}`)
+        .join("\n");
+      const whyNot = (dry.declinedSample as { reason: string }[])
+        .reduce((acc: Record<string, number>, d) => {
+          // Strip the measured numbers out of the reason so the tally groups.
+          const kind = d.reason.replace(/\s*\([^)]*\)/, "");
+          acc[kind] = (acc[kind] ?? 0) + 1;
+          return acc;
+        }, {});
+      const whyNotNote = Object.entries(whyNot)
+        .sort((a, b) => b[1] - a[1])
+        .map(([reason, n]) => `  ${n} — ${reason}`)
+        .join("\n");
+
+      const remaining = dry.progress.unmeasured as number;
+      const ok = window.confirm(
+        `Measured ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} without saving:\n\n` +
+        `  ${dry.measured} have a single backdrop\n` +
+        `  ${dry.declined} have none — those keep the white box\n` +
+        (dry.failed ? `  ${dry.failed} could not be downloaded — will be retried later\n` : "") +
+        (examples ? `\n${examples}\n` : "") +
+        (whyNotNote ? `\nWhy the rest were declined:\n${whyNotNote}\n` : "") +
+        `\n${chosenIds.length
+          ? `Save these ${dry.scanned} now?`
+          : `Save, and measure up to ${BACKDROP_BATCH} of the ${remaining} unmeasured products?`}\n\n` +
+        `This can be undone.`,
+      );
+      if (!ok) return;
+
+      const applyRes = await post({
+        apply: true,
+        limit: chosenIds.length ? BACKDROP_SAMPLE : BACKDROP_BATCH,
+        ids: chosenIds,
+      });
+      const applied = await applyRes.json();
+      if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
+
+      const left = applied.progress.unmeasured as number;
+      showToast(
+        `${applied.measured} measured · ${applied.declined} have no backdrop` +
+        (applied.failed ? ` · ${applied.failed} to retry` : "") +
+        (left ? ` · ${left} left, click again` : " · all done") +
+        (applied.undoable === false ? " — NOT recorded, cannot be undone" : ""),
+        applied.undoable === false ? "err" : "ok",
+      );
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Sampling failed", "err");
+    } finally {
+      setSampling(false);
+    }
+  };
+
+  /** Clears whatever the last backdrop run wrote. */
+  const handleUndoBackdrops = async () => {
+    if (!confirm("Undo the last photo-backdrop run?\n\nProducts changed since that run are left as they are.")) return;
+    setSampling(true);
+    try {
+      const res = await fetch("/api/admin/product-bg-color", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
+      showToast(
+        json.changedSince
+          ? `Cleared ${json.restored} · ${json.changedSince} changed since and left alone`
+          : `Cleared ${json.restored} product${json.restored === 1 ? "" : "s"}`,
+      );
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Undo failed", "err");
+    } finally {
+      setSampling(false);
+    }
+  };
+
   const toggleKeyword = (kw: StyleKeyword) => {
     setForm((f) => ({
       ...f,
@@ -1609,6 +1742,35 @@ export default function AdminProductsPage() {
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo fix
+          </button>
+          {/* Reads the colour each photo was shot on, so cards stop framing
+              off-white photos in a white box. Works on the selection when there
+              is one, otherwise on the next batch of never-measured products. */}
+          <button
+            onClick={handleSampleBackdrops}
+            disabled={sampling || !dbConfigured}
+            title={
+              dbConfigured
+                ? selectedIds.size
+                  ? `Re-measure the photo backdrop of ${selectedIds.size} selected`
+                  : "Measure photo backdrops so cards pad with the photo's own colour"
+                : "Requires Supabase"
+            }
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {sampling
+              ? "Measuring…"
+              : selectedIds.size
+                ? `Backdrops (${selectedIds.size})`
+                : "Photo backdrops"}
+          </button>
+          <button
+            onClick={handleUndoBackdrops}
+            disabled={sampling || !dbConfigured}
+            title={dbConfigured ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Undo backdrops
           </button>
           <button
             onClick={handleSeed}

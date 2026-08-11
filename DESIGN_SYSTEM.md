@@ -45,6 +45,21 @@ style={{ background: "#0a0a0a", color: "rgba(255,255,255,0.6)" }}
 Никаких `text-gray-*`, `bg-neutral-*`, `border-zinc-*`, никаких hex/rgba литералов в стилях компонентов. Единственные легитимные исключения, подтверждённые кодом:
 
 1. **`bg-white` под фотографией товара.** Это осознанная конвенция для вырезанных каталожных снимков: `src/components/product/ProductCard.tsx:141` и `src/components/product/ProductClient.tsx:152-153`. Белая подложка нужна и в тёмной теме.
+
+   **Замеренный фон снимка перекрывает `bg-white`.** Фото каталога приходят от десятка ретейлеров, и каждый снимает на своём фоне. При `object-contain` в боксе фиксированной пропорции по двум сторонам остаётся подложка бокса — то есть снимок на тёплом сером сидит в белой рамке с видимым швом. Поэтому цвет фона снимка замеряется на сервере (`src/lib/server/bg-color.ts`) и хранится в `products.bg_color`, а бокс изображения красится им:
+
+   ```tsx
+   import { photoBackdrop } from "@/lib/image";
+
+   <div className="relative bg-white overflow-hidden aspect-[3/4]" style={photoBackdrop(product.bgColor)}>
+   ```
+
+   Правила:
+   - Это **единственный** случай, когда сырой цвет попадает в `style`: он не про дизайн, а про данные товара, поэтому переменной, в которой он мог бы жить, не существует.
+   - Только через `photoBackdrop()`. Функция пропускает исключительно `#rrggbb`, поэтому испорченная строка в базе не превратится в произвольный CSS.
+   - Класс `bg-white` **остаётся** и работает как fallback: у товара без замера (`bg_color` пуст или `'none'`) поведение прежнее.
+   - Красится **только бокс изображения**. Тело карточки остаётся на `bg-[var(--surface)]` — иначе карточка перестанет быть частью темы.
+   - Если на экране фото цветового варианта, брать `bgColor` варианта: это отдельная строка товара, снятая, возможно, на другом фоне.
 2. **`bg-black/NN` для контрола, лежащего поверх фото.** `ProductCard.tsx:203,217` — кнопки корзины и лайка. Здесь фон не тема, а фотография.
 3. **Семантические статусы** (`emerald` / `amber` / `red`) — токенов для них в системе **нет**, см. раздел 11.
 
@@ -277,7 +292,11 @@ style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
   transition={{ type: 'spring', bounce: 0.2, duration: 0.8 }}
 >
   <Link href={linkHref} className="block">
-    <div className="relative bg-white overflow-hidden aspect-[3/4]">{/* image */}</div>
+    {/* style — замеренный фон снимка, см. раздел 1; bg-white остаётся fallback'ом */}
+    <div
+      className="relative bg-white overflow-hidden aspect-[3/4]"
+      style={photoBackdrop(activeVariant ? activeVariant.bgColor : product.bgColor)}
+    >{/* image */}</div>
   </Link>
 
   {/* overlay-контрол: всегда виден на мобиле, по hover на десктопе */}

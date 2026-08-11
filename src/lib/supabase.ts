@@ -108,4 +108,6 @@ export type DbProduct = {
   crop_data?: { x: number; y: number; width: number; height: number; focalX: number; focalY: number } | null;
   // Base color group IDs for color filter (references color_groups.id)
   color_group_ids?: number[] | null;
+  // Backdrop colour sampled from the photo's corners (migration 015)
+  bg_color?: string | null;
 };

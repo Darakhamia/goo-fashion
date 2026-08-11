@@ -23,6 +23,7 @@ import { buildStylingNotes } from "@/lib/seo";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
 import { groupForProduct, resolveSubcategory } from "@/lib/categories";
+import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 interface Props {
@@ -139,6 +140,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   className={`relative w-16 h-16 lg:w-20 lg:h-20 shrink-0 rounded-lg overflow-hidden bg-white transition-opacity duration-150 ${
                     i === activeIdx ? "opacity-100 ring-2 ring-[var(--foreground)] rounded-lg" : "opacity-50 hover:opacity-80"
                   }`}
+                  style={photoBackdrop(product.bgColor)}
                 >
                   <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="80px" className="object-contain" />
                 </button>
@@ -149,8 +151,14 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Main image. Kept at 3:4 rather than stretched to the info panel's
               full height — product shots are portrait and use object-contain, so
               a full-height box would be mostly empty white. */}
-          <div className="order-1 md:order-2 flex-1 min-w-0 md:self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white">
-            <div className="relative aspect-[3/4] overflow-hidden bg-white">
+          <div
+            className="order-1 md:order-2 flex-1 min-w-0 md:self-start rounded-2xl overflow-hidden border border-[var(--border)] bg-white"
+            style={photoBackdrop(product.bgColor)}
+          >
+            <div
+              className="relative aspect-[3/4] overflow-hidden bg-white"
+              style={photoBackdrop(product.bgColor)}
+            >
               {mainImage ? (
                 <Image
                   src={mainImage}

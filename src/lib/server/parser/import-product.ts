@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb } from "@/lib/data/db";
 import { colorToHex, storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
+import { storeBackgroundColor } from "@/lib/server/bg-color";
 import type { Product, Category, Gender } from "@/lib/types";
 
 const CATEGORIES: Category[] = [
@@ -162,6 +163,17 @@ export async function importParsedProduct(
       updated: false,
       error: err instanceof Error ? err.message : "Insert failed",
     };
+  }
+
+  // Measure the backdrop the photo was shot on, so the piece lands on the
+  // storefront already padded with its own colour instead of framed in white.
+  //
+  // This happens after the write rather than before it because by now `imageUrl`
+  // points at our own storage (mirroring ran above), which is a copy we can
+  // fetch without a retailer CDN rate-limiting us. Best-effort: a failure leaves
+  // the column null and the batch job in the admin picks the row up.
+  if (productId && imageUrl) {
+    await storeBackgroundColor(productId, imageUrl);
   }
 
   // Record an import job (best-effort — table is optional, ignore if absent).

@@ -14,6 +14,7 @@ import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
 import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type SavedLook } from "@/lib/looks-storage";
 import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
+import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
@@ -1440,6 +1441,11 @@ export default function BuilderPage() {
                         ? product.colorImages![selectedColorKey][0]
                         : null;
                       const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                      // Tracks `displayImage` step for step: whichever row's photo
+                      // is on screen is the row whose backdrop should be behind it.
+                      const backdrop = forcedVariant?.bgColor
+                        ?? (colorImageUrl ? product.bgColor : activeVariant?.bgColor)
+                        ?? product.bgColor;
                       const hasVariants = (product.variants?.length ?? 0) > 1;
 
                       return (
@@ -1470,7 +1476,7 @@ export default function BuilderPage() {
                           }`}
                         >
                           {/* Image */}
-                          <div className="relative aspect-[3/4] bg-white overflow-hidden">
+                          <div className="relative aspect-[3/4] bg-white overflow-hidden" style={photoBackdrop(backdrop)}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={displayImage}
@@ -1693,7 +1699,10 @@ export default function BuilderPage() {
                     onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
                   >
                     {/* Thumbnail */}
-                    <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center">
+                    <div
+                      className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center"
+                      style={photoBackdrop(activeVariant?.bgColor ?? picked?.bgColor)}
+                    >
                       {displayImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img key={displayImage} src={displayImage} alt={picked!.name} className="swatch-img-enter w-full h-full object-contain" />
@@ -2415,7 +2424,11 @@ export default function BuilderPage() {
                 const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
                 if (!picked) return null;
                 return (
-                  <div key={slot.id} className="w-16 h-20 bg-white overflow-hidden shrink-0">
+                  <div
+                    key={slot.id}
+                    className="w-16 h-20 bg-white overflow-hidden shrink-0"
+                    style={photoBackdrop(activeVariant?.bgColor ?? picked.bgColor)}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={displayImage!} alt={picked.name} className="w-full h-full object-contain" />
                   </div>

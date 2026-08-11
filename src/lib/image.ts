@@ -129,3 +129,35 @@ export function upscaleImageUrl(url: string): string {
 
   return out;
 }
+
+/**
+ * True for a string this codebase is willing to hand to a `style` attribute.
+ *
+ * `products.bg_color` is a text column, so it is text until proven otherwise —
+ * a bad import or a hand-edited row must not be able to put arbitrary CSS in
+ * front of a shopper. Full six-digit hex only: shorthand is rejected too, so
+ * there is exactly one shape to reason about.
+ */
+export function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+/**
+ * The inline background for a box holding one product photo.
+ *
+ * Product photos are laid out `object-contain` inside fixed-ratio boxes, so a
+ * photo whose ratio doesn't match gets padding on two sides — and that padding
+ * is the box's own colour, which puts a visible seam beside every photo shot on
+ * anything other than pure white. Padding with the photo's measured backdrop
+ * (see `lib/server/bg-color`) removes the seam.
+ *
+ * This is the one place a raw colour is allowed into a style attribute rather
+ * than coming from a token: it is per-product data, not a design decision, so
+ * there is no variable it could live in. `undefined` leaves the box's existing
+ * class-based background alone, which is what an unmeasured product wants.
+ */
+export function photoBackdrop(
+  bgColor: string | null | undefined,
+): { backgroundColor: string } | undefined {
+  return isHexColor(bgColor) ? { backgroundColor: bgColor } : undefined;
+}
