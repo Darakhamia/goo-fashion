@@ -81,6 +81,7 @@ export function dbToProduct(row: DbProduct): Product {
     cropData: row.crop_data ?? undefined,
     colorGroupIds: row.color_group_ids?.length ? row.color_group_ids : undefined,
     createdAt: row.created_at,
+    bgColor: row.bg_color ?? undefined,
   };
 }
 
@@ -117,6 +118,7 @@ export function productToDb(p: Partial<Product>) {
   if (p.isGroupPrimary !== undefined) extras.is_group_primary = p.isGroupPrimary ?? false;
   if (p.cropData !== undefined)       extras.crop_data = p.cropData ?? null;
   if (p.colorGroupIds !== undefined)  extras.color_group_ids = p.colorGroupIds ?? [];
+  if (p.bgColor !== undefined)        extras.bg_color = p.bgColor ?? null;
   return { ...base, ...extras };
 }
 
@@ -132,6 +134,7 @@ const OPTIONAL_COLUMNS = [
   "variant_group_id",
   "color_hex",
   "is_group_primary",
+  "bg_color",
 ];
 
 /** PostgREST's code for "the payload names a column I don't know about". */
@@ -228,6 +231,7 @@ function toSwatch(p: Product): ProductSwatch {
     images:        p.images ?? [],
     sizes:         p.sizes ?? [],
     colorGroupIds: p.colorGroupIds,
+    bgColor:       p.bgColor,
   };
 }
 

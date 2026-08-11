@@ -5,6 +5,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import ProductImage from "./ProductImage";
 import { motion } from "framer-motion";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
+import { photoBackdrop } from "@/lib/image";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
@@ -137,8 +138,14 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
       onMouseLeave={() => setIsHovered(false)}
     >
       <Link href={linkHref} className="block">
-        {/* Image */}
-        <div className="relative bg-white overflow-hidden aspect-[3/4]">
+        {/* Image. The box is padded with the photo's own backdrop where one was
+            measured — a colour variant carries its own, since it is a separate
+            product row that may have been shot on a different wall. Unmeasured
+            photos keep `bg-white`. */}
+        <div
+          className="relative bg-white overflow-hidden aspect-[3/4]"
+          style={photoBackdrop(activeVariant ? activeVariant.bgColor : product.bgColor)}
+        >
           <div
             className="absolute inset-0 flex"
             style={{

@@ -5,6 +5,7 @@ import { getAllProducts } from "@/lib/data/db";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { storeBackgroundColor } from "@/lib/server/bg-color";
 
 /** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
 const MAX_IDS = 24;
@@ -57,10 +58,18 @@ export async function POST(req: Request) {
     supabase!.from("products").insert(payload).select().single(),
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Measure the photo's backdrop now, while there is one product to measure, so
+  // an imported piece looks right on the storefront without a maintenance run.
+  // Best-effort: failure leaves the column null and the batch job picks it up.
+  const created = data as DbProduct;
+  const bgColor =
+    created.bg_color ?? (created.image_url ? await storeBackgroundColor(created.id, created.image_url) : null);
+
   revalidatePath("/");
   return NextResponse.json(
     {
-      ...dbToProduct(data as DbProduct),
+      ...dbToProduct({ ...created, bg_color: bgColor }),
       ...(dropped.length && { warning: missingColumnWarning(dropped) }),
     },
     { status: 201 },

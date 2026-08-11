@@ -21,6 +21,23 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
   const row = productToDb(body);
+
+  // A replaced photo invalidates the backdrop measured off the old one, and the
+  // new photo's colour cannot be measured without downloading it — which does
+  // not belong in a save. Clearing it puts the row back in the sampling job's
+  // queue, and the box falls back to white until then.
+  if (row.image_url && !("bg_color" in row)) {
+    const { data: before } = await supabase
+      .from("products")
+      .select("image_url")
+      .eq("id", id)
+      .limit(1);
+    const previous = (before ?? [])[0] as { image_url: string | null } | undefined;
+    if (previous && previous.image_url !== row.image_url) {
+      (row as Record<string, unknown>).bg_color = null;
+    }
+  }
+
   const { data, error, dropped } = await writeProductRow<DbProduct>(row, (payload) =>
     supabase!.from("products").update(payload).eq("id", id).select().single(),
   );

@@ -19,7 +19,9 @@ export type AdminAction =
   | "products.recategorized"
   | "products.recategorize_undone"
   | "products.label_fixed"
-  | "products.bulk_edited";
+  | "products.bulk_edited"
+  | "products.bg_color_sampled"
+  | "products.bg_color_undone";
 
 interface AuditEntry {
   admin_id: string;
