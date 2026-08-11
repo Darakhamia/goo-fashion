@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "@/components/ui/Image";
 import type { BlogPost } from "@/lib/types";
 import { estimateReadTime } from "@/lib/blog-render";
+import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 
 interface BlogFormState {
   slug: string;
@@ -37,15 +38,8 @@ const defaultForm: BlogFormState = {
   publishedAt: "",
 };
 
-const COMMON_CATEGORIES = [
-  "AI Stylist",
-  "Style Guide",
-  "Smart Shopping",
-  "Brands",
-  "Trends",
-  "How-to",
-  "News",
-];
+/** Modes of the AI draft modal — a URL to rewrite, or a brief to announce. */
+type AiMode = "url" | "brief";
 
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
@@ -92,7 +86,9 @@ export default function AdminBlogPage() {
 
   // AI generation
   const [showAiModal, setShowAiModal] = useState(false);
+  const [aiMode, setAiMode] = useState<AiMode>("url");
   const [aiUrl, setAiUrl] = useState("");
+  const [aiBrief, setAiBrief] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
 
@@ -228,20 +224,26 @@ export default function AdminBlogPage() {
   };
 
   const openAiModal = () => {
+    setAiMode("url");
     setAiUrl("");
+    setAiBrief("");
     setAiError("");
     setShowAiModal(true);
   };
 
+  const aiInputReady = aiMode === "url" ? aiUrl.trim().length > 0 : aiBrief.trim().length >= 12;
+
   const handleAiGenerate = async () => {
-    if (!aiUrl.trim()) return;
+    if (!aiInputReady) return;
     setAiLoading(true);
     setAiError("");
     try {
       const res = await fetch("/api/admin/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: aiUrl.trim() }),
+        body: JSON.stringify(
+          aiMode === "url" ? { url: aiUrl.trim() } : { brief: aiBrief.trim() }
+        ),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -503,7 +505,9 @@ export default function AdminBlogPage() {
               <div>
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">AI Draft</h2>
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                  Paste a URL — news article, brand page, or collection
+                  {aiMode === "url"
+                    ? "Rewrite an article, brand page or collection"
+                    : "Announce a release in GOO's own name"}
                 </p>
               </div>
               <button
@@ -516,30 +520,81 @@ export default function AdminBlogPage() {
               </button>
             </div>
             <div className="px-6 py-5 flex flex-col gap-4">
-              <div>
-                <label className={labelCls}>URL</label>
-                <input
-                  type="url"
-                  value={aiUrl}
-                  onChange={(e) => setAiUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
-                  placeholder="https://vogue.com/article/..."
-                  className={inputCls}
-                  autoFocus
-                  disabled={aiLoading}
-                />
+              {/* Mode switch — the two modes run different prompts and pick from
+                  different halves of the taxonomy, so the choice is explicit. */}
+              <div
+                role="tablist"
+                aria-label="Draft source"
+                className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] w-fit"
+              >
+                {([
+                  { id: "url" as const, label: "From URL" },
+                  { id: "brief" as const, label: "From brief" },
+                ]).map((t) => (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    aria-selected={aiMode === t.id}
+                    onClick={() => { setAiMode(t.id); setAiError(""); }}
+                    disabled={aiLoading}
+                    className="px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
+                    style={
+                      aiMode === t.id
+                        ? { background: "var(--foreground)", color: "var(--background)" }
+                        : { color: "var(--foreground-muted)" }
+                    }
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
+
+              {aiMode === "url" ? (
+                <div>
+                  <label className={labelCls}>URL</label>
+                  <input
+                    type="url"
+                    value={aiUrl}
+                    onChange={(e) => setAiUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAiGenerate()}
+                    placeholder="https://vogue.com/article/..."
+                    className={inputCls}
+                    autoFocus
+                    disabled={aiLoading}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className={labelCls}>Brief</label>
+                  <textarea
+                    value={aiBrief}
+                    onChange={(e) => setAiBrief(e.target.value)}
+                    placeholder={"Shipped the new outfit builder: drag and drop, up to 6 items per look, saves to your profile.\n\nWorks on mobile now."}
+                    rows={6}
+                    maxLength={4000}
+                    className={`${inputCls} resize-y leading-relaxed`}
+                    autoFocus
+                    disabled={aiLoading}
+                  />
+                  <p className="mt-1.5 text-[10px] text-[var(--foreground-subtle)]">
+                    A few lines is enough. The post can only claim what you write here — nothing is invented.
+                  </p>
+                </div>
+              )}
+
               {aiError && <p className="text-xs text-red-500">{aiError}</p>}
               {aiLoading && (
                 <p className="text-xs text-[var(--foreground-muted)] animate-pulse">
-                  Reading article and writing post — this takes about 10 seconds...
+                  {aiMode === "url"
+                    ? "Reading article and writing post — this takes about 10 seconds..."
+                    : "Writing the post — this takes about 10 seconds..."}
                 </p>
               )}
             </div>
             <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
               <button
                 onClick={handleAiGenerate}
-                disabled={!aiUrl.trim() || aiLoading}
+                disabled={!aiInputReady || aiLoading}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {aiLoading ? "Generating..." : "Generate post"}
@@ -744,8 +799,10 @@ export default function AdminBlogPage() {
                         className={inputCls}
                       />
                       <datalist id="blog-categories">
-                        {COMMON_CATEGORIES.map((c) => (
-                          <option key={c} value={c} />
+                        {BLOG_CATEGORIES.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.blurb}
+                          </option>
                         ))}
                       </datalist>
                     </div>

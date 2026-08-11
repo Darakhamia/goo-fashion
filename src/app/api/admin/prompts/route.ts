@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import {
   DEFAULT_BLOG_SYSTEM_PROMPT,
   DEFAULT_BLOG_USER_PROMPT,
+  DEFAULT_BLOG_BRIEF_PROMPT,
   DEFAULT_EMAIL_PROMPT,
   DEFAULT_STYLIST_PROMPT,
   DEFAULT_IMAGE_FIDELITY,
@@ -20,9 +21,15 @@ export const PROMPT_META: Record<string, { label: string; description: string; d
     category: "content",
   },
   prompt_blog_user: {
-    label: "Blog — User",
-    description: "Пользовательский промт для блога. Используй {{url}} и {{content}} — они будут заменены при генерации.",
+    label: "Blog — From URL",
+    description: "Промт режима «из URL»: чужая статья переписывается в редакционный пост. Используй {{url}} и {{content}} — они подставляются при генерации. Категорию выбирает из редакционной группы.",
     default: DEFAULT_BLOG_USER_PROMPT,
+    category: "content",
+  },
+  prompt_blog_brief: {
+    label: "Blog — From brief",
+    description: "Промт режима «из брифа»: несколько строк от команды превращаются в продуктовый пост для клиентов. Используй {{brief}}. Категорию выбирает из продуктовой группы.",
+    default: DEFAULT_BLOG_BRIEF_PROMPT,
     category: "content",
   },
   prompt_email: {

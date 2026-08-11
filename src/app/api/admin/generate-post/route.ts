@@ -3,7 +3,15 @@ import OpenAI from "openai";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { getPrompt } from "@/lib/server/get-prompt";
-import { DEFAULT_BLOG_SYSTEM_PROMPT, DEFAULT_BLOG_USER_PROMPT } from "@/lib/server/prompt-defaults";
+import {
+  DEFAULT_BLOG_SYSTEM_PROMPT,
+  DEFAULT_BLOG_USER_PROMPT,
+  DEFAULT_BLOG_BRIEF_PROMPT,
+} from "@/lib/server/prompt-defaults";
+
+/** Enough for a paragraph of notes, short of a prompt-injection payload. */
+const BRIEF_MIN = 12;
+const BRIEF_MAX = 4000;
 
 function slugify(s: string): string {
   return s
@@ -80,12 +88,37 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { url } = await req.json();
-    if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "url is required" }, { status: 400 });
+    const { url, brief } = await req.json();
+
+    // Two modes. `url` rewrites someone else's article into an editorial post;
+    // `brief` turns a few lines from the team into a product post, where there
+    // is no page to scrape and no og:image to inherit.
+    const hasUrl = typeof url === "string" && url.trim().length > 0;
+    const hasBrief = typeof brief === "string" && brief.trim().length > 0;
+
+    if (hasUrl === hasBrief) {
+      return NextResponse.json(
+        { error: "Send either url or brief, not both and not neither" },
+        { status: 400 }
+      );
     }
-    if (!isAllowedExternalUrl(url)) {
+    if (hasUrl && !isAllowedExternalUrl(url)) {
       return NextResponse.json({ error: "url must be a public http(s) address" }, { status: 400 });
+    }
+    if (hasBrief) {
+      const len = brief.trim().length;
+      if (len < BRIEF_MIN) {
+        return NextResponse.json(
+          { error: `brief is too short — at least ${BRIEF_MIN} characters` },
+          { status: 400 }
+        );
+      }
+      if (len > BRIEF_MAX) {
+        return NextResponse.json(
+          { error: `brief is too long — at most ${BRIEF_MAX} characters` },
+          { status: 413 }
+        );
+      }
     }
 
     const apiKey = await getOpenAIKey();
@@ -93,19 +126,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 503 });
     }
 
-    const { text: pageText, ogImage } = await fetchPageText(url);
+    // Only the URL mode reaches out to the network.
+    const scraped = hasUrl ? await fetchPageText(url) : { text: "", ogImage: undefined };
+    const ogImage = scraped.ogImage;
 
     // 60s cap so a stuck completion can't hold the serverless function open
     const client = new OpenAI({ apiKey, timeout: 60_000 });
 
     const [systemPrompt, userPromptTemplate] = await Promise.all([
       getPrompt("prompt_blog_system", DEFAULT_BLOG_SYSTEM_PROMPT),
-      getPrompt("prompt_blog_user", DEFAULT_BLOG_USER_PROMPT),
+      hasUrl
+        ? getPrompt("prompt_blog_user", DEFAULT_BLOG_USER_PROMPT)
+        : getPrompt("prompt_blog_brief", DEFAULT_BLOG_BRIEF_PROMPT),
     ]);
 
-    const userPrompt = userPromptTemplate
-      .replace("{{url}}", url)
-      .replace("{{content}}", pageText);
+    const userPrompt = hasUrl
+      ? userPromptTemplate.replace("{{url}}", url).replace("{{content}}", scraped.text)
+      : userPromptTemplate.replace("{{brief}}", brief.trim());
 
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
