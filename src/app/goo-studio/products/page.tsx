@@ -1476,7 +1476,7 @@ export default function AdminProductsPage() {
         const progressRes = await fetch("/api/admin/product-bg-color", { cache: "no-store" });
         const p = await progressRes.json();
         if (!progressRes.ok) { showToast(p.error || "Could not read progress", "err"); return; }
-        if (!p.progress.unmeasured) {
+        if (p.progress.total && !p.progress.unmeasured) {
           showToast(
             `All ${p.progress.total} measured · ${p.progress.measured} have a backdrop, ` +
             `${p.progress.declined} have none`,
@@ -1507,7 +1507,7 @@ export default function AdminProductsPage() {
         .map(([reason, n]) => `  ${n} — ${reason}`)
         .join("\n");
 
-      const remaining = dry.progress.unmeasured as number;
+      const remaining = (dry.progress?.unmeasured ?? dry.scanned) as number;
       const ok = window.confirm(
         `Measured ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} without saving:\n\n` +
         `  ${dry.measured} have a single backdrop\n` +
@@ -1530,11 +1530,13 @@ export default function AdminProductsPage() {
       const applied = await applyRes.json();
       if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
 
-      const left = applied.progress.unmeasured as number;
+      // Null when the progress count failed after a successful write — say
+      // nothing about what is left rather than guessing at it.
+      const left = applied.progress?.unmeasured as number | undefined;
       showToast(
         `${applied.measured} measured · ${applied.declined} have no backdrop` +
         (applied.failed ? ` · ${applied.failed} to retry` : "") +
-        (left ? ` · ${left} left, click again` : " · all done") +
+        (left === undefined ? "" : left ? ` · ${left} left, click again` : " · all done") +
         (applied.undoable === false ? " — NOT recorded, cannot be undone" : ""),
         applied.undoable === false ? "err" : "ok",
       );

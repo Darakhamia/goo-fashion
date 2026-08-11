@@ -69,6 +69,41 @@ async function pooled<T>(items: T[], worker: (item: T) => Promise<void>): Promis
   await Promise.all(lanes);
 }
 
+/**
+ * Raised when the database has not run migration 015, so `bg_color` is not a
+ * column yet.
+ *
+ * This needs its own error because of how the counting queries fail without it.
+ * A filter on a column PostgREST has never heard of comes back with `count`
+ * null, and reading that as zero turns "the migration has not been run" into
+ * "nothing is unmeasured" — i.e. the job cheerfully reports the whole catalogue
+ * as finished while every card still renders white. The failure has to be
+ * carried, not defaulted.
+ */
+class NotMigrated extends Error {
+  constructor(detail: string) {
+    super(
+      "products.bg_color does not exist yet — run supabase/migrations/015_product_bg_color.sql " +
+      `against the database, then reload PostgREST's schema cache. (${detail})`,
+    );
+  }
+}
+
+/** PostgREST codes for "that column is not in my schema": select, then write. */
+const UNKNOWN_COLUMN = new Set(["42703", "PGRST204"]);
+
+function asMissingColumn(error: { code?: string; message?: string } | null): NotMigrated | null {
+  if (!error) return null;
+  const mentionsColumn = /bg_color/.test(error.message ?? "");
+  if (UNKNOWN_COLUMN.has(error.code ?? "") && mentionsColumn) return new NotMigrated(error.message ?? "");
+  // A stale schema cache reports the column as unknown without a code we can
+  // match on, so the message is the only signal left.
+  if (mentionsColumn && /does not exist|schema cache/i.test(error.message ?? "")) {
+    return new NotMigrated(error.message ?? "");
+  }
+  return null;
+}
+
 /** How far through the catalogue the job is, so a batch button can show it. */
 async function progress() {
   const sb = supabase!;
@@ -78,6 +113,9 @@ async function progress() {
     heads().is("bg_color", null),
     heads().eq("bg_color", DECLINED),
   ]);
+
+  const failure = [all, unset, refused].find((r) => r.error)?.error ?? null;
+  if (failure) throw asMissingColumn(failure) ?? new Error(failure.message);
 
   const total = all.count ?? 0;
   const unmeasured = unset.count ?? 0;
@@ -102,7 +140,11 @@ async function run(opts: { apply: boolean; limit: number; ids: string[]; adminId
     : query.is("bg_color", null).order("created_at", { ascending: true }).limit(opts.limit);
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const notMigrated = asMissingColumn(error);
+    if (notMigrated) return NextResponse.json({ error: notMigrated.message }, { status: 503 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   const rows = (data ?? []) as Row[];
 
   const measured: Measured[] = [];
@@ -186,7 +228,9 @@ async function run(opts: { apply: boolean; limit: number; ids: string[]; adminId
     // reversed from here — worth saying rather than discovering later.
     undoable: opts.apply ? undoable : null,
     writeFailures,
-    progress: await progress(),
+    // The write above just succeeded, so a failure here is not the migration —
+    // report the run rather than losing it to a broken progress count.
+    progress: await progress().catch(() => null),
     // Capped samples so the response stays readable on a large catalogue.
     measuredSample: measured.slice(0, 60),
     declinedSample: declined.slice(0, 60),
@@ -275,7 +319,16 @@ export async function GET() {
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
   }
-  return NextResponse.json({ mode: "progress", progress: await progress() });
+  try {
+    return NextResponse.json({ mode: "progress", progress: await progress() });
+  } catch (e) {
+    // 503 rather than 500: the code is fine, the database is behind it.
+    const migration = e instanceof NotMigrated;
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Could not read progress" },
+      { status: migration ? 503 : 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {
