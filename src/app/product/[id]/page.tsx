@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProductById, getAllProducts, getOutfitsByProductId, getBrandLogos } from "@/lib/data/db";
+import { getProductById, getAllProducts, getOutfitsByProductId, getBrandLogos, getAllColorGroups } from "@/lib/data/db";
 import ProductClient from "@/components/product/ProductClient";
 import JsonLd from "@/components/seo/JsonLd";
 import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
@@ -48,10 +48,14 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const variantIds = [product.id, ...(product.variants?.map((v) => v.id) ?? [])];
 
-  const [allProducts, outfitsWithProduct, retailerLogos] = await Promise.all([
+  const [allProducts, outfitsWithProduct, retailerLogos, colorGroups] = await Promise.all([
     getAllProducts(),
     getOutfitsByProductId(variantIds),
     getBrandLogos(),
+    // Fetched here rather than in the client so the colour breadcrumb is right
+    // in the first paint: a label that arrives late would flicker in above the
+    // fold, and it is a link a crawler should see.
+    getAllColorGroups(),
   ]);
   const relatedProducts = allProducts
     .filter((p) => p.id !== product.id && p.category === product.category)
@@ -78,6 +82,7 @@ export default async function ProductDetailPage({ params }: Props) {
           outfitsWithProduct={outfitsWithProduct}
           lowestPrice={lowestPrice}
           retailerLogos={retailerLogos}
+          colorGroups={colorGroups}
         />
       </div>
     </div>
