@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "@/components/ui/Image";
-import type { Outfit, Product, ProductSwatch } from "@/lib/types";
+import type { ColorGroup, Outfit, Product, ProductSwatch } from "@/lib/types";
+import { primaryColorGroup } from "@/lib/color-groups";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
@@ -33,9 +34,11 @@ interface Props {
   lowestPrice: number;
   /** Lower-cased store name → logo URL, from the admin store library. */
   retailerLogos?: Record<string, string>;
+  /** The catalog's colour filters, used to name the colour breadcrumb. */
+  colorGroups?: ColorGroup[];
 }
 
-export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, retailerLogos = {} }: Props) {
+export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, retailerLogos = {}, colorGroups = [] }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
@@ -96,7 +99,12 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const productCrumbs: Crumb[] = useMemo(() => {
     const group = groupForProduct(product.category, product.subcategory, categoryGroups);
     const subcategory = resolveSubcategory(product.category, product.subcategory, categoryGroups);
-    const colour = product.colors?.[0];
+    // The colour *filter*, not the retailer's colour name. Two reasons: the name
+    // is whatever the shop typed — "25 Years/Black/Silver" is one real example,
+    // which is unreadable in a trail — and the crumb has to lead somewhere.
+    // Browse resolves `?color=` against the filter's name, so a retailer string
+    // could never match one and the link silently did nothing.
+    const colour = primaryColorGroup(product.colorGroupIds, colorGroups);
     const q = (params: Record<string, string>) =>
       `/browse?${new URLSearchParams({ view: "pieces", ...params })}`;
 
@@ -108,11 +116,13 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
     if (group) items.push({ label: group.label, href: q({ category: group.id }) });
     if (subcategory) items.push({ label: subcategory, href: q({ subcat: subcategory }) });
     if (product.gender) items.push({ label: product.gender, href: q({ gender: product.gender }) });
-    if (colour) items.push({ label: colour, href: q({ color: colour }) });
+    // No colour filter set, or only ids of groups since deleted: the crumb is
+    // dropped rather than filled with something that leads nowhere.
+    if (colour) items.push({ label: colour.name, href: q({ color: colour.name }) });
     if (product.brand) items.push({ label: product.brand, href: q({ brand: product.brand }) });
     items.push({ label: product.name });
     return items;
-  }, [product, categoryGroups]);
+  }, [product, categoryGroups, colorGroups]);
 
   // Unique, data-derived styling copy so the page isn't a thin duplicate of the
   // source catalog feed.
