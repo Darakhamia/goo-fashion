@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
+import { withTimeout } from "@/lib/server/with-timeout";
 import { SITE_URL } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -37,10 +38,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/refund`, lastModified: now, changeFrequency: "yearly",  priority: 0.2 },
   ];
 
+  // Bounded, not just error-handled: this runs during `next build`, and a
+  // database that goes quiet rather than failing would otherwise hang the deploy
+  // until the platform's own timeout kills it. See lib/server/with-timeout.
   const [products, outfits, blogPosts] = await Promise.all([
-    getAllProducts().catch(() => []),
-    getAllOutfits().catch(() => []),
-    getAllBlogPosts({ publishedOnly: true }).catch(() => []),
+    withTimeout(getAllProducts(), [], "sitemap products"),
+    withTimeout(getAllOutfits(), [], "sitemap outfits"),
+    withTimeout(getAllBlogPosts({ publishedOnly: true }), [], "sitemap posts"),
   ]);
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
