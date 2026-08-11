@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "@/components/ui/Image";
 import type { ColorGroup, Outfit, Product, ProductSwatch } from "@/lib/types";
@@ -93,6 +93,18 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
 
   const mainImage = displayImages[activeIdx] || product.imageUrl || "";
 
+  // Keep the selected thumbnail inside the rail's viewport. Without this the
+  // rail scrolls but the highlight can sit outside it — picking the eleventh
+  // photo would leave the ring somewhere the shopper cannot see.
+  //
+  // `nearest` on both axes is what stops this from yanking the page around: an
+  // element already visible is left alone, so only the rail moves.
+  const thumbsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const active = thumbsRef.current?.children[activeIdx];
+    active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [activeIdx]);
+
   // Home / Browse / Pieces / Category / Subcategory / Gender / Colour / Brand /
   // Name. Every step links back into the catalog with that filter applied; the
   // optional ones are dropped when the product doesn't carry them.
@@ -140,9 +152,29 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
             rail beside it, top-left. ── */}
         <div className="flex flex-col md:flex-row gap-3">
 
-          {/* Thumbnails — only when there are multiple images */}
+          {/* Thumbnails — only when there are multiple images.
+              A piece can carry a dozen photos, and the rail used to grow to fit
+              every one of them: on desktop it ran past the bottom of the photo
+              and stretched the whole row, taking the info panel with it; on
+              phones it wrapped onto line after line. So the rail scrolls
+              instead of growing — down the side on desktop, along the bottom on
+              phones.
+
+              The outer div is the trick. It contributes WIDTH to the flex row
+              and no height, because its only child is absolutely positioned
+              from `md` up. The row's height is therefore set by the photo
+              alone, and the stretched wrapper inherits exactly that — so the
+              rail is always the photo's height, whatever it works out to at
+              this breakpoint, with no measuring and no magic number.
+
+              There is no "more than N photos" threshold either: `auto` overflow
+              already means "scroll only when it doesn't fit". */}
           {displayImages.length > 1 && (
-            <div className="order-2 md:order-1 flex flex-wrap md:flex-col md:flex-nowrap gap-2 shrink-0 self-stretch md:self-start">
+            <div className="order-2 md:order-1 shrink-0 md:relative md:w-16 lg:w-20">
+            <div
+              ref={thumbsRef}
+              className="flex gap-2 overflow-x-auto no-scrollbar md:absolute md:inset-0 md:flex-col md:overflow-x-hidden md:overflow-y-auto"
+            >
               {displayImages.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
@@ -155,6 +187,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                   <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="80px" className="object-contain" />
                 </button>
               ))}
+            </div>
             </div>
           )}
 
