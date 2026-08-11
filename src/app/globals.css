@@ -399,8 +399,21 @@ body {
   40%           { transform: scale(1.2); opacity: 1; }
 }
 
-.blog-prose { line-height: 1.75; }
+/* Long-form article typography. The rem sizes here sit outside the component
+   scale in DESIGN_SYSTEM.md §2 on purpose — that scale is for interface text,
+   this is a reading measure, and the rest of this block already works in rem. */
+.blog-prose { font-size: 1.0625rem; line-height: 1.75; }
 .blog-prose > * + * { margin-top: 1.15em; }
+/* Drop cap only when the article actually opens on a paragraph: a generated
+   post that starts with a heading would otherwise get one mid-body. */
+.blog-prose > p:first-child::first-letter {
+  float: left;
+  font-size: 3.2em;
+  line-height: 0.8;
+  font-weight: 800;
+  margin: 0.07em 0.1em 0 0;
+  color: var(--foreground);
+}
 .blog-prose h2 {
   font-family: var(--font-body);
   font-weight: 700;
@@ -442,12 +455,49 @@ body {
   padding: 0.25em 0 0.25em 1.25em;
   margin-left: 0;
   color: var(--foreground-muted);
+  font-size: 1.15em;
+  line-height: 1.6;
   font-style: italic;
 }
 .blog-prose img {
   width: 100%;
   height: auto;
   margin: 2em 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.blog-prose figure { margin: 2em 0; }
+.blog-prose figure img { margin: 0; }
+.blog-prose figcaption {
+  margin-top: 0.75em;
+  font-size: 0.8em;
+  line-height: 1.5;
+  color: var(--foreground-subtle);
+}
+/* The sanitiser allows tables through, so they need a house style rather than
+   the browser default. Scrolls inside its own box: a wide table must not push
+   the page sideways. */
+.blog-prose table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.blog-prose th,
+.blog-prose td {
+  border: 1px solid var(--border);
+  padding: 0.6em 0.9em;
+  text-align: left;
+  vertical-align: top;
+}
+.blog-prose th {
+  background: var(--surface);
+  font-weight: 500;
+  font-size: 0.85em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
 }
 .blog-prose code {
   font-family: var(--font-body);
