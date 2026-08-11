@@ -26,9 +26,20 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   const { isOpen, close } = useStylist();
   const [products, setProducts] = useState<Product[]>([]);
 
+  // Both auth routes are Clerk catch-alls, so a single sign-in walks through
+  // /login, /login/factor-one, /login/reset-password-… . Matching only the exact
+  // path put the site header, footer and bottom nav back on top of the
+  // full-screen auth layout from the second step onwards — and on /register from
+  // the very first, since it was never listed here at all.
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/");
+
   const isBarePage =
     pathname.startsWith("/goo-studio") ||
-    pathname === "/login" ||
+    isAuthPage ||
     pathname === "/coming-soon" ||
     pathname === "/report";
 
