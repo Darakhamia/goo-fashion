@@ -7,9 +7,17 @@
  * shape the design.
  *
  *   It runs in batches and is resumable. Each call takes the next `limit`
- *   products that have never been measured. A catalogue is worked through by
- *   calling it again, not by waiting longer — a single pass over ten thousand
- *   photos would exceed any request timeout.
+ *   products that have never been measured, and stops starting new photos once
+ *   its time budget is spent — so a batch never exceeds the request limit
+ *   mid-write and lose everything it had measured.
+ *
+ *   It asks Storage for a small rendition rather than the photo. A catalogue
+ *   photo is ~800 KB; the same photo at 600px is ~25 KB, and the four corners
+ *   read the same either way. That is thirty times less to download, and it is
+ *   the difference between a backfill measured in minutes and one in hours.
+ *
+ *   Parallelism is per host, not global. One rate-limited retailer CDN in the
+ *   batch must not throttle the hundreds of photos sitting in our own bucket.
  *
  *   Judged-and-declined is recorded as 'none', not as null. Without that
  *   distinction every re-run would re-download the photos it had already
@@ -32,42 +40,35 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { sampleBackgroundColor, urlToSample, DECLINED } from "@/lib/server/bg-color";
+import {
+  sampleBackgroundColor, urlToSample, pooledByHost, DECLINED, type HostJob,
+} from "@/lib/server/bg-color";
+import { isAlreadyMirrored } from "@/lib/server/storage/product-images";
 
 export const dynamic = "force-dynamic";
-// Downloading images is slow by nature; a batch of 300 needs longer than the
-// platform's default for a serverless route.
+// Downloading images is slow by nature; a full batch needs longer than the
+// platform's default for a serverless route. TIME_BUDGET_MS stops sampling
+// comfortably inside this, so the writes always get their turn.
 export const maxDuration = 300;
 
 type Row = { id: string; name: string; image_url: string | null; images: string[] | null; bg_color: string | null };
 type Measured = { id: string; name: string; color: string; reason: string };
 type Failed = { id: string; name: string; reason: string };
 
-const DEFAULT_LIMIT = 60;
-const MAX_LIMIT = 300;
+const DEFAULT_LIMIT = 200;
+const MAX_LIMIT = 1000;
 
 /**
- * How many photos are in flight at once.
+ * How long sampling may run before it stops starting new photos.
  *
- * Four, because imports mirror photos into our own storage, so in practice this
- * is four parallel requests to our own bucket. The exception — legacy rows that
- * still hotlink a retailer — is why failures are recoverable rather than final:
- * if a CDN rate-limits four at a time, those rows stay unmeasured and the next
- * run picks them up.
+ * Writes happen after sampling, so a run that exceeds the platform's limit
+ * mid-flight would lose everything it had measured. Stopping early instead means
+ * whatever was measured gets written and the rest stays NULL for the next call —
+ * which is what makes a limit of a thousand safe to offer even on a slow link.
  */
-const CONCURRENCY = 4;
+const TIME_BUDGET_MS = 200_000;
 
-/** Run `worker` over `items`, `CONCURRENCY` at a time, preserving nothing but order of completion. */
-async function pooled<T>(items: T[], worker: (item: T) => Promise<void>): Promise<void> {
-  let next = 0;
-  const lanes = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
-    while (next < items.length) {
-      const mine = items[next++];
-      await worker(mine);
-    }
-  });
-  await Promise.all(lanes);
-}
+type Job = HostJob & { row: Row; url: string };
 
 /**
  * Raised when the database has not run migration 015, so `bg_color` is not a
@@ -150,9 +151,35 @@ async function run(opts: { apply: boolean; limit: number; ids: string[]; adminId
   const measured: Measured[] = [];
   const declined: Measured[] = [];
   const failed: Failed[] = [];
+  let viaThumbnail = 0;
+  let ranOutOfTime = 0;
 
-  await pooled(rows, async (row) => {
-    const result = await sampleBackgroundColor(urlToSample(row));
+  const jobs: Job[] = rows.map((row) => {
+    const url = urlToSample(row);
+    let host = "";
+    let own = false;
+    try {
+      host = new URL(url).host;
+      own = isAlreadyMirrored(url);
+    } catch {
+      // No usable URL: keep it in a lane of its own so it fails immediately
+      // instead of being grouped with real hosts.
+      host = `unusable:${row.id}`;
+    }
+    return { row, url, host, own };
+  });
+
+  const deadline = Date.now() + TIME_BUDGET_MS;
+
+  await pooledByHost(jobs, async ({ row, url }) => {
+    if (Date.now() > deadline) {
+      // Out of budget. Not an error and not a verdict — the row is simply left
+      // for the next call, which is why this is safe to do mid-batch.
+      ranOutOfTime++;
+      return;
+    }
+    const result = await sampleBackgroundColor(url);
+    if (result.via === "thumbnail") viaThumbnail++;
     if (result.outcome === "measured" && result.color) {
       measured.push({ id: row.id, name: row.name, color: result.color, reason: result.reason });
     } else if (result.outcome === "unavailable") {
@@ -171,8 +198,9 @@ async function run(opts: { apply: boolean; limit: number; ids: string[]; adminId
 
   if (opts.apply) {
     const writes = [...measured, ...declined];
-    // Grouped by value so a batch of 300 is a handful of statements rather than
-    // 300 round trips. There are only ever a few dozen distinct backdrops.
+    // Grouped by value so a batch of a thousand is a handful of statements
+    // rather than a thousand round trips. There are only ever a few dozen
+    // distinct backdrops across a whole catalogue.
     const byColor = new Map<string, string[]>();
     for (const w of writes) {
       const list = byColor.get(w.color) ?? [];
@@ -223,6 +251,13 @@ async function run(opts: { apply: boolean; limit: number; ids: string[]; adminId
     measured: measured.length,
     declined: declined.length,
     failed: failed.length,
+    // Non-zero means the batch was larger than the time budget allowed. The
+    // remainder is untouched and the next call picks it up.
+    ranOutOfTime,
+    // How many photos arrived as a small rendition. Zero across a whole batch
+    // means Storage is not serving them and every photo came at full size —
+    // which is the answer to "why is this still slow".
+    viaThumbnail,
     applied: opts.apply ? applied : 0,
     // False after an apply means the run was not recorded and cannot be
     // reversed from here — worth saying rather than discovering later.

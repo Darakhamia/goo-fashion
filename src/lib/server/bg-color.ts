@@ -55,6 +55,12 @@ export interface BgColorResult {
   outcome: "measured" | "declined" | "unavailable";
   /** Why — carried into the dry-run report so the numbers can be argued with. */
   reason: string;
+  /**
+   * Which copy was actually downloaded. Reported so a slow run can be explained
+   * rather than guessed at: all-"original" means Storage is not serving
+   * renditions and every photo arrived at full size.
+   */
+  via?: "thumbnail" | "original";
 }
 
 /**
@@ -227,6 +233,74 @@ export function agreedBackground(
 }
 
 /**
+ * A unit of work tagged with the host it will talk to, and whether that host is
+ * ours. `pooledByHost` needs nothing else about it.
+ */
+export interface HostJob {
+  host: string;
+  own: boolean;
+}
+
+/**
+ * How many photos are in flight, per host.
+ *
+ * A single global number was the wrong shape. It has to be small enough for the
+ * worst host in the batch — a retailer CDN that answers our server with 429 —
+ * which then throttles the overwhelming majority of photos, the ones sitting in
+ * our own Storage where parallel requests cost nothing. So the limit is per
+ * host: our bucket gets a real lane count, every external host stays at two.
+ *
+ * Eight rather than more for our own host because with renditions enabled each
+ * request makes the image transformer resize an 800 KB photo, which is CPU on
+ * the same box that serves the site. Eight concurrent resizes is nothing; fifty
+ * during a backfill would be felt by shoppers.
+ */
+export const OWN_HOST_LANES = 8;
+export const OTHER_HOST_LANES = 2;
+/** Ceiling across all hosts, so a batch spanning many CDNs stays sane. */
+export const MAX_LANES = 16;
+
+/**
+ * Run `worker` over the jobs, never more than that host's lane count at a time.
+ *
+ * Every host gets one lane before any host gets a second, so a batch containing
+ * one Farfetch straggler can never leave it starved behind three hundred of
+ * ours. With more distinct hosts than MAX_LANES the ceiling gives way rather
+ * than the guarantee — one lane each is still polite, and dropping a host
+ * entirely would silently skip work.
+ */
+export async function pooledByHost<T extends HostJob>(
+  jobs: T[],
+  worker: (job: T) => Promise<void>,
+): Promise<void> {
+  const queues = new Map<string, T[]>();
+  for (const job of jobs) {
+    const queue = queues.get(job.host);
+    if (queue) queue.push(job);
+    else queues.set(job.host, [job]);
+  }
+
+  // Our own host first, so it gets the spare lanes when the budget is tight.
+  const hosts = [...queues.values()].sort((a, b) => Number(b[0].own) - Number(a[0].own));
+  let spare = Math.max(0, MAX_LANES - hosts.length);
+  const lanes: Promise<void>[] = [];
+
+  for (const queue of hosts) {
+    const wanted = (queue[0].own ? OWN_HOST_LANES : OTHER_HOST_LANES) - 1;
+    const extra = Math.max(0, Math.min(wanted, spare, queue.length - 1));
+    spare -= extra;
+    for (let i = 0; i <= extra; i++) {
+      lanes.push((async () => {
+        // `shift` off a queue shared between this host's lanes: safe because
+        // nothing awaits between the read and the removal.
+        for (let job = queue.shift(); job; job = queue.shift()) await worker(job);
+      })());
+    }
+  }
+  await Promise.all(lanes);
+}
+
+/**
  * Which of a product's photos to measure.
  *
  * Prefers a copy in our own storage. That is not only politeness towards
@@ -234,6 +308,83 @@ export function agreedBackground(
  * that answers our server's fetch at all rather than with a 429. Falls back to
  * the primary photo, then to any photo, then to nothing.
  */
+/**
+ * Width of the rendition sampling asks Storage for.
+ *
+ * A catalogue photo is around 2000×3000 and 800 KB; the same photo at 600px is
+ * 25 KB — thirty times fewer bytes for pixels that answer the same question,
+ * since the corner statistics do not change and the decoder downscales to
+ * DECODE_MAX_SIDE anyway. On a backfill of a few thousand products that is the
+ * difference between hundreds of megabytes and a few.
+ */
+export const SAMPLE_WIDTH = 600;
+
+/**
+ * A small rendition of one of our own Storage objects, or null when the URL is
+ * not one — a partner CDN, or a Storage path in a shape we don't recognise.
+ *
+ * Deliberately passes width only. A single dimension cannot letterbox, so the
+ * corners of the rendition are the corners of the photo; adding a height could
+ * introduce padding of the transformer's choosing and we would measure that
+ * instead of the backdrop.
+ */
+export function thumbnailUrl(url: string): string | null {
+  if (!url || !isAlreadyMirrored(url)) return null;
+  const OBJECT = "/storage/v1/object/public/";
+  const RENDER = "/storage/v1/render/image/public/";
+  try {
+    const u = new URL(url);
+    const at = u.pathname.indexOf(OBJECT);
+    if (at === -1) return null;
+    u.pathname = u.pathname.slice(0, at) + RENDER + u.pathname.slice(at + OBJECT.length);
+    u.searchParams.set("width", String(SAMPLE_WIDTH));
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether this process has seen Storage's image-transform endpoint work.
+ * `null` = not tried yet, `false` = it answered a hard no, so stop asking.
+ */
+let transformsWork: boolean | null = null;
+
+/** Reset between tests; also lets a deploy re-probe without a restart. */
+export function forgetTransformSupport(): void {
+  transformsWork = null;
+}
+
+/** A status that means "this endpoint will never serve me", not "try later". */
+function isPermanentFailure(e: unknown): boolean {
+  const message = e instanceof Error ? e.message : "";
+  return /HTTP 4\d\d/.test(message) || /Not an image/.test(message);
+}
+
+/**
+ * The bytes to measure: the small rendition when Storage will make one, the
+ * original otherwise.
+ *
+ * The fallback is per-process rather than per-photo on purpose. An instance with
+ * image transforms turned off would otherwise pay a doomed request for every
+ * product in the catalogue; one hard failure is enough to learn from. A timeout
+ * is not treated as an answer, because it isn't one.
+ */
+async function fetchForSampling(url: string): Promise<{ buffer: Buffer; via: "thumbnail" | "original" }> {
+  const thumb = transformsWork === false ? null : thumbnailUrl(url);
+  if (thumb) {
+    try {
+      const { buffer } = await fetchImageBuffer(thumb, 20_000);
+      transformsWork = true;
+      return { buffer, via: "thumbnail" };
+    } catch (e) {
+      if (isPermanentFailure(e)) transformsWork = false;
+    }
+  }
+  const { buffer } = await fetchImageBuffer(url, 20_000);
+  return { buffer, via: "original" };
+}
+
 export function urlToSample(row: { image_url?: string | null; images?: string[] | null }): string {
   const candidates = [row.image_url, ...(row.images ?? [])].filter((u): u is string => !!u);
   return candidates.find((u) => isAlreadyMirrored(u)) ?? candidates[0] ?? "";
@@ -282,8 +433,9 @@ export async function sampleBackgroundColor(url: string): Promise<BgColorResult>
   }
 
   let bytes: Buffer;
+  let via: "thumbnail" | "original";
   try {
-    ({ buffer: bytes } = await fetchImageBuffer(url, 20_000));
+    ({ buffer: bytes, via } = await fetchForSampling(url));
   } catch (e) {
     return {
       color: null,
@@ -310,7 +462,7 @@ export async function sampleBackgroundColor(url: string): Promise<BgColorResult>
       return { color: null, outcome: "unavailable", reason: "unreadable image" };
     }
     const corners = sampleCornersFromRaw(data, info.width, info.height, info.channels);
-    return agreedBackground(corners);
+    return { ...agreedBackground(corners), via };
   } catch (e) {
     return {
       color: null,

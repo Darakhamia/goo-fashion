@@ -97,12 +97,21 @@ const STYLE_KEYWORDS: StyleKeyword[] = [
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
 
 /**
- * Photo-backdrop sampling sizes. Small enough that the dry run answers "how
- * many photos have a backdrop" in a few seconds; the batch is the most the API
- * will take in one call.
+ * Photo-backdrop sampling sizes. The sample is small enough to answer "how many
+ * photos have a backdrop" in a few seconds; the batch is the most the API takes
+ * in one call.
  */
 const BACKDROP_SAMPLE = 40;
-const BACKDROP_BATCH = 300;
+const BACKDROP_BATCH = 1000;
+
+/**
+ * How many batches one click will work through before handing back control.
+ *
+ * The point is not to need thirty clicks for a catalogue. It is bounded anyway,
+ * because an unbounded loop against a job that has quietly stopped making
+ * progress would spin forever — see the stall check in the loop itself.
+ */
+const BACKDROP_MAX_ROUNDS = 40;
 
 // Static fallback color groups — shown even before Supabase is configured.
 // IDs match the seed data in supabase-schema.sql (sort_order order).
@@ -1517,28 +1526,60 @@ export default function AdminProductsPage() {
         (whyNotNote ? `\nWhy the rest were declined:\n${whyNotNote}\n` : "") +
         `\n${chosenIds.length
           ? `Save these ${dry.scanned} now?`
-          : `Save, and measure up to ${BACKDROP_BATCH} of the ${remaining} unmeasured products?`}\n\n` +
+          : `Save, and keep going until all ${remaining} unmeasured products are done?`}\n\n` +
         `This can be undone.`,
       );
       if (!ok) return;
 
-      const applyRes = await post({
-        apply: true,
-        limit: chosenIds.length ? BACKDROP_SAMPLE : BACKDROP_BATCH,
-        ids: chosenIds,
-      });
-      const applied = await applyRes.json();
-      if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
+      // One click works through the catalogue rather than one batch of it. The
+      // loop is bounded two ways: a round cap, and a stall check — if a round
+      // measures nothing and declines nothing, everything left is failing to
+      // download and calling again would only repeat that.
+      let rounds = 0;
+      let totalMeasured = 0;
+      let totalDeclined = 0;
+      let totalFailed = 0;
+      let thumbnails = 0;
+      let notRecorded = false;
+      let left: number | undefined;
 
-      // Null when the progress count failed after a successful write — say
-      // nothing about what is left rather than guessing at it.
-      const left = applied.progress?.unmeasured as number | undefined;
+      while (rounds < BACKDROP_MAX_ROUNDS) {
+        rounds++;
+        const res = await post({
+          apply: true,
+          limit: chosenIds.length ? BACKDROP_SAMPLE : BACKDROP_BATCH,
+          ids: chosenIds,
+        });
+        const round = await res.json();
+        if (!res.ok) {
+          showToast(round.error || "Apply failed", "err");
+          break;
+        }
+
+        totalMeasured += round.measured ?? 0;
+        totalDeclined += round.declined ?? 0;
+        totalFailed = round.failed ?? 0;
+        thumbnails += round.viaThumbnail ?? 0;
+        if (round.undoable === false) notRecorded = true;
+        // Null when the progress count failed after a successful write — say
+        // nothing about what is left rather than guessing at it.
+        left = round.progress?.unmeasured as number | undefined;
+
+        const moved = (round.measured ?? 0) + (round.declined ?? 0);
+        if (chosenIds.length || left === undefined || left === 0 || moved === 0) break;
+
+        showToast(`${totalMeasured} measured · ${left} left…`);
+      }
+
       showToast(
-        `${applied.measured} measured · ${applied.declined} have no backdrop` +
-        (applied.failed ? ` · ${applied.failed} to retry` : "") +
+        `${totalMeasured} measured · ${totalDeclined} have no backdrop` +
+        (totalFailed ? ` · ${totalFailed} to retry` : "") +
         (left === undefined ? "" : left ? ` · ${left} left, click again` : " · all done") +
-        (applied.undoable === false ? " — NOT recorded, cannot be undone" : ""),
-        applied.undoable === false ? "err" : "ok",
+        // Worth saying: without renditions every photo came at full size, which
+        // is the difference between a minute and an hour on a large catalogue.
+        (totalMeasured && !thumbnails ? " — full-size photos, no Storage renditions" : "") +
+        (notRecorded ? " — NOT recorded, cannot be undone" : ""),
+        notRecorded ? "err" : "ok",
       );
       await fetchProducts();
     } catch (e) {
