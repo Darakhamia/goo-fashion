@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllProducts, getAllOutfits, getAllBlogPosts } from "@/lib/data/db";
+import { withTimeout } from "@/lib/server/with-timeout";
 
 export const revalidate = 3600;
 
@@ -30,10 +31,13 @@ const SITE_SECTIONS = [
 ];
 
 export default async function SitemapPage() {
+  // Bounded, not just error-handled: this runs during `next build`, and a
+  // database that goes quiet rather than failing would otherwise hang the deploy
+  // until the platform's own timeout kills it. See lib/server/with-timeout.
   const [products, outfits, blogPosts] = await Promise.all([
-    getAllProducts().catch(() => []),
-    getAllOutfits().catch(() => []),
-    getAllBlogPosts({ publishedOnly: true }).catch(() => []),
+    withTimeout(getAllProducts(), [], "sitemap products"),
+    withTimeout(getAllOutfits(), [], "sitemap outfits"),
+    withTimeout(getAllBlogPosts({ publishedOnly: true }), [], "sitemap posts"),
   ]);
 
   return (
