@@ -1,31 +1,54 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLikes } from "@/lib/context/likes-context";
-import { useAuth } from "@/lib/context/auth-context";
+import { useCart } from "@/lib/context/cart-context";
 import { track } from "@/lib/analytics/track";
+import { isProductAvailable } from "@/lib/availability";
+import type { OutfitItem } from "@/lib/types";
 
 interface OutfitActionsProps {
   outfitId: string;
+  items: OutfitItem[];
 }
 
-export default function OutfitActions({ outfitId }: OutfitActionsProps) {
-  const { isOutfitLiked, toggleOutfitLike } = useLikes();
-  const { isLoggedIn, login } = useAuth();
+/**
+ * The outfit's two actions: put the whole look in the bag, or share it.
+ *
+ * Saving lives on the photo now (`OutfitLikeButton`), the same place a piece is
+ * saved from, so it is not repeated here.
+ */
+export default function OutfitActions({ outfitId, items }: OutfitActionsProps) {
+  const { addManyToCart } = useCart();
   const [copied, setCopied] = useState(false);
-
-  const liked = isOutfitLiked(outfitId);
+  const [bagAdded, setBagAdded] = useState(false);
 
   useEffect(() => {
     track("outfit_view", { targetId: outfitId });
   }, [outfitId]);
 
-  const handleLike = () => {
-    if (!isLoggedIn) {
-      login("", "");
-      return;
-    }
-    toggleOutfitLike(outfitId);
+  // Sold-out pieces are dropped rather than blocking the whole look — the
+  // label says so, so the bag never quietly holds fewer pieces than promised.
+  const availableItems = items.filter((it) => isProductAvailable(it.product));
+  const partial = availableItems.length < items.length;
+
+  const handleAddToBag = () => {
+    if (bagAdded || availableItems.length === 0) return;
+    addManyToCart(
+      availableItems.map(({ product }) => {
+        const officialRetailer = product.retailers.find((r) => r.isOfficial) ?? product.retailers[0] ?? null;
+        return {
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          imageUrl: product.imageUrl,
+          price: product.priceMin,
+          currency: product.currency,
+          retailerUrl: officialRetailer?.url ?? null,
+        };
+      })
+    );
+    setBagAdded(true);
+    setTimeout(() => setBagAdded(false), 2000);
   };
 
   const handleShare = async () => {
@@ -46,24 +69,31 @@ export default function OutfitActions({ outfitId }: OutfitActionsProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 mb-12">
       <button
-        onClick={handleLike}
-        className={`text-xs tracking-[0.14em] uppercase font-medium px-8 py-4 rounded-full transition-opacity duration-200 flex items-center justify-center gap-2 ${
-          liked
-            ? "text-[var(--foreground)] bg-transparent border border-[var(--foreground)] hover:opacity-70"
-            : "text-[var(--background)] bg-[var(--foreground)] hover:opacity-80"
-        }`}
+        onClick={handleAddToBag}
+        disabled={availableItems.length === 0}
+        className="text-xs tracking-[0.14em] uppercase font-medium px-8 py-4 rounded-full flex items-center justify-center gap-2 text-[var(--background)] bg-[var(--foreground)] hover:opacity-80 transition-opacity duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        {!isLoggedIn ? (
-          "Sign in to save"
-        ) : liked ? (
+        {bagAdded ? (
           <>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" />
+            <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+              <path d="M1 5L4.5 8.5L12 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Saved
+            Added to bag
           </>
         ) : (
-          "Save Outfit"
+          <>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1h2l1.5 7.5" />
+              <path d="M4.5 8.5h8l1.5-5.5H4z" />
+              <circle cx="6.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+              <circle cx="11.5" cy="13.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            {availableItems.length === 0
+              ? "Sold out"
+              : partial
+                ? `Add ${availableItems.length} available`
+                : `Add all ${items.length} to bag`}
+          </>
         )}
       </button>
       <button
