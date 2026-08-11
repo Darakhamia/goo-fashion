@@ -72,24 +72,24 @@ const PALETTES: Record<"light" | "dark", Palette> = {
 
 const ELEMENTS = {
   // The card stops being a card: the column around it does the framing, so the
-  // box gives up its own border, fill, shadow and padding and just flows.
+  // box gives up its own border, fill and shadow and just flows.
   //
   // The `!` suffix is Tailwind v4's important modifier, and here it is load
   // bearing rather than decoration. Clerk paints these boxes with emotion, which
   // injects into <head> after the app stylesheet, so a plain utility of equal
-  // specificity loses. Colour and type classes happen to win anyway; box
-  // geometry and fills do not, and Clerk's own `card` padding was pushing the
-  // form ~2rem to the right of the wordmark and the legal links above and below
-  // it. Only the properties that have to beat Clerk are marked — everything else
-  // stays a plain class so Clerk keeps its own internal rhythm.
-  // px-0! on all three boxes Clerk nests: whichever of them carries the inset,
-  // the content ends up flush with the column. Padding cannot go negative, so
-  // zeroing one that had none is a no-op rather than an overshoot.
+  // specificity loses. Colour and type classes happen to win anyway; fills and
+  // frames do not. Only those are marked — everything else stays a plain class so
+  // Clerk keeps its own internal rhythm.
+  //
+  // Clerk's horizontal padding is deliberately left alone. Zeroing it once put
+  // the heading flush against `cardBox`, which carries a radius and
+  // `overflow: hidden`, and the first glyph came out shaved. The wordmark and the
+  // legal links are centred on the column instead, so they line up on the card's
+  // centre and nothing has to sit on its edge.
   rootBox: "w-full",
-  cardBox: "w-full max-w-none border-0! bg-transparent! shadow-none! px-0!",
-  card: "w-full border-0! bg-transparent! shadow-none! px-0! pt-0!",
-  main: "px-0!",
-  scrollBox: "bg-transparent! shadow-none! px-0!",
+  cardBox: "w-full max-w-none border-0! bg-transparent! shadow-none!",
+  card: "w-full border-0! bg-transparent! shadow-none! pt-0!",
+  scrollBox: "bg-transparent! shadow-none!",
 
   // Clerk owns this heading on every step ("Sign in to GOO-Fashion", "Check
   // your email", …), so it is restyled rather than replaced — hiding it would
@@ -150,12 +150,13 @@ const ELEMENTS = {
   spinner: "text-[var(--foreground-muted)]",
 
   // The "Secured by Clerk" strip stays — it is required on the plan we are on.
-  // Flattening its fill is enough to stop it reading as a detached grey bar, and
-  // that fill is another one Clerk sets itself, so it needs the `!` too. In Clerk
-  // v6 the footer is a sibling of `card` inside `cardBox`, not a child of it, so
-  // zeroing the card's padding does not reach it.
-  footer: "bg-transparent! border-0! px-0! pt-6 shadow-none!",
-  footerAction: "bg-transparent! px-0!",
+  // Flattening its fill is enough to stop it reading as a detached grey bar. In
+  // Clerk v6 the footer is a sibling of `card` inside `cardBox`, not a child, so
+  // it has to be addressed on its own. `bg-none!` joins `bg-transparent!` here
+  // because the strip survived a colour-only override on production — that only
+  // clears `background-color`, and a gradient or image would sit through it.
+  footer: "bg-transparent! bg-none! border-0! pt-6 shadow-none!",
+  footerAction: "bg-transparent! bg-none!",
   footerActionText: "text-[13px] text-[var(--foreground-muted)]",
   footerActionLink: "text-[13px] text-[var(--foreground)] underline underline-offset-4",
   footerPages: "bg-transparent",
@@ -281,7 +282,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             left edge, which is what makes the column read as a composed page
             instead of a card floating in the middle of the screen. */}
         <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col">
-          <div className="shrink-0">
+          {/* Wordmark and legal links are centred on the column, so they sit on
+              the card's centre line. The form keeps its own left-aligned
+              typography — Clerk's padding insets it evenly, so the two agree. */}
+          <div className="shrink-0 text-center">
             <Link
               href="/"
               // Verbatim from the header wordmark (Navigation.tsx:146-150) so the
@@ -320,7 +324,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             )}
           </motion.div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
             <Link href="/" className="hover:text-[var(--foreground)] transition-colors">
               Back to GOO
             </Link>
