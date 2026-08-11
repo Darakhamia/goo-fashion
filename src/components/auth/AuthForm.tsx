@@ -73,10 +73,23 @@ const PALETTES: Record<"light" | "dark", Palette> = {
 const ELEMENTS = {
   // The card stops being a card: the column around it does the framing, so the
   // box gives up its own border, fill, shadow and padding and just flows.
+  //
+  // The `!` suffix is Tailwind v4's important modifier, and here it is load
+  // bearing rather than decoration. Clerk paints these boxes with emotion, which
+  // injects into <head> after the app stylesheet, so a plain utility of equal
+  // specificity loses. Colour and type classes happen to win anyway; box
+  // geometry and fills do not, and Clerk's own `card` padding was pushing the
+  // form ~2rem to the right of the wordmark and the legal links above and below
+  // it. Only the properties that have to beat Clerk are marked — everything else
+  // stays a plain class so Clerk keeps its own internal rhythm.
+  // px-0! on all three boxes Clerk nests: whichever of them carries the inset,
+  // the content ends up flush with the column. Padding cannot go negative, so
+  // zeroing one that had none is a no-op rather than an overshoot.
   rootBox: "w-full",
-  cardBox: "w-full max-w-none border-0 bg-transparent shadow-none",
-  card: "w-full border-0 bg-transparent shadow-none px-0 pt-0",
-  scrollBox: "bg-transparent shadow-none",
+  cardBox: "w-full max-w-none border-0! bg-transparent! shadow-none! px-0!",
+  card: "w-full border-0! bg-transparent! shadow-none! px-0! pt-0!",
+  main: "px-0!",
+  scrollBox: "bg-transparent! shadow-none! px-0!",
 
   // Clerk owns this heading on every step ("Sign in to GOO-Fashion", "Check
   // your email", …), so it is restyled rather than replaced — hiding it would
@@ -137,9 +150,12 @@ const ELEMENTS = {
   spinner: "text-[var(--foreground-muted)]",
 
   // The "Secured by Clerk" strip stays — it is required on the plan we are on.
-  // Flattening its fill is enough to stop it reading as a detached grey bar.
-  footer: "bg-transparent border-0 px-0 pt-6 shadow-none",
-  footerAction: "bg-transparent px-0",
+  // Flattening its fill is enough to stop it reading as a detached grey bar, and
+  // that fill is another one Clerk sets itself, so it needs the `!` too. In Clerk
+  // v6 the footer is a sibling of `card` inside `cardBox`, not a child of it, so
+  // zeroing the card's padding does not reach it.
+  footer: "bg-transparent! border-0! px-0! pt-6 shadow-none!",
+  footerAction: "bg-transparent! px-0!",
   footerActionText: "text-[13px] text-[var(--foreground-muted)]",
   footerActionLink: "text-[13px] text-[var(--foreground)] underline underline-offset-4",
   footerPages: "bg-transparent",
