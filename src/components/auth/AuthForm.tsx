@@ -9,11 +9,14 @@ import { useTheme } from "@/lib/context/theme-context";
  * Sign-in / sign-up, laid out as a page of this site rather than a Clerk card
  * dropped into an empty screen.
  *
- * The screen splits in two above `lg`: the form sits in a left-hand editorial
- * column that shares one left edge with the wordmark and the legal links, and
- * the right half is a monochrome gradient panel carrying a short pitch for GOO.
- * Below `lg` the panel is dropped and the column runs full width — the same way
- * every other decorative panel on the site behaves on a phone.
+ * The screen splits in two above `lg`: the left half is a monochrome gradient
+ * panel carrying a short pitch for GOO, and the form sits in a right-hand
+ * editorial column that shares one left edge with the wordmark and the legal
+ * links. The panel comes first in the markup as well as on screen, so reading
+ * order matches visual order; it holds no focusable element, so tab order still
+ * lands in the form first. Below `lg` the panel is dropped and the column runs
+ * full width — the same way every other decorative panel on the site behaves on
+ * a phone.
  *
  * Two layers do the Clerk theming, and they are split on purpose:
  *
@@ -151,13 +154,14 @@ const ELEMENTS = {
  * not take a comma-separated stack of gradients; the values are still tokens.
  */
 const PANEL_GRADIENT = [
-  "linear-gradient(152deg, var(--fg-overlay-05) 0%, transparent 45%)",
-  // Two blooms share the top-right corner: the tight one compounds over the wide
-  // one, so the peak lands brighter than a single 8% token can reach on its own.
-  "radial-gradient(52% 38% at 88% 2%, var(--fg-overlay-08) 0%, transparent 62%)",
-  "radial-gradient(120% 88% at 84% 4%, var(--fg-overlay-08) 0%, transparent 58%)",
-  "radial-gradient(96% 74% at 6% 100%, var(--fg-overlay-08) 0%, transparent 62%)",
-  "radial-gradient(62% 52% at 100% 94%, var(--fg-overlay-05) 0%, transparent 60%)",
+  "linear-gradient(208deg, var(--fg-overlay-05) 0%, transparent 45%)",
+  // Two blooms share the top-left corner — the outer edge of the screen, so the
+  // panel darkens towards the seam and frames the form. The tight one compounds
+  // over the wide one, taking the peak past what a single 8% token reaches.
+  "radial-gradient(52% 38% at 12% 2%, var(--fg-overlay-08) 0%, transparent 62%)",
+  "radial-gradient(120% 88% at 16% 4%, var(--fg-overlay-08) 0%, transparent 58%)",
+  "radial-gradient(96% 74% at 94% 100%, var(--fg-overlay-08) 0%, transparent 62%)",
+  "radial-gradient(62% 52% at 0% 94%, var(--fg-overlay-05) 0%, transparent 60%)",
   "var(--surface)",
 ].join(", ");
 
@@ -198,6 +202,63 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)] lg:grid lg:grid-cols-2">
+      {/* ── Gradient panel ──────────────────────────────────────────────────── */}
+      <aside className="relative hidden overflow-hidden border-r border-[var(--border)] lg:sticky lg:top-0 lg:block lg:h-screen">
+        <div aria-hidden className="absolute inset-0" style={{ background: PANEL_GRADIENT }} />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ backgroundImage: PANEL_GRAIN, backgroundSize: "22px 22px" }}
+        />
+
+        <div className="relative flex h-full flex-col px-12 py-12 xl:px-16">
+          <p className="shrink-0 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+            Why GOO
+          </p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="flex flex-1 flex-col justify-center py-10"
+          >
+            <div className="max-w-[440px]">
+              {/* A <p>, not a heading: Clerk already renders the page's h1 in the
+                  card next to it, and this is brand copy, not page structure. */}
+              <p className="text-4xl xl:text-5xl font-black uppercase leading-[1.05] text-[var(--foreground)]">
+                Style, simplified
+                <br />
+                by intelligence.
+              </p>
+              <p className="mt-6 text-sm leading-relaxed text-[var(--foreground-muted)]">
+                One platform, one AI — everything you need to go from idea to outfit.
+              </p>
+
+              <ul className="mt-10 border-t border-[var(--border)]">
+                {PITCH.map((item) => (
+                  <li
+                    key={item.number}
+                    className="flex gap-5 border-b border-[var(--border)] py-5"
+                  >
+                    <span className="w-6 shrink-0 pt-0.5 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                      {item.number}
+                    </span>
+                    <div>
+                      <p className="text-[15px] font-semibold leading-snug text-[var(--foreground)]">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-[var(--foreground-muted)]">
+                        {item.body}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+        </div>
+      </aside>
+
       {/* ── Form column ─────────────────────────────────────────────────────── */}
       <div className="flex min-h-screen flex-col px-6 py-10 md:px-12 md:py-12">
         {/* One measure holds the wordmark, the form and the links on a single
@@ -256,63 +317,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </div>
         </div>
       </div>
-
-      {/* ── Gradient panel ──────────────────────────────────────────────────── */}
-      <aside className="relative hidden overflow-hidden border-l border-[var(--border)] lg:sticky lg:top-0 lg:block lg:h-screen">
-        <div aria-hidden className="absolute inset-0" style={{ background: PANEL_GRADIENT }} />
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{ backgroundImage: PANEL_GRAIN, backgroundSize: "22px 22px" }}
-        />
-
-        <div className="relative flex h-full flex-col px-12 py-12 xl:px-16">
-          <p className="shrink-0 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-            Why GOO
-          </p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="flex flex-1 flex-col justify-center py-10"
-          >
-            <div className="max-w-[440px]">
-              {/* A <p>, not a heading: Clerk already renders the page's h1 in the
-                  card next to it, and this is brand copy, not page structure. */}
-              <p className="text-4xl xl:text-5xl font-black uppercase leading-[1.05] text-[var(--foreground)]">
-                Style, simplified
-                <br />
-                by intelligence.
-              </p>
-              <p className="mt-6 text-sm leading-relaxed text-[var(--foreground-muted)]">
-                One platform, one AI — everything you need to go from idea to outfit.
-              </p>
-
-              <ul className="mt-10 border-t border-[var(--border)]">
-                {PITCH.map((item) => (
-                  <li
-                    key={item.number}
-                    className="flex gap-5 border-b border-[var(--border)] py-5"
-                  >
-                    <span className="w-6 shrink-0 pt-0.5 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
-                      {item.number}
-                    </span>
-                    <div>
-                      <p className="text-[15px] font-semibold leading-snug text-[var(--foreground)]">
-                        {item.title}
-                      </p>
-                      <p className="mt-1 text-[13px] leading-relaxed text-[var(--foreground-muted)]">
-                        {item.body}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </motion.div>
-        </div>
-      </aside>
     </div>
   );
 }
