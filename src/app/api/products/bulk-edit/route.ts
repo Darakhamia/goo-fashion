@@ -26,16 +26,10 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { subcategoryToValue } from "@/lib/categories";
-import type { StyleKeyword } from "@/lib/types";
+import { STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { mergeUnique, nextName } from "@/lib/server/bulk-edit";
 
 export const dynamic = "force-dynamic";
-
-/** Kept in step with the `StyleKeyword` union by the `satisfies` clause. */
-const STYLE_KEYWORDS = [
-  "minimal", "streetwear", "classic", "avant-garde", "romantic", "utilitarian",
-  "bohemian", "preppy", "sporty", "dark", "maximalist", "coastal", "academic",
-] as const satisfies readonly StyleKeyword[];
 
 const GENDERS = new Set(["women", "men", "unisex"]);
 /** Enough to be useful, few enough that one mistake stays reviewable. */

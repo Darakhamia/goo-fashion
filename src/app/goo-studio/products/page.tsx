@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
@@ -89,10 +90,6 @@ const MISSING_FILTERS: { value: string; label: string; test: (p: Product) => boo
 const filterSelectCls =
   "rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
 
-const STYLE_KEYWORDS: StyleKeyword[] = [
-  "minimal", "streetwear", "classic", "avant-garde", "romantic",
-  "utilitarian", "bohemian", "preppy", "sporty", "dark", "maximalist", "coastal", "academic",
-];
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
 
