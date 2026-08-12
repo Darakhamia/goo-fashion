@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 
 interface PendingLook {
   id: string;
@@ -46,10 +47,6 @@ const CATEGORIES: { value: Category | "all"; label: string }[] = [
   { value: "knitwear", label: "Knitwear" },
   { value: "footwear", label: "Footwear" },
   { value: "accessories", label: "Accessories" },
-];
-const STYLE_KEYWORDS: StyleKeyword[] = [
-  "minimal","streetwear","classic","avant-garde","romantic",
-  "utilitarian","bohemian","preppy","sporty","dark","maximalist","coastal","academic",
 ];
 const ROLES: OutfitRole[] = ["hero", "secondary", "accent"];
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { StyleKeyword } from "@/lib/types";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 
@@ -14,11 +16,6 @@ import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMP
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Tab = "account" | "plan" | "stylist";
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
-type StyleKeyword =
-  | "minimal" | "classic" | "streetwear" | "sporty" | "avant-garde"
-  | "romantic" | "utilitarian" | "bohemian" | "preppy" | "dark"
-  | "maximalist" | "coastal" | "academic";
-
 interface StylePreferences {
   bodyType: BodyType | null;
   budget: string | null;
@@ -39,11 +36,6 @@ const BODY_TYPES: { id: BodyType; label: string; description: string }[] = [
   { id: "tall", label: "Tall", description: "Elongated proportions" },
 ];
 
-const STYLE_KEYWORDS: StyleKeyword[] = [
-  "minimal", "classic", "streetwear", "sporty", "avant-garde",
-  "romantic", "utilitarian", "bohemian", "preppy", "dark",
-  "maximalist", "coastal", "academic",
-];
 
 const COLOR_PALETTE = [
   { name: "Ivory", hex: "#F5F0E8", light: true },

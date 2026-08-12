@@ -7,6 +7,8 @@ import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
+import type { StyleKeyword } from "@/lib/types";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
@@ -133,14 +135,14 @@ function MenuCaption({ children }: { children: React.ReactNode }) {
 function LookCard({
   look,
   onDelete,
-  onRename,
+  onUpdate,
   allProducts,
   publication,
   onSubmitted,
 }: {
   look: SavedLook;
   onDelete: () => void;
-  onRename: (id: string, name: string) => void;
+  onUpdate: (id: string, patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords">>) => void;
   allProducts: Product[];
   publication: PublicationStatus | null;
   onSubmitted: (lookId: string, generatedImage: string | null) => void;
@@ -156,6 +158,49 @@ function LookCard({
   const [menu, setMenu] = useState<"share" | "more" | null>(null);
   const [modalShare, setModalShare] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
+
+  // ── Details editor ──────────────────────────────────────────────────────
+  // Held as a draft rather than written on each keystroke: every write pushes
+  // the look to the account, and a request per character is not a save, it is a
+  // flood. The draft is seeded when the sheet opens so Cancel really cancels.
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<{ name: string; description: string; styleKeywords: string[] }>({
+    name: "",
+    description: "",
+    styleKeywords: [],
+  });
+
+  const openEditor = () => {
+    setMenu(null);
+    setDraft({
+      name: look.name ?? "",
+      description: look.description ?? "",
+      styleKeywords: look.styleKeywords ?? [],
+    });
+    setEditing(true);
+  };
+
+  const toggleDraftStyle = (kw: StyleKeyword) => {
+    setDraft((d) => ({
+      ...d,
+      styleKeywords: d.styleKeywords.includes(kw)
+        ? d.styleKeywords.filter((k) => k !== kw)
+        : [...d.styleKeywords, kw],
+    }));
+  };
+
+  const commitDetails = () => {
+    onUpdate(look.id, {
+      // An empty name means "no name", not the literal empty string — the card
+      // falls back to autoName, and the catalogue to its own default.
+      name: draft.name.trim() || undefined,
+      description: draft.description.trim() || undefined,
+      // Normalised so the stored order matches the vocabulary rather than the
+      // order the chips happened to be clicked in.
+      styleKeywords: normalizeStyleKeywords(draft.styleKeywords),
+    });
+    setEditing(false);
+  };
 
   // System name by content type — used whenever the user hasn't named the look
   const autoName = !look.generatedImage
@@ -202,7 +247,9 @@ function LookCard({
     setNameValue(trimmed);
     setEditingName(false);
     setModalEditingName(false);
-    if (trimmed !== (look.name || autoName)) onRename(look.id, trimmed === autoName ? "" : trimmed);
+    if (trimmed !== (look.name || autoName)) {
+      onUpdate(look.id, { name: trimmed === autoName ? undefined : trimmed });
+    }
   };
 
   const canSubmit = !!look.generatedImage && publication !== "pending" && publication !== "approved";
@@ -688,6 +735,9 @@ function LookCard({
               <MenuItem onClick={() => { setMenu(null); setNameValue(look.name || autoName); setEditingName(true); }}>
                 Rename
               </MenuItem>
+              <MenuItem onClick={openEditor}>
+                Edit details
+              </MenuItem>
               {look.generatedImage && (
                 <a
                   href={look.generatedImage}
@@ -707,6 +757,101 @@ function LookCard({
           </div>
         </div>
       </div>
+
+      {/* ── Details editor ──
+          Name, description and style tags: the three things that used to be
+          decided for the shopper. They travel with a publication submission and
+          become the catalogue outfit's own name, description and filters. */}
+      <AnimatePresence>
+      {editing && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setEditing(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.15 }}
+            className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 max-w-md w-full max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit look details"
+          >
+            <p className="text-sm font-medium text-[var(--foreground)] mb-5">Edit look</p>
+
+            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
+              Name
+            </label>
+            <input
+              type="text"
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              placeholder={autoName}
+              maxLength={120}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5"
+            />
+
+            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
+              Description
+            </label>
+            <textarea
+              value={draft.description}
+              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+              placeholder="What makes this look work?"
+              rows={4}
+              maxLength={2000}
+              className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-5 resize-none"
+            />
+
+            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
+              Styles
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-6">
+              {STYLE_KEYWORDS.map((kw) => {
+                const on = draft.styleKeywords.includes(kw);
+                return (
+                  <button
+                    key={kw}
+                    onClick={() => toggleDraftStyle(kw)}
+                    aria-pressed={on}
+                    className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+                      on
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {kw}
+                  </button>
+                );
+              })}
+            </div>
+
+            {publication === "pending" && (
+              <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
+                Already submitted — these edits apply to your copy, and to the next submission.
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={commitDetails}
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="flex-1 h-9 text-[11px] tracking-[0.1em] uppercase font-medium rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      </AnimatePresence>
 
       {/* ── Delete confirmation modal ── */}
       <AnimatePresence>
@@ -1340,9 +1485,19 @@ export default function SavedPage() {
     });
   };
 
-  const renameLook = (id: string, name: string) => {
+  /**
+   * Applies an edit to one saved look — locally first, then to the account.
+   *
+   * Local-first is deliberate: a look lives in localStorage and is mirrored to
+   * the server for signed-in users, so the edit must survive a failed push
+   * rather than disappear from under the person who made it.
+   *
+   * Replaces a rename-only version. The fields differ but the write does not,
+   * and two copies of "save locally, then push" would drift.
+   */
+  const updateLook = (id: string, patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords">>) => {
     setMyLooks((prev) => {
-      const next = prev.map((l) => l.id === id ? { ...l, name: name || undefined } : l);
+      const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
       saveLocalLooks(next);
       if (user) {
         const look = next.find((l) => l.id === id);
@@ -1528,7 +1683,7 @@ export default function SavedPage() {
                   <LookCard
                     look={look}
                     onDelete={() => deleteLook(look.id)}
-                    onRename={renameLook}
+                    onUpdate={updateLook}
                     allProducts={allProducts}
                     publication={publicationFor(look)}
                     onSubmitted={markSubmitted}
