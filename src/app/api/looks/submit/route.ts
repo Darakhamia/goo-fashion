@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { writeRowDroppingUnknown } from "@/lib/server/write-row";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -18,6 +19,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: null });
   }
 
+  // What the shopper called it travels with the submission. Before this, only
+  // the image, pieces, price and tags were sent, so approval had nothing to name
+  // the outfit with and every community look reached the catalogue as
+  // "Community Look" with no description.
+  const text = (v: unknown, max: number) => {
+    const s = String(v ?? "").trim();
+    return s ? s.slice(0, max) : null;
+  };
+
   const row = {
     user_id: userId,
     generated_image: body.generatedImage,
@@ -26,27 +36,30 @@ export async function POST(req: Request) {
     total_price: body.totalPrice ?? null,
     style_keywords: body.styleKeywords ?? [],
     status: "pending",
+    look_id: body.lookId ?? null,
+    name: text(body.name, 120),
+    description: text(body.description, 2000),
+    occasion: text(body.occasion, 40),
+    season: text(body.season, 20),
   };
 
-  let { data, error } = await supabase
-    .from("pending_looks")
-    .insert({ ...row, look_id: body.lookId ?? null })
-    .select("id")
-    .single();
-
-  // look_id column may not exist on older databases — retry without it
-  if (error) {
-    ({ data, error } = await supabase
-      .from("pending_looks")
-      .insert(row)
-      .select("id")
-      .single());
-  }
+  // Each of these arrived with a migration, so a database a step behind the
+  // deploy drops the ones it lacks and still records the submission — the row
+  // matters more than the label. Replaces a retry that dropped `look_id` on any
+  // error at all, including real ones.
+  const { data, error, dropped } = await writeRowDroppingUnknown<{ id: string }>(
+    row,
+    ["look_id", "name", "description", "occasion", "season"],
+    (payload) => supabase!.from("pending_looks").insert(payload).select("id").single(),
+  );
 
   if (error) {
     console.error("[looks/submit]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  if (dropped.length) {
+    console.warn(`[looks/submit] stored without ${dropped.join(", ")} — run the pending migration`);
+  }
 
-  return NextResponse.json({ ok: true, id: data?.id ?? null });
+  return NextResponse.json({ ok: true, id: data?.id ?? null, dropped });
 }

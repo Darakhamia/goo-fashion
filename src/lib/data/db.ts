@@ -9,6 +9,7 @@ import { outfits as staticOutfits } from "./outfits";
 import { blogPosts as staticBlogPosts } from "./blog";
 import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedStore } from "@/lib/stores";
+import { writeRowDroppingUnknown, type WriteError } from "@/lib/server/write-row";
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -137,14 +138,6 @@ const OPTIONAL_COLUMNS = [
   "bg_color",
 ];
 
-/** PostgREST's code for "the payload names a column I don't know about". */
-const UNKNOWN_COLUMN = "PGRST204";
-
-interface WriteError {
-  code?: string;
-  message: string;
-}
-
 /**
  * Runs a product write, dropping optional columns the database does not have
  * and retrying rather than failing the whole save.
@@ -153,28 +146,16 @@ interface WriteError {
  * product editor — every save carries the new column, so nothing can be saved
  * at all, not just the field the migration added. The dropped names come back
  * so the caller can say what did not persist instead of silently losing it.
+ *
+ * The mechanism itself lives in lib/server/write-row, because the look
+ * submission pipeline needs the same behaviour for its own optional columns.
  */
-export async function writeProductRow<T>(
+export function writeProductRow<T>(
   row: Record<string, unknown>,
   // Supabase query builders are thenable rather than real Promises.
   write: (row: Record<string, unknown>) => PromiseLike<{ data: T | null; error: WriteError | null }>,
-): Promise<{ data: T | null; error: WriteError | null; dropped: string[] }> {
-  const payload = { ...row };
-  const dropped: string[] = [];
-
-  for (;;) {
-    const { data, error } = await write(payload);
-    if (!error) return { data, error: null, dropped };
-
-    const missing =
-      error.code === UNKNOWN_COLUMN
-        ? OPTIONAL_COLUMNS.find((c) => c in payload && error.message.includes(`'${c}'`))
-        : undefined;
-    if (!missing) return { data, error, dropped };
-
-    delete payload[missing];
-    dropped.push(missing);
-  }
+) {
+  return writeRowDroppingUnknown(row, OPTIONAL_COLUMNS, write);
 }
 
 /** Names the columns a save could not write, and why. */
