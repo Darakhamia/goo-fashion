@@ -221,6 +221,10 @@ function LookCard({
           pieces: look.pieces,
           totalPrice: look.totalPrice,
           styleKeywords: look.styleKeywords,
+          // A saved look has carried a name and description all along; they
+          // just were not being sent, so the catalogue never saw them.
+          name: look.name,
+          description: look.description,
         }),
       });
       onSubmitted(look.id, look.generatedImage ?? null);

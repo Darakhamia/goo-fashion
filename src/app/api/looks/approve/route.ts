@@ -34,20 +34,37 @@ export async function POST(req: Request) {
     })
   );
 
+  // What the shopper called it, or an admin's edit of it, wins. The constants
+  // are only a floor for looks submitted before those columns existed: this
+  // route used to hardcode all four, which is why every community outfit in the
+  // catalogue was called "Community Look" and had no description.
+  //
+  // `overrides` lets the admin fix a name at the moment of approval rather than
+  // approving something wrong and editing it afterwards.
+  const overrides = (body.overrides ?? {}) as Record<string, unknown>;
+  const pick = (key: string, fallback: string): string => {
+    const chosen = overrides[key] ?? look[key];
+    const value = String(chosen ?? "").trim();
+    return value || fallback;
+  };
+  const styleKeywords = Array.isArray(overrides.styleKeywords)
+    ? (overrides.styleKeywords as string[])
+    : (look.style_keywords ?? []);
+
   // Create an outfit from the pending look
   const { data: outfit, error: insertErr } = await supabase
     .from("outfits")
     .insert({
-      name: "Community Look",
-      description: "",
-      occasion: "casual",
-      season: "all",
+      name: pick("name", "Community Look"),
+      description: pick("description", ""),
+      occasion: pick("occasion", "casual"),
+      season: pick("season", "all"),
       image_url: look.generated_image,
       items,
       total_price_min: look.total_price ?? 0,
       total_price_max: look.total_price ?? 0,
       currency: "USD",
-      style_keywords: look.style_keywords ?? [],
+      style_keywords: styleKeywords,
       is_ai_generated: true,
       is_saved: false,
       source: "community",
