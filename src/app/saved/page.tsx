@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
@@ -9,6 +10,7 @@ import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
+import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
@@ -149,6 +151,7 @@ function LookCard({
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
   const { formatPrice } = useCurrency();
   const { addManyToCart } = useCart();
   const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
@@ -157,6 +160,7 @@ function LookCard({
   const [modalEditingName, setModalEditingName] = useState(false);
   const [menu, setMenu] = useState<"share" | "more" | null>(null);
   const [modalShare, setModalShare] = useState(false);
+  const [photoMenu, setPhotoMenu] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
 
   // ── Details editor ──────────────────────────────────────────────────────
@@ -169,6 +173,32 @@ function LookCard({
     description: "",
     styleKeywords: [],
   });
+
+  /**
+   * Fill the draft with the copy the public outfit page would generate anyway.
+   *
+   * Not a model call — `buildOutfitSeo` has been composing exactly this text at
+   * render time all along (it is where "OUR LEGACY + BALENCIAGA MINIMAL LOOK"
+   * comes from), it was simply never offered before the fact or stored. So the
+   * suggestion is instant, free, cannot fail, and matches what the catalogue
+   * will show.
+   */
+  const suggestCopy = () => {
+    const resolved = look.pieces
+      .map((pc) => allProducts.find((prod) => prod.id === pc.productId))
+      .filter(Boolean) as Product[];
+    const input = {
+      brands: resolved.map((prod) => prod.brand).filter(Boolean) as string[],
+      styleKeywords: draft.styleKeywords,
+      pieceCount: look.pieces.length,
+      price: formatPrice(look.totalPrice),
+    };
+    setDraft((d) => ({
+      ...d,
+      name: suggestLookName(input),
+      description: suggestLookDescription(input),
+    }));
+  };
 
   const openEditor = () => {
     setMenu(null);
@@ -485,7 +515,7 @@ function LookCard({
     <>
       <div className="group relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {/* Main image — click opens detail modal */}
-        <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
+        <div className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
           {look.generatedImage ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -600,7 +630,7 @@ function LookCard({
             </span>
           )}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
-        </button>
+        </div>
 
         {/* Info */}
         <div className="px-4 pt-3.5 pb-4 flex flex-col">
@@ -665,15 +695,15 @@ function LookCard({
               icon+label pair doesn't fit the narrow two-up cards), the
               original compact icon+label row from md up. */}
           <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
-            <Link
-              href={builderUrl}
+            <button
+              onClick={() => setOpen(true)}
               className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
             >
               <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
                 <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
               </svg>
               Edit
-            </Link>
+            </button>
             <button
               onClick={openShareMenu}
               className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
@@ -684,16 +714,6 @@ function LookCard({
               </svg>
               Share
             </button>
-            <button
-              onClick={() => setMenu(menu === "more" ? null : "more")}
-              aria-label="More actions"
-              className="w-10 h-10 md:w-8 md:h-8 shrink-0 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
-              </svg>
-            </button>
-
             {/* Share menu */}
             <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
               <MenuItem
@@ -730,30 +750,6 @@ function LookCard({
               </MenuCaption>
             </ActionMenu>
 
-            {/* More menu */}
-            <ActionMenu open={menu === "more"} onClose={() => setMenu(null)}>
-              <MenuItem onClick={() => { setMenu(null); setNameValue(look.name || autoName); setEditingName(true); }}>
-                Rename
-              </MenuItem>
-              <MenuItem onClick={openEditor}>
-                Edit details
-              </MenuItem>
-              {look.generatedImage && (
-                <a
-                  href={look.generatedImage}
-                  download="goo-look.jpg"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMenu(null)}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-                >
-                  Download image
-                </a>
-              )}
-              <MenuItem danger onClick={() => { setMenu(null); setConfirmDelete(true); }}>
-                Delete look
-              </MenuItem>
-            </ActionMenu>
           </div>
         </div>
       </div>
@@ -781,9 +777,18 @@ function LookCard({
           >
             <p className="text-sm font-medium text-[var(--foreground)] mb-5">Edit look</p>
 
-            <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5">
-              Name
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)]">
+                Name
+              </label>
+              <button
+                onClick={suggestCopy}
+                className="text-[10px] uppercase tracking-[0.12em] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                title="Fill the name and description from this look's brands, style and price"
+              >
+                Suggest
+              </button>
+            </div>
             <input
               type="text"
               value={draft.name}
@@ -955,6 +960,27 @@ function LookCard({
                     </>
                   )}
                 </p>
+
+                {/* The look's own words and filters. Blank until someone fills
+                    them in, so the absence is visible rather than papered over
+                    with a placeholder that reads like real copy. */}
+                {look.description && (
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-2.5 whitespace-pre-line">
+                    {look.description}
+                  </p>
+                )}
+                {(look.styleKeywords?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2.5">
+                    {look.styleKeywords.map((kw) => (
+                      <span
+                        key={kw}
+                        className="px-2.5 py-1 rounded-full border border-[var(--border)] text-[9px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => { setOpen(false); setModalEditingName(false); setModalShare(false); }}
@@ -984,21 +1010,42 @@ function LookCard({
                         {look.generatedStyle === "flatlay" ? "Flat lay" : look.generatedStyle === "tryon" ? "On You" : "AI"}
                       </span>
                     )}
-                    <a
-                      href={look.generatedImage}
-                      download="goo-look.jpg"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      title="Download image"
-                      aria-label="Download image"
-                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                      </svg>
-                    </a>
+                    {/* Photo actions. Was a bare download icon; the photo also
+                        needs regenerating, and two icons stacked over the image
+                        is one more than it can carry. */}
+                    <div className="absolute top-3 right-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setPhotoMenu((v) => !v)}
+                        aria-label="Photo actions"
+                        aria-expanded={photoMenu}
+                        className="w-9 h-9 rounded-full bg-[var(--background)]/85 backdrop-blur-sm flex items-center justify-center text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
+                        </svg>
+                      </button>
+                      <ActionMenu open={photoMenu} onClose={() => setPhotoMenu(false)}>
+                        <a
+                          href={look.generatedImage}
+                          download="goo-look.jpg"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setPhotoMenu(false)}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                        >
+                          Download image
+                        </a>
+                        <MenuItem
+                          onClick={() => { setPhotoMenu(false); router.push(builderUrl); }}
+                        >
+                          Regenerate photo
+                        </MenuItem>
+                        <MenuCaption>
+                          Regenerating opens this look in the builder, where the
+                          style of the shot is chosen.
+                        </MenuCaption>
+                      </ActionMenu>
+                    </div>
                   </>
                 ) : (
                   <div className="absolute inset-0 bg-gray-200 flex flex-col gap-px">
@@ -1123,17 +1170,30 @@ function LookCard({
                     )}
                   </button>
 
+                  {/* Pieces are edited where pieces are chosen; words and tags
+                      are edited here. Two doors, because they lead to genuinely
+                      different places. */}
+                  <Link
+                    href={builderUrl}
+                    onClick={() => setOpen(false)}
+                    className="mt-2.5 w-full h-10 md:h-9 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
+                      <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
+                    </svg>
+                    Edit pieces
+                  </Link>
+
                   <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
-                    <Link
-                      href={builderUrl}
-                      onClick={() => setOpen(false)}
+                    <button
+                      onClick={openEditor}
                       className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
                     >
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
                         <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
                       </svg>
-                      Edit
-                    </Link>
+                      Edit info
+                    </button>
                     <button
                       onClick={() => setModalShare((v) => { const next = !v; if (next) void ensureShared(); return next; })}
                       className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
@@ -1147,6 +1207,12 @@ function LookCard({
                     <ActionMenu open={modalShare} onClose={() => setModalShare(false)}>
                       <MenuItem onClick={shareLink}>{shareLabel}</MenuItem>
                     </ActionMenu>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-red-500 hover:border-red-500 transition-colors"
+                    >
+                      Delete
+                    </button>
                   </div>
 
                   {/* Publication status block */}
