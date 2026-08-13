@@ -67,7 +67,23 @@ function BagIcon() {
 }
 
 // ── Popover menu (anchored above the actions row) ─────────────────────────────
-function ActionMenu({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+function ActionMenu({
+  open,
+  onClose,
+  children,
+  /**
+   * Which way the dropdown grows on desktop. "up" suits a trigger near the
+   * bottom of its panel, which is every menu here except the one over the
+   * photo — that one sits at the top of the image, and opening upward put it
+   * outside the sheet, on top of the name and tags.
+   */
+  placement = "up",
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  placement?: "up" | "down";
+}) {
   return (
     <AnimatePresence>
       {open && (
@@ -82,11 +98,13 @@ function ActionMenu({ open, onClose, children }: { open: boolean; onClose: () =>
               can never clip off-screen for cards in the left column. From sm: up
               it returns to an anchored dropdown above the trigger. */}
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            initial={{ opacity: 0, y: placement === "down" ? -8 : 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            exit={{ opacity: 0, y: placement === "down" ? -8 : 10, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed left-3 right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[56] w-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5 sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-60 sm:rounded-xl sm:z-50"
+            className={`fixed left-3 right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[56] w-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5 sm:absolute sm:left-auto sm:right-0 sm:w-60 sm:rounded-xl sm:z-50 ${
+              placement === "down" ? "sm:top-full sm:mt-2" : "sm:bottom-full sm:mb-2"
+            }`}
           >
             {children}
           </motion.div>
@@ -1024,7 +1042,7 @@ function LookCard({
                           <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
                         </svg>
                       </button>
-                      <ActionMenu open={photoMenu} onClose={() => setPhotoMenu(false)}>
+                      <ActionMenu open={photoMenu} onClose={() => setPhotoMenu(false)} placement="down">
                         <a
                           href={look.generatedImage}
                           download="goo-look.jpg"
@@ -1211,6 +1229,14 @@ function LookCard({
                       onClick={() => setConfirmDelete(true)}
                       className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-red-500 hover:border-red-500 transition-colors"
                     >
+                      {/* Icon hidden below md for the same reason as its two
+                          siblings: the label alone barely fits a phone. */}
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
+                        <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        <path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                        <path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
                       Delete
                     </button>
                   </div>
