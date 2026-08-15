@@ -67,23 +67,7 @@ function BagIcon() {
 }
 
 // ── Popover menu (anchored above the actions row) ─────────────────────────────
-function ActionMenu({
-  open,
-  onClose,
-  children,
-  /**
-   * Which way the dropdown grows on desktop. "up" suits a trigger near the
-   * bottom of its panel, which is every menu here except the one over the
-   * photo — that one sits at the top of the image, and opening upward put it
-   * outside the sheet, on top of the name and tags.
-   */
-  placement = "up",
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  placement?: "up" | "down";
-}) {
+function ActionMenu({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   return (
     <AnimatePresence>
       {open && (
@@ -98,13 +82,11 @@ function ActionMenu({
               can never clip off-screen for cards in the left column. From sm: up
               it returns to an anchored dropdown above the trigger. */}
           <motion.div
-            initial={{ opacity: 0, y: placement === "down" ? -8 : 10, scale: 0.98 }}
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: placement === "down" ? -8 : 10, scale: 0.98 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
-            className={`fixed left-3 right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[56] w-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5 sm:absolute sm:left-auto sm:right-0 sm:w-60 sm:rounded-xl sm:z-50 ${
-              placement === "down" ? "sm:top-full sm:mt-2" : "sm:bottom-full sm:mb-2"
-            }`}
+            className="fixed left-3 right-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[56] w-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5 sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-60 sm:rounded-xl sm:z-50"
           >
             {children}
           </motion.div>
@@ -533,7 +515,7 @@ function LookCard({
     <>
       <div className="group relative flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         {/* Main image — click opens detail modal */}
-        <div className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
+        <button onClick={() => setOpen(true)} className="img-zoom block w-full text-left relative overflow-hidden rounded-t-2xl aspect-[3/4]">
           {look.generatedImage ? (
             <div className="absolute inset-0 overflow-hidden bg-[var(--surface)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -648,7 +630,7 @@ function LookCard({
             </span>
           )}
           <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--fg-overlay-08)] transition-colors duration-500 z-10" />
-        </div>
+        </button>
 
         {/* Info */}
         <div className="px-4 pt-3.5 pb-4 flex flex-col">
@@ -709,66 +691,6 @@ function LookCard({
             )}
           </button>
 
-          {/* Secondary actions — taller, text-only buttons on phones (the
-              icon+label pair doesn't fit the narrow two-up cards), the
-              original compact icon+label row from md up. */}
-          <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
-            <button
-              onClick={() => setOpen(true)}
-              className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
-                <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
-              </svg>
-              Edit
-            </button>
-            <button
-              onClick={openShareMenu}
-              className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
-                <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-              Share
-            </button>
-            {/* Share menu */}
-            <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
-              <MenuItem
-                onClick={shareLink}
-                icon={
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                }
-              >
-                {shareLabel}
-              </MenuItem>
-              <MenuItem
-                onClick={handleSubmitForPublication}
-                disabled={!canSubmit || submitState === "submitting"}
-                icon={
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 19V5m0 0-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                }
-              >
-                {publication === "pending"
-                  ? "Pending approval"
-                  : publication === "approved"
-                  ? "Published to GOO"
-                  : submitState === "submitting"
-                  ? "Submitting…"
-                  : "Submit for publication"}
-              </MenuItem>
-              <MenuCaption>
-                Publication requires admin approval.
-                {!look.generatedImage && " Generate an image for this look to submit it."}
-              </MenuCaption>
-            </ActionMenu>
-
-          </div>
         </div>
       </div>
 
@@ -1042,27 +964,51 @@ function LookCard({
                           <circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" />
                         </svg>
                       </button>
-                      <ActionMenu open={photoMenu} onClose={() => setPhotoMenu(false)} placement="down">
-                        <a
-                          href={look.generatedImage}
-                          download="goo-look.jpg"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => setPhotoMenu(false)}
-                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-                        >
-                          Download image
-                        </a>
-                        <MenuItem
-                          onClick={() => { setPhotoMenu(false); router.push(builderUrl); }}
-                        >
-                          Regenerate photo
-                        </MenuItem>
-                        <MenuCaption>
-                          Regenerating opens this look in the builder, where the
-                          style of the shot is chosen.
-                        </MenuCaption>
-                      </ActionMenu>
+                      {/* Deliberately not ActionMenu. Below sm that component
+                          positions itself `fixed`, and the sheet around it is a
+                          motion.div that animates `scale` — a transform makes
+                          the modal the containing block for fixed descendants,
+                          so the panel was laid out against the modal and then
+                          clipped by this column's overflow-hidden. That is the
+                          black bar across the photo.
+
+                          A plain absolute panel has none of that: it is
+                          positioned against the button, and it fits inside the
+                          column, so the clipping never engages. */}
+                      <AnimatePresence>
+                        {photoMenu && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setPhotoMenu(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                              transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
+                              className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5"
+                            >
+                              <a
+                                href={look.generatedImage}
+                                download="goo-look.jpg"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setPhotoMenu(false)}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                              >
+                                Download image
+                              </a>
+                              <button
+                                onClick={() => { setPhotoMenu(false); router.push(builderUrl); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                              >
+                                Regenerate photo
+                              </button>
+                              <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-[var(--foreground-subtle)]">
+                                Regenerating opens this look in the builder, where the style of the shot is chosen.
+                              </p>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </>
                 ) : (
@@ -1222,8 +1168,42 @@ function LookCard({
                       </svg>
                       Share
                     </button>
+                    {/* Two kinds of sharing, which is why this is a menu and
+                        not a button: a link for a friend, and a submission for
+                        the catalogue. The second used to live on the card. */}
                     <ActionMenu open={modalShare} onClose={() => setModalShare(false)}>
-                      <MenuItem onClick={shareLink}>{shareLabel}</MenuItem>
+                      <MenuItem
+                        onClick={shareLink}
+                        icon={
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                          </svg>
+                        }
+                      >
+                        {shareLabel}
+                      </MenuItem>
+                      <MenuItem
+                        onClick={handleSubmitForPublication}
+                        disabled={!canSubmit || submitState === "submitting"}
+                        icon={
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 19V5m0 0-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        }
+                      >
+                        {publication === "pending"
+                          ? "Pending approval"
+                          : publication === "approved"
+                          ? "Published to GOO"
+                          : submitState === "submitting"
+                          ? "Submitting…"
+                          : "Submit for publication"}
+                      </MenuItem>
+                      <MenuCaption>
+                        Publication requires admin approval.
+                        {!look.generatedImage && " Generate an image for this look to submit it."}
+                      </MenuCaption>
                     </ActionMenu>
                     <button
                       onClick={() => setConfirmDelete(true)}
