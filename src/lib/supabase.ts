@@ -20,8 +20,40 @@ export function dbToColorGroup(row: DbColorGroup): ColorGroup {
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+/**
+ * Ceiling on any single request to Supabase.
+ *
+ * `supabase-js` fetches with no timeout of its own, so a database that stops
+ * answering — rather than refusing — leaves the caller waiting forever. During
+ * `next build` that is fatal in a way that is very hard to read: several pages
+ * are prerendered and read the catalogue, so the build simply stops, with no
+ * error, until the platform gives up on it hours later.
+ *
+ * Bounding it here rather than at each call site is deliberate. A guard added
+ * page by page covers the pages someone remembered; this covers every request
+ * the app will ever make, including the ones added next month.
+ *
+ * Sixty seconds is chosen against the slowest legitimate request rather than
+ * the typical one: catalogue reads finish in well under a second, but the same
+ * client uploads mirrored product photos of up to 20 MB.
+ */
+const REQUEST_TIMEOUT_MS = Number(process.env.SUPABASE_REQUEST_TIMEOUT_MS) || 60_000;
+
+/**
+ * `fetch` that cannot wait forever, preserving any signal the caller passed.
+ * Exported so the bound can be exercised directly rather than inferred.
+ */
+export function boundedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  return fetch(input, { ...init, signal });
+}
+
 export const supabase = url && key
-  ? createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+  ? createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { fetch: boundedFetch },
+    })
   : null;
 export const isSupabaseConfigured = !!(url && key);
 
