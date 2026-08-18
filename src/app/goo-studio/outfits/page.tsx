@@ -5,6 +5,7 @@ import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
+import { DownloadPhotosButton } from "@/components/admin/DownloadPhotosButton";
 
 interface PendingLook {
   id: string;
@@ -86,6 +87,8 @@ export default function AdminOutfitsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  /** Outcome of the last photo export — this page has no toast to borrow. */
+  const [exportNote, setExportNote] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [featuringId, setFeaturingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -407,15 +410,25 @@ export default function AdminOutfitsPage() {
           </p>
         </div>
         {adminTab === "outfits" && (
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            Add Outfit
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* The look photo of every card in the table, as one ZIP. */}
+            <DownloadPhotosButton
+              kind="outfits"
+              ids={filteredOutfits.length === outfits.length ? null : filteredOutfits.map((o) => o.id)}
+              count={filteredOutfits.length}
+              onNotify={(msg, type) => setExportNote({ msg, type })}
+              title="Download the look photo of every outfit shown, as one ZIP"
+            />
+            <button
+              onClick={openAddModal}
+              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              Add Outfit
+            </button>
+          </div>
         )}
       </div>
 
@@ -606,6 +619,28 @@ export default function AdminOutfitsPage() {
         <div className="mb-4 flex items-center justify-between border border-red-300 bg-red-50 px-4 py-2.5 text-xs text-red-600">
           <span>{deleteError}</span>
           <button onClick={() => setDeleteError("")} className="ml-4 text-red-400 hover:text-red-600 transition-colors">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Photo export outcome */}
+      {exportNote && (
+        <div
+          className={`mb-4 flex items-center justify-between rounded-lg border px-4 py-2.5 text-xs ${
+            exportNote.type === "ok"
+              ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-500"
+              : "border-red-400/30 bg-red-400/15 text-red-500"
+          }`}
+        >
+          <span>{exportNote.msg}</span>
+          <button
+            onClick={() => setExportNote(null)}
+            aria-label="Dismiss"
+            className="ml-4 opacity-60 hover:opacity-100 transition-opacity"
+          >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
