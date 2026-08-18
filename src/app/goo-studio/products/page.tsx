@@ -6,6 +6,7 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
+import { DownloadPhotosButton } from "@/components/admin/DownloadPhotosButton";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -879,6 +880,21 @@ export default function AdminProductsPage() {
     () => [...new Set(products.map((p) => p.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [products],
   );
+
+  /**
+   * What "Download photos" will fetch: the selection when there is one, and
+   * otherwise whatever the filters have narrowed the table to — the same
+   * selection-or-the-rest rule the backdrop button follows.
+   *
+   * A list that is the entire catalogue goes as `null` instead, so exporting
+   * everything stays a short request rather than a POST carrying ten thousand
+   * ids the server is about to read out of its own table anyway.
+   */
+  const exportIds = useMemo(() => {
+    if (selectedIds.size) return filtered.filter((p) => selectedIds.has(p.id)).map((p) => p.id);
+    if (filtered.length === products.length) return null;
+    return filtered.map((p) => p.id);
+  }, [filtered, products, selectedIds]);
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -1820,6 +1836,19 @@ export default function AdminProductsPage() {
           >
             {seeding ? "Seeding…" : "Seed catalog"}
           </button>
+          {/* Card photos out, as one ZIP. Works on the selection when there is
+              one, otherwise on everything the filters have left in the table. */}
+          <DownloadPhotosButton
+            kind="products"
+            ids={exportIds}
+            count={exportIds ? exportIds.length : products.length}
+            onNotify={showToast}
+            title={
+              selectedIds.size
+                ? `Download the card photos of the ${selectedIds.size} selected, as one ZIP`
+                : "Download the card photo of every product shown, as one ZIP"
+            }
+          />
           <button
             onClick={() => setShowImport(true)}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
