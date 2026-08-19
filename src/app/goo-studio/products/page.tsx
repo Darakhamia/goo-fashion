@@ -6,7 +6,7 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
-import { DownloadPhotosButton } from "@/components/admin/DownloadPhotosButton";
+import { DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -882,7 +882,7 @@ export default function AdminProductsPage() {
   );
 
   /**
-   * What "Download photos" will fetch: the selection when there is one, and
+   * What "Download cards" will draw: the selection when there is one, and
    * otherwise whatever the filters have narrowed the table to — the same
    * selection-or-the-rest rule the backdrop button follows.
    *
@@ -1838,15 +1838,15 @@ export default function AdminProductsPage() {
           </button>
           {/* Card photos out, as one ZIP. Works on the selection when there is
               one, otherwise on everything the filters have left in the table. */}
-          <DownloadPhotosButton
+          <DownloadCardsButton
             kind="products"
             ids={exportIds}
             count={exportIds ? exportIds.length : products.length}
             onNotify={showToast}
             title={
               selectedIds.size
-                ? `Download the card photos of the ${selectedIds.size} selected, as one ZIP`
-                : "Download the card photo of every product shown, as one ZIP"
+                ? `Download the ${selectedIds.size} selected cards as pictures, in one ZIP`
+                : "Download the card of every product shown as a picture, in one ZIP"
             }
           />
           <button
