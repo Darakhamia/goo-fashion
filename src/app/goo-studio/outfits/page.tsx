@@ -5,7 +5,7 @@ import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
-import { DownloadPhotosButton } from "@/components/admin/DownloadPhotosButton";
+import { DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 
 interface PendingLook {
   id: string;
@@ -412,12 +412,12 @@ export default function AdminOutfitsPage() {
         {adminTab === "outfits" && (
           <div className="flex items-center gap-2 flex-wrap">
             {/* The look photo of every card in the table, as one ZIP. */}
-            <DownloadPhotosButton
+            <DownloadCardsButton
               kind="outfits"
               ids={filteredOutfits.length === outfits.length ? null : filteredOutfits.map((o) => o.id)}
               count={filteredOutfits.length}
               onNotify={(msg, type) => setExportNote({ msg, type })}
-              title="Download the look photo of every outfit shown, as one ZIP"
+              title="Download the card of every outfit shown as a picture, in one ZIP"
             />
             <button
               onClick={openAddModal}

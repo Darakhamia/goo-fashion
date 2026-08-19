@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   experimental: {
     turbopackUseSystemTlsCerts: true,
   },
+  // The card export draws its type with these font files at request time, by a
+  // path it builds at runtime — which the bundle tracer cannot see, so it would
+  // deploy the route without them and render cards with no text at all.
+  outputFileTracingIncludes: {
+    "/api/admin/export-images": ["./src/assets/fonts/**"],
+  },
   images: {
     // Only hosts we own reach the optimizer. Admins can still paste any product
     // image URL: partner CDNs are rendered `unoptimized` (see

@@ -3,13 +3,13 @@
 import { useCallback, useRef, useState } from "react";
 
 /**
- * "Download photos" for a list of admin cards, pieces or looks alike.
+ * "Download cards" for a list of admin cards, pieces or looks alike.
  *
  * The archive is built by /api/admin/export-images and streamed, so the button
  * reads the response chunk by chunk and shows the megabytes as they land. That
- * counter is the whole point of not just pointing a link at the route: an export
- * of three hundred photos takes a minute or two, and a button that only says
- * "Downloading…" for that long is indistinguishable from one that has hung.
+ * counter is the whole point of not just pointing a link at the route: three
+ * hundred cards take a minute or two to fetch and draw, and a button that only
+ * says "Downloading…" for that long is indistinguishable from one that has hung.
  */
 
 type Kind = "products" | "outfits";
@@ -36,10 +36,10 @@ const TICK = 200;
 
 function filenameFrom(header: string | null, kind: Kind): string {
   const quoted = header ? /filename="([^"]+)"/.exec(header)?.[1] : null;
-  return quoted ?? `goo-${kind}-photos-${new Date().toISOString().slice(0, 10)}.zip`;
+  return quoted ?? `goo-${kind === "products" ? "product" : "look"}-cards-${new Date().toISOString().slice(0, 10)}.zip`;
 }
 
-export function DownloadPhotosButton({ kind, ids, count, disabled, title, onNotify }: Props) {
+export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
   const [busy, setBusy] = useState(false);
   const [received, setReceived] = useState(0);
   const lastTick = useRef(0);
@@ -99,7 +99,7 @@ export function DownloadPhotosButton({ kind, ids, count, disabled, title, onNoti
       URL.revokeObjectURL(url);
 
       onNotify?.(
-        `Photos downloaded (${(blob.size / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`,
+        `Cards downloaded (${(blob.size / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`,
         "ok",
       );
     } catch (e) {
@@ -115,8 +115,8 @@ export function DownloadPhotosButton({ kind, ids, count, disabled, title, onNoti
       ? `Packing… ${(received / MB).toFixed(1)} MB`
       : "Packing…"
     : ids
-      ? `Download photos (${count})`
-      : "Download photos";
+      ? `Download cards (${count})`
+      : "Download cards";
 
   return (
     <button
@@ -126,8 +126,8 @@ export function DownloadPhotosButton({ kind, ids, count, disabled, title, onNoti
       title={
         title ??
         (ids
-          ? `Download the card photos of the ${count} selected`
-          : "Download the card photo of every card here, as one ZIP")
+          ? `Download the ${count} selected cards as pictures`
+          : "Download every card here as a picture, in one ZIP")
       }
       className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
     >

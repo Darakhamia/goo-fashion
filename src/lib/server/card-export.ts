@@ -1,14 +1,17 @@
 /**
- * The parts of the admin photo export that are not about ZIP structure:
- * turning a catalogue row into a file name, and getting the bytes politely.
+ * The parts of the admin card export that are not about ZIP structure: turning a
+ * catalogue row into a file name, getting the photo behind it politely, and
+ * handing it to the renderer that draws the card around it.
  *
- * The export exists because the photos on the cards are scattered across our own
- * Storage bucket and a dozen retailer CDNs, and there is no way to get "the
- * pictures for these fifty pieces" out of the admin short of right-clicking
- * fifty cards. Everything here serves that: download what the card shows, name
- * it after the piece rather than after the CDN's hash, and be a good citizen
- * towards the hosts serving it.
+ * The export exists because there is no way to get "the cards for these fifty
+ * pieces" out of the admin short of screenshotting fifty cards — and a card is
+ * the photo *with* the brand, the name and the price on it, which is what makes
+ * it postable. The photos themselves are scattered across our own Storage bucket
+ * and a dozen retailer CDNs, so everything here serves that: fetch what the card
+ * shows, draw the card, name the file after the piece rather than after the
+ * CDN's hash, and be a good citizen towards the hosts serving it.
  */
+import { renderCard, CARD_EXTENSION, type CardSpec } from "@/lib/server/card-image";
 import { fetchImageBuffer } from "@/lib/server/storage/product-images";
 import type { CropData } from "@/lib/types";
 
@@ -61,19 +64,6 @@ export function safeSegment(raw: string, fallback = "untitled"): string {
 /** Short, stable, human-typable tail that keeps two same-named pieces apart. */
 export function shortId(id: string): string {
   return id.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || "0";
-}
-
-/** The extension to save under: what the server served, or what the URL claims. */
-export function extensionFor(contentType: string, url: string): string {
-  const type = contentType.toLowerCase();
-  if (type.includes("png")) return "png";
-  if (type.includes("webp")) return "webp";
-  if (type.includes("avif")) return "avif";
-  if (type.includes("gif")) return "gif";
-  if (type.includes("jpeg") || type.includes("jpg")) return "jpg";
-  const fromUrl = /\.(jpe?g|png|webp|avif|gif)(?:$|[?#])/i.exec(url)?.[1]?.toLowerCase();
-  if (fromUrl) return fromUrl === "jpeg" ? "jpg" : fromUrl;
-  return "jpg";
 }
 
 /** True once the URL points at our own Supabase Storage, which we may hit harder. */
@@ -197,26 +187,28 @@ export async function applyCrop(bytes: Buffer, crop: CropData): Promise<Buffer> 
   }
 }
 
-export interface PhotoJob {
+export interface CardJob {
   /** Path inside the archive, minus the extension. */
   path: string;
   url: string;
-  /** Applied after download when set, so the file matches the card. */
+  /** Applied after download when set, so the photo matches the card. */
   crop?: CropData;
   /** Shown in the report when this one fails. */
   label: string;
+  /** The card to draw around the photo: its type, and its frame. */
+  spec: CardSpec;
 }
 
-export type PhotoResult =
-  | { ok: true; job: PhotoJob; name: string; data: Buffer }
-  | { ok: false; job: PhotoJob; reason: string };
+export type CardResult =
+  | { ok: true; job: CardJob; name: string; data: Buffer }
+  | { ok: false; job: CardJob; reason: string };
 
-/** Download one photo, crop it if the card is cropped, and name the file. */
-export async function fetchPhoto(job: PhotoJob, timeoutMs = 25_000): Promise<PhotoResult> {
+/** Download one photo, crop it the way the card crops it, and draw the card. */
+export async function renderJob(job: CardJob, timeoutMs = 25_000): Promise<CardResult> {
   try {
-    const { buffer, contentType } = await fetchImageBuffer(job.url, timeoutMs);
-    const data = job.crop ? await applyCrop(buffer, job.crop) : buffer;
-    return { ok: true, job, name: `${job.path}.${extensionFor(contentType, job.url)}`, data };
+    const { buffer } = await fetchImageBuffer(job.url, timeoutMs);
+    const photo = job.crop ? await applyCrop(buffer, job.crop) : buffer;
+    return { ok: true, job, name: `${job.path}.${CARD_EXTENSION}`, data: await renderCard(photo, job.spec) };
   } catch (e) {
     return { ok: false, job, reason: e instanceof Error ? e.message : "unknown error" };
   }
@@ -224,9 +216,9 @@ export async function fetchPhoto(job: PhotoJob, timeoutMs = 25_000): Promise<Pho
 
 // ── Packing ──────────────────────────────────────────────────────────────────
 
-/** When to stop starting new downloads, leaving room to finish the archive. */
+/** When to stop starting new cards, leaving room to finish the archive. */
 export const TIME_BUDGET_MS = 240_000;
-/** Photos in flight at once, across all hosts. The per-host lanes are stricter. */
+/** Cards in flight at once, across all hosts. The per-host lanes are stricter. */
 export const WINDOW = 8;
 /** Ceilings that keep the archive inside plain ZIP's 32-bit fields. */
 export const MAX_ENTRIES = 5_000;
@@ -253,18 +245,18 @@ export function formatBytes(bytes: number): string {
 
 export function reportText(report: ExportReport, now = new Date()): string {
   const lines = [
-    `Goo Fashion — ${report.kind === "products" ? "product" : "outfit"} card photos`,
+    `Goo Fashion — ${report.kind === "products" ? "product" : "look"} cards`,
     `Exported ${now.toISOString()}`,
     "",
     `Cards asked for : ${report.asked}`,
-    `Photos packed   : ${report.packed}`,
+    `Cards packed    : ${report.packed}`,
     `Archive size    : ${formatBytes(report.bytes)}`,
   ];
   if (report.truncated) {
     lines.push("", `STOPPED EARLY: ${report.truncated}`, "Re-run on a smaller selection to get the rest.");
   }
   if (report.failures.length) {
-    lines.push("", `Could not be downloaded (${report.failures.length}):`, ...report.failures);
+    lines.push("", `Could not be drawn (${report.failures.length}):`, ...report.failures);
   } else if (!report.truncated) {
     lines.push("", "Every card in the selection was exported.");
   }
@@ -272,7 +264,7 @@ export function reportText(report: ExportReport, now = new Date()): string {
 }
 
 /**
- * Fetch the photos and hand them to the ZIP writer one entry at a time.
+ * Draw the cards and hand them to the ZIP writer one entry at a time.
  *
  * This is the only place the budgets are enforced, and it always reaches its
  * final yield: whatever stopped it — time, size, a CDN refusing every request —
@@ -282,17 +274,17 @@ export function reportText(report: ExportReport, now = new Date()): string {
  * `report` is mutated as the archive grows so the caller can read the totals
  * after the stream drains.
  */
-export async function* packPhotos(
-  jobs: PhotoJob[],
+export async function* packCards(
+  jobs: CardJob[],
   report: ExportReport,
-  fetchOne: (job: PhotoJob) => Promise<PhotoResult> = fetchPhoto,
+  drawOne: (job: CardJob) => Promise<CardResult> = renderJob,
 ): AsyncGenerator<{ name: string; data: Buffer }> {
   const withHostSlot = createHostGate();
   const startedAt = Date.now();
   const taken = new Set<string>();
-  const download = (job: PhotoJob) => withHostSlot(hostOf(job.url), () => fetchOne(job));
+  const draw = (job: CardJob) => withHostSlot(hostOf(job.url), () => drawOne(job));
 
-  for await (const result of mapOrdered(jobs, WINDOW, download)) {
+  for await (const result of mapOrdered(jobs, WINDOW, draw)) {
     if (!result.ok) {
       report.failures.push(`${result.job.label} — ${result.reason}`);
       continue;
@@ -307,7 +299,7 @@ export async function* packPhotos(
     }
 
     // Two ids can end in the same eight characters; a suffix is cheaper than
-    // silently overwriting one card's photo with another's on unpacking.
+    // silently overwriting one card with another on unpacking.
     let name = result.name;
     for (let n = 2; taken.has(name); n++) {
       name = result.name.replace(/(\.[^.]+)$/, `-${n}$1`);
