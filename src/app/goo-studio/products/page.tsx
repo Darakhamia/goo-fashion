@@ -1836,8 +1836,9 @@ export default function AdminProductsPage() {
           >
             {seeding ? "Seeding…" : "Seed catalog"}
           </button>
-          {/* Card photos out, as one ZIP. Works on the selection when there is
-              one, otherwise on everything the filters have left in the table. */}
+          {/* The cards themselves, drawn as pictures, as one ZIP. Works on the
+              selection when there is one, otherwise on everything the filters
+              have left in the table. */}
           <DownloadCardsButton
             kind="products"
             ids={exportIds}

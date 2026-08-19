@@ -411,7 +411,7 @@ export default function AdminOutfitsPage() {
         </div>
         {adminTab === "outfits" && (
           <div className="flex items-center gap-2 flex-wrap">
-            {/* The look photo of every card in the table, as one ZIP. */}
+            {/* The card of every look in the table, drawn as a picture, as one ZIP. */}
             <DownloadCardsButton
               kind="outfits"
               ids={filteredOutfits.length === outfits.length ? null : filteredOutfits.map((o) => o.id)}
