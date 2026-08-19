@@ -227,6 +227,15 @@ export const MAX_TOTAL_BYTES = 1_500 * 1024 * 1024;
 /** What the archive's own `_export.txt` is written from. */
 export interface ExportReport {
   kind: "products" | "outfits";
+  /**
+   * Which build drew these cards.
+   *
+   * Here because an export that comes back looking like the previous version of
+   * itself has exactly two explanations — the code is wrong, or the deploy is
+   * old — and from the downloaded file alone there was no way to tell them
+   * apart. Now the archive says which commit answered.
+   */
+  build: string;
   /** Cards in the selection, including those that had no photo to fetch. */
   asked: number;
   packed: number;
@@ -247,6 +256,8 @@ export function reportText(report: ExportReport, now = new Date()): string {
   const lines = [
     `Goo Fashion — ${report.kind === "products" ? "product" : "look"} cards`,
     `Exported ${now.toISOString()}`,
+    "",
+    `Drawn by build  : ${report.build}`,
     "",
     `Cards asked for : ${report.asked}`,
     `Cards packed    : ${report.packed}`,

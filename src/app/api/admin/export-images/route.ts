@@ -50,6 +50,18 @@ function parseIds(raw: unknown): Set<string> | null {
 }
 
 /**
+ * The commit this deploy was built from, for the archive's report.
+ *
+ * The host sets it; a machine running `next dev` does not, and says so. It is
+ * how an archive that arrived looking wrong can be pinned on the code or on a
+ * deploy that never happened, without anyone having to guess.
+ */
+function buildStamp(): string {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+  return sha ? sha.slice(0, 7) : "local (not a deployed build)";
+}
+
+/**
  * A price line the way the card writes it: one figure when the retailers agree,
  * a range when they don't.
  *
@@ -162,6 +174,7 @@ export async function POST(req: Request) {
 
   const report: ExportReport = {
     kind,
+    build: buildStamp(),
     asked: jobs.length + missing.length,
     packed: 0,
     bytes: 0,
