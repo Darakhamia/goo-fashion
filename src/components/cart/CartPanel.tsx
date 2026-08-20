@@ -90,52 +90,57 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
 }
 
 /**
- * The buy step. Every piece links to its own store, so checkout is "open all of
- * them at once" rather than a basket we could charge for — the panel says
- * exactly how many pages will open and how many of the pieces carry a link, so
- * the count on the button is never a promise the cart cannot keep.
+ * The buy step. Every piece is bought on its own store, so checkout is "open all
+ * of them at once" rather than a basket we could charge for. One click opens a
+ * tab per piece in the cart — nothing is left behind — while the status line
+ * still says how many of those tabs are official store links.
  */
 export function OpenAllPanel({ items }: { items: CartItem[] }) {
   const [popupBlocked, setPopupBlocked] = useState(false);
-  const linked = items.filter((item) => item.retailerUrl);
-  const count = linked.length;
-  const allVerified = count > 0 && count === items.length;
+  const total = items.length;
+  const linkedCount = items.filter((item) => item.retailerUrl).length;
+  const fallbackCount = total - linkedCount;
+  const allVerified = total > 0 && linkedCount === total;
 
+  // Every piece in the cart gets a tab. One that carries an official store link
+  // opens the store; one that does not opens its own page here, which is where
+  // its retailers are listed — so the button never leaves a piece behind.
   const openAll = () => {
     let blocked = false;
-    linked.forEach((item) => {
-      const win = window.open(item.retailerUrl as string, "_blank", "noopener,noreferrer");
+    items.forEach((item) => {
+      const href = item.retailerUrl ?? `/product/${item.id}`;
+      const win = window.open(href, "_blank", "noopener,noreferrer");
       if (!win) blocked = true;
     });
     setPopupBlocked(blocked);
   };
 
-  const status = count === 0
+  const status = linkedCount === 0
     ? "No store links yet"
     : allVerified
       ? "All links verified"
-      : `${count} of ${items.length} links verified`;
+      : `${linkedCount} of ${total} links verified`;
 
-  const caption = count === 0
-    ? "None of these pieces has an official product page saved yet."
-    : popupBlocked
-      ? "Your browser blocked some tabs — allow pop-ups for this site to open them all."
-      : `This will open ${count} official product ${count === 1 ? "page" : "pages"} in new tabs.`;
+  const caption = popupBlocked
+    ? "Your browser blocked some tabs — allow pop-ups for this site to open them all."
+    : allVerified
+      ? `This will open ${total} official product ${total === 1 ? "page" : "pages"} in new tabs.`
+      : `This will open ${total} tabs: ${linkedCount} official product ${linkedCount === 1 ? "page" : "pages"} and ${fallbackCount} ${fallbackCount === 1 ? "piece" : "pieces"} on GOO.`;
 
   return (
     <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <p className="flex items-center gap-2 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-3">
-        <span className={`w-1.5 h-1.5 rounded-full inline-block ${count > 0 ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${linkedCount > 0 ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`} />
         {status}
       </p>
       <button
         onClick={openAll}
-        disabled={count === 0}
+        disabled={total === 0}
         className="w-full h-11 md:h-10 rounded-xl flex items-center justify-center gap-2 text-[11px] tracking-[0.1em] uppercase font-semibold bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ExternalLinkIcon size={13} />
         Open all
-        <span className="opacity-60">· {count} {count === 1 ? "site" : "sites"}</span>
+        <span className="opacity-60">· {total} {total === 1 ? "item" : "items"}</span>
       </button>
       <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed text-center mt-2.5">{caption}</p>
     </div>
