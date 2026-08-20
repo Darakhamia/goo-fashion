@@ -6,7 +6,7 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
-import { DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -2408,6 +2408,9 @@ export default function AdminProductsPage() {
                             {product.cropData && <circle cx="7" cy="7" r="1.5" fill="currentColor"/>}
                           </svg>
                         </button>
+                        {/* This one piece's card, as a PNG, without going
+                            through the selection and the toolbar. */}
+                        <DownloadCardButton kind="products" id={product.id} onNotify={showToast} />
                         <button onClick={() => openEditModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Edit">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />

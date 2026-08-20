@@ -20,8 +20,15 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-/** How many image pixels one CSS pixel of the card becomes. */
-const SCALE = 3;
+/**
+ * How many image pixels one CSS pixel of the card becomes.
+ *
+ * Four puts a 320pt card out at 1280×2124, which is a picture you can post or
+ * put in a deck rather than a thumbnail — and still inside what a product photo
+ * has the detail for, since most of them arrive between 1000 and 2000 pixels
+ * wide.
+ */
+const SCALE = 4;
 
 // ── Geometry, in the CSS pixels the card components are written in ───────────
 
@@ -414,13 +421,13 @@ async function photoLayer(
 }
 
 /**
- * Draw one card and return it as a JPEG.
+ * Draw one card and return it as a PNG.
  *
- * JPEG rather than PNG because an export is hundreds of these at once and a
- * photographic PNG is several times the size for no visible gain; the quality
- * and the full chroma are what keep the small type crisp. The rounded corners
- * are cut and then filled with the page's own background, which is what a card
- * looks like on the site.
+ * PNG because the file is a deliverable rather than a payload: it is posted,
+ * dropped into a deck, opened again and re-cropped, and none of that should
+ * cost it a generation of JPEG artefacts around the small type. The rounded
+ * corners are cut and then filled with the page's own background, which is what
+ * a card looks like on the site.
  */
 export async function renderCard(photo: Buffer, spec: CardSpec): Promise<Buffer> {
   ensureFonts();
@@ -443,9 +450,14 @@ export async function renderCard(photo: Buffer, spec: CardSpec): Promise<Buffer>
       { input: Buffer.from(maskSvg(radiusOf(spec), height)), blend: "dest-in", top: 0, left: 0 },
     ])
     .flatten({ background: BACKGROUND })
-    .jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: true })
+    // Six rather than nine: the extra effort buys about one percent of the file
+    // and costs nearly double the time, which a few hundred cards feel.
+    .png({ compressionLevel: 6 })
     .toBuffer();
 }
 
 /** The extension the bytes from `renderCard` should be saved under. */
-export const CARD_EXTENSION = "jpg";
+export const CARD_EXTENSION = "png";
+
+/** What to serve those bytes as, when one card is answered on its own. */
+export const CARD_MEDIA_TYPE = "image/png";
