@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "@/components/ui/Image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
@@ -11,6 +10,7 @@ import { SignedIn, SignedOut, useClerk } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
+import { CartRow, CloseIcon, OpenAllPanel } from "@/components/cart/CartPanel";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -512,19 +512,22 @@ export default function Navigation() {
       {cartOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setCartOpen(false)} aria-hidden="true" />
-          <div ref={cartDrawerRef}
-            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[360px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
+          <div ref={cartDrawerRef} role="dialog" aria-modal="true" aria-label="Cart"
+            className="fixed top-3 right-3 bottom-3 left-3 w-auto sm:left-auto sm:w-full sm:max-w-[400px] z-50 bg-[var(--background)] rounded-2xl border border-[var(--border)] flex flex-col animate-slide-in-right overflow-hidden"
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
-            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+            <div className="px-5 pt-5 pb-4 flex items-start justify-between shrink-0">
               <div>
-                <p className="text-[13px] font-medium text-[var(--foreground)]">Cart</p>
-                <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-0.5">
+                <p className="text-[20px] font-bold text-[var(--foreground)] leading-none">Cart</p>
+                <p className="text-[12px] text-[var(--foreground-muted)] mt-1.5">
                   {cartCount === 0 ? "Empty" : `${cartCount} ${cartCount === 1 ? "item" : "items"}`}
                 </p>
               </div>
-              <button onClick={() => setCartOpen(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors text-xl leading-none" aria-label="Close cart">×</button>
+              <button onClick={() => setCartOpen(false)} aria-label="Close cart"
+                className="-mr-1 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all">
+                <CloseIcon size={13} />
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-3 pb-3">
               {cartItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--border-strong)]">
@@ -532,38 +535,37 @@ export default function Navigation() {
                     <circle cx="13" cy="27" r="2" />
                     <circle cx="23" cy="27" r="2" />
                   </svg>
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Your cart is empty</p>
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Your cart is empty</p>
                   <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">Build an outfit in the builder and click&nbsp;&ldquo;Shop the Look&rdquo; to add items here.</p>
                 </div>
               ) : (
-                <ul className="flex flex-col gap-2 p-3">
-                  {cartItems.map(item => (
-                    <li key={item.id} className="flex gap-3 px-3 py-3 items-start rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--foreground-muted)] transition-all duration-200">
-                      <Link href={`/product/${item.id}`} onClick={() => setCartOpen(false)} className="flex gap-3 flex-1 min-w-0 cursor-pointer">
-                        <Image src={item.imageUrl} alt={item.name} width={52} height={66} className="w-[52px] h-[66px] shrink-0 bg-[var(--surface)] overflow-hidden rounded-lg object-cover" />
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <p className="text-[12px] font-medium text-[var(--foreground)] leading-snug line-clamp-2">{item.name}</p>
-                          <p className="font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] mt-0.5">{item.brand}</p>
-                          <p className="font-mono text-[11px] text-[var(--foreground)] mt-1">{formatPrice(item.price, item.currency)}</p>
-                        </div>
-                      </Link>
-                      <button onClick={() => removeFromCart(item.id)} className="shrink-0 mt-0.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors" aria-label={`Remove ${item.name}`}>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="flex flex-col gap-2">
+                    {cartItems.map(item => (
+                      <CartRow key={item.id} item={item} onRemove={removeFromCart} onNavigate={() => setCartOpen(false)} />
+                    ))}
+                  </ul>
+                  <div className="mt-3">
+                    <OpenAllPanel items={cartItems} />
+                  </div>
+                </>
               )}
             </div>
             {cartItems.length > 0 && (
               <div className="shrink-0 border-t border-[var(--border)] px-5 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Estimated total</p>
-                  <p className="text-[20px] font-bold text-[var(--foreground)]">{formatPrice(cartTotalUsd)}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                    Total ({cartCount} {cartCount === 1 ? "item" : "items"})
+                  </p>
+                  <p className="text-[22px] font-bold text-[var(--foreground)]">{formatPrice(cartTotalUsd)}</p>
                 </div>
-                <p className="font-mono text-[8px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] text-center">Checkout coming soon · Links open in retailer sites</p>
+                <Link href="/cart" onClick={() => setCartOpen(false)}
+                  className="relative mt-3.5 pt-3.5 border-t border-[var(--border)] flex items-center justify-center text-[12px] font-medium text-[var(--foreground)] hover:opacity-70 transition-opacity">
+                  View full cart
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0" aria-hidden="true">
+                    <path d="M2.5 8h11M9.5 4l4 4-4 4" />
+                  </svg>
+                </Link>
               </div>
             )}
           </div>
