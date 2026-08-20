@@ -19,8 +19,15 @@ providers = ["node"]
 [variables]
 # Keep devDependencies at build time (belt-and-suspenders with .npmrc).
 NPM_CONFIG_PRODUCTION = "false"
-# Give `next build` headroom so a large compile isn't OOM-killed on the builder.
-NODE_OPTIONS = "--max-old-space-size=4096"
+# Cap V8's old space *below* the builder container's RAM. This was 4096, which
+# is the failure mode it was meant to prevent: a heap ceiling at or above the
+# container limit means V8 still considers the heap healthy while the cgroup is
+# already out of memory, so the kernel kills `next build` instead of V8 running
+# a GC — and a kill prints nothing, which is why such a deploy fails with no
+# error line in the log. 3072 leaves room for the Turbopack native binary and
+# npm alongside the heap. Measured peak for this build is ~1.9 GB across all
+# node processes, so the cap is headroom, not a constraint.
+NODE_OPTIONS = "--max-old-space-size=3072"
 
 [phases.install]
 # Matches the verified local install; retry/backoff settings come from .npmrc.
