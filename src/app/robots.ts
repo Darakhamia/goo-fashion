@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/goo-studio/",
           "/saved",
+          "/cart",
           "/builder",
           "/profile",
           "/login",

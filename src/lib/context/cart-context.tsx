@@ -14,6 +14,8 @@ export interface CartItem {
 
 interface CartContextValue {
   cartItems: CartItem[];
+  /** False until the stored cart has been read, so a page can wait instead of flashing "empty". */
+  hydrated: boolean;
   addToCart: (item: CartItem) => void;
   addManyToCart: (items: CartItem[]) => void;
   removeFromCart: (id: string) => void;
@@ -23,6 +25,7 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue>({
   cartItems: [],
+  hydrated: false,
   addToCart: () => {},
   addManyToCart: () => {},
   removeFromCart: () => {},
@@ -34,6 +37,7 @@ const STORAGE_KEY = "goo-cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
@@ -41,6 +45,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (stored) setCartItems(JSON.parse(stored));
     } catch {}
+    // Set in the same effect as the read, so a consumer never sees a rendered
+    // frame where the cart is both "hydrated" and still empty.
+    setHydrated(true);
   }, []);
 
   const persist = (items: CartItem[]) => {
@@ -83,6 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider value={{
       cartItems,
+      hydrated,
       addToCart,
       addManyToCart,
       removeFromCart,
