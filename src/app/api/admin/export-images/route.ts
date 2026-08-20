@@ -1,28 +1,34 @@
 /**
- * Bulk download of the admin's cards, drawn as pictures, as one ZIP.
+ * Download of the admin's cards, drawn as pictures.
  *
  * Pieces and looks both answer here because the job is the same one: take the
  * card as the site draws it — the photo, the brand, the name, the price — and
- * hand back a file per card, named after the piece instead of after the CDN's
+ * hand back a picture of it, named after the piece instead of after the CDN's
  * hash. The photo behind each card is fetched from wherever it actually lives,
  * our Storage bucket for most of it and a retailer CDN for the rest.
  *
- * The archive streams rather than being built and then sent: buffering a few
- * hundred cards to answer in one piece would put the whole export on the heap of
- * a function that has far less. Everything else about how it is packed, and the
- * budgets that stop it running forever, lives in lib/server/card-export; the
- * drawing itself lives in lib/server/card-image.
+ * One card comes back as a bare PNG, because a ZIP holding a single file is a
+ * chore rather than a delivery: the admin who picked one piece wants that
+ * picture in their downloads, ready to post. Several come back as a ZIP, which
+ * streams rather than being built and then sent — buffering a few hundred cards
+ * to answer in one piece would put the whole export on the heap of a function
+ * that has far less. Everything else about how it is packed, and the budgets
+ * that stop it running forever, lives in lib/server/card-export; the drawing
+ * itself lives in lib/server/card-image.
  *
- *   POST /api/admin/export-images {kind:"products"}          → every piece
- *   POST /api/admin/export-images {kind:"outfits", ids:[…]}  → just those looks
+ *   POST /api/admin/export-images {kind:"products"}            → every piece, zipped
+ *   POST /api/admin/export-images {kind:"products", ids:["…"]} → that one card, as a PNG
+ *   POST /api/admin/export-images {kind:"outfits", ids:[…]}    → those looks, zipped
  */
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
 import { formatMetaPrice } from "@/lib/seo";
+import { CARD_MEDIA_TYPE } from "@/lib/server/card-image";
 import { zipStream } from "@/lib/server/zip";
 import {
   packCards,
+  renderJob,
   safeSegment,
   shortId,
   type CardJob,
@@ -59,6 +65,18 @@ function parseIds(raw: unknown): Set<string> | null {
 function buildStamp(): string {
   const sha = process.env.VERCEL_GIT_COMMIT_SHA;
   return sha ? sha.slice(0, 7) : "local (not a deployed build)";
+}
+
+/**
+ * A `Content-Disposition` that survives a piece named in Cyrillic.
+ *
+ * The plain `filename` is the ASCII the header may legally carry, and RFC 5987's
+ * `filename*` carries the real one for anything that understands it — which is
+ * every browser, and the studio's own download button.
+ */
+function attachment(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 /**
@@ -172,6 +190,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // One card: draw it and answer with the picture itself. This is also the only
+  // path that can report a failed render with a status code — once an archive
+  // has started streaming, a 200 is already on the wire and the trouble has to
+  // go into _export.txt instead.
+  if (jobs.length === 1 && !missing.length) {
+    const drawn = await renderJob(jobs[0]);
+    if (!drawn.ok) {
+      return NextResponse.json({ error: `${drawn.job.label} — ${drawn.reason}` }, { status: 502 });
+    }
+    return new Response(new Uint8Array(drawn.data), {
+      headers: {
+        "Content-Type": CARD_MEDIA_TYPE,
+        "Content-Disposition": attachment(drawn.name.split("/").pop() ?? drawn.name),
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const report: ExportReport = {
     kind,
     build: buildStamp(),
@@ -186,7 +222,7 @@ export async function POST(req: Request) {
   return new Response(zipStream(packCards(jobs, report)), {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": attachment(filename),
       // Built per request from live rows; nothing about it is reusable.
       "Cache-Control": "no-store",
     },
