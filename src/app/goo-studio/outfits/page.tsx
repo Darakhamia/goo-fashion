@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
-import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 
 interface PendingLook {
@@ -16,6 +16,15 @@ interface PendingLook {
   total_price: number | null;
   style_keywords: string[];
   status: string;
+  /**
+   * What the shopper called it. Nullable because migration 017 added these
+   * columns after the first submissions existed — an older row simply has
+   * nothing to show, and approval falls back to its own defaults.
+   */
+  name: string | null;
+  description: string | null;
+  occasion: string | null;
+  season: string | null;
 }
 
 type OutfitRole = "hero" | "secondary" | "accent";
@@ -98,6 +107,47 @@ export default function AdminOutfitsPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [selectedLook, setSelectedLook] = useState<PendingLook | null>(null);
 
+  /**
+   * The moderator's version of the submission.
+   *
+   * Editing here rather than after approval is the point: an admin who has to
+   * approve something wrong and then find it again in the outfits table will
+   * eventually stop bothering, and the catalogue fills with whatever arrived.
+   * The approval endpoint takes these as `overrides` and falls back to the
+   * submitted values field by field, so clearing one restores the shopper's.
+   */
+  const [moderation, setModeration] = useState({
+    name: "",
+    description: "",
+    occasion: "casual" as Occasion,
+    season: "all" as Season,
+    styleKeywords: [] as StyleKeyword[],
+  });
+
+  const openSubmission = (look: PendingLook) => {
+    setModeration({
+      name: look.name ?? "",
+      description: look.description ?? "",
+      occasion: (OCCASIONS as string[]).includes(look.occasion ?? "")
+        ? (look.occasion as Occasion)
+        : "casual",
+      season: (SEASONS as string[]).includes(look.season ?? "")
+        ? (look.season as Season)
+        : "all",
+      styleKeywords: normalizeStyleKeywords(look.style_keywords),
+    });
+    setSelectedLook(look);
+  };
+
+  const toggleModerationStyle = (kw: StyleKeyword) => {
+    setModeration((m) => ({
+      ...m,
+      styleKeywords: m.styleKeywords.includes(kw)
+        ? m.styleKeywords.filter((k) => k !== kw)
+        : [...m.styleKeywords, kw],
+    }));
+  };
+
   // Load outfits on mount
   useEffect(() => {
     fetch("/api/outfits")
@@ -126,7 +176,18 @@ export default function AdminOutfitsPage() {
       const res = await fetch("/api/looks/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({
+          id,
+          // Field by field, so a cleared box means "keep what was submitted"
+          // rather than "publish an empty string".
+          overrides: {
+            name: moderation.name.trim(),
+            description: moderation.description.trim(),
+            occasion: moderation.occasion,
+            season: moderation.season,
+            styleKeywords: normalizeStyleKeywords(moderation.styleKeywords),
+          },
+        }),
       });
       if (res.ok) {
         setPendingLooks((prev) => prev.filter((l) => l.id !== id));
@@ -470,7 +531,7 @@ export default function AdminOutfitsPage() {
               {pendingLooks.map((look, idx) => (
                 <div
                   key={look.id}
-                  onClick={() => setSelectedLook(look)}
+                  onClick={() => openSubmission(look)}
                   className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-[var(--surface)] transition-colors ${
                     idx !== 0 ? "border-t border-[var(--border)]" : ""
                   }`}
@@ -587,6 +648,71 @@ export default function AdminOutfitsPage() {
                     <p className="text-xs text-[var(--foreground-subtle)]">No pieces</p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* What the catalogue will show.
+                Prefilled from the submission, so approving unchanged publishes
+                exactly what the shopper wrote; empty means the approval
+                endpoint keeps its own fallback rather than publishing blanks. */}
+            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 max-h-[38vh] overflow-y-auto">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-3">
+                Publish as
+              </p>
+
+              <input
+                type="text"
+                value={moderation.name}
+                onChange={(e) => setModeration((m) => ({ ...m, name: e.target.value }))}
+                placeholder="Community Look"
+                maxLength={120}
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-3"
+              />
+
+              <textarea
+                value={moderation.description}
+                onChange={(e) => setModeration((m) => ({ ...m, description: e.target.value }))}
+                placeholder="Description shown on the outfit page"
+                rows={3}
+                maxLength={2000}
+                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors resize-none mb-3"
+              />
+
+              <div className="flex gap-2 mb-3">
+                <select
+                  value={moderation.occasion}
+                  onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
+                  className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] outline-none focus:border-[var(--border-strong)] transition-colors capitalize"
+                >
+                  {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <select
+                  value={moderation.season}
+                  onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
+                  className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] outline-none focus:border-[var(--border-strong)] transition-colors capitalize"
+                >
+                  {SEASONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {STYLE_KEYWORDS.map((kw) => {
+                  const on = moderation.styleKeywords.includes(kw);
+                  return (
+                    <button
+                      key={kw}
+                      onClick={() => toggleModerationStyle(kw)}
+                      aria-pressed={on}
+                      className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+                        on
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {kw}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

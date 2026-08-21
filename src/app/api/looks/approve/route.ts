@@ -42,10 +42,13 @@ export async function POST(req: Request) {
   // `overrides` lets the admin fix a name at the moment of approval rather than
   // approving something wrong and editing it afterwards.
   const overrides = (body.overrides ?? {}) as Record<string, unknown>;
+  // Three sources, tried in order, with a blank counting as "no opinion" at
+  // each step. `??` alone was wrong here: an admin who clears the name box
+  // sends "", which is not null, so the shopper's own name would have been
+  // skipped and the constant published instead of it.
   const pick = (key: string, fallback: string): string => {
-    const chosen = overrides[key] ?? look[key];
-    const value = String(chosen ?? "").trim();
-    return value || fallback;
+    const text = (v: unknown) => String(v ?? "").trim();
+    return text(overrides[key]) || text(look[key]) || fallback;
   };
   const styleKeywords = Array.isArray(overrides.styleKeywords)
     ? (overrides.styleKeywords as string[])
