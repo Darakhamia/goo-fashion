@@ -239,28 +239,52 @@ export async function POST(req: Request) {
     }
 
     // ── Persist to Supabase Storage so the URL doesn't expire after 1 h ──────
+    //
+    // The fallback below is the mechanism behind "all the outfit images
+    // disappeared at once": Replicate's URL works for about an hour and then
+    // stops, so a failed upload hands back a picture that looks fine, is saved,
+    // and dies later that day — silently, because the only signal was a
+    // console.warn on the server.
+    //
+    // It still falls back rather than failing the generation: a picture for an
+    // hour beats no picture. But it now says so, so the caller can warn instead
+    // of finding out tomorrow.
     let persistedUrl = imageUrl;
+    let persisted = false;
     if (isSupabaseConfigured) {
-      try {
-        const imgResult = await fetchBuffer(imageUrl, {
-          "User-Agent": "goo-fashion/1.0",
-          Accept: "image/*",
-        });
-        if (imgResult) {
-          persistedUrl = await uploadGeneratedImage(
-            imgResult.buf,
-            gate.userId,
-            "jpg",
-            imgResult.contentType.startsWith("image/") ? imgResult.contentType : "image/jpeg"
+      // One retry, because the usual cause is a transient blip rather than a
+      // misconfiguration, and a second attempt costs a second.
+      for (let attempt = 1; attempt <= 2 && !persisted; attempt++) {
+        try {
+          const imgResult = await fetchBuffer(imageUrl, {
+            "User-Agent": "goo-fashion/1.0",
+            Accept: "image/*",
+          });
+          if (imgResult) {
+            persistedUrl = await uploadGeneratedImage(
+              imgResult.buf,
+              gate.userId,
+              "jpg",
+              imgResult.contentType.startsWith("image/") ? imgResult.contentType : "image/jpeg"
+            );
+            persisted = true;
+          }
+        } catch (uploadErr) {
+          console.warn(
+            `[generate-outfit] storage upload failed (attempt ${attempt}/2), ` +
+            "the Replicate URL expires in about an hour:",
+            uploadErr,
           );
         }
-      } catch (uploadErr) {
-        console.warn("[generate-outfit] storage upload failed, using Replicate URL:", uploadErr);
       }
     }
 
     return NextResponse.json({
       imageUrl: persistedUrl,
+      // False means the picture is Replicate's temporary copy and will stop
+      // loading within the hour. Saving a look with one of these is what leaves
+      // a card with a broken image days later.
+      persisted,
       prompt,
       model: "nano-banana-2",
       style,

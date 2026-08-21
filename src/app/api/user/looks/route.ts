@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { writeRowDroppingUnknown } from "@/lib/server/write-row";
 
 export async function GET() {
   const { userId } = await auth();
@@ -75,20 +76,39 @@ export async function POST(req: Request) {
     generated_style: body.generatedStyle ?? null,
   };
 
-  let { error } = await supabase.from("user_looks").upsert(row, { onConflict: "id" });
-
   // If the optional name/description columns aren't present in this environment
   // (migration 009 not applied), persist the core look anyway rather than
   // failing the whole save — the look itself must never be lost.
-  if (error && /look_name|look_description|column/i.test(error.message)) {
-    delete row.look_name;
-    delete row.look_description;
-    ({ error } = await supabase.from("user_looks").upsert(row, { onConflict: "id" }));
-  }
+  //
+  // What changed: the previous version matched /look_name|look_description|column/
+  // against ANY error and then answered `{ ok: true }`. Two things followed from
+  // that. A rename against a database missing those columns was dropped and
+  // reported as a success, so it stuck on the phone that made it and was gone
+  // everywhere else — with nothing anywhere saying why. And any unrelated error
+  // whose message happened to contain the word "column" stripped the name too.
+  //
+  // The shared writer drops only what it is told it may drop, and only on
+  // PostgREST's unknown-column code, and it says what it dropped.
+  const { error, dropped } = await writeRowDroppingUnknown<null>(
+    row,
+    ["look_name", "look_description"],
+    (payload) => supabase!.from("user_looks").upsert(payload, { onConflict: "id" }).then(
+      ({ error: e }) => ({ data: null, error: e }),
+    ),
+  );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  if (dropped.length) {
+    console.warn(
+      `[user/looks] saved without ${dropped.join(", ")} — run supabase/migrations/009_user_looks_share.sql; ` +
+      "until then names and descriptions cannot follow a look between devices",
+    );
+  }
+
+  // Reported rather than hidden: the caller asked to store a name, and it is
+  // entitled to know the name did not reach the account.
+  return NextResponse.json({ ok: true, dropped });
 }
 
 export async function DELETE(req: Request) {
