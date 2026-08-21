@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
+import { toCartItem, toCartRetailers } from "@/lib/cart-item";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
@@ -256,14 +257,16 @@ function LookCard({
     if (bagAdded) return;
     const items = availablePieces.map((piece) => {
       const product = allProducts.find((p) => p.id === piece.productId);
-      const officialRetailer = product?.retailers.find((r) => r.isOfficial) ?? product?.retailers[0] ?? null;
+      const stores = toCartRetailers(product?.retailers);
       return {
         id: piece.productId,
         name: piece.name ?? product?.name ?? piece.slot,
         brand: product?.brand ?? "",
         imageUrl: piece.imageUrl ?? product?.imageUrl ?? "",
         price: product?.priceMin ?? 0,
-        retailerUrl: officialRetailer?.url ?? null,
+        currency: product?.currency,
+        retailerUrl: stores[0]?.url ?? null,
+        retailers: stores,
       };
     });
     if (items.length === 0) return;
@@ -1323,17 +1326,7 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 
   const handleAddToBag = () => {
     if (bagAdded) return;
-    const items = availableItems.map(({ product }) => {
-      const officialRetailer = product.retailers.find((r) => r.isOfficial) ?? product.retailers[0] ?? null;
-      return {
-        id: product.id,
-        name: product.name,
-        brand: product.brand,
-        imageUrl: product.imageUrl,
-        price: product.priceMin,
-        retailerUrl: officialRetailer?.url ?? null,
-      };
-    });
+    const items = availableItems.map(({ product }) => toCartItem(product));
     if (items.length === 0) return;
     addManyToCart(items);
     setBagAdded(true);

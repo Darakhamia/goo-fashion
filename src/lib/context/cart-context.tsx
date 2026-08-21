@@ -2,6 +2,15 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
+/** One place a piece can be bought, as the cart keeps it. */
+export interface CartRetailer {
+  name: string;
+  url: string;
+  price?: number;
+  currency?: string;
+  isOfficial?: boolean;
+}
+
 export interface CartItem {
   id: string;
   name: string;
@@ -9,7 +18,10 @@ export interface CartItem {
   imageUrl: string;
   price: number;
   currency?: string;
+  /** The store opened by default. Kept for carts saved before `retailers` existed. */
   retailerUrl: string | null;
+  /** Every store carrying the piece, so the row can offer a choice. */
+  retailers?: CartRetailer[];
 }
 
 interface CartContextValue {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency } from "@/lib/context/currency-context";
-import { CartRow, OpenAllPanel, cartTotalUsd } from "@/components/cart/CartPanel";
+import { CartRow, OpenAllPanel, cartTotalUsd, useCartStores } from "@/components/cart/CartPanel";
 
 /**
  * The drawer's contents at full width: same rows, same "open all" step, room
@@ -13,6 +13,7 @@ export default function CartPage() {
   const { cartItems, hydrated, removeFromCart, clearCart } = useCart();
   const { formatPrice, convertToUsd } = useCurrency();
 
+  const rows = useCartStores(cartItems, hydrated);
   const count = cartItems.length;
   const total = cartTotalUsd(cartItems, convertToUsd);
 
@@ -51,13 +52,13 @@ export default function CartPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 pb-24 max-w-[1120px]">
             <ul className="flex flex-col gap-2">
-              {cartItems.map(item => (
+              {rows.map(item => (
                 <CartRow key={item.id} item={item} onRemove={removeFromCart} />
               ))}
             </ul>
 
             <aside className="flex flex-col gap-4 h-fit lg:sticky lg:top-24">
-              <OpenAllPanel items={cartItems} />
+              <OpenAllPanel items={rows} />
 
               <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                 <div className="flex items-center justify-between">
