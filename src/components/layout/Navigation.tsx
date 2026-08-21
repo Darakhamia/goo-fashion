@@ -10,7 +10,7 @@ import { SignedIn, SignedOut, useClerk } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
-import { CartRow, CloseIcon, OpenAllPanel } from "@/components/cart/CartPanel";
+import { CartRow, CloseIcon, OpenAllPanel, useCartStores } from "@/components/cart/CartPanel";
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -74,6 +74,9 @@ export default function Navigation() {
     (sum, item) => sum + convertToUsd(item.price, item.currency || "USD"),
     0,
   );
+
+  // Rows carry every store the piece is sold in, so a row can offer a choice.
+  const cartRows = useCartStores(cartItems, cartOpen);
 
   // Lock background scroll while the cart drawer or logout modal is open
   useScrollLock(cartOpen || logoutConfirmOpen);
@@ -541,12 +544,12 @@ export default function Navigation() {
               ) : (
                 <>
                   <ul className="flex flex-col gap-2">
-                    {cartItems.map(item => (
+                    {cartRows.map(item => (
                       <CartRow key={item.id} item={item} onRemove={removeFromCart} onNavigate={() => setCartOpen(false)} />
                     ))}
                   </ul>
                   <div className="mt-3">
-                    <OpenAllPanel items={cartItems} />
+                    <OpenAllPanel items={cartRows} />
                   </div>
                 </>
               )}

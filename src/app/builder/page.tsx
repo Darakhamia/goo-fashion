@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { Product, ProductSwatch, StyleKeyword, Brand, Gender } from "@/lib/types";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
+import { toCartItem } from "@/lib/cart-item";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
@@ -629,17 +630,7 @@ export default function BuilderPage() {
   const shopTheLook = () => {
     const pieces = Object.values(selection).filter(Boolean) as Product[];
     if (pieces.length === 0) return;
-    addManyToCart(pieces.map(p => {
-      const officialRetailer = p.retailers.find(r => r.isOfficial) ?? p.retailers[0] ?? null;
-      return {
-        id: p.id,
-        name: p.name,
-        brand: p.brand,
-        imageUrl: p.imageUrl,
-        price: p.priceMin,
-        retailerUrl: officialRetailer?.url ?? null,
-      };
-    }));
+    addManyToCart(pieces.map(p => toCartItem(p)));
     setShopAdded(true);
     setTimeout(() => setShopAdded(false), 2000);
   };

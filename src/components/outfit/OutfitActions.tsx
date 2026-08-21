@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/context/cart-context";
+import { toCartItem } from "@/lib/cart-item";
 import { track } from "@/lib/analytics/track";
 import { isProductAvailable } from "@/lib/availability";
 import type { OutfitItem } from "@/lib/types";
@@ -33,20 +34,7 @@ export default function OutfitActions({ outfitId, items }: OutfitActionsProps) {
 
   const handleAddToBag = () => {
     if (bagAdded || availableItems.length === 0) return;
-    addManyToCart(
-      availableItems.map(({ product }) => {
-        const officialRetailer = product.retailers.find((r) => r.isOfficial) ?? product.retailers[0] ?? null;
-        return {
-          id: product.id,
-          name: product.name,
-          brand: product.brand,
-          imageUrl: product.imageUrl,
-          price: product.priceMin,
-          currency: product.currency,
-          retailerUrl: officialRetailer?.url ?? null,
-        };
-      })
-    );
+    addManyToCart(availableItems.map(({ product }) => toCartItem(product)));
     setBagAdded(true);
     setTimeout(() => setBagAdded(false), 2000);
   };

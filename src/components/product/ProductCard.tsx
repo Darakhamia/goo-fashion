@@ -10,6 +10,7 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
+import { toCartItem } from "@/lib/cart-item";
 
 const SLIDE_MS    = 500;
 const INTERVAL_MS = 5000;
@@ -41,15 +42,14 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     if (inCart) {
       removeFromCart(currentId);
     } else {
-      addToCart({
-        id: currentId,
-        name: activeVariant ? activeVariant.name : product.name,
-        brand: product.brand,
-        imageUrl: activeVariant ? activeVariant.imageUrl : product.imageUrl,
-        price: activeVariant ? activeVariant.priceMin : product.priceMin,
-        currency: product.currency,
-        retailerUrl: product.retailers?.[0]?.url ?? null,
-      });
+      addToCart(
+        toCartItem(product, {
+          id: currentId,
+          name: activeVariant ? activeVariant.name : product.name,
+          imageUrl: activeVariant ? activeVariant.imageUrl : product.imageUrl,
+          price: activeVariant ? activeVariant.priceMin : product.priceMin,
+        }),
+      );
     }
   };
 
