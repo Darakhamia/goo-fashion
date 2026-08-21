@@ -249,17 +249,38 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
 }
 
 /**
+ * Where each browser hides the switch that lets a site open more than one tab.
+ * Named exactly, because "allow pop-ups" is not a thing anyone finds by being
+ * told to look for it.
+ */
+function allowPopupsHint() {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (/Firefox\//.test(ua)) return "click Options in the bar Firefox shows at the top of the page and allow pop-ups for this site";
+  if (/Edg\//.test(ua) || /Chrome\//.test(ua)) return "click the blocked-pop-ups icon at the right of the address bar and choose “Always allow”";
+  if (/Safari\//.test(ua)) return "open Safari → Settings → Websites → Pop-up Windows and set this site to Allow";
+  return "allow pop-ups for this site in your browser settings";
+}
+
+/**
  * The buy step. Every piece is bought on its own store, so checkout here is
  * "open all of them at once".
  *
- * Browsers do not grant that outright: one click is one gesture, and Safari and
- * Firefox let through the first window.open and swallow the rest — which is why
- * this used to open the first piece and silently drop the other four. So the
- * ones the browser refused are listed as ordinary links: each tap is its own
- * gesture, which no blocker touches, and the list shrinks as they are opened.
+ * Whether that happens is the browser's call, not ours. Measured in Chrome with
+ * its pop-up blocker on: five links open one tab, and it makes no difference
+ * whether they are opened by window.open, by window.open without a features
+ * string, or by clicking synthesised anchors — one click is one gesture and the
+ * gesture is worth one tab. With the site allowed to open pop-ups, the same
+ * five links open five tabs. So there is nothing to work around in code: the
+ * panel opens them all, and when the browser refuses it says which switch turns
+ * this on, in that browser's own words.
+ *
+ * Until it is turned on, the refused pieces are listed as ordinary links: each
+ * tap is its own gesture, which no blocker touches, and the list shrinks as
+ * they are opened.
  */
 export function OpenAllPanel({ items }: { items: CartItem[] }) {
   const [blockedItems, setBlockedItems] = useState<CartItem[]>([]);
+  const [hint, setHint] = useState("");
   const linked = items.filter((item) => storesOf(item).length > 0);
   const count = items.length;
   const allVerified = linked.length > 0 && linked.length === count;
@@ -267,10 +288,14 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
   const openAll = () => {
     const blocked: CartItem[] = [];
     items.forEach((item) => {
-      const win = window.open(openAllTarget(item), "_blank", "noopener,noreferrer");
-      if (!win) blocked.push(item);
+      // No features string: with one, Chrome opens pop-up *windows* rather than
+      // tabs. `opener` is cleared by hand for what the string used to carry.
+      const win = window.open(openAllTarget(item), "_blank");
+      if (win) win.opener = null;
+      else blocked.push(item);
     });
     setBlockedItems(blocked);
+    setHint(blocked.length > 0 ? allowPopupsHint() : "");
   };
 
   const status = linked.length === 0
@@ -280,7 +305,7 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
       : `${linked.length} of ${count} links verified`;
 
   const caption = blockedItems.length > 0
-    ? `Your browser opened ${count - blockedItems.length} of ${count} tabs and blocked the rest. Open them below — one tap each — or allow pop-ups for this site.`
+    ? `Your browser opened ${count - blockedItems.length} of ${count} tabs and blocked the rest — it allows a site one tab per click.`
     : linked.length === count
       ? `This will open ${count} official product ${count === 1 ? "page" : "pages"} in new tabs.`
       : `This will open ${count} tabs: ${linked.length} official product ${linked.length === 1 ? "page" : "pages"}, and ${count - linked.length} ${count - linked.length === 1 ? "piece" : "pieces"} on GOO.`;
@@ -301,6 +326,12 @@ export function OpenAllPanel({ items }: { items: CartItem[] }) {
         <span className="opacity-60">· {count} {count === 1 ? "item" : "items"}</span>
       </button>
       <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed text-center mt-2.5">{caption}</p>
+
+      {hint && (
+        <p className="text-[11px] text-[var(--foreground)] leading-relaxed text-center mt-2 px-1">
+          To open all {count} at once, {hint} — then press Open all again.
+        </p>
+      )}
 
       {blockedItems.length > 0 && (
         <ul className="flex flex-col gap-1.5 mt-3">
