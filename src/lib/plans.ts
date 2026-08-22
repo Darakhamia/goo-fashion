@@ -73,6 +73,24 @@ export const STYLIST_DAILY_LIMITS: Record<PlanId, number | null> = {
 };
 
 /**
+ * Monthly image-generation allowance per plan — the numbers printed on /plans.
+ *
+ * Free is zero because image generation is not one of its features at all; the
+ * plan gate rejects it before the quota is ever consulted.
+ *
+ * These are the only thing standing between a subscriber and an unbounded
+ * Replicate bill: at roughly $0.067 a generation, Basic's 399 UAH covers about
+ * 145 images, so an uncapped Basic account is a straight loss the moment it
+ * gets scripted.
+ */
+export const MONTHLY_IMAGE_QUOTA: Record<PlanId, number> = {
+  free: 0,
+  basic: 50,
+  pro: 180,
+  premium: 450,
+};
+
+/**
  * ── Billing currency ────────────────────────────────────────────────────────
  *
  * monobank acquiring (Plata by mono) settles in Ukrainian hryvnia only — its

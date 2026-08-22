@@ -31,6 +31,9 @@ interface UserRow {
   isAdmin: boolean;
   isSuperAdmin?: boolean;
   subscription?: UserSubscription | null;
+  /** This month's image generations and the plan's allowance (0 = no allowance). */
+  imagesUsed: number;
+  imageQuota: number;
 }
 
 interface UserDetail extends UserRow {
@@ -427,7 +430,7 @@ export default function AdminUsersPage() {
                   className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
                 />
               </th>
-              {["User", "Email", "Plan", "Subscription", "Joined", "Last active", "Status", ""].map((h) => (
+              {["User", "Email", "Plan", "Subscription", "Images / mo", "Joined", "Last active", "Status", ""].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] font-medium">
                   {h}
                 </th>
@@ -492,6 +495,17 @@ export default function AdminUsersPage() {
                             : ""}
                         </span>
                       </div>
+                    ) : (
+                      <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {/* This month's generations against the plan's allowance —
+                        the number that says who is costing what. */}
+                    {u.imageQuota > 0 ? (
+                      <span className={`text-[10px] ${u.imagesUsed >= u.imageQuota ? "text-red-500" : "text-[var(--foreground-muted)]"}`}>
+                        {u.imagesUsed} / {u.imageQuota}
+                      </span>
                     ) : (
                       <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
                     )}

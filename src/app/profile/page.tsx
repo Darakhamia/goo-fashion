@@ -442,6 +442,24 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
   const [loadingBilling, setLoadingBilling] = useState(isPaid);
   const [canceling, setCanceling] = useState(false);
   const [canceled, setCanceled] = useState(false);
+  const [usage, setUsage] = useState<{
+    imagesUsed: number;
+    imageQuota: number;
+    imagesRemaining: number;
+    resetsAt: string;
+  } | null>(null);
+
+  // The monthly allowance a paid plan is actually buying. Shown here so it is
+  // a number the customer can watch, not a ceiling they discover by hitting it.
+  useEffect(() => {
+    if (!isPaid) return;
+    let active = true;
+    fetch("/api/user/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (active && d && typeof d.imagesRemaining === "number") setUsage(d); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isPaid]);
 
   useEffect(() => {
     if (!isPaid) return;
@@ -502,6 +520,31 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
               </Link>
             )}
           </div>
+
+          {usage && usage.imageQuota > 0 && (
+            <div className="pt-5 border-t border-[var(--border)]">
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">
+                  Image generations this month
+                </p>
+                <p className={`text-xs font-medium ${usage.imagesRemaining === 0 ? "text-red-500" : "text-[var(--foreground)]"}`}>
+                  {usage.imagesUsed} / {usage.imageQuota}
+                </p>
+              </div>
+              <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
+                <div
+                  className={usage.imagesRemaining === 0 ? "h-full bg-red-500" : "h-full bg-[var(--foreground)]"}
+                  style={{ width: `${Math.min(100, Math.round((usage.imagesUsed / usage.imageQuota) * 100))}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+                {usage.imagesRemaining === 0
+                  ? "Allowance used up."
+                  : `${usage.imagesRemaining} left.`}{" "}
+                Resets on {new Date(usage.resetsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })}.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3 pt-5 border-t border-[var(--border)]">
             {ALL_FEATURES.map((feature) => {

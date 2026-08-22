@@ -1,5 +1,7 @@
 "use client";
 
+import { parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
+
 // ── Saved builder look ────────────────────────────────────────────────────────
 export interface SavedLook {
   id: string;
@@ -91,7 +93,13 @@ function sortBySavedAt(looks: SavedLook[]): SavedLook[] {
  * the server. Retries transient/network failures. Marks the look as
  * server-synced on success so future syncs can reason about remote deletions.
  */
-export async function pushLook(look: SavedLook): Promise<boolean> {
+export interface PushLookResult {
+  ok: boolean;
+  /** Set when the account refused the save because the plan lacks saveOutfits. */
+  upgrade: UpgradePrompt | null;
+}
+
+export async function pushLook(look: SavedLook): Promise<PushLookResult> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch("/api/user/looks", {
@@ -102,16 +110,21 @@ export async function pushLook(look: SavedLook): Promise<boolean> {
       });
       if (res.ok) {
         markSynced(look.id);
-        return true;
+        return { ok: true, upgrade: null };
       }
+      // Saving to the account is a Pro feature. Hand the 402 back so the caller
+      // can offer the upgrade rather than showing a bare failure — the look is
+      // already in local storage either way.
+      const upgrade = await parseUpgradePrompt(res);
+      if (upgrade) return { ok: false, upgrade };
       // Client errors (other than rate limiting) won't succeed on retry.
-      if (res.status < 500 && res.status !== 429) return false;
+      if (res.status < 500 && res.status !== 429) return { ok: false, upgrade: null };
     } catch {
       // network error — fall through to retry
     }
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
-  return false;
+  return { ok: false, upgrade: null };
 }
 
 /** Remove a look from the account and from the local synced bookkeeping. */
