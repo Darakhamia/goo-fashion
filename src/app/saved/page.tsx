@@ -1385,8 +1385,13 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 
       {/* Info */}
       <div className="px-4 pt-3.5 pb-4 flex flex-col">
+        {/* The outfit's own name — the same one the catalogue and the outfit
+            page show. It was already being passed to the share sheet and the
+            image alt two lines up; only the visible title was a constant, so
+            every liked outfit read "Saved outfit" no matter what it is called.
+            The constant stays as a floor for an outfit with a blank name. */}
         <Link href={outfitUrl} className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug hover:opacity-70 transition-opacity">
-          Saved outfit
+          {outfit.name || "Saved outfit"}
         </Link>
         <p className="text-[13px] text-[var(--foreground-muted)] mt-1 truncate">
           {formatPrice(outfit.totalPriceMin)} total
