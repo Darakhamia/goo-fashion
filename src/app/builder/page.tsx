@@ -731,7 +731,7 @@ export default function BuilderPage() {
       // was killed when the page was backgrounded mid-navigation.
       if (isLoggedIn) {
         const look = (updated as unknown as SavedLook[]).find((o) => o.id === savedId);
-        if (look) return await pushLook(look);
+        if (look) return (await pushLook(look)).ok;
       }
       return true;
     } catch {

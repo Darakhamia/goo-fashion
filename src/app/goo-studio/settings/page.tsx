@@ -57,6 +57,23 @@ const MAX_SHOWCASE_STORES = 6;
 
 type StylistPickerKind = "chat" | "featured" | "stores";
 
+// ── Database schema check ────────────────────────────────────────────────────
+
+interface SchemaCheck {
+  table: string;
+  column: string;
+  migration: string;
+  breaks: string;
+  present: boolean;
+  error?: string;
+}
+
+interface SchemaReport {
+  ok: boolean;
+  checks: SchemaCheck[];
+  missingMigrations: string[];
+}
+
 export default function SettingsPage() {
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -95,13 +112,39 @@ export default function SettingsPage() {
   const [stylistOk, setStylistOk] = useState(false);
   const [stylistError, setStylistError] = useState("");
 
+  // ── Database schema state ─────────────────────────────────────────────────
+  const [schema, setSchema] = useState<SchemaReport | null>(null);
+  const [schemaError, setSchemaError] = useState("");
+  const [schemaLoading, setSchemaLoading] = useState(false);
+
   useEffect(() => {
     loadShowcase();
     loadStylist();
     loadProducts();
     loadOutfits();
     loadStatus();
+    loadSchema();
   }, []);
+
+  async function loadSchema() {
+    setSchemaLoading(true);
+    setSchemaError("");
+    try {
+      const res = await fetch("/api/admin/schema-check", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) {
+        setSchemaError(json?.error || `Check failed (${res.status})`);
+        setSchema(null);
+      } else {
+        setSchema(json as SchemaReport);
+      }
+    } catch {
+      setSchemaError("Could not reach the server.");
+      setSchema(null);
+    } finally {
+      setSchemaLoading(false);
+    }
+  }
 
   // ── Stylist loaders / handlers ────────────────────────────────────────────
 
@@ -431,6 +474,94 @@ export default function SettingsPage() {
       <p className="text-xs text-[var(--foreground-muted)] mb-8">
         Configure the homepage showcase and API keys.
       </p>
+
+      {/* ── Database schema ──
+          The app and its migrations deploy separately, and several write paths
+          drop an unknown column rather than lose the row — so a migration that
+          was never run costs a feature silently. This says out loud what the
+          database actually has. */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <ellipse cx="7" cy="3.5" rx="4.75" ry="2" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M2.25 3.5V10.5C2.25 11.6 4.38 12.5 7 12.5C9.62 12.5 11.75 11.6 11.75 10.5V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <path d="M2.25 7C2.25 8.1 4.38 9 7 9C9.62 9 11.75 8.1 11.75 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+              Database schema
+            </p>
+          </div>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+            Optional columns the code writes to. A missing one is never an error — the row saves without it — so the feature it carries just stops working quietly.
+          </p>
+        </div>
+
+        <div className="px-5 py-4">
+          {schemaLoading && !schema && (
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin text-[var(--foreground-subtle)]" />
+              <p className="text-[11px] text-[var(--foreground-subtle)]">Checking…</p>
+            </div>
+          )}
+
+          {schemaError && <p className="text-[11px] text-red-500">{schemaError}</p>}
+
+          {schema && (
+            <>
+              <span
+                className={`inline-block px-2 py-1 rounded-lg text-[10px] tracking-[0.18em] uppercase border ${
+                  schema.ok
+                    ? "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
+                    : "bg-amber-400/15 text-amber-500 border-amber-400/30"
+                }`}
+              >
+                {schema.ok ? "All columns present" : `${schema.checks.filter((c) => !c.present).length} missing`}
+              </span>
+
+              <ul className="mt-3 space-y-2">
+                {schema.checks.map((c) => (
+                  <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                        c.present ? "bg-emerald-500" : c.error ? "bg-red-500" : "bg-amber-500"
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-[var(--foreground)] font-mono">
+                        {c.table}.{c.column}
+                      </p>
+                      {!c.present && (
+                        <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+                          {c.error ? c.error : `${c.breaks} Run ${c.migration}.`}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {schema.missingMigrations.length > 0 && (
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-3 leading-relaxed">
+                  Run, in order, from <span className="font-mono">supabase/migrations/</span>:{" "}
+                  <span className="font-mono text-[var(--foreground)]">
+                    {schema.missingMigrations.join(", ")}
+                  </span>
+                </p>
+              )}
+
+              <button
+                onClick={loadSchema}
+                disabled={schemaLoading}
+                className="mt-4 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
+              >
+                {schemaLoading ? "Checking…" : "Re-check"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ── Homepage showcase ── */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
