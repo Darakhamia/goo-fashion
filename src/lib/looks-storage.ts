@@ -166,18 +166,36 @@ export async function syncLooks(isLoggedIn: boolean): Promise<SavedLook[]> {
     localOnly.push(look); // never synced (or list truncated) — keep and push up
   }
 
-  // Push the stranded local looks to the account (idempotent upsert).
-  await Promise.allSettled(localOnly.map((l) => pushLook(l)));
-
   const localById = new Map(local.map((l) => [l.id, l]));
-  const merged = sortBySavedAt([
-    ...server.map((s) => ({
-      ...s,
-      name: s.name ?? localById.get(s.id)?.name,
-      description: s.description ?? localById.get(s.id)?.description,
-    })),
-    ...localOnly,
-  ]);
+  const reconciled = server.map((s) => ({
+    ...s,
+    name: s.name ?? localById.get(s.id)?.name,
+    description: s.description ?? localById.get(s.id)?.description,
+  }));
+
+  // A name this device knows and the account does not.
+  //
+  // That is not a hypothetical: `user_looks.look_name` did not exist until
+  // migration 009 was applied, and the save endpoint dropped the field and
+  // answered success, so every rename typed before then stayed in this
+  // browser's storage. The merge above already recovers it for display — but
+  // nothing ever uploaded it, because a look the account already holds is not
+  // in `localOnly` and so is never pushed again. The name would sit on this
+  // phone forever while every other device showed the automatic one.
+  //
+  // Self-limiting: once the push lands, the account has the name, `s.name` is
+  // set on the next sync, and this finds nothing to do.
+  const serverById = new Map(server.map((s) => [s.id, s]));
+  const recoverable = reconciled.filter((l) => {
+    const before = serverById.get(l.id);
+    return (!before?.name && !!l.name) || (!before?.description && !!l.description);
+  });
+
+  const merged = sortBySavedAt([...reconciled, ...localOnly]);
+
+  // Push what the account is missing: looks it has never seen, and names it
+  // lost. Both are idempotent upserts.
+  await Promise.allSettled([...localOnly, ...recoverable].map((l) => pushLook(l)));
 
   // Cache the union and record every id we now know lives on the account.
   saveLocalLooks(merged);
