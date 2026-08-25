@@ -91,14 +91,17 @@ function sortBySavedAt(looks: SavedLook[]): SavedLook[] {
  * the server. Retries transient/network failures. Marks the look as
  * server-synced on success so future syncs can reason about remote deletions.
  */
-export async function pushLook(look: SavedLook): Promise<boolean> {
+export async function pushLook(
+  look: SavedLook,
+  { keepalive = true }: { keepalive?: boolean } = {},
+): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch("/api/user/looks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(look),
-        keepalive: true,
+        keepalive,
       });
       if (res.ok) {
         markSynced(look.id);
@@ -195,7 +198,18 @@ export async function syncLooks(isLoggedIn: boolean): Promise<SavedLook[]> {
 
   // Push what the account is missing: looks it has never seen, and names it
   // lost. Both are idempotent upserts.
-  await Promise.allSettled([...localOnly, ...recoverable].map((l) => pushLook(l)));
+  //
+  // Without `keepalive`, deliberately. The Fetch standard caps the *combined*
+  // body size of in-flight keepalive requests at 64 KiB and fails the ones that
+  // cross it outright. A reconciliation fires one request per look at once, and
+  // a phone holding thirty-odd looks — each carrying its pieces and their image
+  // URLs — is exactly the shape that reaches that ceiling, which would drop the
+  // recovered names on the floor at the moment they were finally being sent.
+  // keepalive earns its place on a single save, where the page may be
+  // navigating away; a background sync can simply run again.
+  await Promise.allSettled(
+    [...localOnly, ...recoverable].map((l) => pushLook(l, { keepalive: false })),
+  );
 
   // Cache the union and record every id we now know lives on the account.
   saveLocalLooks(merged);
