@@ -38,22 +38,6 @@ interface LookSubmission {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-const CATEGORY_TO_SLOT: Record<string, string> = {
-  outerwear: "outerwear",
-  blazers: "outerwear",
-  tops: "top",
-  shirts: "top",
-  knitwear: "top",
-  dresses: "top",
-  bottoms: "bottom",
-  jeans: "bottom",
-  shorts: "bottom",
-  skirts: "bottom",
-  footwear: "shoes",
-  accessories: "accessories",
-  bags: "accessories",
-};
-
 function StatusDot({ className }: { className: string }) {
   return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${className}`} />;
 }
@@ -159,7 +143,6 @@ function LookCard({
   const [bagAdded, setBagAdded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [modalEditingName, setModalEditingName] = useState(false);
-  const [menu, setMenu] = useState<"share" | "more" | null>(null);
   const [modalShare, setModalShare] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
@@ -202,7 +185,6 @@ function LookCard({
   };
 
   const openEditor = () => {
-    setMenu(null);
     setDraft({
       name: look.name ?? "",
       description: look.description ?? "",
@@ -308,7 +290,6 @@ function LookCard({
         }),
       });
       onSubmitted(look.id, look.generatedImage ?? null);
-      setMenu(null);
     } catch {
       // leave as idle so the user can retry
     }
@@ -429,7 +410,6 @@ function LookCard({
   };
 
   const closeShareUi = () => {
-    setMenu(null);
     setModalShare(false);
   };
 
@@ -491,14 +471,6 @@ function LookCard({
       : shareState === "error"
       ? "Couldn't copy — tap to retry"
       : "Share link";
-
-  // Start publishing as soon as the share UI opens, so the link is ready by
-  // the time the user taps "Share link".
-  const openShareMenu = () => {
-    const next = menu === "share" ? null : "share";
-    setMenu(next);
-    if (next === "share") void ensureShared();
-  };
 
   // Metadata segment: publication status > availability > origin
   const statusSegment =
@@ -1295,13 +1267,14 @@ function LookCard({
 }
 
 // ── Liked outfit card (Outfits tab) ───────────────────────────────────────────
+//
+// Carries one action, like the look cards: image, name, price, "add to bag".
+// Edit / Share / ⋯ are gone — everything they held lives on the outfit page the
+// card already opens, which is where a card that is a *link* should send you.
 function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
   const { formatPrice } = useCurrency();
   const { addManyToCart } = useCart();
-  const { toggleOutfitLike } = useLikes();
   const [bagAdded, setBagAdded] = useState(false);
-  const [menu, setMenu] = useState<"share" | "more" | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const totalPieces = outfit.items.length;
   const availableItems = outfit.items.filter((it) => isProductAvailable(it.product));
@@ -1310,20 +1283,6 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 
   const outfitUrl = `/outfit/${outfit.id}`;
 
-  const builderUrl = (() => {
-    const params: string[] = [];
-    const used = new Set<string>();
-    for (const it of outfit.items) {
-      let slot = CATEGORY_TO_SLOT[it.product.category];
-      if (slot === "accessories" && used.has(slot)) slot = "accessories2";
-      if (slot && !used.has(slot)) {
-        params.push(`${slot}=${it.product.id}`);
-        used.add(slot);
-      }
-    }
-    return params.length > 0 ? `/builder?${params.join("&")}` : "/builder";
-  })();
-
   const handleAddToBag = () => {
     if (bagAdded) return;
     const items = availableItems.map(({ product }) => toCartItem(product));
@@ -1331,29 +1290,6 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
     addManyToCart(items);
     setBagAdded(true);
     setTimeout(() => setBagAdded(false), 2000);
-  };
-
-  const shareUrl = () => `${window.location.origin}${outfitUrl}`;
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl());
-      setCopied(true);
-      setTimeout(() => { setCopied(false); setMenu(null); }, 1200);
-    } catch {}
-  };
-
-  const shareLink = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: outfit.name || "Saved outfit", url: shareUrl() });
-      } else {
-        await navigator.clipboard.writeText(shareUrl());
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
-      }
-      setMenu(null);
-    } catch {}
   };
 
   const statusSegment = partial
@@ -1428,55 +1364,6 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
           )}
         </button>
 
-        {/* Secondary actions — taller text-only buttons on phones, the
-            original compact icon+label row from md up. */}
-        <div className="relative flex items-center gap-2 md:gap-1.5 mt-2.5">
-          <Link
-            href={builderUrl}
-            className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-          >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="hidden md:block">
-              <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609Z" />
-            </svg>
-            Edit
-          </Link>
-          <button
-            onClick={() => setMenu(menu === "share" ? null : "share")}
-            className="flex-1 h-10 md:h-8 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center gap-1.5 text-[12px] md:text-[11px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="hidden md:block">
-              <path d="M12 3v12M12 3 8 7m4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            Share
-          </button>
-          <button
-            onClick={() => setMenu(menu === "more" ? null : "more")}
-            aria-label="More actions"
-            className="w-10 h-10 md:w-8 md:h-8 shrink-0 rounded-xl md:rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
-            </svg>
-          </button>
-
-          <ActionMenu open={menu === "share"} onClose={() => setMenu(null)}>
-            <MenuItem onClick={copyLink}>{copied ? "Link copied ✓" : "Copy link"}</MenuItem>
-            <MenuItem onClick={shareLink}>Share link</MenuItem>
-          </ActionMenu>
-
-          <ActionMenu open={menu === "more"} onClose={() => setMenu(null)}>
-            <Link
-              href={outfitUrl}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-            >
-              View outfit
-            </Link>
-            <MenuItem danger onClick={() => { setMenu(null); toggleOutfitLike(outfit.id); }}>
-              Remove from likes
-            </MenuItem>
-          </ActionMenu>
-        </div>
       </div>
     </div>
   );
