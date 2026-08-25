@@ -83,18 +83,30 @@ function sortBySavedAt(looks: SavedLook[]): SavedLook[] {
   );
 }
 
+export interface PushResult {
+  /** The look reached the account. */
+  ok: boolean;
+  /**
+   * Fields the account accepted the look *without*, because the database has
+   * no column for them yet. `ok` is still true — the look is saved — but a name
+   * listed here exists on this device only, which is the whole reason a rename
+   * could look saved on one phone and be absent everywhere else.
+   */
+  dropped: string[];
+}
+
 /**
  * Persist a single look to the account.
  *
- * Uses `keepalive` so the request survives client-side navigation and the app
- * being backgrounded — the main reason looks created on mobile never reached
- * the server. Retries transient/network failures. Marks the look as
+ * `keepalive` by default so the request survives client-side navigation and the
+ * app being backgrounded — the main reason looks created on mobile never
+ * reached the server. Retries transient/network failures. Marks the look as
  * server-synced on success so future syncs can reason about remote deletions.
  */
 export async function pushLook(
   look: SavedLook,
   { keepalive = true }: { keepalive?: boolean } = {},
-): Promise<boolean> {
+): Promise<PushResult> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch("/api/user/looks", {
@@ -105,16 +117,21 @@ export async function pushLook(
       });
       if (res.ok) {
         markSynced(look.id);
-        return true;
+        // The endpoint says which optional columns it had to leave out. Read
+        // it rather than discard it: this is the only moment anything knows
+        // that the name just typed did not actually leave this device.
+        const body = await res.json().catch(() => null);
+        const dropped = Array.isArray(body?.dropped) ? (body.dropped as string[]) : [];
+        return { ok: true, dropped };
       }
       // Client errors (other than rate limiting) won't succeed on retry.
-      if (res.status < 500 && res.status !== 429) return false;
+      if (res.status < 500 && res.status !== 429) return { ok: false, dropped: [] };
     } catch {
       // network error — fall through to retry
     }
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
-  return false;
+  return { ok: false, dropped: [] };
 }
 
 /** Remove a look from the account and from the local synced bookkeeping. */

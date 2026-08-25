@@ -1488,6 +1488,9 @@ export default function SavedPage() {
   const { likedOutfits, likedProducts, unseenOutfits, unseenProducts, markCategorySeen } = useLikes();
   const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
+  // Set when the account saves a look but not the name it was given, which
+  // happens while the database is missing the column for it.
+  const [namesNotStored, setNamesNotStored] = useState(false);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
   const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
@@ -1513,6 +1516,7 @@ export default function SavedPage() {
     // local-only looks are pushed up.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMyLooks(loadLocalLooks());
+    setNamesNotStored(false);
 
     let cancelled = false;
     syncLooks(!!user).then((looks) => {
@@ -1571,7 +1575,16 @@ export default function SavedPage() {
       saveLocalLooks(next);
       if (user) {
         const look = next.find((l) => l.id === id);
-        if (look) void pushLook(look);
+        // The endpoint reports the columns it could not write. If the name is
+        // one of them the edit lives on this device and nowhere else, and the
+        // person who just typed it is entitled to know that.
+        if (look) {
+          void pushLook(look).then(({ dropped }) => {
+            if (dropped.includes("look_name") || dropped.includes("look_description")) {
+              setNamesNotStored(true);
+            }
+          });
+        }
       }
       return next;
     });
@@ -1737,6 +1750,18 @@ export default function SavedPage() {
         )}
 
         {/* ── My Looks (builder-created) ── */}
+        {view === "looks" && namesNotStored && (
+          /* The account accepted the look but not its name, because the
+             database has no column for one. Saying so is the point: without
+             this line the rename looks saved, stays on this device, and every
+             other device keeps showing the automatic title with nothing
+             anywhere explaining why. */
+          <p className="mb-4 px-3.5 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] text-[var(--foreground-muted)] leading-relaxed">
+            Names are being saved on this device only — your account can&apos;t store them yet, so
+            they won&apos;t appear on your other devices.
+          </p>
+        )}
+
         {view === "looks" && (
           myLooks.length > 0 ? (
             <motion.div
