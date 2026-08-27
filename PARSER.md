@@ -182,6 +182,37 @@ discover ─▶ product URLs (incl. pagination) ─▶ batch(5) ─▶ parse ─
 Per-product outcomes (`new` / `updated` / `skipped` / `failed`, with the reason
 and whether AI was needed) stream into the screen as they land.
 
+### Which anchors count as products
+
+`extractProductLinks` takes schema.org `ItemList` urls as authoritative, then
+falls back to same-host anchors. Stores address products in three shapes, so a
+path qualifies on any one of them (and is rejected outright if a segment is a
+known non-product route — `cart`, `help`, `blog`, `size-guide`, …):
+
+| Shape | Example | Store |
+|---|---|---|
+| An explicit product segment | `/en-us/women/product/gucci/loafer/1234567` | SSENSE, Shopify, ASOS (`/prd/`) |
+| A short segment plus a product code | `/fr/t/chaussure-air-force-1-BpVzMs/CW2288-111` | Nike |
+| A code as the last segment, no marker | `/fr/fr/veste-oversize-p04387400.html` | Zara, Adidas, Mytheresa, H&M |
+
+A "product code" is a run of 5+ digits, or a 1–3 letter prefix on 4+ digits
+(`EG4958`). Matching on the code — not just on a path keyword — is what makes
+the crawler work on brand stores, which rarely use `/product/` in their URLs.
+
+### When a listing comes back empty
+
+An empty crawl has three different causes with three different fixes, so
+`crawl.ts` reports what the page actually was rather than one blanket guess:
+
+| What came back | Hint |
+|---|---|
+| An anti-bot interstitial (Akamai/Cloudflare/DataDome, often a `200`) | Set a scraping provider — a plain request can't get past it |
+| A near-empty shell with almost no links | The grid is built in the browser; render it |
+| A full page whose links don't look like products | Paste a single product URL |
+
+The advice is mode-aware: **Render JS is only ever forwarded to a scraping
+provider**, so in `direct` mode the hint never points at that toggle.
+
 ---
 
 ## 6. Photos live on our storage

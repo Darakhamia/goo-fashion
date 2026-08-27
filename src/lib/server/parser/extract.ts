@@ -489,6 +489,73 @@ export function extractProductNodes(html: string): RawExtract[] {
   return dedupeRaw(findAllProductNodes(parseJsonLdBlocks(html)).map(nodeToRaw));
 }
 
+// ── Product-link discovery ────────────────────────────────────────────────────
+
+/**
+ * Path segments that name a product detail page outright. Matched as whole
+ * segments, so `/products/silk-shirt` counts and `/product-care` does not.
+ */
+const STRONG_SEGMENTS = new Set([
+  "product", "products", "prod", "pdp", "pd", "dp", "prd", "item", "items", "shopping", "buy",
+]);
+
+/**
+ * Segments too short to mean anything on their own — Nike's `/fr/t/…`, Zara's
+ * `/p/…`. They only count when the URL also carries a product code, otherwise
+ * every one-letter route on the site would look like a product.
+ */
+const WEAK_SEGMENTS = new Set(["p", "t", "a", "i", "style", "styles", "sku", "article"]);
+
+/**
+ * Segments that are never a product. Without this the code heuristic below
+ * files `/help/order-12345678` under the catalog.
+ */
+const NON_PRODUCT_SEGMENTS = new Set([
+  "cart", "bag", "basket", "checkout", "login", "signin", "sign-in", "register", "account",
+  "my-account", "wishlist", "favourites", "favorites", "help", "faq", "support",
+  "customer-service", "about", "about-us", "contact", "contact-us", "careers", "jobs", "press",
+  "privacy", "terms", "legal", "cookie", "cookies", "returns", "shipping", "delivery",
+  "size-guide", "sizing", "store-locator", "storelocator", "stores", "gift-card", "gift-cards",
+  "giftcard", "blog", "news", "magazine", "editorial", "journal", "stories", "search", "sitemap",
+  "newsletter", "subscribe", "feedback", "reviews",
+]);
+
+/**
+ * Does this path segment look like a product code? Covers the shapes stores
+ * actually ship: a long digit run (Zara `p04387400`, H&M `productpage.1234567890`,
+ * Mytheresa `p00123456`) and a short letter prefix on a digit block
+ * (Adidas `EG4958`, Nike `CW2288-111`).
+ */
+function looksLikeProductCode(segment: string): boolean {
+  const token = segment.replace(/\.(?:html?|aspx|jsp|php)$/i, "");
+  if (!token) return false;
+  if (/\d{5,}/.test(token)) return true;
+  return /(?:^|[^a-z0-9])[a-z]{1,3}\d{4,}/i.test(token);
+}
+
+/**
+ * Does this path point at a product page rather than a category, a filter or a
+ * footer link? Three ways to qualify, cheapest first.
+ */
+function looksLikeProductPath(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
+  if (!segments.length) return false;
+  if (segments.some((s) => NON_PRODUCT_SEGMENTS.has(s))) return false;
+
+  // 1. An explicit product segment, or the shapes we already relied on:
+  //    Farfetch's `-item-…​.aspx`, H&M's `productpage.…`.
+  if (segments.some((s) => STRONG_SEGMENTS.has(s) || s.startsWith("productpage"))) return true;
+  if (/-item-/i.test(pathname) || /\.aspx$/i.test(pathname)) return true;
+
+  // 2. A weak segment backed by a product code somewhere in the path.
+  const hasCode = segments.some(looksLikeProductCode);
+  if (hasCode && segments.some((s) => WEAK_SEGMENTS.has(s))) return true;
+
+  // 3. No marker at all, but the last segment is itself a product code —
+  //    Zara, Adidas and Mytheresa all address products this way.
+  return looksLikeProductCode(segments[segments.length - 1]);
+}
+
 /**
  * Discover product-page URLs on a listing page. Combines schema.org ItemList
  * URLs with same-host anchors that look like product links — used to "parse
@@ -499,14 +566,13 @@ export function extractProductLinks(html: string, baseUrl: string): string[] {
   let host = "";
   try { host = new URL(baseUrl).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
 
-  // 1. ItemList element urls from JSON-LD
+  // 1. ItemList element urls from JSON-LD — authoritative, no heuristics needed.
   for (const node of findAllProductNodes(parseJsonLdBlocks(html))) {
     const u = (typeof node.url === "string" && node.url) || (typeof node["@id"] === "string" && node["@id"]);
     if (typeof u === "string" && /^https?:\/\//.test(u)) urls.add(u.split("#")[0]);
   }
 
-  // 2. Anchors that look like product pages on the same host
-  const PRODUCT_PATH = /\/(product|products|item|items|pd|prod|shopping|p)\/|-item-|\/[\w-]+-\d{5,}|\.aspx/i;
+  // 2. Anchors that look like product pages on the same host.
   const anchorRe = /<a\b[^>]*\bhref=["']([^"'#]+)["']/gi;
   let m: RegExpExecArray | null;
   while ((m = anchorRe.exec(html))) {
@@ -514,7 +580,7 @@ export function extractProductLinks(html: string, baseUrl: string): string[] {
     try { abs = new URL(m[1], baseUrl); } catch { continue; }
     if (abs.protocol !== "http:" && abs.protocol !== "https:") continue;
     if (host && abs.hostname.replace(/^www\./, "") !== host) continue;
-    if (!PRODUCT_PATH.test(abs.pathname)) continue;
+    if (!looksLikeProductPath(abs.pathname)) continue;
     urls.add(`${abs.origin}${abs.pathname}`);
     if (urls.size >= 60) break;
   }
