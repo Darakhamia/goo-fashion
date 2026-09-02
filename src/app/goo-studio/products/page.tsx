@@ -1670,9 +1670,16 @@ export default function AdminProductsPage() {
   const rangeAnchor = useRef<string | null>(null);
 
   const toggleSelect = (id: string, extendRange = false) => {
+    // Read the anchor here, not inside the updater. React runs the updater at
+    // render time, by which point the assignment below has already moved the
+    // anchor to this row — so the updater would compare the row against itself,
+    // find `anchor === id`, and quietly fall through to a plain toggle. That is
+    // exactly the bug this had: Shift was detected, and nothing extended.
+    const anchor = rangeAnchor.current;
+    rangeAnchor.current = id;
+
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      const anchor = rangeAnchor.current;
 
       if (extendRange && anchor && anchor !== id) {
         const ids = filtered.map((p) => p.id);
@@ -1692,7 +1699,6 @@ export default function AdminProductsPage() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-    rangeAnchor.current = id;
   };
 
   const toggleSelectAll = () => {
