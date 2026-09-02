@@ -13,6 +13,21 @@
 import { supabase } from "@/lib/supabase";
 import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 
+/**
+ * The table isn't there yet. Postgres says 42P01; PostgREST, which answers from
+ * its own schema cache, says PGRST205 — and its message ("could not find the
+ * table … in the schema cache") tells an admin nothing about what to do.
+ */
+export const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+
+/** The message to show instead, which names the actual next action. */
+export const MISSING_TABLE_MESSAGE =
+  "The retailer_domains table does not exist yet — run supabase/migrations/018_retailer_domains.sql, then reload this page.";
+
+export function isMissingTable(error: { code?: string } | null | undefined): boolean {
+  return !!error?.code && MISSING_TABLE_CODES.has(error.code);
+}
+
 export interface RetailerRule {
   domain: string;
   name: string;

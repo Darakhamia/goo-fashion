@@ -6,7 +6,9 @@ import {
   domainCandidates,
   domainFromUrl,
   invalidateRetailerRules,
+  isMissingTable,
   loadRetailerRules,
+  MISSING_TABLE_MESSAGE,
   normalizeDomain,
   type RetailerRule,
 } from "@/lib/server/retailer-domains";
@@ -99,7 +101,14 @@ export async function GET() {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  const rules = await loadRetailerRules(true);
+  // Probe the table directly. `loadRetailerRules` treats an unreachable table
+  // as "no rules", which is right for an import — it must never fail because of
+  // an optional table — but wrong here: an editor showing an empty list when
+  // the table is simply absent tells the admin nothing.
+  const { error: probeError } = await supabase.from("retailer_domains").select("domain").limit(1);
+  const tableMissing = isMissingTable(probeError);
+
+  const rules = tableMissing ? new Map<string, RetailerRule>() : await loadRetailerRules(true);
 
   let discovered: DiscoveredDomain[] = [];
   let discoverError: string | null = null;
@@ -116,6 +125,11 @@ export async function GET() {
     discovered,
     discoverError,
     scanLimit: SCAN_LIMIT,
+    tableMissing,
+    setupHint: tableMissing ? MISSING_TABLE_MESSAGE : null,
+    // Anything else wrong with the table is worth surfacing too, rather than
+    // being read as "no rules yet".
+    rulesError: !tableMissing && probeError ? probeError.message : null,
   });
 }
 
@@ -148,6 +162,9 @@ export async function POST(req: Request) {
     { onConflict: "domain" },
   );
 
+  if (isMissingTable(error)) {
+    return NextResponse.json({ error: MISSING_TABLE_MESSAGE }, { status: 503 });
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   invalidateRetailerRules();
@@ -173,6 +190,9 @@ export async function DELETE(req: Request) {
   if (!domain) return NextResponse.json({ error: "Missing domain" }, { status: 400 });
 
   const { error } = await supabase.from("retailer_domains").delete().eq("domain", domain);
+  if (isMissingTable(error)) {
+    return NextResponse.json({ error: MISSING_TABLE_MESSAGE }, { status: 503 });
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   invalidateRetailerRules();
