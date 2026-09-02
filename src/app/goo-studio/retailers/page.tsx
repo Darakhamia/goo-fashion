@@ -24,6 +24,10 @@ interface Report {
   discovered: DiscoveredDomain[];
   discoverError: string | null;
   scanLimit: number;
+  /** Migration 018 has not been run here. */
+  tableMissing?: boolean;
+  setupHint?: string | null;
+  rulesError?: string | null;
 }
 
 const EMPTY_DRAFT = { domain: "", name: "", isOfficial: false, note: "" };
@@ -192,6 +196,19 @@ export default function RetailersPage() {
         host and rarely marked official. Rules apply to every product imported afterwards.
       </p>
 
+      {/* The table is absent, so nothing can be saved yet. Said once, at the
+          top, naming the migration — rather than letting the admin fill the
+          form in and meet a PostgREST schema-cache message on submit. */}
+      {report?.tableMissing && (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-6">
+          <p className="text-[13px] text-amber-500 leading-relaxed">{report.setupHint}</p>
+        </div>
+      )}
+
+      {report?.rulesError && (
+        <p className="text-[11px] text-red-500 mt-6">{report.rulesError}</p>
+      )}
+
       {/* ── Editor ── */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6 p-5">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
@@ -251,7 +268,12 @@ export default function RetailersPage() {
         {formError && <p className="text-[11px] text-red-500 mt-3">{formError}</p>}
 
         <div className="flex items-center gap-2 mt-4">
-          <button onClick={save} disabled={saving || !draft.domain.trim() || !draft.name.trim()} className={PRIMARY}>
+          <button
+            onClick={save}
+            disabled={saving || !!report?.tableMissing || !draft.domain.trim() || !draft.name.trim()}
+            title={report?.tableMissing ? report.setupHint ?? "" : ""}
+            className={PRIMARY}
+          >
             {saving ? "Saving…" : editingDomain ? "Save changes" : "Add rule"}
           </button>
           {(editingDomain || draft.domain || draft.name) && (
