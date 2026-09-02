@@ -24,6 +24,18 @@ function normalizeRetailers(
   if (!brandSlug || !Array.isArray(retailers)) return retailers ?? [];
   return retailers.map((r) => {
     if (!r?.url || slug(r.name) !== brandSlug) return r;
+    // A row that says it *is* the brand's own shop is entitled to carry the
+    // brand's name — that is what an official store is. The comment above has
+    // always promised to leave those alone; the code never checked the flag, so
+    // every official store had its name replaced by its own host on the way out
+    // of the database ("Enfants Riches Déprimés" served as
+    // "Enfantsrichesdeprimes"), and the flag was then recomputed to false by a
+    // heuristic that cannot see through an accent.
+    //
+    // That also made retailer domain rules inert exactly where they matter
+    // most: a rule naming a brand's own shop after the brand was undone on
+    // every read, so applying it appeared to do nothing at all.
+    if (r.isOfficial === true) return r;
     const derived = storeNameFromUrl(r.url, "");
     if (!derived || derived === "Store" || slug(derived) === brandSlug) return r;
     return { ...r, name: derived, isOfficial: isOfficialStore(r.url, brand) };
