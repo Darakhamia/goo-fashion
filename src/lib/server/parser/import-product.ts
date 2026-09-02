@@ -11,7 +11,8 @@
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb } from "@/lib/data/db";
-import { colorToHex, storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
+import { colorToHex } from "@/lib/server/product-fields";
+import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
 import type { Product, Category, Gender } from "@/lib/types";
@@ -97,14 +98,21 @@ export async function importParsedProduct(
 
   const brand = String(p.brand ?? "").trim().slice(0, 80);
 
-  const retailers: Product["retailers"] = sourceUrl
+  // The store's name and its "official store" flag come from the domain rules
+  // when the admin has written one, and from the guesses made off the link only
+  // when they haven't. This is the path the bookmarklet uses, so it is where a
+  // mislabelled shop would otherwise enter the catalogue one product at a time.
+  const retailerRules = sourceUrl ? await loadRetailerRules() : new Map();
+  const resolved = sourceUrl ? resolveRetailer(sourceUrl, brand, retailerRules) : null;
+
+  const retailers: Product["retailers"] = sourceUrl && resolved
     ? [{
-        name: storeNameFromUrl(sourceUrl, brand),
+        name: resolved.name,
         url: sourceUrl,
         price,
         currency,
         availability: "in stock",
-        isOfficial: isOfficialStore(sourceUrl, brand),
+        isOfficial: resolved.isOfficial,
       }]
     : [];
 

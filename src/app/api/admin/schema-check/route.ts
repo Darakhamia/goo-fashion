@@ -25,6 +25,12 @@ export const dynamic = "force-dynamic";
 
 /** PostgREST's code for "you selected a column I don't know about". */
 const UNDEFINED_COLUMN = "42703";
+/**
+ * A whole table that isn't there yet reads as the same problem to the admin —
+ * a migration to run — so it is reported the same way. Postgres answers 42P01;
+ * PostgREST, which knows the schema from its own cache, answers PGRST205.
+ */
+const UNDEFINED_TABLE = new Set(["42P01", "PGRST205"]);
 
 interface Check {
   table: string;
@@ -84,16 +90,23 @@ const CHECKS: readonly Check[] = [
     migration: "015_product_bg_color.sql",
     breaks: "Product cards cannot take the colour of the photo's backdrop.",
   },
+  {
+    table: "retailer_domains",
+    column: "domain",
+    migration: "018_retailer_domains.sql",
+    breaks: "Per-domain store names and official-store flags are not applied to imports.",
+  },
 ];
 
 async function present(table: string, column: string): Promise<{ present: boolean; error?: string }> {
   const { error } = await supabase!.from(table).select(column).limit(1);
   if (!error) return { present: true };
-  // Only "undefined column" is an answer about the schema. Anything else — the
-  // table missing, RLS, the network — is reported as-is rather than being read
+  // Only "undefined column" and "undefined table" are answers about the schema.
+  // Anything else — RLS, the network — is reported as-is rather than being read
   // as "the column is absent", which would send someone to re-run a migration
   // that was never the problem.
   if (error.code === UNDEFINED_COLUMN) return { present: false };
+  if (error.code && UNDEFINED_TABLE.has(error.code)) return { present: false };
   return { present: false, error: error.message };
 }
 

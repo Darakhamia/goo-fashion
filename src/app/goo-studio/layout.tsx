@@ -79,6 +79,17 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/goo-studio/retailers",
+    label: "Retailers",
+    category: "catalog",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2.5 6H13.5L12.8 13H3.2L2.5 6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M5.5 6V4.5A2.5 2.5 0 0 1 10.5 4.5V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/goo-studio/audit",
     label: "Audit",
     category: "catalog",
