@@ -21,7 +21,10 @@ export type AdminAction =
   | "products.label_fixed"
   | "products.bulk_edited"
   | "products.bg_color_sampled"
-  | "products.bg_color_undone";
+  | "products.bg_color_undone"
+  | "retailer_domain.saved"
+  | "retailer_domain.deleted"
+  | "retailer_domain.applied";
 
 interface AuditEntry {
   admin_id: string;

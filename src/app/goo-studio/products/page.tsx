@@ -1655,15 +1655,50 @@ export default function AdminProductsPage() {
     ? SORT_OPTIONS
     : [...SORT_OPTIONS, { value: currentSortValue, label: `${sortKey} (${sortDir})` }];
 
-  const toggleSelect = (id: string) =>
+  /**
+   * Select a row, and with Shift held, everything between it and the row
+   * clicked before it.
+   *
+   * The anchor is the last row whose checkbox was used, held in a ref because
+   * it steers the next click rather than anything on screen — re-rendering the
+   * table for it would be work for nothing.
+   *
+   * The range takes the state the clicked row is moving *to*, so shift-clicking
+   * also clears a run: the gesture that selects fifty rows undoes them the same
+   * way, instead of only ever adding.
+   */
+  const rangeAnchor = useRef<string | null>(null);
+
+  const toggleSelect = (id: string, extendRange = false) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
+      const anchor = rangeAnchor.current;
+
+      if (extendRange && anchor && anchor !== id) {
+        const ids = filtered.map((p) => p.id);
+        const from = ids.indexOf(anchor);
+        const to = ids.indexOf(id);
+        // A filter or sort change can leave the anchor off the current list.
+        // Falling through to the plain toggle is the honest answer then.
+        if (from !== -1 && to !== -1) {
+          const selecting = !prev.has(id);
+          for (let i = Math.min(from, to); i <= Math.max(from, to); i++) {
+            if (selecting) next.add(ids[i]); else next.delete(ids[i]);
+          }
+          return next;
+        }
+      }
+
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+    rangeAnchor.current = id;
+  };
 
-  const toggleSelectAll = () =>
+  const toggleSelectAll = () => {
+    rangeAnchor.current = null;
     setSelectedIds(allSelected ? new Set() : new Set(filtered.map((p) => p.id)));
+  };
 
   const openGroupModal = () => {
     const selected = filtered.filter((p) => selectedIds.has(p.id));
@@ -2320,7 +2355,20 @@ export default function AdminProductsPage() {
                       <input
                         type="checkbox"
                         checked={selectedIds.has(product.id)}
-                        onChange={() => toggleSelect(product.id)}
+                        // Shift-click selects the whole run since the last box
+                        // ticked. React routes a checkbox's onChange from the
+                        // underlying click event, so the modifier keys are on
+                        // the native event — and a keyboard Space, which is
+                        // also a click here, simply arrives with shiftKey
+                        // false and toggles the one row.
+                        onChange={(e) =>
+                          toggleSelect(product.id, (e.nativeEvent as MouseEvent).shiftKey === true)
+                        }
+                        // Shift-clicking otherwise selects the text between the
+                        // two rows as well, which looks like a bug. Suppressed
+                        // only while Shift is down, so normal clicks still take
+                        // focus as they should.
+                        onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }}
                         className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
                       />
                     </td>

@@ -10,8 +10,8 @@ import {
   matchCategory,
   colorToHex,
   storeNameFromUrl,
-  isOfficialStore,
 } from "@/lib/server/product-fields";
+import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import type { Product, Category, Gender } from "@/lib/types";
 import type { CSVMappedRow } from "@/app/goo-studio/brightdata/page";
 
@@ -390,6 +390,10 @@ export async function PUT(req: Request) {
     }
   }
 
+  // Domain rules, read once for the whole import rather than per row: a CSV is
+  // thousands of links and the rules do not change while it runs.
+  const retailerRules = await loadRetailerRules();
+
   // ── Step 3: import one product per colorKey
   let imported = 0;
   const errors: { name: string; error: string }[] = [];
@@ -408,17 +412,18 @@ export async function PUT(req: Request) {
     for (const row of colorRows) {
       if (row.referralUrl && !seenLinks.has(row.referralUrl)) {
         seenLinks.add(row.referralUrl);
-        // The store is the merchant (e.g. "Farfetch"), already resolved from the
-        // merchant column or the link host — never the brand. Mark "Official
-        // store" only when the link points at the brand's own website.
-        const storeName = row.merchant || storeNameFromUrl(row.referralUrl, "Store");
+        // A domain rule wins over the CSV's merchant column, which wins over
+        // the name guessed from the link host. That order is the whole point of
+        // the rules: the merchant column is one of the things that arrives
+        // wrong, and until now it had the final say.
+        const store = resolveRetailer(row.referralUrl, row.brand, retailerRules, row.merchant);
         retailers.push({
-          name: storeName,
+          name: store.name || "Store",
           url: row.referralUrl,
           price: row.price,
           currency: (row.currency || "GBP").toUpperCase(),
           availability: "in stock",
-          isOfficial: isOfficialStore(row.referralUrl, row.brand),
+          isOfficial: store.isOfficial,
         });
       }
     }
