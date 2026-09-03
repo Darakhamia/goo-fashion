@@ -16,14 +16,29 @@
  *
  * So harvesting is deliberately conservative. A candidate is kept only when it
  * demonstrably belongs to the same product as an image we already trust (from
- * JSON-LD/OpenGraph): same host, and a filename sharing a long prefix with a
- * trusted one. On the Allbirds page that keeps the four real gallery shots
- * (`All-birds_0017/0029/0014/0028` next to the trusted `All-birds_0010`) and
- * rejects all four other-product shots, the sale banner and the material icons.
+ * JSON-LD/OpenGraph): same host, and a filename that either resembles a trusted
+ * one (shared prefix, or the same name with a different frame number) or names
+ * the product itself — by the words of its title, or by the product code the
+ * page URL is addressed with. On the Allbirds page that keeps the four real
+ * gallery shots (`All-birds_0017/0029/0014/0028` next to the trusted
+ * `All-birds_0010`) and rejects all four other-product shots, the sale banner
+ * and the material icons.
+ *
+ * When structured data hands us nothing to anchor to — a store with neither
+ * JSON-LD nor og:image — the naming signals run on their own. There is no
+ * gallery to lose in that case, only one to find.
  */
 
-/** Query parameters that only ask for a smaller rendition. */
-const SIZE_PARAMS = ["width", "height", "w", "h", "quality", "q", "size", "sw", "sh", "fit", "crop"];
+/**
+ * Query parameters that only ask for a smaller rendition. Beyond the plain
+ * `width`/`height` pair, the presets the big image CDNs ship with: Scene7
+ * (`wid`/`hei`/`qlt`/`resmode`, used by department stores), Demandware
+ * (`sw`/`sh`), Salesforce/Adobe (`dpr`, `scl`) and Akamai (`imwidth`).
+ */
+const SIZE_PARAMS = [
+  "width", "height", "w", "h", "quality", "q", "size", "sw", "sh", "fit", "crop",
+  "wid", "hei", "qlt", "resmode", "dpr", "scl", "imwidth", "imdensity", "maxwidth", "maxheight",
+];
 
 /**
  * Shopify (and friends) append a rendition suffix right before the extension:
@@ -36,6 +51,20 @@ const RENDITION_SUFFIX =
   /_(?:\d{1,5}x\d{0,5}(?:_crop_[a-z]+)?|pico|icon|thumb|small|compact|medium|large|grande|master|original)(?=\.[a-z0-9]+$)/i;
 
 const IMAGE_EXT = /\.(?:jpe?g|png|webp|avif)$/i;
+
+/**
+ * Extensions that are certainly not a photo. Needed because the extension test
+ * below had to be loosened: plenty of image CDNs address a photo with no file
+ * extension at all — Scene7 (`/is/image/Retailer/SKU_1?$pdp$`), Zara
+ * (`/photo?ts=…`), imgix and Cloudinary named transformations. Requiring
+ * `.jpg` threw those away, which on those retailers meant throwing away the
+ * whole gallery *and* the primary photo the structured data had handed us.
+ */
+const NON_IMAGE_EXT =
+  /\.(?:js|mjs|css|json|xml|html?|php|aspx?|svg|ico|woff2?|ttf|otf|eot|mp4|webm|mov|m3u8|pdf|txt|zip|gz)$/i;
+
+/** A path whose last segment carries no extension at all — a CDN endpoint. */
+const NO_EXTENSION = /\/[^/.]+\/?$/;
 
 /**
  * Filename fragments that mark furniture rather than product photography.
@@ -60,10 +89,20 @@ export function upgradeImageUrl(src: string, baseUrl: string): string | null {
   // to request. Without this a gallery scraped from `?width=300` markup would
   // be mirrored into our storage at 300px — technically "all the images", and
   // useless for a fashion catalog.
-  for (const p of SIZE_PARAMS) u.searchParams.delete(p);
+  // Edited as text rather than through `searchParams`, which re-serialises the
+  // whole query on any mutation: that turns Scene7's `?$pdp$` preset into
+  // `?%24pdp%24=` and asks the CDN for a rendition it does not have.
+  if (u.search) {
+    const kept = u.search
+      .slice(1)
+      .split("&")
+      .filter((part) => part && !SIZE_PARAMS.includes(part.split("=")[0].toLowerCase()));
+    if (kept.length !== u.search.slice(1).split("&").length) u.search = kept.join("&");
+  }
   u.pathname = u.pathname.replace(RENDITION_SUFFIX, "");
 
-  if (!IMAGE_EXT.test(u.pathname)) return null;
+  if (NON_IMAGE_EXT.test(u.pathname)) return null;
+  if (!IMAGE_EXT.test(u.pathname) && !NO_EXTENSION.test(u.pathname)) return null;
   return u.toString();
 }
 
@@ -122,6 +161,10 @@ function namePhrases(name: string): string[] {
   const words = name
     .toLowerCase()
     .split(/[^a-z0-9]+/)
+    // A page says "Tree Runners" and names its files `Tree_Runner_…`, so the
+    // plural has to be able to match the singular. Dropping a trailing "s"
+    // costs nothing: a pair of adjacent words still has to line up.
+    .map((t) => (t.length >= 5 && t.endsWith("s") ? t.slice(0, -1) : t))
     .filter((t) => t.length >= NAME_TOKEN_MIN);
   if (words.length === 0) return [];
   // A one-word name ("Cruiser") has no pair — use the word, if it is long
@@ -141,6 +184,55 @@ function commonPrefixLength(a: string, b: string): number {
   let i = 0;
   while (i < n && a[i] === b[i]) i++;
   return i;
+}
+
+/**
+ * Two filenames of the same length that differ in almost nothing are the same
+ * photo shoot: `sku1204551` / `sku1204552`, `pdp-front` / `pdp-front2`.
+ *
+ * This exists because the prefix test needs ten leading characters to agree,
+ * and a CDN that addresses photos as `<sku><frame>` — Scene7 and Demandware
+ * both do — puts the difference too early for that: `sku1204551` and a
+ * different product's `sku9903341` agree on three. Comparing whole strings
+ * position by position tells those two apart while keeping the frames.
+ */
+const FRAME_DIFF_MAX = 2;
+const FRAME_STEM_MIN = 8;
+
+function isNumberedFrame(a: string, b: string): boolean {
+  if (a.length !== b.length || a.length < FRAME_STEM_MIN) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i] && ++diff > FRAME_DIFF_MAX) return false;
+  }
+  return diff > 0;
+}
+
+/**
+ * Identity signals carried by the product page's own address.
+ *
+ * A retailer that names photo files after the SKU — Farfetch answers
+ * `/shopping/…-item-27412345.aspx` with `…/27412345_18904371_1000.jpg` — offers
+ * nothing else to match on: the filename shares no prefix with the OpenGraph
+ * image (different second id) and does not contain the product's name. The
+ * page's own slug and product code cover that, and cost one URL parse.
+ */
+function urlIdentity(pageUrl: string): { phrases: string[]; codes: string[] } {
+  try {
+    const slug = new URL(pageUrl).pathname
+      .split("/")
+      .filter(Boolean)
+      .slice(-2)
+      .join(" ")
+      .replace(/\.(?:html?|aspx?|php|jsp)$/i, "");
+    // Six digits, not five: a code is matched as a substring of a filename, and
+    // a five-digit run collides with dates, timestamps and version numbers
+    // often enough to file a banner under a product.
+    const codes = [...new Set((slug.toLowerCase().match(/\d{6,}/g) ?? []))];
+    return { phrases: namePhrases(slug), codes };
+  } catch {
+    return { phrases: [], codes: [] };
+  }
 }
 
 /**
@@ -171,15 +263,25 @@ function collectCandidates(html: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = imgRe.exec(html))) {
     const tag = m[0];
-    for (const attr of ["src", "data-src", "data-original", "data-lazy", "data-image"]) {
+    for (const attr of [
+      "src", "data-src", "data-original", "data-lazy", "data-image",
+      // Zoom viewers keep the full-resolution shot in an attribute of its own —
+      // WooCommerce (`data-large_image`), Magento and most jQuery zoom plugins.
+      "data-zoom-image", "data-large_image", "data-large", "data-full", "data-hires",
+    ]) {
       const a = tag.match(new RegExp(`\\b${attr}\\s*=\\s*["']([^"']+)["']`, "i"));
       if (a) out.push(a[1]);
     }
   }
 
+  // CSS background images — carousels built out of <div>s carry the gallery here
+  // and have no <img> tag at all.
+  const bgRe = /background(?:-image)?\s*:\s*url\((["']?)([^"')]+)\1\)/gi;
+  while ((m = bgRe.exec(html))) out.push(m[2]);
+
   // srcset on <img> and <source>: take every candidate; the largest wins after
   // the rendition suffix and size params are stripped, so order is irrelevant.
-  const srcsetRe = /\bsrcset\s*=\s*["']([^"']+)["']/gi;
+  const srcsetRe = /\b(?:data-)?srcset\s*=\s*["']([^"']+)["']/gi;
   while ((m = srcsetRe.exec(html))) {
     for (const part of m[1].split(",")) {
       const url = part.trim().split(/\s+/)[0];
@@ -226,7 +328,6 @@ export function harvestGalleryImages(
   const trustedUrls = trusted
     .map((u) => upgradeImageUrl(u, baseUrl))
     .filter((u): u is string => !!u);
-  if (trustedUrls.length === 0) return [];
 
   const trustedHosts = new Set<string>();
   const trustedStems: string[] = [];
@@ -240,7 +341,8 @@ export function harvestGalleryImages(
     if (s) trustedStems.push(s);
   }
 
-  const phrases = namePhrases(productName);
+  const { phrases: slugPhrases, codes } = urlIdentity(baseUrl);
+  const phrases = [...new Set([...namePhrases(productName), ...slugPhrases])];
   const seen = new Set(trustedUrls.map(imageKey));
   const out: string[] = [];
 
@@ -253,38 +355,48 @@ export function harvestGalleryImages(
     if (seen.has(key)) continue;
 
     let host: string;
+    let path: string;
     try {
-      host = new URL(url).hostname.replace(/^www\./, "");
+      const u = new URL(url);
+      host = u.hostname.replace(/^www\./, "");
+      path = u.pathname;
     } catch {
       continue;
     }
-    // A different host is someone else's imagery — review photos, ad pixels,
-    // partner badges. The product's own gallery is served where its main photo is.
-    if (!trustedHosts.has(host)) continue;
 
-    const path = (() => {
-      try {
-        return new URL(url).pathname;
-      } catch {
-        return url;
-      }
-    })();
-    if (NOISE.test(path)) continue;
-
-    // The decisive test: does this photo belong to the same product? Two
-    // independent signals, either of which is enough — stores name their assets
-    // one way or the other, and neither convention alone covers both.
     const s = stem(url);
     if (!s) continue;
-    const isSibling =
-      // (1) the filename carries the product's name
-      matchesProductName(s, phrases) ||
-      // (2) it is a numbered frame beside a photo we trust
-      trustedStems.some(
-        (t) => commonPrefixLength(t, s) >= STEM_MATCH_MIN &&
-          s.length - commonPrefixLength(t, s) <= STEM_TAIL_MAX,
-      );
-    if (!isSibling) continue;
+
+    // Named after the product, or after the code the page URL is addressed by.
+    // Either is the product saying "this photo is mine" in its own filename.
+    const named = matchesProductName(s, phrases) || codes.some((c) => s.includes(c));
+
+    // Page furniture never carries the product's name, so the noise list only
+    // has to judge the candidates that got in on resemblance alone. Applying it
+    // to a named match would drop the real photos of a "Star Print Shirt".
+    if (!named && NOISE.test(path)) continue;
+
+    if (trustedHosts.size === 0) {
+      // Nothing from structured data to anchor to — a store that ships neither
+      // JSON-LD nor og:image. There is no gallery to lose here, only one to
+      // find, so the naming signal alone decides.
+      if (!named) continue;
+    } else {
+      // A different host is someone else's imagery — review photos, ad pixels,
+      // partner badges. The product's gallery is served where its main photo is.
+      if (!trustedHosts.has(host)) continue;
+      const sibling =
+        named ||
+        trustedStems.some(
+          (t) =>
+            // a numbered frame beside a photo we trust, either by shared prefix…
+            (commonPrefixLength(t, s) >= STEM_MATCH_MIN &&
+              s.length - commonPrefixLength(t, s) <= STEM_TAIL_MAX) ||
+            // …or by being the same filename with a different frame in it
+            isNumberedFrame(t, s),
+        );
+      if (!sibling) continue;
+    }
 
     seen.add(key);
     out.push(url);
