@@ -54,8 +54,16 @@ export function condenseHtml(html: string, maxChars = MAX_HTML_CHARS): string {
     .replace(/<!--[\s\S]*?-->/g, " ")
     // data: URIs (inline base64 images) — megabytes of noise
     .replace(/(?:src|href)\s*=\s*(["'])data:[^"']*\1/gi, " ")
-    // Collapse attributes we never need, keeping src/alt/content/href/itemprop
-    .replace(/\s(?:class|style|srcset|sizes|data-[\w-]+|aria-[\w-]+|id|role|tabindex)\s*=\s*(["'])[\s\S]*?\1/gi, "")
+    // Collapse attributes we never need, keeping src/alt/content/href/itemprop.
+    // The lazy-loading attributes stay: on a store that ships a placeholder in
+    // `src` and the real photo in `data-src`, stripping them handed the model a
+    // page whose every image was a spacer gif — and the gallery is the main
+    // thing it is being asked for. `srcset` still goes: it repeats each photo at
+    // eight widths, which is pure token burn for no new picture.
+    .replace(
+      /\s(?:class|style|srcset|sizes|data-(?!src(?!set)|original|image|zoom|large|hires|full)[\w-]+|aria-[\w-]+|id|role|tabindex)\s*=\s*(["'])[\s\S]*?\1/gi,
+      "",
+    )
     .replace(/\s+/g, " ")
     .trim();
 
@@ -87,7 +95,7 @@ Rules:
 - Return ONLY what is literally present in the HTML. If a field is not there, return null. Never guess, never invent, never fill from world knowledge about the brand.
 - price and priceOriginal: digits only, e.g. "1290" or "1290.50". No currency symbol, no thousands separator. price is the CURRENT (discounted) price; priceOriginal is the pre-discount price and is null when there is no discount.
 - currency: 3-letter ISO code (USD, EUR, GBP, UAH…), inferred from the symbol or explicit code on the page.
-- images: absolute or root-relative URLs of the PRODUCT's own photos, largest variant available, in page order, max 10. Exclude logos, icons, payment badges, banners and photos of other products.
+- images: absolute or root-relative URLs of EVERY photo of THIS product — the whole gallery, not just the first shot — largest variant available, in page order, max 10. Exclude logos, icons, payment badges, banners and photos of other products.
 - name: the product title WITHOUT the brand name prefix.
 - description: the product's own copy as plain text, max 800 characters. No marketing boilerplate about shipping or returns.
 - sizes: available size labels as shown (e.g. ["XS","S","M"] or ["40","41"]).
@@ -118,11 +126,19 @@ export function missingFields(raw: RawExtract): string[] {
 }
 
 /**
+ * A product page shows a garment from several angles; one photo means the
+ * gallery did not survive the fetch, not that the shoot was one frame. Below
+ * this the deterministic result counts as thin even when every other field
+ * came back.
+ */
+const THIN_GALLERY = 2;
+
+/**
  * Is the deterministic result weak enough to be worth an AI call?
- * A page missing name, price or images is the case AI actually rescues.
+ * A page missing name, price or a gallery is the case AI actually rescues.
  */
 export function shouldUseAi(raw: RawExtract): boolean {
-  return !raw.name || !raw.price || !raw.images?.length;
+  return !raw.name || !raw.price || (raw.images?.length ?? 0) < THIN_GALLERY;
 }
 
 function asTrimmedString(v: unknown, max = 5_000): string | undefined {
@@ -253,9 +269,18 @@ export function mergeAiIntoRaw(raw: RawExtract, ai: AiFields): { raw: RawExtract
   take("material", ai.material ?? undefined);
   take("description", ai.description ?? undefined);
 
-  if (!next.images.length && ai.images?.length) {
-    next.images = ai.images;
-    used.push("images");
+  // Photos are the one field AI is allowed to ADD to rather than only fill.
+  // Structured data routinely advertises a single photo for a page showing
+  // eight, and "one image" is the same failure as "no images" for a catalog —
+  // so below a real gallery the model's reading is appended behind whatever the
+  // deterministic pass found, which keeps the primary photo where it was. Above
+  // it, a working gallery is never diluted.
+  if (ai.images?.length && next.images.length < THIN_GALLERY) {
+    const before = next.images.length;
+    for (const url of ai.images) {
+      if (!next.images.includes(url)) next.images.push(url);
+    }
+    if (next.images.length > before) used.push("images");
   }
   if (!next.image && next.images.length) next.image = next.images[0];
   if (!next.sizes.length && ai.sizes?.length) {

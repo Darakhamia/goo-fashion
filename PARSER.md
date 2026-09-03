@@ -79,30 +79,58 @@ No DOM library — pure regex/JSON, so it runs in any serverless route. Handles
 
 Structured data is reliable but thin about photography: OpenGraph carries a
 single `og:image`, and stores ship JSON-LD with one photo for a page showing
-eight. So `src/lib/server/parser/gallery.ts` also scrapes `<img>`, `srcset`,
-`<link rel=preload as=image>` and inline JSON for the rest of the gallery.
+eight. So `src/lib/server/parser/gallery.ts` also scrapes `<img>` (including the
+lazy-loading and zoom attributes: `data-src`, `data-zoom-image`,
+`data-large_image`), `srcset`, `<link rel=preload as=image>`, CSS
+`background-image` and inline JSON for the rest of the gallery.
 
 The hard part is that a product page is full of images that are *not* this
 product — a recommendations carousel, nav banners, material icons, review photos
 on a third-party host. A wrong photo is worse than a missing one, so a candidate
 is kept only when it is on the same host as a trusted image **and** passes one
-of two identity tests:
+of four identity tests:
 
 1. **Numbered sibling** — its filename shares ≥10 characters with a trusted
    image's and differs only by a short tail (`All-birds_0010` → `All-birds_0017`).
-2. **Named after the product** — it contains two *adjacent* words of the product
-   name (`Classic Easy Tote` → `…_ClassicEasyToteV2_…`). Adjacency matters:
-   scattered-word matching filed the separate "Classic Tote Insert" accessory
-   under the tote.
+2. **Same frame, different number** — same length as a trusted filename and
+   differing in at most two characters (`1204551_ivory_1` → `1204551_ivory_2`).
+   Test 1 needs ten *leading* characters to agree, which a CDN addressing photos
+   as `<sku><frame>` puts the difference too early for.
+3. **Named after the product** — it contains two *adjacent* words of the product
+   name or of the page URL's slug (`Classic Easy Tote` → `…_ClassicEasyToteV2_…`).
+   Adjacency matters: scattered-word matching filed the separate "Classic Tote
+   Insert" accessory under the tote.
+4. **Carries the product code** — the ≥6-digit code the page URL is addressed by
+   appears in the filename. Farfetch answers `…-item-27412345.aspx` with
+   `…/27412345_18904371_1000.jpg`, which resembles nothing and is named after
+   nothing, but says the SKU out loud.
+
+Two rules sit on top of those. The furniture list (`banner`, `logo`, `payment`,
+…) only judges candidates that got in on resemblance — applying it to a
+name-matched file would drop the real photos of a "Star Print Shirt". And when
+structured data yields **no** trusted image at all — a store with neither JSON-LD
+nor `og:image` — tests 3 and 4 run on their own: there is no gallery to lose in
+that case, only one to find.
 
 Measured on live pages: Allbirds 1 → 5 photos, Cuyana 1 → 12, no foreign
 products in either.
 
+**Extension-less CDNs.** A photo does not have to end in `.jpg`. Scene7
+(`/is/image/Retailer/SKU_1?$pdp$`), Zara (`/photo?ts=…`), imgix and Cloudinary
+named transformations all address images with no file extension, and demanding
+one threw those stores' galleries away — along with the primary photo their
+structured data had handed us. Anything whose extension is positively *not* an
+image (`.js`, `.css`, `.svg`, `.woff2`, …) is still rejected.
+
 **Resolution.** Harvested URLs carry whatever size the page asked for
-(`?width=300`), and CDNs serve renditions (`_1024x`, `_600x600_crop_center`,
-`_grande`). Both are stripped to fetch the original — measured 34 KB → 642 KB on
-Allbirds. The same normalisation is the dedupe key, so one photo offered at
-three sizes is stored once instead of three times.
+(`?width=300`, and the CDN dialects of it: `wid`/`hei` on Scene7, `sw`/`sh` on
+Demandware, `imwidth` on Akamai), and CDNs serve renditions (`_1024x`,
+`_600x600_crop_center`, `_grande`). Both are stripped to fetch the original —
+measured 34 KB → 642 KB on Allbirds. The query is edited as text rather than
+through `URLSearchParams`, which re-serialises the whole thing and turns
+Scene7's `?$pdp$` preset into a rendition that does not exist. The same
+normalisation is the dedupe key, so one photo offered at three sizes is stored
+once instead of three times.
 
 > JS-rendered galleries are still invisible to a plain fetch. Enable **Render JS**
 > in Fetch & Anti-bot for those stores.
@@ -113,6 +141,38 @@ three sizes is stored once instead of three times.
 the **same** helpers as the CSV importer (`src/lib/server/product-fields.ts`):
 price parsing (EU/US formats), currency, category & gender inference, color→hex.
 Relative image URLs are resolved; results are deduped.
+
+### Colour
+
+Colour is the one field a product needs twice over: the catalogue prints the
+store's own word for it, and the browse sidebar filters on `color_group_ids` —
+database ids, not words. Both are filled on import, so a parsed product arrives
+already under the right filter with the right swatch.
+
+**Reading it.** Every layer is searched, in this order: a site recipe's regex →
+JSON-LD (`color`, an `additionalProperty` named Colour, or the shown variant's
+colour) → `product:color` meta → microdata → the markup itself (`data-color=`,
+`"color":"…"` in a hydration payload, a "Colour: Black" line). What the page
+says is kept **verbatim** — "Core Black" stays "Core Black".
+
+When the page states no colour anywhere, the product title and then the URL's
+last path segment are read for one, and the base colour is written as the label
+("Black"). Both fallbacks are guarded by the vocabulary below, so "Nike Air
+Force 1" contributes nothing. The markup patterns are guarded the same way,
+because `"color":"#f5f5f5"` and "Colour: as pictured" both match the shape.
+
+**Filing it.** `canonicalColor()` reduces a colourway to one of twelve base
+colours — "Core Black", "Noir", "Nero", "чёрный" all read as black — which then
+gives the swatch hex and the `color_groups` row. The **last** colour word wins,
+because a colourway puts its qualifier first: "Natural Black" is a black shoe.
+A label naming two colours across a separator ("Black/White", "Blue and Green")
+is filed under both groups *and* Multicolor, which is the group
+`lib/color-groups.ts` treats as the only truthful single label for such a piece.
+"Natural Black" is one colour, "Natural/Black" is two.
+
+A database that has not run the colour-filter migration still takes the product:
+the write goes through `writeProductRow`, which drops the unknown column and
+retries rather than failing the import.
 
 ---
 
@@ -153,6 +213,12 @@ table, same as embeddings and the stylist).
 - **No invented photos.** Any image URL the model returns must literally occur
   in the page HTML or it is dropped — a hallucinated photo would otherwise stay
   invisible until the catalog rendered a broken card.
+- **Photos are the one field it may add to.** Everywhere else AI fills only
+  empty fields; below two photos it also appends what it found behind whatever
+  the deterministic pass got, because "one photo" is the same failure as "no
+  photos" for a catalog. A page that already yielded a gallery is never diluted,
+  and the primary photo never moves. This is also why `auto` counts a
+  single-photo page as thin enough to be worth a call.
 - **Degrades, never breaks.** No key, a malformed reply or an API error leaves
   the deterministic result untouched and reports the reason in diagnostics.
 

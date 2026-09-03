@@ -11,6 +11,7 @@
  */
 import type { ParserSiteConfig, RawExtract, ParserRuleField } from "./types";
 import { harvestGalleryImages } from "./gallery";
+import { canonicalColor } from "@/lib/server/product-fields";
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
 
@@ -257,11 +258,46 @@ function offerInfo(v: JsonValue | undefined): OfferInfo {
   return result;
 }
 
+/**
+ * The colour a Product node states, wherever it states it.
+ *
+ * `color` is the documented field, but plenty of feeds put the colourway in an
+ * `additionalProperty` row instead ({ name: "Colour", value: "Black" }) or only
+ * on the variant that the page is showing (`hasVariant[0].color`). All three
+ * are the store's own word for the colour, so all three count.
+ */
+function colorFromNode(node: JsonObject): string | undefined {
+  const direct = asString(node.color) ?? (isObj(node.color) ? asString(node.color.name) : undefined);
+  if (direct) return direct;
+
+  const props = node.additionalProperty;
+  if (Array.isArray(props)) {
+    for (const p of props) {
+      if (!isObj(p)) continue;
+      const name = (asString(p.name) ?? "").toLowerCase();
+      if (name === "color" || name === "colour" || name === "цвет") {
+        const value = asString(p.value);
+        if (value) return value;
+      }
+    }
+  }
+
+  const variants = node.hasVariant;
+  if (Array.isArray(variants)) {
+    for (const v of variants) {
+      if (!isObj(v)) continue;
+      const c = asString(v.color);
+      if (c) return c;
+    }
+  }
+  return undefined;
+}
+
 /** Extract raw fields from a single schema.org Product node. */
 function rawFromProductNode(node: JsonObject): Partial<RawExtract> & { found: boolean } {
   const offers = offerInfo(node.offers);
   const images = imageList(node.image);
-  const color = asString(node.color);
+  const color = colorFromNode(node);
   const material = asString(node.material);
   const description = asString(node.description);
   const url =
@@ -335,6 +371,7 @@ function fromMeta(html: string): Partial<RawExtract> {
   const get = (k: string) => meta.get(k.toLowerCase());
   const images = [...new Set([...allMeta(html, "og:image"), ...allMeta(html, "twitter:image")])].filter(Boolean);
   const title = get("og:title");
+  const color = get("product:color") || get("product:colour") || get("og:color");
   return {
     name: title ? decodeEntities(title) : undefined,
     brand: get("product:brand") || get("og:brand"),
@@ -342,6 +379,7 @@ function fromMeta(html: string): Partial<RawExtract> {
     currency: get("product:price:currency") || get("og:price:currency"),
     image: images[0],
     images,
+    color: color ? decodeEntities(color) : undefined,
     description: (() => {
       const d = get("og:description") || get("description");
       return d ? decodeEntities(d) : undefined;
@@ -374,7 +412,44 @@ function fromMicrodata(html: string): Partial<RawExtract> {
     brand: prop("brand"),
     price: prop("price"),
     currency: prop("priceCurrency"),
+    color: prop("color"),
+    material: prop("material"),
   };
+}
+
+/**
+ * Colour patterns in raw markup, for the stores that carry it nowhere a
+ * structured reader can see: on the selected swatch (`data-color="Black"`), in
+ * the hydration payload the page ships (`"color":"Black"`), or as a plain
+ * "Colour: Black" line in the specification list.
+ */
+const COLOR_MARKUP: RegExp[] = [
+  /\bdata-(?:selected-|product-|variant-)?colou?r(?:-?name)?\s*=\s*["']([^"']{2,40})["']/gi,
+  /"colou?r(?:_?name)?"\s*:\s*"([^"]{2,40})"/gi,
+  /\bcolou?r\s*:\s*([A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё\s/&'-]{1,30})/gi,
+];
+
+/**
+ * The colour a page states in its markup rather than its structured data.
+ *
+ * Every candidate has to reduce to a colour the catalogue knows before it is
+ * accepted, because each of these patterns also matches things that are not a
+ * colourway at all — a CSS value, a theme setting, an analytics field. A match
+ * that means nothing to the colour filter is not worth the risk of being wrong,
+ * and "Colour: as pictured" is exactly the kind of answer these fields give.
+ */
+function colorFromHtml(html: string): string | undefined {
+  for (const re of COLOR_MARKUP) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    let checked = 0;
+    while ((m = re.exec(html)) && checked < 40) {
+      checked++;
+      const value = decodeEntities(m[1]).trim();
+      if (value && canonicalColor(value)) return value;
+    }
+  }
+  return undefined;
 }
 
 /** Apply a single recipe regex rule against the raw HTML. */
@@ -450,8 +525,11 @@ export function extractProduct(
       ...galleryImages,
     ],
     sizes,
-    color: pick(ruleVal("color"), jsonld.color),
-    material: pick(ruleVal("material"), jsonld.material),
+    // Colour is worth chasing through every layer: it is what the swatch, the
+    // colour filter and half the stylist's vocabulary are built from, and a
+    // page that says "Black" anywhere means it.
+    color: pick(ruleVal("color"), jsonld.color, meta.color, micro.color, colorFromHtml(html)),
+    material: pick(ruleVal("material"), jsonld.material, micro.material),
     description: pick(ruleVal("description"), jsonld.description, meta.description),
     strategies,
   };
