@@ -13,10 +13,10 @@
  * inside a serverless function that will be killed at its `maxDuration`.
  */
 import { fetchHtml } from "./fetch";
-import { extractProductLinks } from "./extract";
+import { extractProductLinks, looksLikeProductPath } from "./extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
 import { discoverShopifyProducts, fetchShopifyProduct, productJsonUrl } from "./shopify";
-import { discoverFromSitemap } from "./sitemap";
+import { discoverFromSitemap, type SitemapResult } from "./sitemap";
 import type { ParserFetchSettings, ParserSiteConfig } from "./types";
 
 /**
@@ -181,13 +181,30 @@ function diagnoseEmptyListing(html: string, settings: ParserFetchSettings): stri
  * A failed fetch of the first page. Only add a hint where the status actually
  * tells us something — `error` already carries the status itself.
  */
-function diagnoseFailedFetch(settings: ParserFetchSettings, status: number): string | undefined {
+function diagnoseFailedFetch(
+  settings: ParserFetchSettings,
+  status: number,
+  tried: { singleProduct: boolean; sitemap: SitemapResult | null },
+): string | undefined {
   if (status === 401 || status === 403 || status === 429) {
-    // The sitemap has already been tried by the time this is shown, so the
-    // advice can be about what is left rather than about what to check first.
-    return settings.provider === "direct"
-      ? "The store refused the request outright — that is anti-bot, not a bad URL. Its sitemap and Shopify JSON were tried too and gave nothing, so this store needs a scraping provider in the Fetch & Anti-bot tab."
-      : "The store refused the provider's request, and its sitemap and Shopify JSON gave nothing either. Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
+    const refused =
+      settings.provider === "direct"
+        ? "The store refused the request outright — that is anti-bot, not a bad URL."
+        : "The store refused the provider's request.";
+    const next =
+      settings.provider === "direct"
+        ? "Set a scraping provider in the Fetch & Anti-bot tab."
+        : "Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
+
+    // What was tried besides the page decides what is worth saying — and, in
+    // the readable-sitemap case, whether the fix is ours rather than a bill.
+    if (tried.singleProduct) {
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead. ${next}`;
+    }
+    if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
+      return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill.`;
+    }
+    return `${refused} Its sitemap and Shopify JSON were tried too and gave nothing. ${next}`;
   }
   if (status === 404) return "The store returned 404 — check the URL still opens in a browser.";
   if (status === 0) return "The request never completed. Raise the timeout in the Fetch & Anti-bot tab, or check the host is reachable.";
@@ -207,6 +224,23 @@ export async function discoverProductUrls(
   const startConfig = matchSiteConfig(startUrl, opts.siteConfigs);
   const startSettings = effectiveFetchSettings(opts.fetchSettings, startConfig);
 
+  /**
+   * Does the pasted URL address one product rather than a listing?
+   *
+   * This has to be answered from the URL alone, because the two catalogue-wide
+   * fallbacks below run precisely when the page did not arrive. Both of them
+   * answer with the whole store, and answering "the whole store" to someone who
+   * pasted one sneaker is worse than answering nothing: a refused product page
+   * would import sixty unrelated products from the sitemap.
+   */
+  const startIsProduct = (() => {
+    try {
+      return looksLikeProductPath(new URL(startUrl).pathname);
+    } catch {
+      return false;
+    }
+  })();
+
   // ── Shopify's own JSON, before any HTML ────────────────────────────────────
   // On a Shopify store this is both more complete and more likely to be served
   // than the listing page: no anchors to sift, no infinite-scroll grid that
@@ -217,7 +251,7 @@ export async function discoverProductUrls(
     if (single) {
       return { ok: true, urls: [single.sourceUrl], pagesVisited: 1, isSingleProduct: true, status: 200 };
     }
-  } else {
+  } else if (!startIsProduct) {
     const shopify = await discoverShopifyProducts(startUrl, startSettings, opts.fetchApiKey, {
       limit,
       maxPages,
@@ -292,21 +326,22 @@ export async function discoverProductUrls(
   // grid in the browser and ships no anchors. Either way the store still
   // publishes a sitemap for search engines, and a shop that blocked that would
   // be blocking its own Google traffic, so it is nearly always readable.
-  if (urls.length === 0) {
-    const fromSitemap = await discoverFromSitemap(startUrl, startSettings, opts.fetchApiKey, {
+  let sitemap: SitemapResult | null = null;
+  if (urls.length === 0 && !startIsProduct) {
+    sitemap = await discoverFromSitemap(startUrl, startSettings, opts.fetchApiKey, {
       limit,
       deadline,
     });
-    if (fromSitemap.length) {
+    if (sitemap.urls.length) {
       return {
         ok: true,
-        urls: fromSitemap,
+        urls: sitemap.urls,
         pagesVisited,
         isSingleProduct: false,
         status: firstFailure?.status ?? status,
         hint: firstFailure
-          ? `The listing itself was refused (${firstFailure.error}), so these ${fromSitemap.length} product URLs come from the store's sitemap instead.`
-          : `The listing carried no product links, so these ${fromSitemap.length} product URLs come from the store's sitemap instead.`,
+          ? `The listing itself was refused (${firstFailure.error}), so these ${sitemap.urls.length} product URLs come from the store's sitemap instead.`
+          : `The listing carried no product links, so these ${sitemap.urls.length} product URLs come from the store's sitemap instead.`,
       };
     }
   }
@@ -318,7 +353,10 @@ export async function discoverProductUrls(
       pagesVisited: 0,
       isSingleProduct: false,
       error: firstFailure.error,
-      hint: diagnoseFailedFetch(firstSettings, firstFailure.status),
+      hint: diagnoseFailedFetch(firstSettings, firstFailure.status, {
+        singleProduct: startIsProduct,
+        sitemap,
+      }),
       status: firstFailure.status,
     };
   }

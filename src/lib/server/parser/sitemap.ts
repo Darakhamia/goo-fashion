@@ -85,6 +85,20 @@ export interface SitemapOptions {
   deadline?: number;
 }
 
+export interface SitemapResult {
+  /** Product URLs found, in sitemap order. */
+  urls: string[];
+  /** Whether any sitemap could be read at all — the two failures differ. */
+  readable: boolean;
+  /**
+   * How many URLs the sitemaps listed, product-shaped or not. A store whose
+   * sitemap is readable but yields no products is a fixable path-test gap;
+   * one whose sitemap is refused is not fixable from here at all, and the
+   * admin should not have to guess which of the two they are looking at.
+   */
+  locsSeen: number;
+}
+
 /**
  * Product URLs for the store the given URL belongs to. Returns an empty list
  * when there is no readable sitemap — the caller keeps whatever it had.
@@ -94,7 +108,9 @@ export async function discoverFromSitemap(
   settings: ParserFetchSettings,
   apiKey: string,
   opts: SitemapOptions,
-): Promise<string[]> {
+): Promise<SitemapResult> {
+  const nothing: SitemapResult = { urls: [], readable: false, locsSeen: 0 };
+
   let origin: string;
   let host: string;
   try {
@@ -102,11 +118,11 @@ export async function discoverFromSitemap(
     origin = u.origin;
     host = u.hostname.replace(/^www\./, "");
   } catch {
-    return [];
+    return nothing;
   }
 
   const expired = () => !!opts.deadline && Date.now() > opts.deadline;
-  if (expired()) return [];
+  if (expired()) return nothing;
 
   const declared = await fromRobots(origin, settings, apiKey);
   const queue = [...declared, ...CANDIDATES.map((p) => `${origin}${p}`)];
@@ -116,6 +132,8 @@ export async function discoverFromSitemap(
   const opened = new Set<string>();
   let documents = 0;
   let children = 0;
+  let readable = false;
+  let locsSeen = 0;
 
   while (queue.length && documents < MAX_DOCUMENTS && found.length < opts.limit) {
     if (expired()) break;
@@ -134,6 +152,7 @@ export async function discoverFromSitemap(
     const xml = await getText(url, settings, apiKey);
     documents++;
     if (!xml || !/<loc>/i.test(xml)) continue;
+    readable = true;
 
     const locs = locations(xml);
     if (isIndex(xml)) {
@@ -150,6 +169,7 @@ export async function discoverFromSitemap(
       continue;
     }
 
+    locsSeen += locs.length;
     for (const loc of locs) {
       let path: string;
       try {
@@ -168,5 +188,5 @@ export async function discoverFromSitemap(
     }
   }
 
-  return found;
+  return { urls: found, readable, locsSeen };
 }
