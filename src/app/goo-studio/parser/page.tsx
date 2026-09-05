@@ -24,7 +24,7 @@ const PROVIDERS: { value: FetchProvider; label: string; hint: string }[] = [
   { value: "scrapingbee", label: "ScrapingBee", hint: "Managed scraping API with JS render + proxies." },
   { value: "scraperapi", label: "ScraperAPI", hint: "Managed scraping API with rotating proxies." },
   { value: "zenrows", label: "ZenRows", hint: "Managed scraping API with anti-bot bypass." },
-  { value: "custom", label: "Custom endpoint", hint: "Your own curl_cffi / playwright service. Use {url}, {key}, {render}." },
+  { value: "custom", label: "Custom endpoint", hint: "Your own curl_cffi / playwright service. Use {url}, {key}, {render}, {impersonate}, {timeout}." },
 ];
 const IMPERSONATE = ["chrome", "safari", "firefox", "edge"];
 const RULE_FIELDS: ParserRuleField[] = [
@@ -1135,7 +1135,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
           <Field label="Custom endpoint template">
             <input
               className={`${inputCls} font-mono text-[11px]`}
-              placeholder="https://my-scraper.fly.dev/fetch?token={key}&url={url}&render={render}"
+              placeholder="https://my-scraper.fly.dev/fetch?token={key}&url={url}&render={render}&impersonate={impersonate}"
               value={settings.endpoint}
               onChange={(e) => set("endpoint", e.target.value)}
             />

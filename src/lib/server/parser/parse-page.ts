@@ -14,6 +14,7 @@
 import { fetchHtml } from "./fetch";
 import { extractProduct, partitionProducts, extractProductLinks } from "./extract";
 import { normalizeExtract } from "./normalize";
+import { fetchShopifyProduct } from "./shopify";
 import { aiExtract, mergeAiIntoRaw, shouldUseAi } from "./ai-extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
 import type {
@@ -76,6 +77,32 @@ export function blockHint(status: number, provider: string): string | undefined 
 export async function parsePage(url: string, opts: ParsePageOptions): Promise<ParsePageResult> {
   const matched = matchSiteConfig(url, opts.siteConfigs);
   const settings = effectiveFetchSettings(opts.fetchSettings, matched);
+
+  // Shopify answers the same address with `.json` appended, and that answer is
+  // better than the page in both directions: it carries every photo, every
+  // variant and the colour and size options as data, and it is an API endpoint
+  // rather than a page, so it is routinely served on a store whose HTML sits
+  // behind an anti-bot challenge. Worth one request before spending one on
+  // markup we would then have to mine. Any other store answers this with a 404
+  // and the host is remembered, so the guess is paid for once per crawl.
+  const shopify = await fetchShopifyProduct(url, settings, opts.fetchApiKey);
+  if (shopify) {
+    const product = normalizeExtract(shopify.raw, shopify.sourceUrl, matched);
+    return {
+      ok: true,
+      products: product.name || product.imageUrl ? [product] : [],
+      links: [],
+      isListing: false,
+      diagnostics: {
+        provider: settings.provider,
+        status: 200,
+        htmlLength: shopify.bytes,
+        finalUrl: shopify.jsonUrl,
+        matchedConfig: matched ? { id: matched.id, name: matched.name, domain: matched.domain } : null,
+        strategies: product.strategies,
+      },
+    };
+  }
 
   const fetched = await fetchHtml(url, settings, opts.fetchApiKey);
   const pageUrl = fetched.finalUrl || url;

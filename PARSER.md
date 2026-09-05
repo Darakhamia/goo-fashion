@@ -42,7 +42,9 @@ For `custom`, give a URL template with placeholders:
 https://my-curl-cffi.fly.dev/fetch?token={key}&url={url}&render={render}
 ```
 
-`{url}` → URL-encoded target, `{key}` → API key, `{render}` → `true`/`false`.
+`{url}` → URL-encoded target, `{key}` → API key, `{render}` → `true`/`false`,
+`{impersonate}` → the browser profile picked in the UI (this is the argument a
+`curl_cffi` service passes to `impersonate=`), `{timeout}` → the timeout in ms.
 
 Options: **impersonate** (chrome/safari/firefox/edge UA), **render JS** toggle,
 **timeout**. The provider API key is stored server-side (masked in the UI) or set
@@ -58,6 +60,66 @@ via the `PARSER_FETCH_API_KEY` env var (env wins, like the OpenAI key).
 >     r = requests.get(request.args["url"], impersonate="chrome")
 >     return r.text
 > ```
+
+---
+
+## 1a. Before the HTML — the store's own data
+
+Fetching a *page* is the expensive way to ask a shop what it sells, and the way
+most likely to be refused: anti-bot sits in front of pages, because pages are
+what a scraper is expected to want. Two addresses answer better, and both are
+tried before any markup is fetched.
+
+### Shopify JSON (`shopify.ts`)
+
+Every Shopify storefront answers three addresses no theme can turn off:
+
+| Address | Gives |
+|---|---|
+| `/products/<handle>.json` | one product, in full |
+| `/collections/<handle>/products.json` | a page of a collection |
+| `/products.json` | a page of the whole catalogue |
+
+The product JSON lists **every** photo in `images[]`, every variant with its
+price and compare-at price, and the colour and size options as data — the whole
+job of the extractor and the gallery harvester, done exactly, with no identity
+tests and nothing to guess. And being an API rather than a page, it is routinely
+served 200 on a store whose HTML answers 403.
+
+Any other store answers a `/products/<handle>.json` with a 404 or a page, so the
+host is remembered as "not Shopify" for the rest of the run and the guess is
+paid for once. Prices come as bare numbers, so the shop's currency is read once
+from `/meta.json`; when that is missing the field is left empty rather than
+guessed, because a wrong currency is a wrong price tag.
+
+### Sitemaps (`sitemap.ts`)
+
+A sitemap is the shop telling search engines what it sells — the one listing
+meant to be read by a machine, and the one a defended store still serves,
+because blocking it would cost the shop its Google traffic.
+
+So a crawl that comes back empty or refused falls back to it: `robots.txt` for
+the declared sitemaps, then `/sitemap.xml`, `/sitemap_index.xml`,
+`/sitemap_products_1.xml`. An index is followed one level down, product
+sitemaps first, and the URLs are filtered through the same product-path test the
+anchor crawler uses. The whole fallback is capped at five documents and shares
+the crawl's wall-clock budget, because it runs inside a function that was
+already spending it.
+
+This is also strictly better than the anchor walk where the HTML *does* work:
+no pagination to follow, and an infinite-scroll grid that keeps its products in
+a script has nothing to offer `<a href>` scraping anyway.
+
+### Retries and pacing (`fetch.ts`, `crawl.ts`)
+
+One retry, only where a retry is the fix: a 429/503 is repeated once after
+`Retry-After` (capped at 3s), and a 403 in `direct` mode is repeated once under
+a different browser profile — the only thing about the request we can change.
+A timeout is never retried; it has already spent its budget once. Requests to
+one store are spaced by a jittered 150–400 ms, in the listing walk and between
+the products of an import batch: five page loads back to back from one address
+is the traffic shape rate limiters are built to catch, and being caught costs
+the whole run.
 
 ---
 
@@ -170,9 +232,11 @@ screen fills the catalog on its own:
 discover ─▶ product URLs (incl. pagination) ─▶ batch(5) ─▶ parse ─▶ AI ─▶ mirror photos ─▶ upsert
 ```
 
-- **discover** (`crawl.ts`) walks the listing, following `rel="next"` and
-  page-numbered anchors up to the page cap, and returns product URLs. A pasted
-  PDP is detected and collected on its own.
+- **discover** (`crawl.ts`) tries the store's own data first (Shopify
+  `products.json`, then the sitemap when the walk comes back empty or refused —
+  see §1a), and otherwise walks the listing, following `rel="next"` and
+  page-numbered anchors up to the page cap. A pasted PDP is detected and
+  collected on its own.
 - **batch** parses and imports 5 URLs per request. The loop lives in the browser,
   so progress is live, **Stop** works immediately, and no request ever runs past
   the route's `maxDuration`.
@@ -283,7 +347,9 @@ src/lib/server/product-fields.ts            ← shared field normalisers (CSV + 
 src/lib/server/storage/product-images.ts    ← download + mirror photos to our bucket
 src/lib/server/parser/
 ├── types.ts                                ← config + result types
-├── fetch.ts                                ← pluggable fetcher + SSRF guard
+├── fetch.ts                                ← pluggable fetcher + SSRF guard + retries
+├── shopify.ts                              ← storefront JSON: whole gallery, no HTML
+├── sitemap.ts                              ← product URLs when the listing is refused
 ├── extract.ts                              ← JSON-LD / OG / microdata / recipe
 ├── ai-extract.ts                           ← AI fallback (condense → model → merge)
 ├── normalize.ts                            ← raw → Product
