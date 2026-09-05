@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "@/components/ui/Image";
 import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
-import { DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 
 interface PendingLook {
   id: string;
@@ -96,6 +96,9 @@ export default function AdminOutfitsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  /** Ticked rows, by outfit id — what the toolbar's buttons act on. */
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   /** Outcome of the last photo export — this page has no toast to borrow. */
   const [exportNote, setExportNote] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [featuringId, setFeaturingId] = useState<string | null>(null);
@@ -370,6 +373,123 @@ export default function AdminOutfitsPage() {
     closeModal();
   };
 
+  // ── Rows in the table, and the ones ticked ─────────────────────────────────
+
+  const filteredOutfits = useMemo(
+    () =>
+      outfits.filter(
+        (o) =>
+          o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          o.occasion.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          o.description.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [outfits, searchQuery]
+  );
+
+  const allSelected = filteredOutfits.length > 0 && filteredOutfits.every((o) => selectedIds.has(o.id));
+  const someSelected = selectedIds.size > 0;
+
+  /**
+   * Tick a row, and with Shift held, everything between it and the row ticked
+   * before it — the same gesture the products table has.
+   *
+   * The anchor is the last row whose checkbox was used, held in a ref because it
+   * steers the next click rather than anything on screen. The range takes the
+   * state the clicked row is moving *to*, so shift-clicking clears a run as
+   * readily as it selects one.
+   */
+  const rangeAnchor = useRef<string | null>(null);
+
+  const toggleSelect = (id: string, extendRange = false) => {
+    // Read the anchor here rather than inside the updater: React runs the
+    // updater at render time, by which point the assignment below has already
+    // moved the anchor to this row, and the range would be the row against
+    // itself.
+    const anchor = rangeAnchor.current;
+    rangeAnchor.current = id;
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+
+      if (extendRange && anchor && anchor !== id) {
+        const ids = filteredOutfits.map((o) => o.id);
+        const from = ids.indexOf(anchor);
+        const to = ids.indexOf(id);
+        // A search that has moved on can leave the anchor off the current list.
+        // Falling through to the plain toggle is the honest answer then.
+        if (from !== -1 && to !== -1) {
+          const selecting = !prev.has(id);
+          for (let i = Math.min(from, to); i <= Math.max(from, to); i++) {
+            if (selecting) next.add(ids[i]);
+            else next.delete(ids[i]);
+          }
+          return next;
+        }
+      }
+
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    rangeAnchor.current = null;
+    setSelectedIds(allSelected ? new Set() : new Set(filteredOutfits.map((o) => o.id)));
+  };
+
+  /** Forget rows that are no longer there, so a deleted look cannot be exported. */
+  const deselect = (ids: string[]) => {
+    setSelectedIds((prev) => {
+      if (!ids.some((id) => prev.has(id))) return prev;
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  };
+
+  /**
+   * What "Download cards" will draw: the selection when there is one, and
+   * otherwise whatever the search has narrowed the table to.
+   *
+   * A list that is every look goes as `null` instead, so exporting the lot stays
+   * a short request rather than a POST carrying every id the server is about to
+   * read out of its own table anyway.
+   */
+  const exportIds = useMemo(() => {
+    if (selectedIds.size) return filteredOutfits.filter((o) => selectedIds.has(o.id)).map((o) => o.id);
+    if (filteredOutfits.length === outfits.length) return null;
+    return filteredOutfits.map((o) => o.id);
+  }, [filteredOutfits, outfits.length, selectedIds]);
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} selected outfit${ids.length > 1 ? "s" : ""}?`)) return;
+
+    setBulkDeleting(true);
+    setDeleteError("");
+    const deleted: string[] = [];
+    const failed: string[] = [];
+    // One at a time: the delete endpoint takes a single id, and firing thirty at
+    // once at it buys nothing an admin would notice.
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
+        if (res.ok || res.status === 501) deleted.push(id);
+        else failed.push(id);
+      } catch {
+        failed.push(id);
+      }
+    }
+    setOutfits((prev) => prev.filter((o) => !deleted.includes(o.id)));
+    deselect(deleted);
+    if (failed.length) {
+      setDeleteError(`${failed.length} of ${ids.length} could not be deleted. They are still selected.`);
+    }
+    setBulkDeleting(false);
+  };
+
   const handleToggleFeatured = async (outfit: Outfit) => {
     setFeaturingId(outfit.id);
     const next = !outfit.isHomepageFeatured;
@@ -396,12 +516,14 @@ export default function AdminOutfitsPage() {
       const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
       if (res.ok || res.status === 501) {
         setOutfits((prev) => prev.filter((o) => o.id !== id));
+        deselect([id]);
       } else {
         const err = await res.json().catch(() => ({}));
         setDeleteError(err.error ?? "Failed to delete outfit.");
       }
     } catch {
       setOutfits((prev) => prev.filter((o) => o.id !== id));
+      deselect([id]);
     } finally {
       setDeleteId(null);
     }
@@ -452,14 +574,6 @@ export default function AdminOutfitsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  // Filtered outfits in table
-  const filteredOutfits = outfits.filter(
-    (o) =>
-      o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.occasion.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
     <div>
       {/* Header */}
@@ -472,13 +586,18 @@ export default function AdminOutfitsPage() {
         </div>
         {adminTab === "outfits" && (
           <div className="flex items-center gap-2 flex-wrap">
-            {/* The card of every look in the table, drawn as a picture, as one ZIP. */}
+            {/* The looks in the table — the ticked ones, or all of them — drawn as
+                pictures with the cards of their pieces, as one ZIP. */}
             <DownloadCardsButton
               kind="outfits"
-              ids={filteredOutfits.length === outfits.length ? null : filteredOutfits.map((o) => o.id)}
-              count={filteredOutfits.length}
+              ids={exportIds}
+              count={exportIds ? exportIds.length : outfits.length}
               onNotify={(msg, type) => setExportNote({ msg, type })}
-              title="Download the card of every outfit shown as a picture, in one ZIP"
+              title={
+                selectedIds.size
+                  ? `Download the ${selectedIds.size} selected looks and the cards of their pieces, in one ZIP`
+                  : "Download the card of every outfit shown, with the cards of their pieces, in one ZIP"
+              }
             />
             <button
               onClick={openAddModal}
@@ -785,11 +904,50 @@ export default function AdminOutfitsPage() {
         />
       </div>
 
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+          <span className="text-xs text-[var(--foreground)]">{selectedIds.size} selected</span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 px-3 py-1.5 hover:bg-red-400/10 transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path
+                d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {bulkDeleting ? "Deleting…" : `Delete ${selectedIds.size}`}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors ml-auto"
+          >
+            Deselect all
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border)]">
+              <th className="px-3 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                  aria-label="Select all outfits"
+                  title="Select all"
+                />
+              </th>
               {["Image", "Name", "Occasion", "Season", "Items", "Price Range", "Keywords", "Homepage", "Actions"].map((h, i) => (
                 <th
                   key={h}
@@ -805,13 +963,13 @@ export default function AdminOutfitsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                   Loading...
                 </td>
               </tr>
             ) : filteredOutfits.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                   No outfits found.
                 </td>
               </tr>
@@ -819,8 +977,30 @@ export default function AdminOutfitsPage() {
               filteredOutfits.map((outfit) => (
                 <tr
                   key={outfit.id}
-                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors"
+                  className={`border-b border-[var(--border)] last:border-b-0 transition-colors ${
+                    selectedIds.has(outfit.id) ? "bg-[var(--surface)]" : "hover:bg-[var(--surface)]"
+                  }`}
                 >
+                  {/* Checkbox */}
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(outfit.id)}
+                      // Shift-click ticks the whole run since the last box used.
+                      // React routes a checkbox's onChange from the underlying
+                      // click, so the modifier is on the native event — and a
+                      // keyboard Space arrives with shiftKey false and toggles
+                      // the one row.
+                      onChange={(e) => toggleSelect(outfit.id, (e.nativeEvent as MouseEvent).shiftKey === true)}
+                      // Shift-clicking would otherwise select the text between
+                      // the two rows as well, which reads as a bug.
+                      onMouseDown={(e) => {
+                        if (e.shiftKey) e.preventDefault();
+                      }}
+                      className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                      aria-label={`Select ${outfit.name}`}
+                    />
+                  </td>
                   {/* Image */}
                   <td className="px-4 py-3">
                     <div className="relative w-10 h-[52px] overflow-hidden flex-shrink-0">
@@ -909,6 +1089,11 @@ export default function AdminOutfitsPage() {
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      <DownloadCardButton
+                        kind="outfits"
+                        id={outfit.id}
+                        onNotify={(msg, type) => setExportNote({ msg, type })}
+                      />
                       <button
                         onClick={() => openEditModal(outfit)}
                         className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"

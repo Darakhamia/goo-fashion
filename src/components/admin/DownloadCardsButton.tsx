@@ -8,7 +8,9 @@ import { useCallback, useRef, useState } from "react";
  *
  * Both go to /api/admin/export-images, which draws the card as the site draws it
  * — photo, brand, name, price — and answers with a PNG for a single card or a
- * streamed ZIP for several. Hence `saveCards` below rather than a plain link:
+ * streamed ZIP for several. A look counts as several: it is exported with the
+ * card of every piece in it, so even one look comes back as an archive.
+ * Hence `saveCards` below rather than a plain link:
  * the response is a POST body that has to be read and saved by hand, and while
  * it is being read the toolbar button can show the megabytes as they land. That
  * counter is not decoration — three hundred cards take a minute or two to fetch
@@ -61,8 +63,21 @@ function filenameFrom(header: string | null, fallback: string): string {
   return fallback;
 }
 
+/** What came back: how big it was, and whether it was an archive or one picture. */
+interface Saved {
+  bytes: number;
+  /** True when the answer was a ZIP — several cards, rather than one PNG. */
+  zipped: boolean;
+}
+
 /**
- * Ask for the cards, save what comes back, and report its size.
+ * Ask for the cards, save what comes back, and report what it was.
+ *
+ * Whether one card comes back as a picture or as an archive is the server's
+ * call, not the caller's: a look is drawn together with the pieces it is made
+ * of, so asking for one look can still be an archive of several cards. Hence
+ * `zipped` in the answer — the label the caller then writes is about what
+ * actually landed in the downloads folder.
  *
  * `onProgress` is called as the body arrives, for callers with room to show it.
  * Anything that went wrong is thrown with the server's own words, since it knows
@@ -72,7 +87,7 @@ async function saveCards(
   kind: Kind,
   ids: string[] | null,
   onProgress?: (bytes: number) => void,
-): Promise<number> {
+): Promise<Saved> {
   const res = await fetch("/api/admin/export-images", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -121,7 +136,7 @@ async function saveCards(
   link.remove();
   URL.revokeObjectURL(url);
 
-  return blob.size;
+  return { bytes: blob.size, zipped: !type.startsWith("image/") };
 }
 
 export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotify }: Props) {
@@ -136,7 +151,7 @@ export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotif
     lastTick.current = 0;
 
     try {
-      const size = await saveCards(kind, ids, (total) => {
+      const { bytes, zipped } = await saveCards(kind, ids, (total) => {
         const now = Date.now();
         if (now - lastTick.current > TICK) {
           lastTick.current = now;
@@ -144,9 +159,9 @@ export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotif
         }
       });
       onNotify?.(
-        count === 1
-          ? `Card downloaded (${(size / MB).toFixed(1)} MB).`
-          : `Cards downloaded (${(size / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`,
+        zipped
+          ? `Cards downloaded (${(bytes / MB).toFixed(1)} MB). See _export.txt inside for anything that failed.`
+          : `Card downloaded (${(bytes / MB).toFixed(1)} MB).`,
         "ok",
       );
     } catch (e) {
@@ -200,7 +215,11 @@ interface RowProps {
 }
 
 /**
- * The same download, for one row of the table: a card as a PNG, in one click.
+ * The same download, for one row of the table: that row's card, in one click.
+ *
+ * A piece comes back as a PNG; a look comes back as an archive holding its own
+ * card and the card of every piece in it, which is why the label the toast
+ * writes is decided by what arrived rather than by the row that was clicked.
  *
  * It sits among the row's other icons, so it is an icon too — the work it starts
  * is reported through the page's own toast rather than in a label, and the arrow
@@ -213,8 +232,13 @@ export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
     if (busy) return;
     setBusy(true);
     try {
-      await saveCards(kind, [id]);
-      onNotify?.("Card downloaded.", "ok");
+      const { zipped } = await saveCards(kind, [id]);
+      onNotify?.(
+        zipped
+          ? "Card downloaded, with the cards of everything in it."
+          : "Card downloaded.",
+        "ok",
+      );
     } catch (e) {
       onNotify?.(e instanceof Error ? e.message : "Could not draw the card.", "err");
     } finally {
@@ -228,7 +252,11 @@ export function DownloadCardButton({ kind, id, onNotify }: RowProps) {
       disabled={busy}
       aria-busy={busy}
       aria-label="Download card"
-      title="Download this card as a PNG — photo, brand, name and price"
+      title={
+        kind === "outfits"
+          ? "Download this look's card together with the card of every piece in it"
+          : "Download this card as a PNG — photo, brand, name and price"
+      }
       className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-wait"
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
