@@ -110,6 +110,14 @@ This is also strictly better than the anchor walk where the HTML *does* work:
 no pagination to follow, and an infinite-scroll grid that keeps its products in
 a script has nothing to offer `<a href>` scraping anyway.
 
+**Not for a single product.** Both catalogue-wide fallbacks — the sitemap and
+Shopify's `products.json` — are skipped when the pasted URL is itself
+product-shaped, because both answer with the whole store. Answering "the whole
+store" to someone who pasted one sneaker is worse than answering nothing: a
+refused product page on goat.com would otherwise have imported sixty unrelated
+products out of the sitemap. The URL has to decide it, since both run exactly
+when the page did not arrive.
+
 ### Retries and pacing (`fetch.ts`, `crawl.ts`)
 
 One retry, only where a retry is the fix: a 429/503 is repeated once after
@@ -339,6 +347,15 @@ An empty crawl has three different causes with three different fixes, so
 | An anti-bot interstitial (Akamai/Cloudflare/DataDome, often a `200`) | Set a scraping provider — a plain request can't get past it |
 | A near-empty shell with almost no links | The grid is built in the browser; render it |
 | A full page whose links don't look like products | Paste a single product URL |
+
+A refusal (`401`/`403`/`429`) is reported by what was tried *besides* the page,
+because the three cases have three different owners:
+
+| Situation | Hint |
+|---|---|
+| The pasted URL was a single product page | There is no listing or sitemap to read instead; this store needs a provider |
+| The sitemap was refused too | Page, sitemap and Shopify JSON all gave nothing; this store needs a provider |
+| The sitemap was readable but held no product-shaped URLs | Names the count and says the product-path test needs teaching this store's URL shape — **our** fix, not a provider bill |
 
 The advice is mode-aware: **Render JS is only ever forwarded to a scraping
 provider**, so in `direct` mode the hint never points at that toggle.
