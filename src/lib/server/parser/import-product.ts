@@ -10,8 +10,8 @@
  * retailer CDN staying friendly.
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { productToDb } from "@/lib/data/db";
-import { colorToHex } from "@/lib/server/product-fields";
+import { productToDb, writeProductRow } from "@/lib/data/db";
+import { colorToHex, colorGroupNamesFor } from "@/lib/server/product-fields";
 import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
@@ -27,6 +27,44 @@ const GENDERS: Gender[] = ["women", "men", "unisex"];
 function httpUrl(v: unknown): string {
   const s = typeof v === "string" ? v.trim() : "";
   return /^https?:\/\//.test(s) ? s : "";
+}
+
+// ── Colour filters ────────────────────────────────────────────────────────────
+// A product the parser brought in with "Core Black" on it should appear under
+// Black in the browse filter without anyone opening the editor. That means
+// turning the store's word into `color_group_ids`, which are database ids — so
+// the groups have to be read, not guessed. They change about never, and a crawl
+// batch imports five products per request, so one read is cached for the run.
+
+const COLOR_GROUP_TTL_MS = 5 * 60_000;
+let colorGroupCache: { at: number; byName: Map<string, number> } | null = null;
+
+async function loadColorGroups(): Promise<Map<string, number> | null> {
+  if (colorGroupCache && Date.now() - colorGroupCache.at < COLOR_GROUP_TTL_MS) {
+    return colorGroupCache.byName;
+  }
+  const { data, error } = await supabase!.from("color_groups").select("id, name");
+  // No table (migration not run) is not an error worth failing an import over —
+  // the product lands without a colour filter, exactly as it did before.
+  if (error || !data) return null;
+  const byName = new Map<string, number>();
+  for (const g of data as { id: number; name: string }[]) {
+    byName.set(String(g.name).trim().toLowerCase(), g.id);
+  }
+  colorGroupCache = { at: Date.now(), byName };
+  return byName;
+}
+
+/** The colour-filter ids a product's colour labels put it under. */
+async function colorGroupIdsFor(colors: string[]): Promise<number[] | undefined> {
+  const names = colorGroupNamesFor(colors);
+  if (!names.length) return undefined;
+  const byName = await loadColorGroups();
+  if (!byName) return undefined;
+  const ids = names
+    .map((n) => byName.get(n.toLowerCase()))
+    .filter((id): id is number => typeof id === "number");
+  return ids.length ? [...new Set(ids)] : undefined;
 }
 
 export interface ImportOptions {
@@ -116,6 +154,8 @@ export async function importParsedProduct(
       }]
     : [];
 
+  const colorGroupIds = await colorGroupIdsFor(colors);
+
   const product: Partial<Product> = {
     name,
     brand: brand as Product["brand"],
@@ -135,34 +175,42 @@ export async function importParsedProduct(
     styleKeywords: [],
     retailers,
     ...(colors[0] ? { colorHex: colorToHex(colors[0]) } : {}),
+    ...(colorGroupIds ? { colorGroupIds } : {}),
   };
 
   const dbRow = { ...productToDb(product), source_url: sourceUrl };
 
+  // Written through `writeProductRow` so a database that has not run the
+  // colour-filter migration drops that one column and still takes the product,
+  // instead of every import failing on a column it has never heard of.
+  const insert = (row: Record<string, unknown>) =>
+    supabase!.from("products").insert(row).select("id").maybeSingle();
+
   let productId: string | null = null;
   let updated = false;
   try {
+    let existingId: string | null = null;
     if (sourceUrl) {
       const { data: existing } = await supabase
         .from("products").select("id").eq("source_url", sourceUrl).maybeSingle();
-      if (existing?.id) {
-        // PostgREST reports failures in `error` rather than throwing, so an
-        // unchecked update reads as success while writing nothing (the silent
-        // failure pattern audit item Б1-3 called out on the billing ledger).
-        const { data, error } = await supabase
-          .from("products").update(dbRow).eq("id", existing.id).select("id").maybeSingle();
-        if (error) throw new Error(error.message);
-        productId = (data as { id: string } | null)?.id ?? existing.id;
-        updated = true;
-      } else {
-        const { data, error } = await supabase.from("products").insert(dbRow).select("id").maybeSingle();
-        if (error) throw new Error(error.message);
-        productId = (data as { id: string } | null)?.id ?? null;
-      }
-    } else {
-      const { data, error } = await supabase.from("products").insert(dbRow).select("id").maybeSingle();
+      existingId = (existing as { id: string } | null)?.id ?? null;
+    }
+
+    if (existingId) {
+      const id = existingId;
+      // PostgREST reports failures in `error` rather than throwing, so an
+      // unchecked update reads as success while writing nothing (the silent
+      // failure pattern audit item Б1-3 called out on the billing ledger).
+      const { data, error } = await writeProductRow<{ id: string }>(dbRow, (row) =>
+        supabase!.from("products").update(row).eq("id", id).select("id").maybeSingle(),
+      );
       if (error) throw new Error(error.message);
-      productId = (data as { id: string } | null)?.id ?? null;
+      productId = data?.id ?? id;
+      updated = true;
+    } else {
+      const { data, error } = await writeProductRow<{ id: string }>(dbRow, insert);
+      if (error) throw new Error(error.message);
+      productId = data?.id ?? null;
     }
   } catch (err) {
     return {

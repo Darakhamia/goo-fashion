@@ -211,7 +211,195 @@ export const COLOR_HEX: Record<string, string> = {
 
 export function colorToHex(colorName: string): string {
   const key = (colorName ?? "").toLowerCase().trim();
-  return COLOR_HEX[key] ?? "#888888";
+  const exact = COLOR_HEX[key];
+  if (exact) return exact;
+  // "Core Black", "Cloud White", "Deep Navy Blue": a colourway is a base colour
+  // with marketing in front of it. Reading the base out is what stops every
+  // such product from landing on the grey placeholder swatch.
+  const base = canonicalColor(key);
+  return base ? BASE_COLOR_HEX[base] : "#888888";
+}
+
+// ── Colourways → the catalogue's own colour vocabulary ────────────────────────
+//
+// A store writes whatever it likes on the page: "Core Black", "Noir", "Cloud
+// White", "Blu Navy", "чёрный". The catalogue files a product under the colour
+// groups the browse filter is built from (`color_groups`: White, Multicolor,
+// Brown, Pink, Yellow, Orange, Grey, Black, Green, Red, Violet, Blue, Beige),
+// and paints its swatch from one hex. Both need the store's label reduced to
+// one of a fixed set of base colours first — that reduction lives here, so the
+// CSV importer and the URL parser agree on what "Deep Sea Blue" is.
+
+export type BaseColor =
+  | "black" | "white" | "grey" | "beige" | "brown" | "blue"
+  | "green" | "red" | "pink" | "yellow" | "orange" | "violet";
+
+/** The `color_groups` row each base colour belongs to. */
+const BASE_COLOR_GROUP: Record<BaseColor, string> = {
+  black: "Black", white: "White", grey: "Grey", beige: "Beige",
+  brown: "Brown", blue: "Blue", green: "Green", red: "Red",
+  pink: "Pink", yellow: "Yellow", orange: "Orange", violet: "Violet",
+};
+
+/** Swatch hex for a base colour — the same values the colour groups carry. */
+const BASE_COLOR_HEX: Record<BaseColor, string> = {
+  black: "#111111", white: "#f5f5f5", grey: "#808080", beige: "#d4c5a9",
+  brown: "#7a4f35", blue: "#1a47a0", green: "#2d6a3f", red: "#c0392b",
+  pink: "#e8698a", yellow: "#f5c518", orange: "#e87722", violet: "#7b3fa0",
+};
+
+/** The group name that means "more than one colour", per `lib/color-groups`. */
+export const MULTICOLOR_GROUP = "Multicolor";
+
+/**
+ * Single words that name a colour. Deliberately a closed list: a word that is
+ * not here contributes nothing, which is what keeps "Air Force" or "Heritage"
+ * from being read as a colourway.
+ */
+const COLOR_WORDS: Record<string, BaseColor> = {
+  // black
+  black: "black", noir: "black", nero: "black", negro: "black", schwarz: "black",
+  onyx: "black", ebony: "black", jet: "black", coal: "black", licorice: "black",
+  caviar: "black", anthracite: "black",
+  // white
+  white: "white", blanc: "white", bianco: "white", blanco: "white", weiss: "white",
+  ivory: "white", snow: "white", chalk: "white", optic: "white",
+  // grey
+  grey: "grey", gray: "grey", gris: "grey", grigio: "grey", charcoal: "grey",
+  graphite: "grey", slate: "grey", silver: "grey", ash: "grey", pewter: "grey",
+  steel: "grey", smoke: "grey",
+  // beige / neutrals
+  beige: "beige", cream: "beige", ecru: "beige", sand: "beige", stone: "beige",
+  oat: "beige", oatmeal: "beige", nude: "beige", taupe: "beige", khaki: "beige",
+  camel: "beige", champagne: "beige", bone: "beige", linen: "beige",
+  natural: "beige", sable: "beige",
+  // brown
+  brown: "brown", chocolate: "brown", coffee: "brown", mocha: "brown",
+  espresso: "brown", cognac: "brown", chestnut: "brown", walnut: "brown",
+  hazel: "brown", marron: "brown", marrone: "brown", bronze: "brown",
+  toffee: "brown", caramel: "brown", tan: "brown", rust: "brown", cocoa: "brown",
+  // blue
+  blue: "blue", bleu: "blue", blu: "blue", azul: "blue", navy: "blue",
+  denim: "blue", indigo: "blue", cobalt: "blue", azure: "blue", sky: "blue",
+  teal: "blue", aqua: "blue", turquoise: "blue", petrol: "blue", marine: "blue",
+  // green
+  green: "green", vert: "green", verde: "green", olive: "green", sage: "green",
+  forest: "green", mint: "green", emerald: "green", moss: "green",
+  pistachio: "green", lime: "green",
+  // red
+  red: "red", rouge: "red", rosso: "red", rojo: "red", crimson: "red",
+  scarlet: "red", burgundy: "red", wine: "red", bordeaux: "red", maroon: "red",
+  cherry: "red", ruby: "red",
+  // pink
+  pink: "pink", rose: "pink", blush: "pink", fuchsia: "pink", fuschia: "pink",
+  magenta: "pink", salmon: "pink", coral: "pink",
+  // yellow
+  yellow: "yellow", jaune: "yellow", giallo: "yellow", mustard: "yellow",
+  lemon: "yellow", gold: "yellow", golden: "yellow", ochre: "yellow",
+  amber: "yellow", butter: "yellow",
+  // orange
+  orange: "orange", apricot: "orange", peach: "orange", tangerine: "orange",
+  papaya: "orange", terracotta: "orange", copper: "orange",
+  // violet
+  violet: "violet", purple: "violet", lilac: "violet", lavender: "violet",
+  plum: "violet", mauve: "violet", aubergine: "violet",
+};
+
+/**
+ * Russian and Ukrainian colour words, matched by stem because they decline
+ * ("чёрный", "чёрная", "чёрное"). Feeds are bilingual here.
+ */
+const COLOR_STEMS: [RegExp, BaseColor][] = [
+  [/^(?:ч[её]рн|чорн)/, "black"],
+  [/^бел|^біл/, "white"],
+  [/^сер|^сір/, "grey"],
+  [/^беж/, "beige"],
+  [/^коричн|^шокол/, "brown"],
+  [/^син|^голуб|^блакит/, "blue"],
+  [/^зел[её]н/, "green"],
+  [/^красн|^червон|^бордов/, "red"],
+  [/^розов|^рожев/, "pink"],
+  [/^ж[её]лт|^жовт/, "yellow"],
+  [/^оранж|^помаранч/, "orange"],
+  [/^фиолет|^фіолет|^сирен|^бузков/, "violet"],
+];
+
+/**
+ * Colourways whose meaning is destroyed by reading their words separately:
+ * "rose gold" is not rose and gold, and "off white" is not the absence of white.
+ */
+const COLOR_PHRASES: [RegExp, BaseColor][] = [
+  [/\broses?[\s-]?gold\b/, "pink"],
+  [/\bgold(?:en)?[\s-]?ros[eé]\b/, "pink"],
+  [/\boff[\s-]?white\b/, "white"],
+  [/\braw[\s-]?white\b/, "white"],
+  [/\boptic[\s-]?white\b/, "white"],
+  [/\bnavy[\s-]?blue\b/, "blue"],
+];
+
+/**
+ * Every base colour named in a piece of text, in the order it reads.
+ * Non-colour words are ignored, so "Men's Cruiser — Shadow Blue" yields ["blue"].
+ */
+export function colorWordsIn(text: string): BaseColor[] {
+  const t = (text ?? "").toLowerCase();
+  if (!t) return [];
+
+  const found: BaseColor[] = [];
+  let rest = t;
+  for (const [re, base] of COLOR_PHRASES) {
+    if (re.test(rest)) {
+      found.push(base);
+      rest = rest.replace(new RegExp(re.source, "g"), " ");
+    }
+  }
+
+  for (const word of rest.split(/[^a-zа-яёіїєґ]+/i)) {
+    if (word.length < 3) continue;
+    const direct = COLOR_WORDS[word];
+    if (direct) {
+      found.push(direct);
+      continue;
+    }
+    const stem = COLOR_STEMS.find(([re]) => re.test(word));
+    if (stem) found.push(stem[1]);
+  }
+  return found;
+}
+
+/**
+ * The one base colour a label names, or undefined when it names none.
+ *
+ * The LAST colour word wins, because a colourway puts its qualifier in front of
+ * the colour: "Natural Black" is a black shoe, "Cloud White" a white one. Taking
+ * the first would file both under the qualifier.
+ */
+export function canonicalColor(label: string): BaseColor | undefined {
+  const words = colorWordsIn(label);
+  return words.length ? words[words.length - 1] : undefined;
+}
+
+/**
+ * The colour-group names a label belongs in — what the browse filter files it
+ * under. A label that names two colours ("Black/White", "Blue & Green") returns
+ * both plus Multicolor, which is the group `lib/color-groups` treats as the
+ * truthful single label for a piece that is more than one colour.
+ *
+ * Splitting on separators is what distinguishes a two-colour piece from a
+ * two-word colourway: "Natural Black" is one colour, "Natural/Black" is two.
+ */
+export function colorGroupNamesFor(labels: string | string[]): string[] {
+  const list = (Array.isArray(labels) ? labels : [labels]).filter(Boolean);
+  const bases: BaseColor[] = [];
+  for (const label of list) {
+    for (const part of String(label).split(/[/,&+·|]|\band\b|\sи\s/i)) {
+      const base = canonicalColor(part);
+      if (base && !bases.includes(base)) bases.push(base);
+    }
+  }
+  if (!bases.length) return [];
+  const names = bases.map((b) => BASE_COLOR_GROUP[b]);
+  return bases.length > 1 ? [...names, MULTICOLOR_GROUP] : names;
 }
 
 // ── Resolve the *store* name a product is sold at from its source URL ─────────

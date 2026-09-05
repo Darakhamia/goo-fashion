@@ -9,6 +9,7 @@ import {
   extractCurrencyFromDisplay,
   matchCategory,
   inferGenderFromText,
+  canonicalColor,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 import { upgradeImageUrl, imageKey } from "./gallery";
@@ -87,10 +88,18 @@ export function normalizeExtract(
 
   const rawAbs = raw.image && absoluteUrl(raw.image, sourceUrl);
   const rawPrimary = rawAbs ? (upgradeImageUrl(rawAbs, sourceUrl) ?? rawAbs) : null;
-  const imageUrl = rawPrimary || images[0] || "";
+  // Take the gallery's spelling of the primary photo when they are the same
+  // picture. They routinely differ as strings while naming one file, and the
+  // mirror deduplicates on the string — so without this the hero shot is
+  // downloaded and stored twice.
+  const imageUrl = (rawPrimary && byPhoto.get(imageKey(rawPrimary))) || rawPrimary || images[0] || "";
   if (!imageUrl) issues.push("no image");
 
-  const colors = raw.color ? [raw.color] : [];
+  // Colour, in order of how directly the page said it: its own colour field
+  // first (kept verbatim — the catalogue shows the store's word for it), then
+  // the product title, then the URL slug. The last two are only trusted when
+  // they name a colour the catalogue knows, so "Air Force" stays a shoe.
+  const colors = [colorFrom(raw.color, name, sourceUrl)].filter(Boolean) as string[];
   const sizes = raw.sizes ?? [];
 
   return {
@@ -112,6 +121,38 @@ export function normalizeExtract(
     issues,
     valid: issues.length === 0,
   };
+}
+
+/**
+ * The colour to file a product under.
+ *
+ * A colour the page states is kept exactly as written — "Core Black" stays
+ * "Core Black", because the catalogue shows the store's own word for it and
+ * reads the base colour out of it separately for the swatch and the filter.
+ *
+ * When the page states none, the title and then the URL's product slug are read
+ * for one. Both are guarded by the catalogue's colour vocabulary, so "Nike Air
+ * Force 1" contributes nothing while "Wool Runner — Natural Black" contributes
+ * Black. Only the last path segment is read: a `/collections/black-friday/`
+ * ancestor is a sale, not a colourway.
+ */
+function colorFrom(stated: string | undefined, name: string, sourceUrl: string): string | undefined {
+  // Even a stated colour we cannot classify ("as pictured", "multi") is the
+  // store's answer, and a better label than one we made up.
+  const said = (stated ?? "").trim();
+  if (said) return said;
+
+  const slug = (() => {
+    try {
+      const last = new URL(sourceUrl).pathname.split("/").filter(Boolean).pop() ?? "";
+      return last.replace(/\.(?:html?|aspx?|php|jsp)$/i, "").replace(/[-_]+/g, " ");
+    } catch {
+      return "";
+    }
+  })();
+
+  const base = canonicalColor(name) ?? canonicalColor(slug);
+  return base ? base.charAt(0).toUpperCase() + base.slice(1) : undefined;
 }
 
 function safePath(url: string): string {
