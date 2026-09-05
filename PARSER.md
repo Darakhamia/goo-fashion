@@ -131,6 +131,46 @@ the whole run.
 
 ---
 
+## 1b. When the store refuses us anyway — paste the page
+
+Some stores refuse everything a server can send: not Shopify, sitemap behind
+the same wall, bot management in front of every path. goat.com is one.
+
+The block is not on the data, though — it is on the *requester*. An admin
+opening that product page in their own browser passes the check by being a
+person on a residential connection, and the page is then on their screen. The
+**Paste page** panel in the Parse tab takes it from there:
+
+1. open the product page, and scroll the gallery so every photo loads;
+2. click the **Goo: copy page** bookmarklet (drag it to the bookmarks bar once,
+   from the same panel);
+3. paste, and press Parse.
+
+`POST /api/admin/parser/parse` accepts `html` beside `url`; when it is there,
+`parsePage` skips the fetch and the Shopify probe entirely — nothing is asked
+of the store — and runs the *same* extractor, gallery harvester, colour reading
+and import as any other page. `src/lib/parser-bookmarklet.ts` holds the script
+and the reader for what lands on the clipboard.
+
+Two things make this better than a fallback rather than merely cheaper:
+
+- **It is the rendered DOM.** A gallery that lazy-loads on scroll is plain
+  `<img src>` by the time it is copied, so a page a server fetch would have
+  read as one photo arrives with all of them.
+- **It costs nothing.** No proxy, no VPS, no scraping provider, no headless
+  browser — the browser is one the admin already has open.
+
+The bookmarklet strips scripts (except JSON-LD, the densest source of truth on
+the page), styles, SVG, iframes and inline data-URIs before copying, which
+takes a typical retail page from several MB to a couple of hundred KB —
+comfortably under the 3 MB the route accepts and the platform's own body limit.
+
+The limit is honest: one product per click. This is the answer for the handful
+of pieces worth having from a defended store, not a way to collect its
+catalogue.
+
+---
+
 ## 2. Universal extractor
 
 `src/lib/server/parser/extract.ts` reads structured data from raw HTML, highest
@@ -445,6 +485,7 @@ src/app/api/admin/parser/
 ├── parse/route.ts                          ← POST { url } → preview (no write)
 ├── crawl/route.ts                          ← POST discover | batch → bulk collect
 └── import/route.ts                         ← POST { product } → upsert product
+src/lib/parser-bookmarklet.ts               ← bookmarklet + clipboard reader (paste page)
 src/app/goo-studio/parser/page.tsx          ← admin screen (4 tabs)
 ```
 

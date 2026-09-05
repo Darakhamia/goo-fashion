@@ -267,7 +267,7 @@ const COLOR_WORDS: Record<string, BaseColor> = {
   // grey
   grey: "grey", gray: "grey", gris: "grey", grigio: "grey", charcoal: "grey",
   graphite: "grey", slate: "grey", silver: "grey", ash: "grey", pewter: "grey",
-  steel: "grey", smoke: "grey",
+  steel: "grey", smoke: "grey", chrome: "grey", platinum: "grey", gunmetal: "grey",
   // beige / neutrals
   beige: "beige", cream: "beige", ecru: "beige", sand: "beige", stone: "beige",
   oat: "beige", oatmeal: "beige", nude: "beige", taupe: "beige", khaki: "beige",
