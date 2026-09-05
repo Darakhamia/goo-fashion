@@ -31,7 +31,7 @@ export function decodeEntities(input: string): string {
     .trim();
 }
 
-function stripTags(input: string): string {
+export function stripTags(input: string): string {
   return decodeEntities(
     (input ?? "")
       .replace(/<[^>]*>/g, " ")
@@ -615,7 +615,7 @@ function looksLikeProductCode(segment: string): boolean {
  * Does this path point at a product page rather than a category, a filter or a
  * footer link? Three ways to qualify, cheapest first.
  */
-function looksLikeProductPath(pathname: string): boolean {
+export function looksLikeProductPath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
   if (!segments.length) return false;
   if (segments.some((s) => NON_PRODUCT_SEGMENTS.has(s))) return false;
