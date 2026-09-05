@@ -16,13 +16,20 @@
  * that stop it running forever, lives in lib/server/card-export; the drawing
  * itself lives in lib/server/card-image.
  *
+ * A look is exported with the pieces it is made of: its own card, and the card
+ * of every piece in it, in a folder named after the look. A look card on its own
+ * is half the post — the caption under it names the pieces — and finding each
+ * piece again in the products table to download it separately is the chore this
+ * export exists to remove.
+ *
  *   POST /api/admin/export-images {kind:"products"}            → every piece, zipped
  *   POST /api/admin/export-images {kind:"products", ids:["…"]} → that one card, as a PNG
- *   POST /api/admin/export-images {kind:"outfits", ids:[…]}    → those looks, zipped
+ *   POST /api/admin/export-images {kind:"outfits", ids:[…]}    → those looks and their pieces, zipped
  */
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { getAllOutfits, getAllProducts } from "@/lib/data/db";
+import type { Product } from "@/lib/types";
 import { formatMetaPrice } from "@/lib/seo";
 import { CARD_MEDIA_TYPE } from "@/lib/server/card-image";
 import { zipStream } from "@/lib/server/zip";
@@ -93,72 +100,118 @@ function priceLine(min: number, max: number, currency: string): string {
 }
 
 /**
- * One job per product card: the photo it shows, cropped the way it crops it, and
- * the text it carries. A product whose primary photo is missing falls back to
- * the first of its gallery, and only one with no photo anywhere is reported as a
- * miss.
+ * The name a piece's card file carries: who made it, what it is, and a tail that
+ * keeps two pieces with the same name apart.
  */
-async function productJobs(ids: Set<string> | null): Promise<{ jobs: CardJob[]; missing: string[] }> {
+function productFileName(product: Product): string {
+  return `${safeSegment(product.brand, "no-brand")} - ${safeSegment(product.name)} - ${shortId(product.id)}`;
+}
+
+/**
+ * The card a piece shows, as a job to draw at `path` — or null when the piece
+ * has no photo anywhere to draw one around.
+ *
+ * A product whose primary photo is missing falls back to the first of its
+ * gallery, and only one with no photo at all comes back null.
+ */
+function productCard(product: Product, path: string): CardJob | null {
+  const url = product.imageUrl || product.images?.[0];
+  if (!url) return null;
+
+  // The card counts the piece itself plus every variant that isn't it.
+  const colorCount = product.variants?.length
+    ? 1 + product.variants.filter((v) => v.id !== product.id).length
+    : 0;
+
+  return {
+    path,
+    url,
+    crop: product.cropData,
+    label: `${product.brand} — ${product.name}`,
+    spec: {
+      kind: "product",
+      title: product.brand,
+      subtitle: product.name,
+      price: priceLine(product.priceMin, product.priceMax, product.currency),
+      colors: colorCount > 1 ? `${colorCount} colors` : undefined,
+      badge: product.isNew ? "New" : undefined,
+      focal: product.cropData ? { x: product.cropData.focalX, y: product.cropData.focalY } : undefined,
+      backdrop: product.bgColor ?? null,
+    },
+  };
+}
+
+/** What one kind's selection turns into: the cards to draw, and what it could not. */
+interface Selection {
+  jobs: CardJob[];
+  missing: string[];
+  /**
+   * The name of the one look this export is about, when it is about one — the
+   * archive is then named after it rather than after the date alone, because a
+   * download of a single look is a thing the admin is holding, not a batch.
+   */
+  archiveLabel: string | null;
+}
+
+/** One job per product card, straight out of the products table. */
+async function productJobs(ids: Set<string> | null): Promise<Selection> {
   const all = await getAllProducts(true);
   const wanted = ids ? all.filter((p) => ids.has(p.id)) : all;
 
   const jobs: CardJob[] = [];
   const missing: string[] = [];
   for (const product of wanted) {
-    const label = `${product.brand} — ${product.name}`;
-    const url = product.imageUrl || product.images?.[0];
-    if (!url) {
-      missing.push(`${label} — no photo on the card`);
-      continue;
-    }
-    // The card counts the piece itself plus every variant that isn't it.
-    const colorCount = product.variants?.length
-      ? 1 + product.variants.filter((v) => v.id !== product.id).length
-      : 0;
-    jobs.push({
-      path: `products/${safeSegment(product.brand, "no-brand")} - ${safeSegment(product.name)} - ${shortId(product.id)}`,
-      url,
-      crop: product.cropData,
-      label,
-      spec: {
-        kind: "product",
-        title: product.brand,
-        subtitle: product.name,
-        price: priceLine(product.priceMin, product.priceMax, product.currency),
-        colors: colorCount > 1 ? `${colorCount} colors` : undefined,
-        badge: product.isNew ? "New" : undefined,
-        focal: product.cropData ? { x: product.cropData.focalX, y: product.cropData.focalY } : undefined,
-        backdrop: product.bgColor ?? null,
-      },
-    });
+    const card = productCard(product, `products/${productFileName(product)}`);
+    if (card) jobs.push(card);
+    else missing.push(`${product.brand} — ${product.name} — no photo on the card`);
   }
-  return { jobs, missing };
+  return { jobs, missing, archiveLabel: null };
 }
 
-/** One job per look card: its photo, its name and the range its pieces add up to. */
-async function outfitJobs(ids: Set<string> | null): Promise<{ jobs: CardJob[]; missing: string[] }> {
+/**
+ * The jobs behind a look: its own card, and the card of every piece in it.
+ *
+ * Each look gets a folder of its own, so the pieces stay with the look they
+ * belong to however many looks are in the archive, and the pieces are numbered
+ * in the order the look lists them — hero first, the way the site shows them.
+ *
+ * A look whose own photo is missing still hands over its pieces: the pieces are
+ * the half of the export that is always usable, and losing them because the look
+ * has no photo yet would be a strange kind of punishment.
+ */
+async function outfitJobs(ids: Set<string> | null): Promise<Selection> {
   const all = await getAllOutfits();
   const wanted = ids ? all.filter((o) => ids.has(o.id)) : all;
 
   const jobs: CardJob[] = [];
   const missing: string[] = [];
   for (const outfit of wanted) {
-    if (!outfit.imageUrl) {
+    const name = safeSegment(outfit.name, "look");
+    const folder = `outfits/${name} - ${shortId(outfit.id)}`;
+
+    if (outfit.imageUrl) {
+      jobs.push({
+        path: `${folder}/look - ${name}`,
+        url: outfit.imageUrl,
+        label: outfit.name,
+        spec: {
+          kind: "look",
+          title: outfit.name,
+          price: priceLine(outfit.totalPriceMin, outfit.totalPriceMax, outfit.currency),
+        },
+      });
+    } else {
       missing.push(`${outfit.name} — no photo on the card`);
-      continue;
     }
-    jobs.push({
-      path: `outfits/${safeSegment(outfit.name, "look")} - ${shortId(outfit.id)}`,
-      url: outfit.imageUrl,
-      label: outfit.name,
-      spec: {
-        kind: "look",
-        title: outfit.name,
-        price: priceLine(outfit.totalPriceMin, outfit.totalPriceMax, outfit.currency),
-      },
+
+    outfit.items.forEach((item, i) => {
+      const nth = String(i + 1).padStart(2, "0");
+      const card = productCard(item.product, `${folder}/items/${nth} - ${productFileName(item.product)}`);
+      if (card) jobs.push(card);
+      else missing.push(`${outfit.name} → ${item.product.brand} — ${item.product.name} — no photo on the card`);
     });
   }
-  return { jobs, missing };
+  return { jobs, missing, archiveLabel: wanted.length === 1 ? wanted[0].name : null };
 }
 
 export async function POST(req: Request) {
@@ -179,7 +232,8 @@ export async function POST(req: Request) {
   }
 
   const ids = parseIds(body.ids);
-  const { jobs, missing } = kind === "products" ? await productJobs(ids) : await outfitJobs(ids);
+  const { jobs, missing, archiveLabel } =
+    kind === "products" ? await productJobs(ids) : await outfitJobs(ids);
 
   // The only failure worth a status code: everything else is discovered after
   // the response has started, and gets written into the archive's report.
@@ -217,7 +271,12 @@ export async function POST(req: Request) {
     failures: [...missing],
     truncated: null,
   };
-  const filename = `goo-${kind === "products" ? "product" : "look"}-cards-${new Date().toISOString().slice(0, 10)}.zip`;
+  const today = new Date().toISOString().slice(0, 10);
+  // A single look's archive is named after the look; anything wider is named
+  // after what it holds, since no one name would be true of all of it.
+  const filename = archiveLabel
+    ? `goo-look-${safeSegment(archiveLabel, "look")}-${today}.zip`
+    : `goo-${kind === "products" ? "product" : "look"}-cards-${today}.zip`;
 
   return new Response(zipStream(packCards(jobs, report)), {
     headers: {
