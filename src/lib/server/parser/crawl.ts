@@ -15,7 +15,25 @@
 import { fetchHtml } from "./fetch";
 import { extractProductLinks } from "./extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
+import { discoverShopifyProducts, fetchShopifyProduct, productJsonUrl } from "./shopify";
+import { discoverFromSitemap } from "./sitemap";
 import type { ParserFetchSettings, ParserSiteConfig } from "./types";
+
+/**
+ * A short, jittered wait between requests to one store.
+ *
+ * Twenty listing pages fetched back to back from one address is the shape of
+ * traffic rate limiters are built to catch, and being caught costs the whole
+ * run — so a few hundred milliseconds buys more than it spends. Jittered
+ * because a request exactly every N milliseconds is itself a signature.
+ */
+const PACE_MIN_MS = 150;
+const PACE_MAX_MS = 400;
+
+function pace(): Promise<void> {
+  const ms = PACE_MIN_MS + Math.random() * (PACE_MAX_MS - PACE_MIN_MS);
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface DiscoverOptions {
   fetchSettings: ParserFetchSettings;
@@ -165,9 +183,11 @@ function diagnoseEmptyListing(html: string, settings: ParserFetchSettings): stri
  */
 function diagnoseFailedFetch(settings: ParserFetchSettings, status: number): string | undefined {
   if (status === 401 || status === 403 || status === 429) {
+    // The sitemap has already been tried by the time this is shown, so the
+    // advice can be about what is left rather than about what to check first.
     return settings.provider === "direct"
-      ? "The store refused the request outright — that is anti-bot, not a bad URL. Set a scraping provider in the Fetch & Anti-bot tab."
-      : "The store refused the provider's request. Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
+      ? "The store refused the request outright — that is anti-bot, not a bad URL. Its sitemap and Shopify JSON were tried too and gave nothing, so this store needs a scraping provider in the Fetch & Anti-bot tab."
+      : "The store refused the provider's request, and its sitemap and Shopify JSON gave nothing either. Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
   }
   if (status === 404) return "The store returned 404 — check the URL still opens in a browser.";
   if (status === 0) return "The request never completed. Raise the timeout in the Fetch & Anti-bot tab, or check the host is reachable.";
@@ -180,8 +200,33 @@ export async function discoverProductUrls(
 ): Promise<DiscoverResult> {
   const started = Date.now();
   const budgetMs = opts.budgetMs ?? 45_000;
+  const deadline = started + budgetMs;
   const limit = Math.max(1, Math.min(opts.limit, 500));
   const maxPages = Math.max(1, Math.min(opts.maxPages, 20));
+
+  const startConfig = matchSiteConfig(startUrl, opts.siteConfigs);
+  const startSettings = effectiveFetchSettings(opts.fetchSettings, startConfig);
+
+  // ── Shopify's own JSON, before any HTML ────────────────────────────────────
+  // On a Shopify store this is both more complete and more likely to be served
+  // than the listing page: no anchors to sift, no infinite-scroll grid that
+  // keeps its products in a script, and no anti-bot in front of it. One request
+  // decides it; any other store answers 404 and is remembered for the run.
+  if (productJsonUrl(startUrl)) {
+    const single = await fetchShopifyProduct(startUrl, startSettings, opts.fetchApiKey);
+    if (single) {
+      return { ok: true, urls: [single.sourceUrl], pagesVisited: 1, isSingleProduct: true, status: 200 };
+    }
+  } else {
+    const shopify = await discoverShopifyProducts(startUrl, startSettings, opts.fetchApiKey, {
+      limit,
+      maxPages,
+      deadline,
+    });
+    if (shopify.length) {
+      return { ok: true, urls: shopify, pagesVisited: 1, isSingleProduct: false, status: 200 };
+    }
+  }
 
   const found = new Set<string>();
   const visited = new Set<string>();
@@ -191,7 +236,9 @@ export async function discoverProductUrls(
   // Kept for the diagnosis below: an empty crawl is explained by what the FIRST
   // page came back as, under the fetch settings that page was actually fetched with.
   let firstHtml = "";
-  let firstSettings: ParserFetchSettings = opts.fetchSettings;
+  let firstSettings: ParserFetchSettings = startSettings;
+  /** Why the first page never arrived, kept in case the sitemap cannot save it. */
+  let firstFailure: { error: string; status: number } | null = null;
 
   while (next && pagesVisited < maxPages && found.size < limit) {
     if (Date.now() - started > budgetMs) break;
@@ -202,21 +249,16 @@ export async function discoverProductUrls(
     const matched = matchSiteConfig(pageUrl, opts.siteConfigs);
     const settings = effectiveFetchSettings(opts.fetchSettings, matched);
     if (pagesVisited === 0) firstSettings = settings;
+    if (pagesVisited > 0) await pace();
     const fetched = await fetchHtml(pageUrl, settings, opts.fetchApiKey);
     status = fetched.status;
 
     if (!fetched.ok || !fetched.html) {
-      // A failure on the first page is fatal; later pages just end the walk.
+      // A refusal on the first page used to end the run here. It no longer
+      // does: the sitemap below is read precisely when the pages are not, so
+      // the failure is remembered and reported only if that fails too.
       if (pagesVisited === 0) {
-        return {
-          ok: false,
-          urls: [],
-          pagesVisited: 0,
-          isSingleProduct: false,
-          error: fetched.error ?? "Failed to fetch page",
-          hint: diagnoseFailedFetch(settings, status),
-          status,
-        };
+        firstFailure = { error: fetched.error ?? "Failed to fetch page", status };
       }
       break;
     }
@@ -245,6 +287,42 @@ export async function discoverProductUrls(
   }
 
   const urls = [...found].slice(0, limit);
+
+  // Nothing came out of the HTML — the listing was refused, or it builds its
+  // grid in the browser and ships no anchors. Either way the store still
+  // publishes a sitemap for search engines, and a shop that blocked that would
+  // be blocking its own Google traffic, so it is nearly always readable.
+  if (urls.length === 0) {
+    const fromSitemap = await discoverFromSitemap(startUrl, startSettings, opts.fetchApiKey, {
+      limit,
+      deadline,
+    });
+    if (fromSitemap.length) {
+      return {
+        ok: true,
+        urls: fromSitemap,
+        pagesVisited,
+        isSingleProduct: false,
+        status: firstFailure?.status ?? status,
+        hint: firstFailure
+          ? `The listing itself was refused (${firstFailure.error}), so these ${fromSitemap.length} product URLs come from the store's sitemap instead.`
+          : `The listing carried no product links, so these ${fromSitemap.length} product URLs come from the store's sitemap instead.`,
+      };
+    }
+  }
+
+  if (firstFailure) {
+    return {
+      ok: false,
+      urls: [],
+      pagesVisited: 0,
+      isSingleProduct: false,
+      error: firstFailure.error,
+      hint: diagnoseFailedFetch(firstSettings, firstFailure.status),
+      status: firstFailure.status,
+    };
+  }
+
   return {
     ok: true,
     urls,

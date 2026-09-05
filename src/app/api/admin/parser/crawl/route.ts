@@ -77,6 +77,10 @@ export async function POST(req: Request) {
   const results: CrawlItemResult[] = [];
 
   for (const url of urls) {
+    // A jittered gap between products of the same batch. Five page loads back
+    // to back from one address is what a rate limiter is built to catch, and
+    // being caught costs the run; a second spread across the batch does not.
+    if (results.length) await new Promise((r) => setTimeout(r, 150 + Math.random() * 250));
     try {
       const parsed = await parsePage(url, {
         fetchSettings,
