@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ParserFetchSettings,
   ParserSiteConfig,
@@ -11,6 +11,7 @@ import type {
   CrawlItemResult,
 } from "@/lib/server/parser/types";
 import type { Category, Gender } from "@/lib/types";
+import { bookmarkletHref, readPastedPage } from "@/lib/parser-bookmarklet";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -451,11 +452,11 @@ function ParseTab({ config }: { config: ConfigState | null }) {
 
   const provider = config?.fetchSettings.provider ?? "direct";
 
-  async function callParse(target: string): Promise<ParseResponse> {
+  async function callParse(target: string, html?: string): Promise<ParseResponse> {
     const res = await fetch("/api/admin/parser/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: target }),
+      body: JSON.stringify({ url: target, ...(html ? { html } : {}) }),
     });
     return res.json();
   }
@@ -463,12 +464,14 @@ function ParseTab({ config }: { config: ConfigState | null }) {
   const selectValid = (list: ParsedProduct[]) =>
     new Set(list.map((p, i) => (p.valid ? i : -1)).filter((i) => i >= 0));
 
-  async function runParse() {
-    if (!url.trim()) return;
+  async function runParse(pasted?: { url?: string; html: string }) {
+    const target = (pasted?.url || url).trim();
+    if (!target) return;
     setParsing(true); setError(""); setHint(""); setDiag(null);
     setProducts([]); setLinks([]); setSelected(new Set()); setIsListing(false);
+    if (pasted?.url && pasted.url !== url) setUrl(pasted.url);
     try {
-      const data = await callParse(url.trim());
+      const data = await callParse(target, pasted?.html);
       setDiag(data.diagnostics ?? null);
       if (!data.ok) {
         setError(data.error ?? "Parse failed");
@@ -529,7 +532,7 @@ function ParseTab({ config }: { config: ConfigState | null }) {
             className={inputCls}
           />
         </div>
-        <button onClick={runParse} disabled={parsing || !url.trim()} className={btnPrimary}>
+        <button onClick={() => runParse()} disabled={parsing || !url.trim()} className={btnPrimary}>
           {parsing && <Spinner />} {parsing ? "Fetching…" : "Parse"}
         </button>
       </div>
@@ -539,6 +542,12 @@ function ParseTab({ config }: { config: ConfigState | null }) {
           <span className="text-amber-500"> · no API key set (Fetch &amp; Anti-bot tab)</span>
         )}
       </p>
+
+      <PastePagePanel
+        onParse={(pasted) => runParse(pasted)}
+        parsing={parsing}
+        urlHint={url.trim()}
+      />
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
@@ -569,6 +578,129 @@ function ParseTab({ config }: { config: ConfigState | null }) {
           onClear={() => setSelected(new Set())}
           setProductAt={setProductAt}
         />
+      )}
+    </div>
+  );
+}
+
+// ── Paste page — the way past a store that refuses us ────────────────────────
+//
+// A store can refuse our server; it cannot refuse the admin's own browser,
+// which is already looking at the page. This takes that page and runs the
+// normal pipeline on it — no proxy, no provider, no cost.
+
+function PastePagePanel({
+  onParse,
+  parsing,
+  urlHint,
+}: {
+  onParse: (pasted: { url?: string; html: string }) => void;
+  parsing: boolean;
+  urlHint: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [copied, setCopied] = useState(false);
+  // React refuses to render a `javascript:` href, so the bookmarklet is
+  // attached to the node directly — dragging the link to the bookmarks bar is
+  // the whole point of it being a link.
+  const dragRef = useCallback((node: HTMLAnchorElement | null) => {
+    if (node) node.setAttribute("href", bookmarkletHref());
+  }, []);
+
+  const pasted = readPastedPage(text);
+  const size = text ? `${Math.max(1, Math.round(text.length / 1024))} KB` : "";
+  const ready = !!pasted && (!!pasted.url || !!urlHint);
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-5 py-3 flex items-center justify-between text-left"
+      >
+        <span className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+          Paste page
+        </span>
+        <span className="text-[10px] text-[var(--foreground-subtle)]">
+          {open ? "hide" : "for stores that refuse us — free, no provider"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-4 border-t border-[var(--border)] pt-4">
+          <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+            A store can block our server; it cannot block your browser. Open the product page
+            yourself, scroll the gallery so every photo loads, then click the bookmarklet — it
+            copies the page. Paste it below and parse it exactly as if we had fetched it.
+          </p>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              ref={dragRef}
+              onClick={(e) => e.preventDefault()}
+              className="px-3 py-1.5 text-[11px] tracking-[0.1em] uppercase border border-dashed border-[var(--border-strong)] text-[var(--foreground)] rounded-lg cursor-grab"
+              title="Drag me to your bookmarks bar"
+            >
+              Goo: copy page
+            </a>
+            <span className="text-[10px] text-[var(--foreground-subtle)]">
+              ← drag to your bookmarks bar
+            </span>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(bookmarkletHref());
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch {
+                  setCopied(false);
+                }
+              }}
+              className={btnGhost}
+            >
+              {copied ? "Copied" : "Copy as text"}
+            </button>
+          </div>
+
+          <div>
+            <label className={labelCls}>Page HTML</label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Click the bookmarklet on the product page, then paste here"
+              spellCheck={false}
+              rows={4}
+              className={`${inputCls} font-mono text-[10px] resize-y`}
+            />
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[10px] text-[var(--foreground-subtle)]">
+                {text
+                  ? pasted?.url
+                    ? `${size} · ${pasted.url}`
+                    : `${size} · using the URL field above`
+                  : "Nothing pasted yet"}
+              </p>
+              <div className="flex items-center gap-2">
+                {text && (
+                  <button onClick={() => setText("")} className={btnGhost}>Clear</button>
+                )}
+                <button
+                  onClick={() => pasted && onParse(pasted)}
+                  disabled={parsing || !ready}
+                  className={btnPrimary}
+                >
+                  {parsing && <Spinner />} Parse pasted page
+                </button>
+              </div>
+            </div>
+            {text && !pasted?.url && !urlHint && (
+              <p className="text-[10px] text-amber-500 mt-1.5">
+                Fill the Product URL field above — pasted markup has no address of its own, and
+                the catalogue needs one to link to and to dedupe on.
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

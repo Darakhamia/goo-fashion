@@ -54,6 +54,20 @@ export interface ParsePageOptions {
   aiSettings: ParserAiSettings;
   /** Override the AI decision for this call (admin ticked/unticked the box). */
   useAi?: boolean;
+  /**
+   * Markup the admin's own browser already has, instead of markup we fetch.
+   *
+   * This is the free answer to a store that refuses us: their browser passed
+   * the anti-bot check we cannot, so the page exists — it is simply on their
+   * screen rather than on our server. It is also a *better* source than a
+   * server fetch, because it is the RENDERED DOM: lazy-loaded gallery images
+   * that only appear after scrolling are real `<img src>` by the time it is
+   * copied.
+   *
+   * Everything downstream is unchanged, which is the point: the same
+   * extractor, gallery harvester, colour reading and import run on it.
+   */
+  html?: string;
 }
 
 function resolveUrl(href: string, base: string): string {
@@ -85,7 +99,11 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   // behind an anti-bot challenge. Worth one request before spending one on
   // markup we would then have to mine. Any other store answers this with a 404
   // and the host is remembered, so the guess is paid for once per crawl.
-  const shopify = await fetchShopifyProduct(url, settings, opts.fetchApiKey);
+  const pasted = typeof opts.html === "string" && opts.html.trim() ? opts.html : null;
+
+  // Pasted markup skips this: the admin already has the page, so asking the
+  // store anything at all would only be a request that can be refused.
+  const shopify = pasted ? null : await fetchShopifyProduct(url, settings, opts.fetchApiKey);
   if (shopify) {
     const product = normalizeExtract(shopify.raw, shopify.sourceUrl, matched);
     return {
@@ -104,11 +122,13 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
     };
   }
 
-  const fetched = await fetchHtml(url, settings, opts.fetchApiKey);
+  const fetched = pasted
+    ? { ok: true, status: 200, html: pasted, finalUrl: url, error: undefined }
+    : await fetchHtml(url, settings, opts.fetchApiKey);
   const pageUrl = fetched.finalUrl || url;
 
   const diagnostics: ParsePageDiagnostics = {
-    provider: settings.provider,
+    provider: pasted ? "pasted" : settings.provider,
     status: fetched.status,
     htmlLength: fetched.html.length,
     finalUrl: pageUrl,
