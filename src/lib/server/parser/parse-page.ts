@@ -14,7 +14,7 @@
 import { fetchHtml } from "./fetch";
 import { extractProduct, partitionProducts, extractProductLinks } from "./extract";
 import { normalizeExtract } from "./normalize";
-import { fetchShopifyProduct } from "./shopify";
+import { fetchStorefrontProduct } from "./storefront";
 import { aiExtract, mergeAiIntoRaw, shouldUseAi } from "./ai-extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
 import type {
@@ -78,12 +78,21 @@ function resolveUrl(href: string, base: string): string {
   }
 }
 
-/** Actionable guidance when the upstream blocks us. */
+/**
+ * Actionable guidance when the upstream blocks us.
+ *
+ * The free answer comes first, because for a single product it is also the
+ * better one: the admin's own browser already passed the check this fetch
+ * failed, and what it has on screen is the rendered DOM — a gallery that
+ * lazy-loads on scroll arrives whole. A provider is what a *catalogue* needs.
+ */
 export function blockHint(status: number, provider: string): string | undefined {
   if (status === 403 || status === 401 || status === 429 || status === 503) {
+    const paste =
+      'This page needs no provider: open it in your own browser and use the "Paste page" panel below — click the "Goo: copy page" bookmarklet on the product page and paste it here.';
     return provider === "direct"
-      ? "The site blocked a direct fetch (anti-bot). Switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS."
-      : "The provider returned a block. Try enabling Render JS, or check the provider's credit/quota and that the API key is valid.";
+      ? `The site blocked a direct fetch (anti-bot). ${paste} To collect a whole catalogue from this store instead, switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS.`
+      : `The provider returned a block. ${paste} Otherwise try enabling Render JS, or check the provider's credit/quota and that the API key is valid.`;
   }
   return undefined;
 }
@@ -92,20 +101,23 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   const matched = matchSiteConfig(url, opts.siteConfigs);
   const settings = effectiveFetchSettings(opts.fetchSettings, matched);
 
-  // Shopify answers the same address with `.json` appended, and that answer is
-  // better than the page in both directions: it carries every photo, every
-  // variant and the colour and size options as data, and it is an API endpoint
-  // rather than a page, so it is routinely served on a store whose HTML sits
-  // behind an anti-bot challenge. Worth one request before spending one on
-  // markup we would then have to mine. Any other store answers this with a 404
-  // and the host is remembered, so the guess is paid for once per crawl.
+  // Shopify, WooCommerce and Squarespace all answer a public JSON address for
+  // the same product, and that answer is better than the page in both
+  // directions: it carries every photo, every variant and the colour and size
+  // options as data, and it is an API endpoint rather than a page, so it is
+  // routinely served on a store whose HTML sits behind an anti-bot challenge.
+  // Worth a probe before spending a request on markup we would then have to
+  // mine — and worth more than that on a store with no structured data, where
+  // the markup path pays for a model call. A store that is none of the three
+  // answers with a 404 and is remembered, so each guess is paid for once per
+  // crawl rather than once per product.
   const pasted = typeof opts.html === "string" && opts.html.trim() ? opts.html : null;
 
   // Pasted markup skips this: the admin already has the page, so asking the
   // store anything at all would only be a request that can be refused.
-  const shopify = pasted ? null : await fetchShopifyProduct(url, settings, opts.fetchApiKey);
-  if (shopify) {
-    const product = normalizeExtract(shopify.raw, shopify.sourceUrl, matched);
+  const storefront = pasted ? null : await fetchStorefrontProduct(url, settings, opts.fetchApiKey);
+  if (storefront) {
+    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched);
     return {
       ok: true,
       products: product.name || product.imageUrl ? [product] : [],
@@ -114,8 +126,8 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       diagnostics: {
         provider: settings.provider,
         status: 200,
-        htmlLength: shopify.bytes,
-        finalUrl: shopify.jsonUrl,
+        htmlLength: storefront.bytes,
+        finalUrl: storefront.jsonUrl,
         matchedConfig: matched ? { id: matched.id, name: matched.name, domain: matched.domain } : null,
         strategies: product.strategies,
       },

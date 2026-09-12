@@ -8,6 +8,10 @@
  *   - a listing with embedded data  → the card URLs (JSON-LD ItemList)
  *   - a plain listing               → same-host anchors that look like products
  *
+ * Before any of that, the store is asked for its own data: Shopify, WooCommerce
+ * and Squarespace each publish a JSON address that lists products exactly, and
+ * serve it where their pages are defended (`storefront.ts`).
+ *
  * Pagination is followed by `rel="next"` and by anchors carrying a page
  * parameter, under both a page cap and a wall-clock budget, because this runs
  * inside a serverless function that will be killed at its `maxDuration`.
@@ -15,7 +19,7 @@
 import { fetchHtml } from "./fetch";
 import { extractProductLinks, looksLikeProductPath } from "./extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
-import { discoverShopifyProducts, fetchShopifyProduct, productJsonUrl } from "./shopify";
+import { discoverStorefront } from "./storefront";
 import { discoverFromSitemap, type SitemapResult } from "./sitemap";
 import type { ParserFetchSettings, ParserSiteConfig } from "./types";
 
@@ -199,12 +203,17 @@ function diagnoseFailedFetch(
     // What was tried besides the page decides what is worth saying — and, in
     // the readable-sitemap case, whether the fix is ours rather than a bill.
     if (tried.singleProduct) {
-      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead. ${next}`;
+      // One product does not need a provider, and saying otherwise sends the
+      // admin to pay for something they already have: their own browser passes
+      // the check by being a person on a residential connection, and the Paste
+      // page panel takes the rendered DOM from there. The bill is the answer
+      // for a catalogue, not for a piece.
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: open it in your own browser and use the "Paste page" panel in the Parse URL tab (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
     }
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
       return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill.`;
     }
-    return `${refused} Its sitemap and Shopify JSON were tried too and gave nothing. ${next}`;
+    return `${refused} Its sitemap and the storefront JSON APIs (Shopify, WooCommerce, Squarespace) were tried too and gave nothing. ${next}`;
   }
   if (status === 404) return "The store returned 404 — check the URL still opens in a browser.";
   if (status === 0) return "The request never completed. Raise the timeout in the Fetch & Anti-bot tab, or check the host is reachable.";
@@ -241,25 +250,26 @@ export async function discoverProductUrls(
     }
   })();
 
-  // ── Shopify's own JSON, before any HTML ────────────────────────────────────
-  // On a Shopify store this is both more complete and more likely to be served
-  // than the listing page: no anchors to sift, no infinite-scroll grid that
-  // keeps its products in a script, and no anti-bot in front of it. One request
-  // decides it; any other store answers 404 and is remembered for the run.
-  if (productJsonUrl(startUrl)) {
-    const single = await fetchShopifyProduct(startUrl, startSettings, opts.fetchApiKey);
-    if (single) {
-      return { ok: true, urls: [single.sourceUrl], pagesVisited: 1, isSingleProduct: true, status: 200 };
-    }
-  } else if (!startIsProduct) {
-    const shopify = await discoverShopifyProducts(startUrl, startSettings, opts.fetchApiKey, {
-      limit,
-      maxPages,
-      deadline,
-    });
-    if (shopify.length) {
-      return { ok: true, urls: shopify, pagesVisited: 1, isSingleProduct: false, status: 200 };
-    }
+  // ── The store's own JSON, before any HTML ─────────────────────────────────
+  // On a Shopify, WooCommerce or Squarespace store this is both more complete
+  // and more likely to be served than the listing page: no anchors to sift, no
+  // infinite-scroll grid that keeps its products in a script, and no anti-bot
+  // in front of it. A probe per platform decides it; a store that is none of
+  // them answers 404 and is remembered for the run.
+  const storefront = await discoverStorefront(startUrl, startSettings, opts.fetchApiKey, {
+    limit,
+    maxPages,
+    deadline,
+    startIsProduct,
+  });
+  if (storefront) {
+    return {
+      ok: true,
+      urls: storefront.urls,
+      pagesVisited: 1,
+      isSingleProduct: storefront.isSingleProduct,
+      status: 200,
+    };
   }
 
   const found = new Set<string>();

@@ -26,8 +26,18 @@
  * page. So a store that answers with something that is not a Shopify product is
  * remembered as "not Shopify" for the run, and the caller falls back to HTML.
  */
-import { fetchHtml } from "./fetch";
 import { stripTags } from "./extract";
+import {
+  COLOR_OPTION,
+  SIZE_OPTION,
+  getStoreJson,
+  hostOf,
+  isNotPlatform,
+  isObj,
+  markNotPlatform,
+  resetStoreJsonCache,
+  type StorefrontProductResult,
+} from "./store-json";
 import type { ParserFetchSettings, RawExtract } from "./types";
 
 /** Shopify's own cap on `products.json`. */
@@ -64,10 +74,6 @@ export interface ShopifyProduct {
   images?: ShopifyImage[];
   variants?: ShopifyVariant[];
   options?: ShopifyOption[];
-}
-
-function isObj(v: unknown): v is Record<string, unknown> {
-  return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
 /**
@@ -150,9 +156,6 @@ function priceRange(variants: ShopifyVariant[]): { price?: string; priceOriginal
   return { price, priceOriginal: was > (min === Infinity ? 0 : min) ? String(was) : undefined };
 }
 
-const SIZE_OPTION = /^(?:size|sizes|talla|taille|größe|grosse|taglia|розмір|размер)$/i;
-const COLOR_OPTION = /^(?:colou?r|couleur|farbe|colore|color\s*way|колір|цвет)$/i;
-
 function optionValues(options: ShopifyOption[], match: RegExp): string[] {
   for (const o of options) {
     if (typeof o?.name === "string" && match.test(o.name.trim())) {
@@ -203,55 +206,8 @@ export function rawFromShopifyProduct(
 
 // ── Talking to the store ──────────────────────────────────────────────────────
 
-/**
- * Hosts already known not to be Shopify, so one 404 is not paid for twice in a
- * crawl of a hundred URLs from the same store. Per process, which for a
- * serverless function means per warm instance — the right lifetime for a guess
- * this cheap to re-make.
- */
-const notShopify = new Set<string>();
+/** The store's own currency word, once per host (see `storeCurrency`). */
 const currencyByHost = new Map<string, string>();
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return "";
-  }
-}
-
-/** GET a URL through the configured fetch layer and parse it as JSON. */
-async function getJson(
-  url: string,
-  settings: ParserFetchSettings,
-  apiKey: string,
-): Promise<{ json: unknown; status: number; bytes: number }> {
-  const res = await fetchHtml(url, probeSettings(settings), apiKey);
-  const bytes = res.html?.length ?? 0;
-  if (!res.ok || !res.html) return { json: null, status: res.status, bytes };
-  const body = res.html.trimStart();
-  // A theme's 404 page is HTML; only spend a parse on something JSON-shaped.
-  if (!body.startsWith("{") && !body.startsWith("[")) return { json: null, status: res.status, bytes };
-  try {
-    return { json: JSON.parse(body), status: res.status, bytes };
-  } catch {
-    return { json: null, status: res.status, bytes };
-  }
-}
-
-/**
- * A guess costs a request, so cap what a wrong guess can cost in time. On a
- * store that is not Shopify these probes 404 immediately; the ones that hang
- * are the ones that were never going to answer, and the crawl behind us still
- * has its own budget to spend on the HTML that does work.
- */
-const PROBE_TIMEOUT_MS = 8_000;
-
-function probeSettings(settings: ParserFetchSettings): ParserFetchSettings {
-  return settings.timeoutMs <= PROBE_TIMEOUT_MS
-    ? settings
-    : { ...settings, timeoutMs: PROBE_TIMEOUT_MS };
-}
 
 /**
  * The store's currency, from `/meta.json`. Best-effort by design: the product
@@ -269,19 +225,10 @@ async function storeCurrency(
   const cached = currencyByHost.get(host);
   if (cached !== undefined) return cached || undefined;
 
-  const { json } = await getJson(`${origin}/meta.json`, settings, apiKey);
+  const { json } = await getStoreJson(`${origin}/meta.json`, settings, apiKey);
   const value = isObj(json) && typeof json.currency === "string" ? json.currency.trim().toUpperCase() : "";
   currencyByHost.set(host, /^[A-Z]{3}$/.test(value) ? value : "");
   return /^[A-Z]{3}$/.test(value) ? value : undefined;
-}
-
-export interface ShopifyProductResult {
-  raw: RawExtract;
-  /** The address the product is sold at — what the catalogue dedupes on. */
-  sourceUrl: string;
-  jsonUrl: string;
-  /** Size of the JSON we read, for the admin screen's diagnostics. */
-  bytes: number;
 }
 
 /**
@@ -294,16 +241,16 @@ export async function fetchShopifyProduct(
   pageUrl: string,
   settings: ParserFetchSettings,
   apiKey: string,
-): Promise<ShopifyProductResult | null> {
+): Promise<StorefrontProductResult | null> {
   const jsonUrl = productJsonUrl(pageUrl);
   if (!jsonUrl) return null;
   const host = hostOf(pageUrl);
-  if (host && notShopify.has(host)) return null;
+  if (isNotPlatform(host, "shopify")) return null;
 
-  const { json, bytes } = await getJson(jsonUrl, settings, apiKey);
+  const { json, bytes } = await getStoreJson(jsonUrl, settings, apiKey);
   const node = isObj(json) && isObj(json.product) ? json.product : json;
   if (!isShopifyProduct(node)) {
-    if (host) notShopify.add(host);
+    markNotPlatform(host, "shopify");
     return null;
   }
 
@@ -312,7 +259,13 @@ export async function fetchShopifyProduct(
   // The page URL the admin pasted is the one the catalogue should link to and
   // dedupe on — the `.json` twin is an implementation detail of the fetch.
   const sourceUrl = pageUrl.split("#")[0];
-  return { raw: rawFromShopifyProduct(node, sourceUrl, currency), sourceUrl, jsonUrl, bytes };
+  return {
+    platform: "shopify",
+    raw: rawFromShopifyProduct(node, sourceUrl, currency),
+    sourceUrl,
+    jsonUrl,
+    bytes,
+  };
 }
 
 /**
@@ -331,7 +284,7 @@ export async function discoverShopifyProducts(
   opts: { limit: number; maxPages: number; deadline?: number },
 ): Promise<string[]> {
   const host = hostOf(startUrl);
-  if (host && notShopify.has(host)) return [];
+  if (isNotPlatform(host, "shopify")) return [];
 
   const urls: string[] = [];
   const seen = new Set<string>();
@@ -341,12 +294,12 @@ export async function discoverShopifyProducts(
     const jsonUrl = listingJsonUrl(startUrl, page);
     if (!jsonUrl) break;
 
-    const { json } = await getJson(jsonUrl, settings, apiKey);
+    const { json } = await getStoreJson(jsonUrl, settings, apiKey);
     const list = isObj(json) && Array.isArray(json.products) ? json.products : null;
     if (!list) {
       // The first page deciding it is not Shopify is worth remembering; a later
       // page failing just ends the walk (the store may cap `page`).
-      if (page === 1 && host) notShopify.add(host);
+      if (page === 1) markNotPlatform(host, "shopify");
       break;
     }
     if (list.length === 0) break;
@@ -367,6 +320,6 @@ export async function discoverShopifyProducts(
 
 /** Test seam: forget what we learned about a host. */
 export function resetShopifyCache(): void {
-  notShopify.clear();
+  resetStoreJsonCache();
   currencyByHost.clear();
 }
