@@ -1940,7 +1940,7 @@ export default function BuilderPage() {
           <div className="shrink-0 flex items-center justify-between px-4 py-2.5 bg-[var(--background)] border-b border-[var(--border)]">
             <Link
               href="/"
-              className="w-10 h-10 shrink-0 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--surface-hover,var(--surface))] transition-colors active:scale-95"
+              className="w-10 h-10 shrink-0 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--fg-overlay-05)] transition-colors active:scale-95"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -2752,7 +2752,7 @@ export default function BuilderPage() {
               </button>
               <button
                 onClick={() => setMobileFiltersOpen(false)}
-                className="flex-1 h-12 bg-white text-black text-[14px] font-medium rounded-xl hover:bg-white/90 transition-colors active:scale-[0.98]"
+                className="flex-1 h-12 bg-[var(--foreground)] text-[var(--background)] text-[14px] font-medium rounded-xl hover:opacity-90 transition-opacity active:scale-[0.98]"
               >
                 Show results
               </button>

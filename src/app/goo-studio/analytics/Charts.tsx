@@ -253,7 +253,12 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
                 className="h-full transition-all"
                 style={{
                   width: `${barW}%`,
-                  background: i === 0 ? "var(--foreground)" : `rgba(var(--foreground-rgb, 0,0,0), ${0.8 - i * 0.15})`,
+                  // Прозрачность задаётся на элементе, а не подстановкой в
+                  // rgba(): токена --foreground-rgb в проекте нет, поэтому
+                  // здесь всегда срабатывал fallback 0,0,0 — чёрные столбцы
+                  // на тёмной поверхности.
+                  background: "var(--foreground)",
+                  opacity: i === 0 ? 1 : 0.8 - i * 0.15,
                 }}
               />
             </div>

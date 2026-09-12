@@ -544,7 +544,7 @@ export default function AIStylistShowcase({
     <section className="py-2 lg:py-5">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 flex flex-col gap-3">
         {/* Top: intro + chat */}
-        <FadeCard className="rounded-none lg:rounded-[28px] bg-transparent lg:bg-[#0A0A0A] border-0 lg:border lg:border-white/10 overflow-hidden lg:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
+        <FadeCard className="rounded-none lg:rounded-[28px] bg-[#0A0A0A] border border-white/10 overflow-hidden lg:shadow-[0_30px_80px_-40px_rgba(0,0,0,0.6)]">
           <div className="grid lg:grid-cols-2">
             <Intro />
             <ChatPreview looks={chatLooks} />

@@ -7,7 +7,6 @@ import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import { StylistProvider, useStylist } from "@/lib/context/stylist-context";
-import PageTransition from "@/components/ui/PageTransition";
 import type { Product } from "@/lib/types";
 
 // The drawer is ~800 lines and only needed once the user opens the stylist —
@@ -62,7 +61,16 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
     <>
       <Navigation />
       <main className={!isBuilder ? "md:pb-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))]" : ""}>
-        <PageTransition>{children}</PageTransition>
+        {/* Раньше здесь стоял PageTransition: он держал каждую страницу
+            прозрачной 350 мс после того, как контент уже приехал с сервера,
+            и делал это через shorthand `y` Framer Motion — то есть через rAF
+            в главном потоке, ровно в те кадры, когда идёт гидратация нового
+            маршрута. Плюс transform на обёртке всей страницы создавал
+            containing block, и `position: fixed` внутри (шапка, нижняя
+            навигация, открытые оверлеи) на это время считался от неё.
+            Переход между страницами — действие из категории «десятки раз за
+            сессию», и анимации, которая ничего не объясняет, оно не стоит. */}
+        {children}
       </main>
       {/* Footer: hidden entirely on builder */}
       {!isBuilder && (

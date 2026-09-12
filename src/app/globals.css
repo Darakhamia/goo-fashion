@@ -17,6 +17,11 @@
   --color-accent-foreground: var(--foreground);
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
+
+  /* Кривые доступны и как Tailwind-утилиты: ease-out, ease-in-out, ease-drawer */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: var(--ease-drawer);
 }
 
 :root {
@@ -33,6 +38,23 @@
   --foreground-subtle: #A8A8A8;
   --border: #E8E6E0;
   --border-strong: #C0BEB8;
+
+  /* ── Движение ───────────────────────────────────────────────────────────
+     Кривые названы, а не вписываются руками. До этого в проекте жили четыре
+     семейства кривых в 43 местах без единого имени. Значения — из планки
+     (Emil Kowalski / Apple), а не подобраны на глаз.
+       --ease-out    — вход, выход, всё интерфейсное по умолчанию
+       --ease-in-out — перемещение уже видимого элемента
+       --ease-drawer — выдвижные панели (кривая Ionic/iOS)
+     Длительности: интерфейс живёт под 300 мс; drawer и модалки — до 500. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: var(--ease-drawer);
+
+  --dur-press:   160ms;
+  --dur-fast:    150ms;
+  --dur-base:    200ms;
+  --dur-slow:    260ms;
 
   /* Pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars) */
   --bg-overlay-90: rgba(244, 242, 238, 0.90);
@@ -149,6 +171,42 @@ body {
   font-family: var(--font-mono) !important;
 }
 
+/* ── Клавиатурный фокус ───────────────────────────────────────────────────
+   До этого в проекте было 55 `outline-none` и ни одного рабочего
+   `:focus-visible` — человек, идущий по сайту с клавиатуры, не видел, где он.
+   `:focus-visible` не срабатывает на клик мышью, поэтому мышиный сценарий
+   не меняется. Кольцо намеренно без перехода: клавиатурная навигация — это
+   сотни раз в день, и анимация тут читается как задержка. */
+:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* Элемент, у которого уже есть собственная индикация фокуса, отказывается
+   от общего кольца сам — через `outline-none` рядом со своим стилем. */
+
+/* ── Отклик на нажатие ────────────────────────────────────────────────────
+   501 рукописная кнопка, отклик был у 13. Одно правило дешевле, чем правка
+   501 места, и снимает сам класс проблемы: новая кнопка получает отклик
+   по факту рождения. Диапазон 0.95–0.98 — заметно пальцу, незаметно глазу.
+   Исключения (`.no-press`) — там, где transform уже занят своим эффектом. */
+button:not(:disabled):not(.no-press):not([class*="active:scale"]),
+[role="button"]:not([aria-disabled="true"]):not(.no-press):not([class*="active:scale"]),
+summary:not(.no-press):not([class*="active:scale"]) {
+  transition: scale var(--dur-press) var(--ease-out);
+}
+button:not(:disabled):not(.no-press):not([class*="active:scale"]):active,
+[role="button"]:not([aria-disabled="true"]):not(.no-press):not([class*="active:scale"]):active,
+summary:not(.no-press):not([class*="active:scale"]):active {
+  /* Независимое свойство `scale`, а не `transform: scale()`: оно
+     накладывается поверх существующего transform вместо того, чтобы его
+     заменить. Иначе кнопка, центрированная через `-translate-x-1/2`,
+     теряла бы центрирование ровно на время нажатия и прыгала в сторону.
+     Элементы, которые уже объявили свой `active:scale-*`, исключены —
+     автор там выбрал значение осознанно. */
+  scale: 0.97;
+}
+
 ::selection {
   background-color: var(--foreground);
   color: var(--background);
@@ -168,28 +226,27 @@ body {
   border-radius: 2px;
 }
 
-/* Image zoom on hover */
+/* ── Зум фотографии по наведению ──────────────────────────────────────────
+   Тач-экран порождает синтетический hover на первом касании, и он залипает
+   до касания в другом месте: на телефоне фотография оставалась увеличенной
+   после тапа по карточке. Движение по hover живёт только там, где есть
+   настоящий курсор. Цветовые hover'ы гейтить не нужно — залипший цвет
+   незаметен, залипший зум заметен. */
 .img-zoom {
   overflow: hidden;
 }
 
-.img-zoom img {
-  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: transform;
-}
+@media (hover: hover) and (pointer: fine) {
+  .img-zoom img,
+  .card-zoom-layer img {
+    transition: transform 300ms var(--ease-out);
+    will-change: transform;
+  }
 
-.img-zoom:hover img {
-  transform: scale(1.05);
-}
-
-/* Product card image zoom via group hover */
-.card-zoom-layer img {
-  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  will-change: transform;
-}
-
-.group:hover .card-zoom-layer img {
-  transform: scale(1.05);
+  .img-zoom:hover img,
+  .group:hover .card-zoom-layer img {
+    transform: scale(1.05);
+  }
 }
 
 /* Fade in animation */
@@ -205,7 +262,7 @@ body {
 }
 
 .animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: fadeUp 0.5s var(--ease-out) forwards;
 }
 
 @keyframes fadeIn {
@@ -257,19 +314,25 @@ body {
   text-decoration: none;
 }
 
+/* `width` — свойство раскладки: каждый кадр пересчитывал layout. Тот же
+   эффект через `transform` идёт на GPU и не трогает раскладку вообще. */
 .link-underline::after {
   content: '';
   position: absolute;
   bottom: -1px;
   left: 0;
-  width: 0;
+  width: 100%;
   height: 1px;
   background: currentColor;
-  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
-.link-underline:hover::after {
-  width: 100%;
+@media (hover: hover) and (pointer: fine) {
+  .link-underline:hover::after {
+    transform: scaleX(1);
+  }
 }
 
 /* Marquee animation */
@@ -294,23 +357,7 @@ body {
 }
 
 .animate-slide-in-right {
-  animation: slideInRight 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-/* Slide in from left (desktop sidebar) */
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.animate-slide-in-left {
-  animation: slideInLeft 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: slideInRight 0.38s var(--ease-out) forwards;
 }
 
 /* Scale in for cards appearing */
@@ -326,7 +373,7 @@ body {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: scaleIn 0.4s var(--ease-out) forwards;
 }
 
 /* Slide up from bottom (mobile bottom sheet) */
@@ -341,9 +388,8 @@ body {
   }
 }
 
-.animate-slide-up {
-  animation: slideUp 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
+/* Класс определён ниже, вместе с кейфреймами `slide-up`. Кейфреймы `slideUp`
+   выше остаются: на них стоит `.stylist-drawer-animate`. */
 
 /* Overlay fade in */
 @keyframes overlayIn {
@@ -371,10 +417,6 @@ body {
 @keyframes cardSlideOutToRight {
   from { transform: translateX(0); }
   to   { transform: translateX(100%); }
-}
-
-.animate-overlay-in {
-  animation: overlayIn 0.25s ease forwards;
 }
 
 @keyframes shimmer-sweep {
@@ -530,28 +572,17 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 .animate-slide-up {
-  animation: slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: slide-up 0.28s var(--ease-drawer) both;
 }
 
 /* Stylist drawer: slide-up on mobile, slide-in-right on desktop */
 .stylist-drawer-animate {
-  animation: slideUp 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: slideUp 0.32s var(--ease-out) forwards;
 }
 @media (min-width: 768px) {
   .stylist-drawer-animate {
-    animation: slideInRight 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: slideInRight 0.38s var(--ease-out) forwards;
   }
-}
-
-/* Noise texture overlay for hero */
-.noise-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.4;
 }
 
 /* Color swatch image swap fade */
@@ -572,32 +603,6 @@ body {
   animation: scroll-hint 2s ease-in-out infinite;
 }
 
-/* ── Hero-style entrance animations (used on coming-soon & hero sections) ── */
-@keyframes hero-fade-in {
-  0%   { opacity: 0; transform: translateY(22px) scale(0.97); }
-  100% { opacity: 1; transform: translateY(0)    scale(1);    }
-}
-
-@keyframes hero-fade-up {
-  0%   { opacity: 0; transform: translateY(40px); }
-  100% { opacity: 1; transform: translateY(0);    }
-}
-
-/* single-use utility classes */
-.animate-hero-fade-in {
-  animation: hero-fade-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.animate-hero-fade-up {
-  animation: hero-fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* stagger helpers for hero card grids */
-.hero-stagger > *:nth-child(1) { animation-delay:  0ms;  }
-.hero-stagger > *:nth-child(2) { animation-delay: 100ms; }
-.hero-stagger > *:nth-child(3) { animation-delay: 200ms; }
-.hero-stagger > *:nth-child(4) { animation-delay: 300ms; }
-.hero-stagger > *:nth-child(5) { animation-delay: 400ms; }
-
 /* Honour reduced-motion: kill continuous/looping animations and heavy
    transitions for users who ask for less motion — also a meaningful CPU win. */
 @media (prefers-reduced-motion: reduce) {
@@ -606,7 +611,94 @@ body {
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+    /* Движение убрать, но не отзывчивость: цвет, прозрачность и подсветка
+       фокуса вестибулярный аппарат не трогают, зато помогают понять, что
+       происходит. Раньше правило рубило `transition-duration` у всего, и
+       интерфейс переставал отвечать вообще. */
+    transition-property: opacity, color, background-color, border-color,
+                         box-shadow, outline-color, fill, stroke !important;
+    transition-duration: var(--dur-fast) !important;
+  }
+  /* Отклик на нажатие — это движение: у него transform, значит он выключается
+     тем, что transform больше не в списке переходимых свойств. */
+}
+
+/* ── Прозрачность ─────────────────────────────────────────────────────────
+   Сайт несёт шапку, панель корзины, drawer стилиста и оверлейные бейджи на
+   полупрозрачных поверхностях: 41 `backdrop-blur` в 19 файлах. Человек,
+   попросивший систему убрать прозрачность, получал ровно то, от чего
+   отказался. `prefers-reduced-motion` был единственным сигналом, который
+   сайт обрабатывал, — здесь добавлены два оставшихся. */
+@media (prefers-reduced-transparency: reduce) {
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--background) !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :focus-visible {
+    outline-width: 3px;
+    outline-color: var(--foreground);
+  }
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--background) !important;
+    border-color: var(--foreground) !important;
+  }
+}
+
+/* ── Модалка пейволла ─────────────────────────────────────────────────────
+   Вход описан через `@starting-style`, а не через кадр с `useEffect`:
+   браузер сам берёт стартовое состояние при первом появлении элемента в DOM.
+   Выход короче входа — медленно там, где человек решает, быстро там, где
+   отвечает система. Переходы, а не кейфреймы: открыть-закрыть-открыть
+   подряд разворачивает движение с текущей точки, а не с нуля. */
+.upgrade-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+@starting-style {
+  .upgrade-scrim { opacity: 0; }
+}
+.upgrade-scrim.is-closing {
+  opacity: 0;
+  transition-duration: var(--dur-fast);
+}
+
+.upgrade-panel {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity var(--dur-slow) var(--ease-out),
+              transform var(--dur-slow) var(--ease-out);
+}
+@starting-style {
+  .upgrade-panel { opacity: 0; transform: scale(0.97); }
+}
+.upgrade-scrim.is-closing .upgrade-panel {
+  opacity: 0;
+  transform: scale(0.97);
+  transition-duration: var(--dur-fast);
+}
+
+/* Под «уменьшить движение» остаётся только прозрачность: панель появляется
+   и уходит, но никуда не едет и не меняет размер. */
+@media (prefers-reduced-motion: reduce) {
+  .upgrade-panel,
+  .upgrade-scrim.is-closing .upgrade-panel {
+    transform: none;
   }
 }

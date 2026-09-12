@@ -12,7 +12,7 @@ export default function NotFound() {
       <h1 className="mt-6 text-xl md:text-2xl font-semibold text-[var(--foreground)]">
         This page doesn&apos;t exist
       </h1>
-      <p className="mt-3 max-w-md text-sm text-[var(--muted-foreground,rgba(128,128,128,0.9))]">
+      <p className="mt-3 max-w-md text-sm text-[var(--foreground-muted)]">
         The look you&apos;re searching for may have been moved or removed. Let&apos;s get you
         back to something stylish.
       </p>

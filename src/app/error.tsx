@@ -25,7 +25,7 @@ export default function Error({
       <h1 className="mt-6 text-xl md:text-2xl font-semibold text-[var(--foreground)]">
         Something went wrong
       </h1>
-      <p className="mt-3 max-w-md text-sm text-[var(--muted-foreground,rgba(128,128,128,0.9))]">
+      <p className="mt-3 max-w-md text-sm text-[var(--foreground-muted)]">
         An unexpected error occurred. It&apos;s on us — try again, or head back to the
         homepage.
       </p>

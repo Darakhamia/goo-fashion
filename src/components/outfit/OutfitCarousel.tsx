@@ -104,7 +104,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
           <Link
             href={`/outfit/${outfit.id}`}
             tabIndex={isPeek ? -1 : 0}
-            className="block w-full text-center text-[10px] tracking-[0.14em] uppercase font-medium py-2.5 border border-white/30 text-white/60 bg-black/60 hover:border-white/60 hover:text-white/90 transition-all duration-200 rounded-xl"
+            className="block w-full text-center text-[10px] tracking-[0.14em] uppercase font-medium py-2.5 border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors duration-200 rounded-xl"
           >
             VIEW OUTFIT
           </Link>

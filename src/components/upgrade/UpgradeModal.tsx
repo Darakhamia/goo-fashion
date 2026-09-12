@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { PlanId } from "@/lib/plans";
 import { PLANS, planPriceLabel, planPriceUsdLabel } from "@/lib/plans";
 
@@ -22,37 +23,81 @@ interface Props {
 
 export function UpgradeModal({ prompt, onClose }: Props) {
   const router = useRouter();
-  if (!prompt) return null;
+
+  /**
+   * Модалка должна пережить собственное закрытие: пока играет выход, `prompt`
+   * уже `null`, но панель ещё на экране и ей есть что рисовать. Поэтому здесь
+   * держится снимок последнего показа. Раньше стоял голый
+   * `if (!prompt) return null`, и панель, открывшись без всякой анимации,
+   * исчезала в один кадр.
+   *
+   * Снимок обновляется прямо в рендере (документированный способ вывести
+   * состояние из пропсов), а не в эффекте: эффект тут дал бы лишний каскадный
+   * рендер на каждое открытие.
+   */
+  const [shown, setShown] = useState<UpgradePrompt | null>(prompt);
+  if (prompt && prompt !== shown) setShown(prompt);
+
+  const closing = prompt === null;
+
+  // Esc закрывает — до этого выйти можно было только кликом по фону.
+  useEffect(() => {
+    if (!prompt) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prompt, onClose]);
+
+  if (!shown) return null;
 
   const planName =
-    prompt.requiredPlan && PLANS[prompt.requiredPlan]
-      ? PLANS[prompt.requiredPlan].name
+    shown.requiredPlan && PLANS[shown.requiredPlan]
+      ? PLANS[shown.requiredPlan].name
       : null;
   const usdLabel =
-    prompt.requiredPlan && PLANS[prompt.requiredPlan]
-      ? planPriceUsdLabel(prompt.requiredPlan)
+    shown.requiredPlan && PLANS[shown.requiredPlan]
+      ? planPriceUsdLabel(shown.requiredPlan)
       : null;
   const uahLabel =
-    prompt.requiredPlan && PLANS[prompt.requiredPlan]
-      ? planPriceLabel(prompt.requiredPlan)
+    shown.requiredPlan && PLANS[shown.requiredPlan]
+      ? planPriceLabel(shown.requiredPlan)
       : null;
 
   const handleUpgrade = () => {
     const url =
-      prompt.upgradeUrl ||
-      (prompt.requiredPlan ? `/plans?highlight=${prompt.requiredPlan}` : "/plans");
+      shown.upgradeUrl ||
+      (shown.requiredPlan ? `/plans?highlight=${shown.requiredPlan}` : "/plans");
     router.push(url);
   };
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Upgrade required"
+      className={`upgrade-scrim${closing ? " is-closing" : ""}`}
       onClick={onClose}
+      onTransitionEnd={(e) => {
+        // Узел уходит из DOM только когда выход действительно доигран.
+        if (e.target === e.currentTarget && closing) setShown(null);
+      }}
     >
       <div
-        className="border border-[var(--border)] w-full max-w-md bg-[var(--background)]"
+        className="upgrade-panel relative border border-[var(--border)] rounded-2xl w-full max-w-md bg-[var(--background)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Крестик: раньше закрыть можно было только кликом по фону, то есть
+            наугад. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+            <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
         <div className="px-6 pt-6 pb-4">
           <p className="font-mono text-[10px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)] mb-3">
             Upgrade required
@@ -63,7 +108,7 @@ export function UpgradeModal({ prompt, onClose }: Props) {
               : "Upgrade to continue"}
           </h2>
           <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
-            {prompt.message}
+            {shown.message}
           </p>
         </div>
 
