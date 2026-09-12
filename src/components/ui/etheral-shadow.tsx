@@ -39,7 +39,7 @@ export function EtherealShadow({ style, className }: EtherealShadowProps) {
           border-radius: 50%;
           will-change: transform;
           filter: blur(80px);
-          background: radial-gradient(ellipse at center, rgba(0,0,0,0.14) 0%, transparent 70%);
+          background: radial-gradient(ellipse at center, var(--fg-overlay-08) 0%, transparent 70%);
         }
         .eth-b1 {
           width:70%; height:65%;
@@ -63,7 +63,7 @@ export function EtherealShadow({ style, className }: EtherealShadowProps) {
           position: absolute;
           inset: 0;
           background-image:
-            radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px);
+            radial-gradient(circle, var(--fg-overlay-05) 1px, transparent 1px);
           background-size: 3px 3px;
           pointer-events: none;
         }
