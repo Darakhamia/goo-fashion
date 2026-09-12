@@ -466,7 +466,7 @@ because the three cases have three different owners:
 
 | Situation | Hint |
 |---|---|
-| The pasted URL was a single product page | There is no listing or sitemap to read instead; this store needs a provider |
+| The pasted URL was a single product page | There is no listing or sitemap to read instead — but one product needs no provider: paste the page from your own browser (§1b). The provider line is offered only for collecting the store's whole catalogue |
 | The sitemap was refused too | Page, sitemap and every storefront JSON API gave nothing; this store needs a provider |
 | The sitemap was readable but held no product-shaped URLs | Names the count and says the product-path test needs teaching this store's URL shape — **our** fix, not a provider bill |
 

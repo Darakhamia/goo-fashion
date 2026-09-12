@@ -203,7 +203,12 @@ function diagnoseFailedFetch(
     // What was tried besides the page decides what is worth saying — and, in
     // the readable-sitemap case, whether the fix is ours rather than a bill.
     if (tried.singleProduct) {
-      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead. ${next}`;
+      // One product does not need a provider, and saying otherwise sends the
+      // admin to pay for something they already have: their own browser passes
+      // the check by being a person on a residential connection, and the Paste
+      // page panel takes the rendered DOM from there. The bill is the answer
+      // for a catalogue, not for a piece.
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: open it in your own browser and use the "Paste page" panel in the Parse URL tab (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
     }
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
       return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill.`;

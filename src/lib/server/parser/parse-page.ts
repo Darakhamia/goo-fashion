@@ -78,12 +78,21 @@ function resolveUrl(href: string, base: string): string {
   }
 }
 
-/** Actionable guidance when the upstream blocks us. */
+/**
+ * Actionable guidance when the upstream blocks us.
+ *
+ * The free answer comes first, because for a single product it is also the
+ * better one: the admin's own browser already passed the check this fetch
+ * failed, and what it has on screen is the rendered DOM — a gallery that
+ * lazy-loads on scroll arrives whole. A provider is what a *catalogue* needs.
+ */
 export function blockHint(status: number, provider: string): string | undefined {
   if (status === 403 || status === 401 || status === 429 || status === 503) {
+    const paste =
+      'This page needs no provider: open it in your own browser and use the "Paste page" panel below — click the "Goo: copy page" bookmarklet on the product page and paste it here.';
     return provider === "direct"
-      ? "The site blocked a direct fetch (anti-bot). Switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS."
-      : "The provider returned a block. Try enabling Render JS, or check the provider's credit/quota and that the API key is valid.";
+      ? `The site blocked a direct fetch (anti-bot). ${paste} To collect a whole catalogue from this store instead, switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS.`
+      : `The provider returned a block. ${paste} Otherwise try enabling Render JS, or check the provider's credit/quota and that the API key is valid.`;
   }
   return undefined;
 }
