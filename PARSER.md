@@ -67,8 +67,9 @@ via the `PARSER_FETCH_API_KEY` env var (env wins, like the OpenAI key).
 
 Fetching a *page* is the expensive way to ask a shop what it sells, and the way
 most likely to be refused: anti-bot sits in front of pages, because pages are
-what a scraper is expected to want. Two addresses answer better, and both are
-tried before any markup is fetched.
+what a scraper is expected to want. Three platforms answer better, and all
+three are asked before any markup is fetched — `storefront.ts` is the one door
+the pipeline knocks on, so nothing downstream learns which one replied.
 
 ### Shopify JSON (`shopify.ts`)
 
@@ -92,6 +93,78 @@ paid for once. Prices come as bare numbers, so the shop's currency is read once
 from `/meta.json`; when that is missing the field is left empty rather than
 guessed, because a wrong currency is a wrong price tag.
 
+### WooCommerce Store API (`woocommerce.ts`)
+
+The read-only half of Woo's REST surface — what its own block-based grids and
+cart talk to — needs no key, no nonce and no account:
+
+| Address | Gives |
+|---|---|
+| `/wp-json/wc/store/v1/products?slug=<slug>` | one product, in full |
+| `/wp-json/wc/store/v1/products?category=<id>` | a page of one category |
+| `/wp-json/wc/store/v1/products?per_page=100` | a page of the whole catalogue |
+
+It matters more than Shopify's in one way: a brand's own Woo store is the
+archetype of the shop that ships no JSON-LD, no product OpenGraph tags and no
+microdata — the case the AI fallback exists to rescue **at the cost of a model
+call per product**. Read as data, those stores need no call at all, so this is
+the one addition that makes the parser cheaper rather than merely wider.
+
+Three details the endpoint forces:
+
+- **Prices are minor units.** `"4200"` with `currency_minor_unit: 2` is 42.00.
+  Older builds send a decimal and no minor unit, so the *presence* of that
+  field decides how the number is read rather than its shape — guessing would
+  put a price 100× off on a tag. A variable product's `price_range.min_amount`
+  is shown, so a catalogue reads "from".
+- **Two bases.** The API moved under `/v1` in 2021 and older installs still
+  answer the unversioned path. WordPress replies to an unknown REST route with
+  a 404 carrying `{"code":"rest_no_route"}` — that is WordPress saying "not
+  here", and it is what tells a Woo store with the other base apart from a site
+  that is not WordPress at all. Which base answered is remembered per host, so
+  the second one is tried once and never again.
+- **Categories are addressed by id.** A pasted `/product-category/…` costs one
+  extra request to translate the slug. When that fails the walk stops rather
+  than falling back to the whole catalogue: the admin pasted one category, and
+  the entire store is not a smaller version of that answer.
+
+Colour and size come from the named attribute terms (`pa_colour`, `pa_size` and
+their localised labels), and the brand from `brands[]` where WooCommerce 9.4+
+ships it, or from a plain Brand attribute where it does not.
+
+### Squarespace (`squarespace.ts`)
+
+Every Squarespace page answers its own address with `?format=json` — the payload
+the site's front end is built from:
+
+| Address | Gives |
+|---|---|
+| `/shop/<slug>?format=json` | `item` — one product, in full |
+| `/shop?format=json` | `items` — a page of the store, plus `pagination.nextPageUrl` |
+
+Which of the two keys comes back is the store telling us what the URL was, and
+that is worth more than it sounds. Everywhere else "product or listing?" has to
+be decided from the shape of the URL before anything is asked, and Squarespace's
+prefixes (`/shop/`, `/store/`, or whatever the owner typed) carry no marker to
+decide it by. Here the payload decides: a pasted product never comes back as a
+catalogue, and a pasted category never as one product. Pagination is followed by
+the payload's own `nextPageUrl` rather than a guessed page parameter.
+
+Prices prefer `priceMoney.value`, the decimal Squarespace states outright, and
+fall back to the bare `price` field (minor units) only where a payload has no
+money object — a product with no price at all is not importable. `structuredContent`
+also decides what counts as a product, so a blog post is not filed as one.
+
+### What a wrong guess costs
+
+Three probes on a store that is none of the three, once per host — the answer is
+the same for every URL on it, so `store-json.ts` remembers it and a
+hundred-product collect pays it once rather than a hundred times. The chain is
+also capped at 12 seconds in total, because the routes these run inside have 60
+for fetching, extraction and a model call. Where the URL itself gives the
+platform away (`/collections/…`, `/product-category/…`, `/wp-json/…`), the
+platform it points at is tried first and the other two are never asked.
+
 ### Sitemaps (`sitemap.ts`)
 
 A sitemap is the shop telling search engines what it sells — the one listing
@@ -110,9 +183,9 @@ This is also strictly better than the anchor walk where the HTML *does* work:
 no pagination to follow, and an infinite-scroll grid that keeps its products in
 a script has nothing to offer `<a href>` scraping anyway.
 
-**Not for a single product.** Both catalogue-wide fallbacks — the sitemap and
-Shopify's `products.json` — are skipped when the pasted URL is itself
-product-shaped, because both answer with the whole store. Answering "the whole
+**Not for a single product.** The catalogue-wide fallbacks — the sitemap, and
+the Shopify and Woo catalogue endpoints — are skipped when the pasted URL is
+itself product-shaped, because they answer with the whole store. Answering "the whole
 store" to someone who pasted one sneaker is worse than answering nothing: a
 refused product page on goat.com would otherwise have imported sixty unrelated
 products out of the sitemap. The URL has to decide it, since both run exactly
@@ -346,10 +419,10 @@ screen fills the catalog on its own:
 discover ─▶ product URLs (incl. pagination) ─▶ batch(5) ─▶ parse ─▶ AI ─▶ mirror photos ─▶ upsert
 ```
 
-- **discover** (`crawl.ts`) tries the store's own data first (Shopify
-  `products.json`, then the sitemap when the walk comes back empty or refused —
-  see §1a), and otherwise walks the listing, following `rel="next"` and
-  page-numbered anchors up to the page cap. A pasted PDP is detected and
+- **discover** (`crawl.ts`) tries the store's own data first (`storefront.ts`:
+  Shopify, WooCommerce or Squarespace, then the sitemap when the walk comes back
+  empty or refused — see §1a), and otherwise walks the listing, following
+  `rel="next"` and page-numbered anchors up to the page cap. A pasted PDP is detected and
   collected on its own.
 - **batch** parses and imports 5 URLs per request. The loop lives in the browser,
   so progress is live, **Stop** works immediately, and no request ever runs past
@@ -394,7 +467,7 @@ because the three cases have three different owners:
 | Situation | Hint |
 |---|---|
 | The pasted URL was a single product page | There is no listing or sitemap to read instead; this store needs a provider |
-| The sitemap was refused too | Page, sitemap and Shopify JSON all gave nothing; this store needs a provider |
+| The sitemap was refused too | Page, sitemap and every storefront JSON API gave nothing; this store needs a provider |
 | The sitemap was readable but held no product-shaped URLs | Names the count and says the product-path test needs teaching this store's URL shape — **our** fix, not a provider bill |
 
 The advice is mode-aware: **Render JS is only ever forwarded to a scraping
@@ -471,7 +544,11 @@ src/lib/server/storage/product-images.ts    ← download + mirror photos to our 
 src/lib/server/parser/
 ├── types.ts                                ← config + result types
 ├── fetch.ts                                ← pluggable fetcher + SSRF guard + retries
-├── shopify.ts                              ← storefront JSON: whole gallery, no HTML
+├── storefront.ts                           ← one door: try each platform's JSON before any page
+├── store-json.ts                           ← shared probe, budget, per-host platform memory
+├── shopify.ts                              ← Shopify storefront JSON: whole gallery, no HTML
+├── woocommerce.ts                          ← WooCommerce Store API (no key, no JSON-LD needed)
+├── squarespace.ts                          ← Squarespace `?format=json` (payload says product vs listing)
 ├── sitemap.ts                              ← product URLs when the listing is refused
 ├── extract.ts                              ← JSON-LD / OG / microdata / recipe
 ├── ai-extract.ts                           ← AI fallback (condense → model → merge)
