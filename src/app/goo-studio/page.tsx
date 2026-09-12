@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
             <motion.div
               key={c?.label ?? i}
               variants={fadeUp}
-              className="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-all duration-200"
+              className="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
               style={{ background: "var(--background)" }}
             >
               {/* Color accent strip */}
@@ -366,7 +366,7 @@ export default function AdminDashboardPage() {
             <Link
               key={a.href}
               href={a.href}
-              className="inline-flex items-center gap-2 border border-[var(--border)] rounded-xl px-5 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200"
+              className="inline-flex items-center gap-2 border border-[var(--border)] rounded-xl px-5 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />

@@ -210,7 +210,7 @@ export function CountriesChart({ items }: { items: PieItem[] }) {
               <span className="text-[11px] text-[var(--foreground-muted)] tabular-nums">{item.count.toLocaleString()} <span className="text-[var(--foreground-subtle)]">· {pct}%</span></span>
             </div>
             <div className="h-1.5 bg-[var(--surface)] rounded-none">
-              <div className="h-full bg-[var(--foreground)] transition-all" style={{ width: `${barW}%` }} />
+              <div className="h-full bg-[var(--foreground)] transition-[width]" style={{ width: `${barW}%` }} />
             </div>
           </div>
         );
@@ -250,7 +250,7 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
             </div>
             <div className="h-2 bg-[var(--surface)]">
               <div
-                className="h-full transition-all"
+                className="h-full transition-[width]"
                 style={{
                   width: `${barW}%`,
                   // Прозрачность задаётся на элементе, а не подстановкой в

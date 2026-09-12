@@ -193,7 +193,7 @@ export default async function OutfitDetailPage({ params }: Props) {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {relatedOutfits.map((related) => (
-                <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
+                <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                   <OutfitCard outfit={related} />
                 </div>
               ))}

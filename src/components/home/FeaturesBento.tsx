@@ -199,7 +199,7 @@ export default function FeaturesBento({ outfits }: FeaturesBentoProps) {
                   <button
                     key={i}
                     onClick={() => setIdx(i)}
-                    className="rounded-full bg-white transition-all"
+                    className="rounded-full bg-white transition-[width,opacity]"
                     style={{ width: i === idx ? 20 : 6, height: 6, opacity: i === idx ? 1 : 0.4 }}
                   />
                 ))}

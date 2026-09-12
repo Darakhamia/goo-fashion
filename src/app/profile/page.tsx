@@ -402,7 +402,7 @@ function AccountTab({
                 aria-checked={active}
                 onClick={() => setCurrency(c.code as CurrencyCode)}
                 title={c.name}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[11px] font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[11px] font-medium transition-colors duration-200 ${
                   active
                     ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                     : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -426,7 +426,7 @@ function AccountTab({
         </p>
         <button
           onClick={logout}
-          className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-200"
+          className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground-muted)] border border-[var(--border)] rounded-xl px-6 py-3 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors duration-200"
         >
           Sign out
         </button>
@@ -613,7 +613,7 @@ function PlanTab({ currentPlan }: { currentPlan: PlanId }) {
                 const plan = PLANS[planId];
                 const isUpgrade = PLAN_ORDER.indexOf(planId) > PLAN_ORDER.indexOf(currentPlan);
                 return (
-                  <div key={planId} className="p-4 border border-[var(--border)] rounded-xl hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200">
+                  <div key={planId} className="p-4 border border-[var(--border)] rounded-xl hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200">
                     <p className="text-xs font-medium text-[var(--foreground)] capitalize">{plan.name}</p>
                     <p className="text-[10px] text-[var(--foreground-muted)] mt-1 mb-3">{planPriceDual(planId)}/mo</p>
                     {isUpgrade && (
@@ -800,7 +800,7 @@ function StylistTab({
                   onClick={() => toggleColor(color.hex)}
                   title={color.name}
                   disabled={atMax}
-                  className={`group relative aspect-square rounded-full transition-all duration-200 ${
+                  className={`group relative aspect-square rounded-full transition-[color,background-color,border-color,opacity,transform] duration-200 ${
                     isSelected
                       ? "ring-2 ring-offset-2 ring-[var(--foreground)] ring-offset-[var(--background)] scale-105"
                       : atMax
@@ -858,7 +858,7 @@ function StylistTab({
               <button
                 key={kw}
                 onClick={() => toggleStyle(kw)}
-                className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border rounded-full transition-all duration-200 ${
+                className={`text-[10px] tracking-[0.12em] uppercase font-medium px-4 py-2 border rounded-full transition-colors duration-200 ${
                   selectedStyles.includes(kw)
                     ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                     : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -937,7 +937,7 @@ function StylistTab({
               <button
                 key={b.label}
                 onClick={() => setBudget(b.label)}
-                className={`p-4 text-left border rounded-xl transition-all duration-200 ${
+                className={`p-4 text-left border rounded-xl transition-colors duration-200 ${
                   budget === b.label
                     ? "border-[var(--foreground)] bg-[var(--foreground)]"
                     : "border-[var(--border)] hover:border-[var(--foreground)]"

@@ -235,7 +235,7 @@ export default async function SharedLookPage(props: Props) {
                   );
 
                   const className =
-                    "group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] transition-all duration-200";
+                    "group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] transition-colors duration-200";
 
                   return piece.productExists ? (
                     <Link

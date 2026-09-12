@@ -71,7 +71,7 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
                 <span className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                   <PeopleIcon />
                 </span>
-                <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[80px] transition-all duration-300 ease-out">
+                <span className="max-w-0 overflow-hidden group-hover/cm:max-w-[80px] transition-[max-width] duration-300 ease-out">
                   <span className="pr-2.5 text-[9px] tracking-[0.14em] uppercase font-bold whitespace-nowrap">
                     Community
                   </span>

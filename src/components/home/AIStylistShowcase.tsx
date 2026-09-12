@@ -482,7 +482,7 @@ function FeaturedProduct({
                 onClick={() => setShot(i)}
                 aria-label={`Show photo ${i + 1} of ${gallery.length}`}
                 aria-current={i === shot ? "true" : undefined}
-                className="rounded-full bg-white transition-all"
+                className="rounded-full bg-white transition-[width,opacity]"
                 style={{ width: i === shot ? 18 : 6, height: 6, opacity: i === shot ? 0.9 : 0.25 }}
               />
             ))}

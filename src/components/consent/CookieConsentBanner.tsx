@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getStoredConsent, setStoredConsent, type CookieConsent } from "@/lib/consent";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
 /**
  * Consent banner for the only optional cookie on the site (PostHog analytics).
@@ -21,7 +22,8 @@ export default function CookieConsentBanner() {
     setVisible(POSTHOG_ENABLED && getStoredConsent() === null);
   }, []);
 
-  if (!visible || pathname?.startsWith("/goo-studio")) return null;
+  const ov = useOverlayPresence(visible && !pathname?.startsWith("/goo-studio"));
+  if (!ov.rendered) return null;
 
   const choose = (value: CookieConsent) => {
     setStoredConsent(value);
@@ -32,7 +34,8 @@ export default function CookieConsentBanner() {
     <div
       role="region"
       aria-label="Cookie consent"
-      className="fixed left-4 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.75rem)] md:left-6 md:right-auto md:bottom-6 md:w-[360px] z-[60] rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden p-5 animate-fade-up"
+      onTransitionEnd={ov.onTransitionEnd}
+      className={ov.cls("fixed left-4 right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.75rem)] md:left-6 md:right-auto md:bottom-6 md:w-[360px] z-[60] rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden p-5 ov-rise")}
       style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}
     >
       <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2">

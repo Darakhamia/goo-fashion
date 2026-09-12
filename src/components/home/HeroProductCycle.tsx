@@ -162,7 +162,7 @@ export default function HeroProductCycle({ products, totalPrice }: Props) {
                   setOpacity(1);
                 }, 350);
               }}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
+              className={`h-1.5 rounded-full transition-colors duration-300 ${
                 i === active
                   ? "w-5 bg-[var(--foreground)]"
                   : "w-1.5 bg-[var(--border-strong)]"

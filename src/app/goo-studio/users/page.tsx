@@ -1033,7 +1033,7 @@ function ToggleRow({
       <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
         checked ? (danger ? "bg-red-500" : "bg-[var(--foreground)]") : "bg-[var(--border)]"
       }`}>
-        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-all ${
+        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-[left] ${
           checked ? "left-[18px]" : "left-0.5"
         }`} />
       </div>

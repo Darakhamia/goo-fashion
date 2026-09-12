@@ -736,7 +736,7 @@ function LookCard({
                     key={kw}
                     onClick={() => toggleDraftStyle(kw)}
                     aria-pressed={on}
-                    className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                       on
                         ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                         : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1611,7 +1611,7 @@ export default function SavedPage() {
               {savedProducts.map((product) => (
                 <motion.div
                   key={product.id}
-                  className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
+                  className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
                   variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
                 >
                   <ProductCard product={product} />

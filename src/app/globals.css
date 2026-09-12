@@ -651,54 +651,122 @@ summary:not(.no-press):not([class*="active:scale"]):active {
   }
 }
 
-/* ── Модалка пейволла ─────────────────────────────────────────────────────
-   Вход описан через `@starting-style`, а не через кадр с `useEffect`:
-   браузер сам берёт стартовое состояние при первом появлении элемента в DOM.
-   Выход короче входа — медленно там, где человек решает, быстро там, где
-   отвечает система. Переходы, а не кейфреймы: открыть-закрыть-открыть
-   подряд разворачивает движение с текущей точки, а не с нуля. */
-.upgrade-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 1rem;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+/* ── Оверлеи: вход, выход, покой ──────────────────────────────────────────
+   Один рецепт на всю хрому. Вход описан через `@starting-style`, а не через
+   кадр в `useEffect`: браузер сам берёт стартовое состояние при появлении
+   узла в DOM. Выход короче входа — медленно там, где человек решает, быстро
+   там, где отвечает система. Переходы, а не кейфреймы: открыть-закрыть-
+   открыть подряд разворачивает движение с текущей точки, а не с нуля.
+   Узел снимается по `transitionend` — см. `useOverlayPresence`. */
+
+/* Затемнение фона. Носитель `.is-closing` и `onTransitionEnd`. */
+.ov-scrim {
   opacity: 1;
   transition: opacity var(--dur-base) var(--ease-out);
 }
 @starting-style {
-  .upgrade-scrim { opacity: 0; }
+  .ov-scrim { opacity: 0; }
 }
-.upgrade-scrim.is-closing {
+.ov-scrim.is-closing {
   opacity: 0;
   transition-duration: var(--dur-fast);
 }
 
-.upgrade-panel {
+/* Модалка по центру экрана. `transform-origin` остаётся центральным: модалка
+   не привязана к триггеру, она появляется посреди вьюпорта. */
+.ov-panel {
   opacity: 1;
   transform: scale(1);
   transition: opacity var(--dur-slow) var(--ease-out),
               transform var(--dur-slow) var(--ease-out);
 }
 @starting-style {
-  .upgrade-panel { opacity: 0; transform: scale(0.97); }
+  .ov-panel { opacity: 0; transform: scale(0.97); }
 }
-.upgrade-scrim.is-closing .upgrade-panel {
+.is-closing .ov-panel,
+.ov-panel.is-closing {
   opacity: 0;
   transform: scale(0.97);
   transition-duration: var(--dur-fast);
 }
 
-/* Под «уменьшить движение» остаётся только прозрачность: панель появляется
+/* Выпадашка, привязанная к триггеру: масштабируется от него, а не от центра.
+   Направление задаётся `transform-origin` в разметке (top/bottom). */
+.ov-pop {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transform-origin: top right;
+  transition: opacity var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.ov-pop-up { transform-origin: bottom right; }
+@starting-style {
+  .ov-pop { opacity: 0; transform: scale(0.98) translateY(-4px); }
+  .ov-pop-up { opacity: 0; transform: scale(0.98) translateY(4px); }
+}
+.ov-pop.is-closing {
+  opacity: 0;
+  transform: scale(0.98) translateY(-4px);
+  transition-duration: 120ms;
+}
+.ov-pop-up.is-closing { transform: scale(0.98) translateY(4px); }
+
+/* Полоса, приезжающая снизу (баннер, нижний лист). Проценты в `translate`
+   считаются от собственной высоты — не ломается при смене содержимого. */
+.ov-rise {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--dur-slow) var(--ease-drawer),
+              transform var(--dur-slow) var(--ease-drawer);
+}
+@starting-style {
+  .ov-rise { opacity: 0; transform: translateY(calc(100% + 1rem)); }
+}
+.ov-rise.is-closing {
+  opacity: 0;
+  transform: translateY(calc(100% + 1rem));
+  transition-duration: var(--dur-base);
+}
+
+/* Под «уменьшить движение» остаётся только прозрачность: оверлей появляется
    и уходит, но никуда не едет и не меняет размер. */
 @media (prefers-reduced-motion: reduce) {
-  .upgrade-panel,
-  .upgrade-scrim.is-closing .upgrade-panel {
+  .ov-panel,
+  .ov-pop,
+  .ov-rise,
+  .is-closing .ov-panel,
+  .ov-panel.is-closing,
+  .ov-pop.is-closing,
+  .ov-rise.is-closing {
     transform: none;
   }
+}
+
+/* ── Трекинг как функция кегля ────────────────────────────────────────────
+   Межбуквенное расстояние зависит от размера: с ростом кегля буквы визуально
+   расходятся и крупный текст просит минус, мелкий — плюс. Одно значение на
+   все размеры неверно где-то по определению, а на сайте на `body` стоял
+   общий `letter-spacing: 0.01em`, который наследовали и заголовки: из 81
+   вхождения `text-3xl`…`text-7xl` отрицательный трекинг стоял у шести.
+
+   Правило выражает зависимость один раз вместо правки семидесяти пяти мест.
+   `:not([class*="tracking-"])` уступает дорогу там, где значение выбрано
+   руками, — своё намерение всегда сильнее общего. Мелкие uppercase-подписи
+   не трогаются: для них положительный трекинг как раз верен, и он уже
+   проставлен явно.
+
+   Кегли, заданные через `text-[...]` или `clamp()`, правилом не покрываются:
+   класса, по которому их отличить, нет. Их трекинг остаётся за автором. */
+.text-3xl:not([class*="tracking-"]),
+.text-4xl:not([class*="tracking-"]) {
+  letter-spacing: -0.015em;
+}
+.text-5xl:not([class*="tracking-"]),
+.text-6xl:not([class*="tracking-"]) {
+  letter-spacing: -0.022em;
+}
+.text-7xl:not([class*="tracking-"]),
+.text-8xl:not([class*="tracking-"]),
+.text-9xl:not([class*="tracking-"]) {
+  letter-spacing: -0.03em;
 }
