@@ -81,10 +81,21 @@ export function StylistPersonalizationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[var(--background)]/80 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative bg-[var(--background)] border border-[var(--border)] w-full max-w-lg p-8 animate-fade-up shadow-2xl">
+    <div
+      role="dialog"
+      aria-modal="true"
+      /* Выход здесь не анимируется: модалку монтируют и размонтируют
+         родители (`profile`, `subscribe`), собственного `open` у неё нет, и
+         добавить его значило бы держать её смонтированной всегда — то есть
+         менять поведение формы между открытиями. Вход через `@starting-style`
+         работает и так, скрим больше не включается мгновенно. */
+      className="ov-scrim fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--background)]/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="ov-panel relative bg-[var(--background)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Close */}
         <button
@@ -138,7 +149,7 @@ export function StylistPersonalizationModal({
                     <button
                       key={p}
                       onClick={() => setPronouns(p === pronouns ? "" : p)}
-                      className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2 border transition-all duration-200 ${
+                      className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2 border transition-colors duration-200 ${
                         pronouns === p
                           ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -162,7 +173,7 @@ export function StylistPersonalizationModal({
                   <button
                     key={g}
                     onClick={() => toggleGoal(g)}
-                    className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2.5 border transition-all duration-200 ${
+                    className={`text-[10px] tracking-[0.10em] uppercase px-4 py-2.5 border transition-colors duration-200 ${
                       styleGoals.includes(g)
                         ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                         : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -197,7 +208,7 @@ export function StylistPersonalizationModal({
                 <button
                   key={opt.id}
                   onClick={() => setLifestyle(opt.id)}
-                  className={`w-full p-4 text-left border transition-all duration-200 flex items-center justify-between ${
+                  className={`w-full p-4 text-left border transition-colors duration-200 flex items-center justify-between ${
                     lifestyle === opt.id
                       ? "border-[var(--foreground)] bg-[var(--foreground)]"
                       : "border-[var(--border)] hover:border-[var(--foreground-subtle)]"

@@ -534,7 +534,7 @@ export default function BrowsePage() {
             <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Curated by AI</p>
             <button
               onClick={() => setAiOnly((v) => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all duration-150 ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors duration-150 ${
                 aiOnly
                   ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                   : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -553,7 +553,7 @@ export default function BrowsePage() {
             <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] mb-3" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>Occasion</p>
             <button
               onClick={() => setOccasionOpen(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition-all duration-150 ${
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-xl border transition-[color,background-color,border-color,opacity] duration-150 ${
                 occasionOpen || selectedOccasions.length > 0
                   ? "border-[var(--foreground)] text-[var(--foreground)]"
                   : "border-[var(--border-strong)] text-[var(--foreground)] opacity-55 hover:opacity-100 hover:border-[var(--foreground)]"
@@ -653,7 +653,7 @@ export default function BrowsePage() {
                           className="w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
                         >
                           <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
-                          <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
+                          <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "var(--border-strong)" }}>
                             {grpViewAllChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
                         </button>
@@ -667,7 +667,7 @@ export default function BrowsePage() {
                               className={`w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
                             >
                               <span className={`text-[14px] font-semibold transition-opacity ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-60"}`}>{item.label}</span>
-                              <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                              <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
                                 {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                               </div>
                             </button>
@@ -734,7 +734,7 @@ export default function BrowsePage() {
                     key={cg.id}
                     title={cg.name}
                     onClick={() => toggleColorGroup(cg.id)}
-                    className={`w-9 h-9 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
+                    className={`w-9 h-9 rounded-full cursor-pointer transition-[transform,opacity] ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
                     style={{
                       background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode,
                       boxShadow: isActive
@@ -865,7 +865,7 @@ export default function BrowsePage() {
                 <button
                   key={label}
                   onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                  className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-colors ${
                     maxPrice === max
                       ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                       : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -972,7 +972,7 @@ export default function BrowsePage() {
                     {/* Filter */}
                     <button
                       onClick={() => { setStylistOpen(false); setFiltersOpen(v => !v); }}
-                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                      className={`shrink-0 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-colors duration-200 ${
                         filtersOpen
                           ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                           : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -1077,7 +1077,7 @@ export default function BrowsePage() {
                 <div className="relative shrink-0 ml-auto self-end" ref={sortRef}>
                   <button
                     onClick={() => setSortOpen((o) => !o)}
-                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-all duration-200 ${
+                    className={`flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-bold border rounded-full px-3 sm:px-5 py-2.5 transition-colors duration-200 ${
                       sortOpen
                         ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                         : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -1321,7 +1321,7 @@ export default function BrowsePage() {
                     {pagedOutfits.map((outfit) => (
                       <motion.div
                         key={outfit.id}
-                        className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
+                        className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
                         variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
                       >
                         <OutfitCard outfit={outfit} />
@@ -1341,7 +1341,7 @@ export default function BrowsePage() {
                   {pagedItems.map(({ product, forcedVariant, key }) => (
                     <motion.div
                       key={key}
-                      className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
+                      className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
                       variants={{ hidden: { opacity: 0, y: 16, filter: 'blur(8px)' }, show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { type: 'spring' as const, bounce: 0.2, duration: 0.8 } } }}
                     >
                       <ProductCard product={product} initialVariant={forcedVariant} />

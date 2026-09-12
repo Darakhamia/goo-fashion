@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 import type { PlanId } from "@/lib/plans";
 import { PLANS, planPriceLabel, planPriceUsdLabel } from "@/lib/plans";
 
@@ -38,7 +39,7 @@ export function UpgradeModal({ prompt, onClose }: Props) {
   const [shown, setShown] = useState<UpgradePrompt | null>(prompt);
   if (prompt && prompt !== shown) setShown(prompt);
 
-  const closing = prompt === null;
+  const ov = useOverlayPresence(prompt !== null);
 
   // Esc закрывает — до этого выйти можно было только кликом по фону.
   useEffect(() => {
@@ -75,15 +76,17 @@ export function UpgradeModal({ prompt, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Upgrade required"
-      className={`upgrade-scrim${closing ? " is-closing" : ""}`}
+      className={ov.cls(
+        "ov-scrim fixed inset-0 z-[80] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+      )}
       onClick={onClose}
       onTransitionEnd={(e) => {
         // Узел уходит из DOM только когда выход действительно доигран.
-        if (e.target === e.currentTarget && closing) setShown(null);
+        if (e.target === e.currentTarget && ov.closing) setShown(null);
       }}
     >
       <div
-        className="upgrade-panel relative border border-[var(--border)] rounded-2xl w-full max-w-md bg-[var(--background)] shadow-2xl"
+        className="ov-panel relative border border-[var(--border)] rounded-2xl w-full max-w-md bg-[var(--background)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Крестик: раньше закрыть можно было только кликом по фону, то есть

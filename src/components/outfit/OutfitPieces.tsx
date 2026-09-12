@@ -34,7 +34,7 @@ export default function OutfitPieces({ items }: { items: OutfitItem[] }) {
           <Link
             key={product.id}
             href={`/product/${product.id}`}
-            className="group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-sm bg-[var(--background)] hover:bg-[var(--surface)] transition-all duration-200"
+            className="group flex items-center gap-4 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-sm bg-[var(--background)] hover:bg-[var(--surface)] transition-colors duration-200"
           >
             <div className="w-12 h-12 shrink-0 overflow-hidden relative bg-[var(--surface)] rounded-lg">
               <Image

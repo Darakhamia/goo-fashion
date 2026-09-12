@@ -282,7 +282,7 @@ export default function HowItWorksSection({ showcase }: { showcase?: HomepageSho
         <FadeInView delay={0.1} className="hidden lg:flex mt-10 justify-center">
           <Link
             href="/builder"
-            className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-all duration-300"
+            className="group inline-flex items-center gap-3 text-[15px] font-semibold text-white border-b border-white/20 pb-1.5 hover:gap-4 hover:border-white/50 transition-colors duration-300"
           >
             Try the builder
             <svg width="18" height="12" viewBox="0 0 18 12" fill="none">

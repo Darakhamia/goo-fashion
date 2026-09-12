@@ -302,7 +302,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={`/product/${swatch.id}`}
                       title={swatch.colorName}
                       aria-label={`View in ${swatch.colorName}`}
-                      className={`w-7 h-7 rounded-full transition-all duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
+                      className={`w-7 h-7 rounded-full transition-transform duration-150 shrink-0 inline-block ${isCurrent ? "scale-110" : "hover:scale-105"}`}
                       style={{
                         backgroundColor: swatch.colorHex,
                         boxShadow: isCurrent
@@ -332,7 +332,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
-                      className={`relative rounded-full px-4 py-1.5 text-xs border transition-all duration-200 ${
+                      className={`relative rounded-full px-4 py-1.5 text-xs border transition-colors duration-200 ${
                         selectedColor === color
                           ? "border-[var(--foreground)] text-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -359,7 +359,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                 {product.sizes.map((size) => (
                   <button
                     key={size}
-                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] rounded-lg w-11 h-11 flex items-center justify-center hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-all duration-200"
+                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] rounded-lg w-11 h-11 flex items-center justify-center hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors duration-200"
                   >
                     {size}
                   </button>
@@ -395,7 +395,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
                       href={retailer.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200"
+                      className="group flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 border border-[var(--border)] rounded-xl hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors duration-200"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Retailer logo */}
@@ -556,7 +556,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {outfitsWithProduct.slice(0, 4).map((outfit) => (
-              <div key={outfit.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
+              <div key={outfit.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                 <OutfitCard outfit={outfit} />
               </div>
             ))}
@@ -577,7 +577,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {relatedProducts.map((related) => (
-              <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200">
+              <div key={related.id} className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200">
                 <ProductCard product={related} />
               </div>
             ))}

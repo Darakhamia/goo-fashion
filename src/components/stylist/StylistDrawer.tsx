@@ -716,7 +716,7 @@ export function StylistDrawer({
             onClick={startNewChat}
             title="New chat"
             aria-label="New chat"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 1H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
@@ -728,7 +728,7 @@ export function StylistDrawer({
             onClick={view === "history" ? () => setView("chat") : switchToHistory}
             title={view === "history" ? "Back to chat" : "Chat history"}
             aria-label={view === "history" ? "Back to chat" : "Chat history"}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
               view === "history"
                 ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                 : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -748,7 +748,7 @@ export function StylistDrawer({
           <button
             onClick={onClose}
             aria-label="Close stylist"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all text-lg leading-none"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors text-lg leading-none"
           >
             ×
           </button>
@@ -773,7 +773,7 @@ export function StylistDrawer({
           </div>
           <div className="h-[2px] bg-[var(--border)] rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
+              className={`h-full rounded-full transition-colors duration-500 ${
                 pctLeft > 50
                   ? "bg-[var(--foreground)]"
                   : pctLeft > 20
@@ -965,7 +965,7 @@ export function StylistDrawer({
                 key={reply}
                 onClick={() => !chipsDrag.current.active && sendMessage(reply)}
                 disabled={chatLoading}
-                className="shrink-0 px-3.5 py-1.5 rounded-full border border-[var(--border-strong)] text-[10px] tracking-wide text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                className="shrink-0 px-3.5 py-1.5 rounded-full border border-[var(--border-strong)] text-[10px] tracking-wide text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {reply}
               </button>

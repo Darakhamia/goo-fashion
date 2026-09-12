@@ -7,6 +7,7 @@ import type { CartItem, CartRetailer } from "@/lib/context/cart-context";
 import type { Product } from "@/lib/types";
 import { toCartRetailers } from "@/lib/cart-item";
 import { useCurrency } from "@/lib/context/currency-context";
+import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
 
 /* Inline SVG only — the project ships no icon library (DESIGN_SYSTEM 5.3). */
 
@@ -117,6 +118,7 @@ interface CartRowProps {
 export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
   const { formatPrice } = useCurrency();
   const [storesOpen, setStoresOpen] = useState(false);
+  const storesOv = useOverlayPresence(storesOpen);
   const [openUpwards, setOpenUpwards] = useState(false);
   const storesRef = useRef<HTMLDivElement>(null);
   const storeButtonRef = useRef<HTMLButtonElement>(null);
@@ -166,7 +168,7 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
         <button
           onClick={() => onRemove(item.id)}
           aria-label={`Remove ${item.name} from cart`}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-[color,background-color,border-color,opacity] opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
         >
           <CloseIcon size={11} />
         </button>
@@ -177,7 +179,7 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open ${item.name} on ${storeLabel(stores[0])}`}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
           >
             <ExternalLinkIcon />
           </a>
@@ -190,7 +192,7 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
               onClick={toggleStores}
               aria-label={`Choose a store for ${item.name}`}
               aria-expanded={storesOpen}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                 storesOpen
                   ? "text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                   : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -202,12 +204,15 @@ export function CartRow({ item, onRemove, onNavigate }: CartRowProps) {
               </span>
             </button>
 
-            {storesOpen && (
+            {storesOv.rendered && (
               <div
                 role="menu"
-                className={`absolute right-0 z-30 w-[210px] rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden animate-fade-in ${
-                  openUpwards ? "bottom-full mb-2" : "top-full mt-2"
-                }`}
+                onTransitionEnd={storesOv.onTransitionEnd}
+                className={storesOv.cls(
+                  `ov-pop absolute right-0 z-30 w-[210px] rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden ${
+                    openUpwards ? "ov-pop-up bottom-full mb-2" : "top-full mt-2"
+                  }`
+                )}
                 style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.28)" }}
               >
                 <p className="px-3 pt-3 pb-2 text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">

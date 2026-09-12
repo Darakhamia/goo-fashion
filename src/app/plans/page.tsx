@@ -135,7 +135,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         </svg>
       </button>
       <div
-        className="overflow-hidden transition-all duration-300 ease-in-out"
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{ maxHeight: open ? "200px" : "0px" }}
       >
         <p className="pb-5 text-sm text-[var(--foreground-muted)] leading-relaxed max-w-xl">
@@ -185,7 +185,7 @@ export default function PlansPage() {
               key={plan.id}
               variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
               transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border transition-all duration-200 ${
+              className={`flex flex-col p-8 md:p-10 relative rounded-2xl border transition-colors duration-200 ${
                 plan.highlighted
                   ? "bg-[var(--foreground)] border-[var(--foreground)] shadow-lg"
                   : "bg-[var(--background)] border-[var(--border)] hover:border-[var(--foreground-muted)] hover:shadow-md"
@@ -247,7 +247,7 @@ export default function PlansPage() {
               {/* CTA */}
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center transition-all duration-200 hover:opacity-80 cursor-pointer ${
+                className={`font-mono text-[10px] tracking-[0.14em] uppercase font-medium px-6 py-4 rounded-xl text-center transition-[color,background-color,border-color,opacity] duration-200 hover:opacity-80 cursor-pointer ${
                   plan.highlighted
                     ? "bg-[var(--background)] text-[var(--foreground)]"
                     : "border border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--surface)]"

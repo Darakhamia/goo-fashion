@@ -44,7 +44,7 @@ export default function CookieSettings() {
             key={option.value}
             onClick={() => select(option.value)}
             aria-pressed={choice === option.value}
-            className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+            className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
               choice === option.value
                 ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                 : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"

@@ -822,7 +822,7 @@ export default function AdminOutfitsPage() {
                       key={kw}
                       onClick={() => toggleModerationStyle(kw)}
                       aria-pressed={on}
-                      className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+                      className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                         on
                           ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1193,7 +1193,7 @@ export default function AdminOutfitsPage() {
                           <button
                             key={product.id}
                             onClick={() => toggleItem(product)}
-                            className={`text-left border transition-all group relative ${
+                            className={`text-left border transition-colors group relative ${
                               isSelected
                                 ? "border-[var(--foreground)] bg-[var(--surface)]"
                                 : "border-[var(--border)] hover:border-[var(--foreground)]"
@@ -1305,7 +1305,7 @@ export default function AdminOutfitsPage() {
                                       key={color}
                                       title={color}
                                       onClick={() => setSelectedColor(item.product.id, color)}
-                                      className={`relative w-6 h-6 overflow-hidden border transition-all ${
+                                      className={`relative w-6 h-6 overflow-hidden border transition-colors ${
                                         isActive
                                           ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
                                           : "border-[var(--border)] hover:border-[var(--foreground)]"

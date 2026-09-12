@@ -131,7 +131,7 @@ export default function Navigation() {
 
   return (
     <>
-    <header className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${isBuilder ? "hidden md:block" : ""}`}
+    <header className={`sticky top-0 left-0 right-0 z-50 transition-colors duration-300 ${isBuilder ? "hidden md:block" : ""}`}
       style={{ paddingTop: 10 }}>
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
       <nav
@@ -189,7 +189,7 @@ export default function Navigation() {
               onMouseEnter={() => setAiHover(true)}
               onMouseLeave={() => setAiHover(false)}
               aria-label="Open AI Stylist"
-              className={`flex items-center justify-center transition-all duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
+              className={`flex items-center justify-center transition-colors duration-200${aiTooltipVisible ? " ai-pulse" : ""}`}
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : aiHover ? navIconBorderHover : navIconBorder}`,
@@ -249,7 +249,7 @@ export default function Navigation() {
               onMouseEnter={() => setCartHover(true)}
               onMouseLeave={() => setCartHover(false)}
               aria-label="Open cart"
-              className="flex items-center justify-center transition-all duration-200"
+              className="flex items-center justify-center transition-colors duration-200"
               style={{
                 width: 38, height: 38, borderRadius: "50%",
                 border: `1px solid ${cartOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : cartHover ? navIconBorderHover : navIconBorder}`,
@@ -290,7 +290,7 @@ export default function Navigation() {
                 onMouseEnter={() => setProfileHover(true)}
                 onMouseLeave={() => setProfileHover(false)}
                 aria-label="Profile menu"
-                className="flex items-center justify-center transition-all duration-200"
+                className="flex items-center justify-center transition-colors duration-200"
                 style={{
                   width: 38, height: 38, borderRadius: "50%",
                   border: `1px solid ${profileOpen ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : profileHover ? navIconBorderHover : navIconBorder}`,
@@ -432,7 +432,7 @@ export default function Navigation() {
                       Settings
                     </Link>
                     <button onClick={() => { setProfileOpen(false); setLogoutConfirmOpen(true); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-all w-full text-left">
+                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] opacity-60 hover:opacity-100 hover:bg-[var(--surface)] transition-[color,background-color,border-color,opacity] w-full text-left">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M11 11l3-3-3-3M14 8H6" />
                       </svg>
@@ -462,7 +462,7 @@ export default function Navigation() {
         {/* Mobile: icon buttons */}
         <div className="md:hidden flex items-center gap-1">
           <button onClick={toggleStylist} aria-label="Open AI Stylist"
-            className="flex items-center justify-center transition-all duration-200"
+            className="flex items-center justify-center transition-colors duration-200"
             style={{ width:36, height:36, borderRadius:"50%",
               border: `1px solid ${stylistOpen ? (isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)") : navIconBorder}`,
               background: stylistOpen ? (isDark ? "white" : "black") : "transparent",
@@ -472,7 +472,7 @@ export default function Navigation() {
           <div style={{ width:1, height:18, background: navDivider, margin:"0 2px" }} />
           {/* Cart — mobile (desktop cart lives in the md:flex block above) */}
           <button onClick={() => setCartOpen(true)} aria-label="Open cart"
-            className="relative flex items-center justify-center transition-all duration-200"
+            className="relative flex items-center justify-center transition-colors duration-200"
             style={{ width:36, height:36, borderRadius:"50%", border:`1px solid ${navIconBorder}`,
               background:"transparent", color: navIconColor }}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -526,7 +526,7 @@ export default function Navigation() {
                 </p>
               </div>
               <button onClick={() => setCartOpen(false)} aria-label="Close cart"
-                className="-mr-1 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-all">
+                className="-mr-1 w-8 h-8 rounded-full flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors">
                 <CloseIcon size={13} />
               </button>
             </div>

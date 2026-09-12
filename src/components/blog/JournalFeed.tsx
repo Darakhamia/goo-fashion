@@ -61,7 +61,7 @@ const readUrlFilter = () => {
 const noUrlFilter = () => JSON.stringify([ALL, ALL]);
 
 const chipCls = (active: boolean) =>
-  `shrink-0 px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-all duration-200 ${
+  `shrink-0 px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
     active
       ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
       : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"

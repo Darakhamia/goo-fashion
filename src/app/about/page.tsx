@@ -100,7 +100,7 @@ export default function AboutPage() {
                     key={item.number}
                     variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
                     transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-all duration-200"
+                    className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-7 hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200"
                   >
                     <p className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--foreground-subtle)] mb-4">
                       {item.number}
@@ -210,7 +210,7 @@ export default function AboutPage() {
               <div className="pt-6">
                 <a
                   href="mailto:anything@goo-fashion.com"
-                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all duration-200 inline-block"
+                  className="text-xs tracking-[0.14em] uppercase font-medium text-[var(--foreground)] border border-[var(--border)] px-8 py-4 rounded-xl hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors duration-200 inline-block"
                 >
                   Get in touch →
                 </a>

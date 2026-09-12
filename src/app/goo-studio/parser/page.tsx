@@ -428,7 +428,7 @@ function Toggle({
         onClick={() => onChange(!on)}
         className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
       >
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
       </button>
       <span className="text-[11px] text-[var(--foreground)] leading-tight">{label}</span>
     </label>
@@ -1112,7 +1112,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
                 title={c.enabled ? "Enabled" : "Disabled"}
                 className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${c.enabled ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
               >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${c.enabled ? "left-[18px]" : "left-0.5"}`} />
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${c.enabled ? "left-[18px]" : "left-0.5"}`} />
               </button>
               <input
                 value={c.name}
@@ -1291,7 +1291,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
             onClick={() => set("renderJs", !settings.renderJs)}
             className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${settings.renderJs ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
           >
-            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${settings.renderJs ? "left-[18px]" : "left-0.5"}`} />
+            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${settings.renderJs ? "left-[18px]" : "left-0.5"}`} />
           </button>
           <span className="text-[12px] text-[var(--foreground)]">Render JS (headless browser — slower, needed for SPA stores)</span>
         </label>

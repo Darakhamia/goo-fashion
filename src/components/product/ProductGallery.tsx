@@ -82,7 +82,7 @@ export default function ProductGallery({
             <button
               key={`${img}-${i}`}
               onClick={() => setActiveIdx(i)}
-              className={`flex-1 relative aspect-square overflow-hidden transition-all duration-150 ${
+              className={`flex-1 relative aspect-square overflow-hidden transition-[color,background-color,border-color,opacity] duration-150 ${
                 i === activeIdx
                   ? "ring-1 ring-inset ring-[var(--foreground)]"
                   : "opacity-60 hover:opacity-100"

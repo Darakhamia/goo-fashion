@@ -285,7 +285,7 @@ export default function ReportPage() {
                   key={p.value}
                   type="button"
                   onClick={() => setPriority(p.value)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all border flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors border flex items-center justify-center gap-1.5 ${
                     priority === p.value
                       ? p.active
                       : "border-white/8 bg-transparent text-white/35 hover:text-white/55"
@@ -356,7 +356,7 @@ export default function ReportPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="w-full py-3.5 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

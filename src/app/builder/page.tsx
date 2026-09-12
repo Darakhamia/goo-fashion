@@ -874,7 +874,7 @@ export default function BuilderPage() {
 
           {/* ── FILTERS PANEL: slides in from left (280px) ────────────────── */}
           <div
-            className="shrink-0 border-r border-[var(--border)] bg-[var(--background)] overflow-hidden transition-all duration-200 flex flex-col"
+            className="shrink-0 border-r border-[var(--border)] bg-[var(--background)] overflow-hidden transition-[width] duration-200 flex flex-col"
             style={{ width: filtersOpen ? 280 : 0 }}
           >
             <div className="w-[280px] flex flex-col h-full">
@@ -972,7 +972,7 @@ export default function BuilderPage() {
                                 className="w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors"
                               >
                                 <span className={`text-[13px] font-black tracking-wide uppercase ${grpViewAllChecked ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>View all</span>
-                                <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
+                                <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: grpViewAllChecked ? "var(--foreground)" : "transparent", borderColor: grpViewAllChecked ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
                                   {grpViewAllChecked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                 </div>
                               </button>
@@ -985,7 +985,7 @@ export default function BuilderPage() {
                                     className={`w-full flex items-center justify-between pl-6 pr-4 py-2.5 hover:bg-[var(--surface)] transition-colors ${isChk ? "bg-[var(--surface)]" : ""}`}
                                   >
                                     <span className={`text-[14px] font-semibold transition-opacity ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-60"}`}>{item.label}</span>
-                                    <div className="shrink-0 flex items-center justify-center border-2 transition-all" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
+                                    <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "rgba(255,255,255,0.2)" }}>
                                       {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                                     </div>
                                   </button>
@@ -1051,7 +1051,7 @@ export default function BuilderPage() {
                         key={name}
                         title={name}
                         onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`w-9 h-9 rounded-full cursor-pointer transition-all ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
+                        className={`w-9 h-9 rounded-full cursor-pointer transition-[transform,opacity] ${isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"}`}
                         style={{
                           background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
                           boxShadow: isActive
@@ -1186,7 +1186,7 @@ export default function BuilderPage() {
                         <button
                           key={label}
                           onClick={() => setMaxPrice(maxPrice === max ? null : max)}
-                          className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-all ${
+                          className={`px-3.5 py-1.5 rounded-full border text-[12px] font-bold transition-colors ${
                             maxPrice === max
                               ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                               : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1251,7 +1251,7 @@ export default function BuilderPage() {
               {/* Filter pill — sits in front of the All chip, same size/shape as Browse */}
               <button
                 onClick={() => setFiltersOpen(v => !v)}
-                className={`shrink-0 flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase font-bold border rounded-full px-3.5 py-1.5 transition-all duration-200 ${
+                className={`shrink-0 flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase font-bold border rounded-full px-3.5 py-1.5 transition-colors duration-200 ${
                   filtersOpen
                     ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
                     : "border-[var(--foreground-muted)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)]"
@@ -1277,7 +1277,7 @@ export default function BuilderPage() {
                 {/* All chip */}
                 <button
                   onClick={() => { setCatalogCategory(null); setLikedOnly(false); }}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors duration-150 ${
                     catalogCategory === null && !likedOnly
                       ? "bg-[var(--foreground)] text-[var(--background)]"
                       : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1289,7 +1289,7 @@ export default function BuilderPage() {
                 {/* Liked chip — right after All */}
                 <button
                   onClick={() => { setLikedOnly(v => !v); if (!likedOnly) setCatalogCategory(null); }}
-                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                  className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors duration-150 ${
                     likedOnly
                       ? "bg-[var(--foreground)] text-[var(--background)]"
                       : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1328,7 +1328,7 @@ export default function BuilderPage() {
                           setSelectedSubcategories([]);
                         }
                       }}
-                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-150 ${
+                      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors duration-150 ${
                         isActive
                           ? "bg-[var(--foreground)] text-[var(--background)]"
                           : "border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1345,7 +1345,7 @@ export default function BuilderPage() {
                 <div className="relative" ref={sortDropRef}>
                   <button
                     onClick={() => setSortDropOpen(v => !v)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold transition-all duration-150 ${
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold transition-colors duration-150 ${
                       sortDropOpen
                         ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                         : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1460,7 +1460,7 @@ export default function BuilderPage() {
                               transition: { duration: 0.28, ease: 'easeOut' as const, delay: Math.min(i, 12) * 0.025 },
                             }),
                           }}
-                          className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col text-left ${
+                          className={`group relative rounded-xl border bg-[var(--background)] overflow-hidden cursor-pointer hover:shadow-md transition-colors duration-200 flex flex-col text-left ${
                             isSelected
                               ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
                               : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
@@ -1529,7 +1529,7 @@ export default function BuilderPage() {
                                           }
                                         }}
                                         style={{ transitionDelay: `${idx * 25}ms` }}
-                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border rounded-full transition-all duration-200 ${
+                                        className={`relative w-6 h-6 shrink-0 overflow-hidden border rounded-full transition-[color,background-color,border-color,transform] duration-200 ${
                                           isActive
                                             ? "border-white scale-110 shadow-md"
                                             : "border-white/50 hover:border-white hover:scale-105"
@@ -1572,7 +1572,7 @@ export default function BuilderPage() {
                                           setCatalogPreviews(prev => ({ ...prev, [product.id]: swatch.id }));
                                           if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                         }}
-                                        className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                        className={`w-3.5 h-3.5 shrink-0 rounded-full transition-transform duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                         style={{
                                           background: swatch.colorHex === "#multicolor"
                                             ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
@@ -1615,7 +1615,7 @@ export default function BuilderPage() {
                                               if (isSelected && targetSlot) selectVariant(targetSlot.id, swatch);
                                               setOpenSwatchPopup(null);
                                             }}
-                                            className={`w-3.5 h-3.5 shrink-0 rounded-full transition-all duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
+                                            className={`w-3.5 h-3.5 shrink-0 rounded-full transition-transform duration-150 ${isSwatchActive ? "scale-110" : "hover:scale-105"}`}
                                             style={{
                                               background: swatch.colorHex === "#multicolor"
                                                 ? "conic-gradient(red, orange, yellow, green, blue, violet, red)"
@@ -1704,7 +1704,7 @@ export default function BuilderPage() {
                     {/* Remove button top-right */}
                     <button
                       onClick={e => clearSlot(slot.id, e)}
-                      className="absolute top-2 right-2 w-7 h-7 md:w-5 md:h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-all"
+                      className="absolute top-2 right-2 w-7 h-7 md:w-5 md:h-5 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--foreground-muted)] hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors"
                       aria-label={`Remove ${slot.label}`}
                     >
                       <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
@@ -1731,7 +1731,7 @@ export default function BuilderPage() {
                                 {visible.map(sw => (
                                   <button key={sw.id} title={sw.colorName}
                                     onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); }}
-                                    className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                    className={`w-4 h-4 shrink-0 rounded-full transition-[transform,opacity] duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                     style={{
                                       background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                       boxShadow: (variantId ?? picked.id) === sw.id
@@ -1761,7 +1761,7 @@ export default function BuilderPage() {
                                     {variants.map(sw => (
                                       <button key={sw.id} title={sw.colorName}
                                         onClick={e => { e.stopPropagation(); selectVariant(slot.id, sw); setOpenSwatchPopup(null); }}
-                                        className={`w-4 h-4 shrink-0 rounded-full transition-all duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
+                                        className={`w-4 h-4 shrink-0 rounded-full transition-[transform,opacity] duration-200 ${(variantId ?? picked.id) === sw.id ? "scale-125" : "hover:scale-110 opacity-70 hover:opacity-100"}`}
                                         style={{
                                           background: sw.colorHex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : sw.colorHex,
                                           boxShadow: (variantId ?? picked.id) === sw.id
@@ -1790,7 +1790,7 @@ export default function BuilderPage() {
                                   return (
                                     <button key={color} title={color}
                                       onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); }}
-                                      className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                      className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-[color,background-color,border-color,opacity,transform] duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
                                     >
                                       {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
                                     </button>
@@ -1820,7 +1820,7 @@ export default function BuilderPage() {
                                       return (
                                         <button key={color} title={color}
                                           onClick={e => { e.stopPropagation(); setColorImageOverrides(prev => ({ ...prev, [slot.id]: color })); setOpenSwatchPopup(null); }}
-                                          className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-all duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                                          className={`relative w-4 h-4 rounded-full overflow-hidden shrink-0 transition-[color,background-color,border-color,opacity,transform] duration-150 ${isActive ? "ring-2 ring-offset-1 ring-[var(--foreground)] scale-110" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
                                         >
                                           {img && <img src={img} alt={color} className="w-full h-full object-cover" />}
                                         </button>
@@ -1845,7 +1845,7 @@ export default function BuilderPage() {
             <div className="shrink-0 border-t border-[var(--border)] px-6 py-4">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</p>
-                <p className={`text-2xl font-bold transition-all ${selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>
+                <p className={`text-2xl font-bold transition-colors ${selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>
                   {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
                 </p>
               </div>
@@ -1888,7 +1888,7 @@ export default function BuilderPage() {
               <button
                 onClick={shopTheLook}
                 disabled={selectedCount === 0}
-                className="flex-1 min-w-0 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] text-[var(--foreground-muted)] px-3 py-2.5 rounded-xl text-[11px] font-semibold whitespace-nowrap hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex-1 min-w-0 flex items-center justify-center gap-1.5 border border-[var(--border-strong)] text-[var(--foreground-muted)] px-3 py-2.5 rounded-xl text-[11px] font-semibold whitespace-nowrap hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {shopAdded ? (
                   <span>Added ✓</span>
@@ -1903,7 +1903,7 @@ export default function BuilderPage() {
               <button
                 onClick={saveOutfit}
                 disabled={selectedCount === 0}
-                className={`flex-1 min-w-0 px-3 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 px-3 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-[color,background-color,border-color,opacity] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
                   saved
                     ? "bg-[var(--foreground)]/70 text-[var(--background)]"
                     : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
@@ -1955,7 +1955,7 @@ export default function BuilderPage() {
               <button
                 onClick={toggleStylist}
                 aria-label="Open AI Stylist"
-                className={`w-11 h-11 shrink-0 rounded-full border flex items-center justify-center transition-all duration-200 active:scale-95 ${
+                className={`w-11 h-11 shrink-0 rounded-full border flex items-center justify-center transition-[color,background-color,border-color,transform] duration-200 active:scale-95 ${
                   stylistOpen
                     ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                     : "bg-transparent text-[var(--foreground)] border-[var(--border-strong)]"
@@ -1966,7 +1966,7 @@ export default function BuilderPage() {
               <button
                 onClick={handleMobileSave}
                 disabled={selectedCount === 0}
-                className="flex items-center gap-2 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[13px] font-semibold tracking-[-0.01em] transition-all duration-200 active:scale-95 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 h-11 px-5 rounded-full bg-[var(--foreground)] text-[var(--background)] text-[13px] font-semibold tracking-[-0.01em] transition-[transform,opacity] duration-200 active:scale-95 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3.5L9.5 7H13L10.5 9L11.5 12.5L8 10.5L4.5 12.5L5.5 9L3 7H6.5L8 3.5Z" />
@@ -2102,7 +2102,7 @@ export default function BuilderPage() {
             <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Total</span>
-                <span className={`text-[20px] font-bold leading-none transition-all ${
+                <span className={`text-[20px] font-bold leading-none transition-colors ${
                   selectedCount > 0 ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"
                 }`}>
                   {selectedCount > 0 ? formatPrice(totalPrice) : "—"}
@@ -2131,7 +2131,7 @@ export default function BuilderPage() {
             <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setMobileFiltersOpen(true)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full border text-[11px] font-medium transition-all active:scale-95 mr-1 ${
+                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full border text-[11px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 mr-1 ${
                   hasActiveFilters
                     ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                     : "border-[var(--border-strong)] text-[var(--foreground-muted)]"
@@ -2150,7 +2150,7 @@ export default function BuilderPage() {
                   <button
                     key={label}
                     onClick={() => { setCatalogCategory(catalogCategory === value ? null : value); setLikedOnly(false); }}
-                    className={`shrink-0 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                    className={`shrink-0 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
                       isActive
                         ? "bg-[var(--foreground)] text-[var(--background)]"
                         : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
@@ -2162,7 +2162,7 @@ export default function BuilderPage() {
               })}
               <button
                 onClick={() => { setLikedOnly(v => !v); setCatalogCategory(null); }}
-                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
+                className={`shrink-0 flex items-center gap-1.5 px-3 h-8 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
                   likedOnly
                     ? "bg-[var(--foreground)] text-[var(--background)]"
                     : "border border-[var(--border-strong)] text-[var(--foreground-muted)]"
@@ -2220,7 +2220,7 @@ export default function BuilderPage() {
                             }
                           }}
                           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectProduct(product); } }}
-                          className={`relative overflow-hidden bg-white cursor-pointer transition-all rounded-xl border ${
+                          className={`relative overflow-hidden bg-white cursor-pointer transition-colors rounded-xl border ${
                             isSelected
                               ? "ring-2 ring-[var(--foreground)] border-[var(--foreground)]"
                               : "border-[var(--border)]"
@@ -2501,7 +2501,7 @@ export default function BuilderPage() {
                     <button
                       key={value}
                       onClick={() => setSortBy(value)}
-                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-all active:scale-95 ${
+                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
                         sortBy === value
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2645,7 +2645,7 @@ export default function BuilderPage() {
                     <button
                       key={g ?? "all"}
                       onClick={() => setSelectedGender(g)}
-                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-all active:scale-95 capitalize ${
+                      className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 capitalize ${
                         selectedGender === g
                           ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2668,7 +2668,7 @@ export default function BuilderPage() {
                         key={name}
                         title={name}
                         onClick={() => setSelectedColors(prev => isActive ? prev.filter(c => c !== name) : [...prev, name])}
-                        className={`w-9 h-9 rounded-full shrink-0 transition-all active:scale-95 ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
+                        className={`w-9 h-9 rounded-full shrink-0 transition-[transform,opacity] active:scale-95 ${isActive ? "scale-110" : "opacity-75 hover:opacity-100 hover:scale-105"}`}
                         style={{
                           background: hex === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : hex,
                           boxShadow: isActive
@@ -2828,7 +2828,7 @@ export default function BuilderPage() {
                         }}
                         className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
                       >
-                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-all ${
+                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-colors ${
                           isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
                         }`}>
                           {swatch.imageUrl && (
@@ -2873,7 +2873,7 @@ export default function BuilderPage() {
                         }}
                         className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
                       >
-                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-all ${
+                        <div className={`relative w-[72px] h-[72px] overflow-hidden rounded-xl bg-white border-2 transition-colors ${
                           isActive ? "border-[var(--foreground)]" : "border-[var(--border)]"
                         }`}>
                           {img && (
@@ -2969,7 +2969,7 @@ export default function BuilderPage() {
                   {/* Mannequin */}
                   <button
                     onClick={() => { setShowStylePicker(false); generateOutfit("mannequin"); }}
-                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors duration-150 rounded-xl"
                   >
                     <div className="w-full aspect-square bg-[var(--surface)] rounded-lg flex items-center justify-center text-[var(--foreground)]">
                       <svg width="32" height="48" viewBox="0 0 32 56" fill="none">
@@ -2990,7 +2990,7 @@ export default function BuilderPage() {
                   {/* Flat lay */}
                   <button
                     onClick={() => { setShowStylePicker(false); generateOutfit("flatlay"); }}
-                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
+                    className="group flex flex-col items-center gap-3 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors duration-150 rounded-xl"
                   >
                     <div className="w-full aspect-square bg-[var(--surface)] border border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--foreground)]">
                       <svg width="48" height="36" viewBox="0 0 56 40" fill="none">
@@ -3011,7 +3011,7 @@ export default function BuilderPage() {
                 <div className="px-5 pb-5">
                   <button
                     onClick={() => setTryonStep(true)}
-                    className="group w-full flex items-center gap-4 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-all duration-150 rounded-xl"
+                    className="group w-full flex items-center gap-4 p-4 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors duration-150 rounded-xl"
                   >
                     <div className="w-14 h-14 shrink-0 bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center">
                       <svg width="28" height="40" viewBox="0 0 28 48" fill="none">
@@ -3093,7 +3093,7 @@ export default function BuilderPage() {
                     setTryonStep(false);
                     generateOutfit("tryon", userPhotoDataUri);
                   }}
-                  className={`w-full h-10 font-mono text-[10px] tracking-[0.18em] uppercase transition-all duration-150 ${
+                  className={`w-full h-10 font-mono text-[10px] tracking-[0.18em] uppercase transition-[color,background-color,border-color,opacity] duration-150 ${
                     userPhotoDataUri
                       ? "bg-[var(--foreground)] text-[var(--background)] hover:opacity-80"
                       : "bg-[var(--border)] text-[var(--foreground-subtle)] cursor-not-allowed"

@@ -175,7 +175,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
               {allImages.map((_, i) => (
                 <div
                   key={i}
-                  className={`h-[3px] rounded-full transition-all duration-300 ${
+                  className={`h-[3px] rounded-full transition-colors duration-300 ${
                     i === activeIdx ? "bg-white w-3" : "bg-white/40 w-[3px]"
                   }`}
                 />

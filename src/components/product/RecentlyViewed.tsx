@@ -71,7 +71,7 @@ export default function RecentlyViewed({ kind, currentId }: Props) {
         {items.slice(0, 4).map((item) => (
           <div
             key={item.id}
-            className="rounded-xl bg-[var(--background)] hover:shadow-md transition-all duration-200"
+            className="rounded-xl bg-[var(--background)] hover:shadow-md transition-colors duration-200"
           >
             {kind === "product" ? (
               <ProductCard product={item as Product} />

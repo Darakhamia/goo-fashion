@@ -53,7 +53,7 @@ export function HeroSection() {
         >
           <Link
             href="/builder"
-            className="group relative inline-flex items-center gap-2.5 bg-[var(--foreground)] text-[var(--background)] rounded-full px-8 py-3.5 text-[15px] font-semibold tracking-[-0.01em] hover:gap-4 transition-all duration-300 hover:opacity-90"
+            className="group relative inline-flex items-center gap-2.5 bg-[var(--foreground)] text-[var(--background)] rounded-full px-8 py-3.5 text-[15px] font-semibold tracking-[-0.01em] hover:gap-4 transition-opacity duration-300 hover:opacity-90"
           >
             Build your look
             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--background)]/15 group-hover:bg-[var(--background)]/25 transition-colors">

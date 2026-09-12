@@ -420,8 +420,8 @@ export default function FeatureCarousel({ onSlideChange }:{ onSlideChange?:(i:nu
           style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
           {SLIDES.map((s,i)=>(
             <button key={s.id} onClick={()=>goTo(i)}
-              className="relative flex items-center gap-2 pb-3 pr-8 transition-all duration-300">
-              <span className="text-[10px] tracking-[0.14em] uppercase transition-all duration-300"
+              className="relative flex items-center gap-2 pb-3 pr-8 transition-colors duration-300">
+              <span className="text-[10px] tracking-[0.14em] uppercase transition-colors duration-300"
                 style={{ color:i===active?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.22)",
                   fontWeight:i===active?700:400,
                   textShadow:i===active?"0 0 14px rgba(255,255,255,0.3)":"none" }}>
@@ -465,7 +465,7 @@ export default function FeatureCarousel({ onSlideChange }:{ onSlideChange?:(i:nu
               <button key={s.id} onClick={()=>goTo(i)} className="flex items-center gap-2.5">
                 {i>0&&<span className="text-[8px] text-white/18 tracking-widest mx-1">—</span>}
                 {i===0&&<span className="text-[8px] text-white/18 tracking-widest mr-1">—</span>}
-                <span className="text-[8px] tracking-[0.18em] uppercase transition-all duration-300"
+                <span className="text-[8px] tracking-[0.18em] uppercase transition-colors duration-300"
                   style={{ color:i===active?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.2)",
                     fontWeight:i===active?700:400,
                     textShadow:i===active?"0 0 10px rgba(255,255,255,0.25)":"none" }}>

@@ -150,7 +150,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={prev}
           aria-label="Previous outfit"
-          className="hidden md:flex absolute left-4 xl:left-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200 rounded-xl"
+          className="hidden md:flex absolute left-4 xl:left-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors duration-200 rounded-xl"
           style={{ top: "37%" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -162,7 +162,7 @@ export default function OutfitCarousel({ outfits }: Props) {
         <button
           onClick={next}
           aria-label="Next outfit"
-          className="hidden md:flex absolute right-4 xl:right-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-all duration-200 rounded-xl"
+          className="hidden md:flex absolute right-4 xl:right-8 z-20 w-11 h-11 items-center justify-center border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)] transition-colors duration-200 rounded-xl"
           style={{ top: "37%" }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

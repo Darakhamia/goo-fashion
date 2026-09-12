@@ -75,7 +75,7 @@ export default function OutfitExamplesCarousel({ outfits }: Props) {
                 key={i}
                 onClick={() => goTo(i)}
                 aria-label={`Go to page ${i + 1} of ${total}`}
-                className="rounded-full bg-[var(--foreground)] transition-all"
+                className="rounded-full bg-[var(--foreground)] transition-[width,opacity]"
                 style={{
                   width: i === page ? 24 : 8,
                   height: 8,
