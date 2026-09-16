@@ -208,7 +208,7 @@ function diagnoseFailedFetch(
       // the check by being a person on a residential connection, and the Paste
       // page panel takes the rendered DOM from there. The bill is the answer
       // for a catalogue, not for a piece.
-      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: open it in your own browser and use the "Paste page" panel in the Parse URL tab (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below. It carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
     }
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
       return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill.`;
@@ -361,7 +361,10 @@ export async function discoverProductUrls(
       ok: false,
       urls: [],
       pagesVisited: 0,
-      isSingleProduct: false,
+      // The page never arrived, but the URL still says what it addresses — and
+      // that is what decides whether the screen may offer the paste route,
+      // which imports one product and is wrong for a whole catalogue.
+      isSingleProduct: startIsProduct,
       error: firstFailure.error,
       hint: diagnoseFailedFetch(firstSettings, firstFailure.status, {
         singleProduct: startIsProduct,
