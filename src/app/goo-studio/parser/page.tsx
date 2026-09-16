@@ -83,6 +83,14 @@ export default function ParserPage() {
   const [config, setConfig] = useState<ConfigState | null>(null);
   const [loadError, setLoadError] = useState("");
   const [unauthorized, setUnauthorized] = useState(false);
+  /**
+   * A URL handed from Collect to Parse URL when the store refused us.
+   *
+   * The way past a refusal is the admin's own browser, and it lives in the
+   * other tab — so the screen carries the address across and opens the panel,
+   * instead of telling someone who has just been blocked to go and find it.
+   */
+  const [handoff, setHandoff] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -123,7 +131,7 @@ export default function ParserPage() {
           ([key, label]) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => { setTab(key); setHandoff(null); }}
               className={`px-4 py-2.5 text-[11px] tracking-[0.12em] uppercase transition-colors -mb-px border-b-2 ${
                 tab === key
                   ? "border-[var(--foreground)] text-[var(--foreground)]"
@@ -138,8 +146,15 @@ export default function ParserPage() {
 
       {loadError && <p className="text-[12px] text-red-500 mb-4">{loadError}</p>}
 
-      {tab === "collect" && <CollectTab config={config} />}
-      {tab === "parse" && <ParseTab config={config} />}
+      {tab === "collect" && (
+        <CollectTab
+          config={config}
+          onPastePage={(target) => { setHandoff(target); setTab("parse"); }}
+        />
+      )}
+      {tab === "parse" && (
+        <ParseTab config={config} initialUrl={handoff ?? ""} openPaste={!!handoff} />
+      )}
       {tab === "recipes" && config && (
         <RecipesTab config={config} onSaved={(c) => setConfig((s) => (s ? { ...s, siteConfigs: c } : s))} />
       )}
@@ -171,7 +186,16 @@ const BATCH_SIZE = 5;
 
 type CrawlPhase = "idle" | "discovering" | "importing" | "done" | "stopped";
 
-function CollectTab({ config }: { config: ConfigState | null }) {
+/** Statuses that mean the store refused us rather than that the URL is wrong. */
+const REFUSAL_STATUSES = new Set([401, 403, 429, 503]);
+
+function CollectTab({
+  config,
+  onPastePage,
+}: {
+  config: ConfigState | null;
+  onPastePage: (url: string) => void;
+}) {
   const [url, setUrl] = useState("");
   const [limit, setLimit] = useState(40);
   const [maxPages, setMaxPages] = useState(1);
@@ -182,6 +206,8 @@ function CollectTab({ config }: { config: ConfigState | null }) {
   const [phase, setPhase] = useState<CrawlPhase>("idle");
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
+  /** The refused URL, kept so the paste route can be offered on the spot. */
+  const [refused, setRefused] = useState("");
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [results, setResults] = useState<CrawlItemResult[]>([]);
   const stopRef = useRef(false);
@@ -202,7 +228,7 @@ function CollectTab({ config }: { config: ConfigState | null }) {
     if (!target) return;
 
     stopRef.current = false;
-    setError(""); setHint(""); setResults([]); setDiscovered([]);
+    setError(""); setHint(""); setRefused(""); setResults([]); setDiscovered([]);
     setPhase("discovering");
 
     let urls: string[] = [];
@@ -216,6 +242,10 @@ function CollectTab({ config }: { config: ConfigState | null }) {
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Could not read that page");
         setHint(data.hint ?? "");
+        // A refusal is the one failure with a free way around it, and it is
+        // only free for one product: the whole catalogue still wants a
+        // provider, so the offer follows the store's refusal of a PDP.
+        if (REFUSAL_STATUSES.has(data.status) && data.isSingleProduct) setRefused(target);
         setPhase("idle");
         return;
       }
@@ -324,6 +354,13 @@ function CollectTab({ config }: { config: ConfigState | null }) {
         <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
           <p>{error}</p>
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
+          {refused && (
+            <div className="pt-1.5">
+              <button onClick={() => onPastePage(refused)} className={btnGhost}>
+                Paste page instead
+              </button>
+            </div>
+          )}
         </div>
       )}
       {!error && hint && (
@@ -437,8 +474,19 @@ function Toggle({
 
 // ── Parse tab ────────────────────────────────────────────────────────────────
 
-function ParseTab({ config }: { config: ConfigState | null }) {
-  const [url, setUrl] = useState("");
+function ParseTab({
+  config,
+  initialUrl = "",
+  openPaste = false,
+}: {
+  config: ConfigState | null;
+  /** Address carried over from a refusal in Collect. */
+  initialUrl?: string;
+  /** Open the paste panel on arrival — the refusal already said why. */
+  openPaste?: boolean;
+}) {
+  const [url, setUrl] = useState(initialUrl);
+  const [pasteOpen, setPasteOpen] = useState(openPaste);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
@@ -477,6 +525,10 @@ function ParseTab({ config }: { config: ConfigState | null }) {
         setError(data.error ?? "Parse failed");
         setHint(data.hint ?? "");
         setLinks(data.links ?? []);
+        // `hint` is only ever filled by blockHint, so it having text means the
+        // store refused us — and the panel that answers that opens itself
+        // rather than being named in a paragraph the admin has to act on.
+        if (data.hint) setPasteOpen(true);
         return;
       }
       const prods = data.products ?? [];
@@ -544,6 +596,8 @@ function ParseTab({ config }: { config: ConfigState | null }) {
       </p>
 
       <PastePagePanel
+        open={pasteOpen}
+        onToggle={() => setPasteOpen((v) => !v)}
         onParse={(pasted) => runParse(pasted)}
         parsing={parsing}
         urlHint={url.trim()}
@@ -590,15 +644,19 @@ function ParseTab({ config }: { config: ConfigState | null }) {
 // normal pipeline on it — no proxy, no provider, no cost.
 
 function PastePagePanel({
+  open,
+  onToggle,
   onParse,
   parsing,
   urlHint,
 }: {
+  /** Owned by the tab: a refused fetch opens this panel without a click. */
+  open: boolean;
+  onToggle: () => void;
   onParse: (pasted: { url?: string; html: string }) => void;
   parsing: boolean;
   urlHint: string;
 }) {
-  const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
   // React refuses to render a `javascript:` href, so the bookmarklet is
@@ -615,7 +673,8 @@ function PastePagePanel({
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
+        aria-expanded={open}
         className="w-full px-5 py-3 flex items-center justify-between text-left"
       >
         <span className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
