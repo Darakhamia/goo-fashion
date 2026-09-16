@@ -189,6 +189,24 @@ type CrawlPhase = "idle" | "discovering" | "importing" | "done" | "stopped";
 /** Statuses that mean the store refused us rather than that the URL is wrong. */
 const REFUSAL_STATUSES = new Set([401, 403, 429, 503]);
 
+/** `fetch.ts` reports a refusal in exactly this shape. */
+const REFUSAL_ERROR = /^Upstream responded (?:401|403|429|503)\b/;
+
+/**
+ * Did the store refuse us, rather than the URL being wrong or the request
+ * dying on the way?
+ *
+ * The status decides, with the error text as a second reading. The offer this
+ * gates is the entire answer to a refusal, so it must not hinge on one field
+ * of one response — a deployment mid-flight, or a client older than the route
+ * answering it, is enough to lose the field and leave the admin looking at a
+ * wall with no door in it.
+ */
+function isRefusal(data: { status?: number; error?: string }): boolean {
+  if (typeof data.status === "number" && REFUSAL_STATUSES.has(data.status)) return true;
+  return REFUSAL_ERROR.test(data.error ?? "");
+}
+
 function CollectTab({
   config,
   onPastePage,
@@ -242,10 +260,13 @@ function CollectTab({
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Could not read that page");
         setHint(data.hint ?? "");
-        // A refusal is the one failure with a free way around it, and it is
-        // only free for one product: the whole catalogue still wants a
-        // provider, so the offer follows the store's refusal of a PDP.
-        if (REFUSAL_STATUSES.has(data.status) && data.isSingleProduct) setRefused(target);
+        // A refusal is the one failure with a free way around it, so every
+        // refusal gets the offer — not only the addresses `looksLikeProductPath`
+        // recognises. A store whose URL shape we have never seen is exactly the
+        // one where that test says "listing", and pasting its page is still the
+        // way in. What the paste route cannot do — collect a catalogue — the
+        // hint above says in the same breath.
+        if (isRefusal(data)) setRefused(target);
         setPhase("idle");
         return;
       }
