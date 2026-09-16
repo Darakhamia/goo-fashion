@@ -199,6 +199,12 @@ function diagnoseFailedFetch(
       settings.provider === "direct"
         ? "Set a scraping provider in the Fetch & Anti-bot tab."
         : "Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
+    // Where the panel lives, said out loud. A hint is read precisely when
+    // something did not work, and the button it names is drawn by a page that
+    // can be older than this answer — a tab opened before a deploy is enough.
+    // Naming the tab as well costs a clause and never sends anyone nowhere.
+    const panel =
+      'No such button on your screen? The same panel is in the Parse URL tab under "Paste page" — reload the page to get the button back.';
 
     // What was tried besides the page decides what is worth saying — and, in
     // the readable-sitemap case, whether the fix is ours rather than a bill.
@@ -208,14 +214,14 @@ function diagnoseFailedFetch(
       // the check by being a person on a residential connection, and the Paste
       // page panel takes the rendered DOM from there. The bill is the answer
       // for a catalogue, not for a piece.
-      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below. It carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below, which carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). ${panel} For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
     }
     // The two paragraphs below answer a refusal we could not read around. Both
     // now end on the same door the single-product case opens, because the free
     // route does not care what the URL looked like to us: whatever page the
     // admin has on screen can be pasted, one piece at a time.
     const piece =
-      'A single piece needs none of that: press "Paste page instead" below, open the product in your own browser and hand its page to the parser (the "Goo: copy page" bookmarklet).';
+      `A single piece needs none of that: press "Paste page instead" below, open the product in your own browser and hand its page to the parser (the "Goo: copy page" bookmarklet). ${panel}`;
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
       return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill. ${piece}`;
     }
