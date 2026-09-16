@@ -210,10 +210,16 @@ function diagnoseFailedFetch(
       // for a catalogue, not for a piece.
       return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below. It carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
     }
+    // The two paragraphs below answer a refusal we could not read around. Both
+    // now end on the same door the single-product case opens, because the free
+    // route does not care what the URL looked like to us: whatever page the
+    // admin has on screen can be pasted, one piece at a time.
+    const piece =
+      'A single piece needs none of that: press "Paste page instead" below, open the product in your own browser and hand its page to the parser (the "Goo: copy page" bookmarklet).';
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
-      return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill.`;
+      return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill. ${piece}`;
     }
-    return `${refused} Its sitemap and the storefront JSON APIs (Shopify, WooCommerce, Squarespace) were tried too and gave nothing. ${next}`;
+    return `${refused} Its sitemap and the storefront JSON APIs (Shopify, WooCommerce, Squarespace) were tried too and gave nothing. ${next} ${piece}`;
   }
   if (status === 404) return "The store returned 404 — check the URL still opens in a browser.";
   if (status === 0) return "The request never completed. Raise the timeout in the Fetch & Anti-bot tab, or check the host is reachable.";
