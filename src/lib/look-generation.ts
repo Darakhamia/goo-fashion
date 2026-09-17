@@ -62,15 +62,3 @@ export function generationPieces(
     };
   });
 }
-
-/**
- * Whether a look's photo can be remade without leaving this page.
- *
- * Every style can, except "On You": that one is generated from a photo of the
- * person wearing the look, and a saved look does not carry it — only the
- * builder can ask for one. So try-on is the single case that still has to go
- * there, and saying which case it is beats sending every regeneration away.
- */
-export function canRegenerateInPlace(look: Pick<SavedLook, "generatedStyle">): boolean {
-  return look.generatedStyle !== "tryon";
-}

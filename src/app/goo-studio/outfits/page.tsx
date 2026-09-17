@@ -6,6 +6,7 @@ import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 
 interface PendingLook {
   id: string;
@@ -77,6 +78,8 @@ const selectCls =
 const labelCls = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
+  // A selection dragged out of the editor must not close it — see the hook.
+  const lookBackdrop = useBackdropDismiss(() => setSelectedLook(null));
   const [adminTab, setAdminTab] = useState<"outfits" | "pending">("outfits");
 
   const [outfits, setOutfits] = useState<Outfit[]>([]);
@@ -697,7 +700,7 @@ export default function AdminOutfitsPage() {
       {selectedLook && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setSelectedLook(null)}
+          {...lookBackdrop}
         >
           <div
             className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)] rounded-2xl overflow-hidden"
