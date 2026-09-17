@@ -6,11 +6,52 @@ import { useState, useEffect, useRef } from "react";
 import { useLikes } from "@/lib/context/likes-context";
 import { useCart } from "@/lib/context/cart-context";
 import { useCurrency, CURRENCIES } from "@/lib/context/currency-context";
-import { SignedIn, SignedOut, useClerk } from "@clerk/nextjs";
+import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
 import { useStylist } from "@/lib/context/stylist-context";
 import { useTheme } from "@/lib/context/theme-context";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { CartRow, CloseIcon, OpenAllPanel, useCartStores } from "@/components/cart/CartPanel";
+
+/** The outline figure the profile button has always shown. */
+function PersonIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * The signed-in account's picture, filling the profile button.
+ *
+ * Clerk always hands back an `imageUrl` — an uploaded photo, the picture from
+ * whichever account they signed in with, or one it generates from their
+ * initials — so there is normally something to show.
+ *
+ * The outline icon stays as the fallback for the two moments there isn't:
+ * before Clerk has loaded, and if the image fails to fetch. A button that goes
+ * blank while waiting, or after a dead URL, would be worse than the icon it
+ * replaced.
+ */
+function AccountAvatar() {
+  const { user, isLoaded } = useUser();
+  const [failed, setFailed] = useState(false);
+  const src = isLoaded && !failed ? user?.imageUrl : undefined;
+
+  if (!src) return <PersonIcon />;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      onError={() => setFailed(true)}
+      style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+    />
+  );
+}
 
 const navLinks = [
   { href: "/browse", label: "Browse" },
@@ -298,10 +339,7 @@ export default function Navigation() {
                   color: profileHover ? navIconColorHover : navIconColor,
                 }}
               >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
+                <AccountAvatar />
                 {unseenCount > 0 && (
                   <span style={{
                     position: "absolute", top: 1, right: 1,
