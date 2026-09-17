@@ -12,7 +12,9 @@ import { toCartItem, toCartRetailers } from "@/lib/cart-item";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
-import { generationPieces, canRegenerateInPlace } from "@/lib/look-generation";
+import { generationPieces } from "@/lib/look-generation";
+import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
+import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
@@ -134,7 +136,7 @@ function LookCard({
   onDelete: () => void;
   onUpdate: (
     id: string,
-    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage">>,
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage" | "generatedStyle">>,
   ) => void;
   allProducts: Product[];
   publication: PublicationStatus | null;
@@ -156,6 +158,13 @@ function LookCard({
   // one — regenerating takes long enough that a double click is likely.
   const [photoBusy, setPhotoBusy] = useState<"download" | "regenerate" | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [stylePicker, setStylePicker] = useState(false);
+
+  // Dismiss on a backdrop click, but not when a text selection merely *ended*
+  // out there — see the hook. The details editor is full of fields, which is
+  // where this was losing edits.
+  const editorBackdrop = useBackdropDismiss(() => setEditing(false));
+  const deleteBackdrop = useBackdropDismiss(() => setConfirmDelete(false));
   const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
 
   // ── Details editor ──────────────────────────────────────────────────────
@@ -378,19 +387,28 @@ function LookCard({
     }
   };
 
-  const canRegenerateHere = canRegenerateInPlace(look);
-
   // Regenerate. This used to `router.push(builderUrl)` — the same thing "Edit
-  // pieces" does — so the menu item named an action it never performed. It now
-  // asks for a new shot of the same pieces in the same style and replaces the
-  // photo on the look.
-  const regeneratePhoto = async () => {
+  // pieces" does — so the menu item named an action it never performed. Then it
+  // fired a generation straight off the menu item, which decided the style on
+  // the shopper's behalf. It now opens the builder's own style sheet, so the
+  // shot is chosen the same way it is chosen when a look is first saved: as a
+  // collage, a mannequin, a flat lay, or on a photo of you.
+  const openRegenerate = () => {
     if (photoBusy) return;
-    if (!canRegenerateHere) {
-      setPhotoMenu(false);
-      router.push(builderUrl);
-      return;
-    }
+    setPhotoMenu(false);
+    setPhotoError(null);
+    setStylePicker(true);
+  };
+
+  // Chosen "without generation": the look keeps its pieces and drops the AI
+  // photo, so the card falls back to the collage of those pieces.
+  const clearPhoto = () => {
+    if (!look.generatedImage) return;
+    onUpdate(look.id, { generatedImage: null });
+  };
+
+  const regeneratePhoto = async (style: GenerationStyle, userPhotoDataUri?: string) => {
+    if (photoBusy) return;
 
     const payload = generationPieces(look.pieces, allProducts);
 
@@ -405,7 +423,11 @@ function LookCard({
       const res = await fetch("/api/generate-outfit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pieces: payload, style: look.generatedStyle ?? "mannequin" }),
+        body: JSON.stringify({
+          pieces: payload,
+          style,
+          ...(style === "tryon" && userPhotoDataUri ? { userPhotoDataUri } : {}),
+        }),
       });
 
       // A plan limit comes back as 402 with the details of the upgrade; show
@@ -423,8 +445,10 @@ function LookCard({
         return;
       }
 
-      onUpdate(look.id, { generatedImage: json.imageUrl });
-      setPhotoMenu(false);
+      // The style is part of the look: the card's badge and the next
+      // regeneration both read it, so a look shot as a flat lay must stop
+      // calling itself a mannequin.
+      onUpdate(look.id, { generatedImage: json.imageUrl, generatedStyle: style });
       // `persisted: false` means the picture is Replicate's temporary copy and
       // stops loading within the hour. Saying so beats finding out tomorrow.
       if (json.persisted === false) {
@@ -785,7 +809,7 @@ function LookCard({
       {editing && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setEditing(false)}
+          {...editorBackdrop}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
@@ -886,7 +910,7 @@ function LookCard({
       {confirmDelete && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setConfirmDelete(false)}
+          {...deleteBackdrop}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
@@ -1077,7 +1101,7 @@ function LookCard({
                                 {photoBusy === "download" ? "Downloading…" : "Download image"}
                               </button>
                               <button
-                                onClick={regeneratePhoto}
+                                onClick={openRegenerate}
                                 disabled={!!photoBusy}
                                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 transition-colors"
                               >
@@ -1089,9 +1113,7 @@ function LookCard({
                                 </p>
                               ) : (
                                 <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-[var(--foreground-subtle)]">
-                                  {canRegenerateHere
-                                    ? "Regenerating makes a new shot of the same pieces, in the same style."
-                                    : "An On You shot needs your photo, so regenerating opens this look in the builder."}
+                                  Regenerating asks how the look should be shot, the same way saving it does.
                                 </p>
                               )}
                             </motion.div>
@@ -1376,6 +1398,17 @@ function LookCard({
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* The builder's own style sheet, opened from "Regenerate photo" so the
+          shot is chosen the same way it is when the look is first saved. */}
+      <StylePicker
+        open={stylePicker}
+        onClose={() => setStylePicker(false)}
+        title="Regenerate photo"
+        collage={{ label: "Without generation", hint: "Show the pieces as a collage" }}
+        onCollage={clearPhoto}
+        onGenerate={regeneratePhoto}
+      />
     </>
   );
 }
@@ -1577,7 +1610,7 @@ export default function SavedPage() {
     // `generatedImage` joined the list when "Regenerate photo" started actually
     // regenerating: a new shot is an edit to the look like any other, and takes
     // the same local-first-then-push path.
-    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage">>,
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage" | "generatedStyle">>,
   ) => {
     setMyLooks((prev) => {
       const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));

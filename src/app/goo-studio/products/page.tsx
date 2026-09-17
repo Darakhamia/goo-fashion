@@ -7,6 +7,7 @@ import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryG
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
+import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -1669,6 +1670,9 @@ export default function AdminProductsPage() {
    */
   const rangeAnchor = useRef<string | null>(null);
 
+  // A selection dragged out of the bulk-edit form must not close it.
+  const bulkBackdrop = useBackdropDismiss(() => setBulkOpen(false));
+
   const toggleSelect = (id: string, extendRange = false) => {
     // Read the anchor here, not inside the updater. React runs the updater at
     // render time, by which point the assignment below has already moved the
@@ -2088,7 +2092,7 @@ export default function AdminProductsPage() {
 
       {/* Bulk edit modal */}
       {bulkOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setBulkOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" {...bulkBackdrop}>
           <div
             className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
             style={{ background: "var(--background)" }}

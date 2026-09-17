@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
+import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 
 interface KeyStatus {
   configured: boolean;
@@ -116,6 +117,11 @@ export default function SettingsPage() {
   const [schema, setSchema] = useState<SchemaReport | null>(null);
   const [schemaError, setSchemaError] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
+
+  // Both pickers have a search field; a selection dragged past the panel must
+  // not close them.
+  const pickerBackdrop = useBackdropDismiss(() => setPickerStep(null));
+  const stylistBackdrop = useBackdropDismiss(() => setStylistPicker(null));
 
   useEffect(() => {
     loadShowcase();
@@ -1107,7 +1113,7 @@ alter table settings enable row level security;`}</pre>
 
       {/* ── Product picker modal ── */}
       {pickerStep && pickerMeta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setPickerStep(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...pickerBackdrop}>
           <div
             className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -1209,7 +1215,7 @@ alter table settings enable row level security;`}</pre>
         const max = isChat ? MAX_CHAT_LOOKS : isStores ? MAX_SHOWCASE_STORES : 1;
         const noun = isChat ? "look" : isStores ? "store" : "product";
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setStylistPicker(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...stylistBackdrop}>
             <div
               className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
