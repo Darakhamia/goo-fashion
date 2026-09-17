@@ -12,10 +12,12 @@ import { toCartItem, toCartRetailers } from "@/lib/cart-item";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { suggestLookName, suggestLookDescription } from "@/lib/look-copy";
+import { generationPieces, canRegenerateInPlace } from "@/lib/look-generation";
 import { products as staticProducts } from "@/lib/data/products";
 import type { Outfit, Product } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
 import ProductCard from "@/components/product/ProductCard";
+import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import {
   loadLocalLooks,
   saveLocalLooks,
@@ -126,13 +128,18 @@ function LookCard({
   allProducts,
   publication,
   onSubmitted,
+  onUpgradePrompt,
 }: {
   look: SavedLook;
   onDelete: () => void;
-  onUpdate: (id: string, patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords">>) => void;
+  onUpdate: (
+    id: string,
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage">>,
+  ) => void;
   allProducts: Product[];
   publication: PublicationStatus | null;
   onSubmitted: (lookId: string, generatedImage: string | null) => void;
+  onUpgradePrompt: (prompt: UpgradePrompt) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -145,6 +152,10 @@ function LookCard({
   const [modalEditingName, setModalEditingName] = useState(false);
   const [modalShare, setModalShare] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
+  // Which photo action is running, so the menu can say so and refuse a second
+  // one — regenerating takes long enough that a double click is likely.
+  const [photoBusy, setPhotoBusy] = useState<"download" | "regenerate" | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [shareState, setShareState] = useState<"idle" | "working" | "copied" | "error">("idle");
 
   // ── Details editor ──────────────────────────────────────────────────────
@@ -329,6 +340,103 @@ function LookCard({
     .join("&");
 
   const builderUrl = "/builder?editId=" + look.id + "&" + pieceParams;
+
+  // ── Photo actions ────────────────────────────────────────────────────────
+  //
+  // Download. A plain `<a download>` does not save a cross-origin file — the
+  // attribute is ignored and the browser navigates to the picture instead,
+  // which is the "it opens in a new tab" this replaces. Look photos are always
+  // on the storage host, so that was never going to work for any of them. The
+  // bytes come back through our own origin and are saved from a blob, the same
+  // way the studio's card export does it.
+  const downloadPhoto = async () => {
+    if (!look.generatedImage || photoBusy) return;
+    setPhotoBusy("download");
+    setPhotoError(null);
+    try {
+      const res = await fetch(`/api/looks/image?url=${encodeURIComponent(look.generatedImage)}`);
+      if (!res.ok) {
+        const message = await res.json().then((j: { error?: string }) => j.error).catch(() => null);
+        setPhotoError(message ?? "Could not download the photo.");
+        return;
+      }
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download =
+        /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "goo-look.jpg";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+      setPhotoMenu(false);
+    } catch {
+      setPhotoError("Could not download the photo.");
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  const canRegenerateHere = canRegenerateInPlace(look);
+
+  // Regenerate. This used to `router.push(builderUrl)` — the same thing "Edit
+  // pieces" does — so the menu item named an action it never performed. It now
+  // asks for a new shot of the same pieces in the same style and replaces the
+  // photo on the look.
+  const regeneratePhoto = async () => {
+    if (photoBusy) return;
+    if (!canRegenerateHere) {
+      setPhotoMenu(false);
+      router.push(builderUrl);
+      return;
+    }
+
+    const payload = generationPieces(look.pieces, allProducts);
+
+    if (!payload.length) {
+      setPhotoError("This look has no pieces to photograph.");
+      return;
+    }
+
+    setPhotoBusy("regenerate");
+    setPhotoError(null);
+    try {
+      const res = await fetch("/api/generate-outfit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pieces: payload, style: look.generatedStyle ?? "mannequin" }),
+      });
+
+      // A plan limit comes back as 402 with the details of the upgrade; show
+      // that rather than reporting it as a failure, exactly as the builder does.
+      const upgrade = await parseUpgradePrompt(res);
+      if (upgrade) {
+        setPhotoMenu(false);
+        onUpgradePrompt(upgrade);
+        return;
+      }
+
+      const json = await res.json();
+      if (!res.ok || !json?.imageUrl) {
+        setPhotoError(json?.error ?? "Could not regenerate the photo.");
+        return;
+      }
+
+      onUpdate(look.id, { generatedImage: json.imageUrl });
+      setPhotoMenu(false);
+      // `persisted: false` means the picture is Replicate's temporary copy and
+      // stops loading within the hour. Saying so beats finding out tomorrow.
+      if (json.persisted === false) {
+        setPhotoError("New photo saved, but it could not be stored permanently — regenerate later if it disappears.");
+      }
+    } catch {
+      setPhotoError("Network error. Check your connection.");
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
 
   // "Share link" publishes a snapshot of this look and points at its public
   // /look/[id] page — image on the left, the list of pieces on the right, the
@@ -961,25 +1069,31 @@ function LookCard({
                               transition={{ duration: 0.16, ease: [0.32, 0.72, 0, 1] }}
                               className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl py-1.5"
                             >
-                              <a
-                                href={look.generatedImage}
-                                download="goo-look.jpg"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => setPhotoMenu(false)}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-                              >
-                                Download image
-                              </a>
                               <button
-                                onClick={() => { setPhotoMenu(false); router.push(builderUrl); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                                onClick={downloadPhoto}
+                                disabled={!!photoBusy}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 transition-colors"
                               >
-                                Regenerate photo
+                                {photoBusy === "download" ? "Downloading…" : "Download image"}
                               </button>
-                              <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-[var(--foreground-subtle)]">
-                                Regenerating opens this look in the builder, where the style of the shot is chosen.
-                              </p>
+                              <button
+                                onClick={regeneratePhoto}
+                                disabled={!!photoBusy}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-medium text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 transition-colors"
+                              >
+                                {photoBusy === "regenerate" ? "Regenerating…" : "Regenerate photo"}
+                              </button>
+                              {photoError ? (
+                                <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-red-500">
+                                  {photoError}
+                                </p>
+                              ) : (
+                                <p className="px-4 pt-2 pb-1 text-[10px] leading-snug text-[var(--foreground-subtle)]">
+                                  {canRegenerateHere
+                                    ? "Regenerating makes a new shot of the same pieces, in the same style."
+                                    : "An On You shot needs your photo, so regenerating opens this look in the builder."}
+                                </p>
+                              )}
                             </motion.div>
                           </>
                         )}
@@ -1378,6 +1492,8 @@ export default function SavedPage() {
   // Set when the account saves a look but not the name it was given, which
   // happens while the database is missing the column for it.
   const [namesNotStored, setNamesNotStored] = useState(false);
+  // A 402 from /api/generate-outfit, raised by a card and shown once here.
+  const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
   const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
@@ -1456,7 +1572,13 @@ export default function SavedPage() {
    * Replaces a rename-only version. The fields differ but the write does not,
    * and two copies of "save locally, then push" would drift.
    */
-  const updateLook = (id: string, patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords">>) => {
+  const updateLook = (
+    id: string,
+    // `generatedImage` joined the list when "Regenerate photo" started actually
+    // regenerating: a new shot is an edit to the look like any other, and takes
+    // the same local-first-then-push path.
+    patch: Partial<Pick<SavedLook, "name" | "description" | "styleKeywords" | "generatedImage">>,
+  ) => {
     setMyLooks((prev) => {
       const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
       saveLocalLooks(next);
@@ -1669,6 +1791,7 @@ export default function SavedPage() {
                     allProducts={allProducts}
                     publication={publicationFor(look)}
                     onSubmitted={markSubmitted}
+                    onUpgradePrompt={setUpgradePrompt}
                   />
                 </motion.div>
               ))}
@@ -1694,6 +1817,10 @@ export default function SavedPage() {
         </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Raised when regenerating a photo hits a plan limit (402). One modal for
+          the page rather than one per card. */}
+      <UpgradeModal prompt={upgradePrompt} onClose={() => setUpgradePrompt(null)} />
     </div>
   );
 }
