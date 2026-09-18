@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,9 +13,10 @@ import { useCurrency, CURRENCIES, type CurrencyCode } from "@/lib/context/curren
 import Link from "next/link";
 import { PLANS, PLAN_ORDER, planPriceDual, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
+import { MyLooksPanel } from "@/components/look/MyLooksPanel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "account" | "plan" | "stylist";
+type Tab = "account" | "looks" | "plan" | "stylist";
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
 interface StylePreferences {
   bodyType: BodyType | null;
@@ -91,11 +93,26 @@ interface BillingStatus {
 }
 
 // ── Main page ──────────────────────────────────────────────────────────────────
-export default function ProfilePage() {
+function ProfileInner() {
   const { user } = useAuth();
   const { user: clerkUser, isLoaded } = useUser();
 
   const [activeTab, setActiveTab] = useState<Tab>("account");
+
+  // Open the tab a link asked for. The builder, the header menu and every old
+  // /saved?tab=looks link point at ?tab=looks to show the looks just made, so
+  // the parameter is honoured rather than dropped on the Account tab.
+  //
+  // Read through useSearchParams rather than window.location: the header's "My
+  // looks" entry can be clicked while this page is already open, which changes
+  // the query without remounting anything, and a mount-only read would leave
+  // the Account tab showing.
+  const tabParam = useSearchParams().get("tab");
+  useEffect(() => {
+    if (tabParam === "account" || tabParam === "looks" || tabParam === "plan" || tabParam === "stylist") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Style preferences
   const [bodyType, setBodyType] = useState<BodyType | null>(null);
@@ -160,6 +177,7 @@ export default function ProfilePage() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "account", label: "Account" },
+    { id: "looks", label: "My Looks" },
     { id: "plan", label: "Plan" },
     { id: "stylist", label: "AI Stylist" },
   ];
@@ -220,10 +238,14 @@ export default function ProfilePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="max-w-2xl pb-20"
+              // Settings read as a column; a grid of look cards needs the page.
+              className={activeTab === "looks" ? "pb-20" : "max-w-2xl pb-20"}
             >
               {activeTab === "account" && (
                 <AccountTab user={user} clerkUser={clerkUser} />
+              )}
+              {activeTab === "looks" && (
+                <MyLooksPanel />
               )}
               {activeTab === "plan" && (
                 <PlanTab currentPlan={user?.plan ?? "free"} />
@@ -264,6 +286,16 @@ export default function ProfilePage() {
         />
       )}
     </div>
+  );
+}
+
+// ── Page (wrapped in Suspense for useSearchParams) ────────────────────────────
+
+export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfileInner />
+    </Suspense>
   );
 }
 

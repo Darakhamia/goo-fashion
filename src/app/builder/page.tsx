@@ -769,7 +769,7 @@ export default function BuilderPage() {
     if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
     setShowNameModal(false);
-    router.push("/saved?tab=looks");
+    router.push("/profile?tab=looks");
   };
 
   const openStylePicker = () => {
@@ -1907,7 +1907,7 @@ export default function BuilderPage() {
               </button>
               {saved && (
                 <Link
-                  href="/saved?tab=looks"
+                  href="/profile?tab=looks"
                   className="shrink-0 text-[11px] font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   View →
@@ -2422,17 +2422,17 @@ export default function BuilderPage() {
                 </svg>
                 <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--foreground)]">Look saved</p>
               </div>
-              <p className="text-[12px] text-[var(--foreground-subtle)]">Added to your saved looks</p>
+              <p className="text-[12px] text-[var(--foreground-subtle)]">Added to My Looks in your profile</p>
             </div>
 
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <Link
-                href="/saved"
+                href="/profile?tab=looks"
                 onClick={() => setShowSaveModal(false)}
                 className="w-full h-11 bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-mono text-[10px] tracking-[0.18em] uppercase rounded-full"
               >
-                View saved looks →
+                View my looks →
               </Link>
               <button
                 onClick={() => setShowSaveModal(false)}
@@ -2956,7 +2956,7 @@ export default function BuilderPage() {
 
             {/* Navigation */}
             <Link
-              href="/saved?tab=looks"
+              href="/profile?tab=looks"
               onClick={() => setShowSavedPopup(false)}
               className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
             >
@@ -3170,7 +3170,7 @@ export default function BuilderPage() {
                   if (!ok) { setSaveFailed(true); return; }
                   setSaved(true);
                   setShowModal(false);
-                  router.push("/saved?tab=looks");
+                  router.push("/profile?tab=looks");
                 }}
                 className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0 disabled:opacity-50"
               >
