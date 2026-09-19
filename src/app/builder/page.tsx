@@ -769,7 +769,7 @@ export default function BuilderPage() {
     if (!ok) { setSaveFailed(true); return; } // keep modal open so the save isn't silently lost
     setSaved(true);
     setShowNameModal(false);
-    router.push("/profile?tab=looks");
+    router.push("/saved?tab=looks");
   };
 
   const openStylePicker = () => {
@@ -1907,7 +1907,7 @@ export default function BuilderPage() {
               </button>
               {saved && (
                 <Link
-                  href="/profile?tab=looks"
+                  href="/saved?tab=looks"
                   className="shrink-0 text-[11px] font-semibold text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   View →
@@ -2428,7 +2428,7 @@ export default function BuilderPage() {
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <Link
-                href="/profile?tab=looks"
+                href="/saved?tab=looks"
                 onClick={() => setShowSaveModal(false)}
                 className="w-full h-11 bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center font-mono text-[10px] tracking-[0.18em] uppercase rounded-full"
               >
@@ -2956,7 +2956,7 @@ export default function BuilderPage() {
 
             {/* Navigation */}
             <Link
-              href="/profile?tab=looks"
+              href="/saved?tab=looks"
               onClick={() => setShowSavedPopup(false)}
               className="flex items-center justify-between px-4 py-3 border border-[var(--border)] hover:border-[var(--foreground)] transition-colors"
             >
@@ -3170,7 +3170,7 @@ export default function BuilderPage() {
                   if (!ok) { setSaveFailed(true); return; }
                   setSaved(true);
                   setShowModal(false);
-                  router.push("/profile?tab=looks");
+                  router.push("/saved?tab=looks");
                 }}
                 className="font-mono flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] px-5 py-2.5 rounded-xl hover:opacity-80 transition-opacity shrink-0 disabled:opacity-50"
               >

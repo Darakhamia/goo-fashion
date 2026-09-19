@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useLikes } from "@/lib/context/likes-context";
@@ -13,8 +13,10 @@ import type { Outfit } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
 import ProductCard from "@/components/product/ProductCard";
 import { StatusDot, BagIcon } from "@/components/look/CardBits";
+import { MyLooksPanel } from "@/components/look/MyLooksPanel";
+import { loadLocalLooks } from "@/lib/looks-storage";
 
-type View = "outfits" | "pieces";
+type View = "outfits" | "pieces" | "looks";
 
 // ── Liked outfit card (Outfits tab) ───────────────────────────────────────────
 //
@@ -120,21 +122,35 @@ function SavedOutfitCard({ outfit }: { outfit: Outfit }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function SavedPage() {
+function SavedInner() {
   const [view, setView] = useState<View>("pieces");
-  const router = useRouter();
   const { likedOutfits, likedProducts, unseenOutfits, unseenProducts, markCategorySeen } = useLikes();
+  // Seeded from the local cache so the tab can print a count before the panel
+  // mounts; the panel replaces it with the reconciled number once it has one.
+  const [looksCount, setLooksCount] = useState(0);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
   const [allProducts, setAllProducts] = useState(staticProducts);
 
-  // The looks a person builds now live on their profile. Every old link to them
-  // pointed here with ?tab=looks — bookmarks, the builder's own "View" links,
-  // the save confirmation — so carry those through instead of landing on a page
-  // that no longer has the tab.
+  // The builder's "View" links and the save confirmation land here with
+  // ?tab=looks to show the look just made. Read through useSearchParams rather
+  // than window.location: those links can be clicked while this page is
+  // already open, which changes the query without remounting anything.
+  const tabParam = useSearchParams().get("tab");
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("tab") === "looks") router.replace("/profile?tab=looks");
-  }, [router]);
+    if (tabParam === "looks" || tabParam === "pieces" || tabParam === "outfits") {
+      // Syncing a tab to the URL, the way browse/page.tsx syncs its filters.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setView(tabParam);
+    }
+  }, [tabParam]);
+
+  // Seed the looks count from the local cache so the tab carries a number
+  // before the panel has mounted — the panel only exists on its own tab, and
+  // it replaces this with the reconciled count as soon as it does.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLooksCount(loadLocalLooks().length);
+  }, []);
 
   // Opening a tab clears just that tab's "new items" badge. Re-runs as likes
   // load / change while the tab is open so anything seen here counts as seen.
@@ -167,6 +183,7 @@ export default function SavedPage() {
   const tabs: { id: View; label: string; count: number; unseen: number }[] = [
     { id: "pieces", label: "Pieces", count: savedProducts.length, unseen: unseenProducts },
     { id: "outfits", label: "Outfits", count: savedOutfits.length, unseen: unseenOutfits },
+    { id: "looks", label: "My Looks", count: looksCount, unseen: 0 },
   ];
 
   return (
@@ -179,19 +196,6 @@ export default function SavedPage() {
           <h1 className="text-4xl md:text-5xl font-black uppercase text-[var(--foreground)]">
             Your Likes
           </h1>
-          {/* This page is now only what you liked. The looks you made yourself
-              moved to the profile, and the people who used to open them here
-              need to be told where they went. */}
-          <p className="mt-4 text-sm text-[var(--foreground-muted)]">
-            Looks you built live in{" "}
-            <Link
-              href="/profile?tab=looks"
-              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors underline underline-offset-4"
-            >
-              your profile
-            </Link>
-            .
-          </p>
         </div>
 
         {/* Toggle */}
@@ -274,6 +278,9 @@ export default function SavedPage() {
           )
         )}
 
+        {/* ── My Looks (built by you) ── */}
+        {view === "looks" && <MyLooksPanel onCountChange={setLooksCount} />}
+
         {/* ── Pieces (liked) ── */}
         {view === "pieces" && (
           savedProducts.length > 0 ? (
@@ -315,5 +322,15 @@ export default function SavedPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+// ── Page (wrapped in Suspense for useSearchParams) ────────────────────────────
+
+export default function SavedPage() {
+  return (
+    <Suspense>
+      <SavedInner />
+    </Suspense>
   );
 }

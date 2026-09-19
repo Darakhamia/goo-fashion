@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,10 +13,9 @@ import { useCurrency, CURRENCIES, type CurrencyCode } from "@/lib/context/curren
 import Link from "next/link";
 import { PLANS, PLAN_ORDER, planPriceDual, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, LIFESTYLE_OPTIONS as LIFESTYLE_OPTIONS_IMPORT, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
-import { MyLooksPanel } from "@/components/look/MyLooksPanel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "account" | "looks" | "plan" | "stylist";
+type Tab = "account" | "plan" | "stylist";
 type BodyType = "slim" | "athletic" | "average" | "curvy" | "petite" | "tall";
 interface StylePreferences {
   bodyType: BodyType | null;
@@ -99,20 +98,25 @@ function ProfileInner() {
 
   const [activeTab, setActiveTab] = useState<Tab>("account");
 
-  // Open the tab a link asked for. The builder, the header menu and every old
-  // /saved?tab=looks link point at ?tab=looks to show the looks just made, so
-  // the parameter is honoured rather than dropped on the Account tab.
+  // Open the tab a link asked for.
   //
-  // Read through useSearchParams rather than window.location: the header's "My
-  // looks" entry can be clicked while this page is already open, which changes
-  // the query without remounting anything, and a mount-only read would leave
-  // the Account tab showing.
+  // Read through useSearchParams rather than window.location: a header entry
+  // can be clicked while this page is already open, which changes the query
+  // without remounting anything, and a mount-only read would leave the Account
+  // tab showing.
+  //
+  // The looks a person builds live on /saved again, so ?tab=looks is carried
+  // there rather than dropped: bookmarks and anything still pointing at the
+  // profile for them keep working.
   const tabParam = useSearchParams().get("tab");
+  const router = useRouter();
   useEffect(() => {
-    if (tabParam === "account" || tabParam === "looks" || tabParam === "plan" || tabParam === "stylist") {
+    if (tabParam === "looks") {
+      router.replace("/saved?tab=looks");
+    } else if (tabParam === "account" || tabParam === "plan" || tabParam === "stylist") {
       setActiveTab(tabParam);
     }
-  }, [tabParam]);
+  }, [tabParam, router]);
 
   // Style preferences
   const [bodyType, setBodyType] = useState<BodyType | null>(null);
@@ -177,7 +181,6 @@ function ProfileInner() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "account", label: "Account" },
-    { id: "looks", label: "My Looks" },
     { id: "plan", label: "Plan" },
     { id: "stylist", label: "AI Stylist" },
   ];
@@ -238,14 +241,11 @@ function ProfileInner() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              // Settings read as a column; a grid of look cards needs the page.
-              className={activeTab === "looks" ? "pb-20" : "max-w-2xl pb-20"}
+              // Every panel here reads as a column of settings.
+              className="max-w-2xl pb-20"
             >
               {activeTab === "account" && (
                 <AccountTab user={user} clerkUser={clerkUser} />
-              )}
-              {activeTab === "looks" && (
-                <MyLooksPanel />
               )}
               {activeTab === "plan" && (
                 <PlanTab currentPlan={user?.plan ?? "free"} />
