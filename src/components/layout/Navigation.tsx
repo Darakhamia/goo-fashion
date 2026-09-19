@@ -78,6 +78,7 @@ export default function Navigation() {
   const [aiTooltipVisible, setAiTooltipVisible] = useState(false);
   const [aiHover, setAiHover] = useState(false);
   const [cartHover, setCartHover] = useState(false);
+  const [likesHover, setLikesHover] = useState(false);
   const [profileHover, setProfileHover] = useState(false);
   const aiButtonRef = useRef<HTMLDivElement>(null);
 
@@ -95,6 +96,7 @@ export default function Navigation() {
 
   const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
+  const isLikes = pathname === "/saved";
   const showWhiteText = isHero && !scrolled && theme === "dark";
 
   const isDark = theme === "dark";
@@ -323,6 +325,55 @@ export default function Navigation() {
           {/* divider */}
           <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
 
+          {/* Likes — the one place every hearted piece and outfit lives.
+              It sits between the cart and the profile because those three are
+              what a shopper comes back to; the wishlist entry that used to be
+              buried in the profile menu is gone in favour of this. */}
+          <SignedIn>
+            <div className="relative">
+              <Link
+                href="/saved"
+                onMouseEnter={() => setLikesHover(true)}
+                onMouseLeave={() => setLikesHover(false)}
+                aria-label="Open your likes"
+                aria-current={isLikes ? "page" : undefined}
+                className="flex items-center justify-center transition-colors duration-200"
+                style={{
+                  width: 38, height: 38, borderRadius: "50%",
+                  border: `1px solid ${isLikes ? (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)") : likesHover ? navIconBorderHover : navIconBorder}`,
+                  background: isLikes ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
+                  color: isLikes || likesHover ? navIconColorHover : navIconColor,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <path
+                    d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    fill={isLikes ? "currentColor" : "none"}
+                  />
+                </svg>
+                {unseenCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: 1, right: 1,
+                    width: 15, height: 15,
+                    background: isDark ? "white" : "black",
+                    color: isDark ? "black" : "white",
+                    borderRadius: "50%",
+                    fontSize: 8, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    lineHeight: 1,
+                  }}>
+                    {unseenCount > 9 ? "9+" : unseenCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+
+            {/* divider */}
+            <div style={{ width: 1, height: 20, background: navDivider, margin: "0 8px" }} />
+          </SignedIn>
+
           {/* Profile */}
           <SignedIn>
             <div ref={profileRef} className="relative">
@@ -340,20 +391,6 @@ export default function Navigation() {
                 }}
               >
                 <AccountAvatar />
-                {unseenCount > 0 && (
-                  <span style={{
-                    position: "absolute", top: 1, right: 1,
-                    width: 15, height: 15,
-                    background: isDark ? "white" : "black",
-                    color: isDark ? "black" : "white",
-                    borderRadius: "50%",
-                    fontSize: 8, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    lineHeight: 1,
-                  }}>
-                    {unseenCount > 9 ? "9+" : unseenCount}
-                  </span>
-                )}
               </button>
 
               {profileOpen && (
@@ -385,7 +422,7 @@ export default function Navigation() {
                     </div>
                   )}
 
-                  {/* Profile & Wishlist */}
+                  {/* Profile & looks */}
                   <div className="py-1.5">
                     <Link href="/profile" onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
@@ -401,18 +438,6 @@ export default function Navigation() {
                         <path d="M5 2.5 3 4v1.5l1.5-1V13.5h7V4.5l1.5 1V4l-2-1.5S10 3.5 8 3.5 5 2.5 5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                       </svg>
                       My looks
-                    </Link>
-                    <Link href="/saved" onClick={() => setProfileOpen(false)}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
-                      <span className="flex items-center gap-3">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                          <path d="M8 13.5C8 13.5 2 9.5 2 5.5C2 3.567 3.567 2 5.5 2C6.695 2 7.739 2.6 8.368 3.531C8.997 2.6 10.041 2 11.236 2C13.169 2 14.736 3.567 14.736 5.5C14.736 9.5 8 13.5 8 13.5Z" stroke="currentColor" strokeWidth="1.2" />
-                        </svg>
-                        Wishlist
-                      </span>
-                      {unseenCount > 0 && (
-                        <span className="text-[10px] font-semibold bg-[var(--foreground)] text-[var(--background)] rounded-full w-4 h-4 flex items-center justify-center">{unseenCount > 9 ? "9+" : unseenCount}</span>
-                      )}
                     </Link>
                   </div>
 
