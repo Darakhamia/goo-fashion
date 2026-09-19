@@ -1393,11 +1393,11 @@ function LookCard({
 
 // ── My Looks panel ────────────────────────────────────────────────────────────
 //
-// The looks a person built themselves, shown on their profile. It owns its own
-// data (local cache reconciled with the account), because the looks belong to
-// the account rather than to whichever page happens to show them — /saved used
-// to hold this and kept them a tab away from everything else that is "yours".
-export function MyLooksPanel() {
+// The looks a person built themselves, shown as a tab on /saved alongside the
+// pieces and outfits they liked. It owns its own data (local cache reconciled
+// with the account) rather than taking it from the page, so it can be mounted
+// wherever the looks need to appear.
+export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number) => void } = {}) {
   const { user, isLoaded } = useUser();
   const [myLooks, setMyLooks] = useState<SavedLook[]>([]);
   // Set when the account saves a look but not the name it was given, which
@@ -1499,6 +1499,13 @@ export function MyLooksPanel() {
     }
     return null;
   };
+
+  // The tab strip above this panel prints how many looks there are, and only
+  // the panel knows the real number once the local cache has been reconciled
+  // with the account.
+  useEffect(() => {
+    onCountChange?.(myLooks.length);
+  }, [myLooks.length, onCountChange]);
 
   const markSubmitted = (lookId: string, generatedImage: string | null) => {
     setSubmissions((prev) => [

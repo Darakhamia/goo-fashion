@@ -422,7 +422,7 @@ export default function Navigation() {
                     </div>
                   )}
 
-                  {/* Profile & looks */}
+                  {/* Account */}
                   <div className="py-1.5">
                     <Link href="/profile" onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
@@ -431,13 +431,6 @@ export default function Navigation() {
                         <path d="M2.5 14C2.5 11.515 5.015 9.5 8 9.5s5.5 2.015 5.5 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                       </svg>
                       My profile
-                    </Link>
-                    <Link href="/profile?tab=looks" onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                        <path d="M5 2.5 3 4v1.5l1.5-1V13.5h7V4.5l1.5 1V4l-2-1.5S10 3.5 8 3.5 5 2.5 5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                      </svg>
-                      My looks
                     </Link>
                   </div>
 
