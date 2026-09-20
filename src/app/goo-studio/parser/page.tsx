@@ -215,8 +215,12 @@ function CollectTab({
   onPastePage: (url: string) => void;
 }) {
   const [url, setUrl] = useState("");
-  const [limit, setLimit] = useState(40);
-  const [maxPages, setMaxPages] = useState(1);
+  // Defaults that collect a small store in one press rather than its first
+  // screenful. The ceiling is the catalogue-sized one the route now allows;
+  // the default stays modest because a run on a store with no structured data
+  // spends a model call per product.
+  const [limit, setLimit] = useState(100);
+  const [maxPages, setMaxPages] = useState(3);
   // null = follow the saved default; a boolean = the admin overrode it for this run.
   const [useAiOverride, setUseAiOverride] = useState<boolean | null>(null);
   const [mirrorOverride, setMirrorOverride] = useState<boolean | null>(null);
@@ -336,8 +340,8 @@ function CollectTab({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Field label="Max products">
             <input
-              type="number" min={1} max={500} value={limit} disabled={running}
-              onChange={(e) => setLimit(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+              type="number" min={1} max={2000} value={limit} disabled={running}
+              onChange={(e) => setLimit(Math.max(1, Math.min(2000, Number(e.target.value) || 1)))}
               className={inputCls}
             />
           </Field>

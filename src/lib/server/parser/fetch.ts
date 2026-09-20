@@ -50,6 +50,116 @@ function browserHeaders(impersonate: string): Record<string, string> {
   };
 }
 
+// ── Cookies ──────────────────────────────────────────────────────────────────
+// A soft wall is a shop that answers a first, cookie-less request with a
+// refusal and a `Set-Cookie`, and the same request carrying that cookie with
+// the page — the cheapest bot check there is, and the one a server request can
+// actually pass. Node's fetch keeps no cookies of its own, so every request we
+// made was the refused first one, over and over.
+//
+// The jar is per-host and per-process: a crawl walking twenty pages of one
+// store now looks like one visitor rather than twenty strangers, which is also
+// what a rate limiter is reading. It is not a session store — nothing is
+// persisted, and a cold function starts empty.
+
+const COOKIE_TTL_MS = 10 * 60_000;
+/** Hosts kept at once. A crawl touches one store; this is only a leak guard. */
+const MAX_COOKIE_HOSTS = 100;
+
+const cookieJar = new Map<string, { cookies: Map<string, string>; at: number }>();
+
+function jarKey(target: string): string | null {
+  try {
+    return new URL(target).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+/** Store the cookies a direct response set, dropping the ones it just cleared. */
+function rememberCookies(target: string, res: Response): void {
+  const key = jarKey(target);
+  if (!key) return;
+  const raw =
+    typeof res.headers.getSetCookie === "function"
+      ? res.headers.getSetCookie()
+      : (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
+  if (!raw.length) return;
+
+  const entry = cookieJar.get(key) ?? { cookies: new Map<string, string>(), at: Date.now() };
+  for (const line of raw) {
+    const pair = line.split(";")[0] ?? "";
+    const eq = pair.indexOf("=");
+    if (eq <= 0) continue;
+    const name = pair.slice(0, eq).trim();
+    const value = pair.slice(eq + 1).trim();
+    if (!name) continue;
+    // An expiry in the past is the server deleting a cookie, not setting one.
+    if (/;\s*max-age\s*=\s*0\b/i.test(line) || value === "" || value === "deleted") {
+      entry.cookies.delete(name);
+      continue;
+    }
+    entry.cookies.set(name, value);
+  }
+  entry.at = Date.now();
+  if (entry.cookies.size) {
+    cookieJar.set(key, entry);
+    if (cookieJar.size > MAX_COOKIE_HOSTS) {
+      const oldest = [...cookieJar.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+      if (oldest) cookieJar.delete(oldest[0]);
+    }
+  } else {
+    cookieJar.delete(key);
+  }
+}
+
+/** The `Cookie` header for a host, or "" when the jar has nothing fresh. */
+function cookieHeaderFor(target: string): string {
+  const key = jarKey(target);
+  if (!key) return "";
+  const entry = cookieJar.get(key);
+  if (!entry) return "";
+  if (Date.now() - entry.at > COOKIE_TTL_MS) {
+    cookieJar.delete(key);
+    return "";
+  }
+  return [...entry.cookies].map(([n, v]) => `${n}=${v}`).join("; ");
+}
+
+/** Tests only: a jar that outlives one store would make the next test a liar. */
+export function resetCookieJar(): void {
+  cookieJar.clear();
+  warmedHosts.clear();
+}
+
+/** Hosts whose front door we already knocked on, so we do it once per run. */
+const warmedHosts = new Map<string, number>();
+
+/**
+ * Ask for the store's front page so the wall can hand us its cookie, then let
+ * the caller retry the page that was refused.
+ *
+ * Only on a 403, only once per host, and the answer is thrown away — the point
+ * is the `Set-Cookie` that comes with it. A shop that refuses its own homepage
+ * too costs one request and tells us the wall is not the soft kind.
+ */
+async function warmUpOrigin(target: string, settings: ParserFetchSettings): Promise<void> {
+  const key = jarKey(target);
+  if (!key) return;
+  const at = warmedHosts.get(key);
+  if (at !== undefined && Date.now() - at < COOKIE_TTL_MS) return;
+  warmedHosts.set(key, Date.now());
+
+  let origin: string;
+  try {
+    origin = new URL(target).origin + "/";
+  } catch {
+    return;
+  }
+  if (origin === target) return; // The front page IS what was refused.
+  await requestOnce(origin, browserHeaders(settings.impersonate), settings, origin).catch(() => undefined);
+}
+
 /**
  * Block direct fetches to internal / loopback / link-local addresses (SSRF
  * defence). Only applied in `direct` mode — provider modes fetch from their own
@@ -197,6 +307,13 @@ export async function fetchHtml(
       continue;
     }
     if (result.status === 403 && settings.provider === "direct" && directHeaders) {
+      // Two things about the request can change, so both do: the browser we
+      // claim to be, and whether we carry the cookie the store hands out.
+      // A refusal usually hands it over itself — `Set-Cookie` beside the 403 is
+      // the whole mechanism of a soft wall — and when it has, the front page is
+      // a request that buys nothing. Only a wall that refuses silently is worth
+      // knocking on the door for, and then only once per host.
+      if (!cookieHeaderFor(target)) await warmUpOrigin(target, settings);
       directHeaders = {
         ...browserHeaders(otherProfile(settings.impersonate)),
         ...(directHeaders.Referer ? { Referer: directHeaders.Referer } : {}),
@@ -238,14 +355,17 @@ async function requestOnce(
 ): Promise<FetchResult & { retryAfterMs?: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1_000, settings.timeoutMs));
+  const direct = settings.provider === "direct";
   try {
+    const cookie = direct && headers ? cookieHeaderFor(target) : "";
     const res = await fetch(requestUrl, {
       method: "GET",
       redirect: "follow",
       signal: controller.signal,
       // Browser headers only matter for `direct`; providers set their own.
-      headers,
+      headers: cookie && headers ? { ...headers, Cookie: cookie } : headers,
     });
+    if (direct) rememberCookies(target, res);
     const html = await res.text();
     // Only a direct fetch can report a meaningful final URL. In provider mode
     // `res.url` is the SCRAPING SERVICE's endpoint, and using it would resolve
@@ -267,6 +387,67 @@ async function requestOnce(
       status: 0,
       html: "",
       finalUrl: target,
+      error: aborted ? `Timed out after ${settings.timeoutMs}ms` : (err instanceof Error ? err.message : "Fetch failed"),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** What a byte-for-byte fetch answers with. `bytes` is null unless `ok`. */
+export interface BinaryResult {
+  ok: boolean;
+  status: number;
+  bytes: Uint8Array | null;
+  error?: string;
+}
+
+/**
+ * Fetch a URL as bytes rather than text — for the one thing a shop publishes
+ * compressed: `sitemap.xml.gz`.
+ *
+ * `direct` only, and deliberately. A scraping provider answers with the body it
+ * decided to hand back, usually decoded as text; a gzip stream run through that
+ * comes out as mojibake that no unzip will recover, and pretending otherwise
+ * would report a readable sitemap as corrupt. The caller skips gzipped
+ * candidates in provider mode instead.
+ */
+export async function fetchBinary(
+  target: string,
+  settings: ParserFetchSettings,
+): Promise<BinaryResult> {
+  if (settings.provider !== "direct") {
+    return { ok: false, status: 0, bytes: null, error: "Binary fetch is direct-mode only" };
+  }
+  const valid = validateTargetUrl(target, settings.provider);
+  if ("error" in valid) return { ok: false, status: 0, bytes: null, error: valid.error };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1_000, settings.timeoutMs));
+  try {
+    const headers: Record<string, string> = {
+      ...browserHeaders(settings.impersonate),
+      Accept: "application/xml,text/xml,application/gzip,*/*;q=0.8",
+    };
+    const cookie = cookieHeaderFor(target);
+    if (cookie) headers.Cookie = cookie;
+    const res = await fetch(target, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers,
+    });
+    rememberCookies(target, res);
+    if (!res.ok) {
+      return { ok: false, status: res.status, bytes: null, error: `Upstream responded ${res.status}` };
+    }
+    return { ok: true, status: res.status, bytes: new Uint8Array(await res.arrayBuffer()) };
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    return {
+      ok: false,
+      status: 0,
+      bytes: null,
       error: aborted ? `Timed out after ${settings.timeoutMs}ms` : (err instanceof Error ? err.message : "Fetch failed"),
     };
   } finally {

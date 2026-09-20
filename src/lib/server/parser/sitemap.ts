@@ -17,30 +17,92 @@
  * failed: robots.txt, at most two sitemap candidates, and at most three child
  * sitemaps out of an index.
  */
-import { fetchHtml } from "./fetch";
-import { looksLikeProductPath } from "./extract";
+import { gunzipSync } from "node:zlib";
+import { fetchHtml, fetchBinary } from "./fetch";
+import { looksLikeProductPath, isNonProductPath } from "./extract";
 import type { ParserFetchSettings } from "./types";
 
-/** Conventional locations, in the order they are worth trying. */
-const CANDIDATES = ["/sitemap.xml", "/sitemap_index.xml", "/sitemap_products_1.xml"];
+/**
+ * Conventional locations, in the order they are worth trying. The first three
+ * are the ones every platform ships; the rest are the names a store that does
+ * not answer `/sitemap.xml` actually uses — Yoast and WooCommerce publish a
+ * products-only file, WordPress core has its own index, and Magento puts the
+ * whole thing one directory down. Each is one request that only happens when
+ * the names before it gave nothing.
+ */
+const CANDIDATES = [
+  "/sitemap.xml",
+  "/sitemap_index.xml",
+  "/sitemap_products_1.xml",
+  "/product-sitemap.xml",
+  "/wp-sitemap.xml",
+  "/sitemap/sitemap-index.xml",
+  "/sitemap1.xml",
+];
+
+/**
+ * The same files, compressed — which is how a large catalogue usually ships
+ * them, because the protocol allows it and a 200k-URL sitemap is 90% air.
+ * Guessed only in `direct` mode: a scraping provider hands back text, and a
+ * gzip stream decoded as text is unrecoverable (see `fetchBinary`).
+ */
+const GZ_CANDIDATES = ["/sitemap.xml.gz", "/sitemap_index.xml.gz", "/product-sitemap.xml.gz"];
 
 /** Child sitemaps to open out of an index. */
-const MAX_CHILDREN = 3;
+const MAX_CHILDREN = 10;
 
-/** Sitemap documents to fetch in total, robots.txt aside. */
-const MAX_DOCUMENTS = 5;
+/** Sitemap documents actually read, robots.txt aside. */
+const MAX_DOCUMENTS = 12;
+
+/**
+ * Requests spent looking. Documents that answered are counted separately,
+ * because a guessed name that 404s is not a document — counting it was what
+ * let three wrong guesses use up the whole budget before a real sitemap was
+ * ever asked for.
+ */
+const MAX_REQUESTS = 18;
 
 function locations(xml: string): string[] {
   const out: string[] = [];
-  const re = /<loc>\s*([^<\s]+)\s*<\/loc>/gi;
+  // `<loc>` holds a bare URL or a CDATA section; WordPress and Magento both
+  // ship the latter, and reading only the bare form made their sitemaps look
+  // empty rather than unreadable.
+  const re = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml))) out.push(m[1].replace(/&amp;/g, "&"));
   return out;
 }
 
+/** Gzip announces itself in its first two bytes, whatever the URL ends with. */
+function textFromBytes(bytes: Uint8Array): string | null {
+  try {
+    const body = bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes) : bytes;
+    return Buffer.from(body).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
 /** An index lists sitemaps; a sitemap lists pages. They need different handling. */
 function isIndex(xml: string): boolean {
   return /<sitemapindex[\s>]/i.test(xml);
+}
+
+/**
+ * A sitemap to read, and whether the store named it after its products.
+ *
+ * The name is evidence, not decoration: `product-sitemap.xml` is the shop
+ * declaring that everything inside is a piece for sale, which is worth more
+ * than our own reading of a URL's shape.
+ */
+interface Candidate {
+  url: string;
+  trusted: boolean;
+}
+
+/** Does this sitemap's own name say it lists products? */
+function namesProducts(url: string): boolean {
+  return /product/i.test(url);
 }
 
 /**
@@ -59,6 +121,13 @@ async function getText(
   settings: ParserFetchSettings,
   apiKey: string,
 ): Promise<string | null> {
+  // A compressed sitemap has to arrive as bytes; `fetchHtml` would hand back a
+  // decoded string that no unzip can recover.
+  if (/\.gz(?:\?|$)/i.test(url)) {
+    if (settings.provider !== "direct") return null;
+    const res = await fetchBinary(url, settings);
+    return res.ok && res.bytes ? textFromBytes(res.bytes) : null;
+  }
   const res = await fetchHtml(url, settings, apiKey);
   return res.ok && res.html ? res.html : null;
 }
@@ -125,33 +194,45 @@ export async function discoverFromSitemap(
   if (expired()) return nothing;
 
   const declared = await fromRobots(origin, settings, apiKey);
-  const queue = [...declared, ...CANDIDATES.map((p) => `${origin}${p}`)];
+  // Gzipped names are guesses worth making only where we can read the answer.
+  const guesses = settings.provider === "direct" ? [...CANDIDATES, ...GZ_CANDIDATES] : CANDIDATES;
+  const queue: Candidate[] = [
+    ...declared.map((u) => ({ url: u, trusted: namesProducts(u) })),
+    ...guesses.map((path) => ({ url: `${origin}${path}`, trusted: namesProducts(path) })),
+  ];
 
   const found: string[] = [];
   const seen = new Set<string>();
   const opened = new Set<string>();
   let documents = 0;
+  let requests = 0;
   let children = 0;
   let readable = false;
   let locsSeen = 0;
 
-  while (queue.length && documents < MAX_DOCUMENTS && found.length < opts.limit) {
+  while (
+    queue.length &&
+    documents < MAX_DOCUMENTS &&
+    requests < MAX_REQUESTS &&
+    found.length < opts.limit
+  ) {
     if (expired()) break;
-    const url = queue.shift()!;
-    if (opened.has(url)) continue;
-    opened.add(url);
+    const item = queue.shift()!;
+    if (opened.has(item.url)) continue;
+    opened.add(item.url);
 
     // Only ever follow a sitemap on the store's own host — an index can name
     // anything, and a third-party URL there is not the shop's catalogue.
     try {
-      if (new URL(url).hostname.replace(/^www\./, "") !== host) continue;
+      if (new URL(item.url).hostname.replace(/^www\./, "") !== host) continue;
     } catch {
       continue;
     }
 
-    const xml = await getText(url, settings, apiKey);
-    documents++;
+    const xml = await getText(item.url, settings, apiKey);
+    requests++;
     if (!xml || !/<loc>/i.test(xml)) continue;
+    documents++;
     readable = true;
 
     const locs = locations(xml);
@@ -161,7 +242,7 @@ export async function discoverFromSitemap(
         .filter((c) => c.rank < 2)
         .sort((a, b) => a.rank - b.rank)
         .slice(0, Math.max(0, MAX_CHILDREN - children))
-        .map((c) => c.u);
+        .map((c) => ({ url: c.u, trusted: namesProducts(c.u) }));
       children += next.length;
       // Children go to the front: an index carries no product URLs itself, and
       // the remaining candidates are guesses we no longer need.
@@ -179,7 +260,13 @@ export async function discoverFromSitemap(
       } catch {
         continue;
       }
-      if (!looksLikeProductPath(path)) continue;
+      // A file the store itself named after its products is the store saying
+      // what is in it, and that outranks any guess we make from the shape of a
+      // URL — which is how a shop addressing pieces as `/shop/<slug>` used to
+      // come back as "readable sitemap, no products". The flat refusals still
+      // apply: a cart listed in a product sitemap is still not a product.
+      const keep = item.trusted ? !isNonProductPath(path) : looksLikeProductPath(path);
+      if (!keep) continue;
       const clean = loc.split("#")[0];
       if (seen.has(clean)) continue;
       seen.add(clean);

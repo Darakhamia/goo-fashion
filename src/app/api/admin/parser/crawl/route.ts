@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       fetchSettings,
       fetchApiKey: keyInfo.key,
       siteConfigs,
-      limit: Math.max(1, Math.min(Number(body?.limit) || 60, 500)),
+      limit: Math.max(1, Math.min(Number(body?.limit) || 60, 2_000)),
       maxPages: Math.max(1, Math.min(Number(body?.maxPages) || 1, 20)),
     });
 
