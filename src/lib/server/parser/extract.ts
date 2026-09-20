@@ -612,8 +612,55 @@ function looksLikeProductCode(segment: string): boolean {
 }
 
 /**
+ * Sections a shop keeps its pieces under. They are not proof of a product on
+ * their own — `/shop/womens` is a section too — but they are what tells a
+ * product slug apart from a slug anywhere else on the site.
+ */
+const SHOP_SECTION_SEGMENTS = new Set([
+  "shop", "shops", "store", "boutique", "catalog", "catalogue", "merch",
+  "collections", "collection", "category", "categories",
+]);
+
+/**
+ * Segments that address a SECTION by slug, so the slug right after them is a
+ * category and never a piece: Shopify and Squarespace both put collections at
+ * `/collections/<slug>` and their products one level deeper.
+ */
+const SECTION_BY_SLUG_PARENTS = new Set(["collections", "collection", "category", "categories", "c"]);
+
+/**
+ * Words a slug uses when it names a part of the shop rather than a thing to
+ * buy. A piece is missed by rejecting too much; a "New Arrivals" row filed as a
+ * product is a junk row in the catalogue and a model call paid for it — so the
+ * guard leans towards rejecting, exactly as the gallery's does.
+ */
+const LISTING_SLUG_WORDS = new Set([
+  "all", "new", "arrivals", "sale", "sales", "clearance", "outlet", "best",
+  "bestsellers", "sellers", "selling", "featured", "trending", "shop", "view",
+  "browse", "collection", "collections", "category", "categories", "lookbook",
+  "gift", "gifts", "guide", "archive", "edit", "edits", "essentials", "index",
+]);
+
+/**
+ * A slug that reads like the name of one piece: three words or more, long
+ * enough to be a name rather than a label, and carrying no word that belongs to
+ * a section. Three words is the floor because two-word slugs are overwhelmingly
+ * categories (`linen-shirts`, `summer-sale`) and the cost of getting it wrong
+ * is a junk row.
+ */
+function looksLikeProductSlug(segment: string): boolean {
+  const token = segment.replace(/\.(?:html?|aspx|jsp|php)$/i, "");
+  if (token.length < 12) return false;
+  const words = token.split(/[-_]/).filter(Boolean);
+  if (words.length < 3) return false;
+  if (words.some((w) => LISTING_SLUG_WORDS.has(w))) return false;
+  // A slug is words, not a hash or a tracking blob.
+  return words.every((w) => /^[a-z0-9]+$/.test(w)) && words.some((w) => /^[a-z]{3,}$/.test(w));
+}
+
+/**
  * Does this path point at a product page rather than a category, a filter or a
- * footer link? Three ways to qualify, cheapest first.
+ * footer link? Four ways to qualify, cheapest first.
  */
 export function looksLikeProductPath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
@@ -631,15 +678,41 @@ export function looksLikeProductPath(pathname: string): boolean {
 
   // 3. No marker at all, but the last segment is itself a product code —
   //    Zara, Adidas and Mytheresa all address products this way.
-  return looksLikeProductCode(segments[segments.length - 1]);
+  if (looksLikeProductCode(segments[segments.length - 1])) return true;
+
+  // 4. No code anywhere, but a shop section addresses a named piece:
+  //    `/shop/nebula-jacket-aurelio`. This is the shape a brand's own store
+  //    ships — Squarespace, Webflow, a bespoke build — and without it those
+  //    stores answer "the sitemap is readable but holds no products".
+  const last = segments[segments.length - 1];
+  const parent = segments.length >= 2 ? segments[segments.length - 2] : "";
+  if (SECTION_BY_SLUG_PARENTS.has(parent)) return false;
+  return segments.slice(0, -1).some((s) => SHOP_SECTION_SEGMENTS.has(s)) && looksLikeProductSlug(last);
+}
+
+/**
+ * The half of the test that is a flat refusal: a path under a route no shop
+ * sells from. A sitemap named after products is the store itself saying what
+ * its entries are, so its URLs skip the shape tests above — but not this one,
+ * because a store that lists its cart in a product sitemap is still not selling
+ * a cart.
+ */
+export function isNonProductPath(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean).map((s) => s.toLowerCase());
+  if (!segments.length) return true;
+  return segments.some((s) => NON_PRODUCT_SEGMENTS.has(s));
 }
 
 /**
  * Discover product-page URLs on a listing page. Combines schema.org ItemList
  * URLs with same-host anchors that look like product links — used to "parse
  * each" when the listing doesn't embed full product data.
+ *
+ * `max` is how many a caller can use. The default is a screenful for the
+ * preview path; a catalogue crawl passes its own limit, because a grid showing
+ * 120 pieces used to come back as 60 with nothing saying the rest were there.
  */
-export function extractProductLinks(html: string, baseUrl: string): string[] {
+export function extractProductLinks(html: string, baseUrl: string, max = 60): string[] {
   const urls = new Set<string>();
   let host = "";
   try { host = new URL(baseUrl).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
@@ -660,8 +733,8 @@ export function extractProductLinks(html: string, baseUrl: string): string[] {
     if (host && abs.hostname.replace(/^www\./, "") !== host) continue;
     if (!looksLikeProductPath(abs.pathname)) continue;
     urls.add(`${abs.origin}${abs.pathname}`);
-    if (urls.size >= 60) break;
+    if (urls.size >= max) break;
   }
 
-  return [...urls].slice(0, 60);
+  return [...urls].slice(0, max);
 }

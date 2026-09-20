@@ -171,17 +171,50 @@ A sitemap is the shop telling search engines what it sells — the one listing
 meant to be read by a machine, and the one a defended store still serves,
 because blocking it would cost the shop its Google traffic.
 
-So a crawl that comes back empty or refused falls back to it: `robots.txt` for
-the declared sitemaps, then `/sitemap.xml`, `/sitemap_index.xml`,
-`/sitemap_products_1.xml`. An index is followed one level down, product
-sitemaps first, and the URLs are filtered through the same product-path test the
-anchor crawler uses. The whole fallback is capped at five documents and shares
-the crawl's wall-clock budget, because it runs inside a function that was
-already spending it.
+So a crawl reads it whenever the walk came back with **less than it was asked
+for** — refused, empty, or simply short, which is the ordinary case for a grid
+that loads the rest on scroll. `robots.txt` names the declared sitemaps first;
+after them come the conventional locations, in the order they are worth trying:
+
+| Guess | Whose |
+|---|---|
+| `/sitemap.xml`, `/sitemap_index.xml` | everyone |
+| `/sitemap_products_1.xml` | Shopify |
+| `/product-sitemap.xml` | Yoast / WooCommerce |
+| `/wp-sitemap.xml` | WordPress core |
+| `/sitemap/sitemap-index.xml` | Magento 2 |
+| `/sitemap.xml.gz`, `/sitemap_index.xml.gz`, `/product-sitemap.xml.gz` | any large catalogue |
+
+**Compressed sitemaps are read.** A catalogue of any size ships its sitemap
+gzipped, because the protocol allows it and a 200k-URL file is mostly air.
+`fetchHtml` would hand back a decoded string no unzip can recover, so `.gz` goes
+through `fetchBinary` instead and is gunzipped from its own magic bytes — which
+also catches a shop serving gzip from a plain `.xml` address. Only in `direct`
+mode: a scraping provider answers with text it decided on, and a gzip stream run
+through that is lost.
+
+**A product sitemap is the store's own word.** A file the shop named
+`product-sitemap.xml` is the shop declaring what is inside, and that outranks
+our reading of a URL's shape — so its entries skip the product-path test and
+only the flat refusals still apply (a `/cart` listed in a product sitemap is
+still not a product). This is what makes a store addressing pieces as
+`/shop/<slug>` work at all; before it, such a shop came back as "sitemap
+readable, no products".
+
+An index is followed one level down, product sitemaps first, up to ten children.
+Budgets are two, not one: **twelve documents actually read** and **eighteen
+requests spent looking**, because counting a guessed name that 404s as a
+"document" let three wrong guesses use up the whole allowance before a real
+sitemap was ever asked for. Both share the crawl's wall-clock deadline.
+
+`<loc>` is read in both of its forms — bare, and wrapped in `CDATA`, which
+WordPress and Magento both ship and which used to read as an empty sitemap.
 
 This is also strictly better than the anchor walk where the HTML *does* work:
 no pagination to follow, and an infinite-scroll grid that keeps its products in
-a script has nothing to offer `<a href>` scraping anyway.
+a script has nothing to offer `<a href>` scraping anyway. A walk that already
+filled its limit asks for nothing; anything short of that is topped up from the
+sitemap and the screen says how many it added.
 
 **Not for a single product.** The catalogue-wide fallbacks — the sitemap, and
 the Shopify and Woo catalogue endpoints — are skipped when the pasted URL is
@@ -190,6 +223,26 @@ store" to someone who pasted one sneaker is worse than answering nothing: a
 refused product page on goat.com would otherwise have imported sixty unrelated
 products out of the sitemap. The URL has to decide it, since both run exactly
 when the page did not arrive.
+
+### Cookies and soft walls (`fetch.ts`)
+
+The cheapest bot check there is: answer a first, cookie-less request with a 403
+and a `Set-Cookie`, and the same request carrying that cookie with the page.
+Node's `fetch` keeps no cookies, so every request we made was that refused first
+one, over and over.
+
+There is now a per-host jar (in memory, 10 minutes, `direct` only). Every direct
+response's cookies are kept and every direct request carries them, so a crawl
+walking twenty pages of one store arrives as one visitor rather than twenty
+strangers — which is also what a rate limiter reads. On a 403 the retry now
+changes both things it can: the browser profile **and** the cookie. When the
+refusal itself set one, that is all it takes; when it refused silently, the
+store's front page is asked for once per host, purely for the `Set-Cookie` that
+comes with it, and the answer is thrown away.
+
+This passes a soft wall. It does not pass Cloudflare, Akamai or DataDome, which
+read the TLS handshake rather than the cookie — those still need a provider or
+the paste route.
 
 ### Retries and pacing (`fetch.ts`, `crawl.ts`)
 
@@ -420,10 +473,16 @@ discover ─▶ product URLs (incl. pagination) ─▶ batch(5) ─▶ parse ─
 ```
 
 - **discover** (`crawl.ts`) tries the store's own data first (`storefront.ts`:
-  Shopify, WooCommerce or Squarespace, then the sitemap when the walk comes back
-  empty or refused — see §1a), and otherwise walks the listing, following
-  `rel="next"` and page-numbered anchors up to the page cap. A pasted PDP is detected and
-  collected on its own.
+  Shopify, WooCommerce or Squarespace), otherwise walks the listing, following
+  `rel="next"` and page-numbered anchors up to the page cap, and tops the result
+  up from the sitemap whenever the walk came back short of the limit — refused,
+  empty or merely partial (see §1a). A pasted PDP is detected and collected on
+  its own, and never answered with the whole store.
+- **how many.** The ceiling is 2 000 products per run (the screen defaults to
+  100 over 3 listing pages), and a single listing page may now yield its whole
+  grid rather than the first 60 anchors. Reading 2 000 URLs out of a sitemap
+  costs the same handful of requests as reading 500; what a long run does cost
+  is the browser tab staying open, since the batch loop lives there.
 - **batch** parses and imports 5 URLs per request. The loop lives in the browser,
   so progress is live, **Stop** works immediately, and no request ever runs past
   the route's `maxDuration`.

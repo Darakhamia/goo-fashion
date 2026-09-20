@@ -239,7 +239,12 @@ export async function discoverProductUrls(
   const started = Date.now();
   const budgetMs = opts.budgetMs ?? 45_000;
   const deadline = started + budgetMs;
-  const limit = Math.max(1, Math.min(opts.limit, 500));
+  // The ceiling is what a whole catalogue needs, not what one screenful does:
+  // a store with 3 000 pieces used to come back with 500 and no sign that the
+  // rest existed. Discovery stays bounded by the wall clock either way, and
+  // reading 2 000 URLs out of a sitemap costs the same handful of requests as
+  // reading 500.
+  const limit = Math.max(1, Math.min(opts.limit, 2_000));
   const maxPages = Math.max(1, Math.min(opts.maxPages, 20));
 
   const startConfig = matchSiteConfig(startUrl, opts.siteConfigs);
@@ -333,7 +338,7 @@ export async function discoverProductUrls(
       }
     }
 
-    for (const u of extractProductLinks(fetched.html, finalUrl)) {
+    for (const u of extractProductLinks(fetched.html, finalUrl, limit)) {
       if (u === finalUrl) continue;
       found.add(u);
       if (found.size >= limit) break;
@@ -349,22 +354,41 @@ export async function discoverProductUrls(
   // publishes a sitemap for search engines, and a shop that blocked that would
   // be blocking its own Google traffic, so it is nearly always readable.
   let sitemap: SitemapResult | null = null;
-  if (urls.length === 0 && !startIsProduct) {
+  // The sitemap is read whenever the walk came back short of what was asked
+  // for, not only when it came back empty. A grid that ships twelve anchors
+  // and loads the rest on scroll is not a refusal — it is the ordinary case,
+  // and it used to end the run at twelve while the store's own sitemap listed
+  // the other three thousand. A walk that already filled the limit asks for
+  // nothing.
+  if (!startIsProduct && urls.length < limit) {
     sitemap = await discoverFromSitemap(startUrl, startSettings, opts.fetchApiKey, {
       limit,
       deadline,
     });
     if (sitemap.urls.length) {
-      return {
-        ok: true,
-        urls: sitemap.urls,
-        pagesVisited,
-        isSingleProduct: false,
-        status: firstFailure?.status ?? status,
-        hint: firstFailure
-          ? `The listing itself was refused (${firstFailure.error}), so these ${sitemap.urls.length} product URLs come from the store's sitemap instead.`
-          : `The listing carried no product links, so these ${sitemap.urls.length} product URLs come from the store's sitemap instead.`,
-      };
+      const merged = [...urls];
+      const have = new Set(urls);
+      for (const u of sitemap.urls) {
+        if (merged.length >= limit) break;
+        if (have.has(u)) continue;
+        have.add(u);
+        merged.push(u);
+      }
+      const added = merged.length - urls.length;
+      if (added > 0) {
+        return {
+          ok: true,
+          urls: merged,
+          pagesVisited,
+          isSingleProduct: false,
+          status: firstFailure?.status ?? status,
+          hint: urls.length === 0
+            ? (firstFailure
+                ? `The listing itself was refused (${firstFailure.error}), so these ${added} product URLs come from the store's sitemap instead.`
+                : `The listing carried no product links, so these ${added} product URLs come from the store's sitemap instead.`)
+            : `The listing gave ${urls.length} product URLs; the store's sitemap added ${added} more.`,
+        };
+      }
     }
   }
 
