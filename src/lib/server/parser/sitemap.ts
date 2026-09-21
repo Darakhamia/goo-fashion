@@ -20,6 +20,7 @@
 import { gunzipSync } from "node:zlib";
 import { fetchHtml, fetchBinary } from "./fetch";
 import { looksLikeProductPath, isNonProductPath } from "./extract";
+import { parseRobots } from "./robots";
 import type { ParserFetchSettings } from "./types";
 
 /**
@@ -30,7 +31,7 @@ import type { ParserFetchSettings } from "./types";
  * whole thing one directory down. Each is one request that only happens when
  * the names before it gave nothing.
  */
-const CANDIDATES = [
+export const CANDIDATES = [
   "/sitemap.xml",
   "/sitemap_index.xml",
   "/sitemap_products_1.xml",
@@ -62,7 +63,7 @@ const MAX_DOCUMENTS = 12;
  */
 const MAX_REQUESTS = 18;
 
-function locations(xml: string): string[] {
+export function locations(xml: string): string[] {
   const out: string[] = [];
   // `<loc>` holds a bare URL or a CDATA section; WordPress and Magento both
   // ship the latter, and reading only the bare form made their sitemaps look
@@ -84,7 +85,7 @@ function textFromBytes(bytes: Uint8Array): string | null {
 }
 
 /** An index lists sitemaps; a sitemap lists pages. They need different handling. */
-function isIndex(xml: string): boolean {
+export function isIndex(xml: string): boolean {
   return /<sitemapindex[\s>]/i.test(xml);
 }
 
@@ -101,7 +102,7 @@ interface Candidate {
 }
 
 /** Does this sitemap's own name say it lists products? */
-function namesProducts(url: string): boolean {
+export function namesProducts(url: string): boolean {
   return /product/i.test(url);
 }
 
@@ -109,7 +110,7 @@ function namesProducts(url: string): boolean {
  * A child sitemap worth opening: the ones named after products first, and never
  * the ones that certainly are not (blog posts, pages, collections).
  */
-function rankChild(url: string): number {
+export function rankChild(url: string): number {
   const u = url.toLowerCase();
   if (/product/.test(u)) return 0;
   if (/(?:blog|article|page|collection|marketing)/.test(u)) return 2;
@@ -140,12 +141,7 @@ async function fromRobots(
 ): Promise<string[]> {
   const txt = await getText(`${origin}/robots.txt`, settings, apiKey);
   if (!txt) return [];
-  const out: string[] = [];
-  for (const line of txt.split(/\r?\n/)) {
-    const m = line.match(/^\s*sitemap\s*:\s*(\S+)/i);
-    if (m) out.push(m[1]);
-  }
-  return out;
+  return parseRobots(txt).sitemaps;
 }
 
 export interface SitemapOptions {

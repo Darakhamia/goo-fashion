@@ -15,6 +15,7 @@ export type AdminAction =
   | "parser.config_updated"
   | "parser.product_imported"
   | "parser.crawl_batch"
+  | "parser.collect_ingest"
   | "categories.updated"
   | "products.recategorized"
   | "products.recategorize_undone"
