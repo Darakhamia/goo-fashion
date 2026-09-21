@@ -164,7 +164,10 @@ export default async function SharedLookPage(props: Props) {
                       Total
                     </p>
                     <p className="text-2xl font-bold text-[var(--foreground)]">
-                      <Price amount={look.totalPrice} />
+                      {/* Already a dollar total: the builder sums pieces through
+                          convertToUsd precisely because they can be in different
+                          currencies (builder/page.tsx). Stated, not assumed. */}
+                      <Price amount={look.totalPrice} currency="USD" />
                     </p>
                   </div>
                 )}
@@ -222,7 +225,7 @@ export default async function SharedLookPage(props: Props) {
                       {piece.priceMin != null && (
                         <div className="text-right shrink-0">
                           <p className="text-sm text-[var(--foreground)]">
-                            From <Price amount={piece.priceMin} />
+                            From <Price amount={piece.priceMin} currency={piece.currency ?? undefined} />
                           </p>
                           {piece.retailerCount > 0 && (
                             <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">

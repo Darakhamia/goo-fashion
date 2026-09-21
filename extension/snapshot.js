@@ -33,6 +33,51 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /** Currency symbols and codes worth recognising in a printed price. */
+  const MONEY =
+    /(?:[$\u20ac\u00a3\u20b4\u00a5\u20ba]|z\u0142|K\u010d|\bkr\b|\b(?:USD|EUR|GBP|UAH|PLN|CZK|TRY|JPY|SEK|CHF|CAD|AUD|DKK|NOK|RON|HUF|BGN)\b)/i;
+
+  /**
+   * The price exactly as the page prints it, e.g. "4 000 \u20b4".
+   *
+   * This is the one thing a rendered page knows that its markup does not. A
+   * store's structured data carries the amount as a bare number — JSON-LD gives
+   * `"price": "4000"`, og gives `product:price:amount` — so when the store also
+   * omits `priceCurrency`, nothing in the markup says which currency it is, and
+   * the importer used to call it dollars. The symbol only exists in the text a
+   * shopper reads, which is exactly what this tab has and a server fetch does
+   * not.
+   *
+   * Only a hint: the server still takes the amount from the page's own fields.
+   * Nothing is converted here — see the note in background.js.
+   */
+  function visiblePrice() {
+    const candidates = [
+      '[itemprop="price"]',
+      '[data-price]',
+      '[class*="price" i]',
+      '[id*="price" i]',
+    ];
+    for (const sel of candidates) {
+      let nodes;
+      try {
+        nodes = document.querySelectorAll(sel);
+      } catch {
+        continue;
+      }
+      for (const n of nodes) {
+        // Skip anything the shopper cannot see: crossed-out originals are often
+        // hidden rather than removed, and a hidden node is not what the page
+        // says this product costs.
+        if (!n.offsetParent && n !== document.body) continue;
+        const text = (n.textContent || "").replace(/\s+/g, " ").trim();
+        if (!text || text.length > 60) continue;
+        if (MONEY.test(text) && /\d/.test(text)) return text.slice(0, 60);
+      }
+    }
+    return "";
+  }
+
   try {
     // Walk the page so lazy images commit to a real `src`. Four steps is enough
     // for the galleries this is aimed at without turning a snapshot into a
@@ -54,7 +99,19 @@
     // and the element stays.
     root.querySelectorAll('[src^="data:"]').forEach((n) => n.removeAttribute("src"));
 
-    return { ok: true, url: location.href, html: `<html>${root.innerHTML}</html>` };
+    // Read from the live document, not the stripped clone: `offsetParent` is
+    // only meaningful for nodes that are actually laid out.
+    const priceDisplay = visiblePrice();
+
+    return {
+      ok: true,
+      url: location.href,
+      html: `<html>${root.innerHTML}</html>`,
+      priceDisplay,
+      // The store's own title, for working out the furniture it appends to
+      // every page. Sent raw; the server decides what of it is a product name.
+      pageTitle: (document.title || "").replace(/\s+/g, " ").trim().slice(0, 200),
+    };
   } catch (err) {
     return { ok: false, error: err && err.message ? err.message : String(err) };
   }

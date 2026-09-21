@@ -5,6 +5,7 @@
  */
 import {
   cleanName,
+  tidyProductName,
   parsePrice,
   extractCurrencyFromDisplay,
   matchCategory,
@@ -13,6 +14,14 @@ import {
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 import { upgradeImageUrl, imageKey } from "./gallery";
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
 
 /** Resolve a possibly-relative image URL against the page URL. */
 function absoluteUrl(src: string, base: string): string | null {
@@ -25,29 +34,101 @@ function absoluteUrl(src: string, base: string): string | null {
   }
 }
 
-function normalizeCurrency(rawCurrency: string | undefined, rawPrice: string | undefined): string {
+/**
+ * Work out what currency a price is in, or admit that we do not know.
+ *
+ * Returning `""` rather than `"USD"` is the point of this function. Defaulting
+ * to dollars put a 4 000 ₴ jacket in the catalogue as a $4 000 jacket — wrong on
+ * the product page, wrong in every price filter, and wrong in the stylist's
+ * budget, all silently. An unknown currency is now a fact the caller can act on.
+ *
+ * The hints are tried strongest first:
+ *   1. an explicit ISO code from structured data (`priceCurrency`, og);
+ *   2. a symbol inside whichever strings we were given;
+ *   3. the visible price text, which only a rendered page can supply —
+ *      structured-data prices arrive as bare numbers with the symbol already
+ *      stripped, so this is the only hint a symbol-only store ever offers;
+ *   4. a currency the admin declared for the whole store before the run.
+ *
+ * The admin's declaration comes last deliberately: it is a blanket statement
+ * about a store, so anything the page itself says about a specific product
+ * outranks it.
+ */
+function normalizeCurrency(
+  rawCurrency: string | undefined,
+  rawPrice: string | undefined,
+  priceDisplay: string | undefined,
+  fallbackCurrency: string | undefined,
+): string {
   const c = (rawCurrency ?? "").trim().toUpperCase();
   if (/^[A-Z]{3}$/.test(c)) return c;
-  return (extractCurrencyFromDisplay(rawCurrency ?? "") || extractCurrencyFromDisplay(rawPrice ?? "") || "USD").toUpperCase();
+
+  const sniffed =
+    extractCurrencyFromDisplay(rawCurrency ?? "") ||
+    extractCurrencyFromDisplay(rawPrice ?? "") ||
+    extractCurrencyFromDisplay(priceDisplay ?? "");
+  if (sniffed) return sniffed.toUpperCase();
+
+  const declared = (fallbackCurrency ?? "").trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(declared)) return declared;
+
+  return "";
+}
+
+export interface NormalizeOptions {
+  /**
+   * The trailing text this store appends to every page title, worked out by a
+   * caller that has seen several of its pages. Subtracted from the name.
+   */
+  titleSuffix?: string;
+  /**
+   * The price exactly as it appears on screen ("4 000 ₴"), when a rendered page
+   * was available. Used only as a currency hint; the amount itself still comes
+   * from the structured fields.
+   */
+  priceDisplay?: string;
+  /**
+   * Currency the admin declared for this store before the run. A declaration of
+   * the source currency only — no conversion happens client-side, so the rate
+   * stays one server-side rate rather than one per admin.
+   */
+  fallbackCurrency?: string;
 }
 
 export function normalizeExtract(
   raw: RawExtract,
   sourceUrl: string,
   config?: ParserSiteConfig | null,
+  opts?: NormalizeOptions,
 ): ParsedProduct {
   const issues: string[] = [];
 
-  const name = cleanName(raw.name ?? "");
-  if (!name) issues.push("missing name");
-
   const brand = (config?.brandOverride || raw.brand || "").trim();
+
+  // The size suffix goes first (it is about the garment), then the store's
+  // furniture (it is about the shop). Both are conservative: anything that
+  // cannot be justified is left on the name.
+  const name = tidyProductName(cleanName(raw.name ?? ""), {
+    host: hostOf(sourceUrl),
+    brand,
+    titleSuffix: opts?.titleSuffix,
+  });
+  if (!name) issues.push("missing name");
 
   const price = parsePrice(raw.price ?? "");
   if (!price) issues.push("missing price");
   const priceOriginal = parsePrice(raw.priceOriginal ?? "");
 
-  const currency = normalizeCurrency(raw.currency, raw.price);
+  const currency = normalizeCurrency(
+    raw.currency,
+    raw.price,
+    opts?.priceDisplay ?? raw.priceDisplay,
+    opts?.fallbackCurrency,
+  );
+  // Only worth flagging when there is a price to be wrong about: a page with no
+  // price at all already carries "missing price", and saying both would just
+  // report one absence twice.
+  if (price && !currency) issues.push("unknown currency");
 
   // Category: explicit override → product name/description → URL path hint.
   // Prefer the name-based guess; only fall back to the URL path when the name

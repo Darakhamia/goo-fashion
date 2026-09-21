@@ -85,6 +85,19 @@ export interface RawExtract {
   price?: string;
   priceOriginal?: string;
   currency?: string;
+  /**
+   * The price as printed on the page ("4 000 ₴"), when a rendered DOM was the
+   * source. Structured data hands us the amount with the symbol already gone,
+   * so on a store that names its currency nowhere else this is the only thing
+   * that says which currency the number is in.
+   */
+  priceDisplay?: string;
+  /**
+   * The page's `<title>`, unmodified. Not a name candidate in its own right
+   * except as a last resort — it is kept so the store's own repeated furniture
+   * can be measured and subtracted.
+   */
+  pageTitle?: string;
   image?: string;
   images: string[];
   sizes: string[];
@@ -149,6 +162,12 @@ export interface CrawlItemResult {
   reason?: string;
   usedAi?: boolean;
   imagesMirrored?: number;
+  /**
+   * Set when the page was read fine but one fact about the store is missing, so
+   * the run can say what to supply instead of reporting a breakage. Today the
+   * only value is a currency the page never names.
+   */
+  needs?: "currency";
 }
 
 export const DEFAULT_FETCH_SETTINGS: ParserFetchSettings = {

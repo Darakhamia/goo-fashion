@@ -53,7 +53,7 @@ export default function OutfitPieces({ items }: { items: OutfitItem[] }) {
             </div>
             <div className="text-right shrink-0">
               <p className="text-sm text-[var(--foreground)]">
-                From <Price amount={product.priceMin} />
+                From <Price amount={product.priceMin} currency={product.currency} />
               </p>
               <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
                 {product.retailers.length} stores

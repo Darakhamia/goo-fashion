@@ -11,6 +11,7 @@ import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useLikes } from "@/lib/context/likes-context";
 import { track } from "@/lib/analytics/track";
 import { useScrollLock } from "@/lib/hooks/useScrollLock";
+import { comparablePriceMin, comparablePriceMax } from "@/lib/price";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
@@ -359,7 +360,9 @@ export default function BrowsePage() {
       )
       .filter(
         (p) =>
-          maxPrice === null || p.priceMin <= maxPrice
+          // The slider is a dollar budget, so it is compared against the
+          // dollar scale — not against a number that may be hryvnia.
+          maxPrice === null || comparablePriceMin(p) <= maxPrice
       )
       .filter(
         (p) =>
@@ -375,9 +378,12 @@ export default function BrowsePage() {
       )
       .filter((p) => !likedOnly || likedProducts.includes(p.id));
 
-    if (sort === "price-asc") r = [...r].sort((a, b) => a.priceMin - b.priceMin);
+    // Sorted on the comparable scale too: ordering by raw source prices
+    // interleaves currencies and puts a 4 000 ₴ jacket above a $500 coat.
+    if (sort === "price-asc")
+      r = [...r].sort((a, b) => comparablePriceMin(a) - comparablePriceMin(b));
     else if (sort === "price-desc")
-      r = [...r].sort((a, b) => b.priceMax - a.priceMax);
+      r = [...r].sort((a, b) => comparablePriceMax(b) - comparablePriceMax(a));
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;

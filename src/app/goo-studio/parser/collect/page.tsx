@@ -82,6 +82,13 @@ export default function CollectPage() {
    * exactly the moment before the admin presses the button.
    */
   const stoppedRef = useRef(false);
+  /**
+   * Page titles seen in this run, sent back with each product so the server can
+   * work out what this store appends to every title. Kept here because this is
+   * the only place that sees more than one of the store's pages; what the
+   * suffix *means* is still decided server-side.
+   */
+  const titlesRef = useRef<string[]>([]);
 
   const reply = useCallback((id: number | undefined, ok: boolean, data: unknown) => {
     if (typeof id !== "number") return;
@@ -159,9 +166,27 @@ export default function CollectPage() {
           setConnected(true);
           setPhase("collecting");
           try {
-            const data = await callApi({ action: "ingest", ...payload });
+            const pageTitle = typeof payload.pageTitle === "string" ? payload.pageTitle : "";
+            if (pageTitle && !titlesRef.current.includes(pageTitle)) {
+              titlesRef.current = [...titlesRef.current, pageTitle].slice(-12);
+            }
+            const data = await callApi({
+              action: "ingest",
+              ...payload,
+              titles: titlesRef.current,
+            });
             const result = data.result as CrawlItemResult | undefined;
             if (result) setResults((prev) => [...prev, result]);
+            // A store that does not say what currency it prices in will not
+            // start saying so on the next product, so this is said once, up
+            // front, rather than left to be inferred from a growing list of
+            // skipped rows. Nothing is lost meanwhile: the addresses are in the
+            // outcomes, and a re-run with the currency set picks them up.
+            if (result?.needs === "currency") {
+              setNotice(
+                "This store does not say which currency its prices are in, so nothing is being imported. Open the extension, set “Store currency”, and run it again.",
+              );
+            }
             reply(msg.id, true, data);
           } catch (err) {
             const message = err instanceof Error ? err.message : "Ingest failed";
@@ -206,6 +231,7 @@ export default function CollectPage() {
 
   function reset() {
     stoppedRef.current = false;
+    titlesRef.current = [];
     setResults([]);
     setPlanned(0);
     setNotice("");

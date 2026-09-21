@@ -68,6 +68,25 @@ export interface ParsePageOptions {
    * extractor, gallery harvester, colour reading and import run on it.
    */
   html?: string;
+  /**
+   * The price as printed on the page, when the caller read it off a rendered
+   * DOM. A currency hint only — the amount still comes from the page's own
+   * fields. Lets a store that prints "4 000 ₴" and names its currency nowhere
+   * in its markup still be read correctly.
+   */
+  priceDisplay?: string;
+  /**
+   * Currency the admin declared for this whole store before a run, used only
+   * when the page itself yields nothing. A declaration of the source currency,
+   * never a converted amount: the rate stays one server-side rate.
+   */
+  fallbackCurrency?: string;
+  /**
+   * The trailing text this store appends to every page title. Subtracted from
+   * the product name — whatever is identical across twenty of a shop's pages
+   * is the shop talking, not any one product's name.
+   */
+  titleSuffix?: string;
 }
 
 function resolveUrl(href: string, base: string): string {
@@ -117,7 +136,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   // store anything at all would only be a request that can be refused.
   const storefront = pasted ? null : await fetchStorefrontProduct(url, settings, opts.fetchApiKey);
   if (storefront) {
-    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched);
+    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
     return {
       ok: true,
       products: product.name || product.imageUrl ? [product] : [],
@@ -185,7 +204,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       }
     }
 
-    const prod = normalizeExtract(raw, pageUrl, matched);
+    const prod = normalizeExtract(raw, pageUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
     return prod.name || prod.imageUrl ? [prod] : [];
   };
 
@@ -200,7 +219,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       isListing = true;
       products = items.map((n) => {
         const purl = n.url ? resolveUrl(n.url, pageUrl) : "";
-        const prod = normalizeExtract(n, purl || pageUrl, matched);
+        const prod = normalizeExtract(n, purl || pageUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
         // Keep each card's own source URL (empty → import inserts a fresh row
         // instead of all cards colliding on the listing URL).
         prod.sourceUrl = purl;

@@ -127,6 +127,13 @@ export type DbProduct = {
   price_min: number;
   price_max: number;
   currency: string;
+  // The same prices on one comparable scale, plus the rate that put them there
+  // and the day it came from. Nullable: rows imported before migration 019 have
+  // no recorded rate, and every reader coalesces to price_min for those.
+  price_min_usd?: number | null;
+  price_max_usd?: number | null;
+  fx_rate?: number | null;
+  fx_date?: string | null;
   is_new: boolean;
   is_saved: boolean;
   style_keywords: string[];

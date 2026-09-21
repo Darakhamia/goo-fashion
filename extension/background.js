@@ -74,6 +74,13 @@ const state = {
   imported: 0,
   failed: 0,
   delayMs: MIN_DELAY_MS,
+  /**
+   * Currency the admin declared for this store, passed straight through to the
+   * server. Nothing here converts anything: a rate applied in this browser
+   * would be this admin's rate at this moment, and two admins importing one
+   * store would write different numbers for the same product.
+   */
+  storeCurrency: "",
   studioTabId: null,
 };
 
@@ -282,7 +289,12 @@ async function snapshotPage(url) {
     if (!result || !result.ok) {
       return { error: result?.error ?? "Could not read the page" };
     }
-    return { html: result.html, status };
+    return {
+      html: result.html,
+      priceDisplay: result.priceDisplay,
+      pageTitle: result.pageTitle,
+      status,
+    };
   } catch (err) {
     return { error: err?.message ?? "Could not read the page" };
   } finally {
@@ -310,7 +322,7 @@ function finish() {
   void tellPage("done", {});
 }
 
-async function run({ storeUrl, limit }) {
+async function run({ storeUrl, limit, storeCurrency }) {
   let origin;
   try {
     origin = new URL(storeUrl).origin;
@@ -330,6 +342,7 @@ async function run({ storeUrl, limit }) {
     imported: 0,
     failed: 0,
     delayMs: MIN_DELAY_MS,
+    storeCurrency: /^[A-Z]{3}$/.test(storeCurrency ?? "") ? storeCurrency : "",
   });
 
   // The collect tab has to be there before anything is asked of the store —
@@ -419,7 +432,16 @@ async function run({ storeUrl, limit }) {
         continue;
       }
 
-      const ingested = await askPage("ingest", { url, html: snap.html });
+      const ingested = await askPage("ingest", {
+        url,
+        html: snap.html,
+        // What the price looks like on screen, and what the admin said the
+        // store charges in. Both are hints about which currency a number is
+        // in — the amount still comes from the page's own fields.
+        priceDisplay: snap.priceDisplay,
+        storeCurrency: state.storeCurrency,
+        pageTitle: snap.pageTitle,
+      });
       collected++;
       state.done = collected;
       if (ingested.ok) state.imported++;
@@ -492,7 +514,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       const storeUrl = msg.payload?.storeUrl;
       const limit = Math.max(1, Math.min(Number(msg.payload?.limit) || 30, 2_000));
-      run({ storeUrl, limit }).catch((err) => {
+      const storeCurrency = String(msg.payload?.storeCurrency ?? "")
+        .toUpperCase()
+        .slice(0, 3);
+      run({ storeUrl, limit, storeCurrency }).catch((err) => {
         halt(err?.message ?? "The run failed unexpectedly.");
       });
       sendResponse({ ok: true });
