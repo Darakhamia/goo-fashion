@@ -108,6 +108,9 @@
       url: location.href,
       html: `<html>${root.innerHTML}</html>`,
       priceDisplay,
+      // The store's own title, for working out the furniture it appends to
+      // every page. Sent raw; the server decides what of it is a product name.
+      pageTitle: (document.title || "").replace(/\s+/g, " ").trim().slice(0, 200),
     };
   } catch (err) {
     return { ok: false, error: err && err.message ? err.message : String(err) };

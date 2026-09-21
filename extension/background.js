@@ -289,7 +289,12 @@ async function snapshotPage(url) {
     if (!result || !result.ok) {
       return { error: result?.error ?? "Could not read the page" };
     }
-    return { html: result.html, priceDisplay: result.priceDisplay, status };
+    return {
+      html: result.html,
+      priceDisplay: result.priceDisplay,
+      pageTitle: result.pageTitle,
+      status,
+    };
   } catch (err) {
     return { error: err?.message ?? "Could not read the page" };
   } finally {
@@ -435,6 +440,7 @@ async function run({ storeUrl, limit, storeCurrency }) {
         // in — the amount still comes from the page's own fields.
         priceDisplay: snap.priceDisplay,
         storeCurrency: state.storeCurrency,
+        pageTitle: snap.pageTitle,
       });
       collected++;
       state.done = collected;

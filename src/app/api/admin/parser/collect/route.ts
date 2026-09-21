@@ -32,6 +32,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { importParsedProduct } from "@/lib/server/parser/import-product";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
+import { commonTitleSuffix } from "@/lib/server/product-fields";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -59,6 +60,13 @@ const MAX_SITEMAPS = 12;
 
 /** Addresses the caller may say it has already seen, for de-duplication. */
 const MAX_SEEN = 5_000;
+
+/**
+ * Page titles kept for working out a store's repeated furniture. A dozen is
+ * plenty — the suffix stops changing after a handful — and keeps the payload
+ * to about a kilobyte.
+ */
+const MAX_TITLES = 12;
 
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -144,6 +152,15 @@ export async function POST(req: Request) {
   const storeCurrency = str(body?.storeCurrency).toUpperCase().slice(0, 3);
   const priceDisplay = str(body?.priceDisplay).slice(0, 120);
 
+  // Page titles the receiver has seen from this store so far. The suffix is
+  // worked out here rather than in the browser so the rule that decides what a
+  // product is called stays on the server, next to every other such rule.
+  const titles = (Array.isArray(body?.titles) ? body.titles : [])
+    .filter((t: unknown): t is string => typeof t === "string")
+    .map((t: string) => t.slice(0, 200))
+    .slice(0, MAX_TITLES);
+  const titleSuffix = commonTitleSuffix(titles);
+
   const useAi = typeof body?.useAi === "boolean" ? body.useAi : aiSettings.enabled;
   const mirrorImages =
     typeof body?.mirrorImages === "boolean" ? body.mirrorImages : aiSettings.downloadImages;
@@ -161,6 +178,7 @@ export async function POST(req: Request) {
       html,
       priceDisplay: priceDisplay || undefined,
       fallbackCurrency: storeCurrency || undefined,
+      titleSuffix: titleSuffix || undefined,
     });
 
     const usedAi = (parsed.diagnostics.aiFields?.length ?? 0) > 0;

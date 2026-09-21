@@ -387,6 +387,40 @@ function fromMeta(html: string): Partial<RawExtract> {
   };
 }
 
+/**
+ * The page's own heading and title.
+ *
+ * Neither was read before, which is why product names arrived as
+ * "Куртка бомбер, чёрная — MyStore | Купить с доставкой": the name came from
+ * `og:title`, and an `og:title` is written for a search result, not a
+ * catalogue. An `<h1>` is what the shop prints at the top of the page for a
+ * shopper, so it is nearly always the product and nothing else.
+ *
+ * `<title>` is kept as well, but only as a last resort and as the raw material
+ * for working out what this store appends to every page.
+ */
+function fromHeading(html: string): { h1?: string; title?: string } {
+  const strip = (frag: string) =>
+    decodeEntities(frag.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+
+  let h1: string | undefined;
+  // First non-empty h1: a header logo is sometimes marked up as one, and those
+  // are usually image-only, so they strip to nothing and are skipped.
+  const headings = html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi);
+  for (const m of headings) {
+    const text = strip(m[1] ?? "");
+    if (text && text.length <= 200) {
+      h1 = text;
+      break;
+    }
+  }
+
+  const tm = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+  const title = tm ? strip(tm[1] ?? "") : undefined;
+
+  return { h1, title: title || undefined };
+}
+
 function fromMicrodata(html: string): Partial<RawExtract> {
   const prop = (name: string): string | undefined => {
     // <span itemprop="price" content="49.99"> or text content
@@ -481,6 +515,8 @@ export function extractProduct(
   if (meta.name || meta.price || (meta.images?.length ?? 0) > 0) strategies.push("opengraph");
   const micro = fromMicrodata(html);
   if (micro.name || micro.price) strategies.push("microdata");
+  const heading = fromHeading(html);
+  if (heading.h1) strategies.push("h1");
 
   // Recipe regex overrides (highest precedence)
   const ruleVal = (field: ParserRuleField): string | undefined =>
@@ -508,13 +544,14 @@ export function extractProduct(
   let galleryImages: string[] = [];
   if (baseUrl) {
     const anchor = image ? [image, ...images] : images;
-    const productName = pick(ruleVal("name"), jsonld.name, meta.name, micro.name) ?? "";
+    const productName = pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title) ?? "";
     galleryImages = harvestGalleryImages(html, baseUrl, anchor, productName);
     if (galleryImages.length) strategies.push("gallery");
   }
 
   return {
-    name: pick(ruleVal("name"), jsonld.name, meta.name, micro.name),
+    pageTitle: heading.title,
+    name: pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title),
     brand: pick(ruleVal("brand"), jsonld.brand, meta.brand, micro.brand),
     price: pick(ruleVal("price"), jsonld.price, meta.price, micro.price),
     priceOriginal: jsonld.priceOriginal,

@@ -5,6 +5,7 @@
  */
 import {
   cleanName,
+  tidyProductName,
   parsePrice,
   extractCurrencyFromDisplay,
   matchCategory,
@@ -13,6 +14,14 @@ import {
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 import { upgradeImageUrl, imageKey } from "./gallery";
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
 
 /** Resolve a possibly-relative image URL against the page URL. */
 function absoluteUrl(src: string, base: string): string | null {
@@ -68,6 +77,11 @@ function normalizeCurrency(
 
 export interface NormalizeOptions {
   /**
+   * The trailing text this store appends to every page title, worked out by a
+   * caller that has seen several of its pages. Subtracted from the name.
+   */
+  titleSuffix?: string;
+  /**
    * The price exactly as it appears on screen ("4 000 ₴"), when a rendered page
    * was available. Used only as a currency hint; the amount itself still comes
    * from the structured fields.
@@ -89,10 +103,17 @@ export function normalizeExtract(
 ): ParsedProduct {
   const issues: string[] = [];
 
-  const name = cleanName(raw.name ?? "");
-  if (!name) issues.push("missing name");
-
   const brand = (config?.brandOverride || raw.brand || "").trim();
+
+  // The size suffix goes first (it is about the garment), then the store's
+  // furniture (it is about the shop). Both are conservative: anything that
+  // cannot be justified is left on the name.
+  const name = tidyProductName(cleanName(raw.name ?? ""), {
+    host: hostOf(sourceUrl),
+    brand,
+    titleSuffix: opts?.titleSuffix,
+  });
+  if (!name) issues.push("missing name");
 
   const price = parsePrice(raw.price ?? "");
   if (!price) issues.push("missing price");
