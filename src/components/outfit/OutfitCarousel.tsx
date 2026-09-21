@@ -95,7 +95,7 @@ function CarouselCard({ outfit, variant }: CardProps) {
       {/* Info */}
       <div className="mt-4 space-y-1.5">
         <p className={`font-light text-[var(--foreground)] tracking-tight ${isPeek ? "text-xl" : "text-2xl"}`}>
-          <Price amount={outfit.totalPriceMin} />
+          <Price amount={outfit.totalPriceMin} currency="USD" />
         </p>
         <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] leading-relaxed truncate">
           {getTags(outfit)}

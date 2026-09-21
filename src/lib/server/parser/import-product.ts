@@ -15,6 +15,7 @@ import { colorToHex, colorGroupNamesFor } from "@/lib/server/product-fields";
 import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
+import { toUsd } from "@/lib/server/fx";
 import type { Product, Category, Gender } from "@/lib/types";
 
 const CATEGORIES: Category[] = [
@@ -27,6 +28,10 @@ const GENDERS: Gender[] = ["women", "men", "unisex"];
 function httpUrl(v: unknown): string {
   const s = typeof v === "string" ? v.trim() : "";
   return /^https?:\/\//.test(s) ? s : "";
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 // ── Colour filters ────────────────────────────────────────────────────────────
@@ -70,6 +75,12 @@ async function colorGroupIdsFor(colors: string[]): Promise<number[] | undefined>
 export interface ImportOptions {
   /** Download photos into Supabase Storage and store our URLs instead. */
   mirrorImages?: boolean;
+  /**
+   * Currency the admin declared for this store, used only when the product
+   * carries none. Without it a currency-less price is refused rather than
+   * assumed to be dollars.
+   */
+  fallbackCurrency?: string;
 }
 
 export interface ImportResult {
@@ -81,6 +92,12 @@ export interface ImportResult {
   imagesMirrored?: number;
   /** Photos we failed to mirror (kept as original URLs). */
   imagesFailed?: number;
+  /**
+   * Set when the import was refused for something the admin can fix, rather
+   * than something broken. Lets the caller report "tell me this store's
+   * currency" instead of a generic failure.
+   */
+  needs?: "currency";
 }
 
 export async function importParsedProduct(
@@ -106,7 +123,44 @@ export async function importParsedProduct(
 
   const price = Math.max(0, Number(p.price) || 0);
   const priceOriginal = Math.max(0, Number(p.priceOriginal) || 0);
-  const currency = String(p.currency ?? "USD").trim().toUpperCase().slice(0, 3) || "USD";
+
+  // What currency this price is in, in order of authority: what the page said,
+  // then what the admin declared for the store. There is deliberately no third
+  // option. Falling back to "USD" here is what put a 4 000 ₴ jacket in the
+  // catalogue as a $4 000 jacket, and it did so silently — wrong on the product
+  // page, wrong in every price filter, and wrong in the stylist's budget.
+  const declared = String(opts.fallbackCurrency ?? "").trim().toUpperCase().slice(0, 3);
+  const currency = String(p.currency ?? "").trim().toUpperCase().slice(0, 3) || declared;
+  if (price > 0 && !/^[A-Z]{3}$/.test(currency)) {
+    return {
+      ok: false,
+      productId: null,
+      updated: false,
+      needs: "currency",
+      error:
+        "This page does not say which currency its price is in. Pick the store's currency and run it again.",
+    };
+  }
+
+  // The USD scale every comparison uses. Stored, not computed at read time: a
+  // rate looked up later would change yesterday's numbers today, and then no
+  // query result could be explained. The rate and its date travel with it.
+  //
+  // A price of zero needs no scale and no rate — there is nothing to convert,
+  // and refusing it here would block image-only rows the catalogue already
+  // accepts.
+  const usd = price > 0 ? await toUsd(price, currency) : null;
+  if (price > 0 && !usd) {
+    return {
+      ok: false,
+      productId: null,
+      updated: false,
+      needs: "currency",
+      error: `No exchange rate is available for ${currency}, so this price cannot be compared with the rest of the catalogue.`,
+    };
+  }
+  const priceOriginalUsd =
+    usd && priceOriginal > price ? round2(priceOriginal / usd.fxRate) : usd?.priceUsd;
 
   let images = (Array.isArray(p.images) ? p.images : []).map(httpUrl).filter(Boolean).slice(0, 12);
   let imageUrl = httpUrl(p.imageUrl) || images[0] || "";
@@ -169,6 +223,14 @@ export async function importParsedProduct(
     priceMin: price,
     priceMax: priceOriginal > price ? priceOriginal : price,
     currency,
+    ...(usd
+      ? {
+          priceMinUsd: usd.priceUsd,
+          priceMaxUsd: priceOriginalUsd ?? usd.priceUsd,
+          fxRate: usd.fxRate,
+          fxDate: usd.fxDate,
+        }
+      : {}),
     isNew: true,
     isSaved: false,
     gender,

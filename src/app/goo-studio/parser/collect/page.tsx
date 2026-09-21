@@ -162,6 +162,16 @@ export default function CollectPage() {
             const data = await callApi({ action: "ingest", ...payload });
             const result = data.result as CrawlItemResult | undefined;
             if (result) setResults((prev) => [...prev, result]);
+            // A store that does not say what currency it prices in will not
+            // start saying so on the next product, so this is said once, up
+            // front, rather than left to be inferred from a growing list of
+            // skipped rows. Nothing is lost meanwhile: the addresses are in the
+            // outcomes, and a re-run with the currency set picks them up.
+            if (result?.needs === "currency") {
+              setNotice(
+                "This store does not say which currency its prices are in, so nothing is being imported. Open the extension, set “Store currency”, and run it again.",
+              );
+            }
             reply(msg.id, true, data);
           } catch (err) {
             const message = err instanceof Error ? err.message : "Ingest failed";

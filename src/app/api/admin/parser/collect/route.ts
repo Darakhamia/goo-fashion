@@ -136,6 +136,14 @@ export async function POST(req: Request) {
     getAiSettings(),
   ]);
 
+  // The currency the admin picked for this store in the popup, and the price as
+  // it is printed on the page. Both are only ever hints about which currency a
+  // number is in — the amount itself still comes from the page's own fields, and
+  // the conversion happens server-side, so the rate is one rate rather than one
+  // per admin's browser.
+  const storeCurrency = str(body?.storeCurrency).toUpperCase().slice(0, 3);
+  const priceDisplay = str(body?.priceDisplay).slice(0, 120);
+
   const useAi = typeof body?.useAi === "boolean" ? body.useAi : aiSettings.enabled;
   const mirrorImages =
     typeof body?.mirrorImages === "boolean" ? body.mirrorImages : aiSettings.downloadImages;
@@ -151,6 +159,8 @@ export async function POST(req: Request) {
       aiSettings,
       useAi,
       html,
+      priceDisplay: priceDisplay || undefined,
+      fallbackCurrency: storeCurrency || undefined,
     });
 
     const usedAi = (parsed.diagnostics.aiFields?.length ?? 0) > 0;
@@ -171,7 +181,7 @@ export async function POST(req: Request) {
       const imported = await importParsedProduct(
         product as unknown as Record<string, unknown>,
         product.sourceUrl || url,
-        { mirrorImages },
+        { mirrorImages, fallbackCurrency: storeCurrency || undefined },
       );
       result = imported.ok
         ? {
@@ -182,7 +192,16 @@ export async function POST(req: Request) {
             usedAi,
             imagesMirrored: imported.imagesMirrored ?? 0,
           }
-        : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
+        : imported.needs === "currency"
+          ? {
+              url,
+              status: "skipped",
+              reason: imported.error,
+              needs: "currency",
+              name: product.name,
+              usedAi,
+            }
+          : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
     }
   } catch (err) {
     result = {

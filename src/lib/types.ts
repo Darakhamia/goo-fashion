@@ -162,6 +162,20 @@ export interface Product {
   priceMin: number;
   priceMax: number;
   currency: string;
+  /**
+   * `priceMin`/`priceMax` on the USD scale, so prices in different currencies
+   * can be filtered and sorted against each other. Display always uses
+   * `priceMin` with `currency` — converting for display would misreport what
+   * the store actually charges.
+   *
+   * Optional: rows imported before migration 019 have none.
+   */
+  priceMinUsd?: number;
+  priceMaxUsd?: number;
+  /** Units of `currency` per one USD, as used at import time. 1 for USD. */
+  fxRate?: number;
+  /** ISO date (YYYY-MM-DD) the rate is attributed to. */
+  fxDate?: string;
   isNew: boolean;
   isSaved: boolean;
   styleKeywords: StyleKeyword[];

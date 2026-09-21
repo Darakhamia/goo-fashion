@@ -84,6 +84,10 @@ export function dbToProduct(row: DbProduct): Product {
     priceMin: row.price_min,
     priceMax: row.price_max,
     currency: row.currency ?? "USD",
+    priceMinUsd: row.price_min_usd ?? undefined,
+    priceMaxUsd: row.price_max_usd ?? undefined,
+    fxRate: row.fx_rate ?? undefined,
+    fxDate: row.fx_date ?? undefined,
     isNew: (row.is_new ?? false) && isWithinLastWeek(row.created_at),
     isSaved: row.is_saved ?? false,
     styleKeywords: (row.style_keywords ?? []) as Product["styleKeywords"],
@@ -132,6 +136,10 @@ export function productToDb(p: Partial<Product>) {
   if (p.cropData !== undefined)       extras.crop_data = p.cropData ?? null;
   if (p.colorGroupIds !== undefined)  extras.color_group_ids = p.colorGroupIds ?? [];
   if (p.bgColor !== undefined)        extras.bg_color = p.bgColor ?? null;
+  if (p.priceMinUsd !== undefined)    extras.price_min_usd = p.priceMinUsd;
+  if (p.priceMaxUsd !== undefined)    extras.price_max_usd = p.priceMaxUsd ?? p.priceMinUsd;
+  if (p.fxRate !== undefined)         extras.fx_rate = p.fxRate;
+  if (p.fxDate !== undefined)         extras.fx_date = p.fxDate;
   return { ...base, ...extras };
 }
 
@@ -148,6 +156,10 @@ const OPTIONAL_COLUMNS = [
   "color_hex",
   "is_group_primary",
   "bg_color",
+  "price_min_usd",
+  "price_max_usd",
+  "fx_rate",
+  "fx_date",
 ];
 
 /**
@@ -579,6 +591,12 @@ export interface SharedLookPiece {
   imageUrl: string | null;
   brand: string | null;
   priceMin: number | null;
+  /**
+   * The currency `priceMin` is in. The whole product is loaded to build this
+   * piece, so dropping its currency here was enough to print a hryvnia price
+   * as dollars on every shared look.
+   */
+  currency: string | null;
   retailerCount: number;
   /** False when the referenced product is no longer in the catalog. */
   productExists: boolean;
@@ -644,6 +662,7 @@ async function enrichSharedLookPieces(raw: unknown): Promise<SharedLookPiece[]> 
         (typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : product?.imageUrl) ?? null,
       brand: product?.brand ?? null,
       priceMin: product?.priceMin ?? null,
+      currency: product?.currency ?? null,
       retailerCount: product?.retailers?.length ?? 0,
       productExists: !!product,
     };
