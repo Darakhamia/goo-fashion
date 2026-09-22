@@ -177,8 +177,12 @@ export default function Navigation() {
     <header className={`sticky top-0 left-0 right-0 z-50 transition-colors duration-300 ${isBuilder ? "hidden md:block" : ""}`}
       style={{ paddingTop: 10 }}>
       <div className="max-w-[1440px] mx-auto px-6 md:px-12">
+      {/* Three tracks, not space-between: the side tracks share the leftover
+          width equally (1fr each), so the links in the middle track sit on the
+          bar's true centre no matter how wide the right-hand cluster grows.
+          Below md there are only two children, so it falls back to flex. */}
       <nav
-        className="h-14 flex items-center justify-between px-6"
+        className="h-14 flex items-center justify-between px-6 md:grid md:grid-cols-[1fr_auto_1fr]"
         style={{
           background: navBg,
           borderRadius: 50,
@@ -197,7 +201,7 @@ export default function Navigation() {
         </Link>
 
         {/* Desktop Nav — centered links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center justify-center gap-6 lg:gap-8">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
             return (
@@ -224,7 +228,7 @@ export default function Navigation() {
         </div>
 
         {/* Right Actions */}
-        <div className="hidden md:flex items-center shrink-0" style={{ gap: 4 }}>
+        <div className="hidden md:flex items-center justify-end shrink-0" style={{ gap: 4 }}>
           {/* AI Stylist — icon circle */}
           <div ref={aiButtonRef} className="relative">
             <button
