@@ -32,7 +32,6 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { importParsedProduct } from "@/lib/server/parser/import-product";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
-import { commonTitleSuffix } from "@/lib/server/product-fields";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -62,11 +61,61 @@ const MAX_SITEMAPS = 12;
 const MAX_SEEN = 5_000;
 
 /**
- * Page titles kept for working out a store's repeated furniture. A dozen is
- * plenty — the suffix stops changing after a handful — and keeps the payload
- * to about a kilobyte.
+ * Image candidates one page may offer.
+ *
+ * The extension reads the rendered page and its hydration payloads before
+ * stripping them (see `extension/snapshot.js`), so these are addresses the
+ * markup below no longer contains. Generous, because the gallery harvester
+ * rejects what does not belong to the product and a photo missed here cannot be
+ * recovered without visiting the store again — and bounded, because this is a
+ * list a browser extension puts in a request body.
  */
-const MAX_TITLES = 12;
+const MAX_IMAGE_CANDIDATES = 300;
+
+/** Longest image address accepted. Past this it is not an address. */
+const MAX_IMAGE_URL = 1_500;
+
+/** Longest rendered price string accepted, e.g. "4 000 ₴". */
+const MAX_PRICE_TEXT = 120;
+
+/**
+ * Size labels one page may offer.
+ *
+ * Sixty is past any real size run — a shoe store ships twenty, a jeans store
+ * with waist-by-length pairs maybe forty — and the list is filtered by
+ * `pickSizes` before anything is stored, so a generous ceiling costs nothing
+ * but a few strings.
+ */
+const MAX_SIZE_CANDIDATES = 60;
+
+/** Longest size label accepted. "One size" is nine characters. */
+const MAX_SIZE_LABEL = 24;
+
+/** Longest colour name accepted, e.g. "Charcoal marl". */
+const MAX_COLOR_TEXT = 80;
+
+/**
+ * Sibling colourway addresses one page may name.
+ *
+ * Each is looked up against `source_url` exactly, so a junk link that happened
+ * to sit in the colour row matches nothing and costs nothing.
+ */
+const MAX_VARIANT_URLS = 20;
+
+/** Longest rendered description accepted; the importer stores 5,000 characters. */
+const MAX_DESCRIPTION = 5_000;
+
+/** Breadcrumbs accepted, and the length of one crumb. */
+const MAX_BREADCRUMBS = 12;
+const MAX_CRUMB = 60;
+
+/** Longest brand name accepted. */
+const MAX_BRAND_TEXT = 80;
+
+/** Spec rows accepted, and the size of one row's halves. */
+const MAX_SPECS = 40;
+const MAX_SPEC_KEY = 40;
+const MAX_SPEC_VALUE = 200;
 
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -137,29 +186,47 @@ export async function POST(req: Request) {
     );
   }
 
+  // What the page showed that its stripped markup no longer says. Both are
+  // candidates at the lowest precedence: every structured source wins over
+  // them, and the image list still has to pass the gallery harvester's
+  // host-and-naming tests.
+  const imageCandidates = (Array.isArray(body?.images) ? body.images : [])
+    .filter(
+      (u: unknown): u is string =>
+        typeof u === "string" && u.length <= MAX_IMAGE_URL && /^https?:\/\//.test(u),
+    )
+    .slice(0, MAX_IMAGE_CANDIDATES);
+  const priceText = str(body?.priceText).slice(0, MAX_PRICE_TEXT);
+  const sizeCandidates = (Array.isArray(body?.sizes) ? body.sizes : [])
+    .filter((v: unknown): v is string => typeof v === "string" && v.length <= MAX_SIZE_LABEL)
+    .slice(0, MAX_SIZE_CANDIDATES);
+  const colorText = str(body?.colorText).slice(0, MAX_COLOR_TEXT);
+  const variantUrls = (Array.isArray(body?.variantUrls) ? body.variantUrls : [])
+    .filter(
+      (u: unknown): u is string =>
+        typeof u === "string" && u.length <= MAX_IMAGE_URL && /^https?:\/\//.test(u),
+    )
+    .slice(0, MAX_VARIANT_URLS);
+  const descriptionText = str(body?.descriptionText).slice(0, MAX_DESCRIPTION);
+  const specs = (Array.isArray(body?.specs) ? body.specs : [])
+    .map((row: unknown) => ({
+      key: str((row as { key?: unknown })?.key).slice(0, MAX_SPEC_KEY),
+      value: str((row as { value?: unknown })?.value).slice(0, MAX_SPEC_VALUE),
+    }))
+    .filter((row: { key: string; value: string }) => !!row.key && !!row.value)
+    .slice(0, MAX_SPECS);
+  const breadcrumbs = (Array.isArray(body?.breadcrumbs) ? body.breadcrumbs : [])
+    .map((v: unknown) => str(v).slice(0, MAX_CRUMB))
+    .filter(Boolean)
+    .slice(0, MAX_BREADCRUMBS);
+  const brandText = str(body?.brandText).slice(0, MAX_BRAND_TEXT);
+
   const [fetchSettings, keyInfo, siteConfigs, aiSettings] = await Promise.all([
     getFetchSettings(),
     getFetchApiKey(),
     getSiteConfigs(),
     getAiSettings(),
   ]);
-
-  // The currency the admin picked for this store in the popup, and the price as
-  // it is printed on the page. Both are only ever hints about which currency a
-  // number is in — the amount itself still comes from the page's own fields, and
-  // the conversion happens server-side, so the rate is one rate rather than one
-  // per admin's browser.
-  const storeCurrency = str(body?.storeCurrency).toUpperCase().slice(0, 3);
-  const priceDisplay = str(body?.priceDisplay).slice(0, 120);
-
-  // Page titles the receiver has seen from this store so far. The suffix is
-  // worked out here rather than in the browser so the rule that decides what a
-  // product is called stays on the server, next to every other such rule.
-  const titles = (Array.isArray(body?.titles) ? body.titles : [])
-    .filter((t: unknown): t is string => typeof t === "string")
-    .map((t: string) => t.slice(0, 200))
-    .slice(0, MAX_TITLES);
-  const titleSuffix = commonTitleSuffix(titles);
 
   const useAi = typeof body?.useAi === "boolean" ? body.useAi : aiSettings.enabled;
   const mirrorImages =
@@ -176,9 +243,17 @@ export async function POST(req: Request) {
       aiSettings,
       useAi,
       html,
-      priceDisplay: priceDisplay || undefined,
-      fallbackCurrency: storeCurrency || undefined,
-      titleSuffix: titleSuffix || undefined,
+      evidence: {
+        images: imageCandidates,
+        priceText,
+        sizes: sizeCandidates,
+        colorText,
+        variantUrls,
+        descriptionText,
+        specs,
+        breadcrumbs,
+        brandText,
+      },
     });
 
     const usedAi = (parsed.diagnostics.aiFields?.length ?? 0) > 0;
@@ -199,7 +274,7 @@ export async function POST(req: Request) {
       const imported = await importParsedProduct(
         product as unknown as Record<string, unknown>,
         product.sourceUrl || url,
-        { mirrorImages, fallbackCurrency: storeCurrency || undefined },
+        { mirrorImages },
       );
       result = imported.ok
         ? {
@@ -209,17 +284,13 @@ export async function POST(req: Request) {
             name: product.name,
             usedAi,
             imagesMirrored: imported.imagesMirrored ?? 0,
+            images: imported.images ?? 0,
+            priceNote: imported.priceNote,
+            variantsLinked: imported.variantsLinked ?? 0,
+            merged: !!imported.mergedInto,
+            mergedFields: imported.mergedFields,
           }
-        : imported.needs === "currency"
-          ? {
-              url,
-              status: "skipped",
-              reason: imported.error,
-              needs: "currency",
-              name: product.name,
-              usedAi,
-            }
-          : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
+        : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
     }
   } catch (err) {
     result = {

@@ -18,162 +18,6 @@ export function cleanName(raw: string): string {
   return (raw ?? "").replace(SIZE_SUFFIXES, "").trim();
 }
 
-// ── Strip the store's furniture from a product name ───────────────────────────
-//
-// A page title is written for a search engine, not for a catalogue:
-//
-//     "Куртка бомбер, чёрная — MyStore | Купить с доставкой"
-//
-// Only the first few words are the product. The rest is the shop's name and its
-// sales copy, repeated on every page it owns, and it used to land in the
-// catalogue verbatim because the name came from `og:title` and `cleanName` only
-// ever removed a trailing size.
-
-/** Separators a store hangs its own name off. */
-const TITLE_SPLIT = /\s+[|—–·•]\s+|\s+-\s+/;
-
-/**
- * Sales words that are never part of a garment's name. Matched only as whole
- * trailing or leading segments, so a "Sale Rail Tote" keeps its name.
- */
-const BOILERPLATE =
-  /^(?:buy(?:\s+online)?|shop(?:\s+online)?|online(?:\s+(?:store|shop))?|official(?:\s+(?:site|store))?|free\s+shipping|fast\s+delivery|sale|discounts?|price|best\s+price|new\s+arrivals?|купить(?:\s+\S+)*|цена|доставка|интернет-магазин|магазин|заказать|недорого)$/i;
-
-function slug(s: string): string {
-  return (s ?? "").toLowerCase().replace(/[^a-z0-9а-яё]/gi, "");
-}
-
-/**
- * The words a host could be called by, so "shop.mystore.co.uk" is recognised as
- * MyStore rather than as "shop".
- *
- * Every label is a candidate because the shop's name can sit anywhere in the
- * host, but the generic ones are dropped: a title segment reading exactly "shop"
- * or "uk" says nothing about which store this is, and removing it on that basis
- * would eat real words.
- */
-const HOST_NOISE = new Set([
-  "www", "shop", "store", "sklep", "magazin", "com", "net", "org", "co", "uk",
-  "ua", "pl", "de", "fr", "it", "es", "cz", "eu", "us", "io", "online", "site",
-]);
-
-function hostWords(host: string): string[] {
-  return (host ?? "")
-    .toLowerCase()
-    .split(".")
-    .map(slug)
-    .filter((w) => w.length >= 3 && !HOST_NOISE.has(w));
-}
-
-export interface TidyNameOptions {
-  /** The store's hostname, so a title ending in the shop's own name loses it. */
-  host?: string;
-  /** The product's brand, so "Aurelio Aurelio Nebula Jacket" says it once. */
-  brand?: string;
-  /**
-   * A trailing string observed on every title across this store. Whatever is
-   * identical on twenty different products is not any one product's name, and
-   * no list of stop-words can be as reliable about a given shop as the shop's
-   * own repetition. Supplied by the caller that can see more than one page.
-   */
-  titleSuffix?: string;
-}
-
-/**
- * Turn a page title into a product name.
- *
- * Deliberately conservative: it only removes a trailing segment it can justify
- * — one the whole store repeats, one that is the shop's own name or host, or
- * one that is pure sales copy. A name it cannot explain is left alone, because
- * a slightly long name is a much smaller problem than a truncated one.
- */
-export function tidyProductName(raw: string, opts: TidyNameOptions = {}): string {
-  let name = (raw ?? "").replace(/\s+/g, " ").trim();
-  if (!name) return "";
-
-  // 1. The suffix this store puts on everything, removed as plain text before
-  //    any splitting — it may itself contain separators.
-  const suffix = (opts.titleSuffix ?? "").trim();
-  if (suffix && name.length > suffix.length && name.endsWith(suffix)) {
-    name = name.slice(0, -suffix.length).trim();
-  }
-
-  // 2. Trailing segments that name the shop or sell rather than describe.
-  const storeWords = new Set(
-    [...hostWords(opts.host ?? ""), slug(opts.host ?? "")].filter(Boolean),
-  );
-  const parts = name.split(TITLE_SPLIT).map((p) => p.trim()).filter(Boolean);
-  while (parts.length > 1) {
-    const last = parts[parts.length - 1];
-    if (BOILERPLATE.test(last) || storeWords.has(slug(last))) {
-      parts.pop();
-      continue;
-    }
-    break;
-  }
-  // A leading segment can be the shop too ("MyStore | Bomber Jacket").
-  while (parts.length > 1 && storeWords.has(slug(parts[0]))) parts.shift();
-
-  name = parts.join(" — ").trim();
-
-  // 3. The brand said twice at the front.
-  const brand = (opts.brand ?? "").trim();
-  if (brand) {
-    const doubled = new RegExp(`^(${escapeRe(brand)})\\s+\\1\\b`, "i");
-    name = name.replace(doubled, "$1").trim();
-  }
-
-  // Trailing punctuation left behind by a removed segment.
-  name = name.replace(/[\s,;:|—–·•-]+$/, "").trim();
-
-  // Never hand back nothing: if the rules ate the whole title, the original was
-  // a better answer than an empty one.
-  return name || (raw ?? "").trim();
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * The longest trailing text shared by every title given.
- *
- * This is the reliable half of name cleaning: a stop-word list encodes guesses
- * about shops in general, while this measures one shop. If twenty products all
- * end " | MyStore — Купить с доставкой", that string is the shop talking, not
- * any product's name.
- *
- * Needs at least `minTitles` distinct titles before it will claim anything —
- * two products from the same category can legitimately share a tail, twenty
- * cannot. Trimmed back to a separator so it never bites into a word, and
- * ignored unless it starts at one, so a shared word like "Jacket" is not
- * mistaken for furniture.
- */
-export function commonTitleSuffix(titles: string[], minTitles = 3): string {
-  const uniq = [...new Set((titles ?? []).map((t) => (t ?? "").replace(/\s+/g, " ").trim()))].filter(
-    Boolean,
-  );
-  if (uniq.length < minTitles) return "";
-
-  let suffix = uniq[0];
-  for (const t of uniq.slice(1)) {
-    let i = 0;
-    while (i < suffix.length && i < t.length && suffix[suffix.length - 1 - i] === t[t.length - 1 - i]) {
-      i++;
-    }
-    suffix = suffix.slice(suffix.length - i);
-    if (!suffix.trim()) return "";
-  }
-
-  // Keep only from the first separator onwards, so the suffix begins where the
-  // store's furniture begins rather than mid-word.
-  const at = suffix.search(/\s+[|—–·•]\s+|\s+-\s+/);
-  if (at === -1) return "";
-  const trimmed = suffix.slice(at);
-  // A bare separator is not worth subtracting.
-  return trimmed.replace(/[\s|—–·•-]/g, "") ? trimmed : "";
-}
-
 // ── Strip trailing color suffix from a size-cleaned name ──────────────────────
 // "Polo Shirt - Blue" → "Polo Shirt". Used for variant grouping.
 
@@ -204,27 +48,323 @@ export function parsePrice(raw: string): number {
 }
 
 // ── Extract ISO currency code from a display price string ─────────────────────
-// Handles: "£49.99", "GBP89.00", "€39,00", "USD 29.99"
+// Handles: "£49.99", "GBP89.00", "€39,00", "USD 29.99", "4 000 ₴", "12 990 руб".
+//
+// Two audiences, one function: the CSV feeds, which write a tidy price string,
+// and the collect extension, which sends the price as the shopper sees it —
+// spaced, localised, sometimes with a word after it. That second case is why
+// the symbol table covers more than the currencies the switcher displays and
+// why there is a loose ISO pass at the end: a store that prices in złoty is a
+// store whose prices we still have to convert correctly.
+
+/** Symbols and words that name a currency outright, most specific first. */
+const CURRENCY_MARKERS: [RegExp, string][] = [
+  // Dollar signs that are not the US dollar. These come before the bare "$"
+  // test, which would otherwise claim every one of them for USD — and each is
+  // guarded by a lookbehind so the "S$" inside "US$" cannot be read as the
+  // Singapore dollar.
+  [/(?<![A-Za-z])US\s?\$/i, "USD"],
+  [/(?<![A-Za-z])CA?\s?\$/i, "CAD"],
+  [/(?<![A-Za-z])AU?\s?\$/i, "AUD"],
+  [/(?<![A-Za-z])NZ\s?\$/i, "NZD"],
+  [/(?<![A-Za-z])HK\s?\$/i, "HKD"],
+  [/(?<![A-Za-z])SG?\s?\$/i, "SGD"],
+  [/(?<![A-Za-z])R\s?\$/, "BRL"],
+  // Symbols.
+  [/£/, "GBP"],
+  [/€/, "EUR"],
+  [/₴/, "UAH"],
+  [/₽/, "RUB"],
+  [/₺/, "TRY"],
+  [/₹/, "INR"],
+  [/₩/, "KRW"],
+  [/₪/, "ILS"],
+  [/(?:CN|RM)\s?¥|元/i, "CNY"],
+  [/¥/, "JPY"],
+  [/zł/, "PLN"],
+  [/Kč/, "CZK"],
+  [/CHF/i, "CHF"],
+  // Words. A price the shopper reads often names its currency in the local
+  // language rather than in ISO, and "грн" is what a Ukrainian store writes.
+  [/грн/i, "UAH"],
+  [/руб/i, "RUB"],
+  [/лв/i, "BGN"],
+  [/kr/, "SEK"],
+  [/\$/, "USD"],
+];
+
+/** Codes the loose pass will accept, so "SALE" cannot become a currency. */
+const ISO_CODES = new Set([
+  "USD", "EUR", "GBP", "UAH", "RUB", "PLN", "CZK", "SEK", "NOK", "DKK", "CHF",
+  "CAD", "AUD", "NZD", "JPY", "CNY", "TRY", "INR", "KRW", "HKD", "SGD", "AED",
+  "BRL", "MXN", "ILS", "RON", "HUF", "BGN", "ZAR", "THB", "TWD",
+]);
 
 export function extractCurrencyFromDisplay(raw: string): string {
   if (!raw) return "";
-  if (raw.includes("£")) return "GBP";
-  if (raw.includes("€")) return "EUR";
-  if (raw.includes("zł")) return "PLN";
-  if (raw.includes("₺")) return "TRY";
-  if (raw.includes("¥")) return "JPY";
-  if (raw.includes("₴")) return "UAH";
-  if (raw.includes("Kč")) return "CZK";
-  if (raw.includes("kr")) return "SEK";
-  if (raw.includes("$")) return "USD";
+
+  for (const [pattern, code] of CURRENCY_MARKERS) {
+    if (pattern.test(raw)) return code;
+  }
+
+  // A known code standing next to the number: "Price 4 000 UAH incl. VAT".
+  //
+  // This runs before the anchored tests below, and both halves of the condition
+  // earn their place. Without the known-code list, "incl. VAT" at the end of a
+  // line reads as a currency — the anchored suffix test accepts any three
+  // capitals after a full stop. Without the adjacent digit, "Try it on" makes
+  // the Turkish lira out of an English sentence. Together they only fire on a
+  // code that is actually pricing something.
+  const upper = raw.toUpperCase();
+  for (const m of upper.matchAll(/\b[A-Z]{3}\b/g)) {
+    const code = m[0];
+    if (!ISO_CODES.has(code)) continue;
+    const index = m.index ?? 0;
+    const around = upper.slice(Math.max(0, index - 8), index + code.length + 8);
+    if (/\d/.test(around)) return code;
+  }
+
   // ISO code prefix without space: "GBP89.00"
   const prefixMatch = raw.match(/^([A-Z]{3})\s*[\d.,]/);
   if (prefixMatch) return prefixMatch[1];
-  // ISO code suffix: "29.99 GBP"
+  // ISO code suffix: "29.99 GBP". Last, and deliberately unrestricted: a CSV
+  // feed may quote a currency this file has never heard of, and at the end of a
+  // tidy price string three capitals are what they look like.
   const suffixMatch = raw.match(/[\d.,]\s*([A-Z]{3})$/);
   if (suffixMatch) return suffixMatch[1];
   return "";
 }
+
+// ── Product codes ─────────────────────────────────────────────────────────────
+// Three kinds of code appear on a product page, and the difference between them
+// decides what they may be used for:
+//
+//   GTIN (EAN/UPC)  the item's own number, issued once for the whole world. Two
+//                   pages carrying the same GTIN are the same thing, whoever is
+//                   selling it. This is the only code safe to match ACROSS
+//                   stores.
+//   MPN             the maker's part number. Unique within a brand, so it works
+//                   across stores when the brand matches too.
+//   SKU             the store's shelf label. Two retailers can and do use the
+//                   same SKU string for different things, so it is kept for
+//                   reference and never matched on across hosts.
+//
+// Getting that wrong does not produce a missing link — it produces a coat with
+// a "also at" link to a totally different coat, which reads as correct.
+
+/**
+ * A GTIN reduced to its digits, or "" when it is not one.
+ *
+ * The check digit is verified rather than assumed. A page carries plenty of
+ * digit strings — a style code, a phone number, a timestamp — and a GTIN field
+ * filled with one of those would match another product filled with the same
+ * junk. GS1's mod-10 is three lines and turns "is this thirteen digits" into "is
+ * this a number the world issued".
+ */
+export function normalizeGtin(raw: unknown): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (![8, 12, 13, 14].includes(digits.length)) return "";
+  if (/^0+$/.test(digits)) return "";
+
+  // Weights alternate 3 and 1 from the right, excluding the check digit itself.
+  const body = digits.slice(0, -1);
+  const check = Number(digits.slice(-1));
+  let sum = 0;
+  for (let i = 0; i < body.length; i++) {
+    const digit = Number(body[body.length - 1 - i]);
+    sum += i % 2 === 0 ? digit * 3 : digit;
+  }
+  return (10 - (sum % 10)) % 10 === check ? digits : "";
+}
+
+/** A code kept for reference: trimmed, bounded, and stripped of decoration. */
+export function normalizeCode(raw: unknown, max = 60): string {
+  return String(raw ?? "")
+    .trim()
+    .replace(/^(?:ref\.?|sku|art\.?|артикул)\s*[:#]?\s*/i, "")
+    .slice(0, max);
+}
+
+// ── The store's own spec table ────────────────────────────────────────────────
+// Composition, care, country of origin, article number: a store prints them as
+// a definition list or a two-column table, and structured data almost never
+// carries them. The collect extension sends the rows as they were printed, in
+// the store's own language, and these helpers read a field out of them.
+//
+// This is where "no material" was decided. The parser only ever looked at
+// JSON-LD `material`, which is rare enough that most products arrived with the
+// field empty while the page said "80% wool, 20% polyamide" two lines under the
+// price.
+
+export interface SpecPair {
+  key: string;
+  value: string;
+}
+
+// The trailing guard is a lookahead rather than `\b`, and the flags carry `u`.
+// `\b` is defined on ASCII word characters, so it never fires after a Cyrillic
+// letter: /^склад\b/ does not match "Склад", which is exactly the key a
+// Ukrainian store prints its composition under.
+
+/** Key names that mean composition, in the languages a European store ships. */
+export const MATERIAL_KEYS =
+  /^(?:material|materials|fabric|composition|made\s*of|fabrication|matière|matiere|tissu|zusammensetzung|materialien|materiale|composizione|composición|tejido|склад|состав|матеріал|материал|тканина|ткань)(?![\p{L}\p{N}])/iu;
+
+/** Key names that mean colour. */
+export const COLOR_KEYS =
+  /^(?:colou?r|colourway|colorway|farbe|couleur|colore|kolor|barva|цвет|колір|кольор)(?![\p{L}\p{N}])/iu;
+
+/** Key names that mean the brand, which a spec table often states outright. */
+export const BRAND_KEYS =
+  /^(?:brand|designer|label|maker|manufacturer|marke|marque|marca|бренд|виробник|производитель|торгов\p{L}*\s*марка)(?![\p{L}\p{N}])/iu;
+
+/** Key names that mean the store's own article number. */
+export const CODE_KEYS =
+  /^(?:sku|mpn|style\s*(?:code|no|number|#)?|product\s*(?:code|id|number)|item\s*(?:code|no|number)|article\s*(?:code|no|number)?|ref(?:erence)?|артикул|код\s*товару|код\s*товара)(?![\p{L}\p{N}])/iu;
+
+/**
+ * The value of the first spec row whose key matches, trimmed.
+ *
+ * First rather than best: a spec table lists each field once, and a page that
+ * repeats one (a mobile copy of the same block) repeats the same value.
+ */
+export function specValue(specs: SpecPair[] | undefined, keys: RegExp): string {
+  if (!Array.isArray(specs)) return "";
+  for (const pair of specs) {
+    const key = String(pair?.key ?? "").trim();
+    const value = String(pair?.value ?? "").trim();
+    if (!key || !value) continue;
+    if (keys.test(key)) return value;
+  }
+  return "";
+}
+
+/**
+ * A composition read out of running text: "Outer: 80% wool, 20% polyamide".
+ *
+ * The last resort for material, and a surprisingly good one — a percentage
+ * followed by a fibre is a sentence no marketing copy writes by accident. The
+ * whole run of percentages is returned rather than the first, because a garment
+ * is its blend and "80% wool" alone misstates it.
+ */
+export function compositionFromText(text: string): string {
+  const source = (text ?? "").replace(/\s+/g, " ");
+  if (!source) return "";
+
+  // Read the percentages one at a time and rebuild the blend, rather than
+  // matching the whole run in place. A pattern loose enough to span "80% wool,
+  // 20% polyamide" is also loose enough to keep going into "with ribbed trims",
+  // and a material field that ends mid-sentence reads like a bug because it is
+  // one. A fibre is one word, or two when the second is followed by the end of
+  // the clause — so "organic cotton," survives and "polyamide with" does not.
+  const atom =
+    /(\d{1,3})\s?%\s?([\p{L}][\p{L}-]{1,20}(?:\s[\p{L}][\p{L}-]{1,20}(?=\s*(?:[,;./)]|$)))?)/gu;
+
+  const parts: string[] = [];
+  let total = 0;
+  for (const match of source.matchAll(atom)) {
+    const fibre = match[2].trim();
+    // "20% off" is not a fibre, and a sale banner sits closer to the price than
+    // the composition does.
+    if (NOT_A_FIBRE.test(fibre)) continue;
+
+    const share = Number(match[1]);
+    parts.push(`${share}% ${fibre}`);
+    total += share;
+    // A composition adds up to 100. Once it does, the next percentage on the
+    // page belongs to another part of the garment — "Lining: 100% viscose" —
+    // and appending it would state a blend that adds up to two hundred.
+    if (total >= 100 || parts.length >= 6) break;
+  }
+  return parts.join(", ").slice(0, 200);
+}
+
+/** Words that follow a percentage without being a fibre. */
+const NOT_A_FIBRE =
+  /^(?:off|discount|sale|extra|more|less|code|promo|cashback|bonus|скидк\p{L}*|знижк\p{L}*|вигод\p{L}*)$/iu;
+
+// ── Is this string a size? ────────────────────────────────────────────────────
+// The collect extension reads size labels off the rendered page — buttons, a
+// select, a swatch row — because that is where a store puts them and the
+// stripped markup keeps none of it. It reads them loosely on purpose: a
+// container that mentions "size" also holds "Select size", a size-guide link,
+// the quantity stepper and sometimes the word "Sold out". Deciding what is
+// actually a size belongs here, next to the other field vocabularies, so the
+// extension stays a pair of eyes and the judgement has one home.
+//
+// What counts, in the spellings a European storefront ships:
+//   XS · S · M · XXL · 3XL          letter sizes, and their pairs (S/M, M-L)
+//   38 · 40.5 · 9.5                 clothing and shoe numbers
+//   EU 38 · UK 10 · US 6 · IT 42    the same with the system named
+//   32x34 · W32 L34                 waist and length
+//   One size · OS · Единый размер   the size that is not a size
+//
+// Anything else — a sentence, a price, a colour name, "Add to bag" — is not a
+// size, and a wrong size on a product is worse than a missing one: a shopper
+// picks it, and nobody finds out until the order.
+
+const LETTER_SIZE = "(?:xx?xs|xs|s|m|l|xl|xxl|xxxl|[2-6]xl)";
+const SIZE_SYSTEM = "(?:eu|uk|us|fr|it|de|jp|cn|ru|ua|int)";
+
+const SIZE_PATTERNS: RegExp[] = [
+  // Letter sizes, alone or paired: "S", "M/L", "XS-S".
+  new RegExp(`^${LETTER_SIZE}(?:\\s?[/–—-]\\s?${LETTER_SIZE})*$`, "i"),
+  // A plain number, whole or half: "38", "40,5", "9.5". Bounded below 100 so a
+  // price or a product code cannot pass as a size.
+  /^\d{1,2}(?:[.,]5)?$/,
+  // A number with its system, either order: "EU 38", "38 EU", "UK10".
+  new RegExp(`^${SIZE_SYSTEM}\\s?\\d{1,2}(?:[.,]5)?$`, "i"),
+  new RegExp(`^\\d{1,2}(?:[.,]5)?\\s?${SIZE_SYSTEM}$`, "i"),
+  // Waist and length: "32x34", "32/34", "W32 L34".
+  /^\d{2}\s?[x×х/]\s?\d{2}$/i,
+  /^w\s?\d{2}\s?l\s?\d{2}$/i,
+  // One size, in the words stores write it in.
+  /^(?:one[\s-]?size|onesize|os|free[\s-]?size|taille unique|unica|единый размер|один размер|універсальний|безрозмірний)$/i,
+];
+
+/** True when `raw` reads as a size a shopper could pick. */
+export function looksLikeSize(raw: string): boolean {
+  const value = (raw ?? "").trim().replace(/\s+/g, " ");
+  // Twenty, not twelve: "Единый размер" and "Taille unique" are sizes and are
+  // thirteen characters long. Long enough for the longest real label, short
+  // enough that the fit advice under the size row cannot pass.
+  if (!value || value.length > 20) return false;
+  return SIZE_PATTERNS.some((p) => p.test(value));
+}
+
+/**
+ * Size labels out of a loose list of candidates: the ones that are sizes, tidied,
+ * de-duplicated, in the order the page offered them.
+ *
+ * Page order is kept rather than sorted because it is the store's own order —
+ * XS before XXL, 36 before 46 — and any sort this function invented would have
+ * to re-derive it from the labels it just accepted.
+ */
+export function pickSizes(candidates: unknown, max = 40): string[] {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const value = String(raw ?? "").trim().replace(/\s+/g, " ");
+    if (!looksLikeSize(value)) continue;
+    const key = value.toLowerCase().replace(/[\s.,]/g, "");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// ── How many photos one product keeps ─────────────────────────────────────────
+// A fashion product page carries four to a dozen shots — front, back, detail,
+// on-model, flat-lay — and the catalogue wants the set, not a sample of it.
+// The number is a ceiling on storage and on mirror downloads per import rather
+// than a target, and it is shared so the parser, the importer and the mirror
+// cannot disagree about it: a cap that differs between them shows up as photos
+// that are extracted, stored as URLs, and then never downloaded.
+
+export const MAX_PRODUCT_IMAGES = 20;
 
 // ── Shared category keyword table ─────────────────────────────────────────────
 // One ordered rule list, used by BOTH retail-category parsing and product-name

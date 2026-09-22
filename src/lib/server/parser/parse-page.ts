@@ -18,6 +18,7 @@ import { fetchStorefrontProduct } from "./storefront";
 import { aiExtract, mergeAiIntoRaw, shouldUseAi } from "./ai-extract";
 import { matchSiteConfig, effectiveFetchSettings } from "./configs";
 import type {
+  PageEvidence,
   ParsedProduct,
   ParserAiSettings,
   ParserFetchSettings,
@@ -69,24 +70,14 @@ export interface ParsePageOptions {
    */
   html?: string;
   /**
-   * The price as printed on the page, when the caller read it off a rendered
-   * DOM. A currency hint only — the amount still comes from the page's own
-   * fields. Lets a store that prints "4 000 ₴" and names its currency nowhere
-   * in its markup still be read correctly.
+   * What the browser saw that its markup no longer says.
+   *
+   * Sent with `html` by the collect extension and by nothing else: a server
+   * fetch has no rendered page to read, and a pasted page is markup alone. The
+   * fields are candidates, not answers — they enter the same extractor at the
+   * lowest precedence, behind every structured source.
    */
-  priceDisplay?: string;
-  /**
-   * Currency the admin declared for this whole store before a run, used only
-   * when the page itself yields nothing. A declaration of the source currency,
-   * never a converted amount: the rate stays one server-side rate.
-   */
-  fallbackCurrency?: string;
-  /**
-   * The trailing text this store appends to every page title. Subtracted from
-   * the product name — whatever is identical across twenty of a shop's pages
-   * is the shop talking, not any one product's name.
-   */
-  titleSuffix?: string;
+  evidence?: PageEvidence;
 }
 
 function resolveUrl(href: string, base: string): string {
@@ -136,7 +127,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   // store anything at all would only be a request that can be refused.
   const storefront = pasted ? null : await fetchStorefrontProduct(url, settings, opts.fetchApiKey);
   if (storefront) {
-    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
+    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched);
     return {
       ok: true,
       products: product.name || product.imageUrl ? [product] : [],
@@ -189,7 +180,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   const single = async (): Promise<ParsedProduct[]> => {
     // pageUrl lets the extractor harvest the gallery out of the markup —
     // relative and protocol-relative image URLs need a base to resolve against.
-    let raw = extractProduct(fetched.html, matched, pageUrl);
+    let raw = extractProduct(fetched.html, matched, pageUrl, opts.evidence);
 
     const aiAllowed = opts.useAi ?? opts.aiSettings.enabled;
     const aiWanted = aiAllowed && (opts.aiSettings.mode === "always" || shouldUseAi(raw));
@@ -204,7 +195,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       }
     }
 
-    const prod = normalizeExtract(raw, pageUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
+    const prod = normalizeExtract(raw, pageUrl, matched);
     return prod.name || prod.imageUrl ? [prod] : [];
   };
 
@@ -219,7 +210,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       isListing = true;
       products = items.map((n) => {
         const purl = n.url ? resolveUrl(n.url, pageUrl) : "";
-        const prod = normalizeExtract(n, purl || pageUrl, matched, { priceDisplay: opts.priceDisplay, fallbackCurrency: opts.fallbackCurrency, titleSuffix: opts.titleSuffix });
+        const prod = normalizeExtract(n, purl || pageUrl, matched);
         // Keep each card's own source URL (empty → import inserts a fresh row
         // instead of all cards colliding on the listing URL).
         prod.sourceUrl = purl;

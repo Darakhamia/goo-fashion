@@ -305,7 +305,15 @@ function collectCandidates(html: string): string[] {
 
   // Inline JSON blobs (Shopify/Next hydration payloads) reference the gallery
   // as escaped URLs the tag scanners above never see.
-  const jsonUrlRe = /(?:https?:)?\\?\/\\?\/[^"'\s\\)>]+?\.(?:jpe?g|png|webp|avif)(?:\?[^"'\s\\)>]*)?/gi;
+  //
+  // `\/` has to be allowed for every segment, not just the two after the
+  // scheme. A payload that has been JSON-encoded twice — which is how Shopify
+  // writes one into a script tag — spells a photo
+  // `https:\/\/cdn.shopify.com\/s\/files\/1\/photo.jpg`, and a pattern that
+  // stops at the first backslash never reaches the extension that identifies it
+  // as an image. It matched the scheme and then quietly found nothing.
+  const jsonUrlRe =
+    /(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?\.(?:jpe?g|png|webp|avif)(?:\?(?:[^"'\s\\)>]|\\\/)*)?/gi;
   while ((m = jsonUrlRe.exec(html))) out.push(m[0].replace(/\\\//g, "/"));
 
   return out;
@@ -318,12 +326,21 @@ function collectCandidates(html: string): string[] {
  * search, and are also what a candidate must resemble to be accepted. Returns
  * only the NEW images, in document order; the caller keeps the trusted ones
  * first so the primary photo never changes.
+ *
+ * `extra` is for candidates the markup does not contain. The collect extension
+ * reads the rendered page, so it sees what a virtualised carousel mounted, what
+ * a lazy `<img>` finally resolved to, and the URLs inside the hydration payload
+ * it strips before sending — none of which survive into the HTML this function
+ * is given. They are candidates and nothing more: every one of them goes
+ * through the same host and naming tests below, because a page's script data
+ * names the recommendations carousel too.
  */
 export function harvestGalleryImages(
   html: string,
   baseUrl: string,
   trusted: string[],
   productName = "",
+  extra: string[] = [],
 ): string[] {
   const trustedUrls = trusted
     .map((u) => upgradeImageUrl(u, baseUrl))
@@ -346,7 +363,7 @@ export function harvestGalleryImages(
   const seen = new Set(trustedUrls.map(imageKey));
   const out: string[] = [];
 
-  const candidates = collectCandidates(html)
+  const candidates = [...collectCandidates(html), ...extra]
     .map((raw) => upgradeImageUrl(raw, baseUrl))
     .filter((u): u is string => !!u);
 

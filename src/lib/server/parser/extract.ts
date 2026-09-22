@@ -9,9 +9,21 @@
  *
  * No DOM library — pure regex/JSON parsing so it runs in any serverless route.
  */
-import type { ParserSiteConfig, RawExtract, ParserRuleField } from "./types";
+import type { ParserSiteConfig, RawExtract, ParserRuleField, PageEvidence } from "./types";
 import { harvestGalleryImages } from "./gallery";
-import { canonicalColor } from "@/lib/server/product-fields";
+import {
+  canonicalColor,
+  extractCurrencyFromDisplay,
+  pickSizes,
+  specValue,
+  compositionFromText,
+  MATERIAL_KEYS,
+  COLOR_KEYS,
+  BRAND_KEYS,
+  CODE_KEYS,
+  normalizeGtin,
+  normalizeCode,
+} from "@/lib/server/product-fields";
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
 
@@ -259,6 +271,159 @@ function offerInfo(v: JsonValue | undefined): OfferInfo {
 }
 
 /**
+ * The codes a Product node carries: the item's own number, the maker's, the
+ * store's.
+ *
+ * Read from the node and from its offers, because a store that lists one offer
+ * per size hangs the GTIN off the offer rather than off the product.
+ */
+function codesFromNode(node: JsonObject): { gtin: string; mpn: string; sku: string } {
+  const gtins: string[] = [];
+  const mpns: string[] = [];
+  const skus: string[] = [];
+
+  const read = (obj: JsonObject) => {
+    for (const key of ["gtin", "gtin8", "gtin12", "gtin13", "gtin14", "ean", "upc"] as const) {
+      const value = asString(obj[key]);
+      if (value) gtins.push(value);
+    }
+    const mpn = asString(obj.mpn);
+    if (mpn) mpns.push(mpn);
+    const sku = asString(obj.sku) ?? asString(obj.productID);
+    if (sku) skus.push(sku);
+  };
+
+  read(node);
+  for (const key of ["offers", "hasVariant"] as const) {
+    const value = node[key];
+    if (Array.isArray(value)) value.forEach((x) => isObj(x) && read(x));
+    else if (isObj(value)) read(value);
+  }
+
+  return {
+    gtin: gtins.map(normalizeGtin).find(Boolean) ?? "",
+    mpn: normalizeCode(mpns[0]),
+    sku: normalizeCode(skus[0]),
+  };
+}
+
+/**
+ * The breadcrumb trail out of a `BreadcrumbList`, outermost first.
+ *
+ * Worth reading from the markup even though the extension also sends the
+ * rendered trail: `application/ld+json` survives the content script's strip, so
+ * this works on a pasted page and on a server fetch too, where there is no
+ * rendered page to read.
+ *
+ * The last crumb is usually the product itself and is kept — it costs nothing
+ * for classification, since the name is matched first anyway.
+ */
+function breadcrumbsFromJsonLd(html: string): string[] {
+  for (const block of parseJsonLdBlocks(html)) {
+    const candidates: JsonObject[] = [block];
+    const graph = block["@graph"];
+    if (Array.isArray(graph)) graph.forEach((g) => isObj(g) && candidates.push(g));
+
+    for (const node of candidates) {
+      if (!typeIncludes(node, "BreadcrumbList")) continue;
+      const list = node.itemListElement;
+      if (!Array.isArray(list)) continue;
+
+      const crumbs: { position: number; name: string }[] = [];
+      list.forEach((entry, index) => {
+        if (!isObj(entry)) return;
+        // `item` is either the thing itself or just its URL; only the former
+        // carries a name worth reading.
+        const name =
+          asString(entry.name) ?? (isObj(entry.item) ? asString(entry.item.name) : undefined);
+        if (!name) return;
+        const stated =
+          typeof entry.position === "number" ? entry.position : Number(asString(entry.position));
+        crumbs.push({
+          position: Number.isFinite(stated) ? (stated as number) : index + 1,
+          name: name.trim(),
+        });
+      });
+
+      if (crumbs.length) {
+        return crumbs
+          .sort((a, b) => a.position - b.position)
+          .map((c) => c.name)
+          .filter(Boolean)
+          .slice(0, 12);
+      }
+    }
+  }
+  return [];
+}
+
+/**
+ * The sizes a Product node states, wherever it states them.
+ *
+ * Until now this returned nothing at all: `sizes: []` was hard-coded in both
+ * JSON-LD paths, and the only source of sizes in the whole parser was a per-site
+ * recipe rule an admin had written by hand. A store that publishes its sizes as
+ * structured data — which is most of them, since Google Shopping asks for it —
+ * had them read and thrown away.
+ *
+ * Four places carry them, and a page uses whichever its platform generates:
+ *
+ *   size: "M"                        the product is one size
+ *   size: ["S","M","L"]              or several
+ *   hasVariant: [{ size: "M" }, …]   the schema.org way since 2022
+ *   offers: [{ size: "M" }, …]       the older way, still everywhere
+ *   additionalProperty: [{ name: "Size", value: "M" }]
+ *
+ * `size` itself may be a string, a `SizeSpecification` with a name, or a
+ * `QuantitativeValue` with a value — all three appear in the wild.
+ */
+function sizeValues(v: JsonValue | undefined, out: string[]): void {
+  if (v === undefined || v === null) return;
+  if (Array.isArray(v)) {
+    for (const item of v) sizeValues(item as JsonValue, out);
+    return;
+  }
+  if (isObj(v)) {
+    const named = asString(v.name) ?? asString(v.value) ?? asString(v.sizeLabel);
+    if (named) out.push(named);
+    return;
+  }
+  const str = asString(v);
+  if (str) out.push(str);
+}
+
+function sizesFromNode(node: JsonObject): string[] {
+  const out: string[] = [];
+
+  sizeValues(node.size as JsonValue, out);
+
+  for (const key of ["hasVariant", "offers", "model"] as const) {
+    const value = node[key];
+    const nodes: JsonObject[] = [];
+    if (Array.isArray(value)) value.forEach((x) => isObj(x) && nodes.push(x));
+    else if (isObj(value)) nodes.push(value);
+    for (const child of nodes) {
+      sizeValues(child.size as JsonValue, out);
+      // An offer can hang the size off what it offers rather than off itself.
+      if (isObj(child.itemOffered)) sizeValues(child.itemOffered.size as JsonValue, out);
+    }
+  }
+
+  const props = node.additionalProperty;
+  const propList: JsonObject[] = [];
+  if (Array.isArray(props)) props.forEach((x) => isObj(x) && propList.push(x));
+  else if (isObj(props)) propList.push(props);
+  for (const prop of propList) {
+    const name = (asString(prop.name) ?? "").toLowerCase();
+    if (/^(?:size|sizes|talla|taille|größe|grosse|taglia|розмір|размер)$/.test(name)) {
+      sizeValues(prop.value as JsonValue, out);
+    }
+  }
+
+  return [...new Set(out.map((x) => x.trim()).filter(Boolean))];
+}
+
+/**
  * The colour a Product node states, wherever it states it.
  *
  * `color` is the documented field, but plenty of feeds put the colourway in an
@@ -319,7 +484,8 @@ function rawFromProductNode(node: JsonObject): Partial<RawExtract> & { found: bo
     // descriptions are sometimes HTML — strip tags so the catalog stays clean
     description: description ? stripTags(description) : undefined,
     url: url && /^https?:\/\//.test(url) ? url : undefined,
-    sizes: [],
+    sizes: sizesFromNode(node),
+    ...codesFromNode(node),
   };
 }
 
@@ -334,7 +500,10 @@ function nodeToRaw(node: JsonObject): RawExtract {
     currency: r.currency,
     image: r.image,
     images: r.images ?? [],
-    sizes: [],
+    sizes: r.sizes ?? [],
+    gtin: r.gtin,
+    mpn: r.mpn,
+    sku: r.sku,
     color: r.color,
     material: r.material,
     description: r.description,
@@ -387,40 +556,6 @@ function fromMeta(html: string): Partial<RawExtract> {
   };
 }
 
-/**
- * The page's own heading and title.
- *
- * Neither was read before, which is why product names arrived as
- * "Куртка бомбер, чёрная — MyStore | Купить с доставкой": the name came from
- * `og:title`, and an `og:title` is written for a search result, not a
- * catalogue. An `<h1>` is what the shop prints at the top of the page for a
- * shopper, so it is nearly always the product and nothing else.
- *
- * `<title>` is kept as well, but only as a last resort and as the raw material
- * for working out what this store appends to every page.
- */
-function fromHeading(html: string): { h1?: string; title?: string } {
-  const strip = (frag: string) =>
-    decodeEntities(frag.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
-
-  let h1: string | undefined;
-  // First non-empty h1: a header logo is sometimes marked up as one, and those
-  // are usually image-only, so they strip to nothing and are skipped.
-  const headings = html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi);
-  for (const m of headings) {
-    const text = strip(m[1] ?? "");
-    if (text && text.length <= 200) {
-      h1 = text;
-      break;
-    }
-  }
-
-  const tm = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-  const title = tm ? strip(tm[1] ?? "") : undefined;
-
-  return { h1, title: title || undefined };
-}
-
 function fromMicrodata(html: string): Partial<RawExtract> {
   const prop = (name: string): string | undefined => {
     // <span itemprop="price" content="49.99"> or text content
@@ -442,6 +577,9 @@ function fromMicrodata(html: string): Partial<RawExtract> {
     return undefined;
   };
   return {
+    gtin: normalizeGtin(prop("gtin13") ?? prop("gtin") ?? prop("gtin12") ?? prop("gtin8")),
+    mpn: normalizeCode(prop("mpn")),
+    sku: normalizeCode(prop("sku") ?? prop("productID")),
     name: prop("name"),
     brand: prop("brand"),
     price: prop("price"),
@@ -507,6 +645,7 @@ export function extractProduct(
   html: string,
   config?: ParserSiteConfig | null,
   baseUrl?: string,
+  evidence?: PageEvidence,
 ): RawExtract {
   const strategies: string[] = [];
   const jsonld = fromJsonLd(html);
@@ -515,8 +654,6 @@ export function extractProduct(
   if (meta.name || meta.price || (meta.images?.length ?? 0) > 0) strategies.push("opengraph");
   const micro = fromMicrodata(html);
   if (micro.name || micro.price) strategies.push("microdata");
-  const heading = fromHeading(html);
-  if (heading.h1) strategies.push("h1");
 
   // Recipe regex overrides (highest precedence)
   const ruleVal = (field: ParserRuleField): string | undefined =>
@@ -528,11 +665,31 @@ export function extractProduct(
 
   const images = [...new Set([...(jsonld.images ?? []), ...(meta.images ?? [])])].filter(Boolean);
 
-  // sizes only come from recipe rules today (split on comma / pipe / semicolon)
+  // Sizes, in order of how directly the page said it: a recipe rule an admin
+  // wrote, then the store's own structured data, then the size control a
+  // shopper clicks.
+  //
+  // First non-empty wins rather than a merge, because the three spell the same
+  // size differently — "40", "EU 40" and "IT 40" are one size in three
+  // vocabularies, and merged they become three sizes the product does not have.
+  //
+  // Only the rendered candidates are filtered. Structured data is the store
+  // stating its own sizes and is taken verbatim; the DOM list arrives with the
+  // size-guide link and the "Select size" placeholder still in it.
   const sizeRaw = ruleVal("sizes");
   const sizes = sizeRaw
     ? sizeRaw.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
-    : [];
+    : (jsonld.sizes?.length ? jsonld.sizes : pickSizes(evidence?.sizes));
+
+  // Description: the store's own structured copy, then what the page renders —
+  // which on a store that hides its description in an accordion is the only
+  // full version there is, `og:description` being a truncated marketing line.
+  const description = pick(
+    ruleVal("description"),
+    jsonld.description,
+    evidence?.descriptionText,
+    meta.description,
+  );
 
   const image = pick(ruleVal("image"), jsonld.image, meta.image, images[0]);
 
@@ -544,18 +701,45 @@ export function extractProduct(
   let galleryImages: string[] = [];
   if (baseUrl) {
     const anchor = image ? [image, ...images] : images;
-    const productName = pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title) ?? "";
-    galleryImages = harvestGalleryImages(html, baseUrl, anchor, productName);
+    const productName = pick(ruleVal("name"), jsonld.name, meta.name, micro.name) ?? "";
+    galleryImages = harvestGalleryImages(html, baseUrl, anchor, productName, evidence?.images ?? []);
     if (galleryImages.length) strategies.push("gallery");
   }
 
   return {
-    pageTitle: heading.title,
-    name: pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title),
-    brand: pick(ruleVal("brand"), jsonld.brand, meta.brand, micro.brand),
-    price: pick(ruleVal("price"), jsonld.price, meta.price, micro.price),
+    name: pick(ruleVal("name"), jsonld.name, meta.name, micro.name),
+    // Brand: structured data first, then the two places a store that treats its
+    // designer as a link rather than a property puts it — the spec table, and
+    // whatever the page marks as the brand.
+    brand: pick(
+      ruleVal("brand"),
+      jsonld.brand,
+      meta.brand,
+      micro.brand,
+      specValue(evidence?.specs, BRAND_KEYS),
+      evidence?.brandText,
+    ),
+    // The trail, from the markup and from the rendered page. The markup's own
+    // BreadcrumbList wins: it is data rather than a reading of the layout.
+    breadcrumbs: (() => {
+      const fromMarkup = breadcrumbsFromJsonLd(html);
+      return fromMarkup.length ? fromMarkup : (evidence?.breadcrumbs ?? []).slice(0, 12);
+    })(),
+    // The rendered price is the last resort for both fields, and for opposite
+    // reasons. For the amount it is a rescue: a page whose markup states no
+    // price at all would otherwise be skipped entirely. For the currency it is
+    // the common case rather than the exception — plenty of stores put a bare
+    // number in their markup and leave the symbol to the text a shopper reads,
+    // and assuming dollars there is how a hryvnia price became a dollar one.
+    price: pick(ruleVal("price"), jsonld.price, meta.price, micro.price, evidence?.priceText),
     priceOriginal: jsonld.priceOriginal,
-    currency: pick(ruleVal("currency"), jsonld.currency, meta.currency, micro.currency),
+    currency: pick(
+      ruleVal("currency"),
+      jsonld.currency,
+      meta.currency,
+      micro.currency,
+      evidence?.priceText ? extractCurrencyFromDisplay(evidence.priceText) : undefined,
+    ),
     image,
     images: [
       ...(image && !images.includes(image) ? [image, ...images] : images),
@@ -565,9 +749,45 @@ export function extractProduct(
     // Colour is worth chasing through every layer: it is what the swatch, the
     // colour filter and half the stylist's vocabulary are built from, and a
     // page that says "Black" anywhere means it.
-    color: pick(ruleVal("color"), jsonld.color, meta.color, micro.color, colorFromHtml(html)),
-    material: pick(ruleVal("material"), jsonld.material, micro.material),
-    description: pick(ruleVal("description"), jsonld.description, meta.description),
+    // Colour, in order of how directly the page said it. The rendered swatch and
+    // the spec row come before the markup scan because they are what the shopper
+    // is looking at: `colorFromHtml` mines attributes and inline JSON, which on
+    // a page with several colourways can name any of them.
+    color: pick(
+      ruleVal("color"),
+      jsonld.color,
+      meta.color,
+      micro.color,
+      evidence?.colorText,
+      specValue(evidence?.specs, COLOR_KEYS),
+      colorFromHtml(html),
+    ),
+    // Material, which until now came from JSON-LD `material` and nowhere else —
+    // a field few stores fill, while the page prints "80% wool, 20% polyamide"
+    // two lines under the price. Now: the spec table the extension read, then
+    // the composition out of the description's own text.
+    material: pick(
+      ruleVal("material"),
+      jsonld.material,
+      micro.material,
+      // A composition read out of the spec row beats the row itself. The row is
+      // whatever the page printed on that line, and a store that renders its
+      // whole spec block as one run of text hands over "95% cotton, 5% elastane
+      // Care: machine wash" — the blend is the field, the care instruction is
+      // the next row that never got its own line.
+      compositionFromText(specValue(evidence?.specs, MATERIAL_KEYS)),
+      specValue(evidence?.specs, MATERIAL_KEYS),
+      compositionFromText(evidence?.descriptionText ?? ""),
+      compositionFromText(description ?? ""),
+    ),
+    description,
+    variantUrls: evidence?.variantUrls ?? [],
+    // Codes, for recognising this item on another store's page. The spec table
+    // is the fallback: an article number printed in a table is what a store
+    // shows when it declares nothing.
+    gtin: pick(jsonld.gtin, micro.gtin, normalizeGtin(specValue(evidence?.specs, CODE_KEYS))),
+    mpn: pick(jsonld.mpn, micro.mpn),
+    sku: pick(jsonld.sku, micro.sku, normalizeCode(specValue(evidence?.specs, CODE_KEYS))),
     strategies,
   };
 }

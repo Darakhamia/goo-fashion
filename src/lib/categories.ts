@@ -159,6 +159,90 @@ export const DEFAULT_CATEGORY_GROUPS: CategoryGroup[] = [
   },
 ];
 
+/**
+ * Every form a word might be the plural of, itself included.
+ *
+ * A set rather than one answer, because English plurals in -ies are ambiguous
+ * and the tree contains both kinds: "accessories" is the plural of "accessory",
+ * "hoodies" of "hoodie", and no rule tells them apart without a dictionary. Both
+ * candidates are generated and a match on either counts — cheaper and more
+ * honest than a stemmer that is right most of the time.
+ *
+ * What it must never do is mangle a word that merely ends in s: "dress" is not
+ * the plural of "dres".
+ */
+function wordForms(word: string): string[] {
+  const forms = new Set<string>([word]);
+  if (word.length > 3) {
+    if (word.endsWith("ies")) {
+      forms.add(`${word.slice(0, -3)}y`);
+      forms.add(word.slice(0, -1));
+    } else if (/(?:s|x|z|ch|sh)es$/.test(word)) {
+      forms.add(word.slice(0, -2));
+    } else if (!word.endsWith("ss") && word.endsWith("s")) {
+      forms.add(word.slice(0, -1));
+    }
+  }
+  return [...forms];
+}
+
+/**
+ * The tree's own label for what a piece of text is describing.
+ *
+ * The importer had no answer for subcategory at all — it wrote none, so every
+ * product landed with the field empty and the filter showed it under whatever
+ * its category implied. The label is in the text: a product called "Wool-blend
+ * bomber jacket" is a Bomber Jacket, and a breadcrumb reading "Women / Clothing
+ * / Jackets" says Jackets.
+ *
+ * Matching is by words, not by substring, and the most specific label wins — a
+ * bomber jacket matches both "Jackets" and "Bomber Jackets", and the second is
+ * the answer. Labels that name two things ("Hoodies & Sweatshirts") match on
+ * either half, and a trailing plural is stripped from every word so "Sneakers"
+ * finds a sneaker.
+ *
+ * Returns undefined when nothing in the tree is named, which is the honest
+ * answer for "Silk scarf" in a tree with no scarf label — the caller then falls
+ * back to what the category implies.
+ */
+export function matchSubcategoryLabel(
+  text: string,
+  tree: CategoryGroup[] = DEFAULT_CATEGORY_GROUPS,
+): string | undefined {
+  const words = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .split(" ")
+      .filter(Boolean);
+
+  // Both sides are expanded, not just the label: a page writes "Jackets" where
+  // the tree writes "Jackets" and the product name writes "jacket", and all
+  // three have to meet.
+  const textWords = words(text ?? "");
+  if (textWords.join(" ").length < 3) return undefined;
+  const haystack = new Set(textWords.flatMap(wordForms));
+
+  const hasWord = (word: string) => wordForms(word).some((form) => haystack.has(form));
+
+  let best: { label: string; score: number } | undefined;
+
+  for (const group of tree) {
+    for (const item of group.items) {
+      // "Hoodies & Sweatshirts" is two names for one label.
+      for (const half of item.label.split(/\s*&\s*/)) {
+        const parts = words(half);
+        if (!parts.length) continue;
+        if (!parts.every(hasWord)) continue;
+        if (!best || parts.length > best.score) best = { label: item.label, score: parts.length };
+      }
+    }
+  }
+
+  return best?.label;
+}
+
 /** Subcategory label → the category value it filters on. */
 export function subcategoryToValue(
   tree: CategoryGroup[] = DEFAULT_CATEGORY_GROUPS,

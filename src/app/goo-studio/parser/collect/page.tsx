@@ -82,13 +82,6 @@ export default function CollectPage() {
    * exactly the moment before the admin presses the button.
    */
   const stoppedRef = useRef(false);
-  /**
-   * Page titles seen in this run, sent back with each product so the server can
-   * work out what this store appends to every title. Kept here because this is
-   * the only place that sees more than one of the store's pages; what the
-   * suffix *means* is still decided server-side.
-   */
-  const titlesRef = useRef<string[]>([]);
 
   const reply = useCallback((id: number | undefined, ok: boolean, data: unknown) => {
     if (typeof id !== "number") return;
@@ -166,27 +159,9 @@ export default function CollectPage() {
           setConnected(true);
           setPhase("collecting");
           try {
-            const pageTitle = typeof payload.pageTitle === "string" ? payload.pageTitle : "";
-            if (pageTitle && !titlesRef.current.includes(pageTitle)) {
-              titlesRef.current = [...titlesRef.current, pageTitle].slice(-12);
-            }
-            const data = await callApi({
-              action: "ingest",
-              ...payload,
-              titles: titlesRef.current,
-            });
+            const data = await callApi({ action: "ingest", ...payload });
             const result = data.result as CrawlItemResult | undefined;
             if (result) setResults((prev) => [...prev, result]);
-            // A store that does not say what currency it prices in will not
-            // start saying so on the next product, so this is said once, up
-            // front, rather than left to be inferred from a growing list of
-            // skipped rows. Nothing is lost meanwhile: the addresses are in the
-            // outcomes, and a re-run with the currency set picks them up.
-            if (result?.needs === "currency") {
-              setNotice(
-                "This store does not say which currency its prices are in, so nothing is being imported. Open the extension, set “Store currency”, and run it again.",
-              );
-            }
             reply(msg.id, true, data);
           } catch (err) {
             const message = err instanceof Error ? err.message : "Ingest failed";
@@ -231,7 +206,6 @@ export default function CollectPage() {
 
   function reset() {
     stoppedRef.current = false;
-    titlesRef.current = [];
     setResults([]);
     setPlanned(0);
     setNotice("");
@@ -402,6 +376,14 @@ export default function CollectPage() {
                       {r.reason}
                     </span>
                   )}
+                  {!r.reason && detailLine(r) && (
+                    <span
+                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[260px] flex-shrink-0"
+                      title={detailLine(r)}
+                    >
+                      {detailLine(r)}
+                    </span>
+                  )}
                   <a
                     href={r.url}
                     target="_blank"
@@ -425,6 +407,35 @@ export default function CollectPage() {
       )}
     </div>
   );
+}
+
+/**
+ * What a finished page has to say for itself beyond "imported".
+ *
+ * Two questions the admin would otherwise have to open the catalogue to answer:
+ * how many photos came across, and what happened to the price. The second one
+ * matters most on a store that does not price in dollars — the catalogue stores
+ * dollars, so the row says which rate turned ₴4,000 into a number, rather than
+ * leaving the admin to wonder whether it did.
+ */
+function detailLine(r: CrawlItemResult): string {
+  const parts: string[] = [];
+  if (r.images) parts.push(`${r.images} photo${r.images === 1 ? "" : "s"}`);
+  if (r.priceNote) parts.push(r.priceNote);
+  if (r.variantsLinked) {
+    parts.push(`grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}`);
+  }
+  // A merge is the interesting outcome on this row: the page did not create a
+  // product, it added a place to buy one we already had.
+  if (r.merged) {
+    const filled = (r.mergedFields ?? []).filter((f) => f !== "retailer");
+    parts.push(
+      filled.length
+        ? `linked to an existing product, filling ${filled.join(", ")}`
+        : "linked to an existing product",
+    );
+  }
+  return parts.join(" · ");
 }
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
