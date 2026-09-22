@@ -163,19 +163,30 @@ export interface Product {
   priceMax: number;
   currency: string;
   /**
-   * `priceMin`/`priceMax` on the USD scale, so prices in different currencies
-   * can be filtered and sorted against each other. Display always uses
-   * `priceMin` with `currency` — converting for display would misreport what
-   * the store actually charges.
+   * What the store charged, before the importer stated it in dollars.
    *
-   * Optional: rows imported before migration 019 have none.
+   * `priceMin`/`priceMax` are the catalogue's own figures and are compared
+   * across products, so they are one currency. These three say where a
+   * converted figure came from: the amount, its currency, and the rate and day
+   * used — enough to re-check a price that looks wrong without re-visiting the
+   * store. Absent on products that were priced in dollars to begin with.
    */
-  priceMinUsd?: number;
-  priceMaxUsd?: number;
-  /** Units of `currency` per one USD, as used at import time. 1 for USD. */
+  sourcePrice?: number;
+  sourceCurrency?: string;
   fxRate?: number;
-  /** ISO date (YYYY-MM-DD) the rate is attributed to. */
   fxDate?: string;
+  /**
+   * The codes that identify this item away from any one store.
+   *
+   * `gtin` is the item's own number and is verified before it is stored, so two
+   * rows carrying the same one are the same thing — which is how a second
+   * retailer's page joins this product instead of becoming a second copy of it.
+   * `mpn` does the same within a brand. `sku` is one store's shelf label and is
+   * kept for reference only.
+   */
+  gtin?: string;
+  mpn?: string;
+  sku?: string;
   isNew: boolean;
   isSaved: boolean;
   styleKeywords: StyleKeyword[];

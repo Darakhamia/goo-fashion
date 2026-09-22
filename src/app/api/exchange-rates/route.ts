@@ -1,26 +1,33 @@
 import { NextResponse } from "next/server";
+import { usdRates, FALLBACK_RATES } from "@/lib/server/fx";
 
+/**
+ * The rates the currency switcher offers.
+ *
+ * The table itself is fetched and cached by `@/lib/server/fx`, which the
+ * importer uses to state prices in dollars — the same numbers, from one place,
+ * so a product's stored price and the price a shopper sees converted cannot
+ * disagree. This route narrows that table to the currencies the switcher has a
+ * symbol for and hands it to the browser.
+ */
 const CODES = ["EUR", "GBP", "UAH", "CZK", "JPY", "TRY"];
-const FALLBACK = { EUR: 0.85, GBP: 0.74, UAH: 44, CZK: 21, JPY: 157, TRY: 45 };
+
+function pick(rates: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    CODES.map((c) => [c, rates[c]]).filter(([, v]) => typeof v === "number"),
+  );
+}
 
 export async function GET() {
-  try {
-    const res = await fetch(
-      "https://open.er-api.com/v6/latest/USD",
-      { next: { revalidate: 3600 } }
-    );
-    if (!res.ok) throw new Error(`${res.status}`);
-    const data: { result: string; rates: Record<string, number> } = await res.json();
-    if (data.result !== "success") throw new Error("bad response");
-    const rates = Object.fromEntries(
-      CODES.map((c) => [c, data.rates[c]]).filter(([, v]) => v != null)
-    );
-    return NextResponse.json(rates, {
-      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=600" },
-    });
-  } catch {
-    return NextResponse.json(FALLBACK, {
-      headers: { "Cache-Control": "public, s-maxage=300" },
-    });
-  }
+  const { rates, live } = await usdRates();
+
+  // A fallback table is cached briefly, so the switcher picks live numbers up
+  // soon after the provider comes back rather than an hour later.
+  return NextResponse.json(pick(live ? rates : FALLBACK_RATES), {
+    headers: {
+      "Cache-Control": live
+        ? "public, s-maxage=3600, stale-while-revalidate=600"
+        : "public, s-maxage=300",
+    },
+  });
 }

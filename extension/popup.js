@@ -21,7 +21,6 @@ const COLLECT_PATH = "/goo-studio/parser/collect";
 const el = {
   store: document.getElementById("store"),
   limit: document.getElementById("limit"),
-  currency: document.getElementById("currency"),
   studio: document.getElementById("studio"),
   start: document.getElementById("start"),
   stop: document.getElementById("stop"),
@@ -49,10 +48,9 @@ function send(type, payload) {
 // ── Setup ────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const stored = await chrome.storage.sync.get(["studioOrigin", "limit", "storeCurrency"]);
+  const stored = await chrome.storage.sync.get(["studioOrigin", "limit"]);
   el.studio.value = stored.studioOrigin || DEFAULT_STUDIO;
   if (stored.limit) el.limit.value = stored.limit;
-  if (stored.storeCurrency) el.currency.value = stored.storeCurrency;
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeUrl = tab?.url ?? "";
@@ -106,12 +104,7 @@ async function start() {
 
   const studioOrigin = (el.studio.value || DEFAULT_STUDIO).replace(/\/+$/, "");
   const limit = Math.max(1, Math.min(Number(el.limit.value) || 30, 2000));
-  // Declared, never converted. Saying "this store prices in hryvnia" is a fact
-  // about the store; doing the sums here would give every admin their own rate
-  // and put numbers in the catalogue that nobody can reproduce. The server
-  // converts, once, and records the rate it used.
-  const storeCurrency = (el.currency.value || "").toUpperCase();
-  await chrome.storage.sync.set({ studioOrigin, limit, storeCurrency });
+  await chrome.storage.sync.set({ studioOrigin, limit });
 
   // Must be inside the click: Chrome refuses a permission prompt without one.
   let granted = false;
@@ -136,7 +129,7 @@ async function start() {
     return;
   }
 
-  const res = await send("start", { storeUrl: activeUrl, limit, storeCurrency });
+  const res = await send("start", { storeUrl: activeUrl, limit });
   if (res && res.ok === false) {
     note(res.error ?? "Could not start.");
     el.start.disabled = false;

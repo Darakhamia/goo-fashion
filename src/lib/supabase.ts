@@ -127,13 +127,6 @@ export type DbProduct = {
   price_min: number;
   price_max: number;
   currency: string;
-  // The same prices on one comparable scale, plus the rate that put them there
-  // and the day it came from. Nullable: rows imported before migration 019 have
-  // no recorded rate, and every reader coalesces to price_min for those.
-  price_min_usd?: number | null;
-  price_max_usd?: number | null;
-  fx_rate?: number | null;
-  fx_date?: string | null;
   is_new: boolean;
   is_saved: boolean;
   style_keywords: string[];
@@ -149,4 +142,13 @@ export type DbProduct = {
   color_group_ids?: number[] | null;
   // Backdrop colour sampled from the photo's corners (migration 015)
   bg_color?: string | null;
+  // What the store charged, before the importer converted it (migration 019)
+  source_price?: number | null;
+  source_currency?: string | null;
+  fx_rate?: number | null;
+  fx_date?: string | null;
+  // Codes that identify the item rather than the listing (migration 020)
+  gtin?: string | null;
+  mpn?: string | null;
+  sku?: string | null;
 };

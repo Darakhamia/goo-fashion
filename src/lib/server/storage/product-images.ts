@@ -11,6 +11,7 @@
  * background-removal tool (`/api/admin/image-tools`) reuses them too.
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
 
 export const PRODUCT_IMAGES_BUCKET = "product-images";
 
@@ -150,7 +151,11 @@ export async function mirrorProductImages(input: {
 }): Promise<MirrorResult> {
   const imageUrl = (input.imageUrl ?? "").trim();
   const gallery = (input.images ?? []).map((u) => (u ?? "").trim()).filter(Boolean);
-  const max = Math.max(1, Math.min(input.max ?? 12, 12));
+  // Shared with the extractor and the importer. A mirror ceiling below theirs
+  // is the quiet kind of bug: the photos are found, stored as URLs, and then
+  // simply never downloaded, so the product looks complete until the retailer
+  // CDN stops serving it.
+  const max = Math.max(1, Math.min(input.max ?? MAX_PRODUCT_IMAGES, MAX_PRODUCT_IMAGES));
 
   if (!isSupabaseConfigured || !supabase) {
     return { imageUrl, images: gallery, mirrored: 0, failed: 0, attempted: false };

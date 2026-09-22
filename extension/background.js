@@ -74,13 +74,6 @@ const state = {
   imported: 0,
   failed: 0,
   delayMs: MIN_DELAY_MS,
-  /**
-   * Currency the admin declared for this store, passed straight through to the
-   * server. Nothing here converts anything: a rate applied in this browser
-   * would be this admin's rate at this moment, and two admins importing one
-   * store would write different numbers for the same product.
-   */
-  storeCurrency: "",
   studioTabId: null,
 };
 
@@ -289,10 +282,20 @@ async function snapshotPage(url) {
     if (!result || !result.ok) {
       return { error: result?.error ?? "Could not read the page" };
     }
+    // `images` and `priceText` are what the page said before the strip removed
+    // it — see the header of snapshot.js. They travel as candidates; the server
+    // decides which of them belong to the product.
     return {
       html: result.html,
-      priceDisplay: result.priceDisplay,
-      pageTitle: result.pageTitle,
+      images: Array.isArray(result.images) ? result.images : [],
+      priceText: typeof result.priceText === "string" ? result.priceText : "",
+      sizes: Array.isArray(result.sizes) ? result.sizes : [],
+      colorText: typeof result.colorText === "string" ? result.colorText : "",
+      variantUrls: Array.isArray(result.variantUrls) ? result.variantUrls : [],
+      descriptionText: typeof result.descriptionText === "string" ? result.descriptionText : "",
+      specs: Array.isArray(result.specs) ? result.specs : [],
+      breadcrumbs: Array.isArray(result.breadcrumbs) ? result.breadcrumbs : [],
+      brandText: typeof result.brandText === "string" ? result.brandText : "",
       status,
     };
   } catch (err) {
@@ -322,7 +325,7 @@ function finish() {
   void tellPage("done", {});
 }
 
-async function run({ storeUrl, limit, storeCurrency }) {
+async function run({ storeUrl, limit }) {
   let origin;
   try {
     origin = new URL(storeUrl).origin;
@@ -342,7 +345,6 @@ async function run({ storeUrl, limit, storeCurrency }) {
     imported: 0,
     failed: 0,
     delayMs: MIN_DELAY_MS,
-    storeCurrency: /^[A-Z]{3}$/.test(storeCurrency ?? "") ? storeCurrency : "",
   });
 
   // The collect tab has to be there before anything is asked of the store —
@@ -435,12 +437,15 @@ async function run({ storeUrl, limit, storeCurrency }) {
       const ingested = await askPage("ingest", {
         url,
         html: snap.html,
-        // What the price looks like on screen, and what the admin said the
-        // store charges in. Both are hints about which currency a number is
-        // in — the amount still comes from the page's own fields.
-        priceDisplay: snap.priceDisplay,
-        storeCurrency: state.storeCurrency,
-        pageTitle: snap.pageTitle,
+        images: snap.images,
+        priceText: snap.priceText,
+        sizes: snap.sizes,
+        colorText: snap.colorText,
+        variantUrls: snap.variantUrls,
+        descriptionText: snap.descriptionText,
+        specs: snap.specs,
+        breadcrumbs: snap.breadcrumbs,
+        brandText: snap.brandText,
       });
       collected++;
       state.done = collected;
@@ -514,10 +519,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       const storeUrl = msg.payload?.storeUrl;
       const limit = Math.max(1, Math.min(Number(msg.payload?.limit) || 30, 2_000));
-      const storeCurrency = String(msg.payload?.storeCurrency ?? "")
-        .toUpperCase()
-        .slice(0, 3);
-      run({ storeUrl, limit, storeCurrency }).catch((err) => {
+      run({ storeUrl, limit }).catch((err) => {
         halt(err?.message ?? "The run failed unexpectedly.");
       });
       sendResponse({ ok: true });

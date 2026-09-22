@@ -141,10 +141,10 @@ export default async function OutfitDetailPage({ params }: Props) {
                     Total
                   </p>
                   <p className="text-2xl font-bold text-[var(--foreground)]">
-                    <Price amount={outfit.totalPriceMin} currency="USD" />
+                    <Price amount={outfit.totalPriceMin} />
                     <span className="text-base text-[var(--foreground-muted)]">
                       {" "}
-                      — <Price amount={outfit.totalPriceMax} currency="USD" />
+                      — <Price amount={outfit.totalPriceMax} />
                     </span>
                   </p>
                 </div>

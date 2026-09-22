@@ -5,23 +5,25 @@
  */
 import {
   cleanName,
-  tidyProductName,
   parsePrice,
   extractCurrencyFromDisplay,
+  normalizeGtin,
+  normalizeCode,
+  MAX_PRODUCT_IMAGES,
   matchCategory,
   inferGenderFromText,
   canonicalColor,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
+import { inferStyleKeywords } from "@/lib/style-keywords";
+import {
+  isBuiltInBucket,
+  matchSubcategoryLabel,
+  resolveSubcategory,
+  subcategoryToValue,
+} from "@/lib/categories";
 import { upgradeImageUrl, imageKey } from "./gallery";
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return "";
-  }
-}
+import { looksLikeProductPath, isNonProductPath } from "./extract";
 
 /** Resolve a possibly-relative image URL against the page URL. */
 function absoluteUrl(src: string, base: string): string | null {
@@ -35,100 +37,59 @@ function absoluteUrl(src: string, base: string): string | null {
 }
 
 /**
- * Work out what currency a price is in, or admit that we do not know.
+ * The currency this price is in, or "" when the page never said.
  *
- * Returning `""` rather than `"USD"` is the point of this function. Defaulting
- * to dollars put a 4 000 ₴ jacket in the catalogue as a $4 000 jacket — wrong on
- * the product page, wrong in every price filter, and wrong in the stylist's
- * budget, all silently. An unknown currency is now a fact the caller can act on.
- *
- * The hints are tried strongest first:
- *   1. an explicit ISO code from structured data (`priceCurrency`, og);
- *   2. a symbol inside whichever strings we were given;
- *   3. the visible price text, which only a rendered page can supply —
- *      structured-data prices arrive as bare numbers with the symbol already
- *      stripped, so this is the only hint a symbol-only store ever offers;
- *   4. a currency the admin declared for the whole store before the run.
- *
- * The admin's declaration comes last deliberately: it is a blanket statement
- * about a store, so anything the page itself says about a specific product
- * outranks it.
+ * Returning "" rather than "USD" is the point. The importer converts what it
+ * can into dollars, and a currency it merely assumed would be converted by a
+ * rate that has nothing to do with the price — or, worse, left alone and
+ * counted as dollars, which is how a ₴4,000 coat arrived in the catalogue
+ * priced like a designer one. An empty answer is a fact the caller can act on;
+ * a defaulted one is a guess wearing a fact's clothes.
  */
-function normalizeCurrency(
-  rawCurrency: string | undefined,
-  rawPrice: string | undefined,
-  priceDisplay: string | undefined,
-  fallbackCurrency: string | undefined,
-): string {
+function normalizeCurrency(rawCurrency: string | undefined, rawPrice: string | undefined): string {
   const c = (rawCurrency ?? "").trim().toUpperCase();
   if (/^[A-Z]{3}$/.test(c)) return c;
-
-  const sniffed =
-    extractCurrencyFromDisplay(rawCurrency ?? "") ||
-    extractCurrencyFromDisplay(rawPrice ?? "") ||
-    extractCurrencyFromDisplay(priceDisplay ?? "");
-  if (sniffed) return sniffed.toUpperCase();
-
-  const declared = (fallbackCurrency ?? "").trim().toUpperCase();
-  if (/^[A-Z]{3}$/.test(declared)) return declared;
-
-  return "";
-}
-
-export interface NormalizeOptions {
-  /**
-   * The trailing text this store appends to every page title, worked out by a
-   * caller that has seen several of its pages. Subtracted from the name.
-   */
-  titleSuffix?: string;
-  /**
-   * The price exactly as it appears on screen ("4 000 ₴"), when a rendered page
-   * was available. Used only as a currency hint; the amount itself still comes
-   * from the structured fields.
-   */
-  priceDisplay?: string;
-  /**
-   * Currency the admin declared for this store before the run. A declaration of
-   * the source currency only — no conversion happens client-side, so the rate
-   * stays one server-side rate rather than one per admin.
-   */
-  fallbackCurrency?: string;
+  return (extractCurrencyFromDisplay(rawCurrency ?? "") || extractCurrencyFromDisplay(rawPrice ?? "")).toUpperCase();
 }
 
 export function normalizeExtract(
   raw: RawExtract,
   sourceUrl: string,
   config?: ParserSiteConfig | null,
-  opts?: NormalizeOptions,
 ): ParsedProduct {
   const issues: string[] = [];
 
-  const brand = (config?.brandOverride || raw.brand || "").trim();
-
-  // The size suffix goes first (it is about the garment), then the store's
-  // furniture (it is about the shop). Both are conservative: anything that
-  // cannot be justified is left on the name.
-  const name = tidyProductName(cleanName(raw.name ?? ""), {
-    host: hostOf(sourceUrl),
-    brand,
-    titleSuffix: opts?.titleSuffix,
-  });
+  const name = cleanName(raw.name ?? "");
   if (!name) issues.push("missing name");
+
+  const brand = (config?.brandOverride || raw.brand || "").trim();
 
   const price = parsePrice(raw.price ?? "");
   if (!price) issues.push("missing price");
   const priceOriginal = parsePrice(raw.priceOriginal ?? "");
 
-  const currency = normalizeCurrency(
-    raw.currency,
-    raw.price,
-    opts?.priceDisplay ?? raw.priceDisplay,
-    opts?.fallbackCurrency,
-  );
-  // Only worth flagging when there is a price to be wrong about: a page with no
-  // price at all already carries "missing price", and saying both would just
-  // report one absence twice.
-  if (price && !currency) issues.push("unknown currency");
+  const currency = normalizeCurrency(raw.currency, raw.price);
+  if (price && !currency) issues.push("currency not stated");
+
+  // The store's own filing of this piece, outermost crumb first. Two things are
+  // read out of it, and both used to be guessed from the name alone or not
+  // answered at all: which category the piece belongs to when its name says
+  // nothing ("Aurelio"), and which of that category's labels it is.
+  const trail = (raw.breadcrumbs ?? []).filter(Boolean).join(" > ");
+
+  // The tree's label for what this piece is: from the name first, which is more
+  // specific ("Wool-blend bomber jacket" over a trail's "Jackets"), then from the
+  // trail, which answers for a name that classifies nothing ("Aurelio").
+  const subLabelFromName = matchSubcategoryLabel(name);
+  const subLabelFromTrail = trail ? matchSubcategoryLabel(trail) : undefined;
+  const labelValues = subcategoryToValue();
+  const labelCategory = (label: string | undefined) => {
+    const value = label ? labelValues[label] : undefined;
+    // The admin can point a tree label at a bucket outside the code's own list.
+    // Such a bucket works in the browse filters and is unknown to `Category`, so
+    // a label's bucket is only adopted when the code knows it.
+    return value && isBuiltInBucket(value) ? (value as ParsedProduct["category"]) : undefined;
+  };
 
   // Category: explicit override → product name/description → URL path hint.
   // Prefer the name-based guess; only fall back to the URL path when the name
@@ -139,8 +100,29 @@ export function normalizeExtract(
     // 92% against 88% when the description is included: descriptions name-drop
     // other garments, and "pairs well with shorts" reads as "is shorts".
     matchCategory(name) ??
+    // A label out of the tree, from the name and then from the trail, before any
+    // more keyword matching. A tree label is the catalogue's own vocabulary
+    // rather than a hint read out of a string, and it carries the category with
+    // it: a trail ending in "Blazers" files the piece under blazers, where a
+    // keyword pass over the same words would stop at the first thing that looks
+    // like outerwear.
+    labelCategory(subLabelFromName) ??
+    labelCategory(subLabelFromTrail) ??
+    matchCategory(trail) ??
     matchCategory(safePath(sourceUrl)) ??
     "accessories";
+
+  // `resolveSubcategory` drops a label the tree does not claim for this
+  // category, so a disagreement — an override that says footwear over a name
+  // that says bomber jacket — resolves rather than persists.
+  const subcategory = resolveSubcategory(category, subLabelFromName ?? subLabelFromTrail);
+
+  // Style, from everything the page said about the piece. The description
+  // carries most of it ("a pared-back essential", "utility pockets"), the
+  // material some ("linen"), and the label the tree filed it under the rest.
+  const styleKeywords = inferStyleKeywords(
+    [name, raw.description ?? "", raw.material ?? "", subcategory ?? "", trail].join(" "),
+  );
 
   // Gender: explicit override → URL → name/description
   const gender =
@@ -165,7 +147,7 @@ export function normalizeExtract(
     const key = imageKey(full);
     if (!byPhoto.has(key)) byPhoto.set(key, full);
   }
-  const images = [...byPhoto.values()].slice(0, 12);
+  const images = [...byPhoto.values()].slice(0, MAX_PRODUCT_IMAGES);
 
   const rawAbs = raw.image && absoluteUrl(raw.image, sourceUrl);
   const rawPrimary = rawAbs ? (upgradeImageUrl(rawAbs, sourceUrl) ?? rawAbs) : null;
@@ -183,6 +165,35 @@ export function normalizeExtract(
   const colors = [colorFrom(raw.color, name, sourceUrl)].filter(Boolean) as string[];
   const sizes = raw.sizes ?? [];
 
+  // Same piece, other colours. Resolved and de-duplicated here so the importer
+  // receives addresses it can compare against `source_url` directly, and never
+  // this page's own address — a product is not a variant of itself.
+  //
+  // A colour row holds more than colourways: a care-instructions anchor, a
+  // size-guide link, a "more colours" page. They are dropped with the same test
+  // the collect planner uses to decide what is a product address at all, rather
+  // than left to fail a lookup later — an address that reaches the importer is
+  // one it will compare against every row it has.
+  const variantUrls = [
+    ...new Set(
+      (raw.variantUrls ?? [])
+        .map((u) => absoluteUrl(u, sourceUrl))
+        .filter((u): u is string => !!u && u !== sourceUrl)
+        .filter((u) => {
+          try {
+            const candidate = new URL(u);
+            // Same store only. The same piece on another retailer's site is not
+            // a colourway of this one — it is the same thing sold twice, which
+            // belongs in the retailer list, not in a swatch row.
+            if (candidate.host !== new URL(sourceUrl).host) return false;
+            return looksLikeProductPath(candidate.pathname) && !isNonProductPath(candidate.pathname);
+          } catch {
+            return false;
+          }
+        }),
+    ),
+  ].slice(0, 20);
+
   return {
     name,
     brand,
@@ -193,6 +204,15 @@ export function normalizeExtract(
     images: images.length ? images : (imageUrl ? [imageUrl] : []),
     colors,
     sizes,
+    variantUrls,
+    ...(subcategory ? { subcategory } : {}),
+    styleKeywords,
+    // Validated here rather than trusted: a GTIN that fails its check digit is
+    // a digit string the page happened to carry, and matching products on one
+    // would link a coat to a phone number's worth of coincidence.
+    ...(normalizeGtin(raw.gtin) ? { gtin: normalizeGtin(raw.gtin) } : {}),
+    ...(normalizeCode(raw.mpn) ? { mpn: normalizeCode(raw.mpn) } : {}),
+    ...(normalizeCode(raw.sku) ? { sku: normalizeCode(raw.sku) } : {}),
     material: raw.material ?? "",
     price,
     priceOriginal,
