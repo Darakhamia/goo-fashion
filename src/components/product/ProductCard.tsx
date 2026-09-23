@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import ProductImage from "./ProductImage";
 import { motion } from "framer-motion";
 import { Product, ProductSwatch, CropData } from "@/lib/types";
@@ -11,9 +11,8 @@ import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartItem } from "@/lib/cart-item";
-
-const SLIDE_MS    = 500;
-const INTERVAL_MS = 5000;
+import { displayedProduct } from "@/lib/variant-display";
+import { useHoverImageCycle, ImageCycleDots, CYCLE_SLIDE_MS } from "@/lib/hooks/useHoverImageCycle";
 
 interface ProductCardProps {
   product: Product;
@@ -53,72 +52,19 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
     }
   };
 
-  const displayImages = useMemo(() => {
-    if (activeVariant) return activeVariant.images?.length ? activeVariant.images : [activeVariant.imageUrl];
-    return product.images?.length ? product.images : [product.imageUrl];
-  }, [activeVariant, product]);
+  // What this card shows once a colour has been chosen: the variant is its own
+  // product row, so its name, price and photos all come with it.
+  const shown = useMemo(() => displayedProduct(product, { variant: activeVariant }), [product, activeVariant]);
 
-  const displayName     = activeVariant ? activeVariant.name     : product.name;
-  const displayPriceMin = activeVariant ? activeVariant.priceMin : product.priceMin;
-  const displayPriceMax = activeVariant ? activeVariant.priceMax : product.priceMax;
+  const displayName     = shown.name;
+  const displayPriceMin = shown.priceMin;
+  const displayPriceMax = shown.priceMax;
   const linkHref        = `/product/${activeVariant ? activeVariant.id : product.id}`;
 
-  const allImages   = displayImages;
-  const hasMultiple = allImages.length > 1;
+  const allImages = shown.images;
 
   const [isHovered, setIsHovered] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(0);
-
-  const t = useRef({
-    activeIdx: 0,
-    direction: 1 as 1 | -1,
-    interval:  null as ReturnType<typeof setInterval> | null,
-  });
-
-  useEffect(() => {
-    setActiveIdx(0);
-    t.current.activeIdx = 0;
-    t.current.direction = 1;
-  }, [activeVariant]);
-
-  useEffect(() => {
-    const state = t.current;
-    if (!isHovered) {
-      if (state.interval) { clearInterval(state.interval); state.interval = null; }
-      setActiveIdx(0);
-      state.activeIdx = 0;
-      state.direction = 1;
-      return;
-    }
-    if (!hasMultiple) return;
-
-    setActiveIdx(0);
-    state.activeIdx = 0;
-    state.direction = 1;
-
-    const doSlide = () => {
-      let next = state.activeIdx + state.direction;
-      if (next >= allImages.length)  { state.direction = -1; next = state.activeIdx + state.direction; }
-      else if (next < 0)             { state.direction =  1; next = state.activeIdx + state.direction; }
-      state.activeIdx = next;
-      setActiveIdx(next);
-    };
-
-    let startDelay: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-      startDelay = null;
-      doSlide();
-      state.interval = setInterval(doSlide, INTERVAL_MS);
-    }, 3000);
-
-    return () => {
-      if (startDelay)     { clearTimeout(startDelay);      startDelay     = null; }
-      if (state.interval) { clearInterval(state.interval); state.interval = null; }
-    };
-  }, [isHovered, hasMultiple, allImages]);
-
-  useEffect(() => {
-    return () => { if (t.current.interval) clearInterval(t.current.interval); };
-  }, []);
+  const activeIdx = useHoverImageCycle(allImages.length, isHovered, activeVariant?.id ?? product.id);
 
   const swatches  = product.variants;
   const hasSwatches = !!swatches?.length;
@@ -144,14 +90,14 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             photos keep `bg-white`. */}
         <div
           className="relative bg-white overflow-hidden aspect-[3/4]"
-          style={photoBackdrop(activeVariant ? activeVariant.bgColor : product.bgColor)}
+          style={photoBackdrop(shown.bgColor)}
         >
           <div
             className="absolute inset-0 flex"
             style={{
               width: `${allImages.length * 100}%`,
               transform: `translateX(-${(activeIdx * 100) / allImages.length}%)`,
-              transition: `transform ${SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1)`,
+              transition: `transform ${CYCLE_SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1)`,
             }}
           >
             {allImages.map((src, i) => (
@@ -170,18 +116,7 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
             ))}
           </div>
 
-          {hasMultiple && (
-            <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-              {allImages.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-[3px] rounded-full transition-colors duration-300 ${
-                    i === activeIdx ? "bg-white w-3" : "bg-white/40 w-[3px]"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
+          <ImageCycleDots count={allImages.length} activeIdx={activeIdx} />
 
           {product.isNew && (
             <div className="absolute top-3 left-3 z-10">
