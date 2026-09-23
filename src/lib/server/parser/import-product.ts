@@ -17,15 +17,16 @@ import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import {
   chooseGroup,
   isColorSiblingByName,
-  variantBaseName,
-  MIN_BASE_NAME,
   type VariantCandidate,
 } from "./variant-group";
 import {
   isSameItem,
   mergePatch,
+  pickSameItemByName,
+  withRetailer,
   type ExistingItem,
   type IncomingItem,
+  type NamedItem,
 } from "./same-item";
 import { brandVocabulary, decideBrand } from "./brand-from-name";
 import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
@@ -126,6 +127,7 @@ interface VariantRow {
   id: string;
   name: string | null;
   colors: string[] | null;
+  category: string | null;
   variant_group_id: string | null;
   is_group_primary: boolean | null;
 }
@@ -135,12 +137,21 @@ function toCandidate(row: VariantRow): VariantCandidate {
     id: row.id,
     name: row.name ?? "",
     colors: row.colors ?? [],
+    category: row.category,
     variantGroupId: row.variant_group_id,
     isGroupPrimary: row.is_group_primary,
   };
 }
 
-const VARIANT_COLUMNS = "id, name, colors, variant_group_id, is_group_primary";
+const VARIANT_COLUMNS = "id, name, colors, category, variant_group_id, is_group_primary";
+
+/**
+ * Rows of one brand read for a name comparison. Generous: the comparison runs
+ * in code (`piece-name.ts`), because the piece's name can sit anywhere in a
+ * store's title — "Кросівки Nike Air Max 90 чорні" — and a database prefix
+ * query only finds the ones that start the same way.
+ */
+const BRAND_ROWS = 500;
 
 /** PostgREST pattern metacharacters, so a product named "50% Wool" cannot match everything. */
 function escapeLike(value: string): string {
@@ -161,6 +172,7 @@ async function linkColorVariants(input: {
   brand: string;
   name: string;
   colors: string[];
+  category: string;
   variantUrls: string[];
   sourceUrl: string | null;
 }): Promise<number> {
@@ -180,20 +192,23 @@ async function linkColorVariants(input: {
     // Only when the page named no siblings: a store that links its colourways
     // has already given the exact answer, and the name test is the guess.
     if (!siblings.size && input.brand) {
-      const base = variantBaseName(input.name);
-      if (base.length >= MIN_BASE_NAME) {
-        const { data } = await supabase!
-          .from("products")
-          .select(VARIANT_COLUMNS)
-          .eq("brand", input.brand)
-          .ilike("name", `${escapeLike(base)}%`)
-          .limit(25);
-        const ours = { brand: input.brand, name: input.name, colors: input.colors };
-        for (const row of (data ?? []) as VariantRow[]) {
-          if (row.id === input.productId) continue;
-          const candidate = toCandidate(row);
-          if (isColorSiblingByName(ours, candidate)) siblings.set(row.id, candidate);
-        }
+      // The brand compared without case, so "NIKE" from one store and "Nike"
+      // from another are one brand's rows.
+      const { data } = await supabase!
+        .from("products")
+        .select(VARIANT_COLUMNS)
+        .ilike("brand", escapeLike(input.brand))
+        .limit(BRAND_ROWS);
+      const ours = {
+        brand: input.brand,
+        name: input.name,
+        colors: input.colors,
+        category: input.category,
+      };
+      for (const row of (data ?? []) as VariantRow[]) {
+        if (row.id === input.productId) continue;
+        const candidate = toCandidate(row);
+        if (isColorSiblingByName(ours, candidate)) siblings.set(row.id, candidate);
       }
     }
 
@@ -312,6 +327,102 @@ async function findSameItem(incoming: IncomingItem, sourceUrl: string | null): P
   return null;
 }
 
+/**
+ * Column lists for the name lookup, richest first.
+ *
+ * The first needs migration 020 (the product codes) and the second migration
+ * 010 (subcategory). A database without them refuses the select outright, and
+ * the lookup would then find nothing — so it steps down to what every
+ * catalogue has rather than going quiet.
+ */
+const NAME_MATCH_COLUMNS = [
+  `${MERGE_COLUMNS}, name, category`,
+  "id, brand, name, category, source_url, price_min, price_max, retailers, material, description, subcategory, sizes, colors, images",
+  "id, brand, name, category, source_url, price_min, price_max, retailers, material, description, sizes, colors, images",
+];
+
+/** Fields the merge fills only when empty — so only when they were actually read. */
+const FILL_ONLY_COLUMNS = ["subcategory", "gtin", "mpn", "sku"];
+
+/**
+ * The product this page is another store's listing of, found by name — for the
+ * pages that carry no code, which is most of them. The decision itself is
+ * `pickSameItemByName`; this only reads the brand's rows for it.
+ *
+ * `unread` names the fill-only columns the select could not include. The merge
+ * must not write them: on such a row a value may exist that was never read, and
+ * "fill when empty" would then overwrite it.
+ */
+async function findSameItemByName(incoming: {
+  brand: string;
+  name: string;
+  colors: string[];
+  category: string;
+  price: number;
+  sourceUrl: string | null;
+}): Promise<{ item: NamedItem; unread: string[] } | null> {
+  if (!incoming.brand || !incoming.sourceUrl) return null;
+  try {
+    for (const columns of NAME_MATCH_COLUMNS) {
+      const { data, error } = await supabase!
+        .from("products")
+        .select(columns)
+        .ilike("brand", escapeLike(incoming.brand))
+        .limit(BRAND_ROWS);
+      if (error) continue;
+      const rows: NamedItem[] = ((data ?? []) as unknown as (MergeRow & {
+        name: string | null;
+        category: string | null;
+      })[]).map((row) => ({ ...toExisting(row), name: row.name ?? "", category: row.category }));
+      const item = pickSameItemByName(incoming, rows);
+      if (!item) return null;
+      const read = columns.split(",").map((c) => c.trim());
+      return { item, unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)) };
+    }
+  } catch {
+    /* no connection — an ordinary insert, as before */
+  }
+  return null;
+}
+
+/**
+ * The row to write when re-collecting a page whose product other stores have
+ * since joined.
+ *
+ * A re-import writes the whole row from this one page, retailer list and price
+ * included — so collecting store A again would erase store B, which a merge
+ * had added as a second place to buy. B's entry is kept, this page's own entry
+ * replaced, and the price range recomputed over every store on the dollar
+ * scale (each entry keeps its own currency, so each is converted first).
+ */
+async function keepOtherStores(
+  dbRow: Record<string, unknown>,
+  existing: Product["retailers"],
+  ours: Product["retailers"][number] | undefined,
+  sourceUrl: string | null,
+): Promise<Record<string, unknown>> {
+  if (!ours) return dbRow;
+  const others = existing.filter(
+    (r) => r?.url && r.url !== sourceUrl && r.name?.toLowerCase() !== ours.name.toLowerCase(),
+  );
+  if (!others.length) return dbRow;
+
+  const row: Record<string, unknown> = { ...dbRow, retailers: withRetailer(existing, ours) };
+  if (row.currency !== "USD") return row;
+
+  const theirs = (
+    await Promise.all(others.map((r) => toUsd(Number(r.price) || 0, r.currency || "USD")))
+  )
+    .map((c) => c?.usd ?? 0)
+    .filter((n) => n > 0);
+  const own = Number(dbRow.price_min) || 0;
+  const all = [...(own > 0 ? [own] : []), ...theirs];
+  if (!all.length) return row;
+  const min = Math.min(...all);
+  const max = Math.max(Number(dbRow.price_max) || 0, ...all);
+  return { ...row, price_min: min, price_max: max, price_min_usd: min, price_max_usd: max };
+}
+
 export interface ImportOptions {
   /** Download photos into Supabase Storage and store our URLs instead. */
   mirrorImages?: boolean;
@@ -336,6 +447,8 @@ export interface ImportResult {
   variantsLinked?: number;
   /** Set when this page joined an existing product instead of creating one. */
   mergedInto?: string;
+  /** What recognised it: a product code, or the name and colour. */
+  mergedBy?: "code" | "name";
   /** What the merge filled in on that product. */
   mergedFields?: string[];
 }
@@ -553,19 +666,23 @@ export async function importParsedProduct(
   let updated = false;
   try {
     let existingId: string | null = null;
+    let existingRetailers: Product["retailers"] = [];
     if (sourceUrl) {
       const { data: existing } = await supabase
-        .from("products").select("id").eq("source_url", sourceUrl).maybeSingle();
-      existingId = (existing as { id: string } | null)?.id ?? null;
+        .from("products").select("id, retailers").eq("source_url", sourceUrl).maybeSingle();
+      const found = existing as { id: string; retailers: Product["retailers"] | null } | null;
+      existingId = found?.id ?? null;
+      existingRetailers = Array.isArray(found?.retailers) ? found.retailers : [];
     }
 
     if (existingId) {
       const id = existingId;
+      const row = await keepOtherStores(dbRow, existingRetailers, retailers[0], sourceUrl);
       // PostgREST reports failures in `error` rather than throwing, so an
       // unchecked update reads as success while writing nothing (the silent
       // failure pattern audit item Б1-3 called out on the billing ledger).
-      const { data, error } = await writeProductRow<{ id: string }>(dbRow, (row) =>
-        supabase!.from("products").update(row).eq("id", id).select("id").maybeSingle(),
+      const { data, error } = await writeProductRow<{ id: string }>(row, (r) =>
+        supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
       );
       if (error) throw new Error(error.message);
       productId = data?.id ?? id;
@@ -582,7 +699,9 @@ export async function importParsedProduct(
         gtin: product.gtin,
         mpn: product.mpn,
         sku: product.sku,
-        price,
+        // Dollars or nothing: a price left in a currency with no rate would
+        // widen a dollar range with a hryvnia number.
+        price: currency === "USD" ? price : 0,
         retailer: retailers[0],
         material: product.material,
         description: product.description,
@@ -591,28 +710,52 @@ export async function importParsedProduct(
         colors,
         images: product.images,
       };
-      const twin = await findSameItem(incoming, sourceUrl);
+      // By code first — exact where a store prints one — then by name, brand
+      // and colour, which is what most stores leave us.
+      let twin: ExistingItem | null = await findSameItem(incoming, sourceUrl);
+      let mergedBy: ImportResult["mergedBy"] = twin ? "code" : undefined;
+      let unread: string[] = [];
+      if (!twin) {
+        const byName = await findSameItemByName({
+          brand,
+          name,
+          colors,
+          category,
+          price: incoming.price,
+          sourceUrl,
+        });
+        if (byName) {
+          twin = byName.item;
+          unread = byName.unread;
+          mergedBy = "name";
+        }
+      }
 
       if (twin) {
-        const { patch, filled } = mergePatch(twin, incoming);
+        const twinId = twin.id;
+        const merged = mergePatch(twin, incoming);
+        const patch = merged.patch;
+        for (const column of unread) delete patch[column];
+        const filled = merged.filled.filter((f) => !unread.includes(f));
         // Merged prices are dollars on both sides, so the comparable scale is
         // the same number.
         if (patch.price_min !== undefined) patch.price_min_usd = patch.price_min;
         if (patch.price_max !== undefined) patch.price_max_usd = patch.price_max;
         const { error } = await writeProductRow<{ id: string }>(patch, (row) =>
-          supabase!.from("products").update(row).eq("id", twin.id).select("id").maybeSingle(),
+          supabase!.from("products").update(row).eq("id", twinId).select("id").maybeSingle(),
         );
         if (error) throw new Error(error.message);
         return {
           ok: true,
-          productId: twin.id,
+          productId: twinId,
           updated: true,
           imagesMirrored,
           imagesFailed,
           images: images.length,
           priceNote,
           brandNote,
-          mergedInto: twin.id,
+          mergedInto: twinId,
+          mergedBy,
           mergedFields: filled,
         };
       }
@@ -649,6 +792,7 @@ export async function importParsedProduct(
       brand,
       name,
       colors,
+      category,
       variantUrls: (Array.isArray(p.variantUrls) ? p.variantUrls : [])
         .map((u: unknown) => httpUrl(u))
         .filter(Boolean),

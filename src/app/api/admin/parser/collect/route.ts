@@ -307,6 +307,7 @@ export async function POST(req: Request) {
             brandNote: imported.brandNote,
             variantsLinked: imported.variantsLinked ?? 0,
             merged: !!imported.mergedInto,
+            mergedBy: imported.mergedBy,
             mergedFields: imported.mergedFields,
           }
         : { url, status: "failed", reason: imported.error, name: product.name, usedAi };

@@ -304,6 +304,8 @@ export interface CrawlItemResult {
   variantsLinked?: number;
   /** Set when the page joined an existing product instead of creating one. */
   merged?: boolean;
+  /** What recognised that product: a code, or the name and colour. */
+  mergedBy?: "code" | "name";
   /** What that merge filled in. */
   mergedFields?: string[];
 }
