@@ -12,6 +12,8 @@ import { useAuth } from "@/lib/context/auth-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import { StylePicker } from "@/components/look/StylePicker";
+import { displayedProduct } from "@/lib/variant-display";
+import { useHoverImageCycle, ImageCycleDots, CYCLE_SLIDE_MS } from "@/lib/hooks/useHoverImageCycle";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
 import { useStylist } from "@/lib/context/stylist-context";
@@ -174,6 +176,56 @@ function SlotIcon({ id, size = 15 }: { id: SlotId; size?: number }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
+/**
+ * A catalogue card's photos, cycling on hover the way Browse's cards do.
+ *
+ * Its own component because the cycle is a hook and the cards are rendered in a
+ * loop. The hover state lives on the card itself and comes in as a prop, so the
+ * whole card — not just the picture — is what starts the sweep, matching Browse.
+ */
+function CatalogCardImages({
+  images,
+  alt,
+  isHovered,
+  resetKey,
+}: {
+  images: string[];
+  alt: string;
+  isHovered: boolean;
+  resetKey: string;
+}) {
+  const activeIdx = useHoverImageCycle(images.length, isHovered, resetKey);
+
+  if (!images.length) return null;
+
+  return (
+    <>
+      <div
+        className="absolute inset-0 flex"
+        style={{
+          width: `${images.length * 100}%`,
+          transform: `translateX(-${(activeIdx * 100) / images.length}%)`,
+          transition: `transform ${CYCLE_SLIDE_MS}ms cubic-bezier(0.4,0,0.2,1)`,
+        }}
+      >
+        {images.map((src, i) => (
+          <div key={`${src}-${i}`} className="relative overflow-hidden" style={{ width: `${100 / images.length}%`, flexShrink: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={alt}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
+        ))}
+      </div>
+      <ImageCycleDots count={images.length} activeIdx={activeIdx} />
+    </>
+  );
+}
+
 export default function BuilderPage() {
   // The catalog's filter tree, as edited in the admin panel under Categories.
   const categoryTree = useCategoryTree();
@@ -186,6 +238,9 @@ export default function BuilderPage() {
   const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
+  // Which catalogue card the pointer is on. One value for the grid rather than
+  // state inside every card, and it is what starts that card's photo sweep.
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [colorImageOverrides, setColorImageOverrides] = useState<Partial<Record<SlotId, string>>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -669,8 +724,10 @@ export default function BuilderPage() {
       .map(([slot, p]) => {
         const variantId = variantOverrides[slot as SlotId];
         const activeVariant = variantId ? p!.variants?.find(v => v.id === variantId) : null;
-        const imageUrl = activeVariant?.imageUrl ?? p!.imageUrl;
-        return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl, name: p!.name };
+        const shown = displayedProduct(p!, { variant: activeVariant });
+        // The variant's name, not the row the look started from — this is what
+        // the saved look and its share page then show.
+        return { slot, productId: p!.id, variantId: variantId ?? null, imageUrl: shown.imageUrl, name: shown.name };
       });
     try {
       const existing: Record<string, unknown>[] = loadLocalLooks() as unknown as Record<string, unknown>[];
@@ -1418,12 +1475,20 @@ export default function BuilderPage() {
                       const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
                         ? product.colorImages![selectedColorKey][0]
                         : null;
-                      const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
-                      // Tracks `displayImage` step for step: whichever row's photo
-                      // is on screen is the row whose backdrop should be behind it.
-                      const backdrop = forcedVariant?.bgColor
-                        ?? (colorImageUrl ? product.bgColor : activeVariant?.bgColor)
-                        ?? product.bgColor;
+                      // One answer for the photo, the name and the price. A
+                      // colour variant is a separate product row, so switching
+                      // swatches has to move all three — the card used to swap
+                      // the picture and keep the other row's name and price.
+                      // `forcedVariant` is the expanded-catalogue case, where
+                      // the card *is* that variant, so it outranks a colourway
+                      // previewed within the original row.
+                      const shownVariant = forcedVariant ?? activeVariant ?? null;
+                      const shown = displayedProduct(product, {
+                        variant: shownVariant,
+                        colorImages: forcedVariant ? null : (colorImageUrl ? product.colorImages![selectedColorKey] : null),
+                      });
+                      const displayImage = shown.imageUrl;
+                      const backdrop = shown.bgColor;
                       const hasVariants = (product.variants?.length ?? 0) > 1;
 
                       return (
@@ -1431,6 +1496,8 @@ export default function BuilderPage() {
                           key={item.key}
                           role="button"
                           tabIndex={0}
+                          onMouseEnter={() => setHoveredCard(item.key)}
+                          onMouseLeave={() => setHoveredCard(c => (c === item.key ? null : c))}
                           onClick={() => selectProduct(product)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
@@ -1455,13 +1522,11 @@ export default function BuilderPage() {
                         >
                           {/* Image */}
                           <div className="relative aspect-[3/4] bg-white overflow-hidden" style={photoBackdrop(backdrop)}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={displayImage}
-                              alt={product.name}
-                              loading="lazy"
-                              decoding="async"
-                              className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            <CatalogCardImages
+                              images={shown.images}
+                              alt={shown.name}
+                              isHovered={hoveredCard === item.key}
+                              resetKey={`${shownVariant?.id ?? product.id}:${displayImage ?? ""}`}
                             />
                             {/* Top-left: + / ✓ add to outfit */}
                             {!isSelected && (
@@ -1537,8 +1602,8 @@ export default function BuilderPage() {
                           {/* Info */}
                           <div className="px-3 pt-3 pb-3.5">
                             <p className="text-[13px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
-                            <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{product.name}</p>
-                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(product.priceMin, product.currency)}</p>
+                            <p className="text-[11px] text-[var(--foreground-muted)] truncate mt-0.5 leading-snug">{shown.name}</p>
+                            <p className="text-[12px] font-medium text-[var(--foreground)] mt-1.5">{formatPrice(shown.priceMin, product.currency)}</p>
                             {hasVariants && (() => {
                               const variants = product.variants!;
                               const MAX = 5;
@@ -1649,8 +1714,15 @@ export default function BuilderPage() {
                 const variantId = variantOverrides[slot.id];
                 const activeVariant = picked?.variants?.find(v => v.id === variantId);
                 const colorKey = colorImageOverrides[slot.id];
-                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
+                // Name, price and photo together: the swatch picks a different
+                // product row, so the card must stop showing the old row's name.
+                const shown = picked
+                  ? displayedProduct(picked, {
+                      variant: activeVariant,
+                      colorImages: colorKey ? picked.colorImages?.[colorKey] : null,
+                    })
+                  : null;
+                const displayImage = shown?.imageUrl;
 
                 if (!picked) {
                   return (
@@ -1679,7 +1751,7 @@ export default function BuilderPage() {
                     {/* Thumbnail */}
                     <div
                       className="w-16 h-20 rounded-lg overflow-hidden bg-white border border-[var(--border)] shrink-0 flex items-center justify-center"
-                      style={photoBackdrop(activeVariant?.bgColor ?? picked?.bgColor)}
+                      style={photoBackdrop(shown?.bgColor)}
                     >
                       {displayImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -1703,9 +1775,9 @@ export default function BuilderPage() {
                       <p className="text-[9px] tracking-[0.14em] uppercase font-medium text-[var(--foreground-subtle)] mb-1">{slot.label}</p>
                       {picked ? (
                         <>
-                          <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{picked.name}</p>
+                          <p className="text-[12px] font-semibold text-[var(--foreground)] leading-snug line-clamp-2">{shown!.name}</p>
                           <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{picked.brand}</p>
-                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(picked.priceMin, picked.currency)}</p>
+                          <p className="text-[13px] font-bold text-[var(--foreground)] mt-1">{formatPrice(shown!.priceMin, picked.currency)}</p>
                           {/* Variant colour swatches (separate products) */}
                           {(picked.variants?.length ?? 0) > 1 && (() => {
                             const variants = picked.variants!;
@@ -1989,9 +2061,11 @@ export default function BuilderPage() {
                     const variantId = variantOverrides[slot.id];
                     const activeVariant = picked.variants?.find(v => v.id === variantId);
                     const colorKey = colorImageOverrides[slot.id];
-                    const colorImgUrl = colorKey && picked.colorImages?.[colorKey]?.[0];
-                    const imageUrl = colorImgUrl || activeVariant?.imageUrl || picked.imageUrl;
-                    return { slotId: slot.id, name: picked.name, imageUrl };
+                    const shown = displayedProduct(picked, {
+                      variant: activeVariant,
+                      colorImages: colorKey ? picked.colorImages?.[colorKey] : null,
+                    });
+                    return { slotId: slot.id, name: shown.name, imageUrl: shown.imageUrl };
                   });
 
                 const n = items.length;
@@ -2187,7 +2261,12 @@ export default function BuilderPage() {
                     const colorImageUrl = hasColorImages && product.colorImages![selectedColorKey]?.[0]
                       ? product.colorImages![selectedColorKey][0]
                       : null;
-                    const displayImage = forcedVariant?.imageUrl ?? colorImageUrl ?? activeVariant?.imageUrl ?? product.imageUrl;
+                    const shownVariant = forcedVariant ?? activeVariant ?? null;
+                    const shown = displayedProduct(product, {
+                      variant: shownVariant,
+                      colorImages: forcedVariant ? null : (colorImageUrl ? product.colorImages![selectedColorKey] : null),
+                    });
+                    const displayImage = shown.imageUrl;
 
                     return (
                       <div key={item.key} className="shrink-0 flex flex-col" style={{ width: 108 }}>
@@ -2217,7 +2296,7 @@ export default function BuilderPage() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={displayImage}
-                            alt={product.name}
+                            alt={shown.name}
                             className="absolute inset-0 w-full h-full object-contain"
                           />
                           {isSelected && (
@@ -2250,8 +2329,8 @@ export default function BuilderPage() {
                         {/* Info */}
                         <div className="pt-1.5">
                           <p className="text-[10px] font-semibold text-[var(--foreground)] truncate leading-snug">{product.brand}</p>
-                          <p className="text-[9px] text-[var(--foreground-muted)] truncate mt-0.5">{product.name}</p>
-                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(product.priceMin, product.currency)}</p>
+                          <p className="text-[9px] text-[var(--foreground-muted)] truncate mt-0.5">{shown.name}</p>
+                          <p className="text-[9px] font-medium text-[var(--foreground)] mt-0.5">{formatPrice(shown.priceMin, product.currency)}</p>
                         </div>
                       </div>
                     );
@@ -2297,8 +2376,11 @@ export default function BuilderPage() {
                         const variantId = variantOverrides[s.id];
                         const activeVariant = variantId ? p.variants?.find(v => v.id === variantId) : null;
                         const colorKey = colorImageOverrides[s.id];
-                        const colorImgUrl = colorKey && p.colorImages?.[colorKey]?.[0];
-                        return { imageUrl: colorImgUrl || activeVariant?.imageUrl || p.imageUrl, name: p.name };
+                        const shown = displayedProduct(p, {
+                          variant: activeVariant,
+                          colorImages: colorKey ? p.colorImages?.[colorKey] : null,
+                        });
+                        return { imageUrl: shown.imageUrl, name: shown.name };
                       });
                     const n = frames.length;
                     const cell = (f: { imageUrl?: string; name: string }, key: string, pad = "p-2") => (
@@ -2398,17 +2480,19 @@ export default function BuilderPage() {
                 const variantId = variantOverrides[slot.id];
                 const activeVariant = picked?.variants?.find(v => v.id === variantId);
                 const colorKey = colorImageOverrides[slot.id];
-                const colorImageUrl = colorKey && picked?.colorImages?.[colorKey]?.[0];
-                const displayImage = colorImageUrl || activeVariant?.imageUrl || picked?.imageUrl;
                 if (!picked) return null;
+                const shown = displayedProduct(picked, {
+                  variant: activeVariant,
+                  colorImages: colorKey ? picked.colorImages?.[colorKey] : null,
+                });
                 return (
                   <div
                     key={slot.id}
                     className="w-16 h-20 bg-white overflow-hidden shrink-0"
-                    style={photoBackdrop(activeVariant?.bgColor ?? picked.bgColor)}
+                    style={photoBackdrop(shown.bgColor)}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={displayImage!} alt={picked.name} className="w-full h-full object-contain" />
+                    <img src={shown.imageUrl!} alt={shown.name} className="w-full h-full object-contain" />
                   </div>
                 );
               })}
