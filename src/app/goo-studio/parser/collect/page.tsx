@@ -447,10 +447,13 @@ function detailLine(r: CrawlItemResult): string {
   // product, it added a place to buy one we already had.
   if (r.merged) {
     const filled = (r.mergedFields ?? []).filter((f) => f !== "retailer");
+    // Said, because a name match is a judgement where a code match is a fact,
+    // and the admin is the one who can undo a wrong one.
+    const how = r.mergedBy === "name" ? " (same name and colour)" : "";
     parts.push(
       filled.length
-        ? `linked to an existing product, filling ${filled.join(", ")}`
-        : "linked to an existing product",
+        ? `added as a store to an existing product${how}, filling ${filled.join(", ")}`
+        : `added as a store to an existing product${how}`,
     );
   }
   return parts.join(" · ");

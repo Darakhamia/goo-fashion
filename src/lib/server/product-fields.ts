@@ -967,10 +967,20 @@ const AFFILIATE_TRACKERS = new Set([
   "jdoqocy", "kqzyfj", "tkqlhce",
 ]);
 
+/**
+ * Second-level labels a country registry sells under: "shop.com.ua",
+ * "brand.co.uk", "store.kiev.ua". The shop's name is the label before them —
+ * reading these as the name called every Ukrainian `.com.ua` store "Com", and
+ * two such stores on one product then overwrote each other in "Where to buy".
+ */
+const REGISTRY_LABELS = new Set(["com", "co", "org", "net", "gov", "edu", "ac", "biz", "in", "kiev", "kyiv"]);
+
 export function storeNameFromUrl(url: string, fallback = ""): string {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
-    const root = (host.split(".").slice(-2, -1)[0] ?? host).toLowerCase();
+    const labels = host.split(".");
+    let root = (labels.slice(-2, -1)[0] ?? host).toLowerCase();
+    if (REGISTRY_LABELS.has(root) && labels.length >= 3) root = labels[labels.length - 3].toLowerCase();
     if (!root || AFFILIATE_TRACKERS.has(root)) return fallback || "Store";
     if (KNOWN_STORES[root]) return KNOWN_STORES[root];
     return root.charAt(0).toUpperCase() + root.slice(1);
