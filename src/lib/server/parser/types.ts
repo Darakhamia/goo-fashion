@@ -179,6 +179,12 @@ export interface RawExtract {
   price?: string;
   priceOriginal?: string;
   currency?: string;
+  /**
+   * The page's `<title>`, unmodified. Not a name candidate in its own right
+   * except as a last resort — it is kept so the store's own repeated furniture
+   * can be measured and subtracted.
+   */
+  pageTitle?: string;
   image?: string;
   images: string[];
   sizes: string[];

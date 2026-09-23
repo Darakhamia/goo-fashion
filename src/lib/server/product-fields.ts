@@ -18,6 +18,170 @@ export function cleanName(raw: string): string {
   return (raw ?? "").replace(SIZE_SUFFIXES, "").trim();
 }
 
+// ── Strip the store's furniture from a product name ───────────────────────────
+//
+// A page title is written for a search engine, not for a catalogue:
+//
+//     "Куртка бомбер, чёрная — MyStore | Купить с доставкой"
+//
+// Only the first few words are the product. The rest is the shop's name and its
+// sales copy, repeated on every page it owns, and it used to land in the
+// catalogue verbatim because the name came from `og:title` and `cleanName` only
+// ever removed a trailing size.
+
+/**
+ * Separators a store hangs its own name off. Captured, so a split keeps them
+ * and a name loses only the segments that were removed.
+ */
+const TITLE_SPLIT = /(\s+[|—–·•]\s+|\s+-\s+)/;
+
+/**
+ * Sales words that are never part of a garment's name. Matched only as whole
+ * trailing or leading segments, so a "Sale Rail Tote" keeps its name.
+ */
+const BOILERPLATE =
+  /^(?:buy(?:\s+online)?|shop(?:\s+online)?|online(?:\s+(?:store|shop))?|official(?:\s+(?:site|store))?|free\s+shipping|fast\s+delivery|sale|discounts?|price|best\s+price|new\s+arrivals?|купить(?:\s+\S+)*|цена|доставка|интернет-магазин|магазин|заказать|недорого)$/i;
+
+function slug(s: string): string {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9а-яё]/gi, "");
+}
+
+/**
+ * The words a host could be called by, so "shop.mystore.co.uk" is recognised as
+ * MyStore rather than as "shop".
+ *
+ * Every label is a candidate because the shop's name can sit anywhere in the
+ * host, but the generic ones are dropped: a title segment reading exactly "shop"
+ * or "uk" says nothing about which store this is, and removing it on that basis
+ * would eat real words.
+ */
+const HOST_NOISE = new Set([
+  "www", "shop", "store", "sklep", "magazin", "com", "net", "org", "co", "uk",
+  "ua", "pl", "de", "fr", "it", "es", "cz", "eu", "us", "io", "online", "site",
+]);
+
+function hostWords(host: string): string[] {
+  return (host ?? "")
+    .toLowerCase()
+    .split(".")
+    .map(slug)
+    .filter((w) => w.length >= 3 && !HOST_NOISE.has(w));
+}
+
+export interface TidyNameOptions {
+  /** The store's hostname, so a title ending in the shop's own name loses it. */
+  host?: string;
+  /** The product's brand, so "Aurelio Aurelio Nebula Jacket" says it once. */
+  brand?: string;
+  /**
+   * A trailing string observed on every title across this store. Whatever is
+   * identical on twenty different products is not any one product's name, and
+   * no list of stop-words can be as reliable about a given shop as the shop's
+   * own repetition. Supplied by the caller that can see more than one page.
+   */
+  titleSuffix?: string;
+}
+
+/**
+ * Turn a page title into a product name.
+ *
+ * Deliberately conservative: it only removes a trailing segment it can justify
+ * — one the whole store repeats, one that is the shop's own name or host, or
+ * one that is pure sales copy. A name it cannot explain is left alone, because
+ * a slightly long name is a much smaller problem than a truncated one.
+ */
+export function tidyProductName(raw: string, opts: TidyNameOptions = {}): string {
+  let name = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!name) return "";
+
+  // 1. The suffix this store puts on everything, removed as plain text before
+  //    any splitting — it may itself contain separators.
+  const suffix = (opts.titleSuffix ?? "").trim();
+  if (suffix && name.length > suffix.length && name.endsWith(suffix)) {
+    name = name.slice(0, -suffix.length).trim();
+  }
+
+  // 2. Trailing segments that name the shop or sell rather than describe.
+  const storeWords = new Set(
+    [...hostWords(opts.host ?? ""), slug(opts.host ?? "")].filter(Boolean),
+  );
+  //    Segments sit at even indices, the separators between them at odd ones.
+  //    What stays is joined with its own separators, never a new one: the colour
+  //    grouping reads a colourway off "Nebula Jacket - Black" by its hyphen, and
+  //    a name rewritten to "Nebula Jacket — Black" would stop matching its camel
+  //    twin.
+  const pieces = name.split(TITLE_SPLIT);
+  while (pieces.length > 1) {
+    const last = pieces[pieces.length - 1].trim();
+    if (BOILERPLATE.test(last) || storeWords.has(slug(last))) {
+      pieces.splice(-2, 2);
+      continue;
+    }
+    break;
+  }
+  // A leading segment can be the shop too ("MyStore | Bomber Jacket").
+  while (pieces.length > 1 && storeWords.has(slug(pieces[0].trim()))) pieces.splice(0, 2);
+
+  name = pieces.join("").trim();
+
+  // 3. The brand said twice at the front.
+  const brand = (opts.brand ?? "").trim();
+  if (brand) {
+    const doubled = new RegExp(`^(${escapeRe(brand)})\\s+\\1\\b`, "i");
+    name = name.replace(doubled, "$1").trim();
+  }
+
+  // Trailing punctuation left behind by a removed segment.
+  name = name.replace(/[\s,;:|—–·•-]+$/, "").trim();
+
+  // Never hand back nothing: if the rules ate the whole title, the original was
+  // a better answer than an empty one.
+  return name || (raw ?? "").trim();
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * The longest trailing text shared by every title given.
+ *
+ * This is the reliable half of name cleaning: a stop-word list encodes guesses
+ * about shops in general, while this measures one shop. If twenty products all
+ * end " | MyStore — Купить с доставкой", that string is the shop talking, not
+ * any product's name.
+ *
+ * Needs at least `minTitles` distinct titles before it will claim anything —
+ * two products from the same category can legitimately share a tail, twenty
+ * cannot. Trimmed back to a separator so it never bites into a word, and
+ * ignored unless it starts at one, so a shared word like "Jacket" is not
+ * mistaken for furniture.
+ */
+export function commonTitleSuffix(titles: string[], minTitles = 3): string {
+  const uniq = [...new Set((titles ?? []).map((t) => (t ?? "").replace(/\s+/g, " ").trim()))].filter(
+    Boolean,
+  );
+  if (uniq.length < minTitles) return "";
+
+  let suffix = uniq[0];
+  for (const t of uniq.slice(1)) {
+    let i = 0;
+    while (i < suffix.length && i < t.length && suffix[suffix.length - 1 - i] === t[t.length - 1 - i]) {
+      i++;
+    }
+    suffix = suffix.slice(suffix.length - i);
+    if (!suffix.trim()) return "";
+  }
+
+  // Keep only from the first separator onwards, so the suffix begins where the
+  // store's furniture begins rather than mid-word.
+  const at = suffix.search(/\s+[|—–·•]\s+|\s+-\s+/);
+  if (at === -1) return "";
+  const trimmed = suffix.slice(at);
+  // A bare separator is not worth subtracting.
+  return trimmed.replace(/[\s|—–·•-]/g, "") ? trimmed : "";
+}
+
 // ── Strip trailing color suffix from a size-cleaned name ──────────────────────
 // "Polo Shirt - Blue" → "Polo Shirt". Used for variant grouping.
 
