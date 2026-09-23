@@ -27,6 +27,7 @@ import {
   type ExistingItem,
   type IncomingItem,
 } from "./same-item";
+import { brandVocabulary, decideBrand } from "./brand-from-name";
 import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
@@ -80,6 +81,37 @@ async function colorGroupIdsFor(colors: string[]): Promise<number[] | undefined>
     .map((n) => byName.get(n.toLowerCase()))
     .filter((id): id is number => typeof id === "number");
   return ids.length ? [...new Set(ids)] : undefined;
+}
+
+// ── Brands ────────────────────────────────────────────────────────────────────
+// The brands a product name is checked against: the admin's Brands list first
+// (its spelling wins), then every brand the catalogue already carries, so a
+// brand one store stated properly is recognised in the next store's titles.
+// Cached like the colour groups — a collect run imports a page every couple of
+// seconds, and the list changes when an admin adds a brand, not per product.
+
+const BRAND_TTL_MS = 5 * 60_000;
+let brandCache: { at: number; brands: string[] } | null = null;
+
+async function loadKnownBrands(): Promise<string[]> {
+  if (brandCache && Date.now() - brandCache.at < BRAND_TTL_MS) return brandCache.brands;
+  const curated: string[] = [];
+  const catalogue: string[] = [];
+  try {
+    const [table, rows] = await Promise.all([
+      supabase!.from("brands").select("name"),
+      supabase!.from("products").select("brand").neq("brand", "").limit(5000),
+    ]);
+    // Either read can fail on its own (no brands table on an older database);
+    // the other still gives a usable list.
+    for (const r of (table.data ?? []) as { name: string | null }[]) if (r.name) curated.push(r.name);
+    for (const r of (rows.data ?? []) as { brand: string | null }[]) if (r.brand) catalogue.push(r.brand);
+  } catch {
+    /* no connection — no list, and the page's own brand stands as it was */
+  }
+  const brands = brandVocabulary(curated, catalogue);
+  brandCache = { at: Date.now(), brands };
+  return brands;
 }
 
 // ── Colour variants ───────────────────────────────────────────────────────────
@@ -298,6 +330,8 @@ export interface ImportResult {
   images?: number;
   /** The conversion that was applied to the price, or why none was. */
   priceNote?: string;
+  /** Set when the brand was read off the product name rather than the page. */
+  brandNote?: string;
   /** How many colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when this page joined an existing product instead of creating one. */
@@ -351,6 +385,10 @@ export async function importParsedProduct(
   const sourcePrice = Math.max(0, Number(p.price) || 0);
   const sourcePriceOriginal = Math.max(0, Number(p.priceOriginal) || 0);
   const sourceCurrency = String(p.currency ?? "").trim().toUpperCase().slice(0, 3);
+  // Set by the parser when the page named no currency and the store's address
+  // or language did — said in the note, so an inferred hryvnia is visibly one.
+  const currencyBasis = String(p.currencyBasis ?? "").trim().slice(0, 80);
+  const inferredNote = currencyBasis ? ` (${sourceCurrency} from ${currencyBasis})` : "";
 
   let price = sourcePrice;
   let priceOriginal = sourcePriceOriginal;
@@ -372,12 +410,12 @@ export async function importParsedProduct(
       currency = "USD";
       fxRate = converted.rate;
       fxDate = converted.asOf;
-      priceNote = `${sourcePrice} ${sourceCurrency} → $${price}${converted.live ? "" : " (fallback rate)"}`;
+      priceNote = `${sourcePrice} ${sourceCurrency} → $${price}${converted.live ? "" : " (fallback rate)"}${inferredNote}`;
     } else {
       // A currency with no rate is left exactly as the store stated it. It will
       // read wrong in a dollar filter, and that is the lesser wrong: relabelling
       // it as dollars would make it read wrong everywhere, silently.
-      priceNote = `no rate for ${sourceCurrency} — price kept as ${sourcePrice} ${sourceCurrency}`;
+      priceNote = `no rate for ${sourceCurrency} — price kept as ${sourcePrice} ${sourceCurrency}${inferredNote}`;
     }
   } else if (sourcePrice && !sourceCurrency) {
     priceNote = "the page never stated a currency — price taken as dollars";
@@ -409,7 +447,26 @@ export async function importParsedProduct(
     .filter(Boolean)
     .slice(0, 40);
 
-  const brand = String(p.brand ?? "").trim().slice(0, 80);
+  // The page's brand, unless the name names a known brand the page did not —
+  // the empty brand, or the shop's own name in its place, that a multi-brand
+  // store leaves on every product (see `brand-from-name.ts`).
+  const statedBrand = String(p.brand ?? "").trim().slice(0, 80);
+  let host = "";
+  try {
+    host = sourceUrl ? new URL(sourceUrl).hostname : "";
+  } catch {
+    /* no address — nothing to tell the shop's name from a brand */
+  }
+  const brandDecision = decideBrand({
+    stated: statedBrand,
+    name,
+    host,
+    known: await loadKnownBrands(),
+  });
+  const brand = brandDecision.brand.slice(0, 80);
+  const brandNote = brandDecision.fromName
+    ? `brand ${brand} from the name${statedBrand ? ` (page said ${statedBrand})` : ""}`
+    : undefined;
 
   // The store's name and its "official store" flag come from the domain rules
   // when the admin has written one, and from the guesses made off the link only
@@ -554,6 +611,7 @@ export async function importParsedProduct(
           imagesFailed,
           images: images.length,
           priceNote,
+          brandNote,
           mergedInto: twin.id,
           mergedFields: filled,
         };
@@ -617,6 +675,7 @@ export async function importParsedProduct(
     imagesFailed,
     images: images.length,
     priceNote,
+    brandNote,
     variantsLinked,
   };
 }
