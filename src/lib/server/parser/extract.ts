@@ -834,6 +834,20 @@ function fromHeading(html: string): { h1?: string; title?: string } {
   return { h1, title: title || undefined };
 }
 
+/**
+ * The language the page declares for itself: `<html lang>`, then `og:locale`,
+ * then a `Content-Language` meta. Used only to guess the currency of a price
+ * that no source on the page names (see `currencyFromLocale`).
+ */
+function pageLanguage(html: string): string | undefined {
+  const htmlTag = html.match(/<html\b[^>]*?\blang\s*=\s*["']?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?)/i);
+  if (htmlTag) return htmlTag[1];
+  const meta = parseMetaTags(html);
+  const value = meta.get("og:locale") || meta.get("content-language");
+  const tag = value?.trim().match(/^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?/);
+  return tag ? tag[0] : undefined;
+}
+
 function fromMicrodata(html: string): Partial<RawExtract> {
   const prop = (name: string): string | undefined => {
     // <span itemprop="price" content="49.99"> or text content
@@ -1026,6 +1040,9 @@ export function extractProduct(
       micro.currency,
       evidence?.priceText ? extractCurrencyFromDisplay(evidence.priceText) : undefined,
     ),
+    // Not a currency — the page's language, for `normalize` to fall back on
+    // when neither the markup nor the rendered price named one.
+    lang: pageLanguage(html),
     image,
     images: [
       ...(image && !images.includes(image) ? [image, ...images] : images),

@@ -77,6 +77,12 @@ interface CurrencyContextValue {
   formatPrice: (amount: number, sourceCurrency?: string) => string;
   /** Normalize any amount to USD using current rates (useful for summing mixed-currency totals). */
   convertToUsd: (amount: number, sourceCurrency: string) => number;
+  /**
+   * Whether `convertToUsd` actually knows this currency. For one it does not,
+   * that function hands the amount back unchanged — fine for summing a cart,
+   * wrong for writing a catalogue price, which is where ₴4 000 becomes $4 000.
+   */
+  canConvert: (sourceCurrency: string) => boolean;
   ratesLoading: boolean;
 }
 
@@ -85,6 +91,7 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   setCurrency:   () => {},
   formatPrice:   (n) => `$${n.toLocaleString()}`,
   convertToUsd:  (n) => n,
+  canConvert:    (c) => c.toUpperCase() === "USD",
   ratesLoading:  false,
 });
 
@@ -150,6 +157,14 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     [rates],
   );
 
+  const canConvert = useCallback(
+    (sourceCurrency: string): boolean => {
+      const src = sourceCurrency.toUpperCase();
+      return src === "USD" || (rates[src] ?? 0) > 0;
+    },
+    [rates],
+  );
+
   const formatPrice = useCallback(
     (amount: number, sourceCurrency?: string) =>
       applyFormat(amount, currency, rates, sourceCurrency ?? "USD"),
@@ -157,7 +172,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, ratesLoading }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, canConvert, ratesLoading }}>
       {children}
     </CurrencyContext.Provider>
   );

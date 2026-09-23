@@ -8,6 +8,7 @@ import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
+import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -136,6 +137,12 @@ interface RetailerForm {
   name: string;
   url: string;
   price: string;
+  /**
+   * What `price` is in — the store's own currency. An imported hryvnia store
+   * arrives as "4000" + "UAH", and the catalogue price above is that converted
+   * to dollars; reading "4000" as dollars is the bug this field exists to stop.
+   */
+  currency: string;
   availability: "in stock" | "low stock" | "sold out";
   isOfficial: boolean;
   rating: string;       // "4.5" or ""
@@ -369,7 +376,7 @@ function RetailerList({
   storeLibrary?: { name: string; logoUrl: string | null }[];
 }) {
   const add = () =>
-    onChange([...retailers, { name: "", url: "", price: "", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
+    onChange([...retailers, { name: "", url: "", price: "", currency: "USD", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
   const remove = (i: number) => onChange(retailers.filter((_, idx) => idx !== i));
   const set = (i: number, patch: Partial<RetailerForm>) =>
     onChange(retailers.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -424,15 +431,33 @@ function RetailerList({
               </div>
             </div>
             <div>
-              <label className={labelCls}>Price ($)</label>
-              <input
-                type="number"
-                value={r.price}
-                onChange={(e) => set(i, { price: e.target.value })}
-                placeholder="99"
-                min="0"
-                className={inputCls}
-              />
+              <label className={labelCls}>Price</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={r.price}
+                  onChange={(e) => set(i, { price: e.target.value })}
+                  placeholder="99"
+                  min="0"
+                  className={`${inputCls} flex-1 min-w-0`}
+                />
+                <select
+                  value={r.currency}
+                  onChange={(e) => set(i, { currency: e.target.value })}
+                  aria-label="Currency of this store's price"
+                  className={`${selectCls} w-[76px] shrink-0`}
+                >
+                  {/* An imported store may price in a currency the switcher does
+                      not offer (złoty, say); it stays selectable rather than
+                      being silently replaced by the first option. */}
+                  {(CURRENCIES.some((c) => c.code === r.currency)
+                    ? CURRENCIES.map((c) => c.code as string)
+                    : [r.currency, ...CURRENCIES.map((c) => c.code as string)]
+                  ).map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           <div>
@@ -636,6 +661,20 @@ function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrat
 export default function AdminProductsPage() {
   // The tree the Categories page edits — the chips below are whatever it says.
   const categoryGroups = useCategoryTree();
+  const { convertToUsd, canConvert } = useCurrency();
+  /**
+   * A store's price on the catalogue's scale. `price_min` is read as dollars by
+   * the browse filter, the stylist's budget and the search RPCs, so a retailer
+   * row in hryvnia has to be converted before it becomes the product's price.
+   * NaN for a price that is missing or in a currency with no known rate: better
+   * left out of the range than counted as dollars.
+   */
+  const retailerUsd = (r: RetailerForm): number => {
+    const amount = parseFloat(r.price);
+    const code = (r.currency || "USD").toUpperCase();
+    if (!(amount > 0) || !canConvert(code)) return NaN;
+    return Math.round(convertToUsd(amount, code) * 100) / 100;
+  };
   const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -933,6 +972,7 @@ export default function AdminProductsPage() {
         name: r.name,
         url: r.url,
         price: String(r.price),
+        currency: (r.currency || "USD").toUpperCase(),
         availability: r.availability,
         isOfficial: r.isOfficial,
         rating: r.rating != null ? String(r.rating) : "",
@@ -968,6 +1008,7 @@ export default function AdminProductsPage() {
         name: r.name,
         url: r.url,
         price: String(r.price),
+        currency: (r.currency || "USD").toUpperCase(),
         availability: r.availability,
         isOfficial: r.isOfficial,
         rating: r.rating != null ? String(r.rating) : "",
@@ -1020,7 +1061,9 @@ export default function AdminProductsPage() {
         name: r.name,
         url: r.url,
         price: parseFloat(r.price) || 0,
-        currency: "USD",
+        // The store's own currency, kept. Forcing "USD" here relabelled every
+        // imported hryvnia price as dollars the first time a product was saved.
+        currency: r.currency || "USD",
         availability: r.availability,
         isOfficial: r.isOfficial,
         rating: r.rating ? parseFloat(r.rating) : undefined,
@@ -2805,13 +2848,21 @@ export default function AdminProductsPage() {
                     {!collapsed.has("pricing") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
                         {(() => {
-                          const retailerPrices = form.retailers.map((r) => parseFloat(r.price)).filter((p) => p > 0);
+                          const retailerPrices = form.retailers.map(retailerUsd).filter((p) => p > 0);
                           const isAutoCalc = retailerPrices.length > 0;
+                          const converted = [
+                            ...new Set(
+                              form.retailers
+                                .filter((r) => retailerUsd(r) > 0 && (r.currency || "USD").toUpperCase() !== "USD")
+                                .map((r) => r.currency.toUpperCase()),
+                            ),
+                          ];
                           return (
                             <>
                               {isAutoCalc && (
                                 <p className="text-[10px] text-[var(--foreground-muted)] tracking-[0.08em]">
                                   Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
+                                  {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
                                 </p>
                               )}
                               <div className="grid grid-cols-2 gap-3">
@@ -2990,7 +3041,7 @@ export default function AdminProductsPage() {
                           retailers={form.retailers}
                           storeLibrary={storeLibrary}
                           onChange={(r) => {
-                            const prices = r.map((x) => parseFloat(x.price)).filter((x) => x > 0);
+                            const prices = r.map(retailerUsd).filter((x) => x > 0);
                             setForm((f) => ({
                               ...f,
                               retailers: r,

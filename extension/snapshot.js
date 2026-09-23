@@ -96,9 +96,15 @@
   const JSON_IMAGE =
     /(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?\.(?:jpe?g|png|webp|avif)(?:\?(?:[^"'\s\\)>]|\\\/)*)?/gi;
 
-  /** A price: a currency marker with digits next to it, either order. */
+  /**
+   * A price: a currency marker with digits next to it, either order.
+   *
+   * Case-insensitive, because a Ukrainian store is as likely to print "4 000 ГРН"
+   * as "4 000 грн", and a price whose marker is missed here reaches the server as
+   * a bare number with no currency at all.
+   */
   const PRICE_TEXT =
-    /(?:[$€£₴₽¥₺₹₩₪]|zł|Kč|грн|руб|CHF|\b(?:USD|EUR|GBP|UAH|RUB|PLN|CZK|SEK|NOK|DKK|CAD|AUD|JPY|CNY|TRY)\b)\s*[\d][\d\s.,]*|[\d][\d\s.,]*\s*(?:[$€£₴₽¥₺₹₩₪]|zł|Kč|грн|руб|CHF|\b(?:USD|EUR|GBP|UAH|RUB|PLN|CZK|SEK|NOK|DKK|CAD|AUD|JPY|CNY|TRY)\b)/;
+    /(?:[$€£₴₽¥₺₹₩₪]|zł|Kč|грн|руб|CHF|\b(?:USD|EUR|GBP|UAH|RUB|PLN|CZK|SEK|NOK|DKK|CAD|AUD|JPY|CNY|TRY)\b)\s*[\d][\d\s.,]*|[\d][\d\s.,]*\s*(?:[$€£₴₽¥₺₹₩₪]|zł|Kč|грн|руб|CHF|\b(?:USD|EUR|GBP|UAH|RUB|PLN|CZK|SEK|NOK|DKK|CAD|AUD|JPY|CNY|TRY)\b)/i;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -698,10 +704,17 @@
     // and the element stays.
     root.querySelectorAll('[src^="data:"]').forEach((n) => n.removeAttribute("src"));
 
+    // `innerHTML` drops the root element's own attributes, and `lang` is the one
+    // the server reads: when no price on the page names its currency, the
+    // store's declared language ("uk-UA") is what tells hryvnia from dollars.
+    const lang = (document.documentElement.getAttribute("lang") || "")
+      .replace(/[^A-Za-z0-9_-]/g, "")
+      .slice(0, 20);
+
     return {
       ok: true,
       url: location.href,
-      html: `<html>${root.innerHTML}</html>`,
+      html: `<html${lang ? ` lang="${lang}"` : ""}>${root.innerHTML}</html>`,
       images,
       priceText,
       sizes,

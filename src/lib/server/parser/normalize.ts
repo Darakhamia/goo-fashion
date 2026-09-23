@@ -8,6 +8,7 @@ import {
   tidyProductName,
   parsePrice,
   extractCurrencyFromDisplay,
+  currencyFromLocale,
   normalizeGtin,
   normalizeCode,
   MAX_PRODUCT_IMAGES,
@@ -93,8 +94,16 @@ export function normalizeExtract(
   if (!price) issues.push("missing price");
   const priceOriginal = parsePrice(raw.priceOriginal ?? "");
 
-  const currency = normalizeCurrency(raw.currency, raw.price);
-  if (price && !currency) issues.push("currency not stated");
+  // What the page says, and only when it says nothing, what the store is: its
+  // country domain or declared language. The inferred answer is labelled, so
+  // the import can say "UAH, from the .ua address" instead of passing a guess
+  // off as a statement — and so a store with neither still reads as unstated.
+  const stated = normalizeCurrency(raw.currency, raw.price);
+  const inferred = !stated && price ? currencyFromLocale(sourceUrl, raw.lang) : null;
+  const currency = stated || inferred?.code || "";
+  if (price && !stated) {
+    issues.push(inferred ? `currency not stated — ${inferred.code} from ${inferred.basis}` : "currency not stated");
+  }
 
   // The store's own filing of this piece, outermost crumb first. Two things are
   // read out of it, and both used to be guessed from the name alone or not
@@ -242,6 +251,7 @@ export function normalizeExtract(
     price,
     priceOriginal,
     currency,
+    ...(inferred ? { currencyBasis: inferred.basis } : {}),
     sourceUrl,
     strategies: raw.strategies ?? [],
     issues,

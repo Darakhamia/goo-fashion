@@ -304,6 +304,7 @@ export async function POST(req: Request) {
             imagesMirrored: imported.imagesMirrored ?? 0,
             images: imported.images ?? 0,
             priceNote: imported.priceNote,
+            brandNote: imported.brandNote,
             variantsLinked: imported.variantsLinked ?? 0,
             merged: !!imported.mergedInto,
             mergedFields: imported.mergedFields,

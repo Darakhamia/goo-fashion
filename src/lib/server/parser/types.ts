@@ -180,6 +180,11 @@ export interface RawExtract {
   priceOriginal?: string;
   currency?: string;
   /**
+   * The language the page declares (`uk-UA`, `pl`). Not evidence about any one
+   * price; read only when nothing on the page states a currency.
+   */
+  lang?: string;
+  /**
    * The page's `<title>`, unmodified. Not a name candidate in its own right
    * except as a last resort — it is kept so the store's own repeated furniture
    * can be measured and subtracted.
@@ -230,6 +235,12 @@ export interface ParsedProduct {
   price: number;
   priceOriginal: number;
   currency: string;
+  /**
+   * Set when `currency` was inferred from the store rather than stated by the
+   * page — "the .ua address". Carried to the import so the admin can see why a
+   * price was read as hryvnia.
+   */
+  currencyBasis?: string;
   sourceUrl: string;
   /** Same piece, other colours, for the importer to group this row with. */
   variantUrls: string[];
@@ -287,6 +298,8 @@ export interface CrawlItemResult {
   images?: number;
   /** What happened to the price: the conversion applied, or why none was. */
   priceNote?: string;
+  /** Set when the brand came from the product name, not the page. */
+  brandNote?: string;
   /** Colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when the page joined an existing product instead of creating one. */

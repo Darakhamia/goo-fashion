@@ -32,13 +32,15 @@ interface Props {
   relatedProducts: Product[];
   outfitsWithProduct: Outfit[];
   lowestPrice: number;
+  /** The currency `lowestPrice` is in — the cheapest store's own, not the product's. */
+  lowestPriceCurrency?: string;
   /** Lower-cased store name → logo URL, from the admin store library. */
   retailerLogos?: Record<string, string>;
   /** The catalog's colour filters, used to name the colour breadcrumb. */
   colorGroups?: ColorGroup[];
 }
 
-export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, retailerLogos = {}, colorGroups = [] }: Props) {
+export default function ProductClient({ product, relatedProducts, outfitsWithProduct, lowestPrice, lowestPriceCurrency, retailerLogos = {}, colorGroups = [] }: Props) {
   // Auto-select the first color that has dedicated images, so the gallery is
   // populated on first render without requiring the user to click a swatch.
   const { formatPrice } = useCurrency();
@@ -260,7 +262,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           {/* Price */}
           <div className="mb-8 pb-8 border-b border-[var(--border)]">
             <p className="text-2xl font-bold text-[var(--foreground)]">
-              From {formatPrice(lowestPrice, product.currency)}
+              From {formatPrice(lowestPrice, lowestPriceCurrency ?? product.currency)}
             </p>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Price varies by retailer · All prices include tax

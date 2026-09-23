@@ -432,12 +432,14 @@ export default function CollectPage() {
  * how many photos came across, and what happened to the price. The second one
  * matters most on a store that does not price in dollars — the catalogue stores
  * dollars, so the row says which rate turned ₴4,000 into a number, rather than
- * leaving the admin to wonder whether it did.
+ * leaving the admin to wonder whether it did. A brand read off the product name
+ * is said too, since it replaced whatever the page gave.
  */
 function detailLine(r: CrawlItemResult): string {
   const parts: string[] = [];
   if (r.images) parts.push(`${r.images} photo${r.images === 1 ? "" : "s"}`);
   if (r.priceNote) parts.push(r.priceNote);
+  if (r.brandNote) parts.push(r.brandNote);
   if (r.variantsLinked) {
     parts.push(`grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}`);
   }

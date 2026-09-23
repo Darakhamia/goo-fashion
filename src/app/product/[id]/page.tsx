@@ -4,6 +4,7 @@ import { getProductById, getAllProducts, getOutfitsByProductId, getBrandLogos, g
 import ProductClient from "@/components/product/ProductClient";
 import JsonLd from "@/components/seo/JsonLd";
 import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { cheapestOffer } from "@/lib/server/fx";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -14,14 +15,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductById(id);
   if (!product) return {};
 
-  const lowestPrice = product.retailers.length
-    ? Math.min(...product.retailers.map((r) => r.price))
-    : product.priceMin;
+  const lowest = await cheapestOffer(product.retailers, {
+    amount: product.priceMin,
+    currency: product.currency,
+  });
 
   const title = `${product.name} — ${product.brand} | GOO`;
   const description = product.description
     ? product.description.slice(0, 155)
-    : `Shop ${product.name} by ${product.brand}. From ${formatMetaPrice(lowestPrice, product.currency)}.`;
+    : `Shop ${product.name} by ${product.brand}. From ${formatMetaPrice(lowest.amount, lowest.currency)}.`;
 
   return {
     title,
@@ -61,9 +63,12 @@ export default async function ProductDetailPage({ params }: Props) {
     .filter((p) => p.id !== product.id && p.category === product.category)
     .slice(0, 4);
 
-  const lowestPrice = product.retailers.length
-    ? Math.min(...product.retailers.map((r) => r.price))
-    : product.priceMin;
+  // Each retailer's price is in that store's currency, so the cheapest is
+  // chosen on one scale and shown in its own currency (see `cheapestOffer`).
+  const lowest = await cheapestOffer(product.retailers, {
+    amount: product.priceMin,
+    currency: product.currency,
+  });
 
   const breadcrumb = breadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
@@ -80,7 +85,8 @@ export default async function ProductDetailPage({ params }: Props) {
           product={product}
           relatedProducts={relatedProducts}
           outfitsWithProduct={outfitsWithProduct}
-          lowestPrice={lowestPrice}
+          lowestPrice={lowest.amount}
+          lowestPriceCurrency={lowest.currency}
           retailerLogos={retailerLogos}
           colorGroups={colorGroups}
         />

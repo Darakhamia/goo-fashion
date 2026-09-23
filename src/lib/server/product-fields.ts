@@ -299,6 +299,79 @@ export function extractCurrencyFromDisplay(raw: string): string {
   return "";
 }
 
+// ── The currency a store charges in, when no price says it ───────────────────
+// Last resort, and a better one than the one it replaces. A page whose markup
+// carries a bare "4000" and whose rendered price the extension could not read
+// used to be taken as dollars — the "₴4 000 coat at $4 000" again, by the back
+// door. The store's address and language are not a statement about one price,
+// but they are a statement about the shop: a Ukrainian store sells in hryvnia
+// by law, and a `.co.uk` checkout is in pounds. Anything the page itself says
+// still wins over this; it only answers where the page said nothing at all.
+
+/** Country (ccTLD or locale region) → the currency its shops charge in. */
+const COUNTRY_CURRENCY: Record<string, string> = {
+  ua: "UAH", pl: "PLN", cz: "CZK", uk: "GBP", gb: "GBP", ru: "RUB", tr: "TRY",
+  se: "SEK", no: "NOK", dk: "DKK", ch: "CHF", hu: "HUF", ro: "RON", il: "ILS",
+  jp: "JPY", kr: "KRW", cn: "CNY", hk: "HKD", tw: "TWD", sg: "SGD", th: "THB",
+  in: "INR", ae: "AED", za: "ZAR", br: "BRL", mx: "MXN", ca: "CAD", au: "AUD",
+  nz: "NZD", us: "USD",
+  // Euro area.
+  de: "EUR", fr: "EUR", it: "EUR", es: "EUR", nl: "EUR", be: "EUR", at: "EUR",
+  ie: "EUR", pt: "EUR", fi: "EUR", gr: "EUR", sk: "EUR", si: "EUR", ee: "EUR",
+  lv: "EUR", lt: "EUR", lu: "EUR", mt: "EUR", cy: "EUR", hr: "EUR", eu: "EUR",
+};
+
+/**
+ * Languages spoken as the main language of one currency's country only.
+ *
+ * "uk" is Ukrainian here, never the United Kingdom — a `lang` attribute holds a
+ * language. German, French, Russian, English and the rest are left out: each is
+ * the shop language of several currencies, so it says nothing without a region.
+ */
+const LANGUAGE_CURRENCY: Record<string, string> = {
+  uk: "UAH", pl: "PLN", cs: "CZK", hu: "HUF", sv: "SEK", da: "DKK", nb: "NOK",
+  nn: "NOK", no: "NOK", ja: "JPY", ko: "KRW", he: "ILS", tr: "TRY", th: "THB",
+};
+
+export interface InferredCurrency {
+  code: string;
+  /** What gave it away, for the admin: "the .ua address", "the page language (uk-UA)". */
+  basis: string;
+}
+
+/**
+ * The currency a store most likely charges in, from its address and the
+ * language its page declares — or null when neither says.
+ *
+ * The address comes first. A country-code domain is the business's own choice,
+ * while a page's `lang` is often a theme default ("en-US" on a Kyiv store).
+ * Generic domains (.com, .shop) say nothing and fall through to the language.
+ */
+export function currencyFromLocale(url: string, lang?: string): InferredCurrency | null {
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    /* no address, only the language can answer */
+  }
+  const tld = host.split(".").pop() ?? "";
+  if (tld && COUNTRY_CURRENCY[tld]) {
+    return { code: COUNTRY_CURRENCY[tld], basis: `the .${tld} address` };
+  }
+
+  // `uk-UA`, `ru_UA`, `en-GB`: the region is the country, whatever the language.
+  const tag = (lang ?? "").trim().toLowerCase().replace(/_/g, "-");
+  if (!tag) return null;
+  const [language, region] = tag.split("-");
+  if (region && region.length === 2 && COUNTRY_CURRENCY[region] && region !== "eu") {
+    return { code: COUNTRY_CURRENCY[region], basis: `the page language (${lang!.trim()})` };
+  }
+  if (!region && LANGUAGE_CURRENCY[language]) {
+    return { code: LANGUAGE_CURRENCY[language], basis: `the page language (${lang!.trim()})` };
+  }
+  return null;
+}
+
 // ── Product codes ─────────────────────────────────────────────────────────────
 // Three kinds of code appear on a product page, and the difference between them
 // decides what they may be used for:
