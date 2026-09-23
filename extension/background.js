@@ -296,6 +296,7 @@ async function snapshotPage(url) {
       specs: Array.isArray(result.specs) ? result.specs : [],
       breadcrumbs: Array.isArray(result.breadcrumbs) ? result.breadcrumbs : [],
       brandText: typeof result.brandText === "string" ? result.brandText : "",
+      pageTitle: typeof result.pageTitle === "string" ? result.pageTitle : "",
       status,
     };
   } catch (err) {
@@ -446,6 +447,7 @@ async function run({ storeUrl, limit }) {
         specs: snap.specs,
         breadcrumbs: snap.breadcrumbs,
         brandText: snap.brandText,
+        pageTitle: snap.pageTitle,
       });
       collected++;
       state.done = collected;

@@ -5,6 +5,7 @@
  */
 import {
   cleanName,
+  tidyProductName,
   parsePrice,
   extractCurrencyFromDisplay,
   normalizeGtin,
@@ -24,6 +25,14 @@ import {
 } from "@/lib/categories";
 import { upgradeImageUrl, imageKey } from "./gallery";
 import { looksLikeProductPath, isNonProductPath } from "./extract";
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
 
 /** Resolve a possibly-relative image URL against the page URL. */
 function absoluteUrl(src: string, base: string): string | null {
@@ -52,17 +61,33 @@ function normalizeCurrency(rawCurrency: string | undefined, rawPrice: string | u
   return (extractCurrencyFromDisplay(rawCurrency ?? "") || extractCurrencyFromDisplay(rawPrice ?? "")).toUpperCase();
 }
 
+export interface NormalizeOptions {
+  /**
+   * The trailing text this store appends to every page title, worked out by a
+   * caller that has seen several of its pages. Subtracted from the name.
+   */
+  titleSuffix?: string;
+}
+
 export function normalizeExtract(
   raw: RawExtract,
   sourceUrl: string,
   config?: ParserSiteConfig | null,
+  opts?: NormalizeOptions,
 ): ParsedProduct {
   const issues: string[] = [];
 
-  const name = cleanName(raw.name ?? "");
-  if (!name) issues.push("missing name");
-
   const brand = (config?.brandOverride || raw.brand || "").trim();
+
+  // The size suffix goes first (it is about the garment), then the store's
+  // furniture (it is about the shop). Both are conservative: anything that
+  // cannot be justified is left on the name.
+  const name = tidyProductName(cleanName(raw.name ?? ""), {
+    host: hostOf(sourceUrl),
+    brand,
+    titleSuffix: opts?.titleSuffix,
+  });
+  if (!name) issues.push("missing name");
 
   const price = parsePrice(raw.price ?? "");
   if (!price) issues.push("missing price");

@@ -78,6 +78,12 @@ export interface ParsePageOptions {
    * lowest precedence, behind every structured source.
    */
   evidence?: PageEvidence;
+  /**
+   * The trailing text this store appends to every page title. Subtracted from
+   * the product name — whatever is identical across twenty of a shop's pages
+   * is the shop talking, not any one product's name.
+   */
+  titleSuffix?: string;
 }
 
 function resolveUrl(href: string, base: string): string {
@@ -127,7 +133,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
   // store anything at all would only be a request that can be refused.
   const storefront = pasted ? null : await fetchStorefrontProduct(url, settings, opts.fetchApiKey);
   if (storefront) {
-    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched);
+    const product = normalizeExtract(storefront.raw, storefront.sourceUrl, matched, { titleSuffix: opts.titleSuffix });
     return {
       ok: true,
       products: product.name || product.imageUrl ? [product] : [],
@@ -195,14 +201,24 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       }
     }
 
-    const prod = normalizeExtract(raw, pageUrl, matched);
+    const prod = normalizeExtract(raw, pageUrl, matched, { titleSuffix: opts.titleSuffix });
     return prod.name || prod.imageUrl ? [prod] : [];
   };
 
   let products: ParsedProduct[] = [];
   let isListing = false;
 
-  if (standaloneCount === 1) {
+  // One piece stated several times — the theme's Product and a reviews app's
+  // Product under the same name — is still one piece, not a listing of two.
+  const standaloneNames = new Set(
+    standaloneItems.map((n) => (n.name ?? "").trim().toLowerCase()).filter(Boolean),
+  );
+
+  // The extension only ever sends product pages: the plan picked them. Reading
+  // one as a listing takes the first JSON-LD card for the product and discards
+  // everything the page itself showed — its photos, sizes, colour, description
+  // and the currency printed beside the price.
+  if (opts.evidence || standaloneCount === 1 || (standaloneCount >= 2 && standaloneNames.size <= 1)) {
     products = await single();
   } else {
     const items = standaloneCount >= 2 ? standaloneItems : listItems;
@@ -210,7 +226,7 @@ export async function parsePage(url: string, opts: ParsePageOptions): Promise<Pa
       isListing = true;
       products = items.map((n) => {
         const purl = n.url ? resolveUrl(n.url, pageUrl) : "";
-        const prod = normalizeExtract(n, purl || pageUrl, matched);
+        const prod = normalizeExtract(n, purl || pageUrl, matched, { titleSuffix: opts.titleSuffix });
         // Keep each card's own source URL (empty → import inserts a fresh row
         // instead of all cards colliding on the listing URL).
         prod.sourceUrl = purl;
