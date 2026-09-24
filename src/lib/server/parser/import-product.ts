@@ -11,7 +11,12 @@
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, writeProductRow } from "@/lib/data/db";
-import { colorToHex, colorGroupNamesFor, MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
+import {
+  colorToHex,
+  colorGroupNamesFor,
+  looksLikeColourLabel,
+  MAX_PRODUCT_IMAGES,
+} from "@/lib/server/product-fields";
 import { toUsd } from "@/lib/server/fx";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
 import {
@@ -31,7 +36,7 @@ import {
 import { brandVocabulary, decideBrand } from "./brand-from-name";
 import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
-import { storeBackgroundColor } from "@/lib/server/bg-color";
+import { sampleGarmentColours, storeBackgroundColor } from "@/lib/server/bg-color";
 import type { Product, Category, Gender } from "@/lib/types";
 
 const CATEGORIES: Category[] = [
@@ -72,9 +77,8 @@ async function loadColorGroups(): Promise<Map<string, number> | null> {
   return byName;
 }
 
-/** The colour-filter ids a product's colour labels put it under. */
-async function colorGroupIdsFor(colors: string[]): Promise<number[] | undefined> {
-  const names = colorGroupNamesFor(colors);
+/** The colour-filter ids for these filter names ("Black", "Multicolor"). */
+async function colorGroupIdsFor(names: string[]): Promise<number[] | undefined> {
   if (!names.length) return undefined;
   const byName = await loadColorGroups();
   if (!byName) return undefined;
@@ -443,6 +447,8 @@ export interface ImportResult {
   priceNote?: string;
   /** Set when the brand was read off the product name rather than the page. */
   brandNote?: string;
+  /** Set when the colour filter came from the name or the photo, not the label. */
+  colorNote?: string;
   /** How many colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when this page joined an existing product instead of creating one. */
@@ -551,9 +557,12 @@ export async function importParsedProduct(
     }
   }
 
-  const colors = (Array.isArray(p.colors) ? p.colors : [])
+  // Only labels that read as a colour's name. The parser already checks, but
+  // this is also called with records assembled elsewhere, and a file name
+  // stored here is shown to shoppers as the colour.
+  let colors: string[] = (Array.isArray(p.colors) ? p.colors : [])
     .map((c: unknown) => String(c).trim())
-    .filter(Boolean)
+    .filter((c: string) => looksLikeColourLabel(c))
     .slice(0, 10);
   const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
     .map((s: unknown) => String(s).trim())
@@ -601,7 +610,31 @@ export async function importParsedProduct(
       }]
     : [];
 
-  const colorGroupIds = await colorGroupIdsFor(colors);
+  // ── The colour filter ───────────────────────────────────────────────────────
+  // From the store's colour label first. A label that names no base colour
+  // ("Babymetal Storm") or no label at all used to leave the filter empty, so a
+  // shopper filtering by green never saw the piece. Then the product name's own
+  // colour words, then the photo — a studio shot only (see `bg-color.ts`).
+  // Whatever answered is said in the collect screen, because the last two are
+  // readings, not the store's word.
+  let colorNote: string | undefined;
+  let groupNames = colorGroupNamesFor(colors);
+  if (!groupNames.length) {
+    groupNames = colorGroupNamesFor(name);
+    if (groupNames.length) colorNote = `colour filter ${groupNames.join(", ")} from the name`;
+  }
+  if (!groupNames.length && imageUrl) {
+    const photo = await sampleGarmentColours(imageUrl);
+    if (photo.outcome === "measured" && photo.colours.length) {
+      groupNames = colorGroupNamesFor(photo.colours);
+      // A label only when the page gave none: the store's own word, even one
+      // the filter cannot read, is still the better name to show.
+      const measured = photo.colours[0].charAt(0).toUpperCase() + photo.colours[0].slice(1);
+      if (!colors.length) colors = [measured];
+      colorNote = `colour ${groupNames.join(", ")} from the photo (${photo.reason})`;
+    }
+  }
+  const colorGroupIds = await colorGroupIdsFor(groupNames);
 
   const product: Partial<Product> = {
     name,
@@ -754,6 +787,7 @@ export async function importParsedProduct(
           images: images.length,
           priceNote,
           brandNote,
+          colorNote,
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
@@ -820,6 +854,7 @@ export async function importParsedProduct(
     images: images.length,
     priceNote,
     brandNote,
+    colorNote,
     variantsLinked,
   };
 }
