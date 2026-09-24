@@ -440,6 +440,7 @@ function detailLine(r: CrawlItemResult): string {
   if (r.images) parts.push(`${r.images} photo${r.images === 1 ? "" : "s"}`);
   if (r.priceNote) parts.push(r.priceNote);
   if (r.brandNote) parts.push(r.brandNote);
+  if (r.colorNote) parts.push(r.colorNote);
   if (r.variantsLinked) {
     parts.push(`grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}`);
   }

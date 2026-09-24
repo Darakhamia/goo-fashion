@@ -300,6 +300,8 @@ export interface CrawlItemResult {
   priceNote?: string;
   /** Set when the brand came from the product name, not the page. */
   brandNote?: string;
+  /** Set when the colour filter came from the name or the photo, not the label. */
+  colorNote?: string;
   /** Colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when the page joined an existing product instead of creating one. */

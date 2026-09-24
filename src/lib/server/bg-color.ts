@@ -24,6 +24,7 @@
  * current behaviour.
  */
 import { fetchImageBuffer, isAlreadyMirrored } from "@/lib/server/storage/product-images";
+import type { BaseColor } from "@/lib/server/product-fields";
 
 export interface Rgb {
   r: number;
@@ -416,20 +417,40 @@ export async function storeBackgroundColor(productId: string, url: string): Prom
 }
 
 /**
- * Download one photo and measure it.
+ * Download one photo and measure its backdrop.
+ */
+export async function sampleBackgroundColor(url: string): Promise<BgColorResult> {
+  const decoded = await decodeForSampling(url, DECODE_MAX_SIDE);
+  if ("reason" in decoded) return { color: null, outcome: "unavailable", reason: decoded.reason };
+  const { data, width, height, channels, via } = decoded;
+  const corners = sampleCornersFromRaw(data, width, height, channels);
+  return { ...agreedBackground(corners), via };
+}
+
+interface DecodedImage {
+  data: Uint8Array;
+  width: number;
+  height: number;
+  channels: number;
+  via: "thumbnail" | "original";
+}
+
+/**
+ * Download one photo and decode it to raw RGBA no larger than `maxSide`, or
+ * say why that could not be done.
  *
  * `sharp` is loaded on demand: it is a native module, and a platform where the
  * binary failed to install should degrade to "this admin job reports it cannot
  * run" rather than to a route that throws on import.
  */
-export async function sampleBackgroundColor(url: string): Promise<BgColorResult> {
-  if (!url) return { color: null, outcome: "unavailable", reason: "no image" };
+async function decodeForSampling(url: string, maxSide: number): Promise<DecodedImage | { reason: string }> {
+  if (!url) return { reason: "no image" };
 
   let sharp: typeof import("sharp");
   try {
     sharp = (await import("sharp")).default;
   } catch {
-    return { color: null, outcome: "unavailable", reason: "sharp is not available on this server" };
+    return { reason: "sharp is not available on this server" };
   }
 
   let bytes: Buffer;
@@ -437,37 +458,164 @@ export async function sampleBackgroundColor(url: string): Promise<BgColorResult>
   try {
     ({ buffer: bytes, via } = await fetchForSampling(url));
   } catch (e) {
-    return {
-      color: null,
-      outcome: "unavailable",
-      reason: `download failed (${e instanceof Error ? e.message : "unknown"})`,
-    };
+    return { reason: `download failed (${e instanceof Error ? e.message : "unknown"})` };
   }
 
   try {
     // `failOn: "none"` because a truncated-but-decodable photo still has usable
     // corners, and a catalog of ten thousand imports has a few of those.
     const { data, info } = await sharp(bytes, { failOn: "none" })
-      .resize({
-        width: DECODE_MAX_SIDE,
-        height: DECODE_MAX_SIDE,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
+      .resize({ width: maxSide, height: maxSide, fit: "inside", withoutEnlargement: true })
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-
-    if (!info.width || !info.height) {
-      return { color: null, outcome: "unavailable", reason: "unreadable image" };
-    }
-    const corners = sampleCornersFromRaw(data, info.width, info.height, info.channels);
-    return { ...agreedBackground(corners), via };
+    if (!info.width || !info.height) return { reason: "unreadable image" };
+    return { data, width: info.width, height: info.height, channels: info.channels, via };
   } catch (e) {
-    return {
-      color: null,
-      outcome: "unavailable",
-      reason: `decode failed (${e instanceof Error ? e.message : "unknown"})`,
+    return { reason: `decode failed (${e instanceof Error ? e.message : "unknown"})` };
+  }
+}
+
+// ── The piece's own colour ────────────────────────────────────────────────────
+// For the colour filter, when the page names no colour the filter can use: a
+// store that calls its colourway "Babymetal Storm", or whose only colour text
+// was its swatch's file name. The photo is then the one witness left.
+//
+// Same caution as the backdrop above, for the same reason. This only answers
+// for a studio shot — four corners agreeing on a backdrop, or a cut-out — where
+// "not the backdrop" is the piece. A lifestyle photo has a street, a model and
+// a second garment in it, and the most common colour there is anybody's guess,
+// so it gets no answer at all rather than a confident wrong one.
+
+/** Longest side decoded for the piece's colour. Colour share needs no detail. */
+export const GARMENT_DECODE_SIDE = 160;
+
+/**
+ * How far (RGB distance) a pixel must sit from the backdrop to count as the
+ * piece. Below this is the backdrop's own grain and the soft shadow under it.
+ */
+export const GARMENT_MIN_DISTANCE = 48;
+
+/** Least share of the frame the piece must fill; less is a speck, not a garment. */
+export const GARMENT_MIN_SHARE = 0.03;
+
+/** A second colour covering at least this much of the piece makes it two-coloured. */
+export const SECOND_COLOUR_SHARE = 0.25;
+
+/**
+ * The catalogue's base colour for one pixel.
+ *
+ * Deliberately coarse: it answers which filter a shopper would look under, not
+ * what the colourway is called. Hue decides, with lightness and chroma splitting
+ * the hues whose names change with them — dark orange is brown, pale muted
+ * orange is beige, dark yellow is olive and so green, light red is pink.
+ */
+export function baseColourOfPixel(r: number, g: number, b: number): BaseColor {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const chroma = max - min;
+  const l = (max + min) / 2 / 255;
+
+  if (chroma < 24) return l < 0.22 ? "black" : l > 0.86 ? "white" : "grey";
+  if (l < 0.12) return "black";
+
+  let h: number;
+  if (max === r) h = ((g - b) / chroma) % 6;
+  else if (max === g) h = (b - r) / chroma + 2;
+  else h = (r - g) / chroma + 4;
+  h = (h * 60 + 360) % 360;
+
+  if (h < 15 || h >= 345) return l > 0.7 ? "pink" : "red";
+  if (h < 45) {
+    if (chroma < 70 && l > 0.55) return "beige";
+    return l < 0.42 ? "brown" : "orange";
+  }
+  if (h < 70) {
+    if (chroma < 70 && l > 0.55) return "beige";
+    return l < 0.4 ? "green" : "yellow";
+  }
+  if (h < 170) return "green";
+  if (h < 255) return "blue";
+  if (h < 290) return "violet";
+  return l > 0.6 ? "pink" : "violet";
+}
+
+export interface GarmentColours {
+  /** Base colours, most of the piece first; two when a second covers a quarter. */
+  colours: BaseColor[];
+  outcome: "measured" | "declined" | "unavailable";
+  reason: string;
+}
+
+/**
+ * The piece's base colours from a raw interleaved buffer, or a decline.
+ * Kept apart from the decoder so it can be fed hand-built pixels.
+ */
+export function garmentColoursFromRaw(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+): GarmentColours {
+  const corners = sampleCornersFromRaw(data, width, height, channels);
+  // A cut-out: the backdrop is transparency, and the piece is what is opaque.
+  const cutout = corners.every((c) => c.alpha < 128);
+  let backdrop: Rgb | null = null;
+  if (!cutout) {
+    const agreed = agreedBackground(corners);
+    if (agreed.outcome !== "measured" || !agreed.color) {
+      return { colours: [], outcome: "declined", reason: `not a studio shot (${agreed.reason})` };
+    }
+    const hex = agreed.color;
+    backdrop = {
+      r: parseInt(hex.slice(1, 3), 16),
+      g: parseInt(hex.slice(3, 5), 16),
+      b: parseInt(hex.slice(5, 7), 16),
     };
+  }
+
+  const tally = new Map<BaseColor, number>();
+  let piece = 0;
+  for (let i = 0; i < width * height; i++) {
+    const at = i * channels;
+    const r = data[at] ?? 0;
+    const g = data[at + 1] ?? 0;
+    const b = data[at + 2] ?? 0;
+    const alpha = channels > 3 ? (data[at + 3] ?? 255) : 255;
+    if (alpha < 200) continue;
+    if (backdrop) {
+      const distance = Math.hypot(r - backdrop.r, g - backdrop.g, b - backdrop.b);
+      if (distance < GARMENT_MIN_DISTANCE) continue;
+    }
+    const base = baseColourOfPixel(r, g, b);
+    tally.set(base, (tally.get(base) ?? 0) + 1);
+    piece++;
+  }
+
+  const frame = width * height;
+  if (!frame || piece / frame < GARMENT_MIN_SHARE) {
+    // A white shirt on a white sweep lands here too — a piece the camera cannot
+    // separate from its backdrop is a piece this cannot colour.
+    return { colours: [], outcome: "declined", reason: "the piece does not stand out from the backdrop" };
+  }
+
+  const ranked = [...tally.entries()].sort((a, b) => b[1] - a[1]);
+  const colours: BaseColor[] = [ranked[0][0]];
+  if (ranked[1] && ranked[1][1] / piece >= SECOND_COLOUR_SHARE) colours.push(ranked[1][0]);
+  const shares = ranked
+    .slice(0, 3)
+    .map(([c, n]) => `${c} ${Math.round((n / piece) * 100)}%`)
+    .join(", ");
+  return { colours, outcome: "measured", reason: shares };
+}
+
+/** Download one photo and read the piece's colours off it. Never throws. */
+export async function sampleGarmentColours(url: string): Promise<GarmentColours> {
+  const decoded = await decodeForSampling(url, GARMENT_DECODE_SIDE);
+  if ("reason" in decoded) return { colours: [], outcome: "unavailable", reason: decoded.reason };
+  try {
+    return garmentColoursFromRaw(decoded.data, decoded.width, decoded.height, decoded.channels);
+  } catch (e) {
+    return { colours: [], outcome: "unavailable", reason: e instanceof Error ? e.message : "unknown" };
   }
 }

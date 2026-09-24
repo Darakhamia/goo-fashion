@@ -901,6 +901,37 @@ export function colorWordsIn(text: string): BaseColor[] {
 }
 
 /**
+ * Could this string be the name of a colour, as a shop writes one — rather than
+ * a file, an address or a code that happened to sit where the colour should?
+ *
+ * The collect extension reads the selected swatch, and a swatch is often a tiny
+ * product photo whose `alt` or `title` is its file name. So "A35893_1.jpg" and
+ * "A35224-BabymetalStorm-1.jpg" were stored as colours, shown to shoppers, and
+ * left the colour filter empty because no colour word is in them. A colour name
+ * is words; these shapes never are:
+ *
+ *   - a file name (an image extension),
+ *   - an address (a scheme, `//`, a leading slash),
+ *   - anything with an underscore — how files and codes are joined, never names,
+ *   - one token mixing letters with two or more digits ("A35893", "BLK001"),
+ *   - no letters at all ("0012"), or a hex value ("#1a1a1a").
+ *
+ * "Black/White", "010 Black" and "Core Black" all pass.
+ */
+export function looksLikeColourLabel(raw: string | undefined | null): boolean {
+  const v = (raw ?? "").trim();
+  if (v.length < 2 || v.length > 40) return false;
+  if (/\.(?:jpe?g|png|webp|gif|avif|svg|bmp|tiff?|heic)(?:[?#].*)?$/i.test(v)) return false;
+  if (/:\/\/|^\/|^www\./i.test(v)) return false;
+  if (v.includes("_")) return false;
+  if (!/\p{L}/u.test(v)) return false;
+  if (v.startsWith("#")) return false;
+  if (!/\s/.test(v) && /\d.*\d/.test(v)) return false;
+  if (/^(?:select|choose|pick)\b/i.test(v)) return false;
+  return true;
+}
+
+/**
  * The one base colour a label names, or undefined when it names none.
  *
  * The LAST colour word wins, because a colourway puts its qualifier in front of

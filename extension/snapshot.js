@@ -292,13 +292,32 @@
     return out;
   }
 
-  /** A colour name has to be a word, not a placeholder or a number. */
+  /**
+   * A colour name has to be words: not a placeholder, not a number, and not the
+   * file name of the swatch's own thumbnail — "A35893_1.jpg" is what a swatch's
+   * `alt` holds on plenty of stores, and it used to be sent as the colour. The
+   * server applies the same test (`looksLikeColourLabel`); it is repeated here
+   * so the next attribute on the swatch gets its turn instead.
+   */
   function usableColor(raw) {
     const value = String(raw || "").trim().replace(/\s+/g, " ");
     if (value.length < 2 || value.length > 40) return "";
-    if (/^\d+$/.test(value)) return "";
+    if (!/\p{L}/u.test(value)) return "";
     if (/^(?:select|choose|pick|colou?r|цвет|колір)\b/i.test(value)) return "";
+    if (/\.(?:jpe?g|png|webp|gif|avif|svg|bmp|tiff?|heic)(?:[?#].*)?$/i.test(value)) return "";
+    if (/:\/\/|^\/|^www\./i.test(value)) return "";
+    if (value.includes("_") || value.startsWith("#")) return "";
+    if (!/\s/.test(value) && /\d.*\d/.test(value)) return "";
     return value;
+  }
+
+  /** The first of these that reads as a colour name. */
+  function firstColor(...candidates) {
+    for (const candidate of candidates) {
+      const name = usableColor(candidate);
+      if (name) return name;
+    }
+    return "";
   }
 
   /**
@@ -334,15 +353,20 @@
         }
         if (!el) continue;
         const img = el.querySelector && el.querySelector("img");
-        const name = usableColor(
-          el.getAttribute("aria-label") ||
-            el.getAttribute("title") ||
-            el.getAttribute("data-color") ||
-            el.getAttribute("data-colour") ||
-            el.getAttribute("data-color-name") ||
-            (img && img.getAttribute("alt")) ||
-            el.innerText ||
-            el.textContent,
+        // Each in turn, not the first non-empty one: a swatch whose title is
+        // its thumbnail's file name often has the real name in `data-value` or
+        // in its text.
+        const name = firstColor(
+          el.getAttribute("aria-label"),
+          el.getAttribute("title"),
+          el.getAttribute("data-color"),
+          el.getAttribute("data-colour"),
+          el.getAttribute("data-color-name"),
+          el.getAttribute("data-value"),
+          img && img.getAttribute("alt"),
+          img && img.getAttribute("title"),
+          el.innerText,
+          el.textContent,
         );
         if (name) return name;
       }

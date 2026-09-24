@@ -23,6 +23,7 @@ import {
   CODE_KEYS,
   normalizeGtin,
   normalizeCode,
+  looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
@@ -1056,14 +1057,21 @@ export function extractProduct(
     // the spec row come before the markup scan because they are what the shopper
     // is looking at: `colorFromHtml` mines attributes and inline JSON, which on
     // a page with several colourways can name any of them.
+    //
+    // Every candidate must look like a colour's name at all. The swatch the
+    // extension reads is often a thumbnail whose alt text is its file name, and
+    // "A35893_1.jpg" taking first place kept a real colour further down the
+    // list from ever being read.
     color: pick(
-      ruleVal("color"),
-      jsonld.color,
-      meta.color,
-      micro.color,
-      evidence?.colorText,
-      specValue(evidence?.specs, COLOR_KEYS),
-      colorFromHtml(html),
+      ...[
+        ruleVal("color"),
+        jsonld.color,
+        meta.color,
+        micro.color,
+        evidence?.colorText,
+        specValue(evidence?.specs, COLOR_KEYS),
+        colorFromHtml(html),
+      ].map((c) => (looksLikeColourLabel(c) ? c : undefined)),
     ),
     // Material, which until now came from JSON-LD `material` and nowhere else —
     // a field few stores fill, while the page prints "80% wool, 20% polyamide"

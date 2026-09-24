@@ -15,6 +15,7 @@ import {
   matchCategory,
   inferGenderFromText,
   canonicalColor,
+  looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 import { inferStyleKeywords } from "@/lib/style-keywords";
@@ -274,9 +275,11 @@ export function normalizeExtract(
  */
 function colorFrom(stated: string | undefined, name: string, sourceUrl: string): string | undefined {
   // Even a stated colour we cannot classify ("as pictured", "multi") is the
-  // store's answer, and a better label than one we made up.
+  // store's answer, and a better label than one we made up — so long as it is a
+  // name at all. The storefront readers (Shopify, Woo, Squarespace) reach this
+  // without passing through the extractor's own check.
   const said = (stated ?? "").trim();
-  if (said) return said;
+  if (said && looksLikeColourLabel(said)) return said;
 
   const slug = (() => {
     try {
