@@ -31,6 +31,8 @@ import {
   MULTICOLOR_GROUP,
 } from "@/lib/server/product-fields";
 import { normalizeExtract } from "@/lib/server/parser/normalize";
+import { loadCategoryTree } from "@/lib/server/category-tree";
+import { STYLE_KEYWORD_LIST } from "@/lib/style-keywords";
 import {
   loadLabelledProducts,
   makeKeyBuilders,
@@ -74,7 +76,7 @@ export async function GET(req: Request) {
   const wantKnn = params.get("knn") === "1";
   const allRules = params.get("rules") === "all";
 
-  const loaded = await loadLabelledProducts(wantKnn);
+  const [loaded, tree] = await Promise.all([loadLabelledProducts(wantKnn), loadCategoryTree()]);
   if ("error" in loaded) {
     return NextResponse.json(
       { error: `Could not read products: ${loaded.error}` },
@@ -118,16 +120,21 @@ export async function GET(req: Request) {
   const majorityColourGroup = majorityValue(colorGroupPairs(train), (p) => p.group);
   const majorityStyle = majorityLabels(train, (r) => r.styleKeywords);
 
-  // What the extension's importer would have filled in for each held-out
-  // product, from its name and description alone — the same entry point an
-  // import runs, so these lines measure the keyword dictionaries
-  // (`lib/taxonomy`) against what the editor actually chose.
+  // What the extension's importer would have filled in for each product, from
+  // its name and description alone — the same entry point an import runs, with
+  // the admin's own category tree — so these lines measure the keyword
+  // dictionaries (`lib/taxonomy`) against what the editor actually chose. The
+  // dictionaries learned nothing from this catalogue, so every product is fair
+  // to read; the score lines still use the held-out rows, to sit beside the
+  // mined lines on the same products.
   const importerReads = new Map(
-    holdout.map((r) => [
+    loaded.map((r) => [
       r.id,
       normalizeExtract(
         { name: r.name, description: r.description, images: [], sizes: [], strategies: [] },
         "https://catalogue.invalid/p",
+        null,
+        { tree: tree.groups },
       ),
     ]),
   );
@@ -138,6 +145,37 @@ export async function GET(req: Request) {
     const groups = colorGroupNamesFor(colour, "field");
     return groups.find((g) => g !== MULTICOLOR_GROUP) ?? groups[0] ?? null;
   };
+
+  // Style, one style at a time and over the whole catalogue: which styles the
+  // importer tags well and which it tags against the editor's judgement. The
+  // aggregate line cannot say which of thirteen to keep.
+  const styleByStyle = STYLE_KEYWORD_LIST.map((style) => {
+    let proposed = 0, right = 0, editor = 0;
+    for (const r of loaded) {
+      const got = (importerRead(r).styleKeywords ?? []).includes(style);
+      const has = r.styleKeywords.includes(style);
+      if (got) proposed++;
+      if (has) editor++;
+      if (got && has) right++;
+    }
+    return {
+      style,
+      proposed,
+      right,
+      editor,
+      precision: proposed ? right / proposed : 0,
+      recall: editor ? right / editor : 0,
+    };
+  });
+  const styleFalseTags = loaded
+    .filter((r) => r.styleKeywords.length)
+    .map((r) => ({
+      name: r.name,
+      got: (importerRead(r).styleKeywords ?? []).filter((s) => !r.styleKeywords.includes(s)),
+      editor: r.styleKeywords,
+    }))
+    .filter((m) => m.got.length)
+    .slice(0, 40);
 
   // A catalogue leaning hard on one brand mines that brand's vocabulary rather
   // than the language of clothes, so the concentration belongs in the report.
@@ -206,6 +244,8 @@ export async function GET(req: Request) {
       style_importer: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => importerRead(r).styleKeywords ?? []),
       style_majority: scoreMultiLabel(holdout, (r) => r.styleKeywords, () => majorityStyle),
     } as Record<string, unknown>,
+    style_by_style: styleByStyle,
+    style_false_tags: styleFalseTags,
     rules: {
       counts: {
         category: categoryRules.length,
@@ -280,6 +320,21 @@ export async function GET(req: Request) {
   lines.push("  answers = share of products it had any answer for");
   lines.push("  correct = share of those answers matching the editor's choice");
   lines.push("  P/R     = precision / recall over multi-label style keywords");
+  lines.push("");
+  lines.push("STYLE BY STYLE  (importer's keyword tags, whole catalogue)");
+  lines.push(`  ${"style".padEnd(14)} ${"tagged".padStart(7)} ${"right".padStart(6)} ${"editor".padStart(7)} ${"precision".padStart(10)} ${"recall".padStart(7)}`);
+  for (const s of styleByStyle) {
+    lines.push(`  ${s.style.padEnd(14)} ${String(s.proposed).padStart(7)} ${String(s.right).padStart(6)} ${String(s.editor).padStart(7)} ${(s.proposed ? pct(s.precision) : "—").padStart(10)} ${pct(s.recall).padStart(7)}`);
+  }
+  lines.push("  tagged = products the importer gave this style; right = of those, the editor agrees;");
+  lines.push("  editor = products the editor gave it. Low precision means the words mislead here.");
+  if (styleFalseTags.length) {
+    lines.push("");
+    lines.push("── style tags the editor did not give ──");
+    for (const m of styleFalseTags) {
+      lines.push(`  ${m.name.slice(0, 46).padEnd(48)} added ${m.got.join(", ").padEnd(24)} editor: ${m.editor.join(", ")}`);
+    }
+  }
   lines.push("");
   lines.push("RULES FOUND");
   for (const [field, count] of Object.entries(report.rules.counts)) {

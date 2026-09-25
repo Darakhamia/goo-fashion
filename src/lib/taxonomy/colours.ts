@@ -127,7 +127,7 @@ export const FIELD_COLOUR_WORDS: Record<string, Base> = tier({
   black: ["jet", "coal", "ink", "raven", "soot", "caviar"],
   white: [
     "snow", "chalk", "optic", "cloud", "porcelain", "pearl", "milk", "paper", "salt", "frost",
-    "coconut", "lily",
+    "coconut", "lily", "sail",
   ],
   grey: [
     "ash", "steel", "smoke", "chrome", "fog", "cement", "concrete", "iron", "pebble", "flint",

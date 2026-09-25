@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { parsePage } from "@/lib/server/parser/parse-page";
+import { loadCategoryTree } from "@/lib/server/category-tree";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -42,11 +43,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const [fetchSettings, keyInfo, siteConfigs, aiSettings] = await Promise.all([
+  const [fetchSettings, keyInfo, siteConfigs, aiSettings, categoryTree] = await Promise.all([
     getFetchSettings(),
     getFetchApiKey(),
     getSiteConfigs(),
     getAiSettings(),
+    loadCategoryTree(),
   ]);
 
   const result = await parsePage(url, {
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
     fetchApiKey: keyInfo.key,
     siteConfigs,
     aiSettings,
+    categoryTree: categoryTree.groups,
     useAi: typeof body?.useAi === "boolean" ? body.useAi : undefined,
     html: html || undefined,
   });

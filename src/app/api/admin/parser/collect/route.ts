@@ -30,6 +30,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
+import { loadCategoryTree } from "@/lib/server/category-tree";
 import { importParsedProduct } from "@/lib/server/parser/import-product";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
@@ -238,11 +239,12 @@ export async function POST(req: Request) {
     .slice(0, MAX_TITLES);
   const titleSuffix = commonTitleSuffix(titles);
 
-  const [fetchSettings, keyInfo, siteConfigs, aiSettings] = await Promise.all([
+  const [fetchSettings, keyInfo, siteConfigs, aiSettings, categoryTree] = await Promise.all([
     getFetchSettings(),
     getFetchApiKey(),
     getSiteConfigs(),
     getAiSettings(),
+    loadCategoryTree(),
   ]);
 
   const useAi = typeof body?.useAi === "boolean" ? body.useAi : aiSettings.enabled;
@@ -258,6 +260,7 @@ export async function POST(req: Request) {
       fetchApiKey: keyInfo.key,
       siteConfigs,
       aiSettings,
+      categoryTree: categoryTree.groups,
       useAi,
       html,
       evidence: {

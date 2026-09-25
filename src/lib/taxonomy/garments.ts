@@ -21,10 +21,12 @@
  *
  * So the category comes from the head — the match that ends last in an English
  * title, or starts first in a Cyrillic one — and a longer term beats a shorter
- * one at the same place ("suit jacket" over "jacket"). The *label* is then the
- * most specific type that agrees with that category: "Reversible MA-1 Jacket"
+ * one at the same place ("suit jacket" over "jacket"). An English "with …"
+ * clause lists extras, not the piece: "Skater Shorts with Keychain" is shorts.
+ * The *label* is the head's own type, unless the head is a generic word: then
+ * the most specific type that agrees with its category. "Reversible MA-1 Jacket"
  * ends on the generic "jacket", but MA-1 names the kind of jacket, so it files as
- * a bomber.
+ * a bomber; "Belt Scarf" ends on a scarf, which is not a kind of belt.
  *
  * Weak terms (marked `~`) are words that are as often a fabric or a detail as a
  * garment — "knit", "denim", "fleece", "half zip". They count only when nothing
@@ -85,7 +87,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
   ]),
   g("raincoat", "outerwear", ["Raincoats", "Jackets"], [
     "raincoat", "rain coat", "rain jacket", "rain shell", "rain parka", "rain mac", "waterproof jacket",
-    "waterproof coat", "hardshell", "hard shell", "hardshell jacket", "shell jacket", "rain cape",
+    "waterproof coat", "hardshell", "hard shell", "hardshell jacket", "rain cape",
     "poncho", "rain poncho", "slicker", "oilskin", "gore tex jacket", "goretex jacket",
     "mountain jacket", "storm jacket", "stormshell", "3l jacket", "packable jacket",
     "дождевик", "плащ дождевик", "плащ-дождевик", "непромокаем куртк", "мембранн куртк",
@@ -164,7 +166,8 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
   ]),
   g("jacket", "outerwear", ["Jackets"], [
     "jacket", "jacket coat", "outer jacket", "overjacket", "hooded jacket", "zip jacket", "short jacket",
-    "cropped jacket", "crinkle jacket",
+    "cropped jacket", "crinkle jacket", "shell jacket",
+    "veste", "giacca", "giubbotto", "chaqueta", "cazadora", "jacke",
     "куртк", "курточк", "куртка!",
   ]),
   // Coats come after jackets on purpose: "Chore Coat" and "Car Coat" are listed
@@ -198,6 +201,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
   ]),
   g("coat", "outerwear", ["Coats"], [
     "coat", "outer coat", "long coat",
+    "manteau", "cappotto", "abrigo", "mantel",
     "пальто!",
   ]),
   g("outerwear", "outerwear", [], [
@@ -280,30 +284,37 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "linen shirt", "silk shirt", "tuxedo shirt", "grandad shirt", "grandad collar", "band collar shirt",
     "mandarin collar shirt", "popover shirt", "check shirt", "plaid shirt", "striped shirt",
     "utility shirt", "military shirt", "safari shirt", "guayabera", "kurta shirt",
+    "chemise", "camicia", "camisa", "hemd",
     "рубашк", "сорочк", "рубашечк", "рубаха",
   ]),
 
   // ════════════════════════════════════════════════════════════════════════════
   // TOPS
   // ════════════════════════════════════════════════════════════════════════════
-  g("hoodie", "tops", ["Hoodies & Sweatshirts"], [
+  g("hoodie", "tops", ["Hoodies", "Hoodies & Sweatshirts"], [
     "hoodie", "hoody", "hooded sweatshirt", "hooded sweat", "hooded top", "zip hoodie", "zip up hoodie",
     "full zip hoodie", "pullover hoodie", "hooded pullover", "hooded fleece", "tech fleece hoodie",
-    "box logo hoodie", "hooded jumper",
+    "box logo hoodie", "hooded jumper", "sweat a capuche", "felpa con cappuccio", "sudadera con capucha",
     "худи", "худі", "толстовк", "кенгуру", "худи на молнии", "толстовк с капюшон",
   ]),
-  g("sweatshirt", "tops", ["Hoodies & Sweatshirts"], [
+  g("sweatshirt", "tops", ["Sweatshirts", "Hoodies & Sweatshirts"], [
     "sweatshirt", "sweat shirt", "sweat", "crewneck sweatshirt", "crew neck sweatshirt",
     "crew sweatshirt", "crew sweat", "crewneck sweat", "fleece pullover", "fleece top",
     "fleece crewneck", "half zip sweatshirt", "quarter zip sweatshirt", "half zip fleece",
     "quarter zip fleece", "track sweatshirt", "raglan sweatshirt", "loopback", "french terry top",
+    "felpa", "sudadera",
     "свитшот", "світшот", "толстовк без капюшон", "спортивн кофт",
   ]),
-  g("zip-top", "tops", ["Hoodies & Sweatshirts"], [
-    "~half zip", "~quarter zip", "~1 4 zip", "~full zip", "~zip up", "~zip through",
-    "~на! молни", "~полузамок",
+  // A zip-through top is usually a hoodie without the word; a half zip, a sweatshirt.
+  g("zip-up", "tops", ["Hoodies", "Hoodies & Sweatshirts"], [
+    "~full zip", "~zip up", "~zip through",
+    "~на! молни",
   ]),
-  g("polo", "tops", ["Polo Shirts"], [
+  g("half-zip", "tops", ["Sweatshirts", "Hoodies & Sweatshirts"], [
+    "~half zip", "~quarter zip", "~1 4 zip",
+    "~полузамок",
+  ]),
+  g("polo", "tops", ["Polo Shirts", "Polos"], [
     "polo", "polo shirt", "pique polo", "piqué polo", "polo tee", "tennis polo", "golf polo",
     "long sleeve polo", "rugby shirt", "rugby", "rugby top", "rugby polo",
     "поло!", "футболк поло", "рубашк поло", "регбийк", "поло-футболка",
@@ -312,7 +323,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "henley", "henley shirt", "henley tee", "grandad tee", "placket tee",
     "хенли", "генли",
   ]),
-  g("tank", "tops", ["Tank Tops"], [
+  g("tank", "tops", ["Tank Tops", "Tanks"], [
     "tank top", "tank", "tanktop", "muscle tank", "muscle tee", "sleeveless tee", "sleeveless top",
     "singlet", "vest top", "racerback", "racer back tank", "ribbed tank",
     "майка!", "майки!", "майку!", "майкой!", "майка-алкоголичк", "борцовк", "топ на бретел",
@@ -321,9 +332,10 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "camisole", "cami", "cami top", "slip top", "strappy top", "spaghetti strap top",
     "топ на тонк бретел", "комбинаци топ",
   ]),
-  g("longsleeve", "tops", ["T-Shirts"], [
+  g("longsleeve", "tops", ["Long Sleeves", "Longsleeves", "Long Sleeve T-Shirts", "T-Shirts"], [
     "longsleeve", "long sleeve", "long sleeve tee", "long sleeve t shirt", "long sleeved t shirt",
-    "long sleeved tee", "ls tee", "l s tee", "longsleeve tee", "long sleeve top",
+    "long sleeved tee", "ls tee", "l s tee", "l s t shirt", "ls t shirt", "l s top", "longsleeve tee",
+    "long sleeve top",
     "лонгслив", "лонгслів", "футболк с длинн рукав",
   ]),
   g("tshirt", "tops", ["T-Shirts"], [
@@ -341,10 +353,14 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "bodysuit", "body suit", "leotard", "thong bodysuit",
     "боди!", "боді!",
   ]),
+  g("bralette", "tops", ["Bralettes", "Crop Tops"], [
+    "bralette", "bralet", "bra top", "sports bra",
+    "бралет", "бра топ", "спортивн бра", "спортивн топ-бра",
+  ]),
   g("crop-top", "tops", ["Crop Tops"], [
-    "crop top", "cropped top", "bralette", "bralet", "bandeau", "bandeau top", "tube top",
+    "crop top", "cropped top", "bandeau", "bandeau top", "tube top",
     "halter top", "halterneck top", "corset top", "bustier", "bustier top",
-    "кроп топ", "кроп-топ", "бра топ", "бралет", "корсет", "бюстье", "топ бандо",
+    "кроп топ", "кроп-топ", "корсет", "бюстье", "топ бандо",
   ]),
   g("tunic", "tops", ["Tunics", "Blouses"], [
     "tunic", "kurta", "kaftan top", "smock top",
@@ -372,7 +388,8 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "baggy jeans", "loose jeans", "bootcut", "boot cut", "flare jeans", "flared jeans", "mom jeans",
     "dad jeans", "boyfriend jeans", "carpenter jeans", "~selvedge", "~selvage", "~raw denim", "501", "levis 501", "levi s 501",
     "rigid denim", "denim pant", "denim trousers", "5 pocket jeans",
-    "five pocket", "5 pocket", "tapered jeans", "barrel jeans", "balloon jeans", "cargo jeans",
+    "five pocket", "5 pocket", "tapered jeans", "barrel jeans", "balloon jeans", "cargo jeans", "~flare",
+    "vaqueros",
     "джинсы!", "джинсов!", "джинсах!", "джинсами!", "джинси!", "джинсы клёш", "джинсы-клёш", "бойфренды", "мом джинс", "скинни", "клёш",
   ]),
   g("denim", "jeans", ["Jeans"], [
@@ -442,6 +459,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "cigarette pants", "tapered trousers", "suit trousers", "dress pants", "wool trousers",
     "linen trousers", "linen pants", "drawstring trousers", "drawstring pants", "harem pants",
     "baggy pants", "bell bottoms", "capri", "capri pants", "gurkha trousers", "sailor pants",
+    "pantalon", "pantaloni", "pantalones",
     "брюк", "штан", "штани", "брючк", "палаццо", "кюлот", "брюки со стрелк", "брюки широк",
   ]),
 
@@ -452,6 +470,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "skirt", "mini skirt", "miniskirt", "midi skirt", "maxi skirt", "pleated skirt", "a line skirt",
     "pencil skirt", "slip skirt", "wrap skirt", "tennis skirt", "cargo skirt", "denim skirt",
     "tiered skirt", "tulle skirt", "kilt", "skort", "sarong", "sarong skirt", "tutu",
+    "jupe", "gonna", "falda",
     "юбк", "спідниц", "юбка-карандаш", "юбка плиссе", "килт", "юбка шорт", "саронг",
   ]),
 
@@ -464,7 +483,8 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "shift dress", "sheath dress", "bodycon dress", "cocktail dress", "evening dress", "gown",
     "ball gown", "evening gown", "sundress", "sun dress", "tea dress", "smock dress", "pinafore",
     "pinafore dress", "polo dress", "hoodie dress", "sweatshirt dress", "corset dress", "frock",
-    "kaftan", "caftan", "cheongsam", "qipao", "prairie dress", "babydoll dress", "tunic dress",
+    "kaftan", "caftan", "cheongsam", "qipao", "prairie dress", "babydoll dress", "tunic dress", "robe longue",
+    "vestido", "kleid",
     "плать", "сукн", "сарафан", "платье-рубашк", "платье-комбинаци", "платье-футболк", "вечерн плать",
   ]),
   g("jumpsuit", "jumpsuits", ["Jumpsuits"], [
@@ -498,7 +518,8 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "club c", "reebok classic", "workout plus", "instapump", "question mid",
     "puma suede", "palermo", "speedcat", "mayze",
     "achilles low", "common projects", "b23", "b22", "b27", "track sneaker", "triple s", "runner sneaker",
-    "gt 1000", "cloudmonster", "cloudtilt", "cloud 5", "cloudnova",
+    "gt 1000", "cloudmonster", "cloudtilt", "cloud 5", "cloudnova", /\bd3 (?:og|2001|xt)\b/,
+    "zapatillas",
   ]),
   g("boot-model", "footwear", ["Boots"], [
     "1460", "1461", "2976", "jadon", "101 boot", "6 inch boot", "6 inch premium", "yellow boot",
@@ -519,6 +540,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "snow boot", "snow boots", "winter boots", "apres ski boots", "moon boot", "duck boot",
     "platform boot", "platform boots", "jodhpur boot", "riding boot", "zip boot", "sock boot",
     "booties", "bootie", "ugg boot", "shearling boot", "mountain boot", "military boot", "jungle boot",
+    "bottes", "stivali", "botas", "stiefel",
     "ботинк", "черевик", "сапог", "чобіт", "чоботи", "челси", "берц", "казак", "угг", "уггі", "дутик",
     "полусапог", "ботильон", "дезерт", "чукк", "мартинс", "тимберленд",
   ]),
@@ -527,6 +549,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "flip flop", "flipflops", "thongs sandals", "fisherman sandals", "gladiator sandals", "sport sandals",
     "hiking sandals", "strappy sandals", "footbed sandals", "clog sandals", "espadrille sandals",
     "platform sandals", "wedge sandals", "jelly sandals", "huaraches", "geta",
+    "sandales", "sandali", "sandalias",
     "сандал", "босоножк", "шлёпанц", "шлепанц", "сланц", "вьетнамк", "шльопанц", "в'єтнамк",
     "слайды", "слайдер", "шлёпки", "шлепки",
   ]),
@@ -577,7 +600,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "тапочк", "тапк", "домашн тапочк",
   ]),
   g("shoes", "footwear", [], [
-    "shoes", "shoe", "~footwear",
+    "shoes", "shoe", "~footwear", "chaussure", "scarpe", "zapatos", "schuhe",
     "обувь", "взутт",
   ]),
 
@@ -587,6 +610,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
   g("backpack", "bags", ["Backpacks", "Bags"], [
     "backpack", "back pack", "rucksack", "daypack", "day pack", "roll top backpack", "rolltop",
     "laptop backpack", "hiking backpack", "knapsack", "school bag", "bookbag",
+    "sac a dos", "sac à dos", "zaino", "mochila",
     "рюкзак", "ранец", "наплечн рюкзак",
   ]),
   g("tote", "bags", ["Tote Bags", "Bags"], [
@@ -622,7 +646,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "портфел", "сумк для ноутбук", "папк!",
   ]),
   g("bag", "bags", ["Bags"], [
-    "bag", "bags", "purse bag",
+    "bag", "bags", "purse bag", "sac", "sacoche", "borsa", "bolso", "tasche",
     "сумк", "торб",
   ]),
 
@@ -633,6 +657,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "sunglasses", "sunglass", "shades", "sunnies", "aviator sunglasses", "aviators", "wayfarer",
     "cat eye sunglasses", "round sunglasses", "shield sunglasses", "wraparound sunglasses",
     "sport sunglasses", "eyewear", "glasses", "optical frames", "spectacles", "glasses frames",
+    "lunettes", "lunettes de soleil", "occhiali da sole", "gafas de sol", "sonnenbrille",
     "солнцезащитн очк", "очки!", "окуляр", "сонцезахисн окуляр", "авиатор", "вайфарер",
   ]),
   g("watch", "accessories", ["Watches"], [
@@ -644,6 +669,7 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
   g("belt", "accessories", ["Belts"], [
     "belt", "leather belt", "web belt", "canvas belt", "reversible belt", "chain belt", "rigger belt",
     "d ring belt", "cobra buckle", "western belt", "braided belt", "logo belt", "suspenders", "braces",
+    "ceinture", "cintura", "cinturon", "cinturón", "gürtel",
     "ремень", "ремни", "ремен", "пояс!", "пасок", "ремінь", "підтяжк", "подтяжк",
   ]),
   g("hats", "accessories", ["Hats"], [
@@ -653,13 +679,13 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
     "toque", "bucket hat", "fisherman hat", "boonie", "boonie hat", "sun hat", "straw hat", "fedora",
     "trilby", "panama hat", "panama", "boater", "bowler", "beret", "balaclava", "ski mask", "earflap",
     "trapper hat", "ushanka", "headband", "visor", "sun visor", "cowboy hat", "cloche", "bonnet",
-    "durag", "do rag", "headwrap", "kufi",
+    "durag", "do rag", "headwrap", "kufi", "casquette", "chapeau", "cappello", "gorra", "sombrero",
     "шапк", "шапка-бини", "бини", "бейсболк", "кепк", "кепи", "панам", "берет", "балаклав", "федора",
     "шляп", "капелюх", "картуз", "ушанк", "повязк на голов", "козырёк", "снэпбэк", "тракер",
   ]),
-  g("scarf", "accessories", ["Scarves"], [
+  g("scarf", "accessories", ["Scarves", "Scarf/Shawl", "Scarves & Shawls"], [
     "scarf", "scarves", "muffler", "snood", "neck warmer", "neckerchief", "bandana", "shawl", "stole",
-    "wrap scarf", "pashmina",
+    "wrap scarf", "pashmina", "echarpe", "écharpe", "foulard", "sciarpa", "bufanda",
     "шарф", "платок", "платк", "снуд", "бандан", "палантин", "хустк", "шаль",
   ]),
   g("gloves", "accessories", ["Gloves"], [
@@ -796,6 +822,25 @@ export interface GarmentMatch {
 }
 
 /**
+ * Types that name a garment only in general. A more specific type of the same
+ * category elsewhere in the title names it better: "MA-1 Jacket" is a bomber,
+ * "Cargo Trousers" a cargo pant, "Сумка-шоппер" a tote. Any other head keeps
+ * its own type, so "Belt Scarf" is a scarf and not the belt the rank order
+ * would have picked.
+ */
+const GENERIC_TYPES = new Set([
+  "jacket", "coat", "outerwear", "sweater", "knit", "shirt", "crewneck", "top", "denim",
+  "trousers", "boots", "sandals", "sneakers", "shoes", "bag",
+]);
+
+/**
+ * Where an English title stops describing the piece and starts listing what
+ * comes with it: "Skater Jeans/Shorts with “Dagger” Keychain" is shorts, not a
+ * keychain, though the keychain is the last noun.
+ */
+const ATTACHMENT = / (?:with|w|featuring|feat|incl|including|plus) /;
+
+/**
  * What garment a title names, or undefined when it names none this dictionary
  * knows.
  */
@@ -807,17 +852,27 @@ export function matchGarment(text: string): GarmentMatch | undefined {
   const pool = strong.length ? strong : all;
 
   // The head. A title with Cyrillic garment words is read head-first; any other
-  // head-last. "Кроссовки Nike Air Max 90" has both, and its Russian noun leads.
+  // head-last — up to a "with" clause, when a garment comes before it.
   const cyrillicHits = pool.filter((h) => h.term.cyrillic);
+  let latinPool = pool;
+  if (!cyrillicHits.length) {
+    const cut = normalize(text).search(ATTACHMENT);
+    const before = cut >= 0 ? pool.filter((h) => h.end <= cut + 1) : [];
+    if (before.length) latinPool = before;
+  }
   const head = cyrillicHits.length
     ? cyrillicHits.reduce((a, b) =>
         b.start < a.start || (b.start === a.start && b.term.length > a.term.length) ? b : a)
-    : pool.reduce((a, b) =>
+    : latinPool.reduce((a, b) =>
         b.end > a.end || (b.end === a.end && b.term.length > a.term.length) ? b : a);
 
   const category = head.term.type.category;
 
-  // The label: the most specific type of that category anywhere in the title.
+  // The label: the head's own type, or — when the head is a generic word — the
+  // most specific type of that category anywhere in the title.
+  if (!GENERIC_TYPES.has(head.term.type.id)) {
+    return { category, type: head.term.type, matched: head.text, weak: !strong.length };
+  }
   const sameCategory = pool.filter((h) => h.term.type.category === category);
   const best = sameCategory.reduce((a, b) =>
     b.term.rank < a.term.rank || (b.term.rank === a.term.rank && b.term.length > a.term.length) ? b : a);
@@ -831,16 +886,26 @@ export function garmentCategory(text: string): Category | null {
   return m && !m.weak ? m.category : null;
 }
 
+/** A label reduced to its letters, so "Tank-Tops", "Tank Tops" and "tank tops" compare equal. */
+const labelKey = (label: string) => label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
 /**
  * The tree label for a title: the first of its type's labels that the tree
- * actually has. `labels` is the tree's label → category map.
+ * actually has, spelled the way the tree spells it. `labels` is the tree's
+ * label → category map — the live tree's, when the caller has it, because an
+ * admin's "Hoodies" and "Long Sleeves" are not in the built-in one.
  */
 export function garmentLabel(text: string, labels: Record<string, string>): string | undefined {
   const m = matchGarment(text);
   if (!m) return undefined;
+  const byKey = new Map(Object.keys(labels).map((l) => [labelKey(l), l]));
   // Only a label the tree files under the same category: a label that exists
   // but points elsewhere would contradict the category the title just gave.
-  return m.type.labels.find((l) => labels[l] === m.category);
+  for (const wanted of m.type.labels) {
+    const label = byKey.get(labelKey(wanted));
+    if (label && labels[label] === m.category) return label;
+  }
+  return undefined;
 }
 
 /** How many terms the dictionary holds, per language — for the record. */

@@ -16,6 +16,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
+import { loadCategoryTree } from "@/lib/server/category-tree";
 import { discoverProductUrls } from "@/lib/server/parser/crawl";
 import { importParsedProduct } from "@/lib/server/parser/import-product";
 import {
@@ -38,11 +39,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const action = body?.action === "batch" ? "batch" : "discover";
 
-  const [fetchSettings, keyInfo, siteConfigs, aiSettings] = await Promise.all([
+  const [fetchSettings, keyInfo, siteConfigs, aiSettings, categoryTree] = await Promise.all([
     getFetchSettings(),
     getFetchApiKey(),
     getSiteConfigs(),
     getAiSettings(),
+    loadCategoryTree(),
   ]);
 
   // ── discover ───────────────────────────────────────────────────────────────
@@ -87,6 +89,7 @@ export async function POST(req: Request) {
         fetchApiKey: keyInfo.key,
         siteConfigs,
         aiSettings,
+        categoryTree: categoryTree.groups,
         useAi,
       });
 
