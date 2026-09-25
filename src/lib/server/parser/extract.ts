@@ -11,6 +11,7 @@
  */
 import type { ParserSiteConfig, RawExtract, ParserRuleField, PageEvidence } from "./types";
 import { harvestGalleryImages } from "./gallery";
+import { chooseColour } from "./colour-choice";
 import {
   canonicalColor,
   extractCurrencyFromDisplay,
@@ -23,7 +24,6 @@ import {
   CODE_KEYS,
   normalizeGtin,
   normalizeCode,
-  looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
@@ -987,6 +987,15 @@ export function extractProduct(
   );
 
   const image = pick(ruleVal("image"), jsonld.image, meta.image, images[0]);
+  const name = pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title);
+  const brand = pick(
+    ruleVal("brand"),
+    jsonld.brand,
+    meta.brand,
+    micro.brand,
+    specValue(evidence?.specs, BRAND_KEYS),
+    evidence?.brandText,
+  );
 
   // Structured data routinely advertises a single photo for a page that shows
   // a full gallery (an OpenGraph-only page always does — there is one og:image).
@@ -1008,18 +1017,11 @@ export function extractProduct(
 
   return {
     pageTitle: heading.title,
-    name: pick(ruleVal("name"), jsonld.name, heading.h1, meta.name, micro.name, heading.title),
+    name,
     // Brand: structured data first, then the two places a store that treats its
     // designer as a link rather than a property puts it — the spec table, and
     // whatever the page marks as the brand.
-    brand: pick(
-      ruleVal("brand"),
-      jsonld.brand,
-      meta.brand,
-      micro.brand,
-      specValue(evidence?.specs, BRAND_KEYS),
-      evidence?.brandText,
-    ),
+    brand,
     // The trail, from the markup and from the rendered page. The markup's own
     // BreadcrumbList wins: it is data rather than a reading of the layout.
     breadcrumbs: (() => {
@@ -1058,21 +1060,27 @@ export function extractProduct(
     // is looking at: `colorFromHtml` mines attributes and inline JSON, which on
     // a page with several colourways can name any of them.
     //
-    // Every candidate must look like a colour's name at all. The swatch the
-    // extension reads is often a thumbnail whose alt text is its file name, and
-    // "A35893_1.jpg" taking first place kept a real colour further down the
-    // list from ever being read.
-    color: pick(
-      ...[
-        ruleVal("color"),
-        jsonld.color,
-        meta.color,
-        micro.color,
-        evidence?.colorText,
-        specValue(evidence?.specs, COLOR_KEYS),
-        colorFromHtml(html),
-      ].map((c) => (looksLikeColourLabel(c) ? c : undefined)),
-    ),
+    // Every candidate is kept with where it came from, and `chooseColour` picks
+    // the one that is a colour. The first string that merely looked like a
+    // name used to win: a swatch thumbnail's alt text is its file name on one
+    // store and the product's name on the next ("Emerson"), and both were
+    // stored as colours ahead of the "grey/white/leather" the page printed.
+    // An extension from before 1.0.3 sends one guess with no origin; it is
+    // used only when the new list is absent.
+    color: chooseColour(
+      [
+        { value: ruleVal("color") ?? "", origin: "rule" },
+        { value: jsonld.color ?? "", origin: "data" },
+        { value: meta.color ?? "", origin: "data" },
+        { value: micro.color ?? "", origin: "data" },
+        ...(evidence?.colorCandidates?.length
+          ? evidence.colorCandidates
+          : [{ value: evidence?.colorText ?? "", origin: "legacy" as const }]),
+        { value: specValue(evidence?.specs, COLOR_KEYS) ?? "", origin: "line" },
+        { value: colorFromHtml(html) ?? "", origin: "markup" },
+      ],
+      { name, brand },
+    )?.value,
     // Material, which until now came from JSON-LD `material` and nowhere else —
     // a field few stores fill, while the page prints "80% wool, 20% polyamide"
     // two lines under the price. Now: the spec table the extension read, then

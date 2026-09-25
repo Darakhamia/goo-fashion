@@ -513,8 +513,10 @@ export function compositionFromText(text: string): string {
   for (const match of source.matchAll(atom)) {
     const fibre = match[2].trim();
     // "20% off" is not a fibre, and a sale banner sits closer to the price than
-    // the composition does.
-    if (NOT_A_FIBRE.test(fibre)) continue;
+    // the composition does. Nor is "20% Unit price" — a Shopify price block
+    // reads "-20%" then its unit-price label, and it was stored as the
+    // material. So the words after a percentage must name a material.
+    if (NOT_A_FIBRE.test(fibre) || !FIBRE.test(fibre)) continue;
 
     const share = Number(match[1]);
     parts.push(`${share}% ${fibre}`);
@@ -526,6 +528,16 @@ export function compositionFromText(text: string): string {
   }
   return parts.join(", ").slice(0, 200);
 }
+
+/**
+ * Words that name what a thing is made of, as stems: fibres, leathers, foams,
+ * metals. Checked as a stem at the start of a word so "cotton", "cottons",
+ * "polyester", "polyesters" and "шерстяной" all pass. Qualifiers are not
+ * materials: "50% recycled materials" is a claim, "50% recycled polyester" a
+ * composition, and only the second names one.
+ */
+const FIBRE =
+  /(?:^|[\s-])(?:cotton|pima|supima|polyester|poly|polyamide|nylon|elasta|spandex|lycra|viscose|rayon|modal|lyocell|tencel|cupro|acetate|triacetate|acrylic|wool|merino|lambswool|cashmere|mohair|alpaca|angora|camel|yak|vicu|silk|linen|flax|hemp|ramie|jute|bamboo|leather|suede|nubuck|shearling|sheepskin|down\b|feather|rubber|eva\b|polyurethane|pu\b|pvc|neoprene|cordura|gore|metal|brass|steel|silver|gold|zinc|copper|textile|synthetic|fibre|fiber|denim|canvas|mesh|fleece|terry|velvet|corduroy|tweed|jersey|хлоп|бавовн|полиэст|поліест|полиамид|поліамід|нейлон|эласт|еласт|спандекс|вискоз|віскоз|модал|акрил|шерст|вовн|кашемир|кашемір|мохер|альпак|шелк|шёлк|шовк|л[её]н|льон|конопл|кож|шкір|замш|резин|гум|текстил|текстиль|синтет|пух|металл|метал)/iu;
 
 /** Words that follow a percentage without being a fibre. */
 const NOT_A_FIBRE =

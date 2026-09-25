@@ -32,6 +32,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { COLOUR_ORIGINS, type ColourOrigin } from "@/lib/server/parser/colour-choice";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
 import {
@@ -95,6 +96,8 @@ const MAX_SIZE_LABEL = 24;
 
 /** Longest colour name accepted, e.g. "Charcoal marl". */
 const MAX_COLOR_TEXT = 80;
+/** Colour candidates one page can send, and the origins the server knows. */
+const MAX_COLOR_CANDIDATES = 30;
 
 /**
  * Sibling colourway addresses one page may name.
@@ -210,6 +213,17 @@ export async function POST(req: Request) {
     .filter((v: unknown): v is string => typeof v === "string" && v.length <= MAX_SIZE_LABEL)
     .slice(0, MAX_SIZE_CANDIDATES);
   const colorText = str(body?.colorText).slice(0, MAX_COLOR_TEXT);
+  // Extension 1.0.3 sends every string it read as a colour, with where it read
+  // it; the choice is made here. An origin the server does not know is not
+  // trusted as one it does.
+  const colorCandidates = (Array.isArray(body?.colorCandidates) ? body.colorCandidates : [])
+    .map((c: unknown) => ({
+      value: str((c as { value?: unknown })?.value).slice(0, MAX_COLOR_TEXT),
+      origin: str((c as { origin?: unknown })?.origin),
+    }))
+    .filter((c: { value: string; origin: string }) =>
+      !!c.value && (COLOUR_ORIGINS as readonly string[]).includes(c.origin))
+    .slice(0, MAX_COLOR_CANDIDATES) as { value: string; origin: ColourOrigin }[];
   const variantUrls = (Array.isArray(body?.variantUrls) ? body.variantUrls : [])
     .filter(
       (u: unknown): u is string =>
@@ -268,6 +282,7 @@ export async function POST(req: Request) {
         priceText,
         sizes: sizeCandidates,
         colorText,
+        colorCandidates,
         variantUrls,
         descriptionText,
         specs,
