@@ -18,13 +18,14 @@ import {
   looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
-import { garmentLabel } from "@/lib/taxonomy/garments";
+import { garmentLabel, matchGarment } from "@/lib/taxonomy/garments";
 import { inferStyleKeywords } from "@/lib/taxonomy/styles";
 import {
   isBuiltInBucket,
   matchSubcategoryLabel,
   resolveSubcategory,
   subcategoryToValue,
+  type CategoryGroup,
 } from "@/lib/categories";
 import { upgradeImageUrl, imageKey } from "./gallery";
 import { looksLikeProductPath, isNonProductPath } from "./extract";
@@ -70,6 +71,14 @@ export interface NormalizeOptions {
    * caller that has seen several of its pages. Subtracted from the name.
    */
   titleSuffix?: string;
+  /**
+   * The category tree the admin actually runs, from `loadCategoryTree`. Without
+   * it the built-in tree is used, which has no "Hoodies", "Long Sleeves" or
+   * "Track Jackets" — so a catalogue whose editor split those out got the
+   * built-in "Hoodies & Sweatshirts" and "T-Shirts" labels, which its tree then
+   * dropped.
+   */
+  tree?: CategoryGroup[];
 }
 
 export function normalizeExtract(
@@ -118,10 +127,16 @@ export function normalizeExtract(
   // trail, which answers for a name that classifies nothing ("Aurelio").
   // The garment dictionary first — it knows "tee", "trainers", "beanie" and the
   // Russian names, none of which spell out a label's own words — and the
-  // label's words themselves only when the dictionary has nothing to say.
-  const labelValues = subcategoryToValue();
-  const subLabelFromName = garmentLabel(name, labelValues) ?? matchSubcategoryLabel(name);
-  const subLabelFromTrail = trail ? garmentLabel(trail, labelValues) ?? matchSubcategoryLabel(trail) : undefined;
+  // label's words themselves only when the dictionary does not recognise the
+  // piece at all. Once it does, a label's words elsewhere in the name are about
+  // something else: "Belt Scarf" is a scarf, and reading label words filed it
+  // under Belts.
+  const tree = opts?.tree;
+  const labelValues = subcategoryToValue(tree);
+  const labelFor = (text: string) =>
+    matchGarment(text) ? garmentLabel(text, labelValues) : matchSubcategoryLabel(text, tree);
+  const subLabelFromName = labelFor(name);
+  const subLabelFromTrail = trail ? labelFor(trail) : undefined;
   const labelCategory = (label: string | undefined) => {
     const value = label ? labelValues[label] : undefined;
     // The admin can point a tree label at a bucket outside the code's own list.
@@ -154,7 +169,7 @@ export function normalizeExtract(
   // `resolveSubcategory` drops a label the tree does not claim for this
   // category, so a disagreement — an override that says footwear over a name
   // that says bomber jacket — resolves rather than persists.
-  const subcategory = resolveSubcategory(category, subLabelFromName ?? subLabelFromTrail);
+  const subcategory = resolveSubcategory(category, subLabelFromName ?? subLabelFromTrail, tree);
 
   // Style, from everything the page said about the piece. The description
   // carries most of it ("a pared-back essential", "utility pockets"), the
