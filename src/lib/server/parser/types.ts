@@ -8,6 +8,7 @@
  */
 // A spec row is defined where the helpers that read one live, so the parser
 // and the CSV importer cannot end up with two shapes for the same thing.
+import type { ColourOrigin } from "./colour-choice";
 import type { SpecPair } from "@/lib/server/product-fields";
 
 export type { SpecPair };
@@ -123,6 +124,15 @@ export interface PageEvidence {
    * swatch, the colour filter and half the stylist's vocabulary are built from.
    */
   colorText?: string;
+  /**
+   * Every string the page offers as its colour, each with where it was read —
+   * the selected swatch's attributes, the label beside the swatch row, the
+   * store's selected-variant data, loose text in the colour area. Sent by the
+   * extension from 1.0.3; the server picks the one that is a colour
+   * (`colour-choice.ts`) instead of the extension taking the first that looked
+   * like words, which is how a swatch photo's alt "Emerson" became a colour.
+   */
+  colorCandidates?: { value: string; origin: ColourOrigin }[];
   /**
    * Addresses of the same piece in other colours, as the colour row links them.
    *
