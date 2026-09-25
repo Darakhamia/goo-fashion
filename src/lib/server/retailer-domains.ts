@@ -12,6 +12,7 @@
  */
 import { supabase } from "@/lib/supabase";
 import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
+import type { Gender } from "@/lib/types";
 
 /**
  * The table isn't there yet. Postgres says 42P01; PostgREST, which answers from
@@ -19,6 +20,14 @@ import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
  * table … in the schema cache") tells an admin nothing about what to do.
  */
 export const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+
+/**
+ * The table is there but predates `default_gender` (migration 022). PostgREST
+ * says PGRST204 for a column missing from its cache, Postgres 42703.
+ */
+export const MISSING_COLUMN_CODES = new Set(["PGRST204", "42703"]);
+export const MISSING_GENDER_COLUMN_MESSAGE =
+  "Saving a store's gender needs supabase/migrations/022_retailer_default_gender.sql — run it, then save again.";
 
 /** The message to show instead, which names the actual next action. */
 export const MISSING_TABLE_MESSAGE =
@@ -32,8 +41,20 @@ export interface RetailerRule {
   domain: string;
   name: string;
   isOfficial: boolean;
+  /**
+   * Who this store's pieces are for when a page does not say — its "All"
+   * section's convention. Unset means the store has no stated convention.
+   */
+  defaultGender?: Gender;
   note?: string;
   updatedAt?: string;
+}
+
+const GENDERS: readonly string[] = ["men", "women", "unisex"];
+
+/** A gender value as stored, or undefined for anything else. */
+export function parseStoreGender(value: unknown): Gender | undefined {
+  return typeof value === "string" && GENDERS.includes(value) ? (value as Gender) : undefined;
 }
 
 /**
@@ -90,6 +111,7 @@ function rowToRule(r: Record<string, unknown>): RetailerRule {
     domain: String(r.domain ?? ""),
     name: String(r.name ?? ""),
     isOfficial: r.is_official === true,
+    defaultGender: parseStoreGender(r.default_gender),
     note: (r.note as string | null) ?? undefined,
     updatedAt: (r.updated_at as string | null) ?? undefined,
   };
@@ -127,6 +149,18 @@ export async function loadRetailerRules(force = false): Promise<Map<string, Reta
 /** Drop the cache so the next read sees a just-saved edit immediately. */
 export function invalidateRetailerRules(): void {
   cache = null;
+}
+
+/**
+ * The admin's stated gender for a link's store, from the most specific rule
+ * that states one ("uk.shop.com" before "shop.com").
+ */
+export function storeDefaultGender(url: string, rules: Map<string, RetailerRule>): Gender | undefined {
+  for (const candidate of domainCandidates(domainFromUrl(url))) {
+    const gender = rules.get(candidate)?.defaultGender;
+    if (gender) return gender;
+  }
+  return undefined;
 }
 
 export interface ResolvedRetailer {

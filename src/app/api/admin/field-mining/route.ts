@@ -32,7 +32,15 @@ import {
 } from "@/lib/server/product-fields";
 import { normalizeExtract } from "@/lib/server/parser/normalize";
 import { loadCategoryTree } from "@/lib/server/category-tree";
-import { STYLE_KEYWORD_LIST } from "@/lib/style-keywords";
+import { STYLE_KEYWORD_LIST, isStyleKeyword } from "@/lib/style-keywords";
+import { genderFromPage } from "@/lib/taxonomy/gender";
+import { loadRetailerRules, storeDefaultGender } from "@/lib/server/retailer-domains";
+import {
+  buildCatalogueProfile,
+  proposeGender,
+  proposeStyles,
+  type CatalogueProfile,
+} from "@/lib/server/catalogue-profile";
 import {
   loadLabelledProducts,
   makeKeyBuilders,
@@ -177,6 +185,79 @@ export async function GET(req: Request) {
     .filter((m) => m.got.length)
     .slice(0, 40);
 
+  // ── Style and gender from the brand, the store and the colour ────────────────
+  // What the importer now does beyond the page's words (`catalogue-profile.ts`).
+  // Everything it knows is learned from the editor's own labels, so it is never
+  // scored on a product it learned from: the score lines use a profile built
+  // from the training rows only, and the whole-catalogue tables below are
+  // out-of-fold — each product read with a profile built from the other four
+  // fifths of the catalogue.
+  const retailerRules = await loadRetailerRules(true);
+  const profileTrain = buildCatalogueProfile(train);
+  const FOLDS = 5;
+  const foldOf = (id: string) => {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+    return (h >>> 0) % FOLDS;
+  };
+  const foldProfiles = Array.from({ length: FOLDS }, (_, k) =>
+    buildCatalogueProfile(loaded.filter((r) => foldOf(r.id) !== k)),
+  );
+  const outOfFold = (r: Row) => foldProfiles[foldOf(r.id)];
+
+  const brandOnlyStyles = (r: Row, profile: CatalogueProfile) =>
+    proposeStyles({ brand: r.brand, keywordStyles: [], colors: [], colorGroups: [] }, profile).styles;
+  const combinedStyles = (r: Row, profile: CatalogueProfile) =>
+    proposeStyles(
+      {
+        brand: r.brand,
+        keywordStyles: (importerRead(r).styleKeywords ?? []).filter(isStyleKeyword),
+        colors: r.colors,
+        colorGroups: r.colorGroups,
+      },
+      profile,
+    ).styles;
+  const pageGender = (r: Row) =>
+    genderFromPage({ name: r.name, url: r.sourceUrl ?? undefined, description: r.description })?.gender ?? null;
+  const chainGender = (r: Row, profile: CatalogueProfile) => {
+    const page = pageGender(r);
+    if (page) return { gender: page, source: "page" };
+    const proposal = proposeGender(
+      {
+        brand: r.brand,
+        sourceUrl: r.sourceUrl,
+        storeDefault: r.sourceUrl ? storeDefaultGender(r.sourceUrl, retailerRules) : undefined,
+      },
+      profile,
+    );
+    return proposal ? { gender: proposal.gender, source: proposal.source } : null;
+  };
+
+  const styleByStyleCombined = STYLE_KEYWORD_LIST.map((style) => {
+    let proposed = 0, right = 0, editor = 0;
+    for (const r of loaded) {
+      const got = combinedStyles(r, outOfFold(r)).includes(style);
+      const has = r.styleKeywords.includes(style);
+      if (got) proposed++;
+      if (has) editor++;
+      if (got && has) right++;
+    }
+    return { style, proposed, right, editor, precision: proposed ? right / proposed : 0, recall: editor ? right / editor : 0 };
+  });
+
+  // Where the gender chain's answers came from, and how often each source was right.
+  const genderSources: Record<string, { answered: number; right: number }> = {};
+  let genderUnanswered = 0;
+  for (const r of loaded) {
+    if (!r.gender) continue;
+    const got = chainGender(r, outOfFold(r));
+    if (!got) { genderUnanswered++; continue; }
+    const s = (genderSources[got.source] ??= { answered: 0, right: 0 });
+    s.answered++;
+    if (got.gender === r.gender) s.right++;
+  }
+  const darkTone = buildCatalogueProfile(loaded).darkTone;
+
   // A catalogue leaning hard on one brand mines that brand's vocabulary rather
   // than the language of clothes, so the concentration belongs in the report.
   const brandCounts = new Map<string, number>();
@@ -243,9 +324,18 @@ export async function GET(req: Request) {
       style_mined: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => applyMultiRules(styleRules, proseKeys(r))),
       style_importer: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => importerRead(r).styleKeywords ?? []),
       style_majority: scoreMultiLabel(holdout, (r) => r.styleKeywords, () => majorityStyle),
+      style_brand: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => brandOnlyStyles(r, profileTrain)),
+      style_combined: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => combinedStyles(r, profileTrain)),
+      style_combined_all_oof: scoreMultiLabel(loaded, (r) => r.styleKeywords, (r) => combinedStyles(r, outOfFold(r))),
+      gender_page: scoreSingleLabel(holdout, (r) => r.gender, (r) => pageGender(r), (r) => r.name),
+      gender_page_store_brand: scoreSingleLabel(holdout, (r) => r.gender, (r) => chainGender(r, profileTrain)?.gender ?? null, (r) => r.name),
+      gender_page_store_brand_all_oof: scoreSingleLabel(loaded, (r) => r.gender, (r) => chainGender(r, outOfFold(r))?.gender ?? null, (r) => r.name),
     } as Record<string, unknown>,
     style_by_style: styleByStyle,
+    style_by_style_combined: styleByStyleCombined,
     style_false_tags: styleFalseTags,
+    dark_tone: darkTone,
+    gender_sources: { ...genderSources, unanswered: genderUnanswered },
     rules: {
       counts: {
         category: categoryRules.length,
@@ -328,6 +418,22 @@ export async function GET(req: Request) {
   }
   lines.push("  tagged = products the importer gave this style; right = of those, the editor agrees;");
   lines.push("  editor = products the editor gave it. Low precision means the words mislead here.");
+  lines.push("");
+  lines.push("STYLE BY STYLE  (what the importer now writes: brand + checked words + colour; out-of-fold)");
+  lines.push(`  ${"style".padEnd(14)} ${"tagged".padStart(7)} ${"right".padStart(6)} ${"editor".padStart(7)} ${"precision".padStart(10)} ${"recall".padStart(7)}`);
+  for (const s of styleByStyleCombined) {
+    lines.push(`  ${s.style.padEnd(14)} ${String(s.proposed).padStart(7)} ${String(s.right).padStart(6)} ${String(s.editor).padStart(7)} ${(s.proposed ? pct(s.precision) : "—").padStart(10)} ${pct(s.recall).padStart(7)}`);
+  }
+  lines.push("");
+  lines.push("DARK-TONED PIECES  (black or a dark shade, nothing light)");
+  lines.push(`  all:                 ${darkTone.all.tagged} pieces, filed dark ${darkTone.all.right} (${darkTone.all.tagged ? pct(darkTone.all.right / darkTone.all.tagged) : "—"})`);
+  lines.push(`  brands that use dark: ${darkTone.inDarkBrands.tagged} pieces, filed dark ${darkTone.inDarkBrands.right} (${darkTone.inDarkBrands.tagged ? pct(darkTone.inDarkBrands.right / darkTone.inDarkBrands.tagged) : "—"})`);
+  lines.push("");
+  lines.push("GENDER — WHERE EACH ANSWER CAME FROM  (out-of-fold, whole catalogue)");
+  for (const [source, v] of Object.entries(genderSources)) {
+    lines.push(`  ${source.padEnd(14)} ${String(v.answered).padStart(5)} answered, ${pct(v.answered ? v.right / v.answered : 0).padStart(4)} right`);
+  }
+  lines.push(`  ${"no answer".padEnd(14)} ${String(genderUnanswered).padStart(5)}`);
   if (styleFalseTags.length) {
     lines.push("");
     lines.push("── style tags the editor did not give ──");

@@ -302,6 +302,10 @@ export interface CrawlItemResult {
   brandNote?: string;
   /** Set when the colour filter came from the name or the photo, not the label. */
   colorNote?: string;
+  /** Set when the gender came from the store or the catalogue's history, not the page. */
+  genderNote?: string;
+  /** What argued for the style tags written. */
+  styleNote?: string;
   /** Colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when the page joined an existing product instead of creating one. */

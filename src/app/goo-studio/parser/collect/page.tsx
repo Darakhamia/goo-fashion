@@ -441,6 +441,8 @@ function detailLine(r: CrawlItemResult): string {
   if (r.priceNote) parts.push(r.priceNote);
   if (r.brandNote) parts.push(r.brandNote);
   if (r.colorNote) parts.push(r.colorNote);
+  if (r.genderNote) parts.push(r.genderNote);
+  if (r.styleNote) parts.push(r.styleNote);
   if (r.variantsLinked) {
     parts.push(`grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}`);
   }

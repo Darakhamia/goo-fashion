@@ -189,7 +189,7 @@ function normalize(text: string): string {
 
 const isCyrillic = (s: string) => /[Ѐ-ӿ]/.test(s);
 
-function compileWordTerm(raw: string): RegExp {
+function compileWordTerm(raw: string): string {
   const cyrillic = isCyrillic(raw);
   const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -209,13 +209,20 @@ function compileWordTerm(raw: string): RegExp {
     if (cyrillic) return exact ? word : `${word}\\p{L}*`;
     return i === words.length - 1 && !exact ? `${word}(?:e?s)?` : word;
   });
-  return new RegExp(` ${pattern.join(" ")}(?= )`, "u");
+  return ` ${pattern.join(" ")}(?= )`;
 }
 
+/**
+ * One expression per style, its terms as alternatives: thirteen passes over a
+ * description instead of seven hundred. The catalogue profile reads every
+ * product's description with these, and did so in two seconds per three
+ * thousand products one term at a time.
+ */
 const COMPILED: [StyleKeyword, RegExp][] = (Object.entries(STYLE_TERMS) as [StyleKeyword, readonly Term[]][])
-  .flatMap(([style, terms]) =>
-    terms.map((term): [StyleKeyword, RegExp] => [style, term instanceof RegExp ? term : compileWordTerm(term)]),
-  );
+  .map(([style, terms]) => {
+    const alternatives = terms.map((term) => (term instanceof RegExp ? term.source : compileWordTerm(term)));
+    return [style, new RegExp(`(?:${alternatives.join("|")})`, "u")];
+  });
 
 /** The first term of each style found in `text` — for "why was this tagged" answers. */
 export function styleEvidence(text: string): Partial<Record<StyleKeyword, string>> {

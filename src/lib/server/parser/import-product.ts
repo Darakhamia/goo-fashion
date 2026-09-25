@@ -34,7 +34,8 @@ import {
   type NamedItem,
 } from "./same-item";
 import { brandVocabulary, decideBrand } from "./brand-from-name";
-import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
+import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
+import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
 import { sampleGarmentColours, storeBackgroundColor } from "@/lib/server/bg-color";
 import type { Product, Category, Gender } from "@/lib/types";
@@ -449,6 +450,10 @@ export interface ImportResult {
   brandNote?: string;
   /** Set when the colour filter came from the name or the photo, not the label. */
   colorNote?: string;
+  /** Set when the gender came from the store or the catalogue's history, not the page. */
+  genderNote?: string;
+  /** What argued for the style tags written, when any were. */
+  styleNote?: string;
   /** How many colour siblings this row was grouped with, if any. */
   variantsLinked?: number;
   /** Set when this page joined an existing product instead of creating one. */
@@ -476,7 +481,10 @@ export async function importParsedProduct(
   const category: Category = CATEGORIES.includes(p.category as Category)
     ? (p.category as Category)
     : "accessories";
-  const gender: Gender | undefined = GENDERS.includes(p.gender as Gender)
+  // What the page (or the admin, on the manual import screen) said. When it
+  // said nothing, the store's setting and the catalogue's history are asked
+  // further down, once the brand and the store are known.
+  const statedGender: Gender | undefined = GENDERS.includes(p.gender as Gender)
     ? (p.gender as Gender)
     : undefined;
 
@@ -636,6 +644,35 @@ export async function importParsedProduct(
   }
   const colorGroupIds = await colorGroupIdsFor(groupNames);
 
+  // ── Gender and style: what the page does not say ────────────────────────────
+  // A page names its gender or it doesn't; when it doesn't, the store's own
+  // convention decides (the admin's setting, then the brand's and the store's
+  // habit in the catalogue). Style is mostly the brand's manner, which no page
+  // spells out. Both are learned from the editor's own labelling — see
+  // `catalogue-profile.ts` for what is trusted and why.
+  const profile = await loadCatalogueProfile();
+  let gender = statedGender;
+  let genderNote: string | undefined;
+  if (!gender) {
+    const proposal = proposeGender(
+      {
+        brand,
+        sourceUrl,
+        storeDefault: sourceUrl ? storeDefaultGender(sourceUrl, retailerRules) : undefined,
+      },
+      profile,
+    );
+    if (proposal) {
+      gender = proposal.gender;
+      genderNote = `gender ${proposal.gender} from ${proposal.reason}`;
+    }
+  }
+  const styleProposal = proposeStyles(
+    { brand, keywordStyles: normalizeStyleKeywords(p.styleKeywords), colors, colorGroups: groupNames },
+    profile,
+  );
+  let styleNote = styleProposal.styles.length ? `style ${styleProposal.reasons.join("; ")}` : undefined;
+
   const product: Partial<Product> = {
     name,
     brand: brand as Product["brand"],
@@ -664,7 +701,7 @@ export async function importParsedProduct(
     // Filtered through the shared vocabulary rather than trusted: this function
     // is also called with hand-assembled records, and a tag the pickers do not
     // offer is a tag nothing can ever match.
-    styleKeywords: normalizeStyleKeywords(p.styleKeywords),
+    styleKeywords: styleProposal.styles,
     retailers,
     ...(colors[0] ? { colorHex: colorToHex(colors[0]) } : {}),
     ...(colorGroupIds ? { colorGroupIds } : {}),
@@ -700,17 +737,38 @@ export async function importParsedProduct(
   try {
     let existingId: string | null = null;
     let existingRetailers: Product["retailers"] = [];
+    let existingStyled = false;
+    let existingGendered = false;
     if (sourceUrl) {
       const { data: existing } = await supabase
-        .from("products").select("id, retailers").eq("source_url", sourceUrl).maybeSingle();
-      const found = existing as { id: string; retailers: Product["retailers"] | null } | null;
+        .from("products").select("id, retailers, style_keywords, gender").eq("source_url", sourceUrl).maybeSingle();
+      const found = existing as {
+        id: string;
+        retailers: Product["retailers"] | null;
+        style_keywords: string[] | null;
+        gender: string | null;
+      } | null;
       existingId = found?.id ?? null;
       existingRetailers = Array.isArray(found?.retailers) ? found.retailers : [];
+      existingStyled = !!found?.style_keywords?.length;
+      existingGendered = !!found?.gender;
     }
 
     if (existingId) {
       const id = existingId;
       const row = await keepOtherStores(dbRow, existingRetailers, retailers[0], sourceUrl);
+      // Style and gender are the editor's to decide. Re-collecting a page used to
+      // write whatever the importer guessed over them — an empty style list
+      // included — so a store collected twice lost its hand-set tags. They are
+      // filled only where the row has none.
+      if (existingStyled) {
+        delete row.style_keywords;
+        styleNote = undefined;
+      }
+      if (existingGendered) {
+        delete row.gender;
+        genderNote = undefined;
+      }
       // PostgREST reports failures in `error` rather than throwing, so an
       // unchecked update reads as success while writing nothing (the silent
       // failure pattern audit item Б1-3 called out on the billing ledger).
@@ -788,6 +846,8 @@ export async function importParsedProduct(
           priceNote,
           brandNote,
           colorNote,
+          genderNote,
+          styleNote,
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
@@ -855,6 +915,8 @@ export async function importParsedProduct(
     priceNote,
     brandNote,
     colorNote,
+    genderNote,
+    styleNote,
     variantsLinked,
   };
 }

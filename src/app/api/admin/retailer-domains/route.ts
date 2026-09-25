@@ -8,8 +8,11 @@ import {
   invalidateRetailerRules,
   isMissingTable,
   loadRetailerRules,
+  MISSING_COLUMN_CODES,
+  MISSING_GENDER_COLUMN_MESSAGE,
   MISSING_TABLE_MESSAGE,
   normalizeDomain,
+  parseStoreGender,
   type RetailerRule,
 } from "@/lib/server/retailer-domains";
 
@@ -151,16 +154,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A store name is required" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("retailer_domains").upsert(
-    {
-      domain,
-      name,
-      is_official: body?.isOfficial === true,
-      note: String(body?.note ?? "").trim().slice(0, 500) || null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "domain" },
-  );
+  const defaultGender = parseStoreGender(body?.defaultGender) ?? null;
+  const row = {
+    domain,
+    name,
+    is_official: body?.isOfficial === true,
+    default_gender: defaultGender,
+    note: String(body?.note ?? "").trim().slice(0, 500) || null,
+    updated_at: new Date().toISOString(),
+  };
+  const upsert = (r: Record<string, unknown>) =>
+    supabase!.from("retailer_domains").upsert(r, { onConflict: "domain" });
+
+  let { error } = await upsert(row);
+  // A database that has not run migration 022 has no `default_gender`. A rule
+  // that sets no gender loses nothing by leaving the column out; one that sets
+  // a gender must not be saved as if it had worked.
+  if (error?.code && MISSING_COLUMN_CODES.has(error.code) && /default_gender/.test(error.message ?? "")) {
+    if (defaultGender) return NextResponse.json({ error: MISSING_GENDER_COLUMN_MESSAGE }, { status: 503 });
+    const withoutGender: Record<string, unknown> = { ...row };
+    delete withoutGender.default_gender;
+    ({ error } = await upsert(withoutGender));
+  }
 
   if (isMissingTable(error)) {
     return NextResponse.json({ error: MISSING_TABLE_MESSAGE }, { status: 503 });
@@ -173,7 +188,7 @@ export async function POST(req: Request) {
     action: "retailer_domain.saved",
     target_type: "retailer_domain",
     target_id: domain,
-    metadata: { name, isOfficial: body?.isOfficial === true },
+    metadata: { name, isOfficial: body?.isOfficial === true, defaultGender },
   });
 
   return NextResponse.json({ ok: true, domain });
