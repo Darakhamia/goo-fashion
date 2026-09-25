@@ -22,6 +22,8 @@ export interface LabelledProduct {
   colors: string[];
   colorGroups: string[];
   styleKeywords: string[];
+  /** The page it was imported from, when it was imported — the store's domain is read off it. */
+  sourceUrl: string | null;
   embedding: number[] | null;
 }
 
@@ -118,7 +120,7 @@ export async function loadLabelledProducts(
 
   const columns = [
     "id", "name", "description", "brand", "gender",
-    "category", "subcategory", "colors", "color_group_ids", "style_keywords",
+    "category", "subcategory", "colors", "color_group_ids", "style_keywords", "source_url",
     ...(withEmbedding ? ["embedding"] : []),
   ].join(", ");
 
@@ -146,6 +148,7 @@ export async function loadLabelledProducts(
           .map((id) => groupName.get(id))
           .filter((n): n is string => !!n),
         styleKeywords: (r.style_keywords as string[]) ?? [],
+        sourceUrl: (r.source_url as string | null) ?? null,
         embedding: withEmbedding ? parseEmbedding(r.embedding) : null,
       });
     }

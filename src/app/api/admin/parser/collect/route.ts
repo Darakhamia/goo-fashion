@@ -309,6 +309,8 @@ export async function POST(req: Request) {
             priceNote: imported.priceNote,
             brandNote: imported.brandNote,
             colorNote: imported.colorNote,
+            genderNote: imported.genderNote,
+            styleNote: imported.styleNote,
             variantsLinked: imported.variantsLinked ?? 0,
             merged: !!imported.mergedInto,
             mergedBy: imported.mergedBy,

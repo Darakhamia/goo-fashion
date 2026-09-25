@@ -96,6 +96,12 @@ const CHECKS: readonly Check[] = [
     migration: "018_retailer_domains.sql",
     breaks: "Per-domain store names and official-store flags are not applied to imports.",
   },
+  {
+    table: "retailer_domains",
+    column: "default_gender",
+    migration: "022_retailer_default_gender.sql",
+    breaks: "A store's \"unmarked pieces are for…\" setting cannot be saved, and imports ignore it.",
+  },
 ];
 
 async function present(table: string, column: string): Promise<{ present: boolean; error?: string }> {

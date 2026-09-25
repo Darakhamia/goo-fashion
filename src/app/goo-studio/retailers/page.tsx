@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { storeFaviconUrl } from "@/lib/stores";
 
+type StoreGender = "" | "men" | "women" | "unisex";
+
 interface RetailerRule {
   domain: string;
   name: string;
   isOfficial: boolean;
+  defaultGender?: Exclude<StoreGender, "">;
   note?: string;
   updatedAt?: string;
 }
@@ -30,7 +33,16 @@ interface Report {
   rulesError?: string | null;
 }
 
-const EMPTY_DRAFT = { domain: "", name: "", isOfficial: false, note: "" };
+const EMPTY_DRAFT = { domain: "", name: "", isOfficial: false, defaultGender: "" as StoreGender, note: "" };
+
+/** What each setting means, in the words of the store's own navigation. */
+const GENDER_OPTIONS: { value: StoreGender; label: string }[] = [
+  { value: "", label: "Not set — learn from the catalogue" },
+  { value: "men", label: "Men — the site's “All” is menswear" },
+  { value: "unisex", label: "Unisex — the site's “All” is for anyone" },
+  { value: "women", label: "Women — the store sells womenswear only" },
+];
+const GENDER_SHORT: Record<Exclude<StoreGender, "">, string> = { men: "Men", women: "Women", unisex: "Unisex" };
 
 const INPUT =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)]";
@@ -110,6 +122,7 @@ export default function RetailersPage() {
       domain: rule.domain,
       name: rule.name,
       isOfficial: rule.isOfficial,
+      defaultGender: rule.defaultGender ?? "",
       note: rule.note ?? "",
     });
     setFormError("");
@@ -242,6 +255,26 @@ export default function RetailersPage() {
             />
           </div>
           <div className="md:col-span-2">
+            <label htmlFor="rd-gender" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
+              Pieces the page doesn&apos;t mark are for
+            </label>
+            <select
+              id="rd-gender"
+              value={draft.defaultGender}
+              onChange={(e) => setDraft((d) => ({ ...d, defaultGender: e.target.value as StoreGender }))}
+              className={`${INPUT} bg-[var(--background)]`}
+            >
+              {GENDER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
+              Used only when a product&apos;s name, link and breadcrumbs say nothing about gender —
+              typically a store with &ldquo;All&rdquo; and &ldquo;Women&rdquo; and no &ldquo;Men&rdquo;.
+              Applies to new imports; products that already have a gender keep it.
+            </p>
+          </div>
+          <div className="md:col-span-2">
             <label htmlFor="rd-note" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
               Note
             </label>
@@ -326,6 +359,11 @@ export default function RetailersPage() {
                         {rule.name}
                         {rule.isOfficial && <OfficialBadge />}
                       </span>
+                      {rule.defaultGender && (
+                        <span className="block text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                          Unmarked pieces: {GENDER_SHORT[rule.defaultGender]}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-[var(--foreground-muted)]">
                       {found ? `${found.productCount}` : "—"}

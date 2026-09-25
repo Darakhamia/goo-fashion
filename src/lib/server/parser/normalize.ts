@@ -13,13 +13,13 @@ import {
   normalizeCode,
   MAX_PRODUCT_IMAGES,
   matchCategory,
-  inferGenderFromText,
   canonicalColor,
   looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
 import { garmentLabel, matchGarment } from "@/lib/taxonomy/garments";
 import { inferStyleKeywords } from "@/lib/taxonomy/styles";
+import { genderFromPage } from "@/lib/taxonomy/gender";
 import {
   isBuiltInBucket,
   matchSubcategoryLabel,
@@ -178,11 +178,13 @@ export function normalizeExtract(
     [name, raw.description ?? "", raw.material ?? "", subcategory ?? "", trail].join(" "),
   );
 
-  // Gender: explicit override → URL → name/description
+  // Gender: the site config's override, then what the page states — name,
+  // address, breadcrumbs, description, strongest first. A page that states
+  // nothing is left without one here; the import decides it from the store's
+  // setting and the catalogue's history, which this function cannot see.
   const gender =
     config?.genderOverride ??
-    inferGenderFromText(sourceUrl) ??
-    inferGenderFromText(`${name} ${raw.description ?? ""}`);
+    genderFromPage({ name, url: sourceUrl, breadcrumbs: trail, description: raw.description })?.gender;
 
   // Images: resolve to absolute URLs, ask the CDN for the full-resolution
   // original, then dedupe by photo identity rather than by string.
