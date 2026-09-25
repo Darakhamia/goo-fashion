@@ -22,6 +22,7 @@
  * rows disagree on vetoes the match.
  */
 import { cleanName, colorWordsIn, canonicalColor } from "@/lib/server/product-fields";
+import { garmentTypesConflict } from "@/lib/taxonomy/garments";
 import { foldBrand } from "./brand-from-name";
 
 /**
@@ -30,9 +31,14 @@ import { foldBrand } from "./brand-from-name";
  */
 export const MIN_PIECE_NAME = 8;
 
-/** Words that say who a piece is for, or tie a colour on — never which piece. */
+/**
+ * Words that say who a piece is for, tie a colour on, or name the brand's line
+ * rather than the piece — never which piece. "Originals" is adidas's line:
+ * a reseller's "adidas Originals Samba OG Shoes" is adidas.com's "Samba OG".
+ */
 const FILLER = new Set([
   "in", "colour", "color", "col", "men", "mens", "man", "women", "womens", "woman", "unisex",
+  "originals",
   "колір", "кольору", "цвет", "цвета", "унісекс", "унисекс",
   "чоловічі", "чоловічий", "чоловіча", "чоловіче", "жіночі", "жіночий", "жіноча", "жіноче",
   "мужские", "мужской", "мужская", "мужское", "женские", "женский", "женская", "женское",
@@ -123,6 +129,43 @@ function strongCore(core: string): boolean {
   return /\d/.test(core) || core.split(" ").length >= 2;
 }
 
+/**
+ * Words a brand puts on many pieces at once. Left alone after the brand and the
+ * garment word are gone, they name a line or a finish, not a model: every
+ * brand has a "Classic" tee and a "Classic" hoodie.
+ */
+const NOT_A_MODEL = new Set([
+  "classic", "classics", "basic", "basics", "essential", "essentials", "original", "originals",
+  "signature", "standard", "regular", "core", "new", "premium", "heritage", "vintage", "retro",
+  "pro", "sport", "sports", "club", "team", "icon", "logo", "plain", "simple", "everyday",
+  "relaxed", "oversized", "slim", "fit", "cropped", "long", "short", "low", "high", "mid", "lite",
+  "light", "heavy", "heavyweight", "lightweight", "organic", "cotton", "wool", "leather", "suede",
+  "canvas", "denim", "nylon", "fleece", "knit", "jersey", "tech", "utility", "cargo", "graphic",
+  "print", "printed", "striped", "stripe", "check", "pocket", "zip", "hooded", "crew", "crewneck",
+  "script", "box", "mini", "maxi", "midi", "trefoil", "monogram", "sleeve", "sleeveless",
+  "adicolor", "collection", "edition", "limited", "special", "exclusive", "collab",
+]);
+
+/**
+ * A model named in one word — "Emerson", "Samba", "Gazelle" — once the brand
+ * and the garment word are gone.
+ *
+ * One word used to be too little to match on: `strongCore` wants a number or
+ * two words, because Nike sells a Windrunner jacket and Windrunner trousers.
+ * But etnies names its shoe "Emerson" on its own site and a reseller calls it
+ * "Etnies Shoes Emerson", and neither ever says more. So a single word counts
+ * when everything else vouches for it: both rows are filed under the same real
+ * category, the word is not one a brand puts on everything, and the names do
+ * not describe two different garments.
+ */
+function singleWordModel(x: PieceName, y: PieceName, a: PieceRow, b: PieceRow): boolean {
+  if (!x.core || x.core !== y.core) return false;
+  if (x.core.includes(" ") || x.core.length < 4 || /\d/.test(x.core)) return false;
+  if (NOT_A_MODEL.has(x.core)) return false;
+  if (!a.category || !b.category || a.category !== b.category || a.category === "accessories") return false;
+  return !garmentTypesConflict(a.name, b.name);
+}
+
 /** Categories that disagree veto a match; the importer's fallback bucket says nothing. */
 function categoriesAgree(a?: string | null, b?: string | null): boolean {
   if (!a || !b || a === "accessories" || b === "accessories") return true;
@@ -142,14 +185,16 @@ export function samePiece(brand: string, a: PieceRow, b: PieceRow): boolean {
   const x = pieceName(a.name, brand, a.colors ?? []);
   const y = pieceName(b.name, brand, b.colors ?? []);
   if (x.full.length >= MIN_PIECE_NAME && x.full === y.full) return true;
-  return strongCore(x.core) && x.core === y.core;
+  if (strongCore(x.core) && x.core === y.core) return true;
+  return singleWordModel(x, y, a, b);
 }
 
 /**
  * How the colours of two rows of one piece compare.
  *
  *   same       the same colour word ("Black" / "black")
- *   near       different words, one base colour ("Core Black" / "Black")
+ *   near       different words, the same colours ("Core Black" / "Black",
+ *              "grey/white/leather" / "White/Grey")
  *   different  different colours
  *   unknown    one side states no colour
  *   none       neither side states one
@@ -162,6 +207,16 @@ export function colourRelation(a?: string[] | null, b?: string[] | null): Colour
   if (!x && !y) return "none";
   if (!x || !y) return "unknown";
   if (x === y) return "same";
+  // A two-tone piece is its set of colours, whatever order a store lists them
+  // in: one store's "grey/white/leather" is another's "White/Grey". Comparing
+  // the last colour word of each called those different. Only words that are
+  // colours anywhere are counted, so the "Natural" in "Natural Black" does not
+  // make it a second colour.
+  const sx = new Set(colorWordsIn(x, "text"));
+  const sy = new Set(colorWordsIn(y, "text"));
+  if (sx.size && sy.size) {
+    return sx.size === sy.size && [...sx].every((c) => sy.has(c)) ? "near" : "different";
+  }
   const cx = canonicalColor(x, "field");
   const cy = canonicalColor(y, "field");
   return cx && cy && cx === cy ? "near" : "different";

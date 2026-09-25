@@ -880,6 +880,18 @@ export function matchGarment(text: string): GarmentMatch | undefined {
   return { category, type: best.term.type, matched: best.text, weak: !strong.length };
 }
 
+/**
+ * Do two titles name different garments? Only when both name one and neither is
+ * a generic word: "Classic Tee" and "Classic Hoodie" do; "Etnies Shoes Emerson"
+ * and "Emerson" do not — "shoes" says footwear, and "Emerson" says nothing.
+ */
+export function garmentTypesConflict(a: string, b: string): boolean {
+  const x = matchGarment(a);
+  const y = matchGarment(b);
+  if (!x || !y || x.type.id === y.type.id) return false;
+  return !GENERIC_TYPES.has(x.type.id) && !GENERIC_TYPES.has(y.type.id);
+}
+
 /** The category a title names, from strong evidence only. */
 export function garmentCategory(text: string): Category | null {
   const m = matchGarment(text);
