@@ -6,6 +6,17 @@
  * (`/api/admin/parser/*`). Keep them dependency-free and side-effect-free so
  * they can run in any serverless route.
  */
+import { garmentCategory } from "@/lib/taxonomy/garments";
+import {
+  COLOUR_PHRASES,
+  COLOUR_STEMS,
+  FIELD_COLOUR_STEMS,
+  FIELD_COLOUR_WORDS,
+  MULTICOLOUR_WORDS,
+  QUALIFIER_COLOUR_STEMS,
+  QUALIFIER_COLOUR_WORDS,
+  SAFE_COLOUR_WORDS,
+} from "@/lib/taxonomy/colours";
 import type { Category, Gender } from "@/lib/types";
 
 // ── Strip trailing size suffix from a product name ────────────────────────────
@@ -687,14 +698,34 @@ const CATEGORY_RULES_RU: ReadonlyArray<readonly [RegExp, Category]> = [
   [/ремень|ремни|галстук|шарф|платок|платк|шапк|кепк|берет|перчатк|варежк|носк|носок|очки|часы|кошел|бабочк|запонк|подтяжк|ободок/, "accessories"],
 ];
 
-/** First matching category for a free-text string, or null if none matched. */
-export function matchCategory(text: string): Category | null {
+/**
+ * The category the rule table above assigns, on its own — kept separately so
+ * the garment dictionary's answers can be compared against it.
+ */
+export function matchCategoryByRules(text: string): Category | null {
   const t = (text ?? "").toLowerCase();
   if (!t) return null;
   for (const [re, cat] of CATEGORY_RULES) if (re.test(t)) return cat;
   // Fall back to Russian keywords only when the English table matched nothing.
   for (const [re, cat] of CATEGORY_RULES_RU) if (re.test(t)) return cat;
   return null;
+}
+
+/**
+ * First matching category for a free-text string, or null if none matched.
+ *
+ * The garment dictionary answers first. It knows far more names than the rule
+ * table ("Harrington", "Sukajan", "косуха", "берцы"), and it reads a title the
+ * way the title is built — by its head noun — so "Pullover Hoodie", "Knit
+ * Dress" and "Suit Jacket" come out as a hoodie, a dress and tailoring, where
+ * the first-match rules stopped at "pullover", "knit" and "jacket".
+ *
+ * It answers only from strong evidence. A title whose only garment word is a
+ * fabric ("denim", "knit") falls through to the rules, which have handled those
+ * cases for a long time and whose traps ("boot cut", "shoe bag") stay in force.
+ */
+export function matchCategory(text: string): Category | null {
+  return garmentCategory(text ?? "") ?? matchCategoryByRules(text);
 }
 
 // ── Retail category path → { category, gender } ───────────────────────────────
@@ -748,8 +779,9 @@ export function colorToHex(colorName: string): string {
   if (exact) return exact;
   // "Core Black", "Cloud White", "Deep Navy Blue": a colourway is a base colour
   // with marketing in front of it. Reading the base out is what stops every
-  // such product from landing on the grey placeholder swatch.
-  const base = canonicalColor(key);
+  // such product from landing on the grey placeholder swatch. The argument is
+  // always a colour label, so the field vocabulary applies.
+  const base = canonicalColor(key, "field");
   return base ? BASE_COLOR_HEX[base] : "#888888";
 }
 
@@ -785,119 +817,58 @@ const BASE_COLOR_HEX: Record<BaseColor, string> = {
 export const MULTICOLOR_GROUP = "Multicolor";
 
 /**
- * Single words that name a colour. Deliberately a closed list: a word that is
- * not here contributes nothing, which is what keeps "Air Force" or "Heritage"
- * from being read as a colourway.
+ * Where a colour word is being read from.
+ *
+ *   "text"   a product name, a URL slug, page markup — anything that is not
+ *            known to be a colour. Only words that mean a colour everywhere
+ *            count, so "Stone Island" and "Linen Shirt" name no colour.
+ *   "field"  the store's colour field or a swatch label: the text IS a colour,
+ *            so "Stone", "Linen" and "Sky" read as colours too.
+ *
+ * The vocabulary itself is in `lib/taxonomy/colours`.
  */
-const COLOR_WORDS: Record<string, BaseColor> = {
-  // black
-  black: "black", noir: "black", nero: "black", negro: "black", schwarz: "black",
-  onyx: "black", ebony: "black", jet: "black", coal: "black", licorice: "black",
-  caviar: "black", anthracite: "black",
-  // white
-  white: "white", blanc: "white", bianco: "white", blanco: "white", weiss: "white",
-  ivory: "white", snow: "white", chalk: "white", optic: "white",
-  // grey
-  grey: "grey", gray: "grey", gris: "grey", grigio: "grey", charcoal: "grey",
-  graphite: "grey", slate: "grey", silver: "grey", ash: "grey", pewter: "grey",
-  steel: "grey", smoke: "grey", chrome: "grey", platinum: "grey", gunmetal: "grey",
-  // beige / neutrals
-  beige: "beige", cream: "beige", ecru: "beige", sand: "beige", stone: "beige",
-  oat: "beige", oatmeal: "beige", nude: "beige", taupe: "beige", khaki: "beige",
-  camel: "beige", champagne: "beige", bone: "beige", linen: "beige",
-  natural: "beige", sable: "beige",
-  // brown
-  brown: "brown", chocolate: "brown", coffee: "brown", mocha: "brown",
-  espresso: "brown", cognac: "brown", chestnut: "brown", walnut: "brown",
-  hazel: "brown", marron: "brown", marrone: "brown", bronze: "brown",
-  toffee: "brown", caramel: "brown", tan: "brown", rust: "brown", cocoa: "brown",
-  // blue
-  blue: "blue", bleu: "blue", blu: "blue", azul: "blue", navy: "blue",
-  denim: "blue", indigo: "blue", cobalt: "blue", azure: "blue", sky: "blue",
-  teal: "blue", aqua: "blue", turquoise: "blue", petrol: "blue", marine: "blue",
-  // green
-  green: "green", vert: "green", verde: "green", olive: "green", sage: "green",
-  forest: "green", mint: "green", emerald: "green", moss: "green",
-  pistachio: "green", lime: "green",
-  // red
-  red: "red", rouge: "red", rosso: "red", rojo: "red", crimson: "red",
-  scarlet: "red", burgundy: "red", wine: "red", bordeaux: "red", maroon: "red",
-  cherry: "red", ruby: "red",
-  // pink
-  pink: "pink", rose: "pink", blush: "pink", fuchsia: "pink", fuschia: "pink",
-  magenta: "pink", salmon: "pink", coral: "pink",
-  // yellow
-  yellow: "yellow", jaune: "yellow", giallo: "yellow", mustard: "yellow",
-  lemon: "yellow", gold: "yellow", golden: "yellow", ochre: "yellow",
-  amber: "yellow", butter: "yellow",
-  // orange
-  orange: "orange", apricot: "orange", peach: "orange", tangerine: "orange",
-  papaya: "orange", terracotta: "orange", copper: "orange",
-  // violet
-  violet: "violet", purple: "violet", lilac: "violet", lavender: "violet",
-  plum: "violet", mauve: "violet", aubergine: "violet",
-};
+export type ColourSource = "text" | "field";
 
-/**
- * Russian and Ukrainian colour words, matched by stem because they decline
- * ("чёрный", "чёрная", "чёрное"). Feeds are bilingual here.
- */
-const COLOR_STEMS: [RegExp, BaseColor][] = [
-  [/^(?:ч[её]рн|чорн)/, "black"],
-  [/^бел|^біл/, "white"],
-  [/^сер|^сір/, "grey"],
-  [/^беж/, "beige"],
-  [/^коричн|^шокол/, "brown"],
-  [/^син|^голуб|^блакит/, "blue"],
-  [/^зел[её]н/, "green"],
-  [/^красн|^червон|^бордов/, "red"],
-  [/^розов|^рожев/, "pink"],
-  [/^ж[её]лт|^жовт/, "yellow"],
-  [/^оранж|^помаранч/, "orange"],
-  [/^фиолет|^фіолет|^сирен|^бузков/, "violet"],
-];
+/** 0 = safe word or phrase, 1 = field-only word, 2 = qualifier ("Marl"). Lower wins. */
+interface ColourHit { base: BaseColor; at: number; rank: 0 | 1 | 2 }
 
-/**
- * Colourways whose meaning is destroyed by reading their words separately:
- * "rose gold" is not rose and gold, and "off white" is not the absence of white.
- */
-const COLOR_PHRASES: [RegExp, BaseColor][] = [
-  [/\broses?[\s-]?gold\b/, "pink"],
-  [/\bgold(?:en)?[\s-]?ros[eé]\b/, "pink"],
-  [/\boff[\s-]?white\b/, "white"],
-  [/\braw[\s-]?white\b/, "white"],
-  [/\boptic[\s-]?white\b/, "white"],
-  [/\bnavy[\s-]?blue\b/, "blue"],
-];
+function colourHits(text: string, source: ColourSource): ColourHit[] {
+  let rest = (text ?? "").toLowerCase();
+  if (!rest) return [];
+  const field = source === "field";
+
+  const hits: ColourHit[] = [];
+  // Phrases first, blanked out in place so the words inside them are not read
+  // again and every later hit keeps its position.
+  for (const [re, base] of COLOUR_PHRASES) {
+    const global = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+    rest = rest.replace(global, (m, ...args) => {
+      hits.push({ base, at: args[args.length - 2] as number, rank: 0 });
+      return " ".repeat(m.length);
+    });
+  }
+
+  for (const m of rest.matchAll(/\p{L}+/gu)) {
+    const word = m[0];
+    if (word.length < 3) continue;
+    const at = m.index ?? 0;
+    const safe = SAFE_COLOUR_WORDS[word] ?? COLOUR_STEMS.find(([re]) => re.test(word))?.[1];
+    if (safe) { hits.push({ base: safe, at, rank: 0 }); continue; }
+    if (!field) continue;
+    const fieldOnly = FIELD_COLOUR_WORDS[word] ?? FIELD_COLOUR_STEMS.find(([re]) => re.test(word))?.[1];
+    if (fieldOnly) { hits.push({ base: fieldOnly, at, rank: 1 }); continue; }
+    const qualifier = QUALIFIER_COLOUR_WORDS[word] ?? QUALIFIER_COLOUR_STEMS.find(([re]) => re.test(word))?.[1];
+    if (qualifier) hits.push({ base: qualifier, at, rank: 2 });
+  }
+  return hits.sort((a, b) => a.at - b.at);
+}
 
 /**
  * Every base colour named in a piece of text, in the order it reads.
  * Non-colour words are ignored, so "Men's Cruiser — Shadow Blue" yields ["blue"].
  */
-export function colorWordsIn(text: string): BaseColor[] {
-  const t = (text ?? "").toLowerCase();
-  if (!t) return [];
-
-  const found: BaseColor[] = [];
-  let rest = t;
-  for (const [re, base] of COLOR_PHRASES) {
-    if (re.test(rest)) {
-      found.push(base);
-      rest = rest.replace(new RegExp(re.source, "g"), " ");
-    }
-  }
-
-  for (const word of rest.split(/[^a-zа-яёіїєґ]+/i)) {
-    if (word.length < 3) continue;
-    const direct = COLOR_WORDS[word];
-    if (direct) {
-      found.push(direct);
-      continue;
-    }
-    const stem = COLOR_STEMS.find(([re]) => re.test(word));
-    if (stem) found.push(stem[1]);
-  }
-  return found;
+export function colorWordsIn(text: string, source: ColourSource = "text"): BaseColor[] {
+  return colourHits(text, source).map((h) => h.base);
 }
 
 /**
@@ -936,11 +907,15 @@ export function looksLikeColourLabel(raw: string | undefined | null): boolean {
  *
  * The LAST colour word wins, because a colourway puts its qualifier in front of
  * the colour: "Natural Black" is a black shoe, "Cloud White" a white one. Taking
- * the first would file both under the qualifier.
+ * the first would file both under the qualifier. A word that means a colour
+ * everywhere outranks one that only does in a colour field, so "Black Linen" is
+ * black however the words are ordered, and "Navy Marl" is navy.
  */
-export function canonicalColor(label: string): BaseColor | undefined {
-  const words = colorWordsIn(label);
-  return words.length ? words[words.length - 1] : undefined;
+export function canonicalColor(label: string, source: ColourSource = "text"): BaseColor | undefined {
+  const hits = colourHits(label, source);
+  if (!hits.length) return undefined;
+  const best = Math.min(...hits.map((h) => h.rank));
+  return hits.filter((h) => h.rank === best).pop()?.base;
 }
 
 /**
@@ -951,19 +926,24 @@ export function canonicalColor(label: string): BaseColor | undefined {
  *
  * Splitting on separators is what distinguishes a two-colour piece from a
  * two-word colourway: "Natural Black" is one colour, "Natural/Black" is two.
+ *
+ * Read from a colour field, "Multi", "Camo" and "Tie-Dye" say Multicolor on
+ * their own; from a name they say nothing ("Camo Cargo" is a print, and the
+ * variant being imported may be the plain one).
  */
-export function colorGroupNamesFor(labels: string | string[]): string[] {
+export function colorGroupNamesFor(labels: string | string[], source: ColourSource = "text"): string[] {
   const list = (Array.isArray(labels) ? labels : [labels]).filter(Boolean);
   const bases: BaseColor[] = [];
+  let multi = false;
   for (const label of list) {
+    if (source === "field" && MULTICOLOUR_WORDS.test(String(label))) multi = true;
     for (const part of String(label).split(/[/,&+·|]|\band\b|\sи\s/i)) {
-      const base = canonicalColor(part);
+      const base = canonicalColor(part, source);
       if (base && !bases.includes(base)) bases.push(base);
     }
   }
-  if (!bases.length) return [];
   const names = bases.map((b) => BASE_COLOR_GROUP[b]);
-  return bases.length > 1 ? [...names, MULTICOLOR_GROUP] : names;
+  return bases.length > 1 || multi ? [...names, MULTICOLOR_GROUP] : names;
 }
 
 // ── Resolve the *store* name a product is sold at from its source URL ─────────

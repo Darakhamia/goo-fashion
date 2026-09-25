@@ -618,7 +618,7 @@ export async function importParsedProduct(
   // Whatever answered is said in the collect screen, because the last two are
   // readings, not the store's word.
   let colorNote: string | undefined;
-  let groupNames = colorGroupNamesFor(colors);
+  let groupNames = colorGroupNamesFor(colors, "field");
   if (!groupNames.length) {
     groupNames = colorGroupNamesFor(name);
     if (groupNames.length) colorNote = `colour filter ${groupNames.join(", ")} from the name`;
