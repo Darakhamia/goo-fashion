@@ -102,6 +102,17 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/goo-studio/duplicates",
+    label: "Duplicates",
+    category: "catalog",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="4.5" width="7.5" height="9.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M6.5 4.5V2.5C6.5 2.2 6.7 2 7 2H13C13.3 2 13.5 2.2 13.5 2.5V10.5C13.5 10.8 13.3 11 13 11H9.5" stroke="currentColor" strokeWidth="1.2" />
+      </svg>
+    ),
+  },
+  {
     href: "/goo-studio/categories",
     label: "Categories",
     category: "catalog",
