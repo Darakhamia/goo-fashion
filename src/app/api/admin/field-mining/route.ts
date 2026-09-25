@@ -23,7 +23,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { matchCategory, inferGenderFromText } from "@/lib/server/product-fields";
+import {
+  colorGroupNamesFor,
+  inferGenderFromText,
+  matchCategory,
+  matchCategoryByRules,
+  MULTICOLOR_GROUP,
+} from "@/lib/server/product-fields";
+import { normalizeExtract } from "@/lib/server/parser/normalize";
 import {
   loadLabelledProducts,
   makeKeyBuilders,
@@ -111,6 +118,27 @@ export async function GET(req: Request) {
   const majorityColourGroup = majorityValue(colorGroupPairs(train), (p) => p.group);
   const majorityStyle = majorityLabels(train, (r) => r.styleKeywords);
 
+  // What the extension's importer would have filled in for each held-out
+  // product, from its name and description alone — the same entry point an
+  // import runs, so these lines measure the keyword dictionaries
+  // (`lib/taxonomy`) against what the editor actually chose.
+  const importerReads = new Map(
+    holdout.map((r) => [
+      r.id,
+      normalizeExtract(
+        { name: r.name, description: r.description, images: [], sizes: [], strategies: [] },
+        "https://catalogue.invalid/p",
+      ),
+    ]),
+  );
+  const importerRead = (r: Row) => importerReads.get(r.id)!;
+  // One group per colour name, as `colorGroupPairs` pairs them: the single
+  // colour it names, or Multicolor when that is all it says.
+  const dictionaryGroup = (colour: string): string | null => {
+    const groups = colorGroupNamesFor(colour, "field");
+    return groups.find((g) => g !== MULTICOLOR_GROUP) ?? groups[0] ?? null;
+  };
+
   // A catalogue leaning hard on one brand mines that brand's vocabulary rather
   // than the language of clothes, so the concentration belongs in the report.
   const brandCounts = new Map<string, number>();
@@ -146,7 +174,12 @@ export async function GET(req: Request) {
       // as well here, the importer should stop passing the description too.
       category_existing_keywords: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategory(`${r.name} ${r.description}`), (r) => r.name),
       category_existing_keywords_name_only: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategory(r.name), (r) => r.name),
+      // The rule table before the garment dictionary, kept as the fallback —
+      // scored alone so the dictionary's gain is a number, not a claim.
+      category_old_rules_name_only: scoreSingleLabel(holdout, (r) => r.category, (r) => matchCategoryByRules(r.name), (r) => r.name),
+      category_importer: scoreSingleLabel(holdout, (r) => r.category, (r) => importerRead(r).category ?? null, (r) => r.name),
       category_majority: scoreSingleLabel(holdout, (r) => r.category, () => majorityCategory, () => "", 0),
+      subcategory_importer: scoreSingleLabel(holdout, (r) => r.subcategory, (r) => importerRead(r).subcategory ?? null, (r) => r.name),
       subcategory_mined: scoreSingleLabel(holdout, (r) => r.subcategory, (r) => applyRules(subcategoryRules, nameKeys(r))?.value ?? null, (r) => r.name),
       subcategory_majority: scoreSingleLabel(holdout, (r) => r.subcategory, () => majoritySubcategory, () => "", 0),
       gender_by_name: scoreSingleLabel(holdout, (r) => r.gender, (r) => applyRules(genderByName, genderKeys(r))?.value ?? null, (r) => r.name),
@@ -167,8 +200,10 @@ export async function GET(req: Request) {
       ),
       gender_majority: scoreSingleLabel(holdout, (r) => r.gender, () => majorityGender, () => "", 0),
       colour_group_mined: scoreSingleLabel(holdoutColorPairs, (p) => p.group, (p) => applyRules(colorRules, [p.color])?.value ?? null, (p) => p.color),
+      colour_group_dictionary: scoreSingleLabel(holdoutColorPairs, (p) => p.group, (p) => dictionaryGroup(p.color), (p) => p.color),
       colour_group_majority: scoreSingleLabel(holdoutColorPairs, (p) => p.group, () => majorityColourGroup, () => "", 0),
       style_mined: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => applyMultiRules(styleRules, proseKeys(r))),
+      style_importer: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => importerRead(r).styleKeywords ?? []),
       style_majority: scoreMultiLabel(holdout, (r) => r.styleKeywords, () => majorityStyle),
     } as Record<string, unknown>,
     rules: {

@@ -162,7 +162,7 @@ export function colourRelation(a?: string[] | null, b?: string[] | null): Colour
   if (!x && !y) return "none";
   if (!x || !y) return "unknown";
   if (x === y) return "same";
-  const cx = canonicalColor(x);
-  const cy = canonicalColor(y);
+  const cx = canonicalColor(x, "field");
+  const cy = canonicalColor(y, "field");
   return cx && cy && cx === cy ? "near" : "different";
 }

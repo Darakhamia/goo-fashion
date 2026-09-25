@@ -18,7 +18,8 @@ import {
   looksLikeColourLabel,
 } from "@/lib/server/product-fields";
 import type { RawExtract, ParserSiteConfig, ParsedProduct } from "./types";
-import { inferStyleKeywords } from "@/lib/style-keywords";
+import { garmentLabel } from "@/lib/taxonomy/garments";
+import { inferStyleKeywords } from "@/lib/taxonomy/styles";
 import {
   isBuiltInBucket,
   matchSubcategoryLabel,
@@ -115,9 +116,12 @@ export function normalizeExtract(
   // The tree's label for what this piece is: from the name first, which is more
   // specific ("Wool-blend bomber jacket" over a trail's "Jackets"), then from the
   // trail, which answers for a name that classifies nothing ("Aurelio").
-  const subLabelFromName = matchSubcategoryLabel(name);
-  const subLabelFromTrail = trail ? matchSubcategoryLabel(trail) : undefined;
+  // The garment dictionary first — it knows "tee", "trainers", "beanie" and the
+  // Russian names, none of which spell out a label's own words — and the
+  // label's words themselves only when the dictionary has nothing to say.
   const labelValues = subcategoryToValue();
+  const subLabelFromName = garmentLabel(name, labelValues) ?? matchSubcategoryLabel(name);
+  const subLabelFromTrail = trail ? garmentLabel(trail, labelValues) ?? matchSubcategoryLabel(trail) : undefined;
   const labelCategory = (label: string | undefined) => {
     const value = label ? labelValues[label] : undefined;
     // The admin can point a tree label at a bucket outside the code's own list.
