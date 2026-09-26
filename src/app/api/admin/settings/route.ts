@@ -32,11 +32,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ configured: false, source: null });
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "openai_api_key")
     .maybeSingle();
+
+  // A failed read is not "no key": the page would offer to add one while a key
+  // may well be stored and in use.
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const stored = (data as { value: string } | null)?.value?.trim();
   if (!stored) {

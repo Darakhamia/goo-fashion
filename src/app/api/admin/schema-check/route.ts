@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { OPTIONAL_COLUMNS } from "@/lib/data/db";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,14 @@ interface Check {
   breaks: string;
 }
 
-const CHECKS: readonly Check[] = [
+const OTHER_CHECKS: readonly Check[] = [
+  {
+    table: "settings",
+    column: "value",
+    migration: "024_settings.sql",
+    breaks:
+      "Nothing in Settings or Prompts can be saved: the stored OpenAI key, prompt edits, parser settings and homepage picks all fall back to defaults.",
+  },
   {
     table: "user_looks",
     column: "look_name",
@@ -85,12 +93,6 @@ const CHECKS: readonly Check[] = [
     breaks: "A submission cannot be matched back to the look it came from.",
   },
   {
-    table: "products",
-    column: "bg_color",
-    migration: "015_product_bg_color.sql",
-    breaks: "Product cards cannot take the colour of the photo's backdrop.",
-  },
-  {
     table: "retailer_domains",
     column: "domain",
     migration: "018_retailer_domains.sql",
@@ -103,6 +105,104 @@ const CHECKS: readonly Check[] = [
     breaks: "A store's \"unmarked pieces are for…\" setting cannot be saved, and imports ignore it.",
   },
 ];
+
+/**
+ * Where each optional product column comes from. The list of columns itself is
+ * OPTIONAL_COLUMNS — the same list the product writers drop from a save when
+ * the database lacks one — so a column added there is checked here too, even
+ * before it gets a line below.
+ */
+const PRODUCT_COLUMN_SOURCES: Record<string, Pick<Check, "migration" | "breaks">> = {
+  subcategory: {
+    migration: "010_product_subcategory.sql",
+    breaks: "Subcategories are dropped on every save and import.",
+  },
+  color_images: {
+    migration: "supabase-schema.sql",
+    breaks: "Per-colour photos are not stored; every colour shows the main photo.",
+  },
+  variant_group_id: {
+    migration: "supabase-schema.sql",
+    breaks: "Colours of one item are not grouped into one card.",
+  },
+  color_hex: {
+    migration: "supabase-schema.sql",
+    breaks: "Colour swatches lose their exact shade.",
+  },
+  is_group_primary: {
+    migration: "supabase-schema.sql",
+    breaks: "A colour group cannot mark which variant its card shows.",
+  },
+  bg_color: {
+    migration: "015_product_bg_color.sql",
+    breaks: "Product cards cannot take the colour of the photo's backdrop.",
+  },
+  price_min_usd: {
+    migration: "019_product_price_usd.sql",
+    breaks: "Price filters and the stylist's budget compare store prices as if they were dollars.",
+  },
+  price_max_usd: {
+    migration: "019_product_price_usd.sql",
+    breaks: "Price filters and the stylist's budget compare store prices as if they were dollars.",
+  },
+  source_price: {
+    migration: "019_product_source_price.sql",
+    breaks: "The store's own price is not kept, so a converted price cannot be checked.",
+  },
+  source_currency: {
+    migration: "019_product_source_price.sql",
+    breaks: "The store's own currency is not kept, so a converted price cannot be checked.",
+  },
+  fx_rate: {
+    migration: "019_product_source_price.sql",
+    breaks: "The exchange rate behind a converted price is not kept.",
+  },
+  fx_date: {
+    migration: "019_product_source_price.sql",
+    breaks: "The date of the exchange rate behind a converted price is not kept.",
+  },
+  gtin: {
+    migration: "020_product_codes.sql",
+    breaks: "Barcodes are dropped, so the same item from two stores is not matched by code.",
+  },
+  mpn: {
+    migration: "020_product_codes.sql",
+    breaks: "Manufacturer part numbers are dropped, so the same item is not matched by code.",
+  },
+  sku: {
+    migration: "020_product_codes.sql",
+    breaks: "Store SKUs are dropped on every save and import.",
+  },
+  color_group_ids: {
+    migration: "021_color_groups.sql",
+    breaks: "Products get no base colour, so they never show up in the colour filter.",
+  },
+  crop_data: {
+    migration: "023_product_crop_data.sql",
+    breaks: "The crop set in the product editor is not saved; cards show the whole photo.",
+  },
+};
+
+const CHECKS: readonly Check[] = [
+  ...OTHER_CHECKS,
+  ...OPTIONAL_COLUMNS.map((column) => ({
+    table: "products",
+    column,
+    ...(PRODUCT_COLUMN_SOURCES[column] ?? {
+      migration: "a migration in supabase/migrations",
+      breaks: "Saves and imports drop this field.",
+    }),
+  })),
+];
+
+/**
+ * Migrations in the order to run them: the root schema file first, then the
+ * numbered files in file order, then anything unnamed (the generic fallback).
+ */
+function byRunOrder(a: string, b: string): number {
+  const rank = (m: string) => (m === "supabase-schema.sql" ? 0 : /^\d/.test(m) ? 1 : 2);
+  return rank(a) - rank(b) || a.localeCompare(b);
+}
 
 async function present(table: string, column: string): Promise<{ present: boolean; error?: string }> {
   const { error } = await supabase!.from(table).select(column).limit(1);
@@ -136,6 +236,6 @@ export async function GET() {
     checks: results,
     // The migrations to run, de-duplicated and in file order — the actual
     // next action, rather than a list of columns to work back from.
-    missingMigrations: [...new Set(missing.map((m) => m.migration))].sort(),
+    missingMigrations: [...new Set(missing.map((m) => m.migration))].sort(byRunOrder),
   });
 }

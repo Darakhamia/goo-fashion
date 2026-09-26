@@ -82,18 +82,20 @@ export async function POST(req: Request) {
     }
   }
 
-  // How many are still missing an embedding after this batch?
-  const { count: remaining } = await supabase
+  // How many are still missing an embedding after this batch? A failed count is
+  // "unknown", never "done" — a caller looping on `done` would stop early.
+  const { count: remaining, error: countErr } = await supabase
     .from("products")
     .select("id", { count: "exact", head: true })
     .is("embedding", null);
+  if (countErr && !firstError) firstError = `count: ${countErr.message}`;
 
   return NextResponse.json({
     processed,
     failed,
     batchSize,
-    remaining: remaining ?? null,
-    done: (remaining ?? 0) === 0,
+    remaining: countErr ? null : remaining ?? null,
+    done: !countErr && (remaining ?? 0) === 0,
     ...(firstError ? { firstError } : {}),
   });
 }
@@ -109,10 +111,19 @@ export async function GET() {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   }
 
-  const [{ count: total }, { count: missing }] = await Promise.all([
+  const [
+    { count: total, error: totalErr },
+    { count: missing, error: missingErr },
+  ] = await Promise.all([
     supabase.from("products").select("id", { count: "exact", head: true }),
     supabase.from("products").select("id", { count: "exact", head: true }).is("embedding", null),
   ]);
+  // A missing `embedding` column (migration 007 not run) must not read as
+  // "nothing missing, 100% covered".
+  const countErr = totalErr ?? missingErr;
+  if (countErr) {
+    return NextResponse.json({ error: countErr.message }, { status: 500 });
+  }
 
   const totalN = total ?? 0;
   const missingN = missing ?? 0;
