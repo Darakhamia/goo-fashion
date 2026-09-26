@@ -16,15 +16,6 @@
   --font-display: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
   --font-mono:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
 
-  /* Light mode colors */
-  --background: #F4F2EE;
-  --surface: #FFFFFF;
-  --foreground: #0A0A0A;
-  --foreground-muted: #6B6B6B;
-  --foreground-subtle: #A8A8A8;
-  --border: #E8E6E0;
-  --border-strong: #C0BEB8;
-
   /* ── Движение ───────────────────────────────────────────────────────────
      Кривые названы, а не вписываются руками. До этого в проекте жили четыре
      семейства кривых в 43 местах без единого имени. Значения — из планки
@@ -41,6 +32,24 @@
   --dur-fast:    150ms;
   --dur-base:    200ms;
   --dur-slow:    260ms;
+}
+
+/* Colour tokens. goo-studio has a theme switch of its own, independent of the
+   site theme on <html>: its root carries .admin-theme-light or
+   .admin-theme-dark, and the tokens declared there override the ones every
+   admin element would otherwise inherit from <html>. The light block has to
+   stay before the dark one — :root and .dark tie on specificity, so on <html>
+   the later rule wins. */
+:root,
+.admin-theme-light {
+  /* Light mode colors */
+  --background: #F4F2EE;
+  --surface: #FFFFFF;
+  --foreground: #0A0A0A;
+  --foreground-muted: #6B6B6B;
+  --foreground-subtle: #A8A8A8;
+  --border: #E8E6E0;
+  --border-strong: #C0BEB8;
 
   /* Pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars) */
   --bg-overlay-90: rgba(244, 242, 238, 0.90);
@@ -52,7 +61,8 @@
   --fg-on-dark-80: rgba(244, 242, 238, 0.80);
 }
 
-.dark {
+.dark,
+.admin-theme-dark {
   --background: #0A0A0A;
   --surface: #141414;
   --foreground: #F0EEE8;
@@ -69,6 +79,46 @@
   --fg-on-dark-60: rgba(10, 10, 10, 0.60);
   --fg-on-dark-70: rgba(10, 10, 10, 0.70);
   --fg-on-dark-80: rgba(10, 10, 10, 0.80);
+}
+
+/* Native controls inside goo-studio (select popups, date pickers, scrollbars)
+   follow the admin theme rather than the browser default. */
+.admin-theme-light {
+  color-scheme: light;
+}
+.admin-theme-dark {
+  color-scheme: dark;
+}
+
+/* goo-studio on phones. Below md every button, select and text field is at
+   least 40px tall, and an icon-only button (the ones carrying an aria-label)
+   40px wide as well: the smallest comfortable touch target. The rule lives in
+   the base layer, so a utility on the element (`min-h-0`) still wins where a
+   control has to stay small; overlay buttons positioned over an image and
+   switches keep their own size. */
+@layer base {
+  @media (width < 48rem) {
+    :where(.admin-theme-light, .admin-theme-dark)
+      :where(
+        button:not(.absolute, [role="switch"]),
+        select,
+        input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"])
+      ) {
+      min-height: 40px;
+    }
+    :where(.admin-theme-light, .admin-theme-dark) :where(button[aria-label]:not(.absolute, [role="switch"])) {
+      min-width: 40px;
+    }
+  }
+}
+
+/* iOS Safari zooms the page into any field whose text is smaller than 16px
+   and leaves it zoomed. Unlayered on purpose: it has to beat the `text-xs` /
+   `text-sm` utilities the admin fields carry. */
+@media (width < 48rem) {
+  :where(.admin-theme-light, .admin-theme-dark) :where(input, select, textarea) {
+    font-size: 16px;
+  }
 }
 
 html {

@@ -115,10 +115,10 @@ function Badge({ value, map }: { value: string; map: Record<string, string> }) {
 /** Like StatCard, but the number carries a verdict: green is fine, red is not. */
 function HealthCard({ label, value, bad, note }: { label: string; value: string; bad: boolean; note: string }) {
   return (
-    <div className={`rounded-xl border px-4 py-3 ${bad ? "border-red-400/30 bg-red-400/15" : "border-[var(--border)]"}`}
+    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-red-400/30 bg-red-400/15" : "border-[var(--border)]"}`}
       style={bad ? undefined : { background: "var(--background)" }}>
       <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
-      <p className={`font-display text-3xl font-light ${bad ? "text-red-500" : "text-emerald-500"}`}>{value}</p>
+      <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-red-500" : "text-emerald-500"}`}>{value}</p>
       <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">{note}</p>
     </div>
   );
@@ -126,9 +126,9 @@ function HealthCard({ label, value, bad, note }: { label: string; value: string;
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
       <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
-      <p className="font-display text-3xl font-light text-[var(--foreground)] mb-1">{value}</p>
+      <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value}</p>
       {sub && <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
     </div>
   );
@@ -137,14 +137,14 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 /** Active subscribers and MRR per plan. */
 function ByPlanCard({ rows }: { rows: ByPlan[] }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
       <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
       {rows.length === 0 ? (
         <p className="font-display text-3xl font-light text-[var(--foreground)]">—</p>
       ) : (
         <ul className="space-y-1">
           {rows.map((p) => (
-            <li key={p.plan} className="flex items-baseline justify-between gap-3 text-xs">
+            <li key={p.plan} className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs">
               <span className="capitalize text-[var(--foreground)]">{p.count} {p.plan}</span>
               <span className="text-[var(--foreground-muted)]">{uah(p.mrrUah)}/mo</span>
             </li>

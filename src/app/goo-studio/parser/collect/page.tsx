@@ -244,6 +244,8 @@ export default function CollectPage() {
   const updated = results.filter((r) => r.status === "updated").length;
   const failed = results.filter((r) => r.status === "failed" || r.status === "skipped").length;
   const photos = results.reduce((n, r) => n + (r.imagesMirrored ?? 0), 0);
+  // Saved without columns the database lacks — the same note on every row, so said once.
+  const warnings = [...new Set(results.flatMap((r) => (r.warning ? [r.warning] : [])))];
   const running = phase === "planning" || phase === "collecting";
   const pct = planned ? Math.min(100, Math.round((done / planned) * 100)) : 0;
 
@@ -271,7 +273,7 @@ export default function CollectPage() {
           {connected ? "Extension connected" : "Waiting for the extension"}
         </p>
         {store && (
-          <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[420px]">
+          <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-full md:max-w-[420px]">
             {store.replace(/^https?:\/\/(www\.)?/, "")}
           </span>
         )}
@@ -356,7 +358,7 @@ export default function CollectPage() {
                 {phase === "halted" && "Halted"}
                 {phase === "idle" && "Ready"}
               </p>
-              <div className="ml-auto flex items-center gap-3 text-[11px] tabular-nums">
+              <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
                 <span className="text-emerald-500">{imported} new</span>
                 <span className="text-[var(--foreground-muted)]">{updated} updated</span>
                 {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
@@ -381,6 +383,11 @@ export default function CollectPage() {
                 {photos} photo{photos === 1 ? "" : "s"} copied to our storage
               </p>
             )}
+            {warnings.map((w) => (
+              <p key={w} className="rounded-lg border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500">
+                {w}
+              </p>
+            ))}
           </div>
 
           {results.length > 0 && (
@@ -396,7 +403,7 @@ export default function CollectPage() {
                   </span>
                   {r.reason && (
                     <span
-                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[220px] flex-shrink-0"
+                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[220px] flex-shrink-0"
                       title={r.reason}
                     >
                       {r.reason}
@@ -404,7 +411,7 @@ export default function CollectPage() {
                   )}
                   {!r.reason && detailLine(r) && (
                     <span
-                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[260px] flex-shrink-0"
+                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[260px] flex-shrink-0"
                       title={detailLine(r)}
                     >
                       {detailLine(r)}
@@ -415,7 +422,7 @@ export default function CollectPage() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Open this page in a new tab"
-                    className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
+                    className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
                   >
                     ↗
                   </a>

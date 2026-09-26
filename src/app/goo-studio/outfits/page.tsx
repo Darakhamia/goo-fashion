@@ -618,7 +618,7 @@ export default function AdminOutfitsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Outfits</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
@@ -761,13 +761,12 @@ export default function AdminOutfitsPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Review submitted look"
-            className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)] rounded-2xl overflow-hidden"
-            style={{ maxHeight: "90vh" }}
+            className="bg-[var(--background)] w-full max-w-3xl max-h-[90dvh] flex flex-col border border-[var(--border)] rounded-2xl overflow-y-auto md:overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                 {selectedLook.generated_style && (
                   <span className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
                     {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On You" : "AI"}
@@ -793,10 +792,11 @@ export default function AdminOutfitsPage() {
               </button>
             </div>
 
-            {/* Body: image left, pieces right */}
-            <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* Body: image left, pieces right; stacked on phones, where the
+                whole dialog scrolls instead of each column. */}
+            <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
               {/* Generated image */}
-              <div className="w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
+              <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedLook.generated_image}
@@ -806,7 +806,7 @@ export default function AdminOutfitsPage() {
               </div>
 
               {/* Pieces list */}
-              <div className="flex-1 flex flex-col border-l border-[var(--border)] overflow-y-auto divide-y divide-[var(--border)]">
+              <div className="flex-1 flex flex-col border-t md:border-t-0 md:border-l border-[var(--border)] md:overflow-y-auto divide-y divide-[var(--border)]">
                 {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
                   <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
                     <div className="w-12 h-12 shrink-0 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden">
@@ -836,7 +836,7 @@ export default function AdminOutfitsPage() {
                 Prefilled from the submission, so approving unchanged publishes
                 exactly what the shopper wrote; empty means the approval
                 endpoint keeps its own fallback rather than publishing blanks. */}
-            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 max-h-[38vh] overflow-y-auto">
+            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
               <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-3">
                 Publish as
               </p>
@@ -859,7 +859,7 @@ export default function AdminOutfitsPage() {
                 className={`${inputCls} resize-none mb-3`}
               />
 
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <select
                   value={moderation.occasion}
                   onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
@@ -979,7 +979,7 @@ export default function AdminOutfitsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
           <span className="text-xs text-[var(--foreground)]">{selectedIds.size} selected</span>
           <button
             onClick={handleBulkDelete}
@@ -1026,7 +1026,7 @@ export default function AdminOutfitsPage() {
                   key={h}
                   className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
                     i === 8 ? " text-right" : ""
-                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}${i === 7 ? " hidden md:table-cell" : ""}`}
+                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
                 >
                   {h}
                 </th>
@@ -1155,7 +1155,7 @@ export default function AdminOutfitsPage() {
                     </div>
                   </td>
                   {/* Homepage featured */}
-                  <td className="px-4 py-3 hidden md:table-cell">
+                  <td className="px-4 py-3">
                     <button
                       onClick={() => handleToggleFeatured(outfit)}
                       disabled={featuringId === outfit.id}
@@ -1220,12 +1220,14 @@ export default function AdminOutfitsPage() {
 
       {/* ── MODAL ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-50 flex items-center lg:items-start justify-center bg-black/60 overflow-y-auto p-4 lg:py-6">
+          {/* Below lg the dialog scrolls inside itself; from lg the overlay
+              scrolls and each column keeps its own scroll. */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label={editingId ? "Edit outfit" : "New outfit"}
-            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl flex flex-col"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Modal header */}
@@ -1245,7 +1247,7 @@ export default function AdminOutfitsPage() {
             </div>
 
             {/* Modal body: two columns */}
-            <div className="flex flex-col lg:flex-row min-h-0">
+            <div className="flex flex-col lg:flex-row lg:min-h-0">
 
               {/* ── LEFT: Product picker ── */}
               <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
@@ -1281,7 +1283,7 @@ export default function AdminOutfitsPage() {
                 </div>
 
                 {/* Product grid */}
-                <div className="overflow-y-auto flex-1 p-4" style={{ maxHeight: "420px" }}>
+                <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
                   {loadingProducts ? (
                     <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading products...</p>
                   ) : filteredProducts.length === 0 ? (
@@ -1345,7 +1347,7 @@ export default function AdminOutfitsPage() {
               </div>
 
               {/* ── RIGHT: Outfit composer ── */}
-              <div className="lg:w-[45%] flex flex-col overflow-y-auto" style={{ maxHeight: "600px" }}>
+              <div className="lg:w-[45%] flex flex-col lg:overflow-y-auto lg:max-h-[600px]">
                 <div className="px-5 py-4 flex flex-col gap-4">
 
                   {/* Selected items */}
@@ -1417,7 +1419,7 @@ export default function AdminOutfitsPage() {
                                       key={color}
                                       title={color}
                                       onClick={() => setSelectedColor(item.product.id, color)}
-                                      className={`relative w-6 h-6 rounded-full overflow-hidden border transition-colors ${
+                                      className={`relative w-10 h-10 md:w-6 md:h-6 rounded-full overflow-hidden border transition-colors ${
                                         isActive
                                           ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
                                           : "border-[var(--border)] hover:border-[var(--foreground)]"
@@ -1467,7 +1469,7 @@ export default function AdminOutfitsPage() {
                   </div>
 
                   {/* Occasion + Season */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Occasion</label>
                       <select
@@ -1546,7 +1548,7 @@ export default function AdminOutfitsPage() {
                         <button
                           type="button"
                           onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
-                          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
+                          className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
                           title="Remove image"
                           aria-label="Remove image"
                         >
@@ -1557,7 +1559,7 @@ export default function AdminOutfitsPage() {
                       <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp,image/avif"
                           className="sr-only"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
@@ -1575,7 +1577,7 @@ export default function AdminOutfitsPage() {
                                 <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                               </svg>
                               <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
-                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP · max 10 MB</span>
+                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
                             </>
                           )}
                         </div>

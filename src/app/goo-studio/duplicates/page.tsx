@@ -126,12 +126,12 @@ function GroupCard({
           return (
             <li
               key={p.id}
-              className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-4 transition-colors ${
+              className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-3 md:gap-4 transition-colors ${
                 included ? "" : "opacity-45"
               }`}
             >
               <div className="flex flex-col items-center gap-2 pt-1 shrink-0 w-14">
-                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                   <input
                     type="radio"
                     name={`keep-${group.keepId}`}
@@ -150,7 +150,7 @@ function GroupCard({
                   Keep
                 </label>
                 {!keeping && (
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                  <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                     <input
                       type="checkbox"
                       checked={included}
@@ -165,9 +165,9 @@ function GroupCard({
 
               {p.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image} alt="" className="w-16 h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
+                <img src={p.image} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
               ) : (
-                <div className="w-16 h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
               )}
 
               <div className="min-w-0 flex-1">
@@ -219,7 +219,7 @@ function GroupCard({
           Merging moves every store and price onto the kept card, fills its empty fields, moves likes, outfits
           and looks over to it, and deletes the others.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() =>
               unticked.length
@@ -355,7 +355,7 @@ export default function DuplicatesPage() {
   return (
     <div>
       <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Duplicates</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {report
@@ -418,7 +418,7 @@ export default function DuplicatesPage() {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
               ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
               : "bg-[var(--background)] text-red-500 border-red-400/30"

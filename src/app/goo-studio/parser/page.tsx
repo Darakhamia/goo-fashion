@@ -79,8 +79,8 @@ const btnPrimary =
 const btnGhost =
   "px-4 py-2 text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
 /** Status plaques: the admin's three semantic colours, always in this shape. */
-const errorBoxCls = "rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-[12px] text-red-500";
-const warnBoxCls = "rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500";
+const errorBoxCls = "rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-[12px] text-red-500 break-words";
+const warnBoxCls = "rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500 break-words";
 /** Where the extension hands its pages to; install steps live there too. */
 const EXTENSION_PAGE = "/goo-studio/parser/collect";
 const Spinner = () => (
@@ -137,13 +137,14 @@ export default function ParserPage() {
       <Header />
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mt-6 mb-6 border-b border-[var(--border)]">
+      {/* On a phone the four tabs scroll sideways rather than widen the page. */}
+      <div className="flex items-center gap-1 mt-6 mb-6 border-b border-[var(--border)] overflow-x-auto overflow-y-hidden no-scrollbar">
         {([["collect", "Collect catalog"], ["parse", "Parse URL"], ["recipes", "Site Recipes"], ["fetch", "Fetch & Anti-bot"]] as [Tab, string][]).map(
           ([key, label]) => (
             <button
               key={key}
               onClick={() => { setTab(key); setHandoff(null); }}
-              className={`px-4 py-2.5 text-[11px] tracking-[0.12em] uppercase transition-colors -mb-px border-b-2 ${
+              className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-[11px] tracking-[0.12em] uppercase transition-colors -mb-px border-b-2 ${
                 tab === key
                   ? "border-[var(--foreground)] text-[var(--foreground)]"
                   : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -261,6 +262,8 @@ function CollectTab({
   const failed = results.filter((r) => r.status === "failed" || r.status === "skipped").length;
   const aiUsed = results.filter((r) => r.usedAi).length;
   const photos = results.reduce((n, r) => n + (r.imagesMirrored ?? 0), 0);
+  // Saved without columns the database lacks — the same note on every row, so said once.
+  const warnings = [...new Set(results.flatMap((r) => (r.warning ? [r.warning] : [])))];
 
   async function start() {
     const target = url.trim();
@@ -434,7 +437,7 @@ function CollectTab({
                 {phase === "done" && "Finished"}
                 {phase === "stopped" && "Stopped"}
               </p>
-              <div className="ml-auto flex items-center gap-3 text-[11px] tabular-nums">
+              <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
                 <span className="text-emerald-500">{imported} new</span>
                 <span className="text-[var(--foreground-muted)]">{updated} updated</span>
                 {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
@@ -456,6 +459,7 @@ function CollectTab({
                 {aiUsed > 0 && `${aiUsed} product${aiUsed === 1 ? "" : "s"} needed AI`}
               </p>
             )}
+            {warnings.map((w) => <p key={w} className={warnBoxCls}>{w}</p>)}
           </div>
 
           {results.length > 0 && (
@@ -470,13 +474,14 @@ function CollectTab({
                     <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] flex-shrink-0">ai</span>
                   )}
                   {r.reason && (
-                    <span className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[220px] flex-shrink-0" title={r.reason}>
+                    <span className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[220px] flex-shrink-0" title={r.reason}>
                       {r.reason}
                     </span>
                   )}
                   <a
                     href={r.url} target="_blank" rel="noreferrer"
-                    className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
+                    aria-label="Open the store page"
+                    className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
                   >↗</a>
                 </div>
               ))}
@@ -777,12 +782,12 @@ function PastePagePanel({
       <button
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full px-5 py-3 flex items-center justify-between text-left"
+        className="w-full px-5 py-3 flex items-center justify-between gap-3 text-left"
       >
-        <span className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+        <span className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] shrink-0">
           Paste page
         </span>
-        <span className="text-[10px] text-[var(--foreground-subtle)]">
+        <span className="text-[10px] text-[var(--foreground-subtle)] text-right">
           {open ? "hide" : "for stores that refuse us — free, no provider"}
         </span>
       </button>
@@ -833,8 +838,8 @@ function PastePagePanel({
               rows={4}
               className={`${fieldBase} bg-transparent font-mono text-[10px] resize-y`}
             />
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-[10px] text-[var(--foreground-subtle)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+              <p className="text-[10px] text-[var(--foreground-subtle)] break-all">
                 {text
                   ? pasted?.url
                     ? `${size} · ${pasted.url}`
@@ -877,7 +882,7 @@ function SingleProductEditor({
   onChange: (patch: Partial<ParsedProduct>) => void;
 }) {
   const [importing, setImporting] = useState(false);
-  const [imported, setImported] = useState<{ updated: boolean } | null>(null);
+  const [imported, setImported] = useState<{ updated: boolean; warning?: string } | null>(null);
   const [error, setError] = useState("");
   const set = <K extends keyof ParsedProduct>(k: K, v: ParsedProduct[K]) =>
     onChange({ [k]: v } as Partial<ParsedProduct>);
@@ -892,7 +897,7 @@ function SingleProductEditor({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) { setError(data.error ?? "Import failed"); return; }
-      setImported({ updated: data.updated });
+      setImported({ updated: data.updated, warning: typeof data.warning === "string" ? data.warning : undefined });
     } catch {
       setError("Network error");
     } finally {
@@ -902,7 +907,7 @@ function SingleProductEditor({
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden">
-      <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Preview &amp; edit</p>
         {product.valid ? (
           <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 rounded-full">Ready</span>
@@ -1002,6 +1007,7 @@ function SingleProductEditor({
             <a href="/goo-studio/products" className="underline hover:no-underline">View products →</a>
           </span>
         )}
+        {imported?.warning && <p className={`${warnBoxCls} basis-full`}>{imported.warning}</p>}
       </div>
     </div>
   );
@@ -1026,13 +1032,14 @@ function ProductGrid({
 }) {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [result, setResult] = useState<{ ok: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ ok: number; failed: number; warnings: string[] } | null>(null);
 
   async function importSelected() {
     const idxs = [...selected];
     if (!idxs.length) return;
     setImporting(true); setResult(null); setProgress({ done: 0, total: idxs.length });
     let ok = 0, failed = 0;
+    const warnings = new Set<string>();
     for (let i = 0; i < idxs.length; i++) {
       const product = products[idxs[i]];
       try {
@@ -1043,10 +1050,11 @@ function ProductGrid({
         });
         const data = await res.json();
         if (res.ok && data.ok) ok++; else failed++;
+        if (typeof data.warning === "string") warnings.add(data.warning);
       } catch { failed++; }
       setProgress({ done: i + 1, total: idxs.length });
     }
-    setResult({ ok, failed });
+    setResult({ ok, failed, warnings: [...warnings] });
     setImporting(false);
   }
 
@@ -1058,7 +1066,7 @@ function ProductGrid({
         </p>
         <button onClick={onSelectAllValid} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Select valid</button>
         <button onClick={onClear} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">Clear</button>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex flex-wrap items-center gap-3">
           {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
           {result && (
             <span className="text-[11px] text-emerald-500">
@@ -1070,6 +1078,7 @@ function ProductGrid({
             {importing && <Spinner />} Import {selected.size || ""} selected
           </button>
         </div>
+        {result?.warnings.map((w) => <p key={w} className={`${warnBoxCls} basis-full`}>{w}</p>)}
       </div>
 
       <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1276,7 +1285,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px] text-[var(--foreground-muted)]">
           Recipes match by hostname. Overrides and regex rules apply on top of the generic JSON-LD/OpenGraph extractor.
         </p>
@@ -1287,7 +1296,8 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
         {items.map((c) => (
           <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
             {/* Row header */}
-            <div className="flex items-center gap-3 px-4 py-3">
+            {/* Below md the domain takes a line of its own. */}
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3">
               <Toggle
                 on={c.enabled}
                 onChange={(v) => update(c.id, { enabled: v })}
@@ -1296,18 +1306,20 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
               <input
                 value={c.name}
                 onChange={(e) => update(c.id, { name: e.target.value })}
-                className="bg-transparent text-[13px] text-[var(--foreground)] outline-none w-40 border-b border-transparent focus:border-[var(--border-strong)]"
+                aria-label="Recipe name"
+                className="bg-transparent text-[13px] text-[var(--foreground)] outline-none flex-1 min-w-0 md:flex-none md:w-40 border-b border-transparent focus:border-[var(--border-strong)]"
               />
               <input
                 value={c.domain}
                 onChange={(e) => update(c.id, { domain: e.target.value })}
                 placeholder="example.com"
-                className="bg-transparent text-[12px] font-mono text-[var(--foreground-muted)] outline-none flex-1 border-b border-transparent focus:border-[var(--border-strong)]"
+                aria-label="Domain"
+                className="bg-transparent text-[12px] font-mono text-[var(--foreground-muted)] outline-none order-last basis-full md:order-none md:basis-auto flex-1 min-w-0 border-b border-transparent focus:border-[var(--border-strong)]"
               />
               <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)]">
                 {expanded === c.id ? "Hide" : "Edit"}
               </button>
-              <button onClick={() => remove(c.id)} className="text-[var(--foreground-subtle)] hover:text-red-500 transition-colors" title="Delete">
+              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className="flex items-center justify-center text-[var(--foreground-subtle)] hover:text-red-500 transition-colors" title="Delete">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -1361,7 +1373,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
         ))}
       </div>
 
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex flex-wrap items-center gap-3 pt-1">
         <button onClick={save} disabled={saving} className={btnPrimary}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save recipes"}
         </button>
@@ -1552,14 +1564,14 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
               <div className="relative">
                 <input
                   type={showKey ? "text" : "password"}
-                  className={`${monoInputCls} pr-9`}
+                  className={`${monoInputCls} pr-10 md:pr-9`}
                   placeholder={config.key.configured ? "Enter a new key to replace" : "Paste API key"}
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value)}
                   autoComplete="off"
                   spellCheck={false}
                 />
-                <button type="button" onClick={() => setShowKey((v) => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)]">
+                <button type="button" onClick={() => setShowKey((v) => !v)} aria-label={showKey ? "Hide key" : "Show key"} className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)]">
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                     <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
                     <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
@@ -1577,7 +1589,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={saving} className={btnPrimary}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save settings"}
         </button>

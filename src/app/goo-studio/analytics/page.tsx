@@ -55,13 +55,13 @@ function StatCard({
   label: string; value?: string; delta?: { label: string; positive: boolean }; sub?: string; loading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
       <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
       {loading ? (
         <Skeleton h={8} />
       ) : (
         <>
-          <p className="font-display text-3xl font-light text-[var(--foreground)] mb-1">{value ?? "—"}</p>
+          <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value ?? "—"}</p>
           {delta && (
             <p className={`text-[10px] tracking-wide ${delta.positive ? "text-emerald-600" : "text-red-500"}`}>
               {delta.label}
@@ -148,14 +148,14 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Analytics</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1">
             {loading ? "Loading…" : data ? `${fmtNumber(data.summary.pageViews)} page views · last ${data.range}` : "No data"}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {RANGES.map((r) => (
             <button
               key={r.value}
@@ -189,13 +189,13 @@ export default function AdminAnalyticsPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
           <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Online Now</p>
           {loading ? (
             <Skeleton h={8} />
           ) : (
             <>
-              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-1 flex items-center gap-2.5">
+              <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 flex items-center gap-2.5">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
@@ -229,7 +229,7 @@ export default function AdminAnalyticsPage() {
       {/* Sessions over fixed windows. A session ends after 30 min idle, so
           these count visits, not people. */}
       {data && (
-        <div className="grid grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           {[
             { label: "Sessions · 24h", value: data.sessionWindows.last24h, hint: "Last 24 hours" },
             { label: "Sessions · 7d",  value: data.sessionWindows.last7d,  hint: "Last 7 days" },

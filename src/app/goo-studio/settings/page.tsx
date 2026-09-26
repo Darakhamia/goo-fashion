@@ -137,7 +137,9 @@ function SelectedThumb({
       )}
       <button
         onClick={onRemove}
-        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+        // Revealed on hover where there is a pointer; touch screens have no
+        // hover, so there it is always shown, and large enough to tap.
+        className="absolute top-0.5 right-0.5 w-6 h-6 md:w-4 md:h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
         aria-label={`Remove ${item?.name ?? "item"}`}
       >
         <svg width="7" height="7" viewBox="0 0 8 8" fill="none" aria-hidden="true">
@@ -213,11 +215,11 @@ function PickerModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
-          <div>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
+          <div className="min-w-0">
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">{title}</p>
             <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
               {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
@@ -231,7 +233,7 @@ function PickerModal({
           </button>
         </div>
 
-        <div className="px-5 py-3 border-b border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--border)] shrink-0">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -241,7 +243,7 @@ function PickerModal({
           />
         </div>
 
-        <div className="overflow-y-auto p-4">
+        <div className="overflow-y-auto overscroll-contain p-4">
           {items.length === 0 ? (
             <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">{emptyText}</p>
           ) : (
@@ -843,7 +845,7 @@ export default function SettingsPage() {
           )}
           {showcaseLoad === "ready" && STEP_META.map((meta) => (
             <div key={meta.key}>
-              <div className="flex items-baseline gap-2 mb-2">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                 <span className="font-mono text-[10px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
                 <span className="text-[12px] font-medium text-[var(--foreground)]">{meta.title}</span>
                 <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
@@ -871,7 +873,7 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
           <button
             onClick={saveShowcase}
             disabled={showcaseSaving || showcaseLoad !== "ready"}
@@ -912,7 +914,7 @@ export default function SettingsPage() {
             <>
               {/* Chat looks */}
               <div>
-                <div className="flex items-baseline gap-2 mb-2">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
                   <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
                     Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
@@ -936,7 +938,7 @@ export default function SettingsPage() {
 
               {/* Featured product */}
               <div>
-                <div className="flex items-baseline gap-2 mb-2">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
                   <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
                     Shown bottom-left with its retailers.
@@ -958,7 +960,7 @@ export default function SettingsPage() {
 
               {/* Stores shown in "Where to buy" */}
               <div>
-                <div className="flex items-baseline gap-2 mb-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
                   <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
                     Up to {MAX_SHOWCASE_STORES}
@@ -1039,7 +1041,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
           <button
             onClick={saveStylist}
             disabled={stylistSaving || stylistLoad !== "ready"}
@@ -1171,13 +1173,13 @@ export default function SettingsPage() {
                   placeholder="sk-proj-..."
                   spellCheck={false}
                   autoComplete="off"
-                  className={`w-full pr-9 font-mono ${INPUT}`}
+                  className={`w-full pr-10 md:pr-9 font-mono ${INPUT}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowRaw((v) => !v)}
                   aria-label={showRaw ? "Hide key" : "Show key"}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
                   {showRaw ? (
                     <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">

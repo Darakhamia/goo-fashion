@@ -156,7 +156,7 @@ export default function AdminDashboardPage() {
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">Live data could not be loaded.</p>
         </div>
-        <div className="border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl flex items-center justify-between gap-4">
+        <div className="border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
           <span className="min-w-0 break-words">{error}</span>
           <button
             onClick={load}
@@ -172,7 +172,7 @@ export default function AdminDashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
             <motion.div
               key={c?.label ?? i}
               variants={fadeUp}
-              className="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
+              className="rounded-2xl border border-[var(--border)] p-4 md:p-6 min-w-0 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
               style={{ background: "var(--background)" }}
             >
               {/* Color accent strip */}
@@ -218,7 +218,7 @@ export default function AdminDashboardPage() {
                   {c?.label ?? "—"}
                 </span>
               </div>
-              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-3">
+              <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-3 break-words">
                 {c?.value ?? "—"}
               </p>
               {/* Delta pill */}
@@ -282,7 +282,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Signups</h2>
-            <Link href="/goo-studio/users" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -327,7 +327,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Outfits</h2>
-            <Link href="/goo-studio/outfits" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -358,7 +358,7 @@ export default function AdminDashboardPage() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Products</h2>
-          <Link href="/goo-studio/products" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
             View all →
           </Link>
         </div>

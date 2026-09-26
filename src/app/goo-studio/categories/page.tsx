@@ -347,7 +347,7 @@ export default function AdminCategoriesPage() {
       </div>
 
       {loadError && (
-        <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 flex items-center justify-between gap-4">
+        <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
           <p className="text-xs text-red-500 leading-relaxed">
             {loadError}
             {tree ? " What is shown may be out of date." : ""}
@@ -415,9 +415,9 @@ export default function AdminCategoriesPage() {
 
             return (
               <section key={group.id} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
-                <header className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[var(--border)]">
+                <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-[var(--border)]">
                   {editing === `group:${group.id}` ? (
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 flex-1">
                       <input
                         autoFocus
                         value={draftLabel}
@@ -426,7 +426,7 @@ export default function AdminCategoriesPage() {
                           if (e.key === "Enter") saveGroup(group.id, group.label);
                           if (e.key === "Escape") setEditing(null);
                         }}
-                        className={`${inputCls} flex-1`}
+                        className={`${inputCls} flex-1 min-w-[160px]`}
                       />
                       <button onClick={() => saveGroup(group.id, group.label)} disabled={busy} className={btnCls}>Save</button>
                       <button onClick={() => setEditing(null)} className={ghostBtnCls}>Cancel</button>
@@ -466,7 +466,7 @@ export default function AdminCategoriesPage() {
                     const n = counts?.byLabel[item.label] ?? 0;
                     const isEditing = item.id !== undefined && editing === `sub:${item.id}`;
                     return (
-                      <li key={item.label} className="flex items-center gap-3 px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
+                      <li key={item.label} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
                         {isEditing ? (
                           <div className="flex items-center gap-2 flex-1 flex-wrap">
                             <input
@@ -517,9 +517,9 @@ export default function AdminCategoriesPage() {
                               {n} piece{n === 1 ? "" : "s"}
                             </span>
                             {!readOnly && item.id !== undefined && (
-                              <div className="flex items-center gap-2.5 shrink-0">
-                                <button onClick={() => moveSub(item.id!, -1)} disabled={busy || i === 0} title="Move up" className={ghostBtnCls}>↑</button>
-                                <button onClick={() => moveSub(item.id!, 1)} disabled={busy || i === items.length - 1} title="Move down" className={ghostBtnCls}>↓</button>
+                              <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+                                <button onClick={() => moveSub(item.id!, -1)} disabled={busy || i === 0} title="Move up" aria-label={`Move ${item.label} up`} className={ghostBtnCls}>↑</button>
+                                <button onClick={() => moveSub(item.id!, 1)} disabled={busy || i === items.length - 1} title="Move down" aria-label={`Move ${item.label} down`} className={ghostBtnCls}>↓</button>
                                 <button onClick={() => startEditSub(group.id, item)} className={ghostBtnCls}>Edit</button>
                                 <button onClick={() => deleteSub(item.id!, item.label)} disabled={busy} className={ghostBtnCls}>Delete</button>
                               </div>
@@ -573,13 +573,13 @@ export default function AdminCategoriesPage() {
           })}
 
           {!readOnly && (
-            <div className="rounded-xl border border-dashed border-[var(--border)] px-5 py-4 flex items-center gap-2">
+            <div className="rounded-xl border border-dashed border-[var(--border)] px-5 py-4 flex flex-wrap items-center gap-2">
               <input
                 value={newGroupLabel}
                 onChange={(e) => setNewGroupLabel(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addGroup(); }}
                 placeholder="New group — e.g. Swimwear"
-                className={`${inputCls} flex-1`}
+                className={`${inputCls} flex-1 min-w-[160px]`}
               />
               <button onClick={addGroup} disabled={busy || !newGroupLabel.trim()} className={btnCls}>Add group</button>
             </div>
@@ -609,9 +609,14 @@ export default function AdminCategoriesPage() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide shadow-lg rounded-xl ${
-          toast.type === "ok" ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-red-600 text-white"
-        }`}>
+        <div
+          role={toast.type === "ok" ? "status" : "alert"}
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
+            toast.type === "ok"
+              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+              : "bg-[var(--background)] text-red-500 border-red-400/30"
+          }`}
+        >
           {toast.msg}
         </div>
       )}

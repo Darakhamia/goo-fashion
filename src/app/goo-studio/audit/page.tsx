@@ -262,8 +262,8 @@ export default function AdminAuditPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Audit</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {report
@@ -378,7 +378,7 @@ export default function AdminAuditPage() {
                     return (
                       <li
                         key={`${rowKey}\u0000${i}`}
-                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start justify-between gap-4 ${faded ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
+                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 ${faded ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -467,9 +467,14 @@ export default function AdminAuditPage() {
       )}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide shadow-lg rounded-xl ${
-          toast.type === "ok" ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-red-600 text-white"
-        }`}>
+        <div
+          role={toast.type === "ok" ? "status" : "alert"}
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
+            toast.type === "ok"
+              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+              : "bg-[var(--background)] text-red-500 border-red-400/30"
+          }`}
+        >
           {toast.msg}
         </div>
       )}

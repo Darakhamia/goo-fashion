@@ -30,9 +30,11 @@ type ImportTotals = {
   merged: number;
   skipped: number;
   errors: { name: string; error: string }[];
+  /** Saved, but with columns the database lacks (a migration not run) — each said once. */
+  warnings: string[];
 };
 
-const EMPTY_TOTALS: ImportTotals = { created: 0, updated: 0, merged: 0, skipped: 0, errors: [] };
+const EMPTY_TOTALS: ImportTotals = { created: 0, updated: 0, merged: 0, skipped: 0, errors: [], warnings: [] };
 
 /** "Which of these do we carry" requests in flight at once. */
 const CHECK_PARALLEL = 3;
@@ -238,6 +240,10 @@ export default function CSVImportPage() {
             merged: t.merged + (data.merged ?? 0),
             skipped: t.skipped + (data.skipped ?? 0),
             errors: [...t.errors, ...(Array.isArray(data.errors) ? data.errors : [])],
+            warnings:
+              typeof data.warning === "string" && !t.warnings.includes(data.warning)
+                ? [...t.warnings, data.warning]
+                : t.warnings,
           }));
         } else {
           failure = data?.error
@@ -538,6 +544,9 @@ export default function CSVImportPage() {
                 style={{ width: `${pct}%` }}
               />
             </div>
+            {totals.warnings.map((w) => (
+              <p key={w} className={`rounded-lg px-4 py-3 text-[12px] ${statusWarn}`}>{w}</p>
+            ))}
           </div>
 
           {(partial || totals.errors.length > 0 || finished) && (
@@ -614,7 +623,7 @@ export default function CSVImportPage() {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button onClick={backToMerchants} disabled={importing} className={btnOutline}>
                 ← Merchants
               </button>

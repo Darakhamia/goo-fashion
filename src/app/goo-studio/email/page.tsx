@@ -366,12 +366,13 @@ export default function AdminEmailPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <label className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
                   Body
                 </label>
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* The "?" guide says the same on phones, where this line does not fit. */}
+                  <span className="hidden sm:inline text-[10px] text-[var(--foreground-subtle)]">
                     Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic*
                   </span>
                   <button
@@ -474,7 +475,7 @@ export default function AdminEmailPage() {
                 Send to {recipientCount > 0 ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""}` : "audience"}
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs text-[var(--foreground-muted)]">
                   Send to <strong className="text-[var(--foreground)]">{recipientCount}</strong> {recipientCount === 1 ? "person" : "people"}?
                 </span>
@@ -539,7 +540,8 @@ export default function AdminEmailPage() {
               onClick={() => { setTemplateName(""); setSaveTemplateError(""); setShowSaveModal(true); }}
               disabled={!subject.trim() || !body.trim()}
               title="Save current draft as template"
-              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Save current draft as template"
+              className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -573,11 +575,14 @@ export default function AdminEmailPage() {
                       <p className="text-xs font-medium text-[var(--foreground)] truncate">{t.name}</p>
                       <p className="text-[10px] text-[var(--foreground-muted)] truncate mt-0.5">{t.subject}</p>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {/* Revealed on hover where there is a pointer; always shown on
+                        touch screens, which have no hover, and while focused. */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
                       <button
                         onClick={() => handleLoadTemplate(t)}
                         title="Load into editor"
-                        className="p-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                        aria-label={`Load template ${t.name} into the editor`}
+                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -587,7 +592,8 @@ export default function AdminEmailPage() {
                         onClick={() => handleDeleteTemplate(t.id)}
                         disabled={deletingId === t.id}
                         title="Delete template"
-                        className="p-1 text-[var(--foreground-muted)] hover:text-red-500 transition-colors disabled:opacity-40"
+                        aria-label={`Delete template ${t.name}`}
+                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-red-500 transition-colors disabled:opacity-40"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -609,7 +615,7 @@ export default function AdminEmailPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Write with AI"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-md"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
@@ -619,7 +625,7 @@ export default function AdminEmailPage() {
                   Describe what to write — AI generates the email body
                 </p>
               </div>
-              <button onClick={() => setShowAiModal(false)} aria-label="Close" className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setShowAiModal(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -677,7 +683,7 @@ export default function AdminEmailPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Save template"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-sm"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-sm max-h-[90dvh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">

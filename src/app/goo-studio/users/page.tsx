@@ -366,8 +366,8 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Users</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1">
             {counts ? counts.total.toLocaleString() : "—"} registered
@@ -416,12 +416,12 @@ export default function AdminUsersPage() {
               placeholder="Search by name or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={inputCls + " w-full pr-8"}
+              className={inputCls + " w-full pr-10 md:pr-8"}
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)]"
+                className="absolute right-0 md:right-3 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)]"
                 aria-label="Clear search"
               >×</button>
             )}
@@ -549,8 +549,19 @@ export default function AdminUsersPage() {
                     className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
                   />
                 </th>
-                {["User", "Email", "Plan", "Subscription", "Joined", "Last active", "Status", ""].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                {/* Below md only who, plan and status fit; the rest is one
+                    tap away in the drawer the row opens. */}
+                {([
+                  ["User", ""],
+                  ["Email", " hidden md:table-cell"],
+                  ["Plan", ""],
+                  ["Subscription", " hidden md:table-cell"],
+                  ["Joined", " hidden md:table-cell"],
+                  ["Last active", " hidden md:table-cell"],
+                  ["Status", ""],
+                  ["", ""],
+                ] as const).map(([h, cls]) => (
+                  <th key={h} className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${cls}`}>
                     {h}
                   </th>
                 ))}
@@ -587,6 +598,9 @@ export default function AdminUsersPage() {
                         )}
                         <div className="flex flex-col min-w-0">
                           <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
+                          {u.email && label !== u.email && (
+                            <span className="md:hidden text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</span>
+                          )}
                           {isSuper ? (
                             <span className="text-[9px] tracking-[0.1em] uppercase text-amber-500">Super Admin</span>
                           ) : u.isAdmin ? (
@@ -595,13 +609,13 @@ export default function AdminUsersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px]">{u.email ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px] hidden md:table-cell">{u.email ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
                         {u.plan}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       {u.subscription ? (
                         <div className="flex flex-col gap-0.5">
                           <span className={`text-[10px] tracking-[0.06em] uppercase ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
@@ -618,8 +632,8 @@ export default function AdminUsersPage() {
                         <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</td>
-                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtDate(u.createdAt)}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
                     <td className="px-4 py-3">
                       {u.banned ? (
                         <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-red-400/15 text-red-500 border border-red-400/30">Banned</span>
@@ -638,7 +652,7 @@ export default function AdminUsersPage() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
-                            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                             title="Edit"
                             aria-label="Edit user"
                           >
@@ -648,7 +662,7 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(u); }}
-                            className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
+                            className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
                             title="Delete"
                             aria-label="Delete user"
                           >
@@ -676,7 +690,7 @@ export default function AdminUsersPage() {
       {/* Pagination — also shown for a single page when the filter scan was
           capped, so the "newest users only" caveat is never hidden. */}
       {(totalPages > 1 || listPartial) && total > 0 && (
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
           <span className="text-[10px] text-[var(--foreground-muted)]">
             {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
             {listPartial ? " · filter covers the newest users only" : ""}
@@ -882,17 +896,17 @@ function UserDrawer({
         aria-modal="true"
         aria-labelledby="user-drawer-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md h-full overflow-y-auto border-l border-[var(--border)]"
+        className="relative w-full max-w-md h-full overflow-y-auto overscroll-contain border-l border-[var(--border)] pb-[env(safe-area-inset-bottom)]"
         style={{ background: "var(--background)" }}
       >
-        <div className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 z-10" style={{ background: "var(--background)" }}>
-          <div>
+        <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[var(--border)] flex items-center justify-between gap-3 sticky top-0 z-10" style={{ background: "var(--background)" }}>
+          <div className="min-w-0">
             <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">User Detail</p>
             <h2 id="user-drawer-title" className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
             aria-label="Close"
           >
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -910,7 +924,7 @@ function UserDrawer({
         )}
 
         {detail && !loading && (
-          <div className="px-6 py-5 space-y-6">
+          <div className="px-4 md:px-6 py-5 space-y-6">
             {isSuperAdmin && (
               <div className="flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-500 flex-shrink-0">
@@ -1025,7 +1039,7 @@ function UserDrawer({
 
               {/* Reset stylist limit */}
               {stats && (
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <button
                     onClick={() => resetStylistUsage("today")}
                     disabled={resetting || stats.stylistMsgToday === 0}
@@ -1046,7 +1060,7 @@ function UserDrawer({
 
             <div>
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Profile</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
                   <span className="text-[10px] text-[var(--foreground-subtle)]">First name</span>
                   <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
@@ -1060,7 +1074,7 @@ function UserDrawer({
 
             <div>
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Plan</p>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {PLAN_OPTIONS.map((p) => (
                   <button
                     key={p}
@@ -1117,7 +1131,7 @@ function UserDrawer({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-[var(--border)]">
               {!isSuperAdmin && (
                 <button
                   onClick={del}

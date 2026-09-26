@@ -335,7 +335,7 @@ export default function AdminBrandsPage() {
       {toast && (
         <div
           role={toast.type === "err" ? "alert" : "status"}
-          className={`fixed bottom-6 right-6 z-50 max-w-md px-4 py-3 text-xs tracking-wide rounded-xl border ${
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 md:max-w-md px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
               ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
               : "bg-[var(--background)] text-red-500 border-red-400/30"

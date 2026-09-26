@@ -291,9 +291,9 @@ export default function AdminActivityPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div>
-          <div className="flex items-center gap-2.5 mb-1">
+          <div className="flex flex-wrap items-center gap-2.5 mb-1">
             <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Admin Activity</h1>
             <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border rounded-full bg-amber-400/15 text-amber-500 border-amber-400/30">
               Super Admin
@@ -306,7 +306,7 @@ export default function AdminActivityPage() {
         <button
           onClick={() => fetchPage(0)}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -375,7 +375,7 @@ export default function AdminActivityPage() {
           return (
             <div
               key={entry.id}
-              className={`flex items-start gap-4 px-6 py-4 hover:bg-[var(--surface)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
+              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--surface)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
             >
               {/* Icon column */}
               <div className="flex-shrink-0 mt-0.5">
@@ -395,8 +395,8 @@ export default function AdminActivityPage() {
                   )}
                   <MetaDetail metadata={entry.metadata} action={entry.action} />
                 </div>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-xs text-[var(--foreground)]">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 min-w-0">
+                  <span className="text-xs text-[var(--foreground)] break-all">
                     {entry.admin_email ?? entry.admin_id}
                   </span>
                   {entry.target_id && (

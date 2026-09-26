@@ -327,7 +327,8 @@ function ImageList({
             <button
               type="button"
               onClick={() => removeRow(i)}
-              className="mt-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              aria-label="Remove image"
+              className="md:mt-2 flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -386,13 +387,14 @@ function RetailerList({
           <button
             type="button"
             onClick={() => remove(i)}
-            className="absolute top-2 right-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            aria-label="Remove retailer"
+            className="absolute top-0 right-0 w-10 h-10 md:top-2 md:right-2 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
               <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </button>
-          <div className="grid grid-cols-2 gap-2 pr-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-8 md:pr-5">
             <div>
               <label className={labelCls}>Store</label>
               <div className="flex items-center gap-2">
@@ -456,7 +458,7 @@ function RetailerList({
               className={inputCls}
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Availability</label>
               <select
@@ -2084,12 +2086,12 @@ export default function AdminProductsPage() {
       {bulkOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" {...bulkBackdrop}>
           <div
-            className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
+            className="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
             style={{ background: "var(--background)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-              <div>
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
                 </h2>
@@ -2097,14 +2099,14 @@ export default function AdminProductsPage() {
                   Anything left blank is not touched.
                 </p>
               </div>
-              <button onClick={() => setBulkOpen(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setBulkOpen(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
 
-            <div className="px-6 py-5 flex flex-col gap-5">
+            <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
               {/* Brand + gender */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -2208,7 +2210,7 @@ export default function AdminProductsPage() {
               {/* Names */}
               <div>
                 <label className={labelCls}>Names</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
                   <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
                   <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
@@ -2220,7 +2222,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-[var(--border)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)]">
               <span className="text-[11px] text-[var(--foreground-muted)]">
                 {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
               </span>
@@ -2243,7 +2245,7 @@ export default function AdminProductsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
           <span className="text-xs text-[var(--foreground)]">
             {selectedIds.size} selected
           </span>
@@ -2424,8 +2426,10 @@ export default function AdminProductsPage() {
                     <td className="px-2 py-3 hidden lg:table-cell">
                       <span className="text-xs text-[var(--foreground-subtle)] whitespace-nowrap">{fmtDate(product.createdAt)}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-2 md:px-4 py-3">
+                      {/* Three icons to a row on phones keeps the table close
+                          to the screen width. */}
+                      <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 md:gap-2 w-[128px] md:w-auto ml-auto">
                         {product.variantGroupId && canWrite && (
                           <button
                             onClick={() => handleUngroup(product.variantGroupId!)}
@@ -2489,12 +2493,12 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[94vh] flex flex-col overflow-hidden"
+            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
                 </h2>
@@ -2507,7 +2511,7 @@ export default function AdminProductsPage() {
                   {suggesting ? "Reading…" : "Suggest fields"}
                 </button>
               </div>
-              <button onClick={closeModal} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={closeModal} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -2517,8 +2521,8 @@ export default function AdminProductsPage() {
             {/* Suggestions — spans the modal, above both columns, because the
                 fields they land in live in different ones. */}
             {suggestions && suggestions.length > 0 && (
-              <div className="shrink-0 border-b border-[var(--border)] px-6 py-3 bg-[var(--surface)]">
-                <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--surface)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                     From how the catalogue is filed
                   </p>
@@ -2799,7 +2803,7 @@ export default function AdminProductsPage() {
                                   {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
                                 </p>
                               )}
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                   <label className={labelCls}>Price Min ($)</label>
                                   <input
@@ -2929,7 +2933,7 @@ export default function AdminProductsPage() {
                     <SecHead {...sec("variants")} label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
                     {!collapsed.has("variants") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
                           <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
                           <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
@@ -3007,7 +3011,7 @@ export default function AdminProductsPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 px-6 py-4 border-t border-[var(--border)] shrink-0">
+            <div className="flex gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)] shrink-0">
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving || !canWrite}
@@ -3030,13 +3034,13 @@ export default function AdminProductsPage() {
       {cropProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div
-            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-xl w-full mx-4 max-h-[95vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-xl w-full mx-4 max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             {/* Заголовок с кнопкой сброса */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">Кадрирование изображения</h2>
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">Кадрирование изображения</h2>
+              <div className="flex items-center gap-3 ml-auto">
                 {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
@@ -3047,7 +3051,8 @@ export default function AdminProductsPage() {
                 )}
                 <button
                   onClick={() => setCropProduct(null)}
-                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  aria-label="Close"
+                  className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3072,11 +3077,11 @@ export default function AdminProductsPage() {
       {groupModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-lg w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-lg w-full mx-4 max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <div>
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
                 </h2>
@@ -3086,7 +3091,8 @@ export default function AdminProductsPage() {
               </div>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+                aria-label="Close"
+                className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3205,7 +3211,7 @@ export default function AdminProductsPage() {
           role={toast.type === "err" ? "alert" : "status"}
           // The status tints are translucent; the solid backing keeps the
           // toast legible over the table in either admin theme.
-          className="fixed bottom-6 right-6 z-[100] max-w-md rounded-xl overflow-hidden"
+          className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-[100] md:max-w-md rounded-xl overflow-hidden"
           style={{ background: "var(--background)" }}
         >
           <div

@@ -323,7 +323,7 @@ export default function AdminBlogPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
             Blog
@@ -505,7 +505,7 @@ export default function AdminBlogPage() {
                         href={`/blog/${post.slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
+                        className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
                         aria-label="View"
                         title="Open public page"
                       >
@@ -563,7 +563,7 @@ export default function AdminBlogPage() {
             role="dialog"
             aria-modal="true"
             aria-label="AI Draft"
-            className="rounded-2xl border border-[var(--border)] w-full max-w-md"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
@@ -682,27 +682,27 @@ export default function AdminBlogPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
             role="dialog"
             aria-modal="true"
             aria-label={editingId ? "Edit Post" : "New Post"}
-            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl flex flex-col"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-              <div>
+            <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {editingId ? "Edit Post" : "New Post"}
                 </h2>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono break-all">
                   /blog/{previewSlug}
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -717,7 +717,7 @@ export default function AdminBlogPage() {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "75vh" }}>
+            <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {/* Title */}
               <div>
                 <label className={labelCls}>Title *</label>
@@ -988,7 +988,7 @@ export default function AdminBlogPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
+            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3 shrink-0">
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}
