@@ -86,11 +86,15 @@ function GroupCard({
   group: Group;
   busy: boolean;
   onMerge: (keepId: string, mergeIds: string[]) => void;
-  onDismiss: (ids: string[]) => void;
+  /** `against` empty: every card in `ids` is a different item. Otherwise each of `ids` differs from each of `against`. */
+  onDismiss: (ids: string[], against: string[]) => void;
 }) {
   const [keepId, setKeepId] = useState(group.keepId);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const mergeIds = group.products.map((p) => p.id).filter((id) => id !== keepId && !excluded.has(id));
+  // With some cards unticked, "not the same" means those cards, against the
+  // ones kept together — not the whole group.
+  const unticked = group.products.map((p) => p.id).filter((id) => id !== keepId && excluded.has(id));
   const first = group.products[0];
   const reasons = [...new Set(Object.values(group.reasons))];
 
@@ -216,8 +220,21 @@ function GroupCard({
           and looks over to it, and deletes the others.
         </p>
         <div className="flex items-center gap-2">
-          <button onClick={() => onDismiss(group.products.map((p) => p.id))} disabled={busy} className={GHOST}>
-            Not the same item
+          <button
+            onClick={() =>
+              unticked.length
+                ? onDismiss(unticked, [keepId, ...mergeIds])
+                : onDismiss(group.products.map((p) => p.id), [])
+            }
+            disabled={busy}
+            title={
+              unticked.length
+                ? "Remember the unticked cards as different from the ones kept together"
+                : "Remember every card in this group as a different item"
+            }
+            className={GHOST}
+          >
+            {unticked.length ? `Unticked aren't the same (${unticked.length})` : "Not the same item"}
           </button>
           <button onClick={() => onMerge(keepId, mergeIds)} disabled={busy || !mergeIds.length} className={PRIMARY}>
             {busy ? "Working…" : `Merge ${mergeIds.length} into kept`}
@@ -301,11 +318,38 @@ export default function DuplicatesPage() {
     removeGroup(group.keepId);
   };
 
-  const dismiss = async (group: Group, ids: string[]) => {
-    const json = await post(group.keepId, { action: "dismiss", ids });
+  const dismiss = async (group: Group, ids: string[], against: string[]) => {
+    const line = (id: string) => {
+      const p = group.products.find((x) => x.id === id);
+      return p ? `• ${p.name} (${hostOf(p.sourceUrl) || "no store"})` : `• ${id}`;
+    };
+    const question = against.length
+      ? `Remember these as different items from the cards kept together:\n${ids.map(line).join("\n")}\n\nThey won't be proposed with those cards again. The rest of the group stays.`
+      : `Remember every card here as a different item:\n${ids.map(line).join("\n")}\n\nThey won't be proposed together again, and this can't be undone from here.`;
+    if (!confirm(question)) return;
+    const json = await post(group.keepId, { action: "dismiss", ids, ...(against.length ? { against } : {}) });
     if (!json) return;
-    setToast({ type: "ok", msg: "Marked as different items — won't be suggested again" });
-    removeGroup(group.keepId);
+    if (!against.length) {
+      setToast({ type: "ok", msg: "Marked as different items — won't be suggested again" });
+      removeGroup(group.keepId);
+      return;
+    }
+    // Only the unticked cards leave; what remains is still a proposal, unless
+    // a single card is left.
+    const gone = new Set(ids);
+    setReport((r) =>
+      r
+        ? {
+            ...r,
+            groups: r.groups.flatMap((g) => {
+              if (g.keepId !== group.keepId) return [g];
+              const products = g.products.filter((p) => !gone.has(p.id));
+              return products.length > 1 ? [{ ...g, products }] : [];
+            }),
+          }
+        : r,
+    );
+    setToast({ type: "ok", msg: `Marked ${ids.length} card(s) as different — won't be suggested with the rest again` });
   };
 
   return (
@@ -357,7 +401,7 @@ export default function DuplicatesPage() {
             group={group}
             busy={busyGroup === group.keepId}
             onMerge={(keepId, mergeIds) => merge(group, keepId, mergeIds)}
-            onDismiss={(ids) => dismiss(group, ids)}
+            onDismiss={(ids, against) => dismiss(group, ids, against)}
           />
         ))}
       </div>

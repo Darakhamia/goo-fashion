@@ -23,7 +23,7 @@
  *
  *   GET  /api/admin/recategorize?scope=all          → dry run
  *   POST /api/admin/recategorize {apply:true, scope:"all"}  → apply
- *   POST /api/admin/recategorize {undo:true}        → revert the last applied run
+ *   POST /api/admin/recategorize {undo:true}        → revert the last applied run (once)
  */
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -33,6 +33,7 @@ import { matchCategory } from "@/lib/server/product-fields";
 import { isBuiltInBucket } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type Scope = "accessories" | "all";
 type Row = { id: string; name: string; description: string | null; category: string; subcategory: string | null };
@@ -47,6 +48,14 @@ const SKIP_EXPLANATION: Record<SkipReason, string> = {
 };
 
 const PAGE = 1000;
+/** Ids per `.in()` filter, so a write's query string stays well under URL limits. */
+const CHUNK = 200;
+
+function chunks<T>(list: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += CHUNK) out.push(list.slice(i, i + CHUNK));
+  return out;
+}
 
 async function fetchAll(scope: Scope): Promise<Row[]> {
   const rows: Row[] = [];
@@ -130,13 +139,21 @@ async function run(apply: boolean, scope: Scope, adminId: string) {
   let undoable = false;
   const failures: { id: string; error: string }[] = [];
   if (apply) {
-    for (const c of changes) {
-      const { error } = await supabase.from("products").update({ category: c.to }).eq("id", c.id);
-      if (error) failures.push({ id: c.id, error: error.message });
-      else applied++;
+    // One write per target category rather than one per product: a run is a
+    // handful of distinct moves spread over many rows.
+    const byTarget = new Map<string, Change[]>();
+    for (const c of changes) byTarget.set(c.to, [...(byTarget.get(c.to) ?? []), c]);
+    const written: Change[] = [];
+    for (const [to, list] of byTarget) {
+      for (const chunk of chunks(list)) {
+        const { error } = await supabase.from("products").update({ category: to }).in("id", chunk.map((c) => c.id));
+        if (error) failures.push(...chunk.map((c) => ({ id: c.id, error: error.message })));
+        else written.push(...chunk);
+      }
     }
+    applied = written.length;
     if (applied > 0) {
-      undoable = await recordRun(adminId, scope, changes.filter((c) => !failures.some((f) => f.id === c.id)));
+      undoable = await recordRun(adminId, scope, written);
       // Refresh the pages that read categories so the UI reflects the change.
       for (const p of ["/browse", "/builder"]) {
         try { revalidatePath(p); } catch { /* best-effort */ }
@@ -191,44 +208,88 @@ async function undo(adminId: string) {
   }
   const entry = (data ?? [])[0] as { id: number; created_at: string; metadata: { changes?: Change[] } } | undefined;
   const changes = entry?.metadata?.changes ?? [];
-  if (!changes.length) {
+  if (!entry || !changes.length) {
     return NextResponse.json({ error: "No recategorize run to undo." }, { status: 404 });
+  }
+
+  // Undo reverses the last run once. A second press would restore nothing and
+  // still write a journal entry saying it had.
+  const undone = await supabase
+    .from("admin_audit_log")
+    .select("id")
+    .eq("action", "products.recategorize_undone")
+    .gt("created_at", entry.created_at)
+    .limit(1);
+  if (undone.error) {
+    return NextResponse.json(
+      { error: `Could not check whether the last run was already undone: ${undone.error.message}` },
+      { status: 503 },
+    );
+  }
+  if ((undone.data ?? []).length) {
+    return NextResponse.json({ error: "The last category fix has already been undone." }, { status: 409 });
   }
 
   let restored = 0;
   let movedSince = 0;
   const failures: { id: string; error: string }[] = [];
-  for (const c of changes) {
-    const { data: rows, error: readError } = await supabase
-      .from("products")
-      .select("category")
-      .eq("id", c.id)
-      .limit(1);
-    if (readError) { failures.push({ id: c.id, error: readError.message }); continue; }
-    const current = (rows ?? [])[0] as { category: string } | undefined;
-    if (!current) continue;
-    if (current.category !== c.to) { movedSince++; continue; }
 
-    const { error: writeError } = await supabase
-      .from("products")
-      .update({ category: c.from })
-      .eq("id", c.id);
-    if (writeError) failures.push({ id: c.id, error: writeError.message });
-    else restored++;
+  // Current categories in one read per chunk rather than one per product.
+  const current = new Map<string, string>();
+  const unread = new Set<string>();
+  for (const ids of chunks(changes.map((c) => c.id))) {
+    const { data: rows, error: readError } = await supabase.from("products").select("id, category").in("id", ids);
+    if (readError) {
+      for (const id of ids) {
+        unread.add(id);
+        failures.push({ id, error: readError.message });
+      }
+      continue;
+    }
+    for (const r of (rows ?? []) as { id: string; category: string }[]) current.set(String(r.id), r.category);
+  }
+
+  // Grouped by move, and each write matches only rows still holding what the
+  // run wrote, so an edit landing between the read and the write is left alone.
+  const byMove = new Map<string, { from: string; to: string; ids: string[] }>();
+  for (const c of changes) {
+    if (unread.has(c.id) || !current.has(c.id)) continue;
+    if (current.get(c.id) !== c.to) { movedSince++; continue; }
+    const key = `${c.from}\u0000${c.to}`;
+    const move = byMove.get(key) ?? { from: c.from, to: c.to, ids: [] };
+    move.ids.push(c.id);
+    byMove.set(key, move);
+  }
+  for (const { from, to, ids } of byMove.values()) {
+    for (const chunk of chunks(ids)) {
+      const { data: rows, error: writeError } = await supabase
+        .from("products")
+        .update({ category: from })
+        .in("id", chunk)
+        .eq("category", to)
+        .select("id");
+      if (writeError) {
+        failures.push(...chunk.map((id) => ({ id, error: writeError.message })));
+        continue;
+      }
+      const n = (rows ?? []).length;
+      restored += n;
+      movedSince += chunk.length - n;
+    }
   }
 
   await supabase.from("admin_audit_log").insert({
     admin_id: adminId,
     action: "products.recategorize_undone",
     target_type: "products",
-    metadata: { undid_run_at: entry?.created_at, restored, movedSince },
+    metadata: { undid_run_at: entry.created_at, restored, movedSince },
   });
 
   for (const p of ["/browse", "/builder"]) {
     try { revalidatePath(p); } catch { /* best-effort */ }
   }
 
-  return NextResponse.json({ mode: "undo", ranAt: entry?.created_at, restored, movedSince, failures });
+  return NextResponse.json({ mode: "undo", ranAt: entry.created_at, restored, movedSince, failures });
 }
 
 function parseScope(v: unknown): Scope {

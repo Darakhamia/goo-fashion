@@ -4,7 +4,8 @@
  *   GET                             → the groups the finder proposes
  *   POST { action: "merge",   keepId, mergeIds }
  *                                   → one card with every store, the others gone
- *   POST { action: "dismiss", ids } → "not the same item": never proposed again
+ *   POST { action: "dismiss", ids, against? }
+ *                                   → "not the same item": never proposed again
  *
  * The finder is `lib/server/duplicates.ts` — the importer's own same-item test,
  * run over the whole catalogue. A merge moves everything that points at the
@@ -296,14 +297,31 @@ async function merge(adminId: string, keepId: string, mergeIds: string[]) {
 
 // ── Dismiss ──────────────────────────────────────────────────────────────────
 
-async function dismiss(adminId: string, ids: string[]) {
-  const rows: { product_id: string; field: string; stored: string; suggested: string; dismissed_by: string }[] = [];
-  for (let i = 0; i < ids.length; i++) {
-    for (let j = i + 1; j < ids.length; j++) {
-      const [a, b] = ids[i] < ids[j] ? [ids[i], ids[j]] : [ids[j], ids[i]];
-      rows.push({ product_id: a, field: DISMISS_FIELD, stored: b, suggested: "", dismissed_by: adminId });
-    }
+/**
+ * Remembers cards as different items. With `against`, only each of `ids`
+ * against each of `against` is remembered — the cards unticked in a group
+ * against the ones kept together — so the rest of the group stays a proposal.
+ * Without it, every pair among `ids` is.
+ */
+async function dismiss(adminId: string, ids: string[], against: string[]) {
+  const pairs = new Map<string, [string, string]>();
+  const add = (x: string, y: string) => {
+    if (x === y) return;
+    const [a, b] = x < y ? [x, y] : [y, x];
+    pairs.set(pairKey(a, b), [a, b]);
+  };
+  if (against.length) {
+    for (const x of ids) for (const y of against) add(x, y);
+  } else {
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) add(ids[i], ids[j]);
   }
+  const rows = [...pairs.values()].map(([a, b]) => ({
+    product_id: a,
+    field: DISMISS_FIELD,
+    stored: b,
+    suggested: "",
+    dismissed_by: adminId,
+  }));
   const { error } = await supabase!
     .from(DISMISSALS)
     .upsert(rows, { onConflict: "product_id,field,stored,suggested", ignoreDuplicates: true });
@@ -319,7 +337,7 @@ async function dismiss(adminId: string, ids: string[]) {
     action: "products.duplicates_dismissed",
     target_type: "product",
     target_id: ids[0],
-    metadata: { ids },
+    metadata: against.length ? { ids, against } : { ids },
   });
   return NextResponse.json({ ok: true, pairs: rows.length });
 }
@@ -342,8 +360,11 @@ export async function POST(req: Request) {
   }
   if (body?.action === "dismiss") {
     const ids = [...new Set(clean(body?.ids))].slice(0, 20);
-    if (ids.length < 2) return NextResponse.json({ error: "At least two ids are required" }, { status: 400 });
-    return dismiss(admin.userId, ids);
+    const against = [...new Set(clean(body?.against))].filter((id) => !ids.includes(id)).slice(0, 20);
+    if (against.length ? !ids.length : ids.length < 2) {
+      return NextResponse.json({ error: "At least two ids are required" }, { status: 400 });
+    }
+    return dismiss(admin.userId, ids, against);
   }
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
