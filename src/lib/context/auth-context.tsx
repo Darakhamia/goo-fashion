@@ -9,30 +9,29 @@ export interface AuthUser {
   name: string;
   email: string;
   plan: PlanId;
-  isAdmin: boolean;
-  avatar?: string;
   joinedAt: string;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  // Opens Clerk's sign-in modal; Clerk's own UI collects the credentials.
+  // Any arguments are ignored: the rest parameter only keeps the remaining
+  // `login("", "")` call sites compiling until they call `login()`.
+  login: (..._ignored: string[]) => void;
   logout: () => void;
   isLoggedIn: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
-  login: async () => ({ success: false, error: "Use /login page" }),
-  register: async () => ({ success: false, error: "Use /register page" }),
+  login: () => {},
   logout: () => {},
   isLoggedIn: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded } = useUser();
-  const { signOut, openSignIn, openSignUp } = useClerk();
+  const { signOut, openSignIn } = useClerk();
 
   const user: AuthUser | null =
     isLoaded && clerkUser
@@ -46,24 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: clerkUser.emailAddresses[0]?.emailAddress || "",
           // Plan stored in publicMetadata; defaults to "free" for unsubscribed users.
           plan: coercePlan((clerkUser.publicMetadata as { plan?: unknown }).plan),
-          isAdmin: (clerkUser.publicMetadata as { isAdmin?: boolean }).isAdmin === true,
-          avatar: clerkUser.imageUrl || undefined,
           joinedAt: clerkUser.createdAt
             ? new Date(clerkUser.createdAt).toISOString().split("T")[0]
             : new Date().toISOString().split("T")[0],
         }
       : null;
 
-  // login / register are now handled by Clerk's UI components.
-  // These fallbacks open the Clerk modal in case something triggers them programmatically.
-  const login = async (): Promise<{ success: boolean; error?: string }> => {
+  // Sign-in itself is handled by Clerk's UI components; this opens the Clerk
+  // modal for places that need to ask a signed-out visitor to sign in.
+  const login = () => {
     openSignIn();
-    return { success: true };
-  };
-
-  const register = async (): Promise<{ success: boolean; error?: string }> => {
-    openSignUp();
-    return { success: true };
   };
 
   const logout = () => {
@@ -75,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         login,
-        register,
         logout,
         isLoggedIn: !!user,
       }}

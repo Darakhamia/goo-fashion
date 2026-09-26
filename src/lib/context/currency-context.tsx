@@ -83,7 +83,6 @@ interface CurrencyContextValue {
    * wrong for writing a catalogue price, which is where ₴4 000 becomes $4 000.
    */
   canConvert: (sourceCurrency: string) => boolean;
-  ratesLoading: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
@@ -92,14 +91,12 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   formatPrice:   (n) => `$${n.toLocaleString()}`,
   convertToUsd:  (n) => n,
   canConvert:    (c) => c.toUpperCase() === "USD",
-  ratesLoading:  false,
 });
 
 // ── Provider ───────────────────────────────────────────────────────────────
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>("USD");
   const [rates, setRates]           = useState<Record<string, number>>(FALLBACK_RATES);
-  const [ratesLoading, setRatesLoading] = useState(false);
 
   // Restore saved currency preference
   useEffect(() => {
@@ -125,7 +122,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         }
       } catch { /* ignore stale cache */ }
 
-      setRatesLoading(true);
       try {
         const res = await fetch("/api/exchange-rates");
         if (!res.ok) throw new Error("rate fetch failed");
@@ -134,8 +130,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() } satisfies RateCache));
       } catch {
         setRates(FALLBACK_RATES);
-      } finally {
-        setRatesLoading(false);
       }
     };
     load();
@@ -172,7 +166,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, canConvert, ratesLoading }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, canConvert }}>
       {children}
     </CurrencyContext.Provider>
   );

@@ -62,7 +62,6 @@ const navLinks = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [currencySubmenu, setCurrencySubmenu] = useState(false);
@@ -94,10 +93,8 @@ export default function Navigation() {
     localStorage.setItem("ai-tooltip-dismissed", "1");
   };
 
-  const isHero = pathname === "/";
   const isBuilder = pathname === "/builder";
   const isLikes = pathname === "/saved";
-  const showWhiteText = isHero && !scrolled && theme === "dark";
 
   const isDark = theme === "dark";
   const navBg = isDark ? "#0a0a0a" : "#ffffff";
@@ -148,29 +145,6 @@ export default function Navigation() {
     document.addEventListener("pointerdown", handler);
     return () => document.removeEventListener("pointerdown", handler);
   }, [profileOpen]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const headerBg = scrolled
-    ? "bg-[var(--bg-overlay-95)] backdrop-blur-sm border-b border-[var(--border)]"
-    : isHero
-    ? theme === "dark"
-      ? "bg-gradient-to-b from-black/60 via-black/20 to-transparent"
-      : "bg-transparent"
-    : "bg-[var(--background)] border-b border-[var(--border)]";
-
-  const logoColor = showWhiteText ? "text-white" : "text-[var(--foreground)]";
-  const linkActive = showWhiteText ? "text-white" : "text-[var(--foreground)]";
-  const linkMuted = showWhiteText
-    ? "text-white/60 hover:text-white"
-    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]";
-  const iconColor = showWhiteText
-    ? "text-white/60 hover:text-white"
-    : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]";
 
   return (
     <>
@@ -490,7 +464,7 @@ export default function Navigation() {
                   </div>
 
                   <div className="border-t border-[var(--border)] py-1.5">
-                    <Link href="/settings" onClick={() => setProfileOpen(false)}
+                    <Link href="/profile?tab=account" onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3" />

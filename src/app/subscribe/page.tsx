@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { PAID_PLAN_IDS, PLANS, planPriceLabel, type PlanId } from "@/lib/plans";
 import { StylistPersonalizationModal, type StylistPersonalization } from "@/components/stylist/StylistPersonalizationModal";
@@ -105,38 +105,38 @@ function SubscribeInner() {
   };
 
   // ── On return from monobank: poll Clerk until the webhook unlocks the plan ──
-  const runReturnFlow = useCallback(async () => {
-    if (!user) return;
+  // The flow is declared inside the effect so the linter can see that every
+  // setState in it runs after an await, never on the synchronous effect path.
+  useEffect(() => {
+    if (!isReturn || !isLoaded || !user || pollStarted.current) return;
+    pollStarted.current = true;
     const unlocked = () => (user.publicMetadata as { plan?: string })?.plan === planId;
-    // Refresh once up front; this keeps every setState below off the synchronous
-    // effect path and reflects a webhook that may have already landed.
-    await user.reload();
-    if (unlocked()) {
-      setSuccess(true);
-      setShowPersonalization(true);
-      return;
-    }
-    setVerifying(true);
-    const deadline = Date.now() + 45_000; // ~45s
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 2500));
+    const runReturnFlow = async () => {
+      // Refresh once up front; this keeps every setState below off the synchronous
+      // effect path and reflects a webhook that may have already landed.
       await user.reload();
       if (unlocked()) {
-        setVerifying(false);
         setSuccess(true);
         setShowPersonalization(true);
         return;
       }
-    }
-    setVerifying(false);
-    setVerifyTimedOut(true);
-  }, [user, planId]);
-
-  useEffect(() => {
-    if (!isReturn || !isLoaded || !user || pollStarted.current) return;
-    pollStarted.current = true;
+      setVerifying(true);
+      const deadline = Date.now() + 45_000; // ~45s
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2500));
+        await user.reload();
+        if (unlocked()) {
+          setVerifying(false);
+          setSuccess(true);
+          setShowPersonalization(true);
+          return;
+        }
+      }
+      setVerifying(false);
+      setVerifyTimedOut(true);
+    };
     void runReturnFlow();
-  }, [isReturn, isLoaded, user, runReturnFlow]);
+  }, [isReturn, isLoaded, user, planId]);
 
   // ── Verifying state (waiting for monobank webhook) ─────────────────────────
   if (verifying) {

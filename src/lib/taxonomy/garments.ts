@@ -919,16 +919,3 @@ export function garmentLabel(text: string, labels: Record<string, string>): stri
   }
   return undefined;
 }
-
-/** How many terms the dictionary holds, per language — for the record. */
-export function garmentTermCounts(): { types: number; english: number; cyrillic: number; patterns: number } {
-  let english = 0, cyrillic = 0, patterns = 0;
-  for (const t of GARMENT_TYPES) {
-    for (const term of t.terms) {
-      if (term instanceof RegExp) patterns++;
-      else if (isCyrillic(term)) cyrillic++;
-      else english++;
-    }
-  }
-  return { types: GARMENT_TYPES.length, english, cyrillic, patterns };
-}

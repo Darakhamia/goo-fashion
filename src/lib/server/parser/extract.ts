@@ -1134,15 +1134,6 @@ export function partitionProducts(html: string): PageProducts {
   };
 }
 
-/**
- * Extract EVERY product embedded in the page (listing / category pages).
- * Returns one RawExtract per schema.org Product node found. A node is kept only
- * if it carries enough to be a real product card (a name, or a price+image).
- */
-export function extractProductNodes(html: string): RawExtract[] {
-  return dedupeRaw(findAllProductNodes(parseJsonLdBlocks(html)).map(nodeToRaw));
-}
-
 // ── Product-link discovery ────────────────────────────────────────────────────
 
 /**

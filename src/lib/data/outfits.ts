@@ -353,12 +353,3 @@ export const outfits: Outfit[] = [
     season: "spring",
   },
 ];
-
-export const getOutfitById = (id: string): Outfit | undefined =>
-  outfits.find((o) => o.id === id);
-
-export const getAIOutfits = (): Outfit[] =>
-  outfits.filter((o) => o.isAIGenerated);
-
-export const getFeaturedOutfits = (): Outfit[] =>
-  outfits.slice(0, 4);

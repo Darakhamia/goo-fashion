@@ -49,15 +49,6 @@ export interface RobotsRules {
   parsed: boolean;
 }
 
-/** What an absent or unreadable robots.txt means: nothing is forbidden. */
-export const PERMISSIVE: RobotsRules = {
-  allow: [],
-  disallow: [],
-  crawlDelayMs: null,
-  sitemaps: [],
-  parsed: false,
-};
-
 /**
  * A robots.txt path pattern as a regex anchored at the start of the path.
  *

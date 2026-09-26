@@ -37,45 +37,6 @@ const SLOTS = [
 
 type CatalogItem = { kind: "product"; key: string; product: Product; forcedVariant?: ProductSwatch | null };
 
-// Vertical figure zones for the silhouette canvas (accessories float separately).
-// Shoes use object-contain (shoe photos are horizontal) so flex just needs to be tall
-// enough to show the full pair without cramping — tuned against the catalog set.
-const FIGURE_SLOTS: Array<{ id: SlotId; label: string; flex: number }> = [
-  { id: "outerwear", label: "Outerwear", flex: 5   },
-  { id: "top",       label: "Top",       flex: 4.5 },
-  { id: "bottom",    label: "Bottom",    flex: 5   },
-  { id: "shoes",     label: "Shoes",     flex: 3.5 },
-];
-
-// Category filter chips — maps to actual Category values (or slot IDs for slot-based grouping)
-const CATALOG_CHIPS: Array<{ label: string; value: string | null }> = [
-  { label: "All",         value: null          },
-  { label: "Outerwear",   value: "outerwear"   },
-  { label: "Blazers",     value: "blazers"     },
-  { label: "Tops",        value: "tops"        },
-  { label: "Shirts",      value: "shirts"      },
-  { label: "Knitwear",    value: "knitwear"    },
-  { label: "Bottoms",     value: "bottoms"     },
-  { label: "Jeans",       value: "jeans"       },
-  { label: "Shorts",      value: "shorts"      },
-  { label: "Skirts",      value: "skirts"      },
-  { label: "Dresses",     value: "dresses"     },
-  { label: "Jumpsuits",   value: "jumpsuits"   },
-  { label: "Footwear",    value: "footwear"    },
-  { label: "Accessories", value: "accessories" },
-  { label: "Bags",        value: "bags"        },
-  { label: "Swimwear",    value: "swimwear"    },
-];
-
-// Price filter buckets (null max = no cap)
-const PRICE_BUCKETS: Array<{ label: string; max: number | null }> = [
-  { label: "All",    max: null },
-  { label: "< $200", max: 200  },
-  { label: "< $500", max: 500  },
-  { label: "< $1k",  max: 1000 },
-  { label: "< $2k",  max: 2000 },
-];
-
 // Standard color groups (same IDs as Browse DEFAULT_COLOR_GROUPS)
 const STANDARD_COLORS: { id: number; name: string; hex: string; matches: string[] }[] = [
   { id: 1,  name: "White",      hex: "#ffffff",    matches: ["White", "Ivory", "Cream", "Milk", "Ecru"] },
@@ -235,7 +196,6 @@ export default function BuilderPage() {
   );
   const subcatToValue = useMemo(() => subcategoryToValue(categoryTree), [categoryTree]);
   // ── State ────────────────────────────────────────────────────────────────
-  const [activeSlot, setActiveSlot] = useState<SlotId>("top");
   const [selection, setSelection] = useState<Partial<Record<SlotId, Product>>>({});
   const [variantOverrides, setVariantOverrides] = useState<Partial<Record<SlotId, string>>>({});
   // Which catalogue card the pointer is on. One value for the grid rather than
@@ -365,8 +325,6 @@ export default function BuilderPage() {
   [selection, convertToUsd]);
 
   const selectedCount = Object.values(selection).filter(Boolean).length;
-
-  const [lookNumber] = useState(() => String(Math.floor(Math.random() * 999) + 1).padStart(3, "0"));
 
   // ── URL persistence ───────────────────────────────────────────────────────
   const updateURL = useCallback((sel: Partial<Record<SlotId, Product>>, variants?: Partial<Record<SlotId, string>>) => {
@@ -603,7 +561,6 @@ export default function BuilderPage() {
       });
       setVariantOverrides(vo => { const n = { ...vo }; delete n[alreadyInSlot.id]; return n; });
       setColorImageOverrides(co => { const n = { ...co }; delete n[alreadyInSlot.id]; return n; });
-      setActiveSlot(alreadyInSlot.id);
       setSaved(false);
       setGeneratedImage(null);
       return;
@@ -629,7 +586,6 @@ export default function BuilderPage() {
       if (colorKey) return { ...co, [emptySlot.id]: colorKey };
       const n = { ...co }; delete n[emptySlot.id]; return n;
     });
-    setActiveSlot(emptySlot.id);
     setSaved(false);
     setGeneratedImage(null);
 
@@ -705,17 +661,6 @@ export default function BuilderPage() {
   // Shared persistence helper — used by Save button and post-generation auto-save.
   // If editId (URL) or persistedLookId (session) matches an existing look, updates it.
   // Otherwise creates a new look and remembers its id so future calls reuse it.
-  const buildDescription = () => {
-    const styleLabel = activeStyle === "mannequin" ? "mannequin" : activeStyle === "flatlay" ? "flat lay" : "on-model";
-    const kw = styleKeywords.slice(0, 5);
-    const kwStr = kw.length > 0 ? kw.join(", ") : "";
-    const count = selectedCount;
-    let desc = `${count}-piece look`;
-    if (kwStr) desc += ` — ${kwStr}`;
-    desc += `. Presented as a ${styleLabel}.`;
-    return desc;
-  };
-
   const persistLook = async (extra: { generatedImage?: string | null; generatedStyle?: string; name?: string; description?: string } = {}): Promise<boolean> => {
     const urlEditId = new URLSearchParams(window.location.search).get("editId");
     const targetId = urlEditId || persistedLookId;
@@ -801,7 +746,7 @@ export default function BuilderPage() {
   };
 
   const saveOutfit = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     try {
       const urlEditId = new URLSearchParams(window.location.search).get("editId");
       const existing = loadLocalLooks();
@@ -831,7 +776,7 @@ export default function BuilderPage() {
 
   const openStylePicker = () => {
     if (!isLoggedIn) {
-      login("", "");
+      login();
       return;
     }
     setShowStylePicker(true);
@@ -983,7 +928,6 @@ export default function BuilderPage() {
                     {categoryGroups.map(group => {
                       const grpOpen = expandedCategoryGroups.has(group.id);
                       const grpLabels = group.items.map(i => i.label);
-                      const grpUniqueVals = [...new Set(group.items.map(i => i.value))];
                       const grpActive = grpLabels.some(l => selectedSubcategories.includes(l));
                       const grpViewAllChecked = grpLabels.every(l => selectedSubcategories.includes(l));
                       return (
@@ -1728,7 +1672,7 @@ export default function BuilderPage() {
                   return (
                     <button
                       key={slot.id}
-                      onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                      onClick={() => setCatalogCategory(slot.id)}
                       className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]/50 p-3 flex items-center gap-3 cursor-pointer hover:border-[var(--foreground-muted)] transition-colors text-left w-full"
                     >
                       <div className="w-16 h-20 rounded-lg bg-[var(--surface)] flex items-center justify-center shrink-0 text-[var(--foreground-subtle)] opacity-40">
@@ -1746,7 +1690,7 @@ export default function BuilderPage() {
                   <div
                     key={slot.id}
                     className="rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-sm p-3 flex items-start gap-3 relative cursor-pointer hover:border-[var(--foreground-muted)] transition-colors"
-                    onClick={() => { setActiveSlot(slot.id); setCatalogCategory(slot.id); }}
+                    onClick={() => setCatalogCategory(slot.id)}
                   >
                     {/* Thumbnail */}
                     <div
@@ -2604,7 +2548,6 @@ export default function BuilderPage() {
                   {categoryGroups.map(group => {
                     const isOpen = expandedCategoryGroups.has(group.id);
                     const groupLabels = group.items.map(i => i.label);
-                    const groupUniqueValues = [...new Set(group.items.map(i => i.value))];
                     const groupActive = groupLabels.some(l => selectedSubcategories.includes(l));
                     const viewAllChecked = groupLabels.every(l => selectedSubcategories.includes(l));
                     return (

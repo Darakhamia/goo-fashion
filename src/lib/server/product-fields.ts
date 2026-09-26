@@ -754,12 +754,6 @@ export function parseRetailCategory(raw: string): { category: Category; gender?:
   return { category: matchCategory(t) ?? "accessories", gender };
 }
 
-// ── Fallback category from a free-text product name ───────────────────────────
-
-export function inferCategoryFromName(text: string): Category {
-  return matchCategory(text) ?? "accessories";
-}
-
 // ── Infer gender from free text (suitable-for field, URL segment, etc.) ───────
 
 export function inferGenderFromText(text: string): Gender | undefined {
@@ -1027,8 +1021,3 @@ export function isOfficialStore(url: string, brand: string): boolean {
     return false;
   }
 }
-
-// ── Request a higher-resolution variant of a product image URL ─────────────────
-// `upscaleImageUrl` now lives in `@/lib/image` so it can run client-side inside
-// the image component, where a failed rewrite can fall back to the original URL.
-export { upscaleImageUrl } from "@/lib/image";

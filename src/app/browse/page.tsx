@@ -21,7 +21,6 @@ type StyleFilter = typeof STYLE_FILTERS[number];
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
 ];
-const GENDERS: Gender[] = ["women", "men", "unisex"];
 
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
   { id: 1,  name: "White",      hexCode: "#ffffff", sortOrder: 1 },
@@ -473,8 +472,16 @@ export default function BrowsePage() {
   const count =
     view === "outfits" ? filteredOutfits.length : displayItems.length;
 
-  // Reset to page 1 whenever filters/sort/view change
-  useEffect(() => { setPage(1); setExtraPages(0); }, [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle]);
+  // Reset to page 1 whenever filters/sort/view change. Done while rendering
+  // (React's "adjust state when inputs change" pattern) rather than in an
+  // effect; the inputs are compared the way effect dependencies would be.
+  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle];
+  const [prevPageResetInputs, setPrevPageResetInputs] = useState(pageResetInputs);
+  if (pageResetInputs.some((v, i) => !Object.is(v, prevPageResetInputs[i]))) {
+    setPrevPageResetInputs(pageResetInputs);
+    setPage(1);
+    setExtraPages(0);
+  }
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
   // One index past the last item on screen — the current page plus anything
@@ -902,7 +909,7 @@ export default function BrowsePage() {
               Browse
             </h1>
             <p className="mt-3 text-sm font-medium text-[var(--foreground-muted)] max-w-xs leading-relaxed">
-              Curated pieces from the world's most forward-thinking brands.
+              Curated pieces from the world&apos;s most forward-thinking brands.
             </p>
             <div className="mt-6 border-t border-[var(--border)]" />
           </div>

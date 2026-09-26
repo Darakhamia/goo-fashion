@@ -249,15 +249,3 @@ export function inferStyleKeywords(text: string, max = 3): StyleKeyword[] {
   if (!found.size) return [];
   return STYLE_KEYWORD_LIST.filter((k) => found.has(k)).slice(0, max);
 }
-
-export function styleTermCounts(): { styles: number; english: number; cyrillic: number; patterns: number } {
-  let english = 0, cyrillic = 0, patterns = 0;
-  for (const terms of Object.values(STYLE_TERMS)) {
-    for (const term of terms) {
-      if (term instanceof RegExp) patterns++;
-      else if (isCyrillic(term)) cyrillic++;
-      else english++;
-    }
-  }
-  return { styles: Object.keys(STYLE_TERMS).length, english, cyrillic, patterns };
-}
