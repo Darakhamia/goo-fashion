@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/admin/export-images": ["./src/assets/fonts/**"],
   },
+  // The CSV import page used to live at /goo-studio/brightdata, although it
+  // never talked to BrightData. Keep old bookmarks working.
+  async redirects() {
+    return [
+      { source: "/goo-studio/brightdata", destination: "/goo-studio/import", permanent: true },
+    ];
+  },
   images: {
     // Only hosts we own reach the optimizer. Admins can still paste any product
     // image URL: partner CDNs are rendered `unoptimized` (see

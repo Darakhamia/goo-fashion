@@ -193,7 +193,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/goo-studio/brightdata",
+    href: "/goo-studio/import",
     label: "Import",
     category: "imports",
     icon: (
