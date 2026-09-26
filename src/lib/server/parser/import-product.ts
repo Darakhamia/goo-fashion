@@ -1,9 +1,10 @@
 /**
  * Persist a parsed product into the catalog.
  *
- * Shared by the single-product import route and the bulk crawler. Deduping is by
- * `source_url`: re-importing the same page updates the existing row instead of
- * creating a twin, which is what makes a crawl safe to re-run.
+ * Shared by the single-product import route, the bulk crawler, the collect
+ * extension and the CSV feed import. Deduping is by `source_url`: re-importing
+ * the same page updates the existing row instead of creating a twin, which is
+ * what makes a crawl safe to re-run.
  *
  * Photos are mirrored into our own storage first (see
  * `@/lib/server/storage/product-images`) so the catalog never depends on a
@@ -122,10 +123,11 @@ async function loadKnownBrands(): Promise<string[]> {
 
 // ── Colour variants ───────────────────────────────────────────────────────────
 // One colourway per page is how a store sells; one card per piece is how the
-// catalogue shows. The CSV importer forms those groups inside a batch, but a
-// collect run imports one page at a time, so grouping has to happen against the
+// catalogue shows. Products arrive one at a time — a collect run imports a page,
+// the CSV import a batch of feed rows — so grouping has to happen against the
 // rows already in the table. Two signals, judged in `variant-group.ts`: the
-// addresses the page's own colour row links to, and — only when the store
+// addresses the page's own colour row links to (the CSV import passes the feed
+// links of the piece's other colours the same way), and — only when the store
 // switches colours with script instead of links — brand and base name.
 
 interface VariantRow {
@@ -399,20 +401,26 @@ async function findSameItemByName(incoming: {
  * had added as a second place to buy. B's entry is kept, this page's own entry
  * replaced, and the price range recomputed over every store on the dollar
  * scale (each entry keeps its own currency, so each is converted first).
+ *
+ * `ours` is this source's own entries: one for a page, one per store for a feed
+ * that sells the piece through several merchants.
  */
 async function keepOtherStores(
   dbRow: Record<string, unknown>,
   existing: Product["retailers"],
-  ours: Product["retailers"][number] | undefined,
+  ours: Product["retailers"],
   sourceUrl: string | null,
 ): Promise<Record<string, unknown>> {
-  if (!ours) return dbRow;
-  const others = existing.filter(
-    (r) => r?.url && r.url !== sourceUrl && r.name?.toLowerCase() !== ours.name.toLowerCase(),
-  );
+  if (!ours.length) return dbRow;
+  const isOurs = (r: Product["retailers"][number]) =>
+    ours.some((o) => r.url === o.url || r.name?.toLowerCase() === o.name.toLowerCase());
+  const others = existing.filter((r) => r?.url && r.url !== sourceUrl && !isOurs(r));
   if (!others.length) return dbRow;
 
-  const row: Record<string, unknown> = { ...dbRow, retailers: withRetailer(existing, ours) };
+  const row: Record<string, unknown> = {
+    ...dbRow,
+    retailers: ours.reduce((list, entry) => withRetailer(list, entry), existing),
+  };
   if (row.currency !== "USD") return row;
 
   const theirs = (
@@ -431,6 +439,23 @@ async function keepOtherStores(
 export interface ImportOptions {
   /** Download photos into Supabase Storage and store our URLs instead. */
   mirrorImages?: boolean;
+  /**
+   * What a re-import does to the row that already has this source URL.
+   *
+   * "replace" (the default — the parser, the crawler, the extension) rewrites
+   * it from the page, keeping only the editor's style and gender. "refresh"
+   * writes just what a feed is the authority on — the price, the stores with
+   * their stock, the sizes — and leaves the name, category, description, tags,
+   * photos and grouping the editor curates after the first import alone.
+   */
+  onExisting?: "replace" | "refresh";
+  /**
+   * The "Where to buy" entries, when the caller has resolved them itself: a
+   * feed names its merchant in a column (the link is an affiliate tracker's)
+   * and can sell one piece through several stores. Otherwise the one entry is
+   * derived from the source URL.
+   */
+  retailers?: Product["retailers"];
 }
 
 export interface ImportResult {
@@ -548,6 +573,75 @@ export async function importParsedProduct(
     priceNote = "the page never stated a currency — price taken as dollars";
   }
 
+  const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
+    .map((s: unknown) => String(s).trim())
+    .filter(Boolean)
+    .slice(0, 40);
+
+  // ── A feed re-imported over its own rows ────────────────────────────────────
+  // Settled before any photo is downloaded: on this path none is written, and a
+  // feed re-run is mostly rows we already carry.
+  if (opts.onExisting === "refresh" && sourceUrl) {
+    try {
+      const { data: found, error: findError } = await supabase
+        .from("products").select("id, retailers").eq("source_url", sourceUrl).maybeSingle();
+      // Unanswered is not "absent": carrying on would insert a twin of the row
+      // the lookup could not see.
+      if (findError) throw new Error(findError.message);
+      const existing = found as { id: string; retailers: Product["retailers"] | null } | null;
+      if (existing) {
+        let ours = opts.retailers ?? [];
+        if (!ours.length) {
+          const store = resolveRetailer(sourceUrl, String(p.brand ?? "").trim(), await loadRetailerRules());
+          ours = [{
+            name: store.name,
+            url: sourceUrl,
+            price: sourcePrice || price,
+            currency: sourceCurrency || currency,
+            availability: "in stock",
+            isOfficial: store.isOfficial,
+          }];
+        }
+        const priceMax = priceOriginal > price ? priceOriginal : price;
+        // The same columns, and the same rules for them, as the full row below.
+        const row: Record<string, unknown> = {
+          price_min: price,
+          price_max: priceMax,
+          currency,
+          price_min_usd: currency === "USD" ? price : null,
+          price_max_usd: currency === "USD" ? priceMax : null,
+          retailers: ours,
+          ...(sourceCurrency && sourceCurrency !== "USD"
+            ? {
+                source_price: sourcePrice,
+                source_currency: sourceCurrency,
+                ...(fxRate !== null ? { fx_rate: fxRate } : {}),
+                ...(fxDate ? { fx_date: fxDate } : {}),
+              }
+            : {}),
+          // A piece sold out everywhere in the feed arrives with no sizes; the
+          // store's entry says so, and the size list stays as it was.
+          ...(sizes.length ? { sizes } : {}),
+        };
+        const id = existing.id;
+        const current = Array.isArray(existing.retailers) ? existing.retailers : [];
+        const next = await keepOtherStores(row, current, ours, sourceUrl);
+        const { data, error } = await writeProductRow<{ id: string }>(next, (r) =>
+          supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
+        );
+        if (error) throw new Error(error.message);
+        return { ok: true, productId: data?.id ?? id, updated: true, priceNote };
+      }
+    } catch (err) {
+      return {
+        ok: false,
+        productId: null,
+        updated: false,
+        error: err instanceof Error ? err.message : "Update failed",
+      };
+    }
+  }
+
   let images = (Array.isArray(p.images) ? p.images : []).map(httpUrl).filter(Boolean).slice(0, MAX_PRODUCT_IMAGES);
   let imageUrl = httpUrl(p.imageUrl) || images[0] || "";
 
@@ -572,10 +666,6 @@ export async function importParsedProduct(
     .map((c: unknown) => String(c).trim())
     .filter((c: string) => looksLikeColourLabel(c))
     .slice(0, 10);
-  const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
-    .map((s: unknown) => String(s).trim())
-    .filter(Boolean)
-    .slice(0, 40);
 
   // The page's brand, unless the name names a known brand the page did not —
   // the empty brand, or the shop's own name in its place, that a multi-brand
@@ -605,7 +695,9 @@ export async function importParsedProduct(
   const retailerRules = sourceUrl ? await loadRetailerRules() : new Map();
   const resolved = sourceUrl ? resolveRetailer(sourceUrl, brand, retailerRules) : null;
 
-  const retailers: Product["retailers"] = sourceUrl && resolved
+  const retailers: Product["retailers"] = opts.retailers?.length
+    ? opts.retailers
+    : sourceUrl && resolved
     ? [{
         name: resolved.name,
         url: sourceUrl,
@@ -756,7 +848,7 @@ export async function importParsedProduct(
 
     if (existingId) {
       const id = existingId;
-      const row = await keepOtherStores(dbRow, existingRetailers, retailers[0], sourceUrl);
+      const row = await keepOtherStores(dbRow, existingRetailers, retailers, sourceUrl);
       // Style and gender are the editor's to decide. Re-collecting a page used to
       // write whatever the importer guessed over them — an empty style list
       // included — so a store collected twice lost its hand-set tags. They are
@@ -826,6 +918,12 @@ export async function importParsedProduct(
         const twinId = twin.id;
         const merged = mergePatch(twin, incoming);
         const patch = merged.patch;
+        // A feed selling the piece through several stores brings them all.
+        if (retailers.length > 1 && Array.isArray(patch.retailers)) {
+          patch.retailers = retailers
+            .slice(1)
+            .reduce((list, entry) => withRetailer(list, entry), patch.retailers as Product["retailers"]);
+        }
         for (const column of unread) delete patch[column];
         const filled = merged.filled.filter((f) => !unread.includes(f));
         // Merged prices are dollars on both sides, so the comparable scale is
@@ -892,17 +990,6 @@ export async function importParsedProduct(
         .filter(Boolean),
       sourceUrl,
     });
-  }
-
-  // Record an import job (best-effort — table is optional, ignore if absent).
-  if (sourceUrl) {
-    try {
-      await supabase.from("import_jobs").insert({
-        url: sourceUrl,
-        status: "done",
-        result_product_id: productId,
-      });
-    } catch { /* import_jobs not migrated — non-critical */ }
   }
 
   return {
