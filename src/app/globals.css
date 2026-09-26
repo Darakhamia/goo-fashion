@@ -7,7 +7,7 @@
   /* Кривые доступны и как Tailwind-утилиты: ease-out, ease-in-out, ease-drawer */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer: var(--ease-drawer);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
@@ -26,7 +26,7 @@
      Длительности: интерфейс живёт под 300 мс; drawer и модалки — до 500. */
   --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer: var(--ease-drawer);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   --dur-press:   160ms;
   --dur-fast:    150ms;

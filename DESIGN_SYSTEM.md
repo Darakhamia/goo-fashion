@@ -33,7 +33,7 @@
 
 Токены движения (`--ease-*`, `--dur-*`) лежат в отдельном блоке `:root` выше, вместе со шрифтами (`globals.css:13-35`, движение — `:19-34`), и описаны в разделе 7. В админке они не переобъявляются.
 
-Блок `@theme inline` (`globals.css:6-11`) теперь держит только кривые движения `--ease-out` / `--ease-in-out` / `--ease-drawer`, из которых Tailwind делает утилиты `ease-out`, `ease-in-out`, `ease-drawer`. shadcn-имена `--color-background`, `--color-muted-foreground` и остальные `--color-*` удалены при ревью 2026-09. Классы `bg-background`, `text-muted-foreground`, `bg-primary`, `bg-accent` и подобные остались только в двух мёртвых файлах, `src/components/ui/button.tsx` и `src/components/blocks/hero-section-1.tsx` (оба ждут удаления, раздел 6), и больше ни во что не компилируются. Не используй их. Имей в виду: `--ease-drawer` сейчас объявлен через самого себя, см. раздел 11.
+Блок `@theme inline` (`globals.css:6-11`) теперь держит только кривые движения `--ease-out` / `--ease-in-out` / `--ease-drawer`, из которых Tailwind делает утилиты `ease-out`, `ease-in-out`, `ease-drawer`. shadcn-имена `--color-background`, `--color-muted-foreground` и остальные `--color-*` удалены при ревью 2026-09. Классы `bg-background`, `text-muted-foreground`, `bg-primary`, `bg-accent` и подобные остались только в двух мёртвых файлах, `src/components/ui/button.tsx` и `src/components/blocks/hero-section-1.tsx` (оба ждут удаления, раздел 6), и больше ни во что не компилируются. Не используй их.
 
 ### Жёсткое правило цвета
 
@@ -453,7 +453,7 @@ className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg p
 </div>
 ```
 
-Нижний лист на мобильном — тот же контейнер с `rounded-t-2xl`, ручкой `w-8 h-[3px] rounded-full bg-[var(--border-strong)]` и классом `animate-slide-up` (`builder/page.tsx:2414-2417`). Сейчас лист появляется без анимации из-за сломанного `--ease-drawer` (раздел 11).
+Нижний лист на мобильном — тот же контейнер с `rounded-t-2xl`, ручкой `w-8 h-[3px] rounded-full bg-[var(--border-strong)]` и классом `animate-slide-up` (`builder/page.tsx:2414-2417`).
 
 ### 5.6 Drawer
 
@@ -651,7 +651,7 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 |---|---|---|
 | `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | вход, выход, всё интерфейсное по умолчанию |
 | `--ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` | перемещение уже видимого элемента |
-| `--ease-drawer` | задуман как кривая выдвижных панелей (Ionic/iOS) | **сейчас сломан**: объявлен как `var(--ease-drawer)`, то есть сам через себя, см. раздел 11 |
+| `--ease-drawer` | выдвижные панели и нижние листы (кривая Ionic/iOS) | `cubic-bezier(0.32, 0.72, 0, 1)` |
 
 Сырых `cubic-bezier(...)` в правилах `globals.css` больше нет — только в объявлениях токенов. Утилита Tailwind `ease-out` тоже теперь даёт `--ease-out` проекта, а не стандартную кривую Tailwind.
 
@@ -678,7 +678,7 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 | `.ov-scrim` | затемнение фона | opacity, `--dur-base` / `--dur-fast` |
 | `.ov-panel` | модалка по центру | opacity + `scale(0.97)`, `--dur-slow` / `--dur-fast` |
 | `.ov-pop` / `.ov-pop-up` | выпадашка от триггера (вниз / вверх) | opacity + `scale(0.98)`, `--dur-fast` / 120ms |
-| `.ov-rise` | полоса снизу (баннер, нижний лист) | translateY, `--dur-slow` / `--dur-base`, кривая `--ease-drawer` (сейчас сломана, раздел 11) |
+| `.ov-rise` | полоса снизу (баннер, нижний лист) | translateY, `--dur-slow` / `--dur-base`, кривая `--ease-drawer` |
 
 Закрывающееся состояние — класс `.is-closing`. Сейчас рецепт применён в `UpgradeModal`, `CartPanel`, `CookieConsentBanner`, `StylistPersonalizationModal` (без выхода — у неё нет своего `open`). Остальные модалки сайта и админки анимируются по-старому (framer-motion или `.animate-*`).
 
@@ -689,7 +689,7 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 | `.animate-fade-up` | `fadeUp 0.5s var(--ease-out) forwards` (`:300`) | Появление статичного блока снизу на 12px |
 | `.animate-fade-in` | `fadeIn 0.4s ease forwards` (`:324`) | Простое появление оверлея/панели |
 | `.animate-scale-in` | `scaleIn 0.4s var(--ease-out)`, `scale(0.97) → 1` (`:400`) | Появление карточки/модалки |
-| `.animate-slide-up` | `slide-up 0.28s var(--ease-drawer) both` (`:577`) — дубль снят 2026-09-12 | Нижний лист на мобильном (билдер). **Сейчас не анимируется** из-за сломанного `--ease-drawer`, раздел 11 |
+| `.animate-slide-up` | `slide-up 0.28s var(--ease-drawer) both` (`:577`) — дубль снят 2026-09-12 | Нижний лист на мобильном (билдер) |
 | `.animate-slide-in-right` | `slideInRight 0.38s var(--ease-out)` (`:384`) | Drawer справа |
 | `.stylist-drawer-animate` | `slideUp 0.32s` на мобильном, `slideInRight 0.38s` с `md` (`:582-589`) | Drawer стилиста |
 | `.animate-shimmer` | `shimmer-sweep 1.8s infinite` (`:429`) | Бегущий блик (в скелетонах не используется) |
@@ -991,7 +991,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/components/product/ProductClient.tsx:210` (и `setTimeout` `:78-81`, `:88`) | Магические 260ms в трёх местах, единственная произвольная длительность в классах | Именованная константа, лучше `duration-300` | актуально; в CSS то же значение теперь токен `--dur-slow` (`globals.css:34`) |
 | `src/app/builder/page.tsx:1911` | `bg-[var(--foreground)]/70` — модификатор непрозрачности на переменной вопреки договорённости `globals.css:54` (технически на Tailwind v4 работает) | Предвычисленный токен или `opacity-70` на элементе | актуально |
 | `src/app/builder/page.tsx:1902` | `var(--surface-hover, var(--surface))` — токен `--surface-hover` не определён нигде, hover нулевой | `hover:bg-[var(--fg-overlay-05)]` | ✓ исправлено (UX-правка 2026-09-12) |
-| `src/app/builder/page.tsx:2360` | `.animate-slide-up` объявлен в `globals.css` дважды — выигрывает второй, первый мёртв | Оставить одно объявление | ✓ исправлено (UX-правка 2026-09-12): одно объявление `globals.css:577`. Но сейчас оно не анимирует, см. «Новые расхождения» (`--ease-drawer`) |
+| `src/app/builder/page.tsx:2360` | `.animate-slide-up` объявлен в `globals.css` дважды — выигрывает второй, первый мёртв | Оставить одно объявление | ✓ исправлено (UX-правка 2026-09-12): одно объявление `globals.css:577`; анимация снова работает после починки `--ease-drawer` (ревью 2026-09) |
 | `src/components/outfit/OutfitCollage.tsx:63` | Разделители коллажа — `bg-gray-200` (плашки `bg-white` при этом корректны) | `bg-[var(--border)]` | актуально; тот же `bg-gray-200` во всех копиях коллажа (строка про коллаж в Medium), в `MyLooksPanel.tsx:629` ещё `bg-[#f0f0f0]` |
 | `src/components/outfit/OutfitCard.tsx:89` | Размер кнопки лайка `md:w-8 md:h-8` против `md:w-7 md:h-7` у `ProductCard.tsx:161`. Заливка здесь токенная, у `ProductCard` — сырая | Совместить размер на `md:w-7 md:h-7`, заливку двигать к токену | актуально |
 | `src/app/outfit/[id]/page.tsx:204` | Обёртка `rounded-xl` вокруг `rounded-2xl` `OutfitCard` | `rounded-2xl` | актуально |
@@ -1021,7 +1021,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 
 | Файл:строка | Что не так | Чем заменить | Важность |
 |---|---|---|---|
-| `src/app/globals.css:10` и `:29` | Токен `--ease-drawer` объявлен через самого себя: `--ease-drawer: var(--ease-drawer)` (и в `@theme inline`, и в `:root`; так же в собранном CSS). Циклическая переменная недействительна, поэтому `.animate-slide-up` (`:577`, нижние листы билдера `builder/page.tsx:2414,2804,2945`) и переход `.ov-rise` (`:719-723`, баннер cookies `CookieConsentBanner.tsx:38`) теряют анимацию входа: лист и баннер появляются рывком. Похоже на артефакт замены литералов токеном 2026-09-12. Найдено при сверке документа; стоит глазами проверить в браузере | Задать токену значение. До 2026-09-12 `.animate-slide-up` шёл на `cubic-bezier(0.32, 0.72, 0, 1)` — вероятно, это и есть задуманная «кривая Ionic/iOS» из комментария `globals.css:25` | medium |
+| `src/app/globals.css:10` и `:29` | Токен `--ease-drawer` объявлен через самого себя: `--ease-drawer: var(--ease-drawer)` (и в `@theme inline`, и в `:root`; так же в собранном CSS). Циклическая переменная недействительна, поэтому `.animate-slide-up` (`:577`, нижние листы билдера `builder/page.tsx:2414,2804,2945`) и переход `.ov-rise` (`:719-723`, баннер cookies `CookieConsentBanner.tsx:38`) теряют анимацию входа: лист и баннер появляются рывком. Похоже на артефакт замены литералов токеном 2026-09-12. Найдено при сверке документа; стоит глазами проверить в браузере | Задать токену значение. До 2026-09-12 `.animate-slide-up` шёл на `cubic-bezier(0.32, 0.72, 0, 1)` — вероятно, это и есть задуманная «кривая Ionic/iOS» из комментария `globals.css:25` | ✓ исправлено (ревью 2026-09): токену задано `cubic-bezier(0.32, 0.72, 0, 1)` в обоих блоках |
 | `src/app/goo-studio/analytics/page.tsx:66` (также `:84`, `analytics/Charts.tsx:252`, `goo-studio/page.tsx:233`) | Текст успеха `text-emerald-600` вместо `text-emerald-500` из статус-рецепта админки; то же с `text-amber-600` (`goo-studio/page.tsx:311`, `products/page.tsx:2036,2571,2573`) и hover `text-red-600` / `-700` (`users/page.tsx:1139`, `products/page.tsx:3060`) | Оттенки рецепта: текст `-500`, фон и рамка `-400` | low |
 | `src/app/goo-studio/page.tsx:211` (и `:231-234`) | Карточки дашборда — `rounded-2xl` и `hover:shadow-md`, хотя карточка админки `rounded-xl`, а глубина передаётся границей; чип динамики — `bg-emerald-500/12 text-emerald-600 border-emerald-500/20` вместо базовой тройки. Ревью решило тень пока не трогать | Рецепт карточки и статус-бейджа раздела 9 | low |
 | `src/app/goo-studio/settings/recipes.tsx:6-7`, `parser/page.tsx:79-80`, `import/page.tsx:52`, `email/page.tsx:391,434,670`, `parser/collect/page.tsx:52-53`, `brands/page.tsx:17-18`, `retailers/page.tsx:61-62`, `duplicates/page.tsx:59-60`, `audit/page.tsx:291`, `users/page.tsx:460` (и `:467,483,702,709`), `products/page.tsx:1853` (и `:1863,1880,1892`), `products/page.tsx:2522`, `products/page.tsx:3037,3212`, `ImageCropEditor.tsx:339` | Контурная кнопка админки без канона: радиус у всех уже `rounded-lg`, но форм не меньше восьми, основные — `text-xs`/`0.12em`/`px-4 py-2` (settings, parser, import; в email с `px-5 py-2.5`); `11px`/`0.12em`/`px-4 py-2` (collect); `11px`/`0.08em`/`px-3 py-1.5` (brands, retailers); `11px`/`0.1em`/`px-3 py-2` (duplicates, audit); `9px`/`0.14em`/`px-3`–`px-4 py-2` (users); `text-xs`/`0.1em`/`px-3 py-2` (тулбар products); `10px`/`0.1em`/`px-3 py-1.5` (products, модалка; в email `10px`/`0.12em`/`px-2.5 py-1`); `text-xs`/`0.12em`/`px-4 py-2.5`–`px-5 py-3` с заливкой по hover (ImageCropEditor, products, email). Трекинги `0.08em` и `0.1em` вне шкалы раздела 2 | Выбрать одну форму (решение CEO) и завести её в §9 рядом с primary; кандидат — самая частая, `settings/recipes.tsx:6-7` | low |

@@ -362,9 +362,11 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
-    const tokenHint = `${apiToken.slice(0, 5)}…(len ${apiToken.length})`;
+    // Log the details here; the response used to carry the first characters
+    // of the Replicate token, which no client should see.
+    console.error("[generate-outfit] generation failed:", msg);
     return NextResponse.json(
-      { error: msg, tokenHint, failedUrls },
+      { error: msg, failedUrls },
       { status: 500 }
     );
   }
