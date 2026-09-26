@@ -55,6 +55,7 @@ const ACTION_LABELS: Record<AdminAction, string> = {
   "products.bg_color_undone":  "Undid backgrounds",
   "products.duplicates_merged":    "Merged duplicates",
   "products.duplicates_dismissed": "Dismissed duplicates",
+  "products.colour_group_split":   "Split a colour group",
   "outfits.created":         "Created outfit",
   "outfits.updated":         "Edited outfit",
   "outfits.deleted":         "Deleted outfit",
