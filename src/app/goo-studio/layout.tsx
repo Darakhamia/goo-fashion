@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
 
-const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const NAV_ORDER_KEY = "goo-admin-nav-order";
 const ADMIN_THEME_KEY = "goo-admin-theme";
 
@@ -250,35 +249,59 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const darkVars: React.CSSProperties = {
-  "--background": "#0A0A0A",
-  "--surface": "#141414",
-  "--foreground": "#F0EEE8",
-  "--foreground-muted": "#888884",
-  "--foreground-subtle": "#6E6E6A",
-  "--border": "#222220",
-  "--border-strong": "#3A3A38",
+/*
+ * The admin theme is independent of the site theme on <html> (dark by
+ * default), so the admin root carries a complete token set for either mode:
+ *  - dark: the `.dark` class, which applies the full dark set from globals.css;
+ *  - light: the light values of `:root` in globals.css, restated here because
+ *    `:root` sits on <html> and is overridden there by `.dark`. Keep in sync.
+ * Setting only a handful of dark colors used to leave the overlay tokens on
+ * the site palette and made "Light mode" a no-op under a dark site theme.
+ */
+const LIGHT_TOKENS = {
+  "--background": "#F4F2EE",
+  "--surface": "#FFFFFF",
+  "--foreground": "#0A0A0A",
+  "--foreground-muted": "#6B6B6B",
+  "--foreground-subtle": "#A8A8A8",
+  "--border": "#E8E6E0",
+  "--border-strong": "#C0BEB8",
+  "--bg-overlay-90": "rgba(244, 242, 238, 0.90)",
+  "--bg-overlay-95": "rgba(244, 242, 238, 0.95)",
+  "--fg-overlay-05": "rgba(10, 10, 10, 0.05)",
+  "--fg-overlay-08": "rgba(10, 10, 10, 0.08)",
+  "--fg-on-dark-60": "rgba(244, 242, 238, 0.60)",
+  "--fg-on-dark-70": "rgba(244, 242, 238, 0.70)",
+  "--fg-on-dark-80": "rgba(244, 242, 238, 0.80)",
 } as React.CSSProperties;
 
-const pageTitles: Record<string, string> = {
-  "/goo-studio": "Dashboard",
-  "/goo-studio/products": "Products",
-  "/goo-studio/outfits": "Outfits",
-  "/goo-studio/blog": "Blog",
-  "/goo-studio/analytics": "Analytics",
-  "/goo-studio/subscriptions": "Subscriptions",
-  "/goo-studio/users": "Users",
-  "/goo-studio/brands": "Brands",
-  "/goo-studio/categories": "Categories",
-  "/goo-studio/audit": "Audit",
-  "/goo-studio/waitlist": "Waitlist",
-  "/goo-studio/email": "Email",
-  "/goo-studio/brightdata": "Import",
-  "/goo-studio/parser": "Universal Parser",
-  "/goo-studio/settings": "Settings",
-  "/goo-studio/prompts": "Prompts",
-  "/goo-studio/activity": "Activity",
+// Nested pages without a menu entry of their own; shown as a third breadcrumb
+// segment under their parent menu item.
+const SUBPAGE_TITLES: Record<string, string> = {
+  "/goo-studio/parser/collect": "Collect",
 };
+
+/** Menu item a path belongs to: the longest href it equals or sits under. */
+function navItemFor(pathname: string): NavItem | undefined {
+  let match: NavItem | undefined;
+  for (const item of NAV_ITEMS) {
+    const hit =
+      item.href === "/goo-studio"
+        ? pathname === item.href
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (hit && (!match || item.href.length > match.href.length)) match = item;
+  }
+  return match;
+}
+
+function saveNavOrder(order: string[] | null) {
+  try {
+    if (order) localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(order));
+    else localStorage.removeItem(NAV_ORDER_KEY);
+  } catch {
+    // Storage blocked (private mode, quota): the order still applies until reload.
+  }
+}
 
 function GripIcon() {
   return (
@@ -300,8 +323,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [navOrder, setNavOrder] = useState<string[]>(() =>
     NAV_ITEMS.map((i) => i.href)
   );
-  const [dragOver, setDragOver] = useState<number | null>(null);
-  const dragItem = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const dragHref = useRef<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const pathname = usePathname();
   const { user } = useAuth();
@@ -331,6 +355,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {}
   }, []);
 
+  // Super-admin status comes from the server (SUPER_ADMIN_USER_ID), the same
+  // check the Activity API applies, so the menu and the API cannot disagree.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me: { isSuperAdmin?: boolean } | null) => {
+        if (!cancelled) setIsSuperAdmin(me?.isSuperAdmin === true);
+      })
+      .catch(() => {
+        // Keep the regular admin menu; super-admin APIs enforce access anyway.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!customizing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCustomizing(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [customizing]);
+
   const toggleTheme = () =>
     setTheme((t) => {
       const next = t === "light" ? "dark" : "light";
@@ -338,55 +388,57 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return next;
     });
 
-  const isSuperAdmin = !!user && !!SUPER_ADMIN_ID && user.id === SUPER_ADMIN_ID;
-
-  const currentTitle = pageTitles[pathname] ?? "Admin";
+  const activeItem = navItemFor(pathname);
+  const subpageTitle = SUBPAGE_TITLES[pathname];
   const initials = user?.name
     ? user.name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
-    : "AD";
+    : "";
 
-  const orderedItems = navOrder
+  // Menu items in the saved order. The sidebar and the Customize dialog both
+  // render them grouped by category (groups in fixed order), so reordering is
+  // only meaningful within a group.
+  const navItems = navOrder
     .map((href) => NAV_ITEMS.find((i) => i.href === href))
     .filter((i): i is NavItem => !!i && (!i.superAdminOnly || isSuperAdmin));
 
-  const customizableItems = navOrder
-    .map((href) => NAV_ITEMS.find((i) => i.href === href))
-    .filter((i): i is NavItem => !!i && (!i.superAdminOnly || isSuperAdmin));
+  const categoryOf = (href: string | null) =>
+    NAV_ITEMS.find((i) => i.href === href)?.category;
 
-  const handleDragStart = (index: number) => {
-    dragItem.current = index;
+  /** Moves `href` into the slot of `targetHref`; both must share a group. */
+  const moveItem = (href: string, targetHref: string) => {
+    if (href === targetHref || categoryOf(href) !== categoryOf(targetHref)) return;
+    const to = navOrder.indexOf(targetHref);
+    if (to === -1) return;
+    const next = navOrder.filter((h) => h !== href);
+    next.splice(to, 0, href);
+    setNavOrder(next);
+    saveNavOrder(next);
   };
 
-  const handleDragEnter = (index: number) => {
-    setDragOver(index);
+  // The move happens on drop, so a drag released outside the list or
+  // cancelled with Escape leaves the order as it was.
+  const handleDrop = (e: React.DragEvent, targetHref: string) => {
+    // Without this Firefox treats the dropped text/plain as a link to open.
+    e.preventDefault();
+    const from = dragHref.current;
+    if (from) moveItem(from, targetHref);
   };
 
   const handleDragEnd = () => {
-    const from = dragItem.current;
-    const to = dragOver;
-    dragItem.current = null;
+    dragHref.current = null;
     setDragOver(null);
-    if (from === null || to === null || from === to) return;
-
-    const visibleHrefs = customizableItems.map((i) => i.href);
-    const newVisible = [...visibleHrefs];
-    const [removed] = newVisible.splice(from, 1);
-    newVisible.splice(to, 0, removed);
-
-    const hiddenItems = navOrder.filter((h) => !visibleHrefs.includes(h));
-    const newOrder = [...newVisible, ...hiddenItems];
-    setNavOrder(newOrder);
-    localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(newOrder));
   };
 
   const resetOrder = () => {
-    const defaultOrder = NAV_ITEMS.map((i) => i.href);
-    setNavOrder(defaultOrder);
-    localStorage.removeItem(NAV_ORDER_KEY);
+    setNavOrder(NAV_ITEMS.map((i) => i.href));
+    saveNavOrder(null);
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={theme === "dark" ? darkVars : undefined}>
+    <div
+      className={`flex h-screen overflow-hidden${theme === "dark" ? " dark" : ""}`}
+      style={theme === "light" ? LIGHT_TOKENS : undefined}
+    >
       {/* ── Sidebar ── */}
       <aside
         className={`flex-shrink-0 flex flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${
@@ -442,7 +494,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Nav */}
         <nav className="flex-1 py-3 flex flex-col overflow-y-auto overflow-x-hidden">
           {NAV_CATEGORIES.map((cat) => {
-            const items = orderedItems.filter((i) => i.category === cat.key);
+            const items = navItems.filter((i) => i.category === cat.key);
             if (items.length === 0) return null;
             return (
               <div key={cat.key} className="mb-1">
@@ -456,7 +508,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       transition={{ duration: 0.1 }}
                       className="px-5 pt-3 pb-1"
                     >
-                      <span className="text-[8px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)]">
+                      <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                         {cat.label}
                       </span>
                     </motion.div>
@@ -467,10 +519,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
                 <div className="flex flex-col gap-0.5 px-2">
                   {items.map((item) => {
-                    const isActive =
-                      item.href === "/goo-studio"
-                        ? pathname === "/goo-studio"
-                        : pathname.startsWith(item.href);
+                    const isActive = activeItem?.href === item.href;
                     return (
                       <Link
                         key={item.href}
@@ -499,7 +548,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             >
                               {item.label}
                               {item.superAdminOnly && (
-                                <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
+                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
                                   SA
                                 </span>
                               )}
@@ -615,24 +664,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="h-16 flex items-center justify-between px-8 border-b border-[var(--border)] flex-shrink-0"
           style={{ background: "var(--background)" }}
         >
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Admin</span>
-            <span className="text-[var(--border-strong)]">/</span>
-            <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground)]">{currentTitle}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {(["Admin", activeItem?.label, subpageTitle].filter(Boolean) as string[]).map((part, i, parts) => (
+              <span key={i} className="flex items-center gap-2 min-w-0">
+                {i > 0 && <span className="text-[var(--border-strong)]">/</span>}
+                <span
+                  className={`text-[10px] tracking-[0.18em] uppercase truncate ${
+                    i === parts.length - 1 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  {part}
+                </span>
+              </span>
+            ))}
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                <p className="text-xs text-[var(--foreground)] leading-none">{user?.name ?? "Admin"}</p>
-                {isSuperAdmin && (
-                  <span className="text-[7px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
-                    Super Admin
-                  </span>
-                )}
+            {/* Nothing until the profile loads — no placeholder identity. */}
+            {user && (
+              <div className="text-right hidden sm:block">
+                <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                  <p className="text-xs text-[var(--foreground)] leading-none">{user.name}</p>
+                  {isSuperAdmin && (
+                    <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                      Super Admin
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--foreground-subtle)] leading-none">{user.email}</p>
               </div>
-              <p className="text-[10px] text-[var(--foreground-subtle)] leading-none">{user?.email ?? "admin@goo.com"}</p>
-            </div>
+            )}
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] ${
                 isSuperAdmin ? "border-amber-400/60" : "border-[var(--border-strong)]"
@@ -656,8 +717,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.5)" }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setCustomizing(false)}
           >
             <motion.div
@@ -665,7 +725,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.15 }}
-              className="relative w-80 border border-[var(--border)] flex flex-col rounded-2xl overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="customize-menu-title"
+              className="relative w-80 max-h-full border border-[var(--border)] flex flex-col rounded-2xl overflow-hidden"
               style={{ background: "var(--background)" }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -673,7 +736,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
                 <div>
                   <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Sidebar</p>
-                  <h2 className="font-display text-base font-light text-[var(--foreground)]">Customize Menu</h2>
+                  <h2 id="customize-menu-title" className="font-display text-base font-light text-[var(--foreground)]">Customize Menu</h2>
                 </div>
                 <button
                   onClick={() => setCustomizing(false)}
@@ -688,43 +751,92 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* Hint */}
               <p className="px-5 pt-3 pb-1 text-[10px] text-[var(--foreground-subtle)] tracking-wide">
-                Drag items to reorder. Changes save automatically.
+                Drag items or use the arrows to reorder them within a group. Changes save automatically.
               </p>
 
-              {/* Draggable list */}
-              <ul className="px-3 py-2 flex flex-col gap-1 select-none">
-                {customizableItems.map((item, index) => (
-                  <li
-                    key={item.href}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragEnter={() => handleDragEnter(index)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 px-3 py-2.5 border rounded-xl transition-colors cursor-grab active:cursor-grabbing ${
-                      dragOver === index
-                        ? "border-[var(--foreground)] bg-[var(--surface)]"
-                        : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]"
-                    }`}
-                  >
-                    <span className="text-[var(--foreground-subtle)]">
-                      <GripIcon />
-                    </span>
-                    <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
-                    <span className="text-xs tracking-[0.1em] uppercase text-[var(--foreground)] flex-1">
-                      {item.label}
-                    </span>
-                    {item.superAdminOnly && (
-                      <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
-                        SA
-                      </span>
-                    )}
-                    {dragOver === index && (
-                      <span className="w-1 h-4 bg-[var(--foreground)] flex-shrink-0 rounded-full" />
-                    )}
-                  </li>
-                ))}
-              </ul>
+              {/* Grouped list — the sidebar keeps groups in a fixed order, so
+                  items move only inside their own group. */}
+              <div className="px-3 py-2 flex flex-col gap-3 overflow-y-auto select-none">
+                {NAV_CATEGORIES.map((cat) => {
+                  const items = navItems.filter((i) => i.category === cat.key);
+                  if (items.length === 0) return null;
+                  const sortable = items.length > 1;
+                  return (
+                    <div key={cat.key}>
+                      <p className="px-2 pb-1 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                        {cat.label}
+                      </p>
+                      <ul className="flex flex-col gap-1">
+                        {items.map((item, index) => {
+                          const sameGroup = () => categoryOf(dragHref.current) === item.category;
+                          return (
+                            <li
+                              key={item.href}
+                              draggable={sortable}
+                              onDragStart={(e) => {
+                                dragHref.current = item.href;
+                                // Firefox starts a drag only when data is set.
+                                e.dataTransfer.effectAllowed = "move";
+                                e.dataTransfer.setData("text/plain", item.href);
+                              }}
+                              onDragEnter={() => setDragOver(sameGroup() ? item.href : null)}
+                              onDragOver={(e) => { if (sameGroup()) e.preventDefault(); }}
+                              onDrop={(e) => handleDrop(e, item.href)}
+                              onDragEnd={handleDragEnd}
+                              className={`flex items-center gap-3 px-3 py-2 border rounded-xl transition-colors ${
+                                sortable ? "cursor-grab active:cursor-grabbing" : ""
+                              } ${
+                                dragOver === item.href
+                                  ? "border-[var(--foreground)] bg-[var(--surface)]"
+                                  : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]"
+                              }`}
+                            >
+                              <span className={sortable ? "text-[var(--foreground-subtle)]" : "text-[var(--foreground-subtle)] opacity-40"}>
+                                <GripIcon />
+                              </span>
+                              <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
+                              <span className="text-xs tracking-[0.1em] uppercase text-[var(--foreground)] flex-1 min-w-0 truncate">
+                                {item.label}
+                              </span>
+                              {item.superAdminOnly && (
+                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                                  SA
+                                </span>
+                              )}
+                              {sortable && (
+                                <span className="flex items-center flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveItem(item.href, items[index - 1].href)}
+                                    disabled={index === 0}
+                                    aria-label={`Move ${item.label} up`}
+                                    className="p-1 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveItem(item.href, items[index + 1].href)}
+                                    disabled={index === items.length - 1}
+                                    aria-label={`Move ${item.label} down`}
+                                    className="p-1 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </button>
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Footer */}
               <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
