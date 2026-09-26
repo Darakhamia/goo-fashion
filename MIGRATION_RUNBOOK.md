@@ -9,6 +9,12 @@
 приведён. Помеченное **[нужен доступ к серверу]** проверить нельзя было отсюда —
 у контейнера, в котором работает агент, нет SSH к `65.108.92.69`.
 
+**Обновлено 26.09.2026.** Разделы 1–3 — снимок на 21.08.2026, их не трогали, кроме
+пометок «обновление». По коду заново сверены рабочие списки: переменные окружения
+(этап 7, п.2), Scheduled Task автопродления (этап 7, п.5), healthcheck
+`/api/health` (этап 7, п.1), новые миграции 023 и 024 (этап 6.5), итоговый
+чеклист (§7). Прошёл ли уже переезд и что из чеклиста сделано — уточнить у CEO.
+
 ---
 
 ## 1. Что выяснилось до начала работ
@@ -87,6 +93,10 @@ Supabase. Пункт «перенести persistent volumes приложени�
 | imgproxy / трансформации | нет | `getPublicUrl` без `transform:` |
 | Supavisor (пулер) | нет | прямых подключений к постгресу нет |
 
+Обновление 26.09.2026: `run_sql` код больше не вызывает (DDL для `crop_data` и
+`settings` вынесен в миграции 023 и 024, этап 6.5). Используются две функции:
+`match_products` и `search_products`.
+
 Из этого следует **решение, которое стоит принять до заказа сервера** (см. §3):
 на новом сервере можно поднять не весь шаблон Supabase на 14 контейнеров, а
 db + kong + rest + storage (+ studio/meta для SQL-редактора). Это разница между
@@ -121,8 +131,9 @@ URL в базе, и это будет отдельная миграция дан
 ### 1.8. Остальное окружение — внешние сервисы, переносить нечего **[проверено]**
 
 Clerk (`clerk.goo-fashion.com`, `accounts.goo-fashion.com` → CNAME на Cloudflare),
-Upstash Redis, monobank, OpenAI, Anthropic, Replicate, Resend, PostHog. При смене
-A-записей их не трогать.
+Upstash Redis, monobank, OpenAI, Replicate, Resend, PostHog. При смене
+A-записей их не трогать. (Обновление 26.09.2026: Anthropic больше не используется —
+SDK удалён из кода.)
 
 ### 1.9. `plane.goo-fashion.com` мёртв — и приложение об этом не знает **[проверено]**
 
@@ -137,6 +148,10 @@ plane.goo-fashion.com -> NXDOMAIN (A-записи нет вообще)
 
 Для миграции: переносить нечего, поддомена нет. Отдельной задачей — либо поднять
 Plane заново, либо убрать интеграцию.
+
+Обновление 26.09.2026: текст баг-репорта теперь разбирает OpenAI (`gpt-4o-mini`), а
+не Claude, но POST в Plane остался (`src/app/api/report-bug/route.ts`), так что
+итог тот же — 500 после оплаченного вызова модели.
 
 ---
 
@@ -163,11 +178,17 @@ Plane заново, либо убрать интеграцию.
    $CRON_SECRET`, либо (б) в Vercel до сих пор жив деплой этого репозитория.
    Вариант (б) хуже, чем кажется: это второе приложение, пишущее в ту же базу, и
    при миграции о нём легко забыть. Проверить оба — см. этап 1.
+   Обновление 26.09.2026: целевой вариант — (а), Scheduled Task в Coolify (этап 7,
+   п.5, подробно — `BILLING.md`). Работает ли cron сейчас, видно без SQL:
+   `/goo-studio/subscriptions` → карточка «Renewal cron» и плашка вверху страницы,
+   если последнего прогона нет или он был 36 ч назад и раньше.
 4. **`NEXT_PUBLIC_SITE_URL`.** В `.env.example` стоит `https://www.goo-fashion.com`,
    а `src/proxy.ts` отвечает на www редиректом 308 на апекс. Из этой переменной
    строится `webHookUrl` для monobank (`checkout/route.ts:53`). Если в проде
    задан www — вебхуки об оплате прилетают на редирект. Проверить фактическое
    значение при выгрузке переменных.
+   Обновление 26.09.2026: пример в `.env.example` исправлен на апекс, без www;
+   значение на проде это не меняет — сверить его всё равно.
 
 ---
 
@@ -277,6 +298,7 @@ docker inspect <goo-app> --format '{{json .Mounts}}' | jq
 - [ ] репозиторий, ветка и способ сборки приложения в Coolify (nixpacks? Dockerfile?)
 - [ ] есть ли scheduled task на `/api/billing/cron/renew`
 - [ ] жив ли проект этого репозитория в Vercel (проверяет David в своей учётке)
+- [ ] прогнаны ли на проде миграции 023 и 024 (как проверить — этап 6.5)
 
 ### Этап 2 — заказ сервера
 
@@ -367,28 +389,137 @@ scp /tmp/goo-globals.sql /tmp/goo-test.dump root@10.0.0.X:/tmp/
    docker exec <new-db> psql -U postgres -c "SELECT count(*) FROM storage.objects;"
    docker exec <new-db> psql -U postgres -c '\dx'                              # vector на месте
    docker exec <new-db> psql -U postgres -c '\du'                              # роли на месте
+   # биллинг: таблицы на месте, числа совпадают со старым сервером
+   docker exec <new-db> psql -U postgres -c "SELECT status, count(*) FROM subscriptions GROUP BY status;"
+   docker exec <new-db> psql -U postgres -c "SELECT count(*) FROM billing_events;"
    ```
 6. **Старые тома не удалять** — это откат.
+
+**6.5. Миграции 023 и 024 (новые, сентябрь 2026).** Код уже рассчитывает на них,
+а сами они ни при деплое, ни при переносе не выполняются — их прогоняют руками.
+
+| Файл | Что делает | Что сломано без неё |
+|---|---|---|
+| `supabase/migrations/023_product_crop_data.sql` | колонка `products.crop_data` | кадрирование фото в редакторе товара не сохраняется, карточки показывают фото целиком |
+| `supabase/migrations/024_settings.sql` | таблица `settings` (+ RLS) | ничего из Settings и Prompts не сохраняется: ключ OpenAI из базы, правки промптов, настройки парсера, выбор витрин главной — всё на значениях по умолчанию |
+
+Обе идемпотентны: повторный запуск ничего не ломает. Таблица `settings` на проде,
+скорее всего, уже есть (её DDL раньше лежал текстом на странице Settings) —
+миграция её не пересоздаёт, только включает RLS; сервер работает с ней ключом
+service role, который RLS обходит.
+
+Когда: сразу на текущем проде, не дожидаясь переезда (тогда они переедут вместе
+с томом), и ещё раз проверить на новом сервере после 6.4.
+
+```bash
+# файлы — из этого репозитория (git clone или scp на сервер)
+docker exec -i <supabase-db> psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+  < supabase/migrations/023_product_crop_data.sql
+docker exec -i <supabase-db> psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+  < supabase/migrations/024_settings.sql
+# проверка
+docker exec <supabase-db> psql -U postgres -c \
+  "SELECT column_name FROM information_schema.columns WHERE table_name='products' AND column_name='crop_data';"
+docker exec <supabase-db> psql -U postgres -c "SELECT to_regclass('public.settings');"
+```
+
+То же без psql: `/goo-studio/settings` → блок «Database schema» показывает, каких
+таблиц и колонок из миграций в базе нет, и называет файл миграции. Таблицы
+биллинга (`subscriptions`, `billing_events`) он не проверяет — их отсутствие видно
+плашками на `/goo-studio/subscriptions`.
 
 ### Этап 7 — перенос приложения (уточнён)
 
 1. В новом Coolify — проект, приложение из того же GitHub-репозитория, той же
    ветки. Сборка nixpacks: `nixpacks.toml` в репозитории уже фиксирует фазы и
    `NODE_OPTIONS=--max-old-space-size=3072`, трогать не нужно.
-2. Перенести переменные окружения. `DATABASE_URL` **не нужен** (§1.3). Нужны:
-   `SUPABASE_URL=https://supabase.goo-fashion.com` (тот же!),
-   `SUPABASE_SERVICE_ROLE_KEY`, ключи Clerk,
-   `NEXT_PUBLIC_SITE_URL=https://goo-fashion.com` (без www, §2.4),
-   `MONOBANK_TOKEN`, `CRON_SECRET`, `ADMIN_USER_IDS`,
-   `UPSTASH_*`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`,
-   `RESEND_*`, `NEXT_PUBLIC_POSTHOG_*`.
+   **Healthcheck:** включить, `GET /api/health`, порт приложения (3000, если `PORT`
+   не задан), ожидаемый код 200. Роут отвечает `{"status":"ok"}` сразу, как
+   поднялся Node, и нарочно не ходит ни в базу, ни во внешние сервисы — медленный
+   Supabase не уронит деплой. Поэтому он говорит только «процесс жив»; что сайт
+   работает, проверяет п.6. Coolify выполняет healthcheck через `curl`/`wget`
+   внутри контейнера — если деплой откатывается на healthcheck, первым делом
+   проверить, что они есть в образе.
+2. Перенести переменные окружения. Список сверен с кодом (`process.env.*` в `src/`)
+   26.09.2026. Значения берутся из выгрузки старого Coolify (этап 1); каких
+   значений нет на проде — уточнить у CEO.
+
+   `NEXT_PUBLIC_*` вшиваются в сборку, поэтому в Coolify их нужно отметить как
+   доступные при сборке (build variable). Это же нужно `SUPABASE_URL` и
+   `SUPABASE_SERVICE_ROLE_KEY`: `next build` пререндерит страницы, читающие каталог.
+
+   **Обязательные**
+
+   | Переменная | Значение / зачем | Без неё |
+   |---|---|---|
+   | `SUPABASE_URL` | `https://supabase.goo-fashion.com` — тот же (§1.6); сборка + рантайм | сайт показывает встроенный демо-каталог (он только для локальной разработки), все записи и загрузки падают; если нет только на сборке — демо может попасть в пререндеренные страницы |
+   | `SUPABASE_SERVICE_ROLE_KEY` | ключ того же Supabase (этап 6.2); сборка + рантайм | то же |
+   | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_…`; сборка | вход не работает |
+   | `CLERK_SECRET_KEY` | `sk_live_…`; читает сам Clerk SDK. Другие `CLERK_*` / `NEXT_PUBLIC_CLERK_*`, если есть на старом сервере, — перенести как есть | серверная часть Clerk не работает: вход, админка |
+   | `NEXT_PUBLIC_SITE_URL` | `https://goo-fashion.com`, **без www** (§2.4); сборка. Из неё строятся адрес вебхука monobank, возврат после оплаты, canonical-ссылки | код подставит `https://goo-fashion.com` — это верно; опасно неверное значение, например с www |
+   | `ADMIN_USER_IDS` | Clerk id админов через запятую | в админку пускает только флаг `isAdmin` в Clerk, а он читается из токена сессии и работает, только если токен настроен нести public metadata (так ли на проде — уточнить у CEO); иначе в админку не попадает никто, включая супер-админа; алертам биллинга без `BILLING_ALERT_EMAIL` некому писать |
+   | `SUPER_ADMIN_USER_ID` | Clerk id владельца | журнал действий (Activity) отдаёт 403; выдать или снять админа нельзя; аккаунт владельца не защищён от удаления и бана другими админами |
+   | `MONOBANK_TOKEN` | токен Plata by mono | оплата и автопродление отвечают 503 |
+   | `CRON_SECRET` | случайная строка; рантайм — её читает Scheduled Task (п.5) | cron автопродления всегда 401 |
+   | `OPENAI_API_KEY` | поиск по смыслу (эмбеддинги), ИИ-разбор в парсере, генерация постов и писем в студии, баг-репорт | берётся из таблицы `settings`, если ключ сохранён там; иначе эти функции не работают. Сам чат стилиста его не требует |
+   | `REPLICATE_API_TOKEN` | генерация образов, ИИ-стилист | генерация и стилист не работают |
+   | `RESEND_API_KEY` (+ `RESEND_FROM_EMAIL`, по умолчанию `GOO Fashion <hello@goo-fashion.com>`) | рассылки студии, алерты биллинга | письма не уходят, алерты только в лог |
+   | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | rate limit (стилист, баг-репорт, шаринг луков, аналитика и др.) | лимиты выключены, в том числе дневной потолок стилиста для анонимов (тратятся кредиты Replicate); дневные лимиты тарифов для вошедших считаются в Supabase и работают |
+   | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` | аналитика PostHog (после согласия на cookies); сборка | аналитики нет, сайт работает |
+
+   **Необязательные — перенести, если заданы на старом сервере**
+
+   | Переменная | Что делает | По умолчанию |
+   |---|---|---|
+   | `BILLING_ALERT_EMAIL` | кому слать алерты биллинга (через запятую) | почты из `ADMIN_USER_IDS` |
+   | `BILLING_USD_UAH_RATE` | курс для «≈ $» в админке, только отображение | 41 |
+   | `MONOBANK_PRICE_BASIC` / `_PRO` / `_PREMIUM` | цены тарифов в гривнах. Читаются только сервером: спишется новая цена, а `/plans`, `/subscribe`, `/profile` и окно апгрейда покажут старую — без нужды не задавать | 399 / 999 / 1799 |
+   | `MONOBANK_API_BASE` | адрес API monobank | `https://api.monobank.ua` |
+   | `PARSER_FETCH_API_KEY` | ключ anti-bot-провайдера парсера | ключ из настроек парсера в базе |
+   | `STYLIST_LLM_MODEL`, `STYLIST_SEMANTIC_SEARCH`, `STYLIST_SEMANTIC_MIN_SIM` | модель стилиста, поиск по смыслу в чате, порог похожести | `openai/gpt-4.1` через Replicate, поиск выкл., 0.2 |
+   | `SUPABASE_REQUEST_TIMEOUT_MS` | потолок одного запроса к Supabase | 60000 |
+   | `NEXT_PUBLIC_SUPABASE_URL` | только доп. разрешённый хост в `/api/looks/image`; `SUPABASE_URL` хватает | — |
+   | `PLANE_API_KEY` | баг-репорт в Plane, а Plane мёртв (§1.9); судьба — решение CEO | — |
+   | `VERCEL_GIT_COMMIT_SHA` | хеш коммита в отчёте экспорта картинок; Coolify её не задаёт, без неё там «local (not a deployed build)» — косметика | — |
+
+   **Не переносить** — код их не читает:
+   `DATABASE_URL` (§1.3); `ANTHROPIC_API_KEY` (SDK удалён в сентябре 2026);
+   `NEXT_PUBLIC_SUPER_ADMIN_USER_ID` (права супер-админа теперь приходят с сервера
+   из `SUPER_ADMIN_USER_ID`); `BYPASS_KEY` (только `/api/unlock` — остаток снятой
+   заглушки coming-soon: ставит cookie, который код больше нигде не читает; ждёт
+   удаления); `RAPIDAPI_NIKE_KEY` (только
+   мёртвый `/api/nike`).
 3. Persistent volumes приложения — нет (§1.4). Пункт пропускается.
 4. Memory limits: приложению — 1 GiB, постгресу Supabase — 2 GiB, остальным
    контейнерам стека — по 256–512 MiB. Это ровно то, чего не хватало старому
    серверу: OOM-killer выбирает самый жирный процесс, а не виновника.
-5. **Пересоздать scheduled task** на `GET /api/billing/cron/renew` с заголовком
-   `Authorization: Bearer $CRON_SECRET`, расписание `0 9 * * *`. В `vercel.json`
-   он объявлен для платформы, которой здесь нет.
+5. **Завести Scheduled Task автопродления** (Coolify → приложение → Scheduled
+   Tasks). В `vercel.json` cron объявлен для платформы, которой здесь нет, — на
+   Coolify этот файл ничего не запускает. Подробности и разбор ответов — в
+   `BILLING.md`, раздел «Renewal cron on Coolify».
+
+   | Поле | Значение |
+   |---|---|
+   | Name | `billing-renew` |
+   | Frequency | `0 9 * * *` — раз в сутки (09:00 UTC, как было в `vercel.json`; проверить часовой пояс сервера в Coolify) |
+   | Command | `curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"` |
+
+   Команда выполняется внутри контейнера приложения: вызов идёт на localhost,
+   мимо DNS и Traefik, а `$CRON_SECRET` берётся из переменных самого приложения.
+   Если в образе нет `curl`, в `BILLING.md` есть тот же вызов через `node`.
+
+   Правила:
+   - **Один планировщик.** На старом сервере задачу отключить в момент
+     переключения, деплой в Vercel (если жив, §2.3) — выключить. Два прогона в
+     сутки могут списать с карты дважды: платёж, который monobank оставил в
+     `processing`, в строке подписки не отмечается, и второй прогон спишет снова.
+   - **Проверка после первого прогона:** в логе задачи в Coolify — код 0 и JSON
+     с `"ok":true`; на `/goo-studio/subscriptions` карточка «Renewal cron» зелёная
+     («just now» / «Nh ago»), плашки о том, что cron не запускался или давно не
+     запускался, вверху страницы нет. Ответ 401 — не совпал или не задан `CRON_SECRET`;
+     503 — не задан `MONOBANK_TOKEN`.
+   - Ручной запуск той же командой списывает с карт по-настоящему. Не запускать
+     его в тот же день, что и плановый прогон.
 6. Проверка **до** переключения DNS. Здесь исходный runbook предлагал временный
    домен `goo-new.goo-fashion.com`, и на нём есть подвох: Clerk работает в
    production-режиме (`pk_live`) и привязан к `goo-fashion.com`. На чужом хосте
@@ -406,9 +537,12 @@ scp /tmp/goo-globals.sql /tmp/goo-test.dump root@10.0.0.X:/tmp/
    - Проверять публичную часть на временном домене, а авторизованную — сразу
      после переключения, держа наготове откат.
 
-   Обязательный ручной прогон: главная, `/browse`, карточка товара, `/blog`,
-   `/plans`, `/subscribe`, `/goo-studio`, генерация лука (Replicate + запись в
-   Storage), отправка формы на `/report`.
+   Обязательный ручной прогон: `curl -fsS https://goo-fashion.com/api/health`
+   (с `--resolve`/`-k`, пока DNS не переключён) → `{"status":"ok",…}`, главная,
+   `/browse`, карточка товара, `/blog`, `/plans`, `/subscribe`, `/goo-studio`
+   (в том числе `/goo-studio/settings` → «Database schema»: пропущенных миграций
+   нет; `/goo-studio/subscriptions`: цифры те же, что на старом сервере),
+   генерация лука (Replicate + запись в Storage), отправка формы на `/report`.
 
 ### Этап 8 — переключение DNS (уточнён)
 
@@ -441,8 +575,10 @@ scp /tmp/goo-globals.sql /tmp/goo-test.dump root@10.0.0.X:/tmp/
 
 Как в исходнике. Добавить к ежедневным проверкам:
 - `dmesg -T | grep -i oom` на обоих серверах;
-- что автопродление подписок реально отработало в 09:00 UTC — строка в
-  `billing_events` (это первый раз, когда cron поедет по-новому);
+- что автопродление подписок реально отработало в 09:00 UTC — свежая строка
+  `cron_run` в `billing_events`, она же карточка «Renewal cron» на
+  `/goo-studio/subscriptions` (это первый раз, когда cron поедет по-новому);
+- что `/api/health` отвечает 200 и Coolify не перезапускал контейнер по healthcheck;
 - что новые загрузки картинок ложатся в Storage нового сервера и открываются.
 
 ### Этап 10 — уборка старого сервера
@@ -481,6 +617,8 @@ rsync -avz --ignore-existing \
 - [ ] Hetzner Cloud Firewall на новом сервере
 - [ ] Выгрузка переменных окружения и ключей Supabase из Coolify UI
 - [ ] Ответ: жив ли деплой этого репозитория в Vercel (§2.3)
+- [ ] Прогон миграций 023 и 024 на базе (этап 6.5)
+- [ ] Scheduled Task автопродления и healthcheck в новом Coolify (этап 7, п.1 и п.5)
 - [ ] Понижение TTL и переключение трёх A-записей
 - [ ] Подтверждение каждого удаления на старом сервере после карантина
 
@@ -509,8 +647,14 @@ rsync -avz --ignore-existing \
 - [ ] Supabase на новом сервере с теми же ключами и той же версией постгреса
 - [ ] Репетиция переноса, числа сверены (516 товаров)
 - [ ] Боевой перенос: база + файлы Storage
-- [ ] Приложение задеплоено, переменные перенесены, `DATABASE_URL` не заведён
-- [ ] Scheduled task на автопродление пересоздан
+- [ ] Миграции 023 и 024 прогнаны, «Database schema» в `/goo-studio/settings` без пропусков
+- [ ] Приложение задеплоено, переменные перенесены по списку этапа 7 (включая
+      `ADMIN_USER_IDS`, `SUPER_ADMIN_USER_ID`), `NEXT_PUBLIC_*` доступны при сборке,
+      мёртвые (`DATABASE_URL`, `ANTHROPIC_API_KEY` и др.) не заведены
+- [ ] Healthcheck `/api/health` включён, деплой проходит его
+- [ ] Scheduled Task на `/api/billing/cron/renew` заведён, старый (Coolify на
+      старом сервере, Vercel) отключён; после первого прогона карточка «Renewal
+      cron» на `/goo-studio/subscriptions` зелёная
 - [ ] Memory limits выставлены
 - [ ] Проверено до переключения (curl --resolve / hosts)
 - [ ] Три A-записи переключены одновременно, оба сертификата выпущены

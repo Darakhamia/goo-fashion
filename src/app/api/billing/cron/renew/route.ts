@@ -18,7 +18,7 @@ import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
-/** The schedule is daily (see vercel.json), so a gap past this is a real miss. */
+/** The schedule is daily (Coolify Scheduled Task), so a gap past this is a real miss. */
 const CRON_GAP_ALERT_HOURS = 36;
 /** Do not let a public 401 turn into an alert flood. */
 const MISCONFIG_ALERT_COOLDOWN_MS = 12 * HOUR_MS;
