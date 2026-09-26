@@ -75,8 +75,43 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) return noDb();
   const { id } = await params;
+
+  // An outfit lists its pieces by id. Deleting a piece one of them uses would
+  // leave the outfit silently a garment short with its old total price, so a
+  // product that is in an outfit is refused, naming the outfits to edit first.
+  const { data: usedBy, error: usedError } = await supabase
+    .from("outfits")
+    .select("id, name")
+    // As a JSON string: supabase-js writes a JS array as a Postgres array
+    // literal, which a jsonb column never contains.
+    .contains("items", JSON.stringify([{ product_id: id }]));
+  if (usedError && !isMissingTable(usedError)) {
+    return NextResponse.json(
+      { error: `Could not check which outfits use this product: ${usedError.message}` },
+      { status: 500 }
+    );
+  }
+  const outfits = ((usedBy ?? []) as { id: string; name: string | null }[]).map((o) => ({
+    id: o.id,
+    name: o.name?.trim() || o.id,
+  }));
+  if (outfits.length) {
+    return NextResponse.json(
+      {
+        error: `Used in ${outfits.length} outfit${outfits.length === 1 ? "" : "s"}: ${outfits.map((o) => o.name).join(", ")}. Remove it from ${outfits.length === 1 ? "that outfit" : "those outfits"} first.`,
+        outfits,
+      },
+      { status: 409 }
+    );
+  }
+
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   revalidatePath("/");
   return NextResponse.json({ success: true });
+}
+
+/** An `outfits` table this database never created is "no outfits", not a failure. */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  return error.code === "42P01" || error.code === "PGRST205" || !!error.message?.includes("does not exist");
 }
