@@ -1,9 +1,9 @@
 {
   ".claude/settings.json": {
-    "mtime": 1789838437.4721022,
-    "seen": 1790439155.336805,
-    "ast_hash": "e1073342e958ac9f00716938c8f165e3",
-    "semantic_hash": "e1073342e958ac9f00716938c8f165e3"
+    "mtime": 1790439178.7773225,
+    "seen": 1790459478.37233,
+    "ast_hash": "a0edb7d80f8b8dd15a064eb42cddac85",
+    "semantic_hash": ""
   },
   ".claude/settings.local.json": {
     "mtime": 1789838437.4721022,
@@ -527,9 +527,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/activity/page.tsx": {
-    "mtime": 1790431133.1096058,
-    "seen": 1790439155.3370235,
-    "ast_hash": "8d368ad306071d007803877d7210c6b3",
+    "mtime": 1790459321.6608522,
+    "seen": 1790459478.377476,
+    "ast_hash": "44daed86e2bcb9bcd67fd55b57aae457",
     "semantic_hash": ""
   },
   "src/app/goo-studio/analytics/Charts.tsx": {
@@ -1109,9 +1109,9 @@
     "semantic_hash": "4879126c5570109bc39bd9238d2cffd5"
   },
   "src/lib/server/audit.ts": {
-    "mtime": 1790438357.5997627,
-    "seen": 1790439155.3372483,
-    "ast_hash": "b08d1a2e1e9a1e39d385211ccfd2c42a",
+    "mtime": 1790459287.9462097,
+    "seen": 1790459478.3843548,
+    "ast_hash": "af1b989e63fe20ae835f9fcba9a2c9cc",
     "semantic_hash": ""
   },
   "src/lib/server/embeddings.ts": {
@@ -1145,9 +1145,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/extract.ts": {
-    "mtime": 1790428220.750649,
-    "seen": 1790439155.3372757,
-    "ast_hash": "f12150d8947afd24929173991d4b8657",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.385738,
+    "ast_hash": "2019f17ea5d3bc9632582089b8930a4f",
     "semantic_hash": ""
   },
   "src/lib/server/parser/fetch.ts": {
@@ -1163,9 +1163,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/types.ts": {
-    "mtime": 1790430627.169104,
-    "seen": 1790439155.3372939,
-    "ast_hash": "ab2b745e7fc4143ca6ba5745e25b40fa",
+    "mtime": 1790459282.3345125,
+    "seen": 1790459478.3865511,
+    "ast_hash": "ce6ffc9e444b4050f74049da7849bf50",
     "semantic_hash": ""
   },
   "src/lib/server/product-fields.ts": {
@@ -1524,9 +1524,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1790416572.0279367,
-    "seen": 1790439155.3373814,
-    "ast_hash": "af139ac946c5803a3e87168a120c7f1b",
+    "mtime": 1790459332.410128,
+    "seen": 1790459478.3895893,
+    "ast_hash": "e1bc9286d7e9bb25e2641b671405ec4f",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1536,9 +1536,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1789838437.47348,
-    "seen": 1790439155.3373847,
-    "ast_hash": "475a4f8c5f0f674bf55ff2e8dbdb6029",
+    "mtime": 1790439238.692124,
+    "seen": 1790459478.3896413,
+    "ast_hash": "5d00df45f19dde015785e8d5f136cce5",
     "semantic_hash": ""
   },
   "PARSER.md": {
@@ -1668,9 +1668,9 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1790416572.0306056,
-    "seen": 1790439155.3368173,
-    "ast_hash": "09c5ef7b5c4407f1449447ce0928ddb3",
+    "mtime": 1790459282.3265126,
+    "seen": 1790459478.3724778,
+    "ast_hash": "68bb95d9a349058911fb99329be8be92",
     "semantic_hash": ""
   },
   "extension/bridge.js": {
@@ -1680,9 +1680,9 @@
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1790416572.0309527,
-    "seen": 1790439155.3368218,
-    "ast_hash": "f0dc260a0936237e3704124dcc9ac367",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.372518,
+    "ast_hash": "337a7141b00847571b8f21bae6062b5c",
     "semantic_hash": ""
   },
   "extension/popup.js": {
@@ -1692,9 +1692,9 @@
     "semantic_hash": ""
   },
   "extension/snapshot.js": {
-    "mtime": 1790416572.0309527,
-    "seen": 1790439155.3368258,
-    "ast_hash": "a1f7b2e94c4f7b20c574c22bd1b3b91e",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.3725553,
+    "ast_hash": "54197f7c5348923014e50b18eaf94298",
     "semantic_hash": ""
   },
   "scripts/migration-smoke.sh": {
@@ -1704,9 +1704,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/duplicates/route.ts": {
-    "mtime": 1790432951.4632146,
-    "seen": 1790439155.336854,
-    "ast_hash": "3818d46c847ccc11780e9e4b5a324692",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.373028,
+    "ast_hash": "1c406233fad68194af7b1035807f88d6",
     "semantic_hash": ""
   },
   "src/app/api/admin/export-images/route.ts": {
@@ -1740,9 +1740,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/collect/route.ts": {
-    "mtime": 1790430632.6611042,
-    "seen": 1790439155.336886,
-    "ast_hash": "3aee00c97d3e873dc7843f66d5b29e8b",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.3737822,
+    "ast_hash": "e7339036d0bcf1fee262872b3016e64e",
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/crawl/route.ts": {
@@ -1818,9 +1818,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/duplicates/page.tsx": {
-    "mtime": 1790433208.1866739,
-    "seen": 1790439155.337035,
-    "ast_hash": "b2ec058dcb1c61e6a0f69f0ee8721ba3",
+    "mtime": 1790459321.6550243,
+    "seen": 1790459478.3777654,
+    "ast_hash": "967c4070a4f780dc1949e814ee0e44df",
     "semantic_hash": ""
   },
   "src/app/goo-studio/import/page.tsx": {
@@ -2082,9 +2082,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/duplicates.ts": {
-    "mtime": 1790433208.1845908,
-    "seen": 1790439155.33726,
-    "ast_hash": "a97d8b3c2438e431787d8f6840b32806",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.3849375,
+    "ast_hash": "b0b649745be00ca7fe620b6d605c0b77",
     "semantic_hash": ""
   },
   "src/lib/server/field-suggestions.ts": {
@@ -2136,21 +2136,21 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/import-product.ts": {
-    "mtime": 1790438697.6533103,
-    "seen": 1790439155.337279,
-    "ast_hash": "205aef2cef4bef484eaf393ed5ee7d50",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.385931,
+    "ast_hash": "e846a14fa83f9175d9850b4d0a6cf0ad",
     "semantic_hash": ""
   },
   "src/lib/server/parser/parse-page.ts": {
-    "mtime": 1790427858.8439026,
-    "seen": 1790439155.3372812,
-    "ast_hash": "3773203e68fc949218154d81ec0cb2c5",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.3860333,
+    "ast_hash": "9f5896f597bf149b273159c628278595",
     "semantic_hash": ""
   },
   "src/lib/server/parser/piece-name.ts": {
-    "mtime": 1790433063.5635004,
-    "seen": 1790439155.3372827,
-    "ast_hash": "e4a3dea4c637b9bfd6a54a811193a64d",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.386038,
+    "ast_hash": "8582167a602b9f47674e7cc063ce6bca",
     "semantic_hash": ""
   },
   "src/lib/server/parser/plan-collection.ts": {
@@ -2172,9 +2172,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/shopify.ts": {
-    "mtime": 1789838437.6017735,
-    "seen": 1790439155.3372877,
-    "ast_hash": "0a0c253573d4a55276f13fd42570866f",
+    "mtime": 1790459282.3305125,
+    "seen": 1790459478.3862941,
+    "ast_hash": "87be623fc39b92cb596c8b8473c616e6",
     "semantic_hash": ""
   },
   "src/lib/server/parser/sitemap.ts": {
@@ -2202,9 +2202,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/variant-group.ts": {
-    "mtime": 1790416572.0559366,
-    "seen": 1790439155.3372948,
-    "ast_hash": "38d08e8cabc8c61e15e6ae873dc1ae02",
+    "mtime": 1790459282.3345125,
+    "seen": 1790459478.3865547,
+    "ast_hash": "55100b0cb391b022b501a844356c72d6",
     "semantic_hash": ""
   },
   "src/lib/server/parser/woocommerce.ts": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "src/lib/taxonomy/garments.ts": {
-    "mtime": 1790433029.8184705,
-    "seen": 1790439155.33732,
-    "ast_hash": "ccaed317326d73c7896cacfebb9e39cd",
+    "mtime": 1790459282.3345125,
+    "seen": 1790459478.3879611,
+    "ast_hash": "996ae4172e8583615fa7fbece55d444b",
     "semantic_hash": ""
   },
   "src/lib/taxonomy/gender.ts": {
@@ -2328,9 +2328,9 @@
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
-    "mtime": 1790438347.7494733,
-    "seen": 1790439155.337393,
-    "ast_hash": "296c27d6f5e8d3cd806902724f11c3e8",
+    "mtime": 1790439278.8488476,
+    "seen": 1790459478.3899698,
+    "ast_hash": "f3c320737e8fbc8f79909a7fe43cc5fd",
     "semantic_hash": ""
   },
   "docs/UX_REVIEW_2026-09.md": {
