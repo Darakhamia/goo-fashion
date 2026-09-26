@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type {
   ParserFetchSettings,
   ParserSiteConfig,
@@ -63,15 +64,25 @@ interface ParseResponse {
 
 type Tab = "collect" | "parse" | "recipes" | "fetch";
 
-// ── Tiny styled primitives ───────────────────────────────────────────────────
+// ── Tiny styled primitives (goo-studio recipes, DESIGN_SYSTEM.md §9) ─────────
 
-const inputCls =
-  "w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors rounded-lg";
-const labelCls = "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5";
+/** The admin field without its size and fill, so variants never fight over them. */
+const fieldBase =
+  "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
+const inputCls = `${fieldBase} text-sm bg-transparent`;
+/** Regexes, endpoint templates, keys. */
+const monoInputCls = `${fieldBase} font-mono text-[11px] bg-transparent`;
+const selectCls = `${fieldBase} text-sm bg-[var(--background)]`;
+const labelCls = "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1.5";
 const btnPrimary =
-  "px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
+  "px-4 py-2 text-xs tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
 const btnGhost =
-  "px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
+  "px-4 py-2 text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 rounded-lg";
+/** Status plaques: the admin's three semantic colours, always in this shape. */
+const errorBoxCls = "rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-[12px] text-red-500";
+const warnBoxCls = "rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500";
+/** Where the extension hands its pages to; install steps live there too. */
+const EXTENSION_PAGE = "/goo-studio/parser/collect";
 const Spinner = () => (
   <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
 );
@@ -144,7 +155,7 @@ export default function ParserPage() {
         )}
       </div>
 
-      {loadError && <p className="text-[12px] text-red-500 mb-4">{loadError}</p>}
+      {loadError && <div className={`${errorBoxCls} mb-4`}>{loadError}</div>}
 
       {tab === "collect" && (
         <CollectTab
@@ -155,11 +166,17 @@ export default function ParserPage() {
       {tab === "parse" && (
         <ParseTab config={config} initialUrl={handoff ?? ""} openPaste={!!handoff} />
       )}
-      {tab === "recipes" && config && (
-        <RecipesTab config={config} onSaved={(c) => setConfig((s) => (s ? { ...s, siteConfigs: c } : s))} />
+      {/* The two settings tabs stay mounted while hidden, so an unsaved draft
+          survives a look at another tab instead of vanishing with it. */}
+      {config && (
+        <div hidden={tab !== "recipes"}>
+          <RecipesTab config={config} onSaved={(c) => setConfig((s) => (s ? { ...s, siteConfigs: c } : s))} />
+        </div>
       )}
-      {tab === "fetch" && config && (
-        <FetchTab config={config} onSaved={(next) => setConfig(next)} />
+      {config && (
+        <div hidden={tab !== "fetch"}>
+          <FetchTab config={config} onSaved={(next) => setConfig(next)} />
+        </div>
       )}
     </div>
   );
@@ -368,19 +385,33 @@ function CollectTab({
           </div>
         </div>
 
+        <div className="rounded-lg border border-[var(--border)] px-4 py-3 flex items-center gap-3 flex-wrap">
+          <p className="flex-1 min-w-[220px] text-[12px] text-[var(--foreground)] leading-relaxed">
+            Store blocks our server? Collect it with the browser extension.
+            <span className="block text-[11px] text-[var(--foreground-muted)]">
+              It opens the store&apos;s pages in your own Chrome, which the store does not refuse, and imports them
+              here. Install steps are on its page.
+            </span>
+          </p>
+          <Link href={EXTENSION_PAGE} className={btnGhost}>Collect with the extension</Link>
+        </div>
+
         <p className="text-[10px] text-[var(--foreground-subtle)] leading-relaxed">
           Fetch mode <span className="text-[var(--foreground-muted)]">{config?.fetchSettings.provider ?? "direct"}</span>.
-          Luxury sites block plain server requests — if collection comes back empty, set a scraping provider and turn on
-          Render JS in the Fetch &amp; Anti-bot tab. Re-running the same URL updates existing products instead of duplicating them.
+          Luxury sites block plain server requests. Second option after the extension: set a scraping provider and turn
+          on Render JS in the Fetch &amp; Anti-bot tab. Re-running the same URL updates existing products instead of duplicating them.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
+        <div className={`${errorBoxCls} space-y-1`}>
           <p>{error}</p>
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
           {refused && (
-            <div className="pt-1.5">
+            <div className="pt-1.5 flex items-center gap-2 flex-wrap">
+              <Link href={EXTENSION_PAGE} className={btnGhost}>
+                Collect with the extension
+              </Link>
               <button onClick={() => onPastePage(refused)} className={btnGhost}>
                 Paste page instead
               </button>
@@ -389,7 +420,7 @@ function CollectTab({
         </div>
       )}
       {!error && hint && (
-        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-[12px] text-amber-500">{hint}</div>
+        <div className={warnBoxCls}>{hint}</div>
       )}
 
       {/* Progress */}
@@ -459,39 +490,47 @@ function CollectTab({
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
   const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "new", cls: "text-emerald-500 bg-emerald-500/10" },
-    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)]" },
-    skipped: { label: "skip", cls: "text-amber-500 bg-amber-500/10" },
-    failed: { label: "fail", cls: "text-red-400 bg-red-500/10" },
+    imported: { label: "new", cls: "text-emerald-500 bg-emerald-400/15 border-emerald-400/30" },
+    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
+    skipped: { label: "skip", cls: "text-amber-500 bg-amber-400/15 border-amber-400/30" },
+    failed: { label: "fail", cls: "text-red-500 bg-red-400/15 border-red-400/30" },
   };
   const { label, cls } = map[status];
   return (
-    <span className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded flex-shrink-0 w-10 text-center ${cls}`}>
+    <span className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}>
       {label}
     </span>
   );
 }
 
+/** The one switch on this screen, drawn as the admin's switch in Users. */
 function Toggle({
-  on, onChange, label, disabled,
+  on, onChange, label, ariaLabel, disabled,
 }: {
   on: boolean;
   onChange: (v: boolean) => void;
-  label: string;
+  /** Visible caption. Without one, `ariaLabel` names the switch. */
+  label?: string;
+  ariaLabel?: string;
   disabled?: boolean;
 }) {
+  const track = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label ? undefined : ariaLabel}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-[var(--foreground)]" : "bg-[var(--border)]"}`}
+    >
+      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[var(--background)] transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
+    </button>
+  );
+  if (!label) return track;
   return (
     <label className={`flex items-center gap-2.5 ${disabled ? "opacity-50" : "cursor-pointer"}`}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        disabled={disabled}
-        onClick={() => onChange(!on)}
-        className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${on ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
-      >
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
-      </button>
+      {track}
       <span className="text-[11px] text-[var(--foreground)] leading-tight">{label}</span>
     </label>
   );
@@ -522,6 +561,10 @@ function ParseTab({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [linkParsing, setLinkParsing] = useState(false);
   const [linkProgress, setLinkProgress] = useState({ done: 0, total: 0 });
+  /** How the last "Parse first N" went, so skipped links are counted, not lost. */
+  const [linkResult, setLinkResult] = useState<{ ok: number; failed: number; total: number } | null>(null);
+  /** One parse at a time: a second run would land on top of the first one's results. */
+  const busy = parsing || linkParsing;
 
   const provider = config?.fetchSettings.provider ?? "direct";
 
@@ -538,9 +581,10 @@ function ParseTab({
     new Set(list.map((p, i) => (p.valid ? i : -1)).filter((i) => i >= 0));
 
   async function runParse(pasted?: { url?: string; html: string }) {
+    if (busy) return;
     const target = (pasted?.url || url).trim();
     if (!target) return;
-    setParsing(true); setError(""); setHint(""); setDiag(null);
+    setParsing(true); setError(""); setHint(""); setDiag(null); setLinkResult(null);
     setProducts([]); setLinks([]); setSelected(new Set()); setIsListing(false);
     if (pasted?.url && pasted.url !== url) setUrl(pasted.url);
     try {
@@ -569,22 +613,36 @@ function ParseTab({
   }
 
   async function parseAllLinks() {
+    if (busy) return;
     const targets = links.slice(0, 24);
     if (!targets.length) return;
-    setLinkParsing(true); setLinkProgress({ done: 0, total: targets.length });
+    setLinkParsing(true); setLinkResult(null); setLinkProgress({ done: 0, total: targets.length });
     const collected: ParsedProduct[] = [];
+    let failed = 0;
     for (let i = 0; i < targets.length; i++) {
       try {
         const data = await callParse(targets[i]);
         if (data.ok && data.products?.length) collected.push(data.products[0]);
-      } catch { /* skip failed link */ }
+        else failed++;
+      } catch {
+        failed++;
+      }
       setLinkProgress({ done: i + 1, total: targets.length });
     }
+    setLinkParsing(false);
+    setLinkResult({ ok: collected.length, failed, total: targets.length });
+    // Nothing parsed: say so and keep the links, so the admin is not left
+    // looking at an empty screen with nothing to retry.
+    if (!collected.length) {
+      setError(`None of the ${targets.length} links could be parsed.`);
+      setHint("");
+      return;
+    }
+    setError(""); setHint("");
     setProducts(collected);
     setIsListing(true);
     setLinks([]);
     setSelected(selectValid(collected));
-    setLinkParsing(false);
   }
 
   const setProductAt = (i: number, patch: Partial<ParsedProduct>) =>
@@ -603,13 +661,13 @@ function ParseTab({
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runParse()}
+            onKeyDown={(e) => e.key === "Enter" && !busy && runParse()}
             placeholder="https://www.farfetch.com/shopping/men/..."
             spellCheck={false}
             className={inputCls}
           />
         </div>
-        <button onClick={() => runParse()} disabled={parsing || !url.trim()} className={btnPrimary}>
+        <button onClick={() => runParse()} disabled={busy || !url.trim()} className={btnPrimary}>
           {parsing && <Spinner />} {parsing ? "Fetching…" : "Parse"}
         </button>
       </div>
@@ -624,18 +682,37 @@ function ParseTab({
         open={pasteOpen}
         onToggle={() => setPasteOpen((v) => !v)}
         onParse={(pasted) => runParse(pasted)}
-        parsing={parsing}
+        parsing={busy}
         urlHint={url.trim()}
       />
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[12px] text-red-400 space-y-1">
+        <div className={`${errorBoxCls} space-y-1`}>
           <p>{error}</p>
           {hint && <p className="text-[var(--foreground-muted)] leading-relaxed">{hint}</p>}
+          {hint && (
+            <div className="pt-1.5">
+              <Link href={EXTENSION_PAGE} className={btnGhost}>
+                Collect with the extension
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
       {diag && <DiagnosticsBar diag={diag} />}
+
+      {linkResult && linkResult.ok > 0 && (
+        linkResult.failed > 0 ? (
+          <div className={warnBoxCls}>
+            Parsed {linkResult.ok} of {linkResult.total}, {linkResult.failed} failed.
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--foreground-muted)]">
+            Parsed {linkResult.ok} of {linkResult.total}.
+          </p>
+        )
+      )}
 
       {/* Listing page: product links to parse individually */}
       {links.length > 0 && (
@@ -754,7 +831,7 @@ function PastePagePanel({
               placeholder="Click the bookmarklet on the product page, then paste here"
               spellCheck={false}
               rows={4}
-              className={`${inputCls} font-mono text-[10px] resize-y`}
+              className={`${fieldBase} bg-transparent font-mono text-[10px] resize-y`}
             />
             <div className="flex items-center justify-between mt-2">
               <p className="text-[10px] text-[var(--foreground-subtle)]">
@@ -828,9 +905,9 @@ function SingleProductEditor({
       <div className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">Preview &amp; edit</p>
         {product.valid ? (
-          <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Ready</span>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 rounded-full">Ready</span>
         ) : (
-          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded" title={product.issues.join("; ")}>
+          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 rounded-full" title={product.issues.join("; ")}>
             {product.issues.join(" · ")}
           </span>
         )}
@@ -851,7 +928,7 @@ function SingleProductEditor({
                 <button
                   key={img}
                   onClick={() => set("imageUrl", img)}
-                  className={`w-8 h-10 rounded overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
+                  className={`w-8 h-10 rounded-lg overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img} alt="" className="w-full h-full object-cover" />
@@ -867,7 +944,7 @@ function SingleProductEditor({
           <Field label="Name">
             <input className={inputCls} value={product.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Brand">
               <input className={inputCls} value={product.brand} onChange={(e) => set("brand", e.target.value)} />
             </Field>
@@ -875,14 +952,14 @@ function SingleProductEditor({
               <input className={inputCls} value={product.material} onChange={(e) => set("material", e.target.value)} />
             </Field>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field label="Category">
-              <select className={inputCls} value={product.category} onChange={(e) => set("category", e.target.value as Category)}>
+              <select className={selectCls} value={product.category} onChange={(e) => set("category", e.target.value as Category)}>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Gender">
-              <select className={inputCls} value={product.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)}>
+              <select className={selectCls} value={product.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)}>
                 <option value="">—</option>
                 {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
@@ -891,7 +968,7 @@ function SingleProductEditor({
               <input className={inputCls} value={product.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} maxLength={3} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Price">
               <input type="number" className={inputCls} value={product.price || ""} onChange={(e) => set("price", Number(e.target.value) || 0)} />
             </Field>
@@ -899,7 +976,7 @@ function SingleProductEditor({
               <input type="number" className={inputCls} value={product.priceOriginal || ""} onChange={(e) => set("priceOriginal", Number(e.target.value) || 0)} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field label="Colors (comma-sep)">
               <input className={inputCls} value={product.colors.join(", ")} onChange={(e) => set("colors", splitList(e.target.value))} />
             </Field>
@@ -1010,13 +1087,13 @@ function ProductGrid({
                     ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
                     : <div className="w-full h-full grid place-items-center text-[10px] text-[var(--foreground-subtle)]">no image</div>}
                 </div>
-                <span className={`absolute top-2 left-2 w-4 h-4 rounded flex items-center justify-center border ${sel ? "bg-[var(--foreground)] border-[var(--foreground)]" : "bg-[var(--background)]/80 border-[var(--border-strong)]"}`}>
+                <span className={`absolute top-2 left-2 w-4 h-4 rounded-full flex items-center justify-center border ${sel ? "bg-[var(--foreground)] border-[var(--foreground)]" : "bg-[var(--bg-overlay-90)] border-[var(--border-strong)]"}`}>
                   {sel && (
                     <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3 5.5L6.5 2" stroke="var(--background)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   )}
                 </span>
                 {!p.valid && (
-                  <span className="absolute top-2 right-2 text-[8px] tracking-[0.1em] uppercase text-amber-500 bg-amber-500/15 px-1.5 py-0.5 rounded" title={p.issues.join("; ")}>
+                  <span className="absolute top-2 right-2 text-[9px] tracking-[0.1em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full" title={p.issues.join("; ")}>
                     {p.issues[0]}
                   </span>
                 )}
@@ -1035,14 +1112,14 @@ function ProductGrid({
                   <select
                     value={p.category}
                     onChange={(e) => setProductAt(i, { category: e.target.value as Category })}
-                    className="flex-1 bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded outline-none"
+                    className="flex-1 min-w-0 bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
                   >
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <select
                     value={p.gender ?? ""}
                     onChange={(e) => setProductAt(i, { gender: (e.target.value || undefined) as Gender | undefined })}
-                    className="bg-[var(--surface)] border border-[var(--border)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded outline-none"
+                    className="bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] text-[10px] text-[var(--foreground-muted)] px-1 py-1 rounded-lg outline-none"
                   >
                     <option value="">—</option>
                     {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -1094,7 +1171,7 @@ function LinksPanel({
 function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[10px] text-[var(--foreground-muted)]">
-      <span>HTTP <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-emerald-500" : "text-red-400"}`}>{diag.status || "—"}</span></span>
+      <span>HTTP <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-emerald-500" : "text-red-500"}`}>{diag.status || "—"}</span></span>
       <span>HTML <span className="font-mono text-[var(--foreground)]">{(diag.htmlLength / 1024).toFixed(0)}kb</span></span>
       <span>Via <span className="font-mono text-[var(--foreground)]">{diag.provider}</span></span>
       <span>Recipe <span className="font-mono text-[var(--foreground)]">{diag.matchedConfig?.name ?? "none"}</span></span>
@@ -1123,6 +1200,24 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function splitList(v: string): string[] {
   return v.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * JSON with object keys sorted, so a draft compares equal to what was saved
+ * whatever order its fields happened to be set in.
+ */
+function stableJson(v: unknown): string {
+  return JSON.stringify(v, (_key, val: unknown) =>
+    val && typeof val === "object" && !Array.isArray(val)
+      ? Object.fromEntries(
+          Object.entries(val as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+        )
+      : val,
+  );
+}
+
+function UnsavedNote() {
+  return <span className="text-[11px] text-amber-500">Unsaved changes</span>;
 }
 
 // ── Recipes tab ──────────────────────────────────────────────────────────────
@@ -1155,6 +1250,8 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
   };
 
   const remove = (id: string) => setItems((arr) => arr.filter((c) => c.id !== id));
+
+  const dirty = stableJson(items) !== stableJson(config.siteConfigs);
 
   async function save() {
     setSaving(true); setError(""); setSaved(false);
@@ -1191,13 +1288,11 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
           <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
             {/* Row header */}
             <div className="flex items-center gap-3 px-4 py-3">
-              <button
-                onClick={() => update(c.id, { enabled: !c.enabled })}
-                title={c.enabled ? "Enabled" : "Disabled"}
-                className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${c.enabled ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${c.enabled ? "left-[18px]" : "left-0.5"}`} />
-              </button>
+              <Toggle
+                on={c.enabled}
+                onChange={(v) => update(c.id, { enabled: v })}
+                ariaLabel={`Use the ${c.name || c.domain || "new"} recipe`}
+              />
               <input
                 value={c.name}
                 onChange={(e) => update(c.id, { name: e.target.value })}
@@ -1220,18 +1315,18 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
             {/* Expanded editor */}
             {expanded === c.id && (
               <div className="px-4 pb-4 pt-1 border-t border-[var(--border)] space-y-4">
-                <div className="grid grid-cols-3 gap-3 pt-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
                   <Field label="Brand override">
                     <input className={inputCls} value={c.brandOverride ?? ""} onChange={(e) => update(c.id, { brandOverride: e.target.value || undefined })} />
                   </Field>
                   <Field label="Category override">
-                    <select className={inputCls} value={c.categoryOverride ?? ""} onChange={(e) => update(c.id, { categoryOverride: (e.target.value || undefined) as Category | undefined })}>
+                    <select className={selectCls} value={c.categoryOverride ?? ""} onChange={(e) => update(c.id, { categoryOverride: (e.target.value || undefined) as Category | undefined })}>
                       <option value="">—</option>
                       {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                   </Field>
                   <Field label="Gender override">
-                    <select className={inputCls} value={c.genderOverride ?? ""} onChange={(e) => update(c.id, { genderOverride: (e.target.value || undefined) as Gender | undefined })}>
+                    <select className={selectCls} value={c.genderOverride ?? ""} onChange={(e) => update(c.id, { genderOverride: (e.target.value || undefined) as Gender | undefined })}>
                       <option value="">—</option>
                       {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
                     </select>
@@ -1243,7 +1338,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
                 </Field>
 
                 <div>
-                  <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+                  <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">
                     Field regex overrides (1st capture group → value)
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1251,7 +1346,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
                       <div key={field} className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-[var(--foreground-muted)] w-16 flex-shrink-0">{field}</span>
                         <input
-                          className={`${inputCls} font-mono text-[11px]`}
+                          className={monoInputCls}
                           placeholder="regex…"
                           value={c.rules?.[field]?.regex ?? ""}
                           onChange={(e) => updateRule(c.id, field, e.target.value)}
@@ -1270,6 +1365,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
         <button onClick={save} disabled={saving} className={btnPrimary}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save recipes"}
         </button>
+        {dirty && !saving && <UnsavedNote />}
         {saved && <span className="text-[12px] text-emerald-500">Saved</span>}
         {error && <span className="text-[12px] text-red-500">{error}</span>}
       </div>
@@ -1293,6 +1389,11 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
 
   const keyFromEnv = config.key.source === "env";
 
+  const dirty =
+    stableJson(settings) !== stableJson(config.fetchSettings) ||
+    stableJson(ai) !== stableJson(config.aiSettings) ||
+    (!keyFromEnv && !!keyInput.trim());
+
   async function save() {
     setSaving(true); setError(""); setSaved(false);
     try {
@@ -1306,6 +1407,10 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Save failed"); return; }
       onSaved(data);
+      // The server clamps and trims what it stores; show that, so the draft
+      // matches the saved state instead of reading as unsaved.
+      setSettings(data.fetchSettings);
+      setAi(data.aiSettings);
       setKeyInput("");
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -1328,6 +1433,8 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed"); return; }
       onSaved(data);
+    } catch {
+      setError("Network error");
     } finally {
       setSaving(false);
     }
@@ -1335,13 +1442,18 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
 
   const providerMeta = PROVIDERS.find((p) => p.value === settings.provider)!;
   const needsKey = settings.provider !== "direct";
+  // Only direct mode (as the User-Agent) and a custom endpoint (`{impersonate}`)
+  // use the profile; only providers render JS. A setting shown where it does
+  // nothing is a setting someone will spend a morning adjusting.
+  const usesImpersonate = settings.provider === "direct" || settings.provider === "custom";
+  const usesRenderJs = settings.provider !== "direct";
 
   return (
     <div className="max-w-2xl space-y-5">
       {/* Provider */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-5 space-y-4">
         <Field label="Fetch provider">
-          <select className={inputCls} value={settings.provider} onChange={(e) => set("provider", e.target.value as FetchProvider)}>
+          <select className={selectCls} value={settings.provider} onChange={(e) => set("provider", e.target.value as FetchProvider)}>
             {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </Field>
@@ -1350,7 +1462,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
         {settings.provider === "custom" && (
           <Field label="Custom endpoint template">
             <input
-              className={`${inputCls} font-mono text-[11px]`}
+              className={monoInputCls}
               placeholder="https://my-scraper.fly.dev/fetch?token={key}&url={url}&render={render}&impersonate={impersonate}"
               value={settings.endpoint}
               onChange={(e) => set("endpoint", e.target.value)}
@@ -1358,27 +1470,26 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
           </Field>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Impersonate">
-            <select className={inputCls} value={settings.impersonate} onChange={(e) => set("impersonate", e.target.value)}>
-              {IMPERSONATE.map((i) => <option key={i} value={i}>{i}</option>)}
-            </select>
-          </Field>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {usesImpersonate && (
+            <Field label="Impersonate">
+              <select className={selectCls} value={settings.impersonate} onChange={(e) => set("impersonate", e.target.value)}>
+                {IMPERSONATE.map((i) => <option key={i} value={i}>{i}</option>)}
+              </select>
+            </Field>
+          )}
           <Field label="Timeout (ms)">
             <input type="number" className={inputCls} value={settings.timeoutMs} onChange={(e) => set("timeoutMs", Number(e.target.value) || 20000)} />
           </Field>
         </div>
 
-        <label className="flex items-center gap-2.5 cursor-pointer">
-          <button
-            type="button"
-            onClick={() => set("renderJs", !settings.renderJs)}
-            className={`w-9 h-5 rounded-full relative transition-colors flex-shrink-0 ${settings.renderJs ? "bg-emerald-500" : "bg-[var(--border-strong)]"}`}
-          >
-            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-[left] ${settings.renderJs ? "left-[18px]" : "left-0.5"}`} />
-          </button>
-          <span className="text-[12px] text-[var(--foreground)]">Render JS (headless browser — slower, needed for SPA stores)</span>
-        </label>
+        {usesRenderJs && (
+          <Toggle
+            on={settings.renderJs}
+            onChange={(v) => set("renderJs", v)}
+            label="Render JS (headless browser — slower, needed for SPA stores)"
+          />
+        )}
       </div>
 
       {/* AI extraction + image storage */}
@@ -1401,7 +1512,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
 
         {ai.enabled && (
           <Field label="When to call AI">
-            <select className={inputCls} value={ai.mode} onChange={(e) => setAi((s) => ({ ...s, mode: e.target.value as ParserAiSettings["mode"] }))}>
+            <select className={selectCls} value={ai.mode} onChange={(e) => setAi((s) => ({ ...s, mode: e.target.value as ParserAiSettings["mode"] }))}>
               <option value="auto">Auto — only when name, price or images are missing (cheaper)</option>
               <option value="always">Always — on every page (slower, costs more)</option>
             </select>
@@ -1441,7 +1552,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
               <div className="relative">
                 <input
                   type={showKey ? "text" : "password"}
-                  className={`${inputCls} pr-9 font-mono`}
+                  className={`${monoInputCls} pr-9`}
                   placeholder={config.key.configured ? "Enter a new key to replace" : "Paste API key"}
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value)}
@@ -1470,6 +1581,7 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
         <button onClick={save} disabled={saving} className={btnPrimary}>
           {saving && <Spinner />} {saving ? "Saving…" : "Save settings"}
         </button>
+        {dirty && !saving && <UnsavedNote />}
         {saved && <span className="text-[12px] text-emerald-500">Saved</span>}
         {error && <span className="text-[12px] text-red-500">{error}</span>}
       </div>

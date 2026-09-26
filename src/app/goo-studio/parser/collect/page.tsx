@@ -48,7 +48,7 @@ interface ExtMessage {
 // ── goo-studio recipes (DESIGN_SYSTEM.md §9) ─────────────────────────────────
 
 const labelCls =
-  "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1.5";
+  "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1.5";
 const btnGhost =
   "px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
 const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--background)]";
@@ -103,6 +103,25 @@ export default function CollectPage() {
     window.postMessage({ source: FROM_PAGE, type }, window.location.origin);
   }, []);
 
+  /**
+   * Forget the previous run: its Stop, its counters and the store's titles.
+   *
+   * Called by Clear and by every `hello` — the worker sends one at the start of
+   * each run, so a Stop pressed on the last run cannot refuse the next one. Not
+   * on `plan`: that arrives on every round of the same run.
+   */
+  const reset = useCallback(() => {
+    stoppedRef.current = false;
+    titlesRef.current = [];
+    setResults([]);
+    setPlanned(0);
+    setDelayMs(0);
+    setStore("");
+    setNotice("");
+    setRobots(null);
+    setPhase("idle");
+  }, []);
+
   const callApi = useCallback(async (payload: Record<string, unknown>) => {
     const res = await fetch("/api/admin/parser/collect", {
       method: "POST",
@@ -130,6 +149,7 @@ export default function CollectPage() {
 
       switch (msg.type) {
         case "hello": {
+          reset();
           setConnected(true);
           reply(msg.id, true, { ready: true });
           return;
@@ -211,22 +231,12 @@ export default function CollectPage() {
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [callApi, reply]);
+  }, [callApi, reply, reset]);
 
   function stop() {
     stoppedRef.current = true;
     setPhase("stopped");
     command("stop");
-  }
-
-  function reset() {
-    stoppedRef.current = false;
-    titlesRef.current = [];
-    setResults([]);
-    setPlanned(0);
-    setNotice("");
-    setRobots(null);
-    setPhase("idle");
   }
 
   const done = results.length;
@@ -238,7 +248,7 @@ export default function CollectPage() {
   const pct = planned ? Math.min(100, Math.round((done / planned) * 100)) : 0;
 
   return (
-    <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-8 space-y-5">
+    <div className="max-w-5xl space-y-5">
       <header>
         <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
           Collect with the browser extension
@@ -464,15 +474,15 @@ function detailLine(r: CrawlItemResult): string {
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
   const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "new", cls: "text-emerald-500 bg-emerald-500/10" },
-    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)]" },
-    skipped: { label: "skip", cls: "text-amber-500 bg-amber-500/10" },
-    failed: { label: "fail", cls: "text-red-400 bg-red-500/10" },
+    imported: { label: "new", cls: "text-emerald-500 bg-emerald-400/15 border-emerald-400/30" },
+    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
+    skipped: { label: "skip", cls: "text-amber-500 bg-amber-400/15 border-amber-400/30" },
+    failed: { label: "fail", cls: "text-red-500 bg-red-400/15 border-red-400/30" },
   };
   const { label, cls } = map[status];
   return (
     <span
-      className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded flex-shrink-0 w-10 text-center ${cls}`}
+      className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}
     >
       {label}
     </span>

@@ -17,7 +17,7 @@ import { extractProduct, partitionProducts, extractProductLinks } from "./extrac
 import { normalizeExtract } from "./normalize";
 import { fetchStorefrontProduct } from "./storefront";
 import { aiExtract, mergeAiIntoRaw, shouldUseAi } from "./ai-extract";
-import { matchSiteConfig, effectiveFetchSettings } from "./configs";
+import { matchSiteConfig } from "./configs";
 import type {
   PageEvidence,
   ParsedProduct,
@@ -98,27 +98,39 @@ function resolveUrl(href: string, base: string): string {
 }
 
 /**
+ * The free way to a whole catalogue from a store that refuses our server: the
+ * collect extension opens its pages in the admin's own Chrome, which already
+ * passes the check, and imports them through the collect screen. Named before
+ * any paid provider wherever a refusal is explained.
+ */
+export const EXTENSION_ADVICE =
+  "The whole catalogue can come in through the browser extension: it opens the store's pages in your own Chrome, which the store does not refuse, and imports them here (install steps: /goo-studio/parser/collect).";
+
+/**
  * Actionable guidance when the upstream blocks us.
  *
- * The free answer comes first, because for a single product it is also the
- * better one: the admin's own browser already passed the check this fetch
- * failed, and what it has on screen is the rendered DOM — a gallery that
- * lazy-loads on scroll arrives whole. A provider is what a *catalogue* needs.
+ * The free answers come first, because they are also the better ones: the
+ * admin's own browser already passed the check this fetch failed, and what it
+ * has on screen is the rendered DOM — a gallery that lazy-loads on scroll
+ * arrives whole. One page goes through the paste panel, a catalogue through the
+ * extension; a paid provider is the second option for the catalogue.
  */
 export function blockHint(status: number, provider: string): string | undefined {
   if (status === 403 || status === 401 || status === 429 || status === 503) {
     const paste =
       'This page needs no provider: open it in your own browser and use the "Paste page" panel below — click the "Goo: copy page" bookmarklet on the product page and paste it here.';
     return provider === "direct"
-      ? `The site blocked a direct fetch (anti-bot). ${paste} To collect a whole catalogue from this store instead, switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS.`
-      : `The provider returned a block. ${paste} Otherwise try enabling Render JS, or check the provider's credit/quota and that the API key is valid.`;
+      ? `The site blocked a direct fetch (anti-bot). ${paste} ${EXTENSION_ADVICE} Second option: switch the provider to ScrapingBee/ScraperAPI/ZenRows or your own service in the Fetch & Anti-bot tab, and enable Render JS.`
+      : `The provider returned a block. ${paste} ${EXTENSION_ADVICE} Second option: try enabling Render JS, or check the provider's credit/quota and that the API key is valid.`;
   }
   return undefined;
 }
 
 export async function parsePage(url: string, opts: ParsePageOptions): Promise<ParsePageResult> {
   const matched = matchSiteConfig(url, opts.siteConfigs);
-  const settings = effectiveFetchSettings(opts.fetchSettings, matched);
+  // Recipes carry extraction overrides only; every site is fetched with the
+  // global settings from the Fetch & Anti-bot tab.
+  const settings = opts.fetchSettings;
 
   // Shopify, WooCommerce and Squarespace all answer a public JSON address for
   // the same product, and that answer is better than the page in both
