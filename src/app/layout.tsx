@@ -14,8 +14,6 @@ import PostHogTracker from "@/components/analytics/PostHogTracker";
 import CookieConsentBanner from "@/components/consent/CookieConsentBanner";
 import BugReportButton from "@/components/internal/BugReportButton";
 import { Suspense } from "react";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const interTight = Inter_Tight({
   subsets: ["latin"],
@@ -95,8 +93,6 @@ export default function RootLayout({
                     <Suspense fallback={null}>
                       <PostHogTracker />
                     </Suspense>
-                    <Analytics />
-                    <SpeedInsights />
                     <BugReportButton />
                     <CookieConsentBanner />
                   </CurrencyProvider>

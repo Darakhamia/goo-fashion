@@ -1,23 +1,9 @@
-@import "tailwindcss";
+/* Scan only src/ for class names (the path is relative to this file). The
+   default scans the whole repo, so class-like strings from docs, probes and
+   datasets ended up in the production CSS. */
+@import "tailwindcss" source("../");
 
-/* Semantic tokens for shadcn-compatible components — map to project CSS vars */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--border-strong);
-  --color-primary: var(--foreground);
-  --color-primary-foreground: var(--background);
-  --color-secondary: var(--surface);
-  --color-secondary-foreground: var(--foreground);
-  --color-muted: var(--surface);
-  --color-muted-foreground: var(--foreground-muted);
-  --color-accent: var(--surface);
-  --color-accent-foreground: var(--foreground);
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-
   /* Кривые доступны и как Tailwind-утилиты: ease-out, ease-in-out, ease-drawer */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -335,17 +321,6 @@ summary:not(.no-press):not([class*="active:scale"]):active {
   }
 }
 
-/* Marquee animation */
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-@keyframes marquee-vertical {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
-}
-
 /* Slide in from right (filter drawer) */
 @keyframes slideInRight {
   from {
@@ -395,28 +370,6 @@ summary:not(.no-press):not([class*="active:scale"]):active {
 @keyframes overlayIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-/* Product card slideshow — slide right→left */
-@keyframes cardSlideInFromRight {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
-}
-
-@keyframes cardSlideOutToLeft {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-100%); }
-}
-
-/* Product card slideshow — slide left→right (return to first image) */
-@keyframes cardSlideInFromLeft {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
-}
-
-@keyframes cardSlideOutToRight {
-  from { transform: translateX(0); }
-  to   { transform: translateX(100%); }
 }
 
 @keyframes shimmer-sweep {

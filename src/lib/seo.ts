@@ -273,7 +273,9 @@ export function organizationJsonLd(): Record<string, unknown> {
     "@type": "Organization",
     name: "GOO",
     url: SITE_URL,
-    logo: absoluteUrl("/logo.png"),
+    // app/icon.png: the real 512×512 brand mark (the site icon), not a
+    // system-font render. Google wants a real image of at least 112×112.
+    logo: absoluteUrl("/icon.png"),
     description: "AI-powered fashion stylist and aggregator — curated outfits and premium fashion from leading retailers.",
   };
 }
@@ -317,7 +319,7 @@ export function blogPostingJsonLd(post: {
     publisher: {
       "@type": "Organization",
       name: "GOO",
-      logo: { "@type": "ImageObject", url: absoluteUrl("/favicon.ico") },
+      logo: { "@type": "ImageObject", url: absoluteUrl("/icon.png") },
     },
     ...(post.category ? { articleSection: post.category } : {}),
     mainEntityOfPage: { "@type": "WebPage", "@id": absoluteUrl(`/blog/${post.slug}`) },

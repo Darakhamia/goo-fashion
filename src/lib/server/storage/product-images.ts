@@ -7,8 +7,8 @@
  * browser-like headers (which also defeats hotlink protection) and re-upload it
  * to the public `product-images` bucket, then swap the URLs on the product.
  *
- * The download/upload primitives here are the single source of truth — the
- * background-removal tool (`/api/admin/image-tools`) reuses them too.
+ * The download/upload primitives here are the single source of truth for
+ * mirroring product photos into Storage.
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
@@ -18,9 +18,13 @@ export const PRODUCT_IMAGES_BUCKET = "product-images";
 /** Hard cap on a single downloaded image (matches the bucket's file-size limit). */
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
-/** Create the public bucket once; ignore "already exists". */
+/**
+ * Create the public bucket once per server process; ignore "already exists".
+ * Remembered so an import doesn't send a createBucket call before every photo.
+ */
+let bucketReady = false;
 export async function ensureProductImagesBucket(): Promise<void> {
-  if (!supabase) return;
+  if (bucketReady || !supabase) return;
   const { error } = await supabase.storage.createBucket(PRODUCT_IMAGES_BUCKET, {
     public: true,
     fileSizeLimit: MAX_IMAGE_BYTES,
@@ -28,6 +32,7 @@ export async function ensureProductImagesBucket(): Promise<void> {
   if (error && !error.message.includes("already exists")) {
     throw new Error(`Bucket error: ${error.message}`);
   }
+  bucketReady = true;
 }
 
 /** Upload a buffer and return its public URL. */
@@ -58,9 +63,9 @@ function extFor(contentType: string): string {
 }
 
 /**
- * Download an image with browser-like headers and a per-site Referer — the same
- * trick the image-tools route uses to get past CDN hotlink protection. Rejects
- * non-image responses and anything over the size cap.
+ * Download an image with browser-like headers and a per-site Referer, which gets
+ * past CDN hotlink protection. Rejects non-image responses and anything over the
+ * size cap.
  */
 export async function fetchImageBuffer(
   url: string,
