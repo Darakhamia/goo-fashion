@@ -17,17 +17,28 @@ interface Props {
   searchParams: Promise<{ d?: string | string[] }>;
 }
 
+interface ResolvedLook {
+  look: SharedLook;
+  /**
+   * True when the page was built from the ?d= payload rather than a database
+   * row. That payload is unsigned — anyone can write one — so such a page is
+   * kept out of search results.
+   */
+  fromLink: boolean;
+}
+
 // Dedupe the lookup between generateMetadata and the page render in one
 // request. Share links may carry the look in the URL itself (?d=...) as a
 // fallback for when the snapshot never reached the database — the database
 // row wins when both exist.
-const loadLook = cache(async (id: string, d: string | null): Promise<SharedLook | null> => {
+const loadLook = cache(async (id: string, d: string | null): Promise<ResolvedLook | null> => {
   const fromDb = await getUserLookById(id);
-  if (fromDb) return fromDb;
-  return d ? sharedLookFromShareData(id, d) : null;
+  if (fromDb) return { look: fromDb, fromLink: false };
+  const fromLink = d ? await sharedLookFromShareData(id, d) : null;
+  return fromLink ? { look: fromLink, fromLink: true } : null;
 });
 
-async function resolveLook({ params, searchParams }: Props): Promise<SharedLook | null> {
+async function resolveLook({ params, searchParams }: Props): Promise<ResolvedLook | null> {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const d = typeof sp.d === "string" ? sp.d : null;
   return loadLook(id, d);
@@ -51,8 +62,9 @@ function sortedPieces(look: SharedLook) {
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { id } = await props.params;
-  const look = await resolveLook(props);
-  if (!look) return {};
+  const resolved = await resolveLook(props);
+  if (!resolved) return {};
+  const { look, fromLink } = resolved;
 
   const title = `${lookHeading(look)} · GOO`;
   const description =
@@ -62,7 +74,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: `${SITE_URL}/look/${id}` },
+    // A link-built page has no row behind /look/{id}, so it names no canonical
+    // and asks not to be indexed. The explicit null keeps it from inheriting
+    // the root layout's canonical ("/").
+    ...(fromLink
+      ? { robots: { index: false, follow: false }, alternates: { canonical: null } }
+      : { alternates: { canonical: `${SITE_URL}/look/${id}` } }),
     openGraph: {
       title,
       description,
@@ -74,9 +91,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default async function SharedLookPage(props: Props) {
-  const look = await resolveLook(props);
+  const resolved = await resolveLook(props);
 
-  if (!look) notFound();
+  if (!resolved) notFound();
+  const { look } = resolved;
 
   const heading = lookHeading(look);
   const pieces = sortedPieces(look);

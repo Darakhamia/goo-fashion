@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Image from "@/components/ui/Image";
 import OutfitCard from "@/components/outfit/OutfitCard";
@@ -19,9 +20,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// generateMetadata and the page both need the outfit; one request reads it once.
+const loadOutfit = cache((id: string) => getOutfitById(id));
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const outfit = await getOutfitById(id);
+  const outfit = await loadOutfit(id);
   if (!outfit) return {};
 
   // Derive a unique title/description from the outfit's own data so the
@@ -44,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OutfitDetailPage({ params }: Props) {
   const { id } = await params;
-  const [outfit, allOutfits] = await Promise.all([getOutfitById(id), getAllOutfits()]);
+  const [outfit, allOutfits] = await Promise.all([loadOutfit(id), getAllOutfits()]);
 
   if (!outfit) notFound();
 
