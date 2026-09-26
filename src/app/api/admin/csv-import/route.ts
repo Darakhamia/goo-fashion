@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { logAdminAction } from "@/lib/server/audit";
+import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
 import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
 import {
@@ -114,9 +115,9 @@ function storesOf(rows: CSVMappedRow[], rules: Map<string, RetailerRule>): Produ
 }
 
 type Outcome =
-  | { kind: "created" }
-  | { kind: "updated" }
-  | { kind: "merged" }
+  | { kind: "created"; dropped?: string[] }
+  | { kind: "updated"; dropped?: string[] }
+  | { kind: "merged"; dropped?: string[] }
   | { kind: "skipped" }
   | { kind: "failed"; error: string };
 
@@ -172,8 +173,9 @@ async function importGroup(
   );
 
   if (!result.ok) return { kind: "failed", error: result.error ?? "Import failed" };
-  if (result.mergedInto) return { kind: "merged" };
-  return { kind: result.updated ? "updated" : "created" };
+  const dropped = result.droppedColumns;
+  if (result.mergedInto) return { kind: "merged", dropped };
+  return { kind: result.updated ? "updated" : "created", dropped };
 }
 
 // ── PUT /api/admin/csv-import — import one batch of grouped products ──────────
@@ -216,6 +218,7 @@ export async function PUT(req: Request) {
   let merged = 0;
   let skipped = 0;
   const errors: { name: string; error: string }[] = [];
+  const dropped = new Set<string>();
 
   // One at a time: a colour imported first is found by the next one's
   // `siblingUrls`, which is how the swatches get grouped.
@@ -231,9 +234,27 @@ export async function PUT(req: Request) {
     else if (outcome.kind === "merged") merged++;
     else if (outcome.kind === "skipped") skipped++;
     else errors.push({ name: String(group?.name ?? "") || "Unnamed product", error: outcome.error });
+    if ("dropped" in outcome) for (const column of outcome.dropped ?? []) dropped.add(column);
   }
 
-  if (created || updated || merged) revalidatePath("/");
+  if (created || updated || merged) {
+    revalidatePath("/");
+    // One entry per batch (up to MAX_IMPORT_GROUPS products), not per product.
+    void logAdminAction({
+      admin_id: admin.userId,
+      action: "import.csv",
+      target_type: "product",
+      metadata: { created, updated, merged, skipped, errors: errors.length },
+    });
+  }
 
-  return NextResponse.json({ created, updated, merged, skipped, errors });
+  return NextResponse.json({
+    created,
+    updated,
+    merged,
+    skipped,
+    errors,
+    // Saved, but without columns the database does not have yet.
+    ...(dropped.size && { warning: droppedColumnsWarning([...dropped]) }),
+  });
 }

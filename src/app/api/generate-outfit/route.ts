@@ -4,7 +4,7 @@ import { requirePlan } from "@/lib/server/require-plan";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 import { getPrompt } from "@/lib/server/get-prompt";
-import { isBlockedDirectHost, validateTargetUrl } from "@/lib/server/parser/fetch";
+import { validateTargetUrl } from "@/lib/server/parser/fetch";
 import {
   DEFAULT_IMAGE_FIDELITY,
   DEFAULT_IMAGE_MANNEQUIN,
@@ -74,15 +74,7 @@ function isOwnStoragePublicUrl(url: string): boolean {
  */
 function isFetchableUrl(url: string): boolean {
   if (isOwnStoragePublicUrl(url)) return true;
-  const valid = validateTargetUrl(url, "direct");
-  if ("error" in valid) return false;
-  // That check reads the hostname as written, so two spellings of an internal
-  // address get past it: an IPv6 literal ("[::1]", "[::ffff:169.254.169.254]")
-  // and a trailing dot ("localhost.", "metadata.google.internal."). Product
-  // photos are served under neither.
-  const host = valid.url.hostname;
-  if (host.startsWith("[")) return false;
-  return !isBlockedDirectHost(host.replace(/\.+$/, ""));
+  return !("error" in validateTargetUrl(url, "direct"));
 }
 
 /**

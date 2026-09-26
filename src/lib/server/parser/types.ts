@@ -80,8 +80,6 @@ export interface ParserSiteConfig {
   genderOverride?: Gender;
   /** Per-field regex overrides, applied with highest precedence. */
   rules?: Partial<Record<ParserRuleField, FieldRule>>;
-  /** Optional per-site fetch override (e.g. this site needs JS rendering). */
-  fetch?: Partial<ParserFetchSettings>;
   notes?: string;
 }
 
@@ -324,6 +322,8 @@ export interface CrawlItemResult {
   mergedBy?: "code" | "name";
   /** What that merge filled in. */
   mergedFields?: string[];
+  /** Set when the product was saved without columns the database lacks (a migration not run). */
+  warning?: string;
 }
 
 export const DEFAULT_FETCH_SETTINGS: ParserFetchSettings = {

@@ -31,7 +31,7 @@ import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
-import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { COLOUR_ORIGINS, type ColourOrigin } from "@/lib/server/parser/colour-choice";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
@@ -330,6 +330,7 @@ export async function POST(req: Request) {
             merged: !!imported.mergedInto,
             mergedBy: imported.mergedBy,
             mergedFields: imported.mergedFields,
+            ...(imported.droppedColumns?.length && { warning: droppedColumnsWarning(imported.droppedColumns) }),
           }
         : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
     }

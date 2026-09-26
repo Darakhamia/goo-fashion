@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isAlreadyMirrored, mirrorImageUrl } from "@/lib/server/storage/product-images";
+import { validateTargetUrl } from "@/lib/server/parser/fetch";
 
 /**
  * POST /api/admin/upload-image { url } → { url, mirrored }
@@ -41,6 +42,14 @@ export async function POST(req: Request) {
 
   if (isAlreadyMirrored(url)) {
     return NextResponse.json({ url, mirrored: false });
+  }
+
+  // The server downloads this address, so it must not be one of our own
+  // network's: loopback, private, link-local or cloud metadata. Checked after
+  // the storage test above, since local Supabase lives on localhost.
+  const target = validateTargetUrl(url, "direct");
+  if ("error" in target) {
+    return NextResponse.json({ error: target.error }, { status: 400 });
   }
 
   try {

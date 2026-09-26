@@ -412,14 +412,25 @@ async function keepOtherStores(
   sourceUrl: string | null,
 ): Promise<Record<string, unknown>> {
   if (!ours.length) return dbRow;
-  const isOurs = (r: Product["retailers"][number]) =>
-    ours.some((o) => r.url === o.url || r.name?.toLowerCase() === o.name.toLowerCase());
-  const others = existing.filter((r) => r?.url && r.url !== sourceUrl && !isOurs(r));
+  const oursIndex = (r: Product["retailers"][number]) =>
+    ours.findIndex((o) => r.url === o.url || r.name?.toLowerCase() === o.name.toLowerCase());
+  const others = existing.filter((r) => r?.url && r.url !== sourceUrl && oursIndex(r) < 0);
   if (!others.length) return dbRow;
 
+  // One place per store of ours, the first it held. The old CSV import wrote an
+  // entry per size link, and `withRetailer` replaces only the first of them, so
+  // the rest would have stayed on as copies of the same shop.
+  const seen = new Set<number>();
+  const kept = existing.filter((r) => {
+    const i = r ? oursIndex(r) : -1;
+    if (i < 0) return true;
+    if (seen.has(i)) return false;
+    seen.add(i);
+    return true;
+  });
   const row: Record<string, unknown> = {
     ...dbRow,
-    retailers: ours.reduce((list, entry) => withRetailer(list, entry), existing),
+    retailers: ours.reduce((list, entry) => withRetailer(list, entry), kept),
   };
   if (row.currency !== "USD") return row;
 
@@ -487,6 +498,48 @@ export interface ImportResult {
   mergedBy?: "code" | "name";
   /** What the merge filled in on that product. */
   mergedFields?: string[];
+  /**
+   * Columns the row went in without, because the database does not have them
+   * yet (a migration not run). The product is saved; these fields are not.
+   */
+  droppedColumns?: string[];
+}
+
+/** The migration that adds each optional product column, for the warning below. */
+const COLUMN_MIGRATION: Record<string, string> = {
+  subcategory: "010_product_subcategory.sql",
+  bg_color: "015_product_bg_color.sql",
+  price_min_usd: "019_product_price_usd.sql",
+  price_max_usd: "019_product_price_usd.sql",
+  source_price: "019_product_source_price.sql",
+  source_currency: "019_product_source_price.sql",
+  fx_rate: "019_product_source_price.sql",
+  fx_date: "019_product_source_price.sql",
+  gtin: "020_product_codes.sql",
+  mpn: "020_product_codes.sql",
+  sku: "020_product_codes.sql",
+  color_group_ids: "021_color_groups.sql",
+  crop_data: "023_product_crop_data.sql",
+};
+
+/**
+ * What an import says when the database is a migration behind: which columns
+ * were not stored, and which migration adds them. The write itself succeeded,
+ * so this is a warning to show the admin, not an error.
+ */
+export function droppedColumnsWarning(dropped: readonly string[]): string {
+  const columns = [...new Set(dropped)];
+  const files = [...new Set(columns.map((c) => COLUMN_MIGRATION[c]).filter(Boolean))];
+  // color_images and the variant columns predate supabase/migrations: their
+  // definitions live only in supabase-schema.sql.
+  const unlisted = columns.filter((c) => !COLUMN_MIGRATION[c]);
+  const many = columns.length > 1;
+  const steps = [
+    ...(files.length ? [`run ${files.length > 1 ? "migrations" : "migration"} ${files.join(", ")} from supabase/migrations`] : []),
+    ...(unlisted.length ? [`add ${unlisted.join(", ")} as in supabase-schema.sql`] : []),
+  ].join(", and ");
+  const run = `${steps.charAt(0).toUpperCase()}${steps.slice(1)}.`;
+  return `${many ? "Columns" : "Column"} ${columns.join(", ")} ${many ? "were" : "was"} not saved — the database is missing ${many ? "them" : "it"}. ${run}`;
 }
 
 export async function importParsedProduct(
@@ -626,11 +679,17 @@ export async function importParsedProduct(
         const id = existing.id;
         const current = Array.isArray(existing.retailers) ? existing.retailers : [];
         const next = await keepOtherStores(row, current, ours, sourceUrl);
-        const { data, error } = await writeProductRow<{ id: string }>(next, (r) =>
+        const { data, error, dropped } = await writeProductRow<{ id: string }>(next, (r) =>
           supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
         );
         if (error) throw new Error(error.message);
-        return { ok: true, productId: data?.id ?? id, updated: true, priceNote };
+        return {
+          ok: true,
+          productId: data?.id ?? id,
+          updated: true,
+          priceNote,
+          ...(dropped.length ? { droppedColumns: dropped } : {}),
+        };
       }
     } catch (err) {
       return {
@@ -820,12 +879,14 @@ export async function importParsedProduct(
 
   // Written through `writeProductRow` so a database that has not run the
   // colour-filter migration drops that one column and still takes the product,
-  // instead of every import failing on a column it has never heard of.
+  // instead of every import failing on a column it has never heard of. What was
+  // dropped comes back as `droppedColumns`, for the caller to tell the admin.
   const insert = (row: Record<string, unknown>) =>
     supabase!.from("products").insert(row).select("id").maybeSingle();
 
   let productId: string | null = null;
   let updated = false;
+  let droppedColumns: string[] = [];
   try {
     let existingId: string | null = null;
     let existingRetailers: Product["retailers"] = [];
@@ -864,12 +925,13 @@ export async function importParsedProduct(
       // PostgREST reports failures in `error` rather than throwing, so an
       // unchecked update reads as success while writing nothing (the silent
       // failure pattern audit item Б1-3 called out on the billing ledger).
-      const { data, error } = await writeProductRow<{ id: string }>(row, (r) =>
+      const { data, error, dropped } = await writeProductRow<{ id: string }>(row, (r) =>
         supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
       );
       if (error) throw new Error(error.message);
       productId = data?.id ?? id;
       updated = true;
+      droppedColumns = dropped;
     } else {
       // Before writing a new row: is this the same item, sold by someone else?
       //
@@ -930,7 +992,7 @@ export async function importParsedProduct(
         // the same number.
         if (patch.price_min !== undefined) patch.price_min_usd = patch.price_min;
         if (patch.price_max !== undefined) patch.price_max_usd = patch.price_max;
-        const { error } = await writeProductRow<{ id: string }>(patch, (row) =>
+        const { error, dropped } = await writeProductRow<{ id: string }>(patch, (row) =>
           supabase!.from("products").update(row).eq("id", twinId).select("id").maybeSingle(),
         );
         if (error) throw new Error(error.message);
@@ -949,12 +1011,14 @@ export async function importParsedProduct(
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
+          ...(dropped.length ? { droppedColumns: dropped } : {}),
         };
       }
 
-      const { data, error } = await writeProductRow<{ id: string }>(dbRow, insert);
+      const { data, error, dropped } = await writeProductRow<{ id: string }>(dbRow, insert);
       if (error) throw new Error(error.message);
       productId = data?.id ?? null;
+      droppedColumns = dropped;
     }
   } catch (err) {
     return {
@@ -1005,5 +1069,6 @@ export async function importParsedProduct(
     genderNote,
     styleNote,
     variantsLinked,
+    ...(droppedColumns.length ? { droppedColumns } : {}),
   };
 }
