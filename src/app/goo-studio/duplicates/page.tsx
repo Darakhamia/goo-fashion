@@ -43,10 +43,17 @@ interface Group {
   products: Card[];
 }
 
+interface MixedGroup {
+  groupId: string;
+  /** One list per model; the suggested one to keep first. */
+  families: Card[][];
+}
+
 interface Report {
   scanned: number;
   dismissalsAvailable: boolean;
   groups: Group[];
+  mixedGroups?: MixedGroup[];
 }
 
 const REASON_LABEL: Record<Reason, string> = {
@@ -228,6 +235,76 @@ function GroupCard({
   );
 }
 
+/** A colour group whose members are different models, and the split that fixes it. */
+function MixedGroupCard({
+  group,
+  busy,
+  onSplit,
+}: {
+  group: MixedGroup;
+  busy: boolean;
+  onSplit: (keepIds: string[]) => void;
+}) {
+  const [keep, setKeep] = useState(0);
+  const count = group.families.reduce((n, f) => n + f.length, 0);
+  return (
+    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+      <header className="px-5 py-3.5 border-b border-[var(--border)]">
+        <h2 className="text-sm text-[var(--foreground)] truncate">
+          {group.families[0][0]?.brand} · one colour group, {group.families.length} different models
+        </h2>
+        <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{count} cards shown as colours of one product</p>
+      </header>
+      <ul>
+        {group.families.map((family, i) => (
+          <li key={family[0].id} className="px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-4">
+            <label className="flex items-center gap-1.5 cursor-pointer pt-1 shrink-0 w-14 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+              <input
+                type="radio"
+                name={`family-${group.groupId}`}
+                checked={keep === i}
+                onChange={() => setKeep(i)}
+                className="accent-[var(--foreground)] cursor-pointer"
+                aria-label={`Keep ${family[0].name} in this group`}
+              />
+              Keep
+            </label>
+            <ul className="min-w-0 flex-1 flex flex-col gap-2">
+              {family.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 min-w-0">
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                  )}
+                  <div className="min-w-0">
+                    <Link href={`/product/${p.id}`} target="_blank" className="block text-[13px] text-[var(--foreground)] hover:underline underline-offset-2 truncate">
+                      {p.name}
+                    </Link>
+                    <p className="text-[11px] text-[var(--foreground-muted)] truncate">
+                      {[p.color || "no colour", hostOf(p.sourceUrl)].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+      <footer className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed max-w-md">
+          The kept model stays in the group. Each other model gets a group of its own, and a lone card
+          leaves grouping. Nothing is deleted.
+        </p>
+        <button onClick={() => onSplit(group.families[keep].map((p) => p.id))} disabled={busy} className={PRIMARY}>
+          {busy ? "Working…" : "Split"}
+        </button>
+      </footer>
+    </section>
+  );
+}
+
 export default function DuplicatesPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,6 +378,15 @@ export default function DuplicatesPage() {
     removeGroup(group.keepId);
   };
 
+  const split = async (group: MixedGroup, keepIds: string[]) => {
+    const kept = group.families.find((f) => f[0] && keepIds.includes(f[0].id));
+    if (!confirm(`Keep "${kept?.[0]?.name}" in this colour group and take the other ${group.families.length - 1} model(s) out of it?`)) return;
+    const json = await post(group.groupId, { action: "split", groupId: group.groupId, keepIds });
+    if (!json) return;
+    setToast({ type: "ok", msg: `Split — ${json.movedOut} card(s) moved out of the group` });
+    setReport((r) => (r ? { ...r, mixedGroups: (r.mixedGroups ?? []).filter((g) => g.groupId !== group.groupId) } : r));
+  };
+
   const dismiss = async (group: Group, ids: string[]) => {
     const json = await post(group.keepId, { action: "dismiss", ids });
     if (!json) return;
@@ -339,6 +425,31 @@ export default function DuplicatesPage() {
 
       {loading && !report && (
         <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Scanning the catalogue…</div>
+      )}
+
+      {report && (report.mixedGroups?.length ?? 0) > 0 && (
+        <div className="mb-4">
+          <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-1">
+            Colour groups mixing different models ({report.mixedGroups!.length})
+          </h2>
+          <p className="text-[11px] text-[var(--foreground-muted)] mb-3 leading-relaxed max-w-2xl">
+            Cards shown as colours of one product that are not one model — usually a store&apos;s &ldquo;you may also
+            like&rdquo; rail read as its colour row. Choose the model that belongs, then split the rest out.
+          </p>
+          <div className="flex flex-col gap-5">
+            {report.mixedGroups!.map((group) => (
+              <MixedGroupCard
+                key={group.groupId}
+                group={group}
+                busy={busyGroup === group.groupId}
+                onSplit={(keepIds) => split(group, keepIds)}
+              />
+            ))}
+          </div>
+          <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-10">
+            The same item held twice
+          </h2>
+        </div>
       )}
 
       {report && report.groups.length === 0 && (

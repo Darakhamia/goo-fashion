@@ -20,10 +20,13 @@ import { logAdminAction } from "@/lib/server/audit";
 import { writeProductRow } from "@/lib/data/db";
 import {
   findDuplicateGroups,
+  findMixedColourGroups,
   mergeCardsPatch,
   pairKey,
   repointItems,
+  splitPlan,
   type CatalogueRow,
+  type GroupMember,
 } from "@/lib/server/duplicates";
 import type { Retailer } from "@/lib/types";
 
@@ -32,11 +35,27 @@ export const maxDuration = 60;
 
 const PAGE = 1000;
 
-/** Richest first: the codes need migration 020. */
+/** Richest first: the codes need migration 020; the colour groups are older. */
+const BASE_COLUMNS = "id, brand, name, category, source_url, price_min, retailers, colors, images, image_url, created_at";
 const COLUMN_SETS = [
-  "id, brand, name, category, source_url, price_min, retailers, colors, images, image_url, created_at, gtin, mpn",
-  "id, brand, name, category, source_url, price_min, retailers, colors, images, image_url, created_at",
+  `${BASE_COLUMNS}, variant_group_id, is_group_primary, gtin, mpn`,
+  `${BASE_COLUMNS}, variant_group_id, is_group_primary`,
+  BASE_COLUMNS,
 ];
+
+function toGroupMember(r: ProductRow): GroupMember | null {
+  const group = typeof r.variant_group_id === "string" ? r.variant_group_id : "";
+  if (!group) return null;
+  return {
+    id: String(r.id),
+    brand: String(r.brand ?? ""),
+    name: String(r.name ?? ""),
+    category: (r.category as string | null) ?? null,
+    colors: Array.isArray(r.colors) ? (r.colors as string[]) : [],
+    variantGroupId: group,
+    isGroupPrimary: r.is_group_primary === true,
+  };
+}
 
 /** Where "not the same item" is remembered: the label audit's dismissals (migration 012). */
 const DISMISSALS = "label_audit_dismissals";
@@ -105,36 +124,42 @@ export async function GET() {
 
   const rows = loaded.map(toCatalogueRow);
   const groups = findDuplicateGroups(rows, dismissed.pairs);
+  const mixed = findMixedColourGroups(loaded.map(toGroupMember).filter((m): m is GroupMember => !!m));
   const byId = new Map(loaded.map((r) => [String(r.id), r]));
+  const card = (id: string) => {
+    const r = byId.get(id)!;
+    const images = Array.isArray(r.images) ? (r.images as string[]) : [];
+    return {
+      id,
+      name: String(r.name ?? ""),
+      brand: String(r.brand ?? ""),
+      category: (r.category as string | null) ?? null,
+      color: Array.isArray(r.colors) ? String((r.colors as string[])[0] ?? "") : "",
+      image: String(r.image_url || images[0] || ""),
+      priceMin: Number(r.price_min) || 0,
+      sourceUrl: (r.source_url as string | null) ?? null,
+      createdAt: (r.created_at as string | null) ?? null,
+      stores: (Array.isArray(r.retailers) ? (r.retailers as Retailer[]) : []).map((s) => ({
+        name: s.name,
+        url: s.url,
+        price: s.price,
+        currency: s.currency,
+        isOfficial: !!s.isOfficial,
+      })),
+    };
+  };
 
   return NextResponse.json({
     scanned: rows.length,
     dismissalsAvailable: dismissed.available,
+    mixedGroups: mixed.map((g) => ({
+      groupId: g.groupId,
+      families: g.families.map((ids) => ids.map((id) => card(id))),
+    })),
     groups: groups.map((g) => ({
       keepId: g.keepId,
       reasons: g.reasons,
-      products: g.ids.map((id) => {
-        const r = byId.get(id)!;
-        const images = Array.isArray(r.images) ? (r.images as string[]) : [];
-        return {
-          id,
-          name: String(r.name ?? ""),
-          brand: String(r.brand ?? ""),
-          category: (r.category as string | null) ?? null,
-          color: Array.isArray(r.colors) ? String((r.colors as string[])[0] ?? "") : "",
-          image: String(r.image_url || images[0] || ""),
-          priceMin: Number(r.price_min) || 0,
-          sourceUrl: (r.source_url as string | null) ?? null,
-          createdAt: (r.created_at as string | null) ?? null,
-          stores: (Array.isArray(r.retailers) ? (r.retailers as Retailer[]) : []).map((s) => ({
-            name: s.name,
-            url: s.url,
-            price: s.price,
-            currency: s.currency,
-            isOfficial: !!s.isOfficial,
-          })),
-        };
-      }),
+      products: g.ids.map((id) => card(id)),
     })),
   });
 }
@@ -294,6 +319,45 @@ async function merge(adminId: string, keepId: string, mergeIds: string[]) {
   return NextResponse.json({ ok: true, keepId, removed: mergeIds, filled, moved });
 }
 
+// ── Split ────────────────────────────────────────────────────────────────────
+
+/**
+ * Takes the models that do not belong out of a colour group: the kept model
+ * stays, each other model of two or more cards gets a group of its own, a lone
+ * card leaves grouping. Nothing is deleted.
+ */
+async function split(adminId: string, groupId: string, keepIds: Set<string>) {
+  const { data, error } = await supabase!
+    .from("products")
+    .select("id, brand, name, category, colors, variant_group_id, is_group_primary")
+    .eq("variant_group_id", groupId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const members = ((data ?? []) as ProductRow[]).map(toGroupMember).filter((m): m is GroupMember => !!m);
+  if (![...keepIds].some((id) => members.some((m) => m.id === id))) {
+    return NextResponse.json({ error: "This group has changed — reload the list." }, { status: 409 });
+  }
+
+  const writes = splitPlan(members, keepIds, () => crypto.randomUUID());
+  for (const w of writes) {
+    const { error: e } = await supabase!
+      .from("products")
+      .update({ variant_group_id: w.variant_group_id, is_group_primary: w.is_group_primary })
+      .eq("id", w.id);
+    if (e) return NextResponse.json({ error: `Could not update ${w.id}: ${e.message}` }, { status: 500 });
+  }
+
+  const movedOut = writes.filter((w) => w.variant_group_id !== groupId).map((w) => w.id);
+  await logAdminAction({
+    admin_id: adminId,
+    action: "products.colour_group_split",
+    target_type: "product",
+    target_id: [...keepIds][0],
+    metadata: { groupId, kept: [...keepIds], movedOut, writes },
+  });
+  revalidatePath("/");
+  return NextResponse.json({ ok: true, movedOut: movedOut.length });
+}
+
 // ── Dismiss ──────────────────────────────────────────────────────────────────
 
 async function dismiss(adminId: string, ids: string[]) {
@@ -339,6 +403,12 @@ export async function POST(req: Request) {
     const mergeIds = [...new Set(clean(body?.mergeIds))].filter((id) => id !== keepId).slice(0, 20);
     if (!keepId || !mergeIds.length) return NextResponse.json({ error: "keepId and mergeIds are required" }, { status: 400 });
     return merge(admin.userId, keepId, mergeIds);
+  }
+  if (body?.action === "split") {
+    const groupId = String(body?.groupId ?? "").trim();
+    const keepIds = new Set(clean(body?.keepIds));
+    if (!groupId || !keepIds.size) return NextResponse.json({ error: "groupId and keepIds are required" }, { status: 400 });
+    return split(admin.userId, groupId, keepIds);
   }
   if (body?.action === "dismiss") {
     const ids = [...new Set(clean(body?.ids))].slice(0, 20);
