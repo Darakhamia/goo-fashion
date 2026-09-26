@@ -95,11 +95,21 @@ async function discoverDomains(
   return { domains, scanned: rows.length, truncated };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  // `?rulesOnly=1`: just the rules, for pages that only need store names (the
+  // Store suggestions on Products). Skips the catalogue scan below, which reads
+  // every product's retailers page by page.
+  if (new URL(req.url).searchParams.get("rulesOnly") === "1") {
+    const rules = await loadRetailerRules();
+    return NextResponse.json({
+      rules: [...rules.values()].sort((a, z) => a.domain.localeCompare(z.domain)),
+    });
   }
 
   // Probe the table directly. `loadRetailerRules` treats an unreachable table

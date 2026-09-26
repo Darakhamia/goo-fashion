@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkNamedRateLimit } from "@/lib/server/rate-limit";
-import { isOwnStorageUrl } from "@/lib/data/db";
+import {
+  ANONYMOUS_LOOK_OWNER,
+  getProductsByIds,
+  isOwnStorageUrl,
+  isTrustedPiecePhoto,
+} from "@/lib/data/db";
 
 // POST /api/looks/share
 //
@@ -29,8 +34,10 @@ import { isOwnStorageUrl } from "@/lib/data/db";
 // picture from anywhere else would let anyone publish one under our name. A
 // 429 still doesn't dead-end the button — the client treats any non-OK answer
 // as "not persisted" and hands out the self-contained link.
-
-const ANON_USER = "anonymous";
+//
+// A look shared while signed out has nobody behind it, so its piece photos are
+// held to the ?d= link's rule: our own storage or that product's catalogue
+// photos only. Its page is not indexed either (see app/look/[id]).
 const MAX_PIECES = 12;
 const SHARES_PER_HOUR = 30;
 const MAX_URL_LENGTH = 2000;
@@ -75,6 +82,28 @@ function sanitizePieces(raw: unknown): Array<Record<string, unknown>> | null {
   return pieces;
 }
 
+/**
+ * For a signed-out share: keep a piece's photo only when it is on our storage
+ * or is a catalogue photo of that product (or of the colour variant it names).
+ * A dropped photo is not a failure — the look page shows the catalogue photo.
+ */
+async function dropUntrustedPiecePhotos(pieces: Array<Record<string, unknown>>): Promise<void> {
+  const withPhoto = pieces.filter(
+    (p) => typeof p.imageUrl === "string" && !isOwnStorageUrl(p.imageUrl),
+  );
+  if (withPhoto.length === 0) return;
+  const ids = withPhoto.flatMap((p) =>
+    [p.productId, p.variantId].filter((v): v is string => typeof v === "string"),
+  );
+  const byId = new Map((await getProductsByIds(ids)).map((p) => [p.id, p]));
+  for (const piece of withPhoto) {
+    const related = [piece.productId, piece.variantId].map((v) =>
+      typeof v === "string" ? byId.get(v) : undefined,
+    );
+    if (!isTrustedPiecePhoto(piece.imageUrl as string, related)) delete piece.imageUrl;
+  }
+}
+
 function mintLookId(): string {
   return `outfit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -91,7 +120,7 @@ function isMissingColumnError(e: { code?: string; message?: string } | null): bo
 
 export async function POST(req: Request) {
   const { userId } = await auth().catch(() => ({ userId: null as string | null }));
-  const owner = userId ?? ANON_USER;
+  const owner = userId ?? ANONYMOUS_LOOK_OWNER;
 
   const limit = await checkNamedRateLimit(req, {
     name: "look-share",
@@ -117,6 +146,8 @@ export async function POST(req: Request) {
     console.error("[looks/share] Supabase not configured — falling back to data link");
     return NextResponse.json({ id: requestedId, persisted: false });
   }
+
+  if (!userId) await dropUntrustedPiecePhotos(pieces);
 
   const name = asTrimmedString(body?.name, 200);
   const description = asTrimmedString(body?.description, 2000);
@@ -163,8 +194,10 @@ export async function POST(req: Request) {
 
   // Fast path: the look is already in place (builder sync) and owned by this
   // user — the link already works. Refresh content best-effort; a failed
-  // refresh must not block sharing.
-  if (existing && existing.user_id === owner) {
+  // refresh must not block sharing. Signed-in only: every signed-out share has
+  // the same owner, so for them "owned by this user" would let anyone rewrite
+  // anyone else's shared look by its id — they get a fresh snapshot instead.
+  if (existing && userId && existing.user_id === userId) {
     // This row is also the user's own saved look (synced by /api/user/looks,
     // which may hold an old data-URL photo). A photo not accepted here must
     // not wipe the one the row already has, so it is left out of the refresh.

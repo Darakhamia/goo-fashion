@@ -235,9 +235,14 @@ function ImageList({
   onChange,
 }: {
   images: string[];
-  onChange: (imgs: string[]) => void;
+  /**
+   * Takes an updater rather than a new array: an upload finishes up to 30 s
+   * after it started, and must apply to the list as it is by then.
+   */
+  onChange: (update: (imgs: string[]) => string[]) => void;
 }) {
-  const [uploading, setUploading] = useState<number | null>(null);
+  /** The URL being copied to storage; its row shows a spinner meanwhile. */
+  const [uploading, setUploading] = useState<string | null>(null);
   /**
    * Why a row's photo is still on someone else's CDN, keyed by the URL that
    * failed — so the note goes away as soon as the URL is changed.
@@ -246,17 +251,17 @@ function ImageList({
   /** URLs the server has already confirmed are in our storage. */
   const stored = useRef<Set<string>>(new Set());
 
-  const addRow = () => onChange([...images, ""]);
-  const removeRow = (i: number) => onChange(images.filter((_, idx) => idx !== i));
+  const addRow = () => onChange((imgs) => [...imgs, ""]);
+  const removeRow = (i: number) => onChange((imgs) => imgs.filter((_, idx) => idx !== i));
   const setVal = (i: number, v: string) =>
-    onChange(images.map((img, idx) => (idx === i ? v : img)));
+    onChange((imgs) => imgs.map((img, idx) => (idx === i ? v : img)));
 
   // Whether a URL is already ours is the server's call (it knows the storage
   // origin); a substring check here missed the self-hosted domain and
   // re-uploaded our own files on every blur.
   const handleBlur = async (i: number, url: string) => {
     if (!url || !url.startsWith("http") || stored.current.has(url)) return;
-    setUploading(i);
+    setUploading(url);
     try {
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
@@ -273,12 +278,20 @@ function ImageList({
         delete next[url];
         return next;
       });
-      if (data.url !== url) setVal(i, data.url);
+      // Swap by value, not by the index the upload started at: rows may have
+      // been removed or edited while it ran. A URL no longer in the list was
+      // removed or retyped, so the stored copy is simply not applied.
+      if (data.url !== url) {
+        onChange((imgs) => {
+          const at = imgs[i] === url ? i : imgs.indexOf(url);
+          return at === -1 ? imgs : imgs.map((img, idx) => (idx === at ? data.url : img));
+        });
+      }
     } catch (e) {
       const reason = e instanceof Error ? e.message : "Upload failed";
       setUploadErrors((prev) => ({ ...prev, [url]: reason }));
     } finally {
-      setUploading(null);
+      setUploading((u) => (u === url ? null : u));
     }
   };
 
@@ -294,21 +307,21 @@ function ImageList({
                 onChange={(e) => setVal(i, e.target.value)}
                 onBlur={(e) => handleBlur(i, e.target.value)}
                 placeholder="https://…"
-                className={`${inputCls} ${uploading === i ? "opacity-50" : ""}`}
-                disabled={uploading === i}
+                className={`${inputCls} ${uploading === url ? "opacity-50" : ""}`}
+                disabled={uploading === url}
               />
-              {uploading === i && (
+              {uploading === url && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
                   <span className="w-3.5 h-3.5 border border-[var(--foreground)] border-t-transparent rounded-full animate-spin inline-block" />
                 </span>
               )}
             </div>
-            {url && uploadErrors[url] && uploading !== i && (
+            {url && uploadErrors[url] && uploading !== url && (
               <p className="text-[10px] leading-snug text-red-500">
                 Still on the external site — not copied to storage. {uploadErrors[url]}
               </p>
             )}
-            {url && uploading !== i && (
+            {url && uploading !== url && (
               <div className="relative w-12 h-16 border border-[var(--border)] rounded-lg overflow-hidden shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -737,7 +750,7 @@ export default function AdminProductsPage() {
     // with no brand entry shows its site's favicon.
     Promise.all([
       fetch("/api/brands").then((r) => r.json()).catch(() => null),
-      fetch("/api/admin/retailer-domains").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/admin/retailer-domains?rulesOnly=1").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]).then(([brands, retailerDomains]) => {
       const library = new Map<string, { name: string; logoUrl: string | null }>();
       if (Array.isArray(brands) && brands.length > 0) {
@@ -2583,7 +2596,7 @@ export default function AdminProductsPage() {
                 <p className="text-[9px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
                 <ImageList
                   images={form.images}
-                  onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
+                  onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
                 />
               </div>
 

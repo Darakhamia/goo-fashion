@@ -12,6 +12,7 @@
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
+import { validateTargetUrl } from "@/lib/server/parser/fetch";
 
 export const PRODUCT_IMAGES_BUCKET = "product-images";
 
@@ -62,10 +63,46 @@ function extFor(contentType: string): string {
   return "jpg";
 }
 
+/** Redirect hops followed per download; CDNs use one or two. */
+const MAX_REDIRECTS = 5;
+
+/**
+ * True when the URL is on the very origin of our Supabase (`SUPABASE_URL`).
+ *
+ * Stricter than `isAlreadyMirrored` on purpose: that one also accepts any host
+ * whose path merely looks like our bucket, which is fine for "don't mirror it
+ * again" but not for "skip the internal-address check" — a scraped page could
+ * hand us `http://10.0.0.5/storage/v1/object/public/product-images/x.jpg`.
+ */
+function isOwnStorageOrigin(url: string): boolean {
+  const supaUrl = process.env.SUPABASE_URL ?? "";
+  if (!supaUrl) return false;
+  try {
+    return new URL(url).origin === new URL(supaUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Throw unless the server may download this address: our own storage (which in
+ * local development lives on localhost, so it is let through first) or a public
+ * http(s) host — never loopback, private, link-local or cloud metadata.
+ */
+function assertFetchable(url: string): void {
+  if (isOwnStorageOrigin(url)) return;
+  const valid = validateTargetUrl(url, "direct");
+  if ("error" in valid) throw new Error(valid.error);
+}
+
 /**
  * Download an image with browser-like headers and a per-site Referer, which gets
  * past CDN hotlink protection. Rejects non-image responses and anything over the
  * size cap.
+ *
+ * Redirects are followed by hand, so every hop passes the same address check as
+ * the first URL — otherwise a public URL answering "302 → http://169.254.169.254/"
+ * would walk straight past it. The timeout covers the whole chain.
  */
 export async function fetchImageBuffer(
   url: string,
@@ -83,19 +120,32 @@ export async function fetchImageBuffer(
     /* keep default referer */
   }
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      Referer: referer,
-      "Sec-Fetch-Dest": "image",
-      "Sec-Fetch-Mode": "no-cors",
-      "Sec-Fetch-Site": "cross-site",
-    },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    Referer: referer,
+    "Sec-Fetch-Dest": "image",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "cross-site",
+  };
+  const signal = AbortSignal.timeout(timeoutMs);
+
+  let current = url;
+  let res: Response | null = null;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    assertFetchable(current);
+    const r = await fetch(current, { headers, signal, redirect: "manual" });
+    const location = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
+    if (!location) {
+      res = r;
+      break;
+    }
+    r.body?.cancel().catch(() => undefined); // free the socket of the hop left behind
+    current = new URL(location, current).toString();
+  }
+  if (!res) throw new Error("Too many redirects");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = res.headers.get("content-type") ?? "image/jpeg";
   if (!contentType.toLowerCase().startsWith("image/")) {

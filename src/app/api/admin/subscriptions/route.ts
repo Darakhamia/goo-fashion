@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { USD_UAH_RATE } from "@/lib/plans";
+import { isMissingTable } from "@/lib/server/db-errors";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Data for /goo-studio/subscriptions: revenue totals, the subscriber list, and
@@ -34,10 +35,39 @@ interface EventRow {
   created_at: string;
 }
 
-/** PostgREST codes for "relation does not exist" — the migration hasn't run. */
-const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
 /** Supabase returns at most this many rows per request, so totals page through. */
 const PAGE = 1_000;
+
+const SUB_COLUMNS =
+  "user_id,plan,status,amount,auto_renew,masked_pan,card_token,failed_charges,current_period_end";
+
+/**
+ * Every subscription, a page at a time. A single `.limit(n)` read stops at
+ * PostgREST's row ceiling without saying so, and MRR and every count on the
+ * page would quietly come out low. `user_id` (unique) breaks `created_at` ties,
+ * so no row lands on two pages or none. A checkout that inserts a row while the
+ * pages are read pushes the rest down by one, so a row seen twice is kept once.
+ */
+async function readAllSubscriptions(): Promise<{ data: SubRow[]; error: { message: string } | null }> {
+  const data: SubRow[] = [];
+  const seen = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const q = await supabase!
+      .from("subscriptions")
+      .select(SUB_COLUMNS)
+      .order("created_at", { ascending: false })
+      .order("user_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (q.error) return { data, error: q.error };
+    const rows = (q.data ?? []) as SubRow[];
+    for (const row of rows) {
+      if (seen.has(row.user_id)) continue;
+      seen.add(row.user_id);
+      data.push(row);
+    }
+    if (rows.length < PAGE) return { data, error: null };
+  }
+}
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -48,11 +78,7 @@ export async function GET() {
   }
 
   const [subsQ, eventsQ] = await Promise.all([
-    supabase
-      .from("subscriptions")
-      .select("user_id,plan,status,amount,auto_renew,masked_pan,card_token,failed_charges,current_period_end")
-      .order("created_at", { ascending: false })
-      .limit(5_000),
+    readAllSubscriptions(),
     // The transaction log: the latest 200 events, minus the daily cron
     // heartbeat, which would otherwise crowd real transactions out.
     // billing_events may not exist yet if the migration hasn't been run.
@@ -72,11 +98,11 @@ export async function GET() {
       { status: 500 }
     );
   }
-  const subs = (subsQ.data ?? []) as SubRow[];
+  const subs = subsQ.data;
 
   // Only a missing table means "run the migration"; any other failure is an
   // error and is shown as one.
-  const eventsMissing = !!eventsQ.error && MISSING_TABLE_CODES.has(eventsQ.error.code);
+  const eventsMissing = isMissingTable(eventsQ.error);
   let eventsError: string | null =
     eventsQ.error && !eventsMissing ? eventsQ.error.message : null;
   const events = (eventsQ.error ? [] : (eventsQ.data ?? [])) as EventRow[];

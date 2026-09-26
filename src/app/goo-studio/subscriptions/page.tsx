@@ -190,6 +190,10 @@ export default function SubscriptionsPage() {
   // Cron heartbeat and payment totals come from billing_events; when it can't
   // be read, "never ran" would be a guess, not a fact.
   const eventsReadable = summary.eventsAvailable && !summary.eventsError;
+  // The renewal cron is where the money comes from: while it is not running,
+  // nobody is charged and nothing else on the site says so.
+  const cronStale =
+    eventsReadable && (summary.hoursSinceCronRun === null || summary.hoursSinceCronRun >= 36);
 
   return (
     <div className="space-y-8">
@@ -200,6 +204,26 @@ export default function SubscriptionsPage() {
           monobank billing — real charges in UAH, $ shown approximately (rate {rate}).
         </p>
       </div>
+
+      {/* Above the numbers on purpose: this is the one to see first. */}
+      {cronStale && (
+        <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs text-amber-500 space-y-1.5">
+          <p className="font-medium">
+            {summary.hoursSinceCronRun === null
+              ? "The renewal cron has never run."
+              : `The renewal cron last ran ${summary.hoursSinceCronRun} hours ago; it should run daily.`}{" "}
+            Until it runs, no subscription is renewed or charged and no one is downgraded.
+          </p>
+          <p>
+            Production runs on Coolify, where <code>vercel.json</code> crons do nothing: renewals are
+            started by a Scheduled Task in Coolify. It must call
+            <code className="mx-1">GET /api/billing/cron/renew</code> once a day (e.g. <code>0 9 * * *</code>) with
+            the header <code>Authorization: Bearer $CRON_SECRET</code>. Check in Coolify that the
+            task exists and its runs succeed, and that <code>CRON_SECRET</code> is set in the
+            app&apos;s environment — without it every call is rejected with 401.
+          </p>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -254,21 +278,6 @@ export default function SubscriptionsPage() {
           saved card. The renewal sweep skips these, so they will never be charged again — they are
           paid plans running for free. The daily cron retries the card lookup; if the number does not
           fall, the card was never tokenized and the customer has to re-subscribe.
-        </div>
-      )}
-
-      {eventsReadable && summary.hoursSinceCronRun !== null && summary.hoursSinceCronRun >= 36 && (
-        <div className="rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">
-          The renewal cron last ran {summary.hoursSinceCronRun} hours ago; it is scheduled daily.
-          Nothing is being charged in the meantime. Check the Vercel cron logs and that
-          <code className="mx-1">CRON_SECRET</code> is set in Production.
-        </div>
-      )}
-
-      {eventsReadable && summary.hoursSinceCronRun === null && summary.activeSubscriptions > 0 && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs text-amber-500">
-          No renewal-cron heartbeat has ever been recorded. Either the schedule has never fired, or
-          <code className="mx-1">CRON_SECRET</code> is unset and every call is rejected with 401.
         </div>
       )}
 

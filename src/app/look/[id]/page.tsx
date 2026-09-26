@@ -22,7 +22,8 @@ interface ResolvedLook {
   /**
    * True when the page was built from the ?d= payload rather than a database
    * row. That payload is unsigned — anyone can write one — so such a page is
-   * kept out of search results.
+   * kept out of search results (as is a row shared while signed out, see
+   * `SharedLook.anonymous`).
    */
   fromLink: boolean;
 }
@@ -74,10 +75,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     title,
     description,
-    // A link-built page has no row behind /look/{id}, so it names no canonical
-    // and asks not to be indexed. The explicit null keeps it from inheriting
-    // the root layout's canonical ("/").
-    ...(fromLink
+    // Neither a link-built page nor a look shared while signed out has an
+    // account behind its text — anyone could have written it — so it names no
+    // canonical and asks not to be indexed. The explicit null keeps it from
+    // inheriting the root layout's canonical ("/").
+    ...(fromLink || look.anonymous
       ? { robots: { index: false, follow: false }, alternates: { canonical: null } }
       : { alternates: { canonical: `${SITE_URL}/look/${id}` } }),
     openGraph: {

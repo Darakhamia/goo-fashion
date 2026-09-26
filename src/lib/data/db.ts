@@ -751,6 +751,41 @@ export async function getOutfitsByIds(ids: string[]): Promise<Outfit[]> {
 }
 
 /**
+ * The newest outfits, at most `limit` of them — optionally only one occasion's,
+ * and without one given outfit. For rows that show a handful of outfits, which
+ * would otherwise read every outfit (and every product in them) to keep four.
+ */
+export async function getLatestOutfits(opts: {
+  limit: number;
+  occasion?: string;
+  excludeId?: string;
+}): Promise<Outfit[]> {
+  const { limit, occasion, excludeId } = opts;
+  if (limit <= 0) return [];
+  if (!isSupabaseConfigured || !supabase) {
+    return staticOutfits
+      .filter((o) => o.id !== excludeId && (occasion === undefined || o.occasion === occasion))
+      .slice(0, limit);
+  }
+
+  // `*` like the other outfit reads: `source` is optional in older databases,
+  // and naming a missing column fails the whole read.
+  let query = supabase.from("outfits").select("*");
+  if (occasion !== undefined) query = query.eq("occasion", occasion);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
+  if (error) {
+    console.error("[db] getLatestOutfits:", error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as DbOutfit[];
+  if (rows.length === 0) return [];
+  const productMap = await loadProductMap(outfitProductIds(rows));
+  return rows.map((r) => dbToOutfit(r, productMap));
+}
+
+/**
  * A user-created builder look, resolved against the product catalog so it can
  * be rendered on a public share page the same way published outfits are. Reads
  * straight from `user_looks` by id (service-role), so anyone with the link can
@@ -778,11 +813,21 @@ export interface SharedLook {
   styleKeywords: string[];
   savedAt: string | null;
   pieces: SharedLookPiece[];
+  /**
+   * No account stands behind the text: a look shared while signed out, or one
+   * rebuilt from a ?d= link. Anyone can write one, so its page is kept out of
+   * search results and shows only photos we can vouch for.
+   */
+  anonymous: boolean;
 }
+
+/** `user_looks.user_id` of a look shared without signing in. */
+export const ANONYMOUS_LOOK_OWNER = "anonymous";
 
 type RawLookPiece = {
   slot?: unknown;
   productId?: unknown;
+  variantId?: unknown;
   imageUrl?: unknown;
   name?: unknown;
 };
@@ -790,11 +835,12 @@ type RawLookPiece = {
 /**
  * Resolve raw look-piece refs against the catalog (brand, price, stores).
  * `trustImage`, when given, decides whether a piece's own image URL may be
- * shown; one it rejects is replaced by the catalogue photo.
+ * shown — it gets the piece's product and, when the piece names one, its
+ * colour variant; one it rejects is replaced by the catalogue photo.
  */
 async function enrichSharedLookPieces(
   raw: unknown,
-  trustImage?: (url: string, product: Product | undefined) => boolean,
+  trustImage?: (url: string, products: (Product | undefined)[]) => boolean,
 ): Promise<SharedLookPiece[]> {
   const rawPieces = (Array.isArray(raw) ? raw : []).filter(
     (p): p is RawLookPiece => !!p && typeof p === "object"
@@ -803,15 +849,23 @@ async function enrichSharedLookPieces(
   const productIds = rawPieces
     .map((p) => (typeof p.productId === "string" ? p.productId : null))
     .filter((id): id is string => !!id);
+  // A colour variant is its own product row, with its own photos; only needed
+  // when those photos have to be checked.
+  const variantIds = trustImage
+    ? rawPieces
+        .map((p) => (typeof p.variantId === "string" ? p.variantId : null))
+        .filter((id): id is string => !!id)
+    : [];
 
-  const productMap = await loadProductMap(productIds);
+  const productMap = await loadProductMap([...productIds, ...variantIds]);
 
   return rawPieces.map((p) => {
     const productId = typeof p.productId === "string" ? p.productId : "";
     const product = productMap.get(productId);
+    const variant = typeof p.variantId === "string" ? productMap.get(p.variantId) : undefined;
     const slot = typeof p.slot === "string" ? p.slot : "";
     const ownImage =
-      typeof p.imageUrl === "string" && p.imageUrl && (!trustImage || trustImage(p.imageUrl, product))
+      typeof p.imageUrl === "string" && p.imageUrl && (!trustImage || trustImage(p.imageUrl, [product, variant]))
         ? p.imageUrl
         : null;
     return {
@@ -838,21 +892,27 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
 
   if (error || !data) return null;
 
-  const pieces = await enrichSharedLookPieces(data.pieces);
+  // A look shared while signed out was written by /api/looks/share for anyone
+  // who asked: its photos get the same check as a ?d= link's.
+  const anonymous = data.user_id === ANONYMOUS_LOOK_OWNER;
+  const pieces = await enrichSharedLookPieces(data.pieces, anonymous ? isTrustedPiecePhoto : undefined);
 
   const generatedStyle =
     typeof data.generated_style === "string" ? data.generated_style : null;
+  const generatedImage: string | null = data.generated_image ?? null;
 
   return {
     id: data.id,
     name: data.look_name ?? null,
     description: data.look_description ?? null,
-    generatedImage: data.generated_image ?? null,
+    generatedImage:
+      anonymous && !(generatedImage && isOwnStorageUrl(generatedImage)) ? null : generatedImage,
     generatedStyle,
     totalPrice: data.total_price ?? null,
     styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
     savedAt: data.saved_at ?? null,
     pieces,
+    anonymous,
   };
 }
 
@@ -882,6 +942,15 @@ function productPhotos(product: Product): string[] {
 }
 
 /**
+ * Whether a piece photo from a look nobody signed for may be shown on our
+ * domain: one from our own storage, or a catalogue photo of the piece's
+ * product (or of the colour variant it names).
+ */
+export function isTrustedPiecePhoto(url: string, products: (Product | undefined)[]): boolean {
+  return isOwnStorageUrl(url) || products.some((p) => !!p && productPhotos(p).includes(url));
+}
+
+/**
  * Fallback for share links that carry the look in the URL itself (?d=...).
  * Used when the look never reached the database (e.g. the write failed at
  * share time) — the link must still open the standard look page for any
@@ -891,7 +960,8 @@ function productPhotos(product: Product): string[] {
  * on our domain. So every field is validated, the page is noindex (see
  * app/look/[id]), and no picture comes from the link itself — the generated
  * photo only from our own storage, piece photos only when they are that
- * product's catalogue photos. A payload naming no real product is refused.
+ * product's (or its named colour variant's) catalogue photos. A payload naming
+ * no real product is refused.
  */
 export async function sharedLookFromShareData(
   id: string,
@@ -919,15 +989,13 @@ export async function sharedLookFromShareData(
     .map((p: RawLookPiece) => ({
       slot: str(p?.slot, 40) ?? "",
       productId: str(p?.productId, 100) ?? "",
+      variantId: str(p?.variantId, 100) ?? undefined,
       name: str(p?.name, 300) ?? undefined,
       imageUrl: httpUrl(p?.imageUrl) ?? undefined,
     }))
     .filter((p) => p.productId);
 
-  const pieces = await enrichSharedLookPieces(
-    rawPieces,
-    (url, product) => isOwnStorageUrl(url) || (!!product && productPhotos(product).includes(url)),
-  );
+  const pieces = await enrichSharedLookPieces(rawPieces, isTrustedPiecePhoto);
   if (!pieces.some((p) => p.productExists)) return null;
 
   const generatedImage = httpUrl(data.generatedImage);
@@ -949,6 +1017,7 @@ export async function sharedLookFromShareData(
       : [],
     savedAt: null,
     pieces,
+    anonymous: true,
   };
 }
 
@@ -1444,6 +1513,33 @@ export async function readHomepageStylistIds(): Promise<{ ids: HomepageStylistId
 }
 
 /**
+ * The stylist section's product when none is chosen: the newest product with a
+ * "where to buy" list, else the newest product — as the whole catalogue read
+ * newest-first would give, for the price of one or two single-row reads.
+ */
+async function getNewestProductWithRetailers(): Promise<Product | null> {
+  if (!isSupabaseConfigured || !supabase) {
+    return staticProducts.find((p) => p.retailers?.length > 0) ?? staticProducts[0] ?? null;
+  }
+  for (const withRetailers of [true, false]) {
+    const { data, error } = await selectProducts((columns) => {
+      let query = supabase!.from("products").select(columns);
+      // jsonb containment: an array holding at least one object — a non-empty
+      // retailers list.
+      if (withRetailers) query = query.contains("retailers", JSON.stringify([{}]));
+      return query.order("created_at", { ascending: false }).limit(1);
+    });
+    if (error) {
+      console.error("[db] getNewestProductWithRetailers:", error.message);
+      return null;
+    }
+    const row = ((data ?? []) as DbProduct[])[0];
+    if (row) return dbToProduct(row);
+  }
+  return null;
+}
+
+/**
  * Resolved stylist showcase for the homepage. Falls back to the first available
  * outfits / a product with retailers so the section never renders empty.
  */
@@ -1451,14 +1547,14 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
   const ids = await getHomepageStylistIds();
 
   // Chat looks: resolve configured outfits in order, then top up from the
-  // catalogue so there are always two cards in the preview.
-  const allOutfits = await getAllOutfits();
-  const chosen: Outfit[] = ids.chatOutfits
-    .map((id) => allOutfits.find((o) => o.id === id))
-    .filter((o): o is Outfit => Boolean(o));
-  for (const o of allOutfits) {
-    if (chosen.length >= MAX_CHAT_LOOKS) break;
-    if (!chosen.some((c) => c.id === o.id)) chosen.push(o);
+  // catalogue so there are always two cards in the preview. The newest few
+  // are enough to top up from: at most `chosen.length` of them are repeats.
+  const chosen: Outfit[] = await getOutfitsByIds(ids.chatOutfits);
+  if (chosen.length < MAX_CHAT_LOOKS) {
+    for (const o of await getLatestOutfits({ limit: MAX_CHAT_LOOKS + chosen.length })) {
+      if (chosen.length >= MAX_CHAT_LOOKS) break;
+      if (!chosen.some((c) => c.id === o.id)) chosen.push(o);
+    }
   }
   const chatLooks: StylistChatLook[] = chosen.slice(0, MAX_CHAT_LOOKS).map((o) => ({
     id: o.id,
@@ -1474,10 +1570,7 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
   if (ids.featuredProduct) {
     featuredProduct = (await getProductById(ids.featuredProduct)) ?? null;
   }
-  if (!featuredProduct) {
-    const all = await getAllProducts(true);
-    featuredProduct = all.find((p) => p.retailers?.length > 0) ?? all[0] ?? null;
-  }
+  if (!featuredProduct) featuredProduct = await getNewestProductWithRetailers();
 
   const retailerLogos = await getBrandLogos();
 
