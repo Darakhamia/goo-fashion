@@ -109,6 +109,11 @@ const MAX_PRICE_RATIO = 3;
  *   - a row already carrying this store is another listing of the store's own,
  *     not a second place to buy — unless it carries this very page, which is a
  *     re-collect updating its price.
+ *
+ * "This store" is the host of the page, unless the caller names the store: a
+ * feed's links all go through the affiliate network's host (every Awin
+ * merchant is awin1.com), so for a feed the host would call every merchant the
+ * same store — and a second merchant could never join the product.
  */
 export function pickSameItemByName(
   incoming: {
@@ -119,12 +124,15 @@ export function pickSameItemByName(
     /** Dollars, like `priceMin` on the rows. */
     price: number;
     sourceUrl: string | null;
+    /** The store's name when the caller resolved it (a feed's merchant); compared by name instead of host. */
+    store?: string | null;
   },
   rows: NamedItem[],
 ): NamedItem | null {
   const ourHost = bareHost(incoming.sourceUrl);
   // Without an address there is no place to buy to add.
   if (!ourHost || !incoming.brand.trim()) return null;
+  const ourStore = incoming.store?.trim().toLowerCase() ?? "";
 
   const exact: NamedItem[] = [];
   const near: NamedItem[] = [];
@@ -140,8 +148,12 @@ export function pickSameItemByName(
 
     const retailers = row.retailers ?? [];
     if (retailers.some((r) => r.url && r.url === incoming.sourceUrl)) return row;
-    const hosts = [row.sourceUrl, ...retailers.map((r) => r.url)].map(bareHost);
-    if (hosts.includes(ourHost)) continue;
+    if (ourStore) {
+      if (retailers.some((r) => r.name?.trim().toLowerCase() === ourStore)) continue;
+    } else {
+      const hosts = [row.sourceUrl, ...retailers.map((r) => r.url)].map(bareHost);
+      if (hosts.includes(ourHost)) continue;
+    }
 
     const theirs = typeof row.priceMin === "number" ? row.priceMin : 0;
     if (incoming.price > 0 && theirs > 0) {

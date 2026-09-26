@@ -6,6 +6,7 @@ import { logAdminAction } from "@/lib/server/audit";
 import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
 import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
+import { normalizeGtin } from "@/lib/server/product-fields";
 import {
   canRefreshOnly,
   groupUrls,
@@ -30,21 +31,59 @@ const LOOKUP_SLICE = 10;
 
 const isHttpUrl = (u: unknown): u is string => typeof u === "string" && /^https?:\/\//.test(u);
 
-/** Which of these links are already some product's `source_url`. Throws when the database does not answer. */
-async function existingSourceUrls(urls: string[]): Promise<Set<string>> {
+type LinkRow = { source_url?: string | null; retailers?: { url?: unknown }[] | null };
+type LinkAnswer = PromiseLike<{ data: unknown; error: { message: string } | null }>;
+
+/** jsonb containment of one link in `retailers`, as the value `cs` takes. */
+const retailerLink = (url: string) => JSON.stringify([{ url }]);
+
+/**
+ * Products whose "Where to buy" holds one of these links: one `or` of
+ * containments for the lot. A term ends at a comma or a closing parenthesis,
+ * so a link carrying one (or whitespace) is asked on its own instead.
+ */
+function retailerLinkQueries(slice: string[]): LinkAnswer[] {
+  const plain = slice.filter((u) => !/[,()\s]/.test(u));
+  const odd = slice.filter((u) => /[,()\s]/.test(u));
+  const queries: LinkAnswer[] = odd.map((u) =>
+    supabase!.from("products").select("retailers").contains("retailers", retailerLink(u)),
+  );
+  if (plain.length) {
+    queries.push(
+      supabase!
+        .from("products")
+        .select("retailers")
+        .or(plain.map((u) => `retailers.cs.${retailerLink(u)}`).join(",")),
+    );
+  }
+  return queries;
+}
+
+/**
+ * Which of these links the catalogue already carries: as a product's
+ * `source_url`, or as one of its stores — a feed row that joined another
+ * source's product (see `importParsedProduct`) lives only there. Throws when
+ * the database does not answer.
+ */
+async function knownLinks(urls: string[]): Promise<Set<string>> {
+  const wanted = new Set(urls);
   const found = new Set<string>();
   const slices: string[][] = [];
   for (let i = 0; i < urls.length; i += LOOKUP_SLICE) slices.push(urls.slice(i, i + LOOKUP_SLICE));
   for (let i = 0; i < slices.length; i += 4) {
     const answers = await Promise.all(
-      slices.slice(i, i + 4).map((slice) =>
+      slices.slice(i, i + 4).flatMap((slice): LinkAnswer[] => [
         supabase!.from("products").select("source_url").in("source_url", slice),
-      ),
+        ...retailerLinkQueries(slice),
+      ]),
     );
     for (const { data, error } of answers) {
       if (error) throw new Error(error.message);
-      for (const row of (data ?? []) as { source_url: string | null }[]) {
-        if (row.source_url) found.add(row.source_url);
+      for (const row of (data ?? []) as LinkRow[]) {
+        if (row.source_url && wanted.has(row.source_url)) found.add(row.source_url);
+        for (const store of Array.isArray(row.retailers) ? row.retailers : []) {
+          if (typeof store?.url === "string" && wanted.has(store.url)) found.add(store.url);
+        }
       }
     }
   }
@@ -71,7 +110,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    return NextResponse.json({ existing: [...(await existingSourceUrls(urls))] });
+    return NextResponse.json({ existing: [...(await knownLinks(urls))] });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not read the catalogue" },
@@ -150,6 +189,8 @@ async function importGroup(
     .map((r) => r.price);
   const price = prices.length ? Math.min(...prices) : repr.price;
   const priceOriginal = pool.find((r) => r.priceOriginal > 0)?.priceOriginal ?? 0;
+  // The item's code, re-checked here: the rows arrive from the browser.
+  const gtin = pool.map((r) => normalizeGtin(r.gtin)).find(Boolean);
 
   const result = await importParsedProduct(
     {
@@ -166,6 +207,7 @@ async function importGroup(
       price,
       priceOriginal,
       currency,
+      ...(gtin ? { gtin } : {}),
       variantUrls: Array.isArray(group.siblingUrls) ? group.siblingUrls : [],
     },
     known ?? urls[0],
@@ -205,7 +247,7 @@ export async function PUT(req: Request) {
         .map((r) => r?.referralUrl)
         .filter(isHttpUrl),
     );
-    existing = await existingSourceUrls([...new Set(urls)]);
+    existing = await knownLinks([...new Set(urls)]);
   } catch (err) {
     return NextResponse.json(
       { error: `Could not read the catalogue: ${err instanceof Error ? err.message : "unknown error"}` },

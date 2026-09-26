@@ -216,7 +216,7 @@ const SECTIONS = [
         <div className="space-y-4">
           <Processor name="Clerk (USA)" purpose="Authentication and account management." data="account data, style profile" />
           <Processor name="Supabase" purpose="Database and file storage." data="likes, looks, chat history, subscriptions, analytics events" />
-          <Processor name="Vercel (USA)" purpose="Website hosting." data="request data; IP addresses appear transiently in server logs" />
+          <Processor name="Server hosting provider" purpose="Hosting the servers the website runs on." data="request data; IP addresses appear transiently in server logs" />
           <Processor name="monobank / Plata by mono (Ukraine)" purpose="Payment processing and card tokenisation on their hosted payment page." data="payment details, subscription reference including your account identifier" />
           <Processor name="Replicate (USA)" purpose="Running the AI models behind the stylist chat and virtual try-on." data="chat messages, style personalisation, try-on photos, product images" />
           <Processor name="OpenAI (USA)" purpose="Search embeddings for catalogue matching, and structuring bug reports." data="search and chat queries; product texts; bug report text, page address, optional screenshot" />

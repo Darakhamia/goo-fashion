@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, isSuperAdminId } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
-import { cancelAutoRenew, getSubscription, logBillingEvent } from "@/lib/server/subscriptions";
+import { cancelAutoRenew, getSubscription, logBillingEvent, type SubscriptionRow } from "@/lib/server/subscriptions";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isMissingTable } from "@/lib/server/db-errors";
 import { envAdminIds } from "../user-list";
 
 interface ClerkError {
@@ -280,14 +281,21 @@ export async function DELETE(
 
     // The renewal cron charges off the subscriptions row, not the Clerk
     // account, so deleting the account alone would keep billing the saved card.
-    // Turn auto-renew off first; if that fails, do not delete.
+    // Turn auto-renew off first; if that fails, do not delete. A database whose
+    // subscriptions migration never ran has nothing to charge, so a missing
+    // table reads as "no subscription" rather than blocking the delete.
     let autoRenewDisabled = false;
     let subscriptionPlan: string | null = null;
     if (isSupabaseConfigured && supabase) {
       try {
-        const sub = await getSubscription(id);
-        await cancelAutoRenew(id);
+        const { data: sub, error: subError } = await supabase
+          .from("subscriptions")
+          .select("plan, auto_renew")
+          .eq("user_id", id)
+          .maybeSingle<Pick<SubscriptionRow, "plan" | "auto_renew">>();
+        if (subError && !isMissingTable(subError)) throw new Error(subError.message);
         if (sub) {
+          await cancelAutoRenew(id);
           subscriptionPlan = sub.plan;
           if (sub.auto_renew) {
             autoRenewDisabled = true;

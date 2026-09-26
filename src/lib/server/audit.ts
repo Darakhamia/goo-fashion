@@ -71,13 +71,41 @@ interface AuditEntry {
  */
 const EMAIL_TTL_MS = 5 * 60 * 1000;
 const emailCache = new Map<string, { email: string; at: number }>();
+/** Lookups under way, so a burst of actions by one admin asks Clerk once. */
+const emailLookups = new Map<string, Promise<string | undefined>>();
+
+/**
+ * How long an action's response waits for the email. The callers await the
+ * log, so a slow Clerk would hold a saved product's response open until the
+ * admin gives up and saves it again. Past this the entry goes without the
+ * email (the Activity page fills it in on read); the lookup carries on and
+ * warms the cache for the next one.
+ */
+const EMAIL_WAIT_MS = 2_000;
 
 async function adminEmail(adminId: string): Promise<string | undefined> {
   const hit = emailCache.get(adminId);
   if (hit && Date.now() - hit.at < EMAIL_TTL_MS) return hit.email;
-  const email = (await resolveAdminEmails([adminId])).get(adminId);
-  if (email) emailCache.set(adminId, { email, at: Date.now() });
-  return email;
+  let lookup = emailLookups.get(adminId);
+  if (!lookup) {
+    lookup = resolveAdminEmails([adminId])
+      .then((emails) => {
+        const email = emails.get(adminId);
+        if (email) emailCache.set(adminId, { email, at: Date.now() });
+        return email;
+      })
+      .finally(() => emailLookups.delete(adminId));
+    emailLookups.set(adminId, lookup);
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => resolve(undefined), EMAIL_WAIT_MS);
+  });
+  try {
+    return await Promise.race([lookup, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**

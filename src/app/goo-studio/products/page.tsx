@@ -581,6 +581,9 @@ export default function AdminProductsPage() {
   const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  // Why the last catalogue load failed, or null. Kept until a load succeeds,
+  // so a failure does not pass for an empty catalogue once the toast is gone.
+  const [loadError, setLoadError] = useState<string | null>(null);
   /**
    * Whether the database is there to write to. Checked once on load: without
    * it the page says so once and every action that writes is disabled — there
@@ -726,8 +729,11 @@ export default function AdminProductsPage() {
         throw new Error((data && typeof data === "object" && "error" in data && String(data.error)) || `Could not load products (HTTP ${res.status})`);
       }
       setProducts(data);
+      setLoadError(null);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not load products", "err");
+      const message = e instanceof Error ? e.message : "Could not load products";
+      setLoadError(message);
+      showToast(message, "err");
     } finally {
       setLoading(false);
     }
@@ -1841,9 +1847,11 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Products</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-            {products.length} total &middot; {filtered.length} shown
-          </p>
+          {!loadError && (
+            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+              {products.length} total &middot; {filtered.length} shown
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -2357,7 +2365,19 @@ export default function AdminProductsPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                    No products found.
+                    {loadError ? (
+                      <div role="alert" className="flex flex-col items-center gap-3">
+                        <p className="text-red-500 break-words">{loadError}</p>
+                        <button
+                          onClick={fetchProducts}
+                          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : (
+                      "No products found."
+                    )}
                   </td>
                 </tr>
               ) : (

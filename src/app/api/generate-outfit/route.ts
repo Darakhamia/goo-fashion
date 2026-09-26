@@ -4,7 +4,7 @@ import { requirePlan } from "@/lib/server/require-plan";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 import { getPrompt } from "@/lib/server/get-prompt";
-import { validateTargetUrl } from "@/lib/server/parser/fetch";
+import { isBlockedResolvedHost, validateTargetUrl } from "@/lib/server/parser/fetch";
 import {
   DEFAULT_IMAGE_FIDELITY,
   DEFAULT_IMAGE_MANNEQUIN,
@@ -70,11 +70,15 @@ function isOwnStoragePublicUrl(url: string): boolean {
 /**
  * Reference URLs arrive in the request body, so the server must not fetch them
  * blindly: a loopback, private or cloud-metadata address would turn this route
- * into a proxy into our own network. Same rule as the parser's direct mode.
+ * into a proxy into our own network. Same rule as the parser's direct mode,
+ * and the name is resolved too — "169.254.169.254.nip.io" is spelt like a
+ * public host and dials the metadata address.
  */
-function isFetchableUrl(url: string): boolean {
+async function isFetchableUrl(url: string): Promise<boolean> {
   if (isOwnStoragePublicUrl(url)) return true;
-  return !("error" in validateTargetUrl(url, "direct"));
+  const valid = validateTargetUrl(url, "direct");
+  if ("error" in valid) return false;
+  return !(await isBlockedResolvedHost(valid.url.hostname));
 }
 
 /**
@@ -89,7 +93,7 @@ async function fetchCheckingRedirects(
 ): Promise<Response | null> {
   let current = url;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (!isFetchableUrl(current)) return null;
+    if (!(await isFetchableUrl(current))) return null;
     const res = await fetch(current, { ...init, redirect: "manual" });
     const location =
       res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
@@ -127,7 +131,7 @@ async function fetchAsDataUri(
   url: string
 ): Promise<{ ok: true; dataUri: string } | { ok: false; url: string; reason: string }> {
   // 0. only public http(s) addresses — not even through the proxy below
-  if (!isFetchableUrl(url)) {
+  if (!(await isFetchableUrl(url))) {
     return { ok: false, url, reason: "not a public http(s) URL" };
   }
 

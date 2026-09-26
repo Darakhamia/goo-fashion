@@ -420,13 +420,24 @@ export function groupVariants(all: Product[]): Product[] {
   return result;
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
+/**
+ * One product with its colour swatches, or undefined when there is none.
+ *
+ * `throwOnError` is for the cached product page: there a failed read must not
+ * pass for "no such product", or the 404 (or a card without its swatches)
+ * would be cached and served until the next revalidation.
+ */
+export async function getProductById(
+  id: string,
+  opts: { throwOnError?: boolean } = {},
+): Promise<Product | undefined> {
   if (!isSupabaseConfigured || !supabase) return undefined;
   const { data, error } = await selectProducts((columns) =>
     supabase!.from("products").select(columns).eq("id", id).maybeSingle(),
   );
   if (error) {
     console.error("[db] getProductById:", error.message);
+    if (opts.throwOnError) throw new Error(`Could not read product ${id}: ${error.message}`);
     return undefined;
   }
   if (!data) return undefined;
@@ -435,9 +446,12 @@ export async function getProductById(id: string): Promise<Product | undefined> {
   // If part of a variant group, fetch all siblings and attach as swatches
   if (product.variantGroupId) {
     const groupId = product.variantGroupId;
-    const { data: siblings } = await selectProducts((columns) =>
+    const { data: siblings, error: siblingsError } = await selectProducts((columns) =>
       supabase!.from("products").select(columns).eq("variant_group_id", groupId),
     );
+    if (siblingsError && opts.throwOnError) {
+      throw new Error(`Could not read the colours of product ${id}: ${siblingsError.message}`);
+    }
     const rows = (siblings ?? []) as DbProduct[];
     if (rows.length > 0) {
       product.variants = rows.map(dbToProduct).map(toSwatch);
@@ -515,7 +529,9 @@ async function withFullVariantGroups(list: Product[]): Promise<Product[]> {
 }
 
 // How many of a category's newest products "You may also like" picks from.
-const RELATED_POOL = 24;
+// Rows, not products: a piece imported in a dozen colours is a dozen rows that
+// groupVariants folds into one, so the pool is sized well past `limit`.
+const RELATED_POOL = 60;
 
 /**
  * "You may also like" for a product page: others from the same category, never
@@ -530,15 +546,23 @@ export async function getRelatedProducts(product: Product, limit = 4): Promise<P
     return staticProducts.filter((p) => p.category === product.category && !isSelf(p)).slice(0, limit);
   }
 
-  const { data, error } = await selectProducts((columns) =>
-    supabase!
+  const groupId = product.variantGroupId;
+  const { data, error } = await selectProducts((columns) => {
+    let query = supabase!
       .from("products")
       .select(columns)
       .eq("category", product.category)
-      .neq("id", product.id)
-      .order("created_at", { ascending: false })
-      .limit(RELATED_POOL),
-  );
+      .neq("id", product.id);
+    // Its own colours are left out by the database, not after the read: a piece
+    // in two dozen colours would otherwise fill the whole pool with itself and
+    // leave nothing to suggest. `neq` alone would also drop every ungrouped row
+    // (NULL compares as unknown), hence the explicit NULL branch.
+    if (groupId) {
+      const quoted = `"${groupId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+      query = query.or(`variant_group_id.is.null,variant_group_id.neq.${quoted}`);
+    }
+    return query.order("created_at", { ascending: false }).limit(RELATED_POOL);
+  });
   if (error) {
     console.error("[db] getRelatedProducts:", error.message);
     return [];
@@ -814,9 +838,10 @@ export interface SharedLook {
   savedAt: string | null;
   pieces: SharedLookPiece[];
   /**
-   * No account stands behind the text: a look shared while signed out, or one
+   * No account stands behind it: a look shared while signed out, or one
    * rebuilt from a ?d= link. Anyone can write one, so its page is kept out of
-   * search results and shows only photos we can vouch for.
+   * search results, carries no text of its own (names and the total come from
+   * the catalogue) and shows only photos we can vouch for.
    */
   anonymous: boolean;
 }
@@ -834,14 +859,18 @@ type RawLookPiece = {
 
 /**
  * Resolve raw look-piece refs against the catalog (brand, price, stores).
- * `trustImage`, when given, decides whether a piece's own image URL may be
- * shown — it gets the piece's product and, when the piece names one, its
- * colour variant; one it rejects is replaced by the catalogue photo.
+ *
+ * `anonymous` is a look no account stands behind (see `SharedLook.anonymous`):
+ * its pieces are named by the catalogue, never by the payload, and a piece's
+ * own image URL is shown only when `isTrustedPiecePhoto` accepts it — it gets
+ * the piece's product and, when the piece names one, its colour variant; one it
+ * rejects is replaced by the catalogue photo.
  */
 async function enrichSharedLookPieces(
   raw: unknown,
-  trustImage?: (url: string, products: (Product | undefined)[]) => boolean,
+  anonymous: boolean,
 ): Promise<SharedLookPiece[]> {
+  const trustImage = anonymous ? isTrustedPiecePhoto : undefined;
   const rawPieces = (Array.isArray(raw) ? raw : []).filter(
     (p): p is RawLookPiece => !!p && typeof p === "object"
   );
@@ -871,7 +900,7 @@ async function enrichSharedLookPieces(
     return {
       slot,
       productId,
-      name: (typeof p.name === "string" && p.name ? p.name : product?.name) ?? slot,
+      name: (!anonymous && typeof p.name === "string" && p.name ? p.name : product?.name) ?? slot,
       imageUrl: (ownImage || product?.imageUrl) ?? null,
       brand: product?.brand ?? null,
       priceMin: product?.priceMin ?? null,
@@ -893,20 +922,35 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
   if (error || !data) return null;
 
   // A look shared while signed out was written by /api/looks/share for anyone
-  // who asked: its photos get the same check as a ?d= link's.
+  // who asked: it gets the same treatment as a ?d= link — no text of its own,
+  // and only photos we can vouch for.
   const anonymous = data.user_id === ANONYMOUS_LOOK_OWNER;
-  const pieces = await enrichSharedLookPieces(data.pieces, anonymous ? isTrustedPiecePhoto : undefined);
+  const pieces = await enrichSharedLookPieces(data.pieces, anonymous);
 
   const generatedStyle =
     typeof data.generated_style === "string" ? data.generated_style : null;
   const generatedImage: string | null = data.generated_image ?? null;
 
+  if (anonymous) {
+    return {
+      id: data.id,
+      name: null,
+      description: null,
+      generatedImage: generatedImage && isOwnStorageUrl(generatedImage) ? generatedImage : null,
+      generatedStyle,
+      totalPrice: catalogueTotal(pieces),
+      styleKeywords: [],
+      savedAt: data.saved_at ?? null,
+      pieces,
+      anonymous,
+    };
+  }
+
   return {
     id: data.id,
     name: data.look_name ?? null,
     description: data.look_description ?? null,
-    generatedImage:
-      anonymous && !(generatedImage && isOwnStorageUrl(generatedImage)) ? null : generatedImage,
+    generatedImage,
     generatedStyle,
     totalPrice: data.total_price ?? null,
     styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
@@ -914,6 +958,18 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
     pieces,
     anonymous,
   };
+}
+
+/**
+ * What a look nobody signed for costs, from the catalogue: the sum of each
+ * piece's lowest price. The payload's own total is a number anyone could have
+ * typed, shown as "Total" on our domain.
+ */
+function catalogueTotal(pieces: SharedLookPiece[]): number | null {
+  const prices = pieces
+    .map((p) => p.priceMin)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  return prices.length ? prices.reduce((sum, n) => sum + n, 0) : null;
 }
 
 /**
@@ -958,10 +1014,11 @@ export function isTrustedPiecePhoto(url: string, products: (Product | undefined)
  *
  * The payload is untrusted and unsigned: anyone can mint a link that renders
  * on our domain. So every field is validated, the page is noindex (see
- * app/look/[id]), and no picture comes from the link itself — the generated
- * photo only from our own storage, piece photos only when they are that
- * product's (or its named colour variant's) catalogue photos. A payload naming
- * no real product is refused.
+ * app/look/[id]), and neither text nor picture comes from the link itself: no
+ * name, description or style tags, piece names and the total from the
+ * catalogue, the generated photo only from our own storage, piece photos only
+ * when they are that product's (or its named colour variant's) catalogue
+ * photos. A payload naming no real product is refused.
  */
 export async function sharedLookFromShareData(
   id: string,
@@ -990,31 +1047,23 @@ export async function sharedLookFromShareData(
       slot: str(p?.slot, 40) ?? "",
       productId: str(p?.productId, 100) ?? "",
       variantId: str(p?.variantId, 100) ?? undefined,
-      name: str(p?.name, 300) ?? undefined,
       imageUrl: httpUrl(p?.imageUrl) ?? undefined,
     }))
     .filter((p) => p.productId);
 
-  const pieces = await enrichSharedLookPieces(rawPieces, isTrustedPiecePhoto);
+  const pieces = await enrichSharedLookPieces(rawPieces, true);
   if (!pieces.some((p) => p.productExists)) return null;
 
   const generatedImage = httpUrl(data.generatedImage);
 
   return {
     id,
-    name: str(data.name, 200),
-    description: str(data.description, 2000),
+    name: null,
+    description: null,
     generatedImage: generatedImage && isOwnStorageUrl(generatedImage) ? generatedImage : null,
     generatedStyle: str(data.generatedStyle, 40),
-    totalPrice:
-      typeof data.totalPrice === "number" && Number.isFinite(data.totalPrice)
-        ? data.totalPrice
-        : null,
-    styleKeywords: Array.isArray(data.styleKeywords)
-      ? (data.styleKeywords as unknown[])
-          .filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 60)
-          .slice(0, 20)
-      : [],
+    totalPrice: catalogueTotal(pieces),
+    styleKeywords: [],
     savedAt: null,
     pieces,
     anonymous: true,

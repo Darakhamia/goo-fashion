@@ -15,16 +15,18 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const CLERK_PAGE = 500;
 
 // Every Clerk user, newest first. getUserList returns at most 500 per call,
-// so walk the pages by offset until totalCount is reached.
+// so walk the pages by offset until totalCount is reached. Someone signing up
+// mid-walk shifts every later page by one, so the last user of a page comes
+// back as the first of the next: users are kept by id, once each.
 async function listAllUsers(): Promise<User[]> {
   const cc = await clerkClient();
-  const users: User[] = [];
+  const users = new Map<string, User>();
   for (let offset = 0; ; offset += CLERK_PAGE) {
     const res = await cc.users.getUserList({ limit: CLERK_PAGE, offset, orderBy: "-created_at" });
-    users.push(...res.data);
-    if (res.data.length < CLERK_PAGE || users.length >= res.totalCount) break;
+    for (const u of res.data) users.set(u.id, u);
+    if (res.data.length < CLERK_PAGE || users.size >= res.totalCount) break;
   }
-  return users;
+  return [...users.values()];
 }
 
 function planOf(u: User): string {
@@ -47,9 +49,16 @@ async function resolveRecipients(
     users = users.filter((u) => planOf(u) === audience);
   }
 
-  return users
-    .map((u) => u.emailAddresses[0]?.emailAddress)
-    .filter((e): e is string => !!e && e.includes("@"));
+  // One letter per address, whatever its case.
+  const seen = new Set<string>();
+  const emails: string[] = [];
+  for (const u of users) {
+    const email = u.emailAddresses[0]?.emailAddress;
+    if (!email || !email.includes("@") || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    emails.push(email);
+  }
+  return emails;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

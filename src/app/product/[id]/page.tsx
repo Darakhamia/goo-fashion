@@ -8,15 +8,26 @@ import { SITE_URL, absoluteUrl, formatMetaPrice, productJsonLd, breadcrumbJsonLd
 import { cheapestOffer } from "@/lib/server/fx";
 
 // ISR: a product page is served from cache and regenerated at most every five
-// minutes, like the blog — it was rendered from the database on every visit.
+// minutes — it was rendered from the database on every visit.
 export const revalidate = 300;
+
+// `revalidate` alone caches nothing here: a dynamic segment with no
+// generateStaticParams is rendered per request. An empty list prerenders no
+// product at build time and caches each one on its first visit instead, which
+// is also what lets revalidatePath(`/product/${id}`) in the product API
+// refresh it after an edit.
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  return [];
+}
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-// generateMetadata and the page both need the product; one request reads it once.
-const loadProduct = cache((id: string) => getProductById(id));
+// generateMetadata and the page both need the product; one request reads it
+// once. A failed read throws rather than reading as "no such product", so a
+// database hiccup is not cached as a 404 for the next five minutes.
+const loadProduct = cache((id: string) => getProductById(id, { throwOnError: true }));
 
 // The page shows four of each.
 const RELATED_COUNT = 4;

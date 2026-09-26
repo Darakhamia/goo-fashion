@@ -14,6 +14,7 @@ import {
   extractCurrencyFromDisplay,
   getBaseProductName,
   matchCategory,
+  normalizeGtin,
   parsePrice,
   parseRetailCategory,
   storeNameFromUrl,
@@ -36,6 +37,8 @@ export interface CSVMappedRow {
   sizes: string[];
   material: string;
   description: string;
+  /** The item's GTIN (EAN/UPC) when the feed prints a valid one — how another store's row of it is recognised. */
+  gtin?: string;
   /** The feed marks it out of stock: never created, but it updates a product we already carry. */
   soldOut: boolean;
   _valid: boolean;
@@ -322,14 +325,26 @@ export function mapCSVRow(row: Record<string, string>): CSVMappedRow {
       : [];
   }
 
-  // Description: Farfetch description is often just a color word — skip those
-  const descRaw = resolve(row, "description", "product_short_description", "keywords", "desc");
+  // Description: Farfetch description is often just a color word — skip those.
+  // Not `keywords`: with the text columns blank, a list of search terms would
+  // become the product's description.
+  const descRaw = resolve(row, "description", "product_short_description", "desc");
   const description = (descRaw && descRaw.split(/\s+/).length > 4) ? descRaw : "";
 
-  // Material from specifications (Awin often puts fabric content there)
-  const material = resolve(row,
-    "fashion:material", "fashion_material", "specifications", "material", "composition", "fabric",
-  );
+  // Material: the material columns first. Awin often puts fabric content in
+  // `specifications`, so it is read — but only from a feed with no material
+  // column: one that has it and left it blank keeps care notes and fit there.
+  const materialColumns = ["fashion:material", "fashion_material", "material", "composition", "fabric"];
+  const hasMaterialColumn = materialColumns.some((column) => column in row);
+  const material =
+    resolve(row, ...materialColumns) || (hasMaterialColumn ? "" : resolve(row, "specifications"));
+
+  // The item's code, when the feed prints one that passes its check digit:
+  // what lets a second merchant's row of the same piece join the product
+  // rather than become a copy of it.
+  const gtin = ["product_gtin", "ean", "gtin", "upc"]
+    .map((column) => normalizeGtin(resolve(row, column)))
+    .find(Boolean) ?? "";
 
   return {
     name,
@@ -347,6 +362,7 @@ export function mapCSVRow(row: Record<string, string>): CSVMappedRow {
     sizes,
     material,
     description,
+    ...(gtin ? { gtin } : {}),
     soldOut,
     _valid: issues.length === 0,
     _issues: issues,

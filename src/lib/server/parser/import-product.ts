@@ -367,6 +367,8 @@ async function findSameItemByName(incoming: {
   category: string;
   price: number;
   sourceUrl: string | null;
+  /** A feed's merchant, when the caller named it — see `pickSameItemByName`. */
+  store?: string | null;
 }): Promise<{ item: NamedItem; unread: string[] } | null> {
   if (!incoming.brand || !incoming.sourceUrl) return null;
   try {
@@ -457,7 +459,9 @@ export interface ImportOptions {
    * it from the page, keeping only the editor's style and gender. "refresh"
    * writes just what a feed is the authority on — the price, the stores with
    * their stock, the sizes — and leaves the name, category, description, tags,
-   * photos and grouping the editor curates after the first import alone.
+   * photos and grouping the editor curates after the first import alone. It
+   * also finds the product this link once joined as a second store, and there
+   * writes only this source's stores and the price range they give.
    */
   onExisting?: "replace" | "refresh";
   /**
@@ -636,13 +640,31 @@ export async function importParsedProduct(
   // feed re-run is mostly rows we already carry.
   if (opts.onExisting === "refresh" && sourceUrl) {
     try {
+      type Found = { id: string; retailers: Product["retailers"] | null; source_url: string | null };
       const { data: found, error: findError } = await supabase
-        .from("products").select("id, retailers").eq("source_url", sourceUrl).maybeSingle();
+        .from("products").select("id, retailers, source_url").eq("source_url", sourceUrl).maybeSingle();
       // Unanswered is not "absent": carrying on would insert a twin of the row
       // the lookup could not see.
       if (findError) throw new Error(findError.message);
-      const existing = found as { id: string; retailers: Product["retailers"] | null } | null;
+      let existing = found as Found | null;
+      // A feed row that once joined another source's product has no row of its
+      // own: its link is one of that product's stores. It is refreshed there —
+      // otherwise every run would download its photos again only to join the
+      // same product, and a store that sold out would stay "in stock".
+      if (!existing) {
+        const { data: joined, error: joinedError } = await supabase
+          .from("products")
+          .select("id, retailers, source_url")
+          .contains("retailers", JSON.stringify([{ url: sourceUrl }]))
+          .order("created_at", { ascending: true })
+          .limit(1);
+        if (joinedError) throw new Error(joinedError.message);
+        existing = ((joined ?? []) as Found[])[0] ?? null;
+      }
       if (existing) {
+        // The product's own page is another source's: its sizes and source
+        // price are that page's, and only this feed's stores are ours to write.
+        const joinedOther = existing.source_url !== sourceUrl;
         let ours = opts.retailers ?? [];
         if (!ours.length) {
           const store = resolveRetailer(sourceUrl, String(p.brand ?? "").trim(), await loadRetailerRules());
@@ -678,7 +700,19 @@ export async function importParsedProduct(
         };
         const id = existing.id;
         const current = Array.isArray(existing.retailers) ? existing.retailers : [];
+        if (joinedOther) {
+          for (const column of ["sizes", "source_price", "source_currency", "fx_rate", "fx_date"]) {
+            delete row[column];
+          }
+        }
         const next = await keepOtherStores(row, current, ours, sourceUrl);
+        // A price the product cannot compare (no dollar rate), or one from a
+        // store that has sold out, is not written over another source's price.
+        if (joinedOther && (currency !== "USD" || ours.every((r) => r.availability === "sold out"))) {
+          for (const column of ["price_min", "price_max", "currency", "price_min_usd", "price_max_usd"]) {
+            delete next[column];
+          }
+        }
         const { data, error, dropped } = await writeProductRow<{ id: string }>(next, (r) =>
           supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
         );
@@ -805,11 +839,15 @@ export async function importParsedProduct(
   let gender = statedGender;
   let genderNote: string | undefined;
   if (!gender) {
+    // A feed's link is the affiliate network's (every Awin merchant is
+    // awin1.com), so its host says nothing about the store: only the brand's
+    // habit is asked.
+    const storeUrl = opts.retailers?.length ? null : sourceUrl;
     const proposal = proposeGender(
       {
         brand,
-        sourceUrl,
-        storeDefault: sourceUrl ? storeDefaultGender(sourceUrl, retailerRules) : undefined,
+        sourceUrl: storeUrl,
+        storeDefault: storeUrl ? storeDefaultGender(storeUrl, retailerRules) : undefined,
       },
       profile,
     );
@@ -968,6 +1006,7 @@ export async function importParsedProduct(
           category,
           price: incoming.price,
           sourceUrl,
+          store: opts.retailers?.[0]?.name,
         });
         if (byName) {
           twin = byName.item;

@@ -12,7 +12,7 @@
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
-import { validateTargetUrl } from "@/lib/server/parser/fetch";
+import { assertPublicUrl } from "@/lib/server/parser/fetch";
 
 export const PRODUCT_IMAGES_BUCKET = "product-images";
 
@@ -87,12 +87,12 @@ function isOwnStorageOrigin(url: string): boolean {
 /**
  * Throw unless the server may download this address: our own storage (which in
  * local development lives on localhost, so it is let through first) or a public
- * http(s) host — never loopback, private, link-local or cloud metadata.
+ * http(s) host — never loopback, private, link-local or cloud metadata, whether
+ * spelt as one or reached through a name that resolves to one.
  */
-function assertFetchable(url: string): void {
+async function assertFetchable(url: string): Promise<void> {
   if (isOwnStorageOrigin(url)) return;
-  const valid = validateTargetUrl(url, "direct");
-  if ("error" in valid) throw new Error(valid.error);
+  await assertPublicUrl(url);
 }
 
 /**
@@ -135,7 +135,7 @@ export async function fetchImageBuffer(
   let current = url;
   let res: Response | null = null;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    assertFetchable(current);
+    await assertFetchable(current);
     const r = await fetch(current, { headers, signal, redirect: "manual" });
     const location = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
     if (!location) {

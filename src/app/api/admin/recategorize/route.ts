@@ -278,12 +278,17 @@ async function undo(adminId: string) {
     }
   }
 
-  await supabase.from("admin_audit_log").insert({
-    admin_id: adminId,
-    action: "products.recategorize_undone",
-    target_type: "products",
-    metadata: { undid_run_at: entry.created_at, restored, movedSince },
-  });
+  // The run counts as undone only once every product was read and written. With
+  // failures it stays open, so pressing Undo again retries them: rows already
+  // restored no longer hold what the run wrote and are skipped.
+  if (failures.length === 0) {
+    await supabase.from("admin_audit_log").insert({
+      admin_id: adminId,
+      action: "products.recategorize_undone",
+      target_type: "products",
+      metadata: { undid_run_at: entry.created_at, restored, movedSince },
+    });
+  }
 
   for (const p of ["/browse", "/builder"]) {
     try { revalidatePath(p); } catch { /* best-effort */ }

@@ -113,9 +113,18 @@ function rowLabel(u: Pick<UserRow, "firstName" | "lastName" | "email" | "id">): 
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id;
 }
 
-/** A subscription the billing ledger still treats as live (it can be charged). */
+/**
+ * A subscription the billing ledger still treats as live: active, or past_due
+ * after a failed renewal. Only an active one is ever charged again — the
+ * renewal cron picks up `active` rows only and never retries a past_due one.
+ */
 function liveSubscription(s: UserSubscription | null | undefined): s is UserSubscription {
   return !!s && (s.status === "active" || s.status === "past_due");
+}
+
+/** Whether the renewal cron will charge this subscription again. */
+function renewsAutomatically(s: UserSubscription | null | undefined): boolean {
+  return !!s && s.status === "active" && s.autoRenew;
 }
 
 function describeSubscription(s: UserSubscription): string {
@@ -129,9 +138,11 @@ function listLabels(rows: UserRow[], max = 5): string {
 }
 
 // The admin panel changes the plan in Clerk only; the monobank subscription
-// row is untouched, so a renewal keeps charging and puts the paid plan back.
+// row is untouched, so an active auto-renewing subscription keeps charging and
+// its next renewal puts the paid plan back. A past_due one is not retried.
 const PLAN_BILLING_NOTE = "Only the plan in Clerk changes — billing does not.";
 const RENEWAL_NOTE = "Charges continue, and the next renewal restores the paid plan.";
+const PAST_DUE_NOTE = "Its last renewal failed and is not retried, so nothing puts the paid plan back on its own.";
 
 function deleteSubscriptionWarning(s: UserSubscription | null | undefined): string {
   if (!liveSubscription(s)) return "";
@@ -326,7 +337,7 @@ export default function AdminUsersPage() {
     const rows = safeSelected();
     if (!rows.length) return;
     const paying = rows.filter((u) => liveSubscription(u.subscription));
-    const renewing = paying.some((u) => u.subscription?.autoRenew);
+    const renewing = paying.some((u) => renewsAutomatically(u.subscription));
     const warn = paying.length
       ? `\n\n${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
         `${PLAN_BILLING_NOTE}${renewing ? ` ${RENEWAL_NOTE}` : ""}`
@@ -1093,7 +1104,9 @@ function UserDrawer({
               {liveSubscription(detail.subscription) && (
                 <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/15 text-amber-500 text-[10px] px-3 py-2">
                   Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
-                  {detail.subscription.autoRenew ? ` ${RENEWAL_NOTE}` : ""}
+                  {renewsAutomatically(detail.subscription)
+                    ? ` ${RENEWAL_NOTE}`
+                    : detail.subscription.status === "past_due" ? ` ${PAST_DUE_NOTE}` : ""}
                 </p>
               )}
             </div>

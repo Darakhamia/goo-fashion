@@ -261,6 +261,23 @@ const THEME_CLASS = {
   dark: "admin-theme-dark",
 } as const;
 
+/*
+ * The server cannot read localStorage, so the server render and hydration use
+ * the light theme. This script is the first child of the admin root: it runs
+ * while the page is parsed, before the first paint, and moves the root to the
+ * saved dark theme, so a reload with Dark selected does not flash white.
+ * Hydration leaves the class as the script set it (hence
+ * suppressHydrationWarning on the root), and React sets the same class right
+ * after, once useSetting reads the saved value. On a client-side navigation
+ * into the admin the saved value is read on the first render, and React never
+ * runs a script it creates on the client.
+ */
+const THEME_BOOT_SCRIPT = `(function(){try{if(localStorage.getItem(${JSON.stringify(
+  ADMIN_THEME_KEY
+)})==="dark"){var r=document.currentScript.parentElement;r.classList.remove(${JSON.stringify(
+  THEME_CLASS.light
+)});r.classList.add(${JSON.stringify(THEME_CLASS.dark)})}}catch(e){}})()`;
+
 // Nested pages without a menu entry of their own; shown as a third breadcrumb
 // segment under their parent menu item.
 const SUBPAGE_TITLES: Record<string, string> = {
@@ -284,8 +301,10 @@ function navItemFor(pathname: string): NavItem | undefined {
  * Admin preferences (theme, menu order) live in localStorage and are read
  * through useSyncExternalStore: the server render and hydration use the
  * defaults, the saved values apply right after, and there is no hydration
- * mismatch. When storage is blocked (private mode, quota) a written value is
- * kept in memory, so it still applies until reload.
+ * mismatch. The one exception is the dark theme, which THEME_BOOT_SCRIPT puts
+ * on the admin root before the first paint. When storage is blocked (private
+ * mode, quota) a written value is kept in memory, so it still applies until
+ * reload.
  */
 const settingListeners = new Set<() => void>();
 const memorySettings = new Map<string, string | null>();
@@ -684,8 +703,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div
+      suppressHydrationWarning
       className={`flex h-dvh overflow-hidden bg-[var(--surface)] text-[var(--foreground)] ${THEME_CLASS[theme]}`}
     >
+      {/* Saved dark theme before the first paint — see THEME_BOOT_SCRIPT. */}
+      <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+
       {/* ── Sidebar (md and up) ── */}
       <aside
         className={`hidden md:flex flex-shrink-0 flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${

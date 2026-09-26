@@ -67,15 +67,19 @@ interface EventRow {
 // PostgREST answers any request with at most PGRST_DB_MAX_ROWS rows (1000
 // unless the server raises it), whatever .limit() asks for, so one request
 // per table stalls every counter at that cap. Tables are read page by page.
+//
+// Pages follow a keyset, not an OFFSET: each asks for the rows after the last
+// one it got, so the database walks the index from where it stopped. With an
+// OFFSET every page re-read all the rows it skipped — at 100k rows in, each
+// page scanned 100k more, and a 90-day range cost hundreds of requests that
+// held the database's connections for tens of seconds. One table's pages are
+// read one after another.
 
 const PAGE_SIZE = 1000;
 /** Past this many rows only the newest are read, and the response says so. */
 const MAX_ROWS = 200_000;
-/** Pages of one table requested at the same time. */
-const PAGE_CONCURRENCY = 4;
 
-type PageResponse<T> = { data: T[] | null; error: { message: string } | null; count?: number | null };
-type PagedQuery<T> = { range(from: number, to: number): PromiseLike<PageResponse<T>> };
+type PageResponse<T> = { data: T[] | null; error: { message: string } | null };
 
 interface ReadResult<T> {
   rows: T[];
@@ -84,38 +88,37 @@ interface ReadResult<T> {
   error: string | null;
 }
 
-/**
- * Reads every row of a query, MAX_ROWS at most. `query` must order the rows
- * newest first on a unique key, so pages neither overlap nor skip and a
- * capped read keeps the most recent rows.
- */
-async function readAll<T>(query: (withCount: boolean) => PagedQuery<T>): Promise<ReadResult<T>> {
-  const first = await query(true).range(0, PAGE_SIZE - 1);
-  if (first.error) return { rows: [], truncated: false, error: first.error.message };
-  const rows = first.data ?? [];
-  const total = first.count ?? rows.length;
-  const wanted = Math.min(total, MAX_ROWS);
-  // The server may cap a page below PAGE_SIZE; step by what it actually sent.
-  const step = rows.length;
-  if (step === 0 || step >= wanted) {
-    return { rows: rows.slice(0, wanted), truncated: total > wanted, error: null };
-  }
+/** A value inside a PostgREST `or` filter, quoted so its dots and colons stay literal. */
+const orValue = (v: string | number) => `"${String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
-  const starts: number[] = [];
-  for (let from = step; from < wanted; from += step) starts.push(from);
-  const pages: T[][] = [];
-  for (let i = 0; i < starts.length; i += PAGE_CONCURRENCY) {
-    const batch = await Promise.all(
-      starts.slice(i, i + PAGE_CONCURRENCY).map((from) =>
-        query(false).range(from, Math.min(from + step, wanted) - 1),
-      ),
-    );
-    for (const page of batch) {
-      if (page.error) return { rows: [], truncated: false, error: page.error.message };
-      pages.push(page.data ?? []);
-    }
+/**
+ * Reads every row of a query, MAX_ROWS at most. `page(last)` must order the
+ * rows newest first on a unique key and, given the previous page's last row,
+ * return only the rows after it — so pages neither overlap nor skip and a
+ * capped read keeps the most recent rows. Stops early when the request that
+ * asked for the numbers has gone.
+ */
+async function readAll<T>(
+  page: (last: T | null) => PromiseLike<PageResponse<T>>,
+  signal?: AbortSignal,
+): Promise<ReadResult<T>> {
+  const rows: T[] = [];
+  let last: T | null = null;
+  // The server may cap a page below PAGE_SIZE: the biggest page seen is its size.
+  let step = 0;
+  for (;;) {
+    if (signal?.aborted) return { rows: [], truncated: false, error: "request aborted" };
+    const res = await page(last);
+    if (res.error) return { rows: [], truncated: false, error: res.error.message };
+    const data = res.data ?? [];
+    if (data.length === 0) return { rows, truncated: false, error: null };
+    step = Math.max(step, data.length);
+    for (const row of data) rows.push(row);
+    if (rows.length >= MAX_ROWS) return { rows: rows.slice(0, MAX_ROWS), truncated: true, error: null };
+    // A page shorter than the server's page size is the last one.
+    if (data.length < step) return { rows, truncated: false, error: null };
+    last = data[data.length - 1];
   }
-  return { rows: rows.concat(...pages), truncated: total > wanted, error: null };
 }
 
 function safeReferrerHost(ref: string | null): string | null {
@@ -162,6 +165,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Database not configured" }, { status: 501 });
   }
   const sb = supabase;
+  // An admin switching ranges aborts the old request; its reads stop too.
+  const signal = req.signal;
 
   const { searchParams } = new URL(req.url);
   const range = (searchParams.get("range") as Range) || "7d";
@@ -172,8 +177,8 @@ export async function GET(req: Request) {
   const now = Date.now();
   const since = new Date(now - rangeMs(range)).toISOString();
   const prevSince = new Date(now - 2 * rangeMs(range)).toISOString();
-  // Exclusive upper bound: rows written while the pages are being read stay
-  // out, so the offsets do not shift under the reader.
+  // Exclusive upper bound, fixed before the first page: rows written while the
+  // pages are being read stay out, so every table is read over the same span.
   const until = new Date(now + 1).toISOString();
   const bucket = bucketSize(range);
 
@@ -189,16 +194,25 @@ export async function GET(req: Request) {
   // same calendar days as the chart.
   const stylistSinceDate = bucket === "hour" ? bucketKey(new Date(now).toISOString(), "day") : buckets[0];
 
-  // Rows of `table` with ts in [from, to), newest first. The column list is
-  // built at runtime, so supabase-js cannot type the rows; T names them.
-  const newestFirst = <T>(table: string, columns: string, from: string, to: string) =>
-    (withCount: boolean) =>
-      sb.from(table)
-        .select(columns, withCount ? { count: "exact" } : undefined)
-        .gte("ts", from)
-        .lt("ts", to)
+  // Rows of `table` with ts in [from, to), newest first on (ts, id), each page
+  // after the previous one's last row. The column list is built at runtime, so
+  // supabase-js cannot type the rows; T names them.
+  type Keyed = { ts: string; id: number | string };
+  const newestFirst = <T>(table: string, columns: string, from: string, to: string) => {
+    const select = [...new Set([...columns.split(","), "ts", "id"])].join(",");
+    return (last: (T & Keyed) | null) => {
+      let query = sb.from(table).select(select).gte("ts", from).lt("ts", to);
+      if (last) {
+        query = query.or(
+          `ts.lt.${orValue(last.ts)},and(ts.eq.${orValue(last.ts)},id.lt.${orValue(last.id)})`,
+        );
+      }
+      return query
         .order("ts", { ascending: false })
-        .order("id", { ascending: false }) as unknown as PagedQuery<T>;
+        .order("id", { ascending: false })
+        .limit(PAGE_SIZE) as unknown as PromiseLike<PageResponse<T & Keyed>>;
+    };
+  };
 
   // ── Fetch raw rows ────────────────────────────────────────────────────────
   const fiveMinAgo = new Date(now - 5 * 60_000).toISOString();
@@ -210,26 +224,34 @@ export async function GET(req: Request) {
       "page_views",
       "ts,session_id,user_id,path,referrer,utm_source,country,device,browser,load_ms",
       since, until,
-    )),
+    ), signal),
     // Previous window — for the comparison delta
-    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", prevSince, since)),
-    readAll(newestFirst<WebVitalRow>("web_vitals", "metric,value", since, until)),
-    readAll(newestFirst<EventRow>("analytics_events", "session_id,event,props", since, until)),
+    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", prevSince, since), signal),
+    readAll(newestFirst<WebVitalRow>("web_vitals", "metric,value", since, until), signal),
+    readAll(newestFirst<EventRow>("analytics_events", "session_id,event,props", since, until), signal),
     // Realtime: sessions seen in the last 5 minutes
-    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", fiveMinAgo, until)),
+    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", fiveMinAgo, until), signal),
     reuseMonth
       ? Promise.resolve(null)
       : readAll(
           newestFirst<{ ts: string; session_id: string }>("page_views", "ts,session_id", new Date(now - 30 * DAY_MS).toISOString(), until),
+          signal,
         ),
     // Stylist AI usage per day over the range
-    readAll<{ usage_date: string; count: number }>((withCount) =>
-      sb.from("stylist_daily_usage")
-        .select("usage_date,count", withCount ? { count: "exact" } : undefined)
-        .gte("usage_date", stylistSinceDate)
+    readAll<{ usage_date: string; user_id: string; count: number }>((last) => {
+      let query = sb.from("stylist_daily_usage")
+        .select("usage_date,user_id,count")
+        .gte("usage_date", stylistSinceDate);
+      if (last) {
+        query = query.or(
+          `usage_date.lt.${orValue(last.usage_date)},and(usage_date.eq.${orValue(last.usage_date)},user_id.lt.${orValue(last.user_id)})`,
+        );
+      }
+      return query
         .order("usage_date", { ascending: false })
-        .order("user_id", { ascending: false }),
-    ),
+        .order("user_id", { ascending: false })
+        .limit(PAGE_SIZE);
+    }, signal),
   ]);
 
   // Zeros from a failed read would pass for "no traffic" — fail loudly instead.

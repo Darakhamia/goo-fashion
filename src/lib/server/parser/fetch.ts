@@ -8,6 +8,8 @@
  * curl_cffi / playwright server-side, which we can't do inside a Vercel
  * function. `custom` points at the admin's own endpoint template.
  */
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { ParserFetchSettings, FetchProvider } from "./types";
 
 // Realistic, current desktop User-Agent strings per impersonation profile.
@@ -250,7 +252,8 @@ function isBlockedIPv6(h: string): boolean {
  * spellings: `new URL()` keeps an IPv6 literal in brackets ("[::1]") and a
  * trailing dot ("localhost."), and a raw hostname can still carry the numeric
  * IPv4 forms a URL parser would have folded ("2130706433", "0x7f.1"). DNS is
- * not resolved here: a public name that points at a private address passes.
+ * not resolved here: a public name that points at a private address passes —
+ * `isBlockedResolvedHost` below is the check that resolves it.
  */
 export function isBlockedDirectHost(hostname: string): boolean {
   let h = hostname.trim().toLowerCase();
@@ -291,6 +294,45 @@ export function validateTargetUrl(raw: string, provider: FetchProvider): { url: 
     return { error: "Refusing to fetch a private/internal host directly" };
   }
   return { url };
+}
+
+/**
+ * `isBlockedDirectHost` plus what the name resolves to.
+ *
+ * The spelling check passes any public-looking name, and a name is free to
+ * point anywhere: "169.254.169.254.nip.io", "lvh.me" or a domain with an A
+ * record on 10.x all read as public and dial an internal address. So a name
+ * (not a literal, which the spelling check already judged) is looked up, and
+ * refused when any address it answers with would be refused as a literal —
+ * or when it does not resolve at all, since then there is nothing to fetch.
+ *
+ * Asked right before each request and each redirect hop. It does not pin the
+ * address fetch() then dials, so a resolver that changes its answer in between
+ * (DNS rebinding) is not covered by this alone.
+ */
+export async function isBlockedResolvedHost(hostname: string): Promise<boolean> {
+  if (isBlockedDirectHost(hostname)) return true;
+  const h = hostname.trim().toLowerCase().replace(/\.+$/, "");
+  // Literals were judged above: an IPv6 one in brackets, an IPv4 one in any spelling.
+  if (h.startsWith("[") || isIP(h) || ipv4Value(h) !== null) return false;
+  try {
+    const answers = await lookup(h, { all: true, verbatim: true });
+    return answers.length === 0 || answers.some((a) => isBlockedDirectHost(a.address));
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Throw unless the server may fetch `raw` directly: a public http(s) address
+ * whose name resolves only to public addresses.
+ */
+export async function assertPublicUrl(raw: string): Promise<void> {
+  const valid = validateTargetUrl(raw, "direct");
+  if ("error" in valid) throw new Error(valid.error);
+  if (await isBlockedResolvedHost(valid.url.hostname)) {
+    throw new Error("Refusing to fetch a host that resolves to a private/internal address");
+  }
 }
 
 /** Build the upstream URL for a scraping provider. */
