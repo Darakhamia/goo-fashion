@@ -2,491 +2,301 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { productToDb } from "@/lib/data/db";
+import { logAdminAction } from "@/lib/server/audit";
+import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
+import { getAiSettings } from "@/lib/server/parser/configs";
+import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
+import { normalizeGtin } from "@/lib/server/product-fields";
 import {
-  parsePrice,
-  extractCurrencyFromDisplay,
-  parseRetailCategory,
-  matchCategory,
-  colorToHex,
-  storeNameFromUrl,
-} from "@/lib/server/product-fields";
-import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
-import type { Product, Category, Gender } from "@/lib/types";
-import type { CSVMappedRow } from "@/app/goo-studio/brightdata/page";
+  canRefreshOnly,
+  groupUrls,
+  MAX_CHECK_URLS,
+  MAX_IMPORT_GROUPS,
+  type CSVImportGroup,
+  type CSVMappedRow,
+} from "@/lib/csv-import";
+import type { Product } from "@/lib/types";
 
-// ── Simple CSV parser (handles quoted fields, pipe separator fallback) ─────────
+// The feed itself is read in the browser (`@/lib/csv-import`); this route only
+// answers which links the catalogue already has and writes batches of grouped
+// products. A batch is up to MAX_IMPORT_GROUPS products, each through the full
+// import pipeline — photo mirroring, colour sampling, the duplicate search.
+export const maxDuration = 300;
 
-function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  if (lines.length === 0) return { headers: [], rows: [] };
+/**
+ * Links per `.in()` filter: they travel in the query string, which has a length
+ * limit, and an affiliate link percent-encoded again is a few hundred characters.
+ */
+const LOOKUP_SLICE = 10;
 
-  const firstLine = lines.find((l) => l.trim()) ?? "";
-  const sep = firstLine.split("\t").length > firstLine.split(",").length ? "\t"
-    : firstLine.split("|").length > 10 ? "|" : ",";
+const isHttpUrl = (u: unknown): u is string => typeof u === "string" && /^https?:\/\//.test(u);
 
-  const parseRow = (line: string): string[] => {
-    if (sep !== ",") return line.split(sep).map((v) => v.trim().replace(/^"|"$/g, ""));
-    const result: string[] = [];
-    let cur = "";
-    let inQuote = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
-        else { inQuote = !inQuote; }
-      } else if (ch === "," && !inQuote) {
-        result.push(cur.trim());
-        cur = "";
-      } else {
-        cur += ch;
+type LinkRow = { source_url?: string | null; retailers?: { url?: unknown }[] | null };
+type LinkAnswer = PromiseLike<{ data: unknown; error: { message: string } | null }>;
+
+/** jsonb containment of one link in `retailers`, as the value `cs` takes. */
+const retailerLink = (url: string) => JSON.stringify([{ url }]);
+
+/**
+ * Products whose "Where to buy" holds one of these links: one `or` of
+ * containments for the lot. A term ends at a comma or a closing parenthesis,
+ * so a link carrying one (or whitespace) is asked on its own instead.
+ */
+function retailerLinkQueries(slice: string[]): LinkAnswer[] {
+  const plain = slice.filter((u) => !/[,()\s]/.test(u));
+  const odd = slice.filter((u) => /[,()\s]/.test(u));
+  const queries: LinkAnswer[] = odd.map((u) =>
+    supabase!.from("products").select("retailers").contains("retailers", retailerLink(u)),
+  );
+  if (plain.length) {
+    queries.push(
+      supabase!
+        .from("products")
+        .select("retailers")
+        .or(plain.map((u) => `retailers.cs.${retailerLink(u)}`).join(",")),
+    );
+  }
+  return queries;
+}
+
+/**
+ * Which of these links the catalogue already carries: as a product's
+ * `source_url`, or as one of its stores — a feed row that joined another
+ * source's product (see `importParsedProduct`) lives only there. Throws when
+ * the database does not answer.
+ */
+async function knownLinks(urls: string[]): Promise<Set<string>> {
+  const wanted = new Set(urls);
+  const found = new Set<string>();
+  const slices: string[][] = [];
+  for (let i = 0; i < urls.length; i += LOOKUP_SLICE) slices.push(urls.slice(i, i + LOOKUP_SLICE));
+  for (let i = 0; i < slices.length; i += 4) {
+    const answers = await Promise.all(
+      slices.slice(i, i + 4).flatMap((slice): LinkAnswer[] => [
+        supabase!.from("products").select("source_url").in("source_url", slice),
+        ...retailerLinkQueries(slice),
+      ]),
+    );
+    for (const { data, error } of answers) {
+      if (error) throw new Error(error.message);
+      for (const row of (data ?? []) as LinkRow[]) {
+        if (row.source_url && wanted.has(row.source_url)) found.add(row.source_url);
+        for (const store of Array.isArray(row.retailers) ? row.retailers : []) {
+          if (typeof store?.url === "string" && wanted.has(store.url)) found.add(store.url);
+        }
       }
     }
-    result.push(cur.trim());
-    return result;
-  };
-
-  let headerLine = 0;
-  while (headerLine < lines.length && !lines[headerLine].trim()) headerLine++;
-  if (headerLine >= lines.length) return { headers: [], rows: [] };
-
-  const headers = parseRow(lines[headerLine]);
-  const dataRows: Record<string, string>[] = [];
-
-  for (let i = headerLine + 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const vals = parseRow(lines[i]);
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => { row[h] = vals[idx] ?? ""; });
-    dataRows.push(row);
   }
-
-  return { headers, rows: dataRows };
+  return found;
 }
 
-// ── Column resolver (case-insensitive) ────────────────────────────────────────
-
-function resolve(row: Record<string, string>, ...candidates: string[]): string {
-  const keys = Object.keys(row);
-  for (const c of candidates) {
-    const found = keys.find((k) => k.toLowerCase().trim() === c.toLowerCase());
-    if (found !== undefined) return (row[found] ?? "").trim();
-  }
-  return "";
-}
-
-// ── Strip trailing size suffix from product name ──────────────────────────────
-// Awin names: "Polo Shirt - Blue - M" → strip " - M" → "Polo Shirt - Blue"
-
-const SIZE_SUFFIXES = /\s+-\s+(one\s*size|one|os|xxs|xs|s|m|l|xl|xxl|2xl|3xl|4xl|\d{1,3}(?:\.\d)?)$/i;
-
-function cleanName(raw: string): string {
-  return raw.replace(SIZE_SUFFIXES, "").trim();
-}
-
-// (parsePrice, extractCurrencyFromDisplay, colorToHex, parseRetailCategory and
-//  inferCategoryFromName now live in @/lib/server/product-fields — shared with the
-//  universal URL parser.)
-
-// ── Strip trailing color suffix from a size-cleaned name ──────────────────────
-// "Polo Shirt - Blue" → "Polo Shirt"
-// Used for variant grouping — preserves the color-inclusive name for display.
-
-function getBaseProductName(sizeCleanedName: string): string {
-  return sizeCleanedName.replace(/\s+-\s+[\w/]+$/, "").trim();
-}
-
-// ── Boost AWIN proxy image resolution (200→800px) ────────────────────────────
-
-function boostAwinkImageUrl(url: string): string {
-  if (!url.includes("productserve.com") && !url.includes("awin1.com")) return url;
-  return url.replace(/w=\d+/, "w=800").replace(/h=\d+/, "h=800");
-}
-
-// ── Parse JSON array field safely ─────────────────────────────────────────────
-
-function parseJsonArray(raw: string): string[] {
-  if (!raw) return [];
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("[")) return [];
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
-  } catch { /* ignore */ }
-  return [];
-}
-
-// ── Collect all non-empty image URLs preserving quality order ─────────────────
-
-function collectImages(row: Record<string, string>): string[] {
-  const awImage = boostAwinkImageUrl(resolve(row, "aw_image_url"));
-  const awThumb = boostAwinkImageUrl(resolve(row, "aw_thumb_url"));
-
-  // Farfetch format: main_image + all_images JSON array
-  const mainImage = resolve(row, "main_image");
-  const allImagesRaw = resolve(row, "all_images");
-  const allImagesParsed = parseJsonArray(allImagesRaw);
-
-  const candidates = [
-    mainImage,
-    awImage,
-    ...allImagesParsed,
-    resolve(row, "alternate_image"),
-    resolve(row, "merchant_image_url"),
-    resolve(row, "alternate_image_three"),
-    resolve(row, "alternate_image_four"),
-    resolve(row, "large_image"),
-    resolve(row, "alternate_image_two"),
-    resolve(row, "merchant_thumb_url"),
-    awThumb,
-  ];
-
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const url of candidates) {
-    if (url && !seen.has(url)) { seen.add(url); result.push(url); }
-  }
-  return result;
-}
-
-// ── Map one raw CSV row → CSVMappedRow ────────────────────────────────────────
-
-function mapCSVRow(row: Record<string, string>): CSVMappedRow {
-  const issues: string[] = [];
-
-  const rawName = resolve(row, "product_name", "name", "title", "product", "название");
-  const name = cleanName(rawName);
-  if (!name) issues.push("missing name");
-
-  // Store/merchant: ONLY real store columns — never the brand. Feeds that omit
-  // a merchant column (e.g. the Farfetch scraper) get their store derived from
-  // the affiliate link host below, so "Where to buy" shows the store, not the
-  // brand (which previously made rows read e.g. "Supreme" instead of "Farfetch").
-  const merchantColumn = resolve(row, "merchant_name", "merchant", "advertiser", "program_name", "programmename");
-  const brand = resolve(row, "brand_name", "brand", "manufacturer");
-
-  // Farfetch: extract brand from available_sizes when brand column is empty
-  // Sizes look like ["Brand Name | M", "Brand Name | S"]
-  const brandFallback = brand || (() => {
-    const sizesRaw = resolve(row, "available_sizes");
-    const first = parseJsonArray(sizesRaw)[0] ?? "";
-    const pipe = first.indexOf("|");
-    return pipe > 0 ? first.slice(0, pipe).trim() : "";
-  })();
-
-  // Price: Farfetch uses current_price; AWIN uses search_price
-  const priceRaw = resolve(row, "current_price", "search_price", "store_price", "display_price", "base_price", "price", "цена");
-  const price = parsePrice(priceRaw);
-  if (!price) issues.push("missing price");
-
-  // RRP / original price for discount display
-  const rrpRaw = resolve(row, "rrp_price", "product_price_old", "base_price");
-  const priceOriginal = parsePrice(rrpRaw);
-
-  // Currency: explicit column → symbol in display_price → ISO code in display_price
-  const displayPriceRaw = resolve(row, "display_price");
-  const currencyColumn = resolve(row, "currency", "валюта");
-  const currency = (
-    currencyColumn ||
-    extractCurrencyFromDisplay(displayPriceRaw) ||
-    extractCurrencyFromDisplay(priceRaw) ||
-    "GBP"
-  ).toUpperCase();
-
-  // Images: best quality first (AWIN proxy always accessible)
-  const allImages = collectImages(row);
-  const imageUrl = allImages[0] ?? "";
-
-  // Affiliate link: AWIN uses aw_deep_link; Farfetch scraper provides product_url
-  const referralUrl = resolve(row, "aw_deep_link", "product_url");
-  if (!referralUrl) issues.push("no affiliate link");
-
-  // Final store name: the merchant column when present, otherwise derived from
-  // the link host (the brand is intentionally NOT used as a fallback here).
-  const merchant = merchantColumn || storeNameFromUrl(referralUrl, "");
-
-  // In-stock check
-  const inStockRaw = resolve(row, "in_stock", "stock_status", "is_for_sale");
-  const isOutOfStock = inStockRaw === "0" || /sold.?out|out.?of.?stock/i.test(inStockRaw);
-  if (isOutOfStock) issues.push("out of stock");
-
-  // Category + gender: Awin category_name → merchant_category → path
-  const categoryRaw = resolve(row,
-    "category_name", "merchant_category",
-    "merchant_product_category_path", "product_type", "category",
-  );
-  // Take gender from the feed's category path, but resolve the category from the
-  // strongest available signal: the feed category, then the product name, then
-  // the fashion_type hint. This stops an uninformative feed category (e.g.
-  // "New In", "SS24 Sale") from dumping an otherwise-recognisable garment into
-  // "accessories" — the name is tried before we give up.
-  const fashionTypeHint = resolve(row, "fashion_type", "fashion:category");
-  let gender: Gender | undefined = categoryRaw ? parseRetailCategory(categoryRaw).gender : undefined;
-  const category: Category =
-    (categoryRaw ? matchCategory(categoryRaw) : null) ??
-    matchCategory(name) ??
-    matchCategory(fashionTypeHint) ??
-    "accessories";
-
-  // Farfetch: infer gender from input_url (e.g. /men/ or /women/)
-  const inputUrl = resolve(row, "input_url");
-  if (inputUrl && !gender) {
-    if (/\/women\//.test(inputUrl)) gender = "women";
-    else if (/\/men\//.test(inputUrl)) gender = "men";
-  }
-
-  // fashion_suitable_for (or Fashion:suitable_for) overrides gender
-  const suitableFor = resolve(row,
-    "fashion_suitable_for", "fashion:suitable_for", "suitable_for", "gender",
-  );
-  if (suitableFor) {
-    const sf = suitableFor.toLowerCase();
-    if (/women|female|ladies|girl/.test(sf)) gender = "women";
-    else if (/\bmen\b|male|boy|homme/.test(sf)) gender = "men";
-    else if (/unisex/.test(sf)) gender = "unisex";
-  }
-
-  const colorRaw = resolve(row, "colour", "color", "description", "цвет");
-  // Skip if description looks like actual text rather than a color word
-  const isColorWord = colorRaw && colorRaw.split(/\s+/).length <= 4 && !/[.,]/.test(colorRaw);
-  const colors = isColorWord ? [colorRaw] : [];
-
-  // Sizes: Farfetch available_sizes is a JSON array ["Brand | M", "Brand | S"]
-  const availableSizesRaw = resolve(row, "available_sizes");
-  let sizes: string[] = [];
-  const jsonSizes = parseJsonArray(availableSizesRaw);
-  if (jsonSizes.length > 0) {
-    sizes = jsonSizes.map((s) => {
-      const pipe = s.lastIndexOf("|");
-      return pipe >= 0 ? s.slice(pipe + 1).trim() : s.trim();
-    }).filter(Boolean);
-  } else {
-    const fashionSizeRaw = resolve(row, "fashion_size", "fashion:size", "sizes", "size");
-    sizes = fashionSizeRaw
-      ? fashionSizeRaw.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
-      : [];
-  }
-
-  // Description: Farfetch description is often just a color word — skip those
-  const descRaw = resolve(row, "description", "product_short_description", "keywords", "desc");
-  const description = (descRaw && descRaw.split(/\s+/).length > 4) ? descRaw : "";
-
-  // Material from specifications (Awin often puts fabric content there)
-  const material = resolve(row,
-    "fashion:material", "fashion_material", "specifications", "material", "composition", "fabric",
-  );
-
-  return {
-    name,
-    brand: brandFallback,
-    merchant,
-    category,
-    gender,
-    price,
-    priceOriginal,
-    currency,
-    imageUrl,
-    images: allImages,
-    referralUrl,
-    colors,
-    sizes,
-    material,
-    description,
-    _valid: issues.length === 0,
-    _issues: issues,
-  };
-}
-
-// ── POST /api/admin/csv-import — parse CSV, return merchants summary + rows ───
+// ── POST /api/admin/csv-import — which of these feed links do we already carry ─
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const text = await req.text().catch(() => "");
-  if (!text.trim()) return NextResponse.json({ error: "CSV file is empty" }, { status: 400 });
-
-  const { headers, rows: csvRows } = parseCSV(text);
-  if (!headers.length) return NextResponse.json({ error: "Could not parse CSV headers" }, { status: 400 });
-
-  // Map rows preserving original currencies — no USD conversion
-  const rows = csvRows.map((r) => mapCSVRow(r));
-
-  // Build merchants summary
-  const merchantMap = new Map<string, { count: number; validCount: number }>();
-  for (const row of rows) {
-    const m = row.merchant || "Unknown";
-    const existing = merchantMap.get(m) ?? { count: 0, validCount: 0 };
-    existing.count++;
-    if (row._valid) existing.validCount++;
-    merchantMap.set(m, existing);
+  if (!isSupabaseConfigured || !supabase) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 501 });
   }
 
-  const merchants = Array.from(merchantMap.entries())
-    .map(([name, stats]) => ({ name, ...stats }))
-    .sort((a, b) => b.count - a.count);
+  const body = await req.json().catch(() => null);
+  const urls: string[] = Array.isArray(body?.urls)
+    ? [...new Set((body.urls as unknown[]).filter(isHttpUrl))]
+    : [];
+  if (!urls.length) return NextResponse.json({ error: "urls array is required" }, { status: 400 });
+  if (urls.length > MAX_CHECK_URLS) {
+    return NextResponse.json({ error: `At most ${MAX_CHECK_URLS} links per request` }, { status: 400 });
+  }
 
-  return NextResponse.json({ columns: headers, merchants, rows });
+  try {
+    return NextResponse.json({ existing: [...(await knownLinks(urls))] });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not read the catalogue" },
+      { status: 500 },
+    );
+  }
 }
 
-// ── Group keys for variant detection ─────────────────────────────────────────
-// colorKey  = brand::baseName::color → same product same color (merge sizes + retailers)
-// baseKey   = brand::baseName        → same product diff color (link as variants)
+// ── One group → one product ───────────────────────────────────────────────────
 
-function getGroupKeys(row: CSVMappedRow): { colorKey: string; baseKey: string } {
-  const base = getBaseProductName(row.name);
-  const brand = (row.brand || row.merchant || "").toLowerCase();
-  const color = (row.colors[0] || "").toLowerCase();
-  return {
-    colorKey: `${brand}::${base.toLowerCase()}::${color}`,
-    baseKey:  `${brand}::${base.toLowerCase()}`,
-  };
+/**
+ * "Where to buy" for one group: one entry per store, with its in-stock link and
+ * its lowest in-stock price. A domain rule wins over the CSV's merchant column,
+ * which wins over the name guessed from the link host — the merchant column is
+ * one of the things that arrives wrong.
+ */
+function storesOf(rows: CSVMappedRow[], rules: Map<string, RetailerRule>): Product["retailers"] {
+  const stores = new Map<string, Product["retailers"][number]>();
+  const ordered = [...rows.filter((r) => !r.soldOut), ...rows.filter((r) => r.soldOut)];
+  for (const row of ordered) {
+    const store = resolveRetailer(row.referralUrl, row.brand, rules, row.merchant);
+    const name = store.name || "Store";
+    const current = stores.get(name.toLowerCase());
+    if (!current) {
+      stores.set(name.toLowerCase(), {
+        name,
+        url: row.referralUrl,
+        price: row.price,
+        currency: (row.currency || "GBP").toUpperCase(),
+        availability: row.soldOut ? "sold out" : "in stock",
+        isOfficial: store.isOfficial,
+      });
+    } else if (
+      !row.soldOut && row.price > 0 && row.price < current.price &&
+      (row.currency || "GBP").toUpperCase() === current.currency
+    ) {
+      current.price = row.price;
+    }
+  }
+  return [...stores.values()];
 }
 
-// ── PUT /api/admin/csv-import — import rows ───────────────────────────────────
+type Outcome =
+  | { kind: "created"; dropped?: string[] }
+  | { kind: "updated"; dropped?: string[] }
+  | { kind: "merged"; dropped?: string[] }
+  | { kind: "skipped" }
+  | { kind: "failed"; error: string };
+
+async function importGroup(
+  group: CSVImportGroup,
+  ctx: { existing: Set<string>; rules: Map<string, RetailerRule>; mirrorImages: boolean },
+): Promise<Outcome> {
+  const rows = (Array.isArray(group?.rows) ? group.rows : []).filter(
+    (r): r is CSVMappedRow =>
+      // The link becomes a shopper's "Buy" button: nothing but a web address.
+      !!r && typeof r.name === "string" && !!r.name.trim() && isHttpUrl(r.referralUrl) &&
+      (r._valid || canRefreshOnly(r)),
+  );
+  if (!rows.length) return { kind: "skipped" };
+
+  const live = rows.filter((r) => !r.soldOut);
+  const urls = groupUrls(rows);
+  // Any of the group's links may be the one a previous run keyed the product
+  // by (an Awin feed has a link per size, in no promised order).
+  const known = urls.find((u) => ctx.existing.has(u));
+  // Sold out everywhere and not in the catalogue: nothing to create or update.
+  if (!live.length && !known) return { kind: "skipped" };
+
+  const repr = live[0] ?? rows[0];
+  const currency = (repr.currency || "GBP").toUpperCase();
+  const pool = live.length ? live : rows;
+  // Lowest price across the group (best deal) — among rows in the same currency.
+  const prices = pool
+    .filter((r) => r.price > 0 && (r.currency || "GBP").toUpperCase() === currency)
+    .map((r) => r.price);
+  const price = prices.length ? Math.min(...prices) : repr.price;
+  const priceOriginal = pool.find((r) => r.priceOriginal > 0)?.priceOriginal ?? 0;
+  // The item's code, re-checked here: the rows arrive from the browser.
+  const gtin = pool.map((r) => normalizeGtin(r.gtin)).find(Boolean);
+
+  const result = await importParsedProduct(
+    {
+      name: typeof group.name === "string" && group.name.trim() ? group.name : repr.name,
+      brand: repr.brand || repr.merchant,
+      category: repr.category,
+      gender: repr.gender,
+      description: repr.description || "",
+      material: repr.material,
+      imageUrl: repr.imageUrl,
+      images: repr.images?.length ? repr.images : (repr.imageUrl ? [repr.imageUrl] : []),
+      colors: repr.colors,
+      sizes: [...new Set(live.flatMap((r) => r.sizes || []))],
+      price,
+      priceOriginal,
+      currency,
+      ...(gtin ? { gtin } : {}),
+      variantUrls: Array.isArray(group.siblingUrls) ? group.siblingUrls : [],
+    },
+    known ?? urls[0],
+    { mirrorImages: ctx.mirrorImages, onExisting: "refresh", retailers: storesOf(rows, ctx.rules) },
+  );
+
+  if (!result.ok) return { kind: "failed", error: result.error ?? "Import failed" };
+  const dropped = result.droppedColumns;
+  if (result.mergedInto) return { kind: "merged", dropped };
+  return { kind: result.updated ? "updated" : "created", dropped };
+}
+
+// ── PUT /api/admin/csv-import — import one batch of grouped products ──────────
 
 export async function PUT(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const toImport: CSVMappedRow[] = Array.isArray(body?.rows) ? body.rows : [];
-
-  if (!toImport.length) return NextResponse.json({ error: "rows array is required" }, { status: 400 });
+  const groups: CSVImportGroup[] = Array.isArray(body?.groups) ? body.groups : [];
+  if (!groups.length) return NextResponse.json({ error: "groups array is required" }, { status: 400 });
+  if (groups.length > MAX_IMPORT_GROUPS) {
+    return NextResponse.json({ error: `At most ${MAX_IMPORT_GROUPS} products per request` }, { status: 400 });
+  }
 
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 501 });
   }
 
-  // Separate invalid rows
+  // Read once per batch rather than per product: neither changes while it runs.
+  const [aiSettings, rules] = await Promise.all([getAiSettings(), loadRetailerRules()]);
+
+  let existing: Set<string>;
+  try {
+    const urls = groups.flatMap((g) =>
+      (Array.isArray(g?.rows) ? g.rows : [])
+        .map((r) => r?.referralUrl)
+        .filter(isHttpUrl),
+    );
+    existing = await knownLinks([...new Set(urls)]);
+  } catch (err) {
+    return NextResponse.json(
+      { error: `Could not read the catalogue: ${err instanceof Error ? err.message : "unknown error"}` },
+      { status: 500 },
+    );
+  }
+
+  let created = 0;
+  let updated = 0;
+  let merged = 0;
   let skipped = 0;
-  const validRows = toImport.filter((r) => {
-    if (!r._valid || !r.name) { skipped++; return false; }
-    return true;
-  });
-
-  // ── Step 1: group by colorKey (same product + same color, possibly diff sizes/merchants)
-  const colorGroupMap = new Map<string, CSVMappedRow[]>();
-  for (const row of validRows) {
-    const { colorKey } = getGroupKeys(row);
-    const existing = colorGroupMap.get(colorKey) ?? [];
-    existing.push(row);
-    colorGroupMap.set(colorKey, existing);
-  }
-
-  // ── Step 2: find base products with multiple color variants → assign variantGroupId
-  const baseColorCount = new Map<string, Set<string>>();
-  for (const [colorKey, rows] of colorGroupMap) {
-    const { baseKey } = getGroupKeys(rows[0]);
-    const set = baseColorCount.get(baseKey) ?? new Set<string>();
-    set.add(colorKey);
-    baseColorCount.set(baseKey, set);
-  }
-
-  const baseToVariantGroupId = new Map<string, string>();
-  for (const [baseKey, colorSet] of baseColorCount) {
-    if (colorSet.size > 1) {
-      baseToVariantGroupId.set(baseKey, crypto.randomUUID());
-    }
-  }
-
-  // Domain rules, read once for the whole import rather than per row: a CSV is
-  // thousands of links and the rules do not change while it runs.
-  const retailerRules = await loadRetailerRules();
-
-  // ── Step 3: import one product per colorKey
-  let imported = 0;
   const errors: { name: string; error: string }[] = [];
-  const primarySet = new Set<string>(); // tracks which baseKeys have had their primary assigned
+  const dropped = new Set<string>();
 
-  for (const [, colorRows] of colorGroupMap) {
-    const repr = colorRows[0];
-    const { baseKey } = getGroupKeys(repr);
-
-    // Merge sizes from all rows in this color group
-    const allSizes = [...new Set(colorRows.flatMap((r) => r.sizes || []))];
-
-    // Collect retailers: one entry per unique aw_deep_link
-    const seenLinks = new Set<string>();
-    const retailers: Product["retailers"] = [];
-    for (const row of colorRows) {
-      if (row.referralUrl && !seenLinks.has(row.referralUrl)) {
-        seenLinks.add(row.referralUrl);
-        // A domain rule wins over the CSV's merchant column, which wins over
-        // the name guessed from the link host. That order is the whole point of
-        // the rules: the merchant column is one of the things that arrives
-        // wrong, and until now it had the final say.
-        const store = resolveRetailer(row.referralUrl, row.brand, retailerRules, row.merchant);
-        retailers.push({
-          name: store.name || "Store",
-          url: row.referralUrl,
-          price: row.price,
-          currency: (row.currency || "GBP").toUpperCase(),
-          availability: "in stock",
-          isOfficial: store.isOfficial,
-        });
-      }
-    }
-
-    // Use minimum price across the group (best deal)
-    const prices = colorRows.map((r) => r.price).filter((p) => p > 0);
-    const price = prices.length ? Math.min(...prices) : repr.price;
-    const currency = (repr.currency || "GBP").toUpperCase();
-    const priceOriginal = colorRows.find((r) => r.priceOriginal > 0)?.priceOriginal ?? 0;
-
-    const variantGroupId = baseToVariantGroupId.get(baseKey);
-    const isPrimary = variantGroupId ? !primarySet.has(baseKey) : undefined;
-    if (isPrimary) primarySet.add(baseKey);
-
-    // When part of a variant group, use base name (without color suffix) as display name
-    const displayName = variantGroupId ? getBaseProductName(repr.name) : repr.name;
-    const colorHex = repr.colors[0] ? colorToHex(repr.colors[0]) : undefined;
-
-    const product: Partial<Product> = {
-      name: displayName,
-      brand: (repr.brand || repr.merchant) as Product["brand"],
-      category: repr.category,
-      description: repr.description || "",
-      imageUrl: repr.imageUrl,
-      images: repr.images?.length ? repr.images : (repr.imageUrl ? [repr.imageUrl] : []),
-      colors: repr.colors,
-      sizes: allSizes,
-      material: repr.material,
-      priceMin: price,
-      priceMax: priceOriginal && priceOriginal > price ? priceOriginal : price,
-      currency,
-      isNew: true,
-      isSaved: false,
-      gender: repr.gender,
-      styleKeywords: [],
-      retailers,
-      ...(variantGroupId ? { variantGroupId, isGroupPrimary: isPrimary, colorHex } : {}),
-    };
-
-    // source_url = first aw_deep_link in the group (for deduplication on re-import)
-    const sourceUrl = repr.referralUrl || null;
-    const dbRow = { ...productToDb(product), source_url: sourceUrl };
-
+  // One at a time: a colour imported first is found by the next one's
+  // `siblingUrls`, which is how the swatches get grouped.
+  for (const group of groups) {
+    let outcome: Outcome;
     try {
-      if (sourceUrl) {
-        const { data: existing } = await supabase
-          .from("products").select("id").eq("source_url", sourceUrl).maybeSingle();
-        if (existing?.id) {
-          await supabase.from("products").update(dbRow).eq("id", existing.id);
-        } else {
-          await supabase.from("products").insert(dbRow);
-        }
-      } else {
-        await supabase.from("products").insert(dbRow);
-      }
-      imported++;
+      outcome = await importGroup(group, { existing, rules, mirrorImages: aiSettings.downloadImages });
     } catch (err) {
-      errors.push({ name: repr.name, error: String(err) });
+      outcome = { kind: "failed", error: err instanceof Error ? err.message : "Import failed" };
     }
+    if (outcome.kind === "created") created++;
+    else if (outcome.kind === "updated") updated++;
+    else if (outcome.kind === "merged") merged++;
+    else if (outcome.kind === "skipped") skipped++;
+    else errors.push({ name: String(group?.name ?? "") || "Unnamed product", error: outcome.error });
+    if ("dropped" in outcome) for (const column of outcome.dropped ?? []) dropped.add(column);
   }
 
-  revalidatePath("/admin/products");
-  revalidatePath("/");
+  if (created || updated || merged) {
+    revalidatePath("/");
+    // One entry per batch (up to MAX_IMPORT_GROUPS products), not per product.
+    void logAdminAction({
+      admin_id: admin.userId,
+      action: "import.csv",
+      target_type: "product",
+      metadata: { created, updated, merged, skipped, errors: errors.length },
+    });
+  }
 
-  return NextResponse.json({ imported, skipped, errors });
+  return NextResponse.json({
+    created,
+    updated,
+    merged,
+    skipped,
+    errors,
+    // Saved, but without columns the database does not have yet.
+    ...(dropped.size && { warning: droppedColumnsWarning([...dropped]) }),
+  });
 }

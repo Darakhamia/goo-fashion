@@ -4,6 +4,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 
 const noDb = () =>
   NextResponse.json(
@@ -42,9 +44,18 @@ export async function PUT(
     supabase!.from("products").update(payload).eq("id", id).select().single(),
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const saved = data as DbProduct;
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: id,
+    target_type: "product",
+    metadata: { name: saved.name, brand: saved.brand },
+  });
   revalidatePath("/");
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({
-    ...dbToProduct(data as DbProduct),
+    ...dbToProduct(saved),
     ...(dropped.length && { warning: missingColumnWarning(dropped) }),
   });
 }
@@ -64,6 +75,14 @@ export async function PATCH(
     .update({ crop_data: body.cropData ?? null })
     .eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: id,
+    target_type: "product",
+    metadata: { fields: ["crop_data"] },
+  });
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
 }
 
@@ -75,8 +94,54 @@ export async function DELETE(
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) return noDb();
   const { id } = await params;
-  const { error } = await supabase.from("products").delete().eq("id", id);
+
+  // An outfit lists its pieces by id. Deleting a piece one of them uses would
+  // leave the outfit silently a garment short with its old total price, so a
+  // product that is in an outfit is refused, naming the outfits to edit first.
+  const { data: usedBy, error: usedError } = await supabase
+    .from("outfits")
+    .select("id, name")
+    // As a JSON string: supabase-js writes a JS array as a Postgres array
+    // literal, which a jsonb column never contains.
+    .contains("items", JSON.stringify([{ product_id: id }]));
+  // An `outfits` table this database never created is "no outfits", not a failure.
+  if (usedError && !isMissingTableLoose(usedError)) {
+    return NextResponse.json(
+      { error: `Could not check which outfits use this product: ${usedError.message}` },
+      { status: 500 }
+    );
+  }
+  const outfits = ((usedBy ?? []) as { id: string; name: string | null }[]).map((o) => ({
+    id: o.id,
+    name: o.name?.trim() || o.id,
+  }));
+  if (outfits.length) {
+    return NextResponse.json(
+      {
+        error: `Used in ${outfits.length} outfit${outfits.length === 1 ? "" : "s"}: ${outfits.map((o) => o.name).join(", ")}. Remove it from ${outfits.length === 1 ? "that outfit" : "those outfits"} first.`,
+        outfits,
+      },
+      { status: 409 }
+    );
+  }
+
+  const { data: deleted, error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id)
+    .select("name, brand");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const gone = ((deleted ?? []) as { name: string | null; brand: string | null }[])[0];
+  if (gone) {
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "products.deleted",
+      target_id: id,
+      target_type: "product",
+      metadata: { name: gone.name, brand: gone.brand },
+    });
+  }
   revalidatePath("/");
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
 }

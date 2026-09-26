@@ -18,7 +18,7 @@ import { sendBillingAlert } from "@/lib/server/billing-alerts";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
-/** The schedule is daily (see vercel.json), so a gap past this is a real miss. */
+/** The schedule is daily (Coolify Scheduled Task), so a gap past this is a real miss. */
 const CRON_GAP_ALERT_HOURS = 36;
 /** Do not let a public 401 turn into an alert flood. */
 const MISCONFIG_ALERT_COOLDOWN_MS = 12 * HOUR_MS;
@@ -29,20 +29,20 @@ export const maxDuration = 60;
 /**
  * Monthly auto-renewal sweep.
  *
- * Triggered by Vercel Cron (see vercel.json). For every active subscription
- * whose paid period has ended, charge the saved card via monobank's
+ * Triggered once a day by a Coolify Scheduled Task (production runs on
+ * Coolify; the crons entry in vercel.json only applies on Vercel). For every
+ * active subscription whose paid period has ended, charge the saved card via monobank's
  * merchant-initiated wallet payment. On success we extend the period (the
  * webhook also confirms, idempotently); on failure we record it and eventually
  * downgrade.
  *
- * Auth: Vercel sends `Authorization: Bearer $CRON_SECRET` for scheduled
- * invocations (Cron Jobs hit the endpoint with GET). Manual calls must pass the
- * same header.
+ * Auth: the scheduler calls this with GET and `Authorization: Bearer
+ * $CRON_SECRET`. Manual calls must pass the same header.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    // Vercel is calling this daily and getting 401 every time, so renewals have
+    // The scheduler is calling this daily and getting 401 every time, so renewals have
     // silently stopped. Nothing else surfaces that — the schedule looks healthy
     // from the outside. Alert, but at most twice a day: this endpoint is public
     // and anyone hitting it would otherwise trigger mail.
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       await sendBillingAlert("Renewal cron cannot run: CRON_SECRET is not set", [
         "The daily renewal sweep rejects every call because CRON_SECRET is missing from the environment.",
         "Until it is set, no subscription is being charged and no one is being downgraded.",
-        "Fix: add CRON_SECRET in the Vercel project settings (Production) and redeploy.",
+        "Fix: add CRON_SECRET to the production environment in Coolify and redeploy; the Scheduled Task must send the same value.",
       ]);
     }
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -222,7 +222,7 @@ export async function GET(req: Request) {
     await sendBillingAlert(`Renewal cron had a ${gapHours}h gap`, [
       `The last recorded run was ${gapHours} hours ago; the schedule is daily.`,
       "Renewals due in that window were not attempted until now.",
-      "Check the Vercel cron logs for failed or skipped invocations.",
+      "Check the Scheduled Task logs in Coolify for failed or skipped runs.",
     ]);
   }
 

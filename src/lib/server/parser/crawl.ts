@@ -18,10 +18,10 @@
  */
 import { fetchHtml } from "./fetch";
 import { extractProductLinks, looksLikeProductPath } from "./extract";
-import { matchSiteConfig, effectiveFetchSettings } from "./configs";
+import { EXTENSION_ADVICE } from "./parse-page";
 import { discoverStorefront } from "./storefront";
 import { discoverFromSitemap, type SitemapResult } from "./sitemap";
-import type { ParserFetchSettings, ParserSiteConfig } from "./types";
+import type { ParserFetchSettings } from "./types";
 
 /**
  * A short, jittered wait between requests to one store.
@@ -42,7 +42,6 @@ function pace(): Promise<void> {
 export interface DiscoverOptions {
   fetchSettings: ParserFetchSettings;
   fetchApiKey: string;
-  siteConfigs: ParserSiteConfig[];
   /** Max product URLs to return. */
   limit: number;
   /** Max listing pages to walk (1 = just the pasted page). */
@@ -141,15 +140,32 @@ function countAnchors(html: string): number {
 }
 
 /**
+ * The paid way past an anti-bot wall, said after the extension.
+ *
+ * An impersonation profile only reaches the store in `direct` mode (as the
+ * User-Agent, already retried under a second profile on a 403) and through a
+ * custom endpoint's `{impersonate}`; ScrapingBee, ScraperAPI and ZenRows never
+ * see it. Never send the admin to a setting that cannot help them.
+ */
+function providerAdvice(settings: ParserFetchSettings): string {
+  if (settings.provider === "direct") {
+    return "Second option: a paid scraping provider in the Fetch & Anti-bot tab.";
+  }
+  return settings.provider === "custom"
+    ? "Second option: a different impersonation profile for your endpoint, or a service with stronger anti-bot bypass."
+    : "Second option: a provider with stronger anti-bot bypass.";
+}
+
+/**
  * Render JS is only ever forwarded to a scraping provider — in `direct` mode
  * the toggle is inert. Never send the admin to a switch that cannot help them.
  */
 function renderAdvice(settings: ParserFetchSettings): string {
   if (settings.provider === "direct") {
-    return "Set a scraping provider in the Fetch & Anti-bot tab and turn on Render JS.";
+    return `${EXTENSION_ADVICE} Second option: set a scraping provider in the Fetch & Anti-bot tab and turn on Render JS.`;
   }
   return settings.renderJs
-    ? "Render JS is already on, so try a provider with stronger anti-bot bypass, or paste a single product URL."
+    ? `Render JS is already on. ${EXTENSION_ADVICE} Second option: a provider with stronger anti-bot bypass, or paste a single product URL.`
     : "Turn on Render JS in the Fetch & Anti-bot tab.";
 }
 
@@ -170,8 +186,8 @@ function diagnoseEmptyListing(html: string, settings: ParserFetchSettings): stri
 
   if (blocked) {
     return settings.provider === "direct"
-      ? "The store answered with an anti-bot check instead of the listing. A plain server request cannot get past it — set a scraping provider in the Fetch & Anti-bot tab."
-      : "The store answered with an anti-bot check instead of the listing. Try a provider with stronger anti-bot bypass, or a different impersonation profile.";
+      ? `The store answered with an anti-bot check instead of the listing. A plain server request cannot get past it. ${EXTENSION_ADVICE} ${providerAdvice(settings)}`
+      : `The store answered with an anti-bot check instead of the listing. ${EXTENSION_ADVICE} ${providerAdvice(settings)}`;
   }
 
   if (thin) {
@@ -195,10 +211,9 @@ function diagnoseFailedFetch(
       settings.provider === "direct"
         ? "The store refused the request outright — that is anti-bot, not a bad URL."
         : "The store refused the provider's request.";
-    const next =
-      settings.provider === "direct"
-        ? "Set a scraping provider in the Fetch & Anti-bot tab."
-        : "Try a different impersonation profile, or a provider with stronger anti-bot bypass.";
+    // The catalogue-wide way past the refusal: the extension first, because it
+    // costs nothing and gets past the same wall; a paid provider second.
+    const next = `${EXTENSION_ADVICE} ${providerAdvice(settings)}`;
     // Where the panel lives, said out loud. A hint is read precisely when
     // something did not work, and the button it names is drawn by a page that
     // can be older than this answer — a tab opened before a deploy is enough.
@@ -212,9 +227,10 @@ function diagnoseFailedFetch(
       // One product does not need a provider, and saying otherwise sends the
       // admin to pay for something they already have: their own browser passes
       // the check by being a person on a residential connection, and the Paste
-      // page panel takes the rendered DOM from there. The bill is the answer
-      // for a catalogue, not for a piece.
-      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below, which carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). ${panel} For collecting this store's whole catalogue: ${next.charAt(0).toLowerCase()}${next.slice(1)}`;
+      // page panel takes the rendered DOM from there. The extension — or, as
+      // the second option, the bill — is the answer for a catalogue, not for a
+      // piece.
+      return `${refused} This URL is a single product page, so there is no listing or sitemap to read instead — but one product needs no provider: press "Paste page instead" below, which carries this address into the Parse URL tab and opens the panel that takes the page out of your own browser (the "Goo: copy page" bookmarklet). ${panel} ${next}`;
     }
     // The two paragraphs below answer a refusal we could not read around. Both
     // now end on the same door the single-product case opens, because the free
@@ -223,7 +239,7 @@ function diagnoseFailedFetch(
     const piece =
       `A single piece needs none of that: press "Paste page instead" below, open the product in your own browser and hand its page to the parser (the "Goo: copy page" bookmarklet). ${panel}`;
     if (tried.sitemap?.readable && tried.sitemap.locsSeen > 0) {
-      return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill. ${piece}`;
+      return `${refused} Its sitemap WAS readable — ${tried.sitemap.locsSeen} URLs — but none of them look like product pages, so the product-path test needs teaching this store's URL shape. Report the store; that is a code fix, not a provider bill. ${EXTENSION_ADVICE} ${piece}`;
     }
     return `${refused} Its sitemap and the storefront JSON APIs (Shopify, WooCommerce, Squarespace) were tried too and gave nothing. ${next} ${piece}`;
   }
@@ -247,8 +263,9 @@ export async function discoverProductUrls(
   const limit = Math.max(1, Math.min(opts.limit, 2_000));
   const maxPages = Math.max(1, Math.min(opts.maxPages, 20));
 
-  const startConfig = matchSiteConfig(startUrl, opts.siteConfigs);
-  const startSettings = effectiveFetchSettings(opts.fetchSettings, startConfig);
+  // Every page of every store is fetched with the global settings from the
+  // Fetch & Anti-bot tab; site recipes only carry extraction overrides.
+  const settings = opts.fetchSettings;
 
   /**
    * Does the pasted URL address one product rather than a listing?
@@ -273,7 +290,7 @@ export async function discoverProductUrls(
   // infinite-scroll grid that keeps its products in a script, and no anti-bot
   // in front of it. A probe per platform decides it; a store that is none of
   // them answers 404 and is remembered for the run.
-  const storefront = await discoverStorefront(startUrl, startSettings, opts.fetchApiKey, {
+  const storefront = await discoverStorefront(startUrl, settings, opts.fetchApiKey, {
     limit,
     maxPages,
     deadline,
@@ -295,9 +312,8 @@ export async function discoverProductUrls(
   let status = 0;
   let next: string | null = startUrl;
   // Kept for the diagnosis below: an empty crawl is explained by what the FIRST
-  // page came back as, under the fetch settings that page was actually fetched with.
+  // page came back as.
   let firstHtml = "";
-  let firstSettings: ParserFetchSettings = startSettings;
   /** Why the first page never arrived, kept in case the sitemap cannot save it. */
   let firstFailure: { error: string; status: number } | null = null;
 
@@ -307,9 +323,6 @@ export async function discoverProductUrls(
     const pageUrl: string = next;
     visited.add(pageUrl);
 
-    const matched = matchSiteConfig(pageUrl, opts.siteConfigs);
-    const settings = effectiveFetchSettings(opts.fetchSettings, matched);
-    if (pagesVisited === 0) firstSettings = settings;
     if (pagesVisited > 0) await pace();
     const fetched = await fetchHtml(pageUrl, settings, opts.fetchApiKey);
     status = fetched.status;
@@ -361,7 +374,7 @@ export async function discoverProductUrls(
   // the other three thousand. A walk that already filled the limit asks for
   // nothing.
   if (!startIsProduct && urls.length < limit) {
-    sitemap = await discoverFromSitemap(startUrl, startSettings, opts.fetchApiKey, {
+    sitemap = await discoverFromSitemap(startUrl, settings, opts.fetchApiKey, {
       limit,
       deadline,
     });
@@ -402,7 +415,7 @@ export async function discoverProductUrls(
       // which imports one product and is wrong for a whole catalogue.
       isSingleProduct: startIsProduct,
       error: firstFailure.error,
-      hint: diagnoseFailedFetch(firstSettings, firstFailure.status, {
+      hint: diagnoseFailedFetch(settings, firstFailure.status, {
         singleProduct: startIsProduct,
         sitemap,
       }),
@@ -416,6 +429,6 @@ export async function discoverProductUrls(
     pagesVisited,
     isSingleProduct: false,
     status,
-    hint: urls.length === 0 ? diagnoseEmptyListing(firstHtml, firstSettings) : undefined,
+    hint: urls.length === 0 ? diagnoseEmptyListing(firstHtml, settings) : undefined,
   };
 }

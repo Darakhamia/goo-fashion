@@ -23,13 +23,15 @@ function formatBucket(b: string, range: AnalyticsResponse["range"]): string {
   return b.slice(5);
 }
 
+// A ramp from the foreground token toward the surface, so every slice stays
+// visible in both themes.
 const PALETTE = [
   "var(--foreground)",
-  "#6b7280",
-  "#9ca3af",
-  "#d1d5db",
-  "#374151",
-  "#1f2937",
+  "color-mix(in srgb, var(--foreground) 72%, var(--surface))",
+  "color-mix(in srgb, var(--foreground) 52%, var(--surface))",
+  "color-mix(in srgb, var(--foreground) 36%, var(--surface))",
+  "color-mix(in srgb, var(--foreground) 24%, var(--surface))",
+  "color-mix(in srgb, var(--foreground) 14%, var(--surface))",
 ];
 
 const tooltipStyle = {
@@ -54,7 +56,7 @@ export function TrafficChart({ data }: { data: AnalyticsResponse }) {
   const chartData = data.timeseries.map((t) => ({
     label: formatBucket(t.bucket, data.range),
     views: t.views,
-    uniqueVisitors: t.uniqueVisitors,
+    sessions: t.sessions,
   }));
 
   return (
@@ -66,7 +68,7 @@ export function TrafficChart({ data }: { data: AnalyticsResponse }) {
               <stop offset="0%"  stopColor="var(--foreground)" stopOpacity={0.35} />
               <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="goo-unique" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="goo-sessions" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"  stopColor="var(--foreground)" stopOpacity={0.15} />
               <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0} />
             </linearGradient>
@@ -76,7 +78,7 @@ export function TrafficChart({ data }: { data: AnalyticsResponse }) {
           <YAxis stroke="var(--foreground-subtle)" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} allowDecimals={false} />
           <Tooltip {...tooltipStyle} />
           <Area type="monotone" dataKey="views" name="Views" stroke="var(--foreground)" strokeWidth={1.5} fill="url(#goo-views)" />
-          <Area type="monotone" dataKey="uniqueVisitors" name="Unique" stroke="var(--foreground-muted)" strokeWidth={1.2} strokeDasharray="4 4" fill="url(#goo-unique)" />
+          <Area type="monotone" dataKey="sessions" name="Sessions" stroke="var(--foreground-muted)" strokeWidth={1.2} strokeDasharray="4 4" fill="url(#goo-sessions)" />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -229,24 +231,32 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
   return (
     <div className="space-y-3">
       {funnel.map((step, i) => {
-        const prev = i > 0 ? funnel[i - 1].sessions : step.sessions;
+        // A step whose event the site does not send yet has no number to show,
+        // and no conversion to or from it.
+        const prevStep = i > 0 ? funnel[i - 1] : null;
+        const showConv = !!prevStep && prevStep.tracked && step.tracked;
+        const prev = prevStep ? prevStep.sessions : step.sessions;
         const conv = prev > 0 ? Math.round((step.sessions / prev) * 100) : 0;
-        const barW = max > 0 ? Math.max(2, Math.round((step.sessions / max) * 100)) : 0;
+        const barW = step.tracked && max > 0 ? Math.max(2, Math.round((step.sessions / max) * 100)) : 0;
         return (
           <div key={step.step}>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono text-[var(--foreground-subtle)] w-4">{i + 1}</span>
-                <span className="text-xs text-[var(--foreground)]">{step.step}</span>
+                <span className={`text-xs ${step.tracked ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>{step.step}</span>
               </div>
-              <div className="text-[11px] text-[var(--foreground-muted)] tabular-nums">
-                {step.sessions.toLocaleString()}
-                {i > 0 && (
-                  <span className={`ml-2 ${conv >= 50 ? "text-emerald-600" : conv >= 25 ? "text-amber-500" : "text-red-500"}`}>
-                    · {conv}%
-                  </span>
-                )}
-              </div>
+              {step.tracked ? (
+                <div className="text-[11px] text-[var(--foreground-muted)] tabular-nums">
+                  {step.sessions.toLocaleString()}
+                  {showConv && (
+                    <span className={`ml-2 ${conv >= 50 ? "text-emerald-600" : conv >= 25 ? "text-amber-500" : "text-red-500"}`}>
+                      · {conv}%
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-[11px] text-[var(--foreground-subtle)]">not tracked yet</div>
+              )}
             </div>
             <div className="h-2 bg-[var(--surface)]">
               <div
@@ -286,10 +296,4 @@ export function EventsBarChart({ events }: { events: AnalyticsResponse["events"]
       </ResponsiveContainer>
     </div>
   );
-}
-
-// ── Default export (backward compat) ─────────────────────────────────────────
-
-export default function AnalyticsCharts({ data }: { data: AnalyticsResponse }) {
-  return <TrafficChart data={data} />;
 }

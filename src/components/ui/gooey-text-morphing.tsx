@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
+// None of the class lists joined here conflict, so a plain join is enough —
+// no need for tailwind-merge in the homepage bundle.
+function joinClasses(...parts: (string | undefined)[]): string {
+  return parts.filter(Boolean).join(" ");
+}
 
 interface GooeyTextProps {
   texts: string[];
@@ -209,7 +214,7 @@ function MorphText({
   // <text> elements inherit it through the CSS cascade, so the words render at
   // the same responsive size as before.
   return (
-    <div ref={containerRef} className={cn("relative", className, textClassName)}>
+    <div ref={containerRef} className={joinClasses("relative", className, textClassName)}>
       <svg
         className="absolute inset-0 h-full w-full overflow-visible"
         aria-hidden="true"
@@ -297,12 +302,12 @@ function CrossfadeText({
   }, [texts, morphTime, cooldownTime]);
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={joinClasses("relative", className)}>
       {texts.map((t, i) => (
         <span
           key={i}
           aria-hidden={i !== index}
-          className={cn(
+          className={joinClasses(
             "absolute inset-0 inline-flex items-center justify-center select-none text-center font-bold tracking-[-0.04em]",
             "text-[var(--foreground)] transition-opacity ease-in-out",
             textClassName

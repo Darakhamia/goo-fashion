@@ -3,23 +3,8 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { PricePoint } from "@/lib/types";
 
-// Generate plausible 30-day mock history around a base price
-function mockHistory(basePrice: number): PricePoint[] {
-  const points: PricePoint[] = [];
-  const today = new Date();
-  let price = basePrice * 1.12;
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    // Random walk ±3%
-    price = Math.round(price * (1 + (Math.random() - 0.52) * 0.06));
-    points.push({ date: d.toISOString().slice(0, 10), price });
-  }
-  // Last point = current price
-  points[points.length - 1].price = basePrice;
-  return points;
-}
-
+// Nothing records real price snapshots, so this route never invents a history:
+// no rows means an empty list. The whole feature is slated for removal.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -27,13 +12,7 @@ export async function GET(
   const { id } = await params;
 
   if (!isSupabaseConfigured || !supabase) {
-    // No DB — fetch the product's current price and return mock history
-    const prodRes = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/api/products/${id}`,
-      { cache: "no-store" }
-    ).catch(() => null);
-    const basePrice = prodRes?.ok ? (await prodRes.json().catch(() => null))?.priceMin ?? 100 : 100;
-    return NextResponse.json<PricePoint[]>(mockHistory(basePrice));
+    return NextResponse.json<PricePoint[]>([]);
   }
 
   const { data, error } = await supabase
@@ -44,13 +23,7 @@ export async function GET(
     .limit(90);
 
   if (error || !data || data.length === 0) {
-    // Table exists but no rows yet — fall back to mock
-    const { data: prod } = await supabase
-      .from("products")
-      .select("price_min")
-      .eq("id", id)
-      .single();
-    return NextResponse.json<PricePoint[]>(mockHistory(prod?.price_min ?? 100));
+    return NextResponse.json<PricePoint[]>([]);
   }
 
   const points: PricePoint[] = data.map((row) => ({

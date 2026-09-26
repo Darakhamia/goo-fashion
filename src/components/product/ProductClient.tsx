@@ -12,10 +12,6 @@ import ProductCard from "./ProductCard";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import dynamic from "next/dynamic";
 
-// Both sit below the fold and fetch their own data — load them after the
-// critical product UI instead of shipping them in the page bundle.
-const PriceHistoryChart = dynamic(() => import("./PriceHistoryChart"), { ssr: false });
-const ProductReviews = dynamic(() => import("./ProductReviews"), { ssr: false });
 // Reads localStorage and fetches its own products, so it can only run client-side.
 const RecentlyViewed = dynamic(() => import("./RecentlyViewed"), { ssr: false });
 import { track } from "@/lib/analytics/track";
@@ -50,7 +46,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     toggleProductLike(product.id);
   };
   const defaultColor = useMemo(() => {
@@ -357,14 +353,16 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
               <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-3">
                 Sizes
               </p>
+              {/* Informational only: nothing on the site picks a size, so these
+                  are plain chips, not buttons that do nothing when pressed. */}
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => (
-                  <button
+                  <span
                     key={size}
-                    className="text-xs text-[var(--foreground-muted)] border border-[var(--border)] rounded-lg w-11 h-11 flex items-center justify-center hover:border-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors duration-200"
+                    className="px-4 py-2 rounded-full border border-[var(--border-strong)] text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)]"
                   >
                     {size}
-                  </button>
+                  </span>
                 ))}
               </div>
             </div>
@@ -538,12 +536,6 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
           )}
         </div>
       </section>
-
-      {/* Price history chart */}
-      <PriceHistoryChart productId={product.id} />
-
-      {/* User reviews */}
-      <ProductReviews productId={product.id} />
 
       {/* Outfits featuring this item */}
       {outfitsWithProduct.length > 0 && (

@@ -18,11 +18,6 @@ export function toCartRetailers(retailers: Retailer[] | undefined): CartRetailer
     }));
 }
 
-/** The store a piece opens by default: the official one, else the cheapest. */
-export function preferredRetailerUrl(retailers: Retailer[] | undefined): string | null {
-  return toCartRetailers(retailers)[0]?.url ?? null;
-}
-
 /** A whole product as the cart keeps it, stores included. */
 export function toCartItem(product: Product, overrides: Partial<{ id: string; name: string; imageUrl: string; price: number }> = {}) {
   const stores = toCartRetailers(product.retailers);

@@ -22,9 +22,10 @@ export const MIN_WIDTH = 1000;
  * no browser headers, and Farfetch's CDN rate-limits exactly that: it answered
  * 429 to 6/6 optimizer requests while serving the same file to a direct request
  * with 200. Our own downloader already works around this by faking a browser
- * User-Agent and Referer (see api/admin/image-tools), which the optimizer has
- * no way to do. So partner images go direct — the browser is the one client
- * those CDNs are happy to serve.
+ * User-Agent and Referer (see fetchImageBuffer in
+ * lib/server/storage/product-images.ts), which the optimizer has no way to do.
+ * So partner images go direct — the browser is the one client those CDNs are
+ * happy to serve.
  *
  * Keep this list in sync with `images.remotePatterns` in next.config.ts: a host
  * that reaches the optimizer without a matching pattern gets a hard 400.

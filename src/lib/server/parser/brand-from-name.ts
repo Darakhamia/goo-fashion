@@ -13,6 +13,7 @@
  * matched against that list, never mined for a capitalised word, so an unknown
  * brand stays unknown rather than becoming "Oversized".
  */
+import { escapeRegExp } from "@/lib/text";
 
 /** Values a catalogue row can carry in `brand` that are not a brand. */
 const NOT_A_BRAND = new Set([
@@ -36,13 +37,9 @@ function compact(value: string): string {
   return foldBrand(value).replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
-function escapeRe(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /** Is this brand spelled, as whole words, inside `text`? Returns where, or -1. */
 function positionIn(text: string, brand: string): number {
-  const pattern = escapeRe(foldBrand(brand)).replace(/ /g, "\\s+");
+  const pattern = escapeRegExp(foldBrand(brand)).replace(/ /g, "\\s+");
   // Not `\b`: it only knows ASCII letters, so "Кросівки Nike" and "Stüssy"
   // would get their boundaries wrong. A brand must not continue into a letter
   // or digit on either side — "Cos" is not in "Cosy", "Arket" not in "Market".

@@ -1,9 +1,10 @@
 /**
  * Persist a parsed product into the catalog.
  *
- * Shared by the single-product import route and the bulk crawler. Deduping is by
- * `source_url`: re-importing the same page updates the existing row instead of
- * creating a twin, which is what makes a crawl safe to re-run.
+ * Shared by the single-product import route, the bulk crawler, the collect
+ * extension and the CSV feed import. Deduping is by `source_url`: re-importing
+ * the same page updates the existing row instead of creating a twin, which is
+ * what makes a crawl safe to re-run.
  *
  * Photos are mirrored into our own storage first (see
  * `@/lib/server/storage/product-images`) so the catalog never depends on a
@@ -122,10 +123,11 @@ async function loadKnownBrands(): Promise<string[]> {
 
 // ── Colour variants ───────────────────────────────────────────────────────────
 // One colourway per page is how a store sells; one card per piece is how the
-// catalogue shows. The CSV importer forms those groups inside a batch, but a
-// collect run imports one page at a time, so grouping has to happen against the
+// catalogue shows. Products arrive one at a time — a collect run imports a page,
+// the CSV import a batch of feed rows — so grouping has to happen against the
 // rows already in the table. Two signals, judged in `variant-group.ts`: the
-// addresses the page's own colour row links to, and — only when the store
+// addresses the page's own colour row links to (the CSV import passes the feed
+// links of the piece's other colours the same way), and — only when the store
 // switches colours with script instead of links — brand and base name.
 
 interface VariantRow {
@@ -365,6 +367,8 @@ async function findSameItemByName(incoming: {
   category: string;
   price: number;
   sourceUrl: string | null;
+  /** A feed's merchant, when the caller named it — see `pickSameItemByName`. */
+  store?: string | null;
 }): Promise<{ item: NamedItem; unread: string[] } | null> {
   if (!incoming.brand || !incoming.sourceUrl) return null;
   try {
@@ -399,20 +403,37 @@ async function findSameItemByName(incoming: {
  * had added as a second place to buy. B's entry is kept, this page's own entry
  * replaced, and the price range recomputed over every store on the dollar
  * scale (each entry keeps its own currency, so each is converted first).
+ *
+ * `ours` is this source's own entries: one for a page, one per store for a feed
+ * that sells the piece through several merchants.
  */
 async function keepOtherStores(
   dbRow: Record<string, unknown>,
   existing: Product["retailers"],
-  ours: Product["retailers"][number] | undefined,
+  ours: Product["retailers"],
   sourceUrl: string | null,
 ): Promise<Record<string, unknown>> {
-  if (!ours) return dbRow;
-  const others = existing.filter(
-    (r) => r?.url && r.url !== sourceUrl && r.name?.toLowerCase() !== ours.name.toLowerCase(),
-  );
+  if (!ours.length) return dbRow;
+  const oursIndex = (r: Product["retailers"][number]) =>
+    ours.findIndex((o) => r.url === o.url || r.name?.toLowerCase() === o.name.toLowerCase());
+  const others = existing.filter((r) => r?.url && r.url !== sourceUrl && oursIndex(r) < 0);
   if (!others.length) return dbRow;
 
-  const row: Record<string, unknown> = { ...dbRow, retailers: withRetailer(existing, ours) };
+  // One place per store of ours, the first it held. The old CSV import wrote an
+  // entry per size link, and `withRetailer` replaces only the first of them, so
+  // the rest would have stayed on as copies of the same shop.
+  const seen = new Set<number>();
+  const kept = existing.filter((r) => {
+    const i = r ? oursIndex(r) : -1;
+    if (i < 0) return true;
+    if (seen.has(i)) return false;
+    seen.add(i);
+    return true;
+  });
+  const row: Record<string, unknown> = {
+    ...dbRow,
+    retailers: ours.reduce((list, entry) => withRetailer(list, entry), kept),
+  };
   if (row.currency !== "USD") return row;
 
   const theirs = (
@@ -431,6 +452,25 @@ async function keepOtherStores(
 export interface ImportOptions {
   /** Download photos into Supabase Storage and store our URLs instead. */
   mirrorImages?: boolean;
+  /**
+   * What a re-import does to the row that already has this source URL.
+   *
+   * "replace" (the default — the parser, the crawler, the extension) rewrites
+   * it from the page, keeping only the editor's style and gender. "refresh"
+   * writes just what a feed is the authority on — the price, the stores with
+   * their stock, the sizes — and leaves the name, category, description, tags,
+   * photos and grouping the editor curates after the first import alone. It
+   * also finds the product this link once joined as a second store, and there
+   * writes only this source's stores and the price range they give.
+   */
+  onExisting?: "replace" | "refresh";
+  /**
+   * The "Where to buy" entries, when the caller has resolved them itself: a
+   * feed names its merchant in a column (the link is an affiliate tracker's)
+   * and can sell one piece through several stores. Otherwise the one entry is
+   * derived from the source URL.
+   */
+  retailers?: Product["retailers"];
 }
 
 export interface ImportResult {
@@ -462,6 +502,48 @@ export interface ImportResult {
   mergedBy?: "code" | "name";
   /** What the merge filled in on that product. */
   mergedFields?: string[];
+  /**
+   * Columns the row went in without, because the database does not have them
+   * yet (a migration not run). The product is saved; these fields are not.
+   */
+  droppedColumns?: string[];
+}
+
+/** The migration that adds each optional product column, for the warning below. */
+const COLUMN_MIGRATION: Record<string, string> = {
+  subcategory: "010_product_subcategory.sql",
+  bg_color: "015_product_bg_color.sql",
+  price_min_usd: "019_product_price_usd.sql",
+  price_max_usd: "019_product_price_usd.sql",
+  source_price: "019_product_source_price.sql",
+  source_currency: "019_product_source_price.sql",
+  fx_rate: "019_product_source_price.sql",
+  fx_date: "019_product_source_price.sql",
+  gtin: "020_product_codes.sql",
+  mpn: "020_product_codes.sql",
+  sku: "020_product_codes.sql",
+  color_group_ids: "021_color_groups.sql",
+  crop_data: "023_product_crop_data.sql",
+};
+
+/**
+ * What an import says when the database is a migration behind: which columns
+ * were not stored, and which migration adds them. The write itself succeeded,
+ * so this is a warning to show the admin, not an error.
+ */
+export function droppedColumnsWarning(dropped: readonly string[]): string {
+  const columns = [...new Set(dropped)];
+  const files = [...new Set(columns.map((c) => COLUMN_MIGRATION[c]).filter(Boolean))];
+  // color_images and the variant columns predate supabase/migrations: their
+  // definitions live only in supabase-schema.sql.
+  const unlisted = columns.filter((c) => !COLUMN_MIGRATION[c]);
+  const many = columns.length > 1;
+  const steps = [
+    ...(files.length ? [`run ${files.length > 1 ? "migrations" : "migration"} ${files.join(", ")} from supabase/migrations`] : []),
+    ...(unlisted.length ? [`add ${unlisted.join(", ")} as in supabase-schema.sql`] : []),
+  ].join(", and ");
+  const run = `${steps.charAt(0).toUpperCase()}${steps.slice(1)}.`;
+  return `${many ? "Columns" : "Column"} ${columns.join(", ")} ${many ? "were" : "was"} not saved — the database is missing ${many ? "them" : "it"}. ${run}`;
 }
 
 export async function importParsedProduct(
@@ -548,6 +630,111 @@ export async function importParsedProduct(
     priceNote = "the page never stated a currency — price taken as dollars";
   }
 
+  const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
+    .map((s: unknown) => String(s).trim())
+    .filter(Boolean)
+    .slice(0, 40);
+
+  // ── A feed re-imported over its own rows ────────────────────────────────────
+  // Settled before any photo is downloaded: on this path none is written, and a
+  // feed re-run is mostly rows we already carry.
+  if (opts.onExisting === "refresh" && sourceUrl) {
+    try {
+      type Found = { id: string; retailers: Product["retailers"] | null; source_url: string | null };
+      const { data: found, error: findError } = await supabase
+        .from("products").select("id, retailers, source_url").eq("source_url", sourceUrl).maybeSingle();
+      // Unanswered is not "absent": carrying on would insert a twin of the row
+      // the lookup could not see.
+      if (findError) throw new Error(findError.message);
+      let existing = found as Found | null;
+      // A feed row that once joined another source's product has no row of its
+      // own: its link is one of that product's stores. It is refreshed there —
+      // otherwise every run would download its photos again only to join the
+      // same product, and a store that sold out would stay "in stock".
+      if (!existing) {
+        const { data: joined, error: joinedError } = await supabase
+          .from("products")
+          .select("id, retailers, source_url")
+          .contains("retailers", JSON.stringify([{ url: sourceUrl }]))
+          .order("created_at", { ascending: true })
+          .limit(1);
+        if (joinedError) throw new Error(joinedError.message);
+        existing = ((joined ?? []) as Found[])[0] ?? null;
+      }
+      if (existing) {
+        // The product's own page is another source's: its sizes and source
+        // price are that page's, and only this feed's stores are ours to write.
+        const joinedOther = existing.source_url !== sourceUrl;
+        let ours = opts.retailers ?? [];
+        if (!ours.length) {
+          const store = resolveRetailer(sourceUrl, String(p.brand ?? "").trim(), await loadRetailerRules());
+          ours = [{
+            name: store.name,
+            url: sourceUrl,
+            price: sourcePrice || price,
+            currency: sourceCurrency || currency,
+            availability: "in stock",
+            isOfficial: store.isOfficial,
+          }];
+        }
+        const priceMax = priceOriginal > price ? priceOriginal : price;
+        // The same columns, and the same rules for them, as the full row below.
+        const row: Record<string, unknown> = {
+          price_min: price,
+          price_max: priceMax,
+          currency,
+          price_min_usd: currency === "USD" ? price : null,
+          price_max_usd: currency === "USD" ? priceMax : null,
+          retailers: ours,
+          ...(sourceCurrency && sourceCurrency !== "USD"
+            ? {
+                source_price: sourcePrice,
+                source_currency: sourceCurrency,
+                ...(fxRate !== null ? { fx_rate: fxRate } : {}),
+                ...(fxDate ? { fx_date: fxDate } : {}),
+              }
+            : {}),
+          // A piece sold out everywhere in the feed arrives with no sizes; the
+          // store's entry says so, and the size list stays as it was.
+          ...(sizes.length ? { sizes } : {}),
+        };
+        const id = existing.id;
+        const current = Array.isArray(existing.retailers) ? existing.retailers : [];
+        if (joinedOther) {
+          for (const column of ["sizes", "source_price", "source_currency", "fx_rate", "fx_date"]) {
+            delete row[column];
+          }
+        }
+        const next = await keepOtherStores(row, current, ours, sourceUrl);
+        // A price the product cannot compare (no dollar rate), or one from a
+        // store that has sold out, is not written over another source's price.
+        if (joinedOther && (currency !== "USD" || ours.every((r) => r.availability === "sold out"))) {
+          for (const column of ["price_min", "price_max", "currency", "price_min_usd", "price_max_usd"]) {
+            delete next[column];
+          }
+        }
+        const { data, error, dropped } = await writeProductRow<{ id: string }>(next, (r) =>
+          supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
+        );
+        if (error) throw new Error(error.message);
+        return {
+          ok: true,
+          productId: data?.id ?? id,
+          updated: true,
+          priceNote,
+          ...(dropped.length ? { droppedColumns: dropped } : {}),
+        };
+      }
+    } catch (err) {
+      return {
+        ok: false,
+        productId: null,
+        updated: false,
+        error: err instanceof Error ? err.message : "Update failed",
+      };
+    }
+  }
+
   let images = (Array.isArray(p.images) ? p.images : []).map(httpUrl).filter(Boolean).slice(0, MAX_PRODUCT_IMAGES);
   let imageUrl = httpUrl(p.imageUrl) || images[0] || "";
 
@@ -572,10 +759,6 @@ export async function importParsedProduct(
     .map((c: unknown) => String(c).trim())
     .filter((c: string) => looksLikeColourLabel(c))
     .slice(0, 10);
-  const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
-    .map((s: unknown) => String(s).trim())
-    .filter(Boolean)
-    .slice(0, 40);
 
   // The page's brand, unless the name names a known brand the page did not —
   // the empty brand, or the shop's own name in its place, that a multi-brand
@@ -605,7 +788,9 @@ export async function importParsedProduct(
   const retailerRules = sourceUrl ? await loadRetailerRules() : new Map();
   const resolved = sourceUrl ? resolveRetailer(sourceUrl, brand, retailerRules) : null;
 
-  const retailers: Product["retailers"] = sourceUrl && resolved
+  const retailers: Product["retailers"] = opts.retailers?.length
+    ? opts.retailers
+    : sourceUrl && resolved
     ? [{
         name: resolved.name,
         url: sourceUrl,
@@ -654,11 +839,15 @@ export async function importParsedProduct(
   let gender = statedGender;
   let genderNote: string | undefined;
   if (!gender) {
+    // A feed's link is the affiliate network's (every Awin merchant is
+    // awin1.com), so its host says nothing about the store: only the brand's
+    // habit is asked.
+    const storeUrl = opts.retailers?.length ? null : sourceUrl;
     const proposal = proposeGender(
       {
         brand,
-        sourceUrl,
-        storeDefault: sourceUrl ? storeDefaultGender(sourceUrl, retailerRules) : undefined,
+        sourceUrl: storeUrl,
+        storeDefault: storeUrl ? storeDefaultGender(storeUrl, retailerRules) : undefined,
       },
       profile,
     );
@@ -728,12 +917,14 @@ export async function importParsedProduct(
 
   // Written through `writeProductRow` so a database that has not run the
   // colour-filter migration drops that one column and still takes the product,
-  // instead of every import failing on a column it has never heard of.
+  // instead of every import failing on a column it has never heard of. What was
+  // dropped comes back as `droppedColumns`, for the caller to tell the admin.
   const insert = (row: Record<string, unknown>) =>
     supabase!.from("products").insert(row).select("id").maybeSingle();
 
   let productId: string | null = null;
   let updated = false;
+  let droppedColumns: string[] = [];
   try {
     let existingId: string | null = null;
     let existingRetailers: Product["retailers"] = [];
@@ -756,7 +947,7 @@ export async function importParsedProduct(
 
     if (existingId) {
       const id = existingId;
-      const row = await keepOtherStores(dbRow, existingRetailers, retailers[0], sourceUrl);
+      const row = await keepOtherStores(dbRow, existingRetailers, retailers, sourceUrl);
       // Style and gender are the editor's to decide. Re-collecting a page used to
       // write whatever the importer guessed over them — an empty style list
       // included — so a store collected twice lost its hand-set tags. They are
@@ -772,12 +963,13 @@ export async function importParsedProduct(
       // PostgREST reports failures in `error` rather than throwing, so an
       // unchecked update reads as success while writing nothing (the silent
       // failure pattern audit item Б1-3 called out on the billing ledger).
-      const { data, error } = await writeProductRow<{ id: string }>(row, (r) =>
+      const { data, error, dropped } = await writeProductRow<{ id: string }>(row, (r) =>
         supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
       );
       if (error) throw new Error(error.message);
       productId = data?.id ?? id;
       updated = true;
+      droppedColumns = dropped;
     } else {
       // Before writing a new row: is this the same item, sold by someone else?
       //
@@ -814,6 +1006,7 @@ export async function importParsedProduct(
           category,
           price: incoming.price,
           sourceUrl,
+          store: opts.retailers?.[0]?.name,
         });
         if (byName) {
           twin = byName.item;
@@ -826,13 +1019,19 @@ export async function importParsedProduct(
         const twinId = twin.id;
         const merged = mergePatch(twin, incoming);
         const patch = merged.patch;
+        // A feed selling the piece through several stores brings them all.
+        if (retailers.length > 1 && Array.isArray(patch.retailers)) {
+          patch.retailers = retailers
+            .slice(1)
+            .reduce((list, entry) => withRetailer(list, entry), patch.retailers as Product["retailers"]);
+        }
         for (const column of unread) delete patch[column];
         const filled = merged.filled.filter((f) => !unread.includes(f));
         // Merged prices are dollars on both sides, so the comparable scale is
         // the same number.
         if (patch.price_min !== undefined) patch.price_min_usd = patch.price_min;
         if (patch.price_max !== undefined) patch.price_max_usd = patch.price_max;
-        const { error } = await writeProductRow<{ id: string }>(patch, (row) =>
+        const { error, dropped } = await writeProductRow<{ id: string }>(patch, (row) =>
           supabase!.from("products").update(row).eq("id", twinId).select("id").maybeSingle(),
         );
         if (error) throw new Error(error.message);
@@ -851,12 +1050,14 @@ export async function importParsedProduct(
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
+          ...(dropped.length ? { droppedColumns: dropped } : {}),
         };
       }
 
-      const { data, error } = await writeProductRow<{ id: string }>(dbRow, insert);
+      const { data, error, dropped } = await writeProductRow<{ id: string }>(dbRow, insert);
       if (error) throw new Error(error.message);
       productId = data?.id ?? null;
+      droppedColumns = dropped;
     }
   } catch (err) {
     return {
@@ -894,17 +1095,6 @@ export async function importParsedProduct(
     });
   }
 
-  // Record an import job (best-effort — table is optional, ignore if absent).
-  if (sourceUrl) {
-    try {
-      await supabase.from("import_jobs").insert({
-        url: sourceUrl,
-        status: "done",
-        result_product_id: productId,
-      });
-    } catch { /* import_jobs not migrated — non-critical */ }
-  }
-
   return {
     ok: true,
     productId,
@@ -918,5 +1108,6 @@ export async function importParsedProduct(
     genderNote,
     styleNote,
     variantsLinked,
+    ...(droppedColumns.length ? { droppedColumns } : {}),
   };
 }

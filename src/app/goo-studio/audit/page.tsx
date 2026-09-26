@@ -29,9 +29,30 @@ interface Suspect {
 
 interface AuditReport {
   catalogue: { products: number; category_tree: string };
+  /** Open findings per section — dismissed ones are counted in `dismissedTotals`. */
   totals: Record<string, number>;
+  dismissedTotals: Record<string, number>;
+  /** Per section: open findings first, then dismissed ones marked `dismissed`. */
   suspects: Record<string, Suspect[]>;
   dismissed: number;
+  /** False until migration 012 has run: Dismiss cannot be remembered yet. */
+  dismissalsAvailable: boolean;
+  /** Set when the dismissals could not be read, so dismissed claims are listed again. */
+  dismissalsError: string | null;
+}
+
+/** One suggestion, keyed exactly as the API keys a dismissal. */
+function claimKey(s: Suspect): string {
+  return [s.id, s.field, s.stored, s.suggested].join("\u0000");
+}
+
+/**
+ * What an Apply settles. A single-valued field holds one answer, so applying
+ * any suggestion for it settles the others for that product too; a colour
+ * group is added alongside the rest, so it settles only its own suggestion.
+ */
+function appliedKey(s: Suspect): string {
+  return s.field === "colour group" ? claimKey(s) : `${s.field}:${s.id}`;
 }
 
 /** Section copy: what the check is, and how much it can be trusted. */
@@ -106,29 +127,33 @@ function sectionsToRender(report: AuditReport) {
 /** Fields this page can write. Anything else is for the product editor. */
 const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group"]);
 
+/** Findings listed per section; the rest are counted, and said to be. */
+const LIMIT = 300;
+
 export default function AdminAuditPage() {
   const [report, setReport] = useState<AuditReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [showDismissed, setShowDismissed] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 5000);
-  };
+  const showToast = (msg: string, type: "ok" | "err" = "ok") => setToast({ msg, type });
 
-  const load = useCallback(async (withDismissed: boolean) => {
+  // One timer per toast, so a second action's toast is not cut short by the first's.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/admin/label-audit?limit=300${withDismissed ? "&includeDismissed=1" : ""}`,
-        { cache: "no-store" },
-      );
+      const res = await fetch(`/api/admin/label-audit?limit=${LIMIT}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? "Could not run the audit.");
@@ -146,12 +171,11 @@ export default function AdminAuditPage() {
   }, []);
 
   useEffect(() => {
-    load(showDismissed);
-  }, [load, showDismissed]);
+    void load();
+  }, [load]);
 
   const apply = async (s: Suspect) => {
-    const key = `${s.field}:${s.id}`;
-    setBusyId(key);
+    setBusyKey(claimKey(s));
     try {
       const res = await fetch("/api/admin/label-audit/apply", {
         method: "POST",
@@ -166,12 +190,12 @@ export default function AdminAuditPage() {
       // Struck through in place rather than removed: seeing what was just
       // changed is the point, and a list that reshuffles under the cursor is
       // hard to work through.
-      setDone((prev) => new Set(prev).add(key));
+      setDone((prev) => new Set(prev).add(appliedKey(s)));
       showToast(`${s.name.slice(0, 40)} → ${s.suggested}`);
     } catch {
       showToast("Could not reach the server.", "err");
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
   };
 
@@ -184,8 +208,8 @@ export default function AdminAuditPage() {
 
   /** Rejects this suggestion for good, so re-running stops raising it. */
   const dismiss = async (s: Suspect) => {
-    const key = `${s.field}:${s.id}`;
-    setBusyId(key);
+    const key = claimKey(s);
+    setBusyKey(key);
     try {
       const res = await fetch("/api/admin/label-audit/dismiss", {
         method: "POST",
@@ -209,13 +233,13 @@ export default function AdminAuditPage() {
     } catch {
       showToast("Could not reach the server.", "err");
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
   };
 
   const restore = async (s: Suspect) => {
-    const key = `${s.field}:${s.id}`;
-    setBusyId(key);
+    const key = claimKey(s);
+    setBusyKey(key);
     try {
       const q = new URLSearchParams(claimBody(s)).toString();
       const res = await fetch(`/api/admin/label-audit/dismiss?${q}`, { method: "DELETE" });
@@ -229,16 +253,17 @@ export default function AdminAuditPage() {
     } catch {
       showToast("Could not reach the server.", "err");
     } finally {
-      setBusyId(null);
+      setBusyKey(null);
     }
   };
 
+  // Open findings only: the API counts dismissed ones apart.
   const total = report ? Object.values(report.totals).reduce((n, v) => n + v, 0) : 0;
 
   return (
     <div>
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Audit</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {report
@@ -249,7 +274,8 @@ export default function AdminAuditPage() {
         <div className="shrink-0 flex items-center gap-2">
           <button
             onClick={() => setShowDismissed((v) => !v)}
-            disabled={loading}
+            disabled={!report}
+            aria-pressed={showDismissed}
             title="Suggestions you rejected. Shown so a dismissal can be undone."
             className={`border rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase transition-colors disabled:opacity-40 ${
               showDismissed
@@ -260,7 +286,7 @@ export default function AdminAuditPage() {
             Dismissed{report ? ` (${report.dismissed})` : ""}
           </button>
           <button
-            onClick={() => load(showDismissed)}
+            onClick={() => load()}
             disabled={loading}
             className="border border-[var(--border)] rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
           >
@@ -270,7 +296,24 @@ export default function AdminAuditPage() {
       </div>
 
       {error && (
-        <div className="mb-6 border border-red-500/30 bg-red-500/5 px-4 py-3 text-xs text-red-600">{error}</div>
+        <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">{error}</div>
+      )}
+
+      {report && !report.dismissalsAvailable && (
+        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
+          <p className="text-[13px] text-amber-500 leading-relaxed">
+            Dismiss cannot be remembered until supabase/migrations/012_label_audit_dismissals.sql is run. Applying
+            works without it.
+          </p>
+        </div>
+      )}
+
+      {report?.dismissalsError && (
+        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
+          <p className="text-[13px] text-amber-500 leading-relaxed">
+            Could not read the dismissed suggestions, so ones you dismissed are listed again: {report.dismissalsError}
+          </p>
+        </div>
       )}
 
       {loading && !report && (
@@ -279,7 +322,7 @@ export default function AdminAuditPage() {
         </div>
       )}
 
-      {report && total === 0 && (
+      {report && total === 0 && !(showDismissed && report.dismissed > 0) && (
         <div className="rounded-xl border border-[var(--border)] px-6 py-16 text-center" style={{ background: "var(--background)" }}>
           <p className="text-sm text-[var(--foreground)]">Nothing to flag.</p>
           <p className="text-xs text-[var(--foreground-muted)] mt-2">
@@ -291,15 +334,27 @@ export default function AdminAuditPage() {
       <div className="flex flex-col gap-5">
         {report &&
           sectionsToRender(report).map(({ key, title, note, exact }) => {
-            const list = report.suspects[key] ?? [];
+            // Dismissed ones arrive with every run and are only shown or hidden here.
+            const all = report.suspects[key] ?? [];
+            const list = showDismissed ? all : all.filter((s) => !s.dismissed);
             if (!list.length) return null;
+            const openTotal = report.totals[key] ?? 0;
+            const dismissedTotal = report.dismissedTotals?.[key] ?? 0;
+            const openShown = all.filter((s) => !s.dismissed).length;
+            const dismissedShown = all.length - openShown;
+            const cut: string[] = [];
+            if (openTotal > openShown) cut.push(`showing ${openShown} of ${openTotal}`);
+            if (showDismissed && dismissedTotal > dismissedShown) {
+              cut.push(`showing ${dismissedShown} of ${dismissedTotal} dismissed`);
+            }
             return (
               <section key={key} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
                 <header className="px-5 py-3.5 border-b border-[var(--border)]">
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm text-[var(--foreground)]">{title}</h2>
                     <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
-                      {report.totals[key]}
+                      {openTotal}
+                      {showDismissed && dismissedTotal > 0 ? ` · ${dismissedTotal} dismissed` : ""}
                     </span>
                     {exact && (
                       <span className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
@@ -311,16 +366,19 @@ export default function AdminAuditPage() {
                 </header>
 
                 <ul>
-                  {list.map((s) => {
-                    const rowKey = `${s.field}:${s.id}`;
-                    const applied = done.has(rowKey);
+                  {list.map((s, i) => {
+                    // The whole suggestion, not "field + product": one product
+                    // can carry two suggestions, and acting on one must not
+                    // mark the other.
+                    const rowKey = claimKey(s);
+                    const applied = !s.dismissed && done.has(appliedKey(s));
                     const gone = hidden.has(rowKey);
                     const faded = applied || gone || s.dismissed;
                     const canApply = APPLIABLE.has(s.field) && s.suggested && s.suggested !== "—";
                     return (
                       <li
-                        key={rowKey}
-                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start justify-between gap-4 ${faded ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
+                        key={`${rowKey}\u0000${i}`}
+                        className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 ${faded ? "opacity-45" : "hover:bg-[var(--surface)]"} transition-colors`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -360,10 +418,10 @@ export default function AdminAuditPage() {
                               {canApply && !s.dismissed && (
                                 <button
                                   onClick={() => apply(s)}
-                                  disabled={busyId === rowKey}
-                                  className="border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40"
+                                  disabled={busyKey === rowKey}
+                                  className="bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
                                 >
-                                  {busyId === rowKey ? "…" : "Apply"}
+                                  {busyKey === rowKey ? "…" : "Apply"}
                                 </button>
                               )}
                               {!canApply && !s.dismissed && (
@@ -371,7 +429,7 @@ export default function AdminAuditPage() {
                               )}
                               <button
                                 onClick={() => (s.dismissed ? restore(s) : dismiss(s))}
-                                disabled={busyId === rowKey}
+                                disabled={busyKey === rowKey}
                                 title={
                                   s.dismissed
                                     ? "Raise this again on future checks"
@@ -388,6 +446,11 @@ export default function AdminAuditPage() {
                     );
                   })}
                 </ul>
+                {cut.length > 0 && (
+                  <p className="px-5 py-3 border-t border-[var(--border)] text-[11px] text-[var(--foreground-muted)]">
+                    {cut.join(" · ")} — work through these and re-check to see the rest.
+                  </p>
+                )}
               </section>
             );
           })}
@@ -398,14 +461,20 @@ export default function AdminAuditPage() {
           A suggestion is not a verdict: where a rule disagrees with a label, either one of them can be the wrong one —
           a piece genuinely called &ldquo;Low Rise&rdquo; will be argued at by a rule that learned &ldquo;low&rdquo; from
           sneakers. Fixing a subcategory sets the category with it, since the tree already says where the label belongs.
-          Re-check after a run of edits to see what is left.
+          Re-check after a run of edits to see what is left. &ldquo;Fix categories&rdquo; on Products applies the same
+          keyword table in bulk, but only to products with no subcategory.
         </p>
       )}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide shadow-lg rounded-xl ${
-          toast.type === "ok" ? "bg-[var(--foreground)] text-[var(--background)]" : "bg-red-600 text-white"
-        }`}>
+        <div
+          role={toast.type === "ok" ? "status" : "alert"}
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
+            toast.type === "ok"
+              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+              : "bg-[var(--background)] text-red-500 border-red-400/30"
+          }`}
+        >
           {toast.msg}
         </div>
       )}

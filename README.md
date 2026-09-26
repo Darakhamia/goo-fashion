@@ -1,64 +1,92 @@
-# Goo Fashion 👕✨
+# Goo Fashion
 
-Goo Fashion is an AI-powered fashion platform that helps users create outfits, discover clothing, and get styling suggestions instantly.
+[goo-fashion.com](https://goo-fashion.com) — каталог одежды с AI-стилистом. Товары из разных магазинов собраны в одном каталоге с ценами и ссылками «где купить», есть готовые образы, конструктор образа, AI-стилист в чате (дневные лимиты зависят от тарифа) и генерация изображения образа на платных тарифах Basic / Pro / Premium. Оплата — monobank, в гривне. Сам сайт ничего не продаёт: корзина собирает ссылки на магазины. Каталог наполняет команда через админку `/goo-studio`: импорт CSV, парсер по ссылке и сбор каталога расширением Chrome.
 
-🌐 Live: https://www.goo-fashion.com/
+## Стек
 
----
+| Что | Чем |
+|---|---|
+| Фреймворк | Next.js 16 (App Router), React 19, TypeScript |
+| Стили | Tailwind CSS v4 (сканирует только `src/`), дизайн-токены в `src/app/globals.css` |
+| Вход и аккаунты | Clerk: тариф пользователя и флаг админа хранятся в его `publicMetadata` |
+| База и файлы | self-hosted Supabase (PostgREST + Storage), доступ только с сервера по service-role ключу |
+| AI | Replicate: LLM стилиста и генерация изображений. OpenAI: эмбеддинги, AI в парсере, посты блога, письма, разбор баг-репортов |
+| Почта | Resend: рассылки из админки и оповещения о проблемах с оплатой |
+| Оплата | monobank acquiring (Plata by mono), автопродление по cron |
+| Аналитика | PostHog (только после согласия на cookies) и собственные таблицы в Supabase: просмотры страниц, события, Web Vitals |
+| Лимиты запросов | Upstash Redis |
 
-## 🚀 About the Project
+## Как поднять локально
 
-Goo Fashion combines AI styling, outfit generation, and product discovery into one platform.
+1. Node.js 22: версия записана в `.node-version`, `package.json` требует `>=22.13.0`.
+2. Установить зависимости:
+   ```bash
+   npm ci
+   ```
+3. Создать `.env.local` по образцу:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Что делает каждая переменная и что без неё сломается, написано в комментариях `.env.example`. Для первого запуска хватит ключей Clerk (dev-инстанс). Без `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` сайт показывает встроенный демо-каталог, а сохранения и админка не работают. Чтобы зайти в админку, впишите свой Clerk user ID в `ADMIN_USER_IDS`.
+4. Запустить:
+   ```bash
+   npm run dev
+   ```
+   Сайт откроется на http://localhost:3000, админка — на http://localhost:3000/goo-studio.
 
-Users can:
-- build outfits manually
-- generate outfits using AI
-- get recommendations from an AI stylist
-- visualize looks before buying clothes
+## Команды
 
-The goal is simple:  
-👉 make styling easier, faster, and more accessible for everyone.
+| Команда | Что делает |
+|---|---|
+| `npm run dev` | dev-сервер |
+| `npm run lint` | ESLint по всему репозиторию. В CI пока не блокирует: на master есть старые ошибки |
+| `npx tsc --noEmit` | проверка типов |
+| `npm run build` | продакшен-сборка (`next build`) |
+| `npm run start` | запуск собранного приложения на `0.0.0.0:$PORT` (по умолчанию 3000) |
 
----
+Автотестов в репозитории нет. Перед коммитом прогоняйте `npx tsc --noEmit` и `npm run build`: CI делает то же самое.
 
-## 🧠 Features
+## Структура
 
-### 👗 AI Outfit Generator
-Generate complete outfits in seconds using AI.
+| Путь | Что там |
+|---|---|
+| `src/app/` | публичный сайт: главная, `/browse`, `/product/[id]`, `/outfit/[id]`, `/look/[id]`, `/builder`, `/plans`, `/subscribe`, `/blog`, `/profile`, `/saved`, `/cart`, юридические страницы |
+| `src/app/goo-studio/` | админка: товары, образы, импорт, парсер, бренды, блог, рассылки, пользователи, подписки, аналитика, журнал действий. Руководство — `docs/ADMIN.md` |
+| `src/app/api/` | API-роуты: публичные (`products`, `outfits`, `stylist`, `generate-outfit`, `billing`, `analytics` и др.) и `api/admin/*` для админки |
+| `src/proxy.ts` | proxy Next 16 (бывший middleware): редирект 308 с `www.` на домен без `www`, доступ к `/goo-studio` (только админы), `/profile`, `/saved` (только после входа) |
+| `src/components/` | компоненты интерфейса. Кнопки собираются по рецептам `DESIGN_SYSTEM.md`, `components/ui/button.tsx` не использовать |
+| `src/lib/` | общий код: тарифы (`plans.ts`), SEO (`seo.ts`), клиент Supabase (`supabase.ts`), слой данных (`data/db.ts`: демо-данные отдаются только без Supabase), контексты, таксономия |
+| `src/lib/server/` | только серверный код: проверка админа, monobank, подписки, оповещения по оплате, rate-limit, AI-клиенты, журнал действий админов, зеркалирование фото товаров |
+| `src/lib/server/parser/` | парсер товаров и общий конвейер импорта (`import-product.ts`): через него идут парсер, обход каталога, расширение и CSV |
+| `extension/` | расширение Chrome «Goo Collect»: собирает каталог магазина через браузер админа, когда магазин не пускает сервер |
+| `supabase/migrations/` | пронумерованные SQL-миграции |
+| `supabase-schema.sql`, `supabase-migration-*.sql` | базовая схема и ранние миграции (подписки, события оплаты, лайки и сохранённые образы, цветовые группы, логотипы брендов) |
+| `scripts/` | `migration-smoke.sh` (smoke-проверка сайта и Supabase при переезде сервера), вспомогательные Python-скрипты для картинок |
 
-### 🤖 AI Stylist
-Chat with an AI assistant that helps you choose clothes and improve your style.
+## Деплой
 
-### 🧩 Outfit Builder
-Manually create outfits by combining different pieces.
+- **Хостинг.** Прод работает на собственном сервере под Coolify, не на Vercel. Supabase тоже self-hosted (`supabase.goo-fashion.com`). Устройство сервера и план переезда описаны в `MIGRATION_RUNBOOK.md`.
+- **Сборка.** Coolify собирает через nixpacks по `nixpacks.toml`: `npm ci --no-audit --no-fund`, затем `npm run build` и `npm run start`. Там же ограничение памяти сборки (`NODE_OPTIONS=--max-old-space-size=3072`). `NPM_CONFIG_PRODUCTION=false` вместе с `.npmrc` ставит devDependencies, без которых `next build` не соберётся. В комментариях этих файлов платформа названа Railway, это устарело.
+- **Healthcheck.** Для него предназначен `GET /api/health`: отвечает 200 без обращения к базе и внешним сервисам. Включён ли healthcheck в Coolify на проде — уточнить у CEO (в `MIGRATION_RUNBOOK.md` это пункт чеклиста).
+- **Переменные окружения** задаются в Coolify, список — `.env.example`. Переменные `NEXT_PUBLIC_*` вшиваются в сборку, поэтому они должны быть доступны и при сборке, а не только при запуске. То же нужно `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`: `next build` пререндерит главную, sitemap и блог по данным из базы, и без них в эти страницы попадёт демо-каталог (до первой перегенерации ISR).
+- **Cron автопродления подписок.** `vercel.json` на проде не работает. Продление запускает Scheduled Task в Coolify: раз в день `GET /api/billing/cron/renew` с заголовком `Authorization: Bearer $CRON_SECRET`. Подробности и проверка — в `BILLING.md`. Заведена ли задача на проде, нужно уточнить у CEO.
+- **Миграции базы** при деплое не запускаются. SQL-файлы применяются вручную в SQL-редакторе Supabase (или через `psql`). Каких колонок из поздних миграций не хватает в живой базе, показывает карточка Database schema в `/goo-studio/settings` (она проверяет список необязательных колонок, а не всю схему).
+- **Как запускается деплой** (автоматически по push в `master` или вручную из Coolify), в репозитории не записано. Уточнить у CEO.
+- **CI** — `.github/workflows/ci.yml`, срабатывает на push в `master` и на pull request: `npm ci`, затем lint (не блокирует), `npx tsc --noEmit` и `npm run build`.
 
-### 🛍 Fashion Discovery
-Find clothes and inspiration in one place.
+## Документация
 
-### 🎨 Visual Generation
-See how outfits look through generated images.
-
----
-
-## ⚙️ Tech Stack
-
-- **Framework:** Next.js (App Router)
-- **Language:** TypeScript
-- **Hosting:** Vercel
-- **AI Integration:** (add your provider here — OpenAI / etc.)
-- **Styling:** (Tailwind / CSS / etc.)
-
----
-
-## 🛠 Getting Started
-
-Run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Документ | О чём |
+|---|---|
+| `DESIGN_SYSTEM.md` | визуальный язык сайта и админки: токены, типографика, рецепты компонентов, чеклист перед правкой UI |
+| `AI_ARCHITECTURE.md` | AI в продукте: стилист, генерация образов, промпты, эмбеддинги, AI в парсере и админке |
+| `BILLING.md` | подписки и оплата через monobank, автопродление, cron, оповещения |
+| `PARSER.md` | парсер товаров, обход каталогов, сбор расширением, настройки загрузки |
+| `extension/README.md` | установка и работа расширения Goo Collect |
+| `MIGRATION_RUNBOOK.md` | инфраструктура прода и переезд на новый сервер вместе с Supabase |
+| `docs/ADMIN.md` | руководство по админке `/goo-studio`: разделы, доступ, журнал действий |
+| `docs/CODE_REVIEW_2026-09.md` | код-ревью сентября 2026: найденное и исправленное |
+| `docs/UX_REVIEW_2026-09.md` | обзор дизайна и структуры сайта (сентябрь 2026). Это наблюдения, а не план работ |
+| `AUDIT_PLAN_BRIEF.md`, `AUDIT_DEV_PLAN.md` | протокол работы агентов и план задач по аудиту 7 августа 2026. Читать до первой правки кода |
+| `CLAUDE.md` | правила для AI-агентов в этом репозитории |
+| `docs/archive/` | завершённые планы и старые анализы. Для истории, текущее состояние кода они не описывают |

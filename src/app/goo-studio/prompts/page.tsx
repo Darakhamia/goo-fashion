@@ -9,17 +9,19 @@ interface PromptItem {
   default: string;
   value: string | null;
   category: string;
+  /** Placeholders the generator fills in; a saved prompt must keep all of them. */
+  required: string[];
 }
 
 const CATEGORIES = [
   { key: "content", label: "Content", description: "Blog & Email" },
-  { key: "stylist", label: "AI Stylist", description: "Chat assistant" },
   { key: "image",   label: "Image Gen", description: "Builder output" },
 ];
 
 function PromptCard({ item, onSave, onReset }: {
   item: PromptItem;
-  onSave: (key: string, value: string) => Promise<void>;
+  /** Resolves to "reset" when an empty text was saved, i.e. back to default. */
+  onSave: (key: string, value: string) => Promise<"saved" | "reset">;
   onReset: (key: string) => Promise<void>;
 }) {
   const [text, setText] = useState(item.value ?? item.default);
@@ -30,11 +32,18 @@ function PromptCard({ item, onSave, onReset }: {
 
   const isModified = item.value !== null;
   const isDirty = text !== (item.value ?? item.default);
+  // Empty text saves as a reset, so only a non-empty text has to carry the
+  // placeholders.
+  const isEmpty = !text.trim();
+  const missing = isEmpty ? [] : item.required.filter((p) => !text.includes(p));
 
   async function handleSave() {
     setSaving(true); setErr(""); setOk(false);
     try {
-      await onSave(item.key, text);
+      const result = await onSave(item.key, text);
+      // Match what was stored: the default after a reset, the trimmed text
+      // otherwise — so the card does not stay "dirty" over whitespace.
+      setText(result === "reset" ? item.default : text.trim());
       setOk(true);
       setTimeout(() => setOk(false), 2500);
     } catch (e) {
@@ -66,7 +75,7 @@ function PromptCard({ item, onSave, onReset }: {
               {item.label}
             </p>
             {isModified && (
-              <span className="text-[8px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-md leading-none">
+              <span className="text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none">
                 кастом
               </span>
             )}
@@ -74,6 +83,11 @@ function PromptCard({ item, onSave, onReset }: {
           <p className="text-[10px] text-[var(--foreground-muted)] leading-relaxed">
             {item.description}
           </p>
+          {item.required.length > 0 && (
+            <p className="text-[10px] text-[var(--foreground-subtle)] leading-relaxed mt-1">
+              Обязательно: <span className="font-mono">{item.required.join(" ")}</span>
+            </p>
+          )}
         </div>
         <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0 mt-0.5 tabular-nums">
           {text.length}
@@ -86,17 +100,27 @@ function PromptCard({ item, onSave, onReset }: {
           onChange={(e) => setText(e.target.value)}
           rows={8}
           spellCheck={false}
-          className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
+          className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
         />
+        {missing.length > 0 && (
+          <p className="text-[10px] text-amber-500 mt-1.5">
+            Не хватает <span className="font-mono">{missing.join(" ")}</span> — без {missing.length > 1 ? "них" : "него"} генерация пойдёт без этих данных.
+          </p>
+        )}
+        {isEmpty && isDirty && (
+          <p className="text-[10px] text-[var(--foreground-muted)] mt-1.5">
+            Пустой промт сохранится как сброс до дефолтного.
+          </p>
+        )}
         {err && <p className="text-[10px] text-red-500 mt-1.5">{err}</p>}
-        {ok  && <p className="text-[10px] text-green-600 mt-1.5">Сохранено.</p>}
+        {ok  && <p className="text-[10px] text-emerald-500 mt-1.5">Сохранено.</p>}
       </div>
 
       <div className="px-4 py-3 border-t border-[var(--border)] flex items-center gap-2">
         <button
           onClick={handleSave}
-          disabled={!isDirty || saving}
-          className="px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+          disabled={!isDirty || saving || missing.length > 0}
+          className="px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
           {saving && <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />}
           {saving ? "Сохранение…" : "Сохранить"}
@@ -104,7 +128,7 @@ function PromptCard({ item, onSave, onReset }: {
         {isDirty && !saving && (
           <button
             onClick={() => setText(item.value ?? item.default)}
-            className="px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+            className="px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
           >
             Отмена
           </button>
@@ -144,17 +168,18 @@ export default function PromptsPage() {
     }
   }
 
-  async function handleSave(key: string, value: string) {
+  async function handleSave(key: string, value: string): Promise<"saved" | "reset"> {
     const res = await fetch("/api/admin/prompts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value }),
     });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.error ?? "Save failed");
-    }
-    setPrompts((prev) => prev.map((p) => p.key === key ? { ...p, value } : p));
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error ?? "Save failed");
+    // The server stores the trimmed text, or nothing at all for an empty one.
+    const stored = j.reset ? null : value.trim();
+    setPrompts((prev) => prev.map((p) => p.key === key ? { ...p, value: stored } : p));
+    return j.reset ? "reset" : "saved";
   }
 
   async function handleReset(key: string) {
@@ -172,11 +197,11 @@ export default function PromptsPage() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6">
-        <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
+        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
           Prompts
         </h1>
-        <p className="text-xs text-[var(--foreground-muted)]">
-          Редактируй промты для всех AI-функций. Изменения применяются сразу без редеплоя.
+        <p className="text-xs text-[var(--foreground-muted)] mt-1">
+          Промты генерации постов блога, AI-писем и картинок образа. Изменения применяются сразу без редеплоя.
         </p>
       </div>
 

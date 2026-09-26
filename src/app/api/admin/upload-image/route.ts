@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isAlreadyMirrored, mirrorImageUrl } from "@/lib/server/storage/product-images";
+import { validateTargetUrl } from "@/lib/server/parser/fetch";
 
-const BUCKET = "product-images";
-
+/**
+ * POST /api/admin/upload-image { url } → { url, mirrored }
+ *
+ * Copies a pasted product photo into our own storage, so the product does not
+ * hotlink a retailer CDN. A URL that already points at our storage comes back
+ * as it is (`mirrored: false`) — re-uploading it would only leave a duplicate
+ * in the bucket and a new URL on the product.
+ *
+ * The download itself is the importer's: browser-like headers and a per-site
+ * Referer (Farfetch and friends refuse bare requests), a timeout and a size
+ * cap. A failure answers with the reason, so the editor can say the photo is
+ * still external instead of pretending it was stored.
+ */
 export async function POST(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,46 +32,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.url) {
+  const url = String(body?.url ?? "").trim();
+  if (!url) {
     return NextResponse.json({ error: "url required" }, { status: 400 });
   }
+  if (!/^https?:\/\//i.test(url)) {
+    return NextResponse.json({ error: "Only http(s) image URLs can be stored" }, { status: 400 });
+  }
 
-  let imageBuffer: Buffer;
-  let contentType = "image/jpeg";
+  if (isAlreadyMirrored(url)) {
+    return NextResponse.json({ url, mirrored: false });
+  }
+
+  // The server downloads this address, so it must not be one of our own
+  // network's: loopback, private, link-local or cloud metadata. Checked after
+  // the storage test above, since local Supabase lives on localhost.
+  const target = validateTargetUrl(url, "direct");
+  if ("error" in target) {
+    return NextResponse.json({ error: target.error }, { status: 400 });
+  }
+
   try {
-    const response = await fetch(body.url);
-    if (!response.ok) {
-      return NextResponse.json({ error: "Failed to fetch image" }, { status: 400 });
-    }
-    contentType = response.headers.get("content-type") ?? "image/jpeg";
-    if (!contentType.startsWith("image/")) {
-      return NextResponse.json({ error: "URL does not point to an image" }, { status: 400 });
-    }
-    imageBuffer = Buffer.from(await response.arrayBuffer());
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch image from URL" }, { status: 400 });
+    const stored = await mirrorImageUrl(url);
+    return NextResponse.json({ url: stored, mirrored: true });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "unknown error";
+    return NextResponse.json(
+      { error: `Could not copy the photo to storage (${reason})` },
+      { status: 502 }
+    );
   }
-
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.find((b) => b.name === BUCKET)) {
-    const { error: bucketErr } = await supabase.storage.createBucket(BUCKET, { public: true });
-    if (bucketErr && !bucketErr.message.includes("already exists")) {
-      return NextResponse.json({ error: `Bucket error: ${bucketErr.message}` }, { status: 500 });
-    }
-  }
-
-  const ext = contentType.split("/")[1]?.replace("jpeg", "jpg").replace("webp", "webp") ?? "jpg";
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-  const { error: uploadErr } = await supabase.storage
-    .from(BUCKET)
-    .upload(filename, imageBuffer, { contentType, upsert: false });
-
-  if (uploadErr) {
-    return NextResponse.json({ error: uploadErr.message }, { status: 500 });
-  }
-
-  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-
-  return NextResponse.json({ url: publicUrl });
 }

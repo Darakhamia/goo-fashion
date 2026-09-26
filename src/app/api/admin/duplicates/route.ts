@@ -4,7 +4,8 @@
  *   GET                             → the groups the finder proposes
  *   POST { action: "merge",   keepId, mergeIds }
  *                                   → one card with every store, the others gone
- *   POST { action: "dismiss", ids } → "not the same item": never proposed again
+ *   POST { action: "dismiss", ids, against? }
+ *                                   → "not the same item": never proposed again
  *
  * The finder is `lib/server/duplicates.ts` — the importer's own same-item test,
  * run over the whole catalogue. A merge moves everything that points at the
@@ -16,6 +17,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { logAdminAction } from "@/lib/server/audit";
 import { writeProductRow } from "@/lib/data/db";
 import {
@@ -42,9 +44,6 @@ const COLUMN_SETS = [
 const DISMISSALS = "label_audit_dismissals";
 const DISMISS_FIELD = "duplicate";
 
-const isMissing = (error: { code?: string; message?: string } | null | undefined) =>
-  !!error && (error.code === "42P01" || error.code === "PGRST205" || !!error.message?.includes("does not exist"));
-
 type ProductRow = Record<string, unknown> & { id: string };
 
 async function loadCatalogue(): Promise<ProductRow[] | { error: string }> {
@@ -69,7 +68,7 @@ async function loadCatalogue(): Promise<ProductRow[] | { error: string }> {
 
 async function loadDismissed(): Promise<{ pairs: Set<string>; available: boolean }> {
   const { data, error } = await supabase!.from(DISMISSALS).select("product_id, stored").eq("field", DISMISS_FIELD);
-  if (error) return { pairs: new Set(), available: !isMissing(error) };
+  if (error) return { pairs: new Set(), available: !isMissingTableLoose(error) };
   return {
     pairs: new Set(((data ?? []) as { product_id: string; stored: string }[]).map((d) => pairKey(d.product_id, d.stored))),
     available: true,
@@ -167,7 +166,7 @@ async function repoint(keepId: string, mergeIds: string[]): Promise<Repointed | 
       .select("id, user_id, entity_id")
       .eq("entity_type", "product")
       .in("entity_id", [keepId, ...mergeIds]);
-    if (isMissing(error)) out.skipped.push("user_likes");
+    if (isMissingTableLoose(error)) out.skipped.push("user_likes");
     else if (error) return { error: `likes: ${error.message}` };
     else {
       const rows = (data ?? []) as { id: string; user_id: string; entity_id: string }[];
@@ -200,7 +199,7 @@ async function repoint(keepId: string, mergeIds: string[]): Promise<Repointed | 
         .from(table)
         .select(`id, ${column}`)
         .contains(column, JSON.stringify([{ [key]: id }]));
-      if (isMissing(error)) {
+      if (isMissingTableLoose(error)) {
         missing = true;
         break;
       }
@@ -296,18 +295,35 @@ async function merge(adminId: string, keepId: string, mergeIds: string[]) {
 
 // ── Dismiss ──────────────────────────────────────────────────────────────────
 
-async function dismiss(adminId: string, ids: string[]) {
-  const rows: { product_id: string; field: string; stored: string; suggested: string; dismissed_by: string }[] = [];
-  for (let i = 0; i < ids.length; i++) {
-    for (let j = i + 1; j < ids.length; j++) {
-      const [a, b] = ids[i] < ids[j] ? [ids[i], ids[j]] : [ids[j], ids[i]];
-      rows.push({ product_id: a, field: DISMISS_FIELD, stored: b, suggested: "", dismissed_by: adminId });
-    }
+/**
+ * Remembers cards as different items. With `against`, only each of `ids`
+ * against each of `against` is remembered — the cards unticked in a group
+ * against the ones kept together — so the rest of the group stays a proposal.
+ * Without it, every pair among `ids` is.
+ */
+async function dismiss(adminId: string, ids: string[], against: string[]) {
+  const pairs = new Map<string, [string, string]>();
+  const add = (x: string, y: string) => {
+    if (x === y) return;
+    const [a, b] = x < y ? [x, y] : [y, x];
+    pairs.set(pairKey(a, b), [a, b]);
+  };
+  if (against.length) {
+    for (const x of ids) for (const y of against) add(x, y);
+  } else {
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) add(ids[i], ids[j]);
   }
+  const rows = [...pairs.values()].map(([a, b]) => ({
+    product_id: a,
+    field: DISMISS_FIELD,
+    stored: b,
+    suggested: "",
+    dismissed_by: adminId,
+  }));
   const { error } = await supabase!
     .from(DISMISSALS)
     .upsert(rows, { onConflict: "product_id,field,stored,suggested", ignoreDuplicates: true });
-  if (isMissing(error)) {
+  if (isMissingTableLoose(error)) {
     return NextResponse.json(
       { error: "Remembering \"not duplicates\" needs supabase/migrations/012_label_audit_dismissals.sql — run it, then try again." },
       { status: 503 },
@@ -319,7 +335,7 @@ async function dismiss(adminId: string, ids: string[]) {
     action: "products.duplicates_dismissed",
     target_type: "product",
     target_id: ids[0],
-    metadata: { ids },
+    metadata: against.length ? { ids, against } : { ids },
   });
   return NextResponse.json({ ok: true, pairs: rows.length });
 }
@@ -342,8 +358,11 @@ export async function POST(req: Request) {
   }
   if (body?.action === "dismiss") {
     const ids = [...new Set(clean(body?.ids))].slice(0, 20);
-    if (ids.length < 2) return NextResponse.json({ error: "At least two ids are required" }, { status: 400 });
-    return dismiss(admin.userId, ids);
+    const against = [...new Set(clean(body?.against))].filter((id) => !ids.includes(id)).slice(0, 20);
+    if (against.length ? !ids.length : ids.length < 2) {
+      return NextResponse.json({ error: "At least two ids are required" }, { status: 400 });
+    }
+    return dismiss(admin.userId, ids, against);
   }
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

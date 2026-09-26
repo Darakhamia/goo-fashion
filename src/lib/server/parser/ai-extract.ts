@@ -110,21 +110,6 @@ export interface AiExtractResult {
   error?: string;
 }
 
-/** Which RawExtract fields are still missing after deterministic extraction. */
-export function missingFields(raw: RawExtract): string[] {
-  const missing: string[] = [];
-  if (!raw.name) missing.push("name");
-  if (!raw.brand) missing.push("brand");
-  if (!raw.price) missing.push("price");
-  if (!raw.currency) missing.push("currency");
-  if (!raw.images?.length) missing.push("images");
-  if (!raw.sizes?.length) missing.push("sizes");
-  if (!raw.color) missing.push("color");
-  if (!raw.material) missing.push("material");
-  if (!raw.description) missing.push("description");
-  return missing;
-}
-
 /**
  * A product page shows a garment from several angles; one photo means the
  * gallery did not survive the fetch, not that the shoot was one frame. Below

@@ -569,12 +569,3 @@ export const products: Product[] = [
     styleKeywords: ["minimal", "avant-garde"],
   },
 ];
-
-export const getProductById = (id: string): Product | undefined =>
-  products.find((p) => p.id === id);
-
-export const getProductsByCategory = (category: string): Product[] =>
-  products.filter((p) => p.category === category);
-
-export const getFeaturedProducts = (): Product[] =>
-  products.slice(0, 6);

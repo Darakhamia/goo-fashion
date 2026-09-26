@@ -2,9 +2,10 @@
  * The category tree: read by the storefront, edited by the admin panel.
  *
  *   GET    /api/categories            → { groups, source }
- *   GET    /api/categories?counts=1   → also { counts } (admin panel)
+ *   GET    /api/categories?counts=1   → also { counts } (admin only)
  *   POST   /api/categories            → create a group or a subcategory
  *   PATCH  /api/categories            → rename / re-point / move / reorder one
+ *                                       ({ move: "up" | "down" } swaps a subcategory with its neighbour)
  *   DELETE /api/categories?kind=…&id=… → remove one
  *
  * Writes carry a `kind` rather than living at separate paths, because a group
@@ -17,24 +18,14 @@
  * along and reports how many it touched.
  */
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { loadCategoryTree, loadSubcategoryCounts } from "@/lib/server/category-tree";
 import { normalizeSlug, isValidSlug } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
-
-/** Postgres undefined_table, and PostgREST's "no such table in schema cache". */
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    !!error.message?.includes("does not exist")
-  );
-}
 
 function tableMissingResponse() {
   return NextResponse.json(
@@ -107,24 +98,98 @@ function readSizeChart(body: Record<string, unknown>): Record<string, unknown> |
  *
  * Returns how many rows moved. A missing `subcategory` column (migration 010
  * not run) is not an error here — there is simply nothing pointing at the
- * label yet.
+ * label yet. Any other failure comes back as a warning: the tree has already
+ * changed by then, and the admin has to know its products did not follow.
  */
 async function repointProducts(
   match: { label: string; value?: string },
   patch: Record<string, string | null>,
-): Promise<number> {
+): Promise<{ count: number; warning?: string }> {
   let q = supabase!.from("products").update(patch).eq("subcategory", match.label);
   if (match.value) q = q.eq("category", match.value);
   const { data, error } = await q.select("id");
-  if (error) return 0;
-  return (data ?? []).length;
+  if (error) {
+    // Postgres undefined_column, and PostgREST's "no such column in schema cache".
+    if (error.code === "42703" || error.code === "PGRST204") return { count: 0 };
+    return {
+      count: 0,
+      warning: `The tree was changed, but products filed under "${match.label}" were not updated: ${error.message}`,
+    };
+  }
+  return { count: (data ?? []).length };
+}
+
+/** One past the highest sort_order, so a new row lands last even after deletions. */
+async function nextSortOrder(table: "category_groups" | "category_subcategories", groupId?: string): Promise<number> {
+  let q = supabase!.from(table).select("sort_order").order("sort_order", { ascending: false }).limit(1);
+  if (groupId) q = q.eq("group_id", groupId);
+  const { data } = await q;
+  return (((data ?? [])[0] as { sort_order?: number } | undefined)?.sort_order ?? 0) + 1;
+}
+
+/**
+ * Swaps a subcategory with its neighbour in one call, so a failure cannot
+ * leave the pair half-moved. The group is renumbered 1…n in its current order
+ * with the two swapped; only rows whose number changes are written, which on
+ * a tree already numbered by position is just the two.
+ */
+async function moveSubcategory(adminId: string, id: number, delta: -1 | 1): Promise<NextResponse> {
+  const current = await supabase!.from("category_subcategories").select("id, group_id").eq("id", id).single();
+  if (current.error) {
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
+    return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
+  }
+  const groupId = (current.data as { group_id: string }).group_id;
+  const siblings = await supabase!
+    .from("category_subcategories")
+    .select("id, sort_order")
+    .eq("group_id", groupId)
+    .order("sort_order")
+    .order("id");
+  if (siblings.error) return NextResponse.json({ error: siblings.error.message }, { status: 500 });
+
+  const rows = (siblings.data ?? []) as { id: number; sort_order: number }[];
+  const order = rows.map((r) => r.id);
+  const at = order.indexOf(id);
+  const to = at + delta;
+  if (at < 0 || to < 0 || to >= order.length) {
+    return NextResponse.json({ error: "Already at the edge of its group." }, { status: 400 });
+  }
+  [order[at], order[to]] = [order[to], order[at]];
+
+  const was = new Map(rows.map((r) => [r.id, r.sort_order]));
+  for (let i = 0; i < order.length; i++) {
+    if (was.get(order[i]) === i + 1) continue;
+    const { error } = await supabase!.from("category_subcategories").update({ sort_order: i + 1 }).eq("id", order[i]);
+    if (error) return NextResponse.json({ error: `Could not reorder: ${error.message}` }, { status: 500 });
+  }
+
+  await logAdminAction({
+    admin_id: adminId,
+    action: "categories.updated",
+    target_id: String(id),
+    target_type: "category_subcategory",
+    metadata: { op: "move", direction: delta < 0 ? "up" : "down", groupId },
+  });
+  return NextResponse.json({ ok: true });
 }
 
 export async function GET(req: Request) {
-  const tree = await loadCategoryTree();
   const wantCounts = new URL(req.url).searchParams.get("counts") === "1";
-  if (!wantCounts) return NextResponse.json(tree);
-  return NextResponse.json({ ...tree, counts: await loadSubcategoryCounts() });
+  if (!wantCounts) {
+    const { groups, source, reason } = await loadCategoryTree();
+    return NextResponse.json({ groups, source, ...(reason ? { reason } : {}) });
+  }
+
+  // Counts page through the whole products table, and only the editor needs them.
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const tree = await loadCategoryTree();
+  // The editor is told the truth about an emptied tree: it is still the
+  // database's, and editable, while the storefront keeps the built-in one.
+  const edited = tree.reason === "tables-empty" ? { groups: [], source: "db" as const, reason: tree.reason } : tree;
+  return NextResponse.json({ ...edited, counts: await loadSubcategoryCounts() });
 }
 
 export async function POST(req: Request) {
@@ -142,11 +207,15 @@ export async function POST(req: Request) {
     }
     const { data, error } = await supabase!
       .from("category_groups")
-      .insert({ id, label, sort_order: Number(body.sortOrder) || 0 })
+      .insert({
+        id,
+        label,
+        sort_order: body.sortOrder !== undefined ? Number(body.sortOrder) || 0 : await nextSortOrder("category_groups"),
+      })
       .select()
       .single();
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       if (error.code === "23505") {
         return NextResponse.json({ error: `Group "${id}" already exists.` }, { status: 409 });
       }
@@ -159,7 +228,6 @@ export async function POST(req: Request) {
       target_type: "category_group",
       metadata: { op: "create", label },
     });
-    revalidatePath("/browse");
     return NextResponse.json(data, { status: 201 });
   }
 
@@ -174,13 +242,17 @@ export async function POST(req: Request) {
   const chart = readSizeChart(body);
   if ("error" in chart) return NextResponse.json({ error: chart.error }, { status: 400 });
 
+  const sortOrder =
+    body.sortOrder !== undefined
+      ? Number(body.sortOrder) || 0
+      : await nextSortOrder("category_subcategories", groupId);
   const { data, error } = await supabase!
     .from("category_subcategories")
-    .insert({ group_id: groupId, label, value, sort_order: Number(body.sortOrder) || 0, ...chart })
+    .insert({ group_id: groupId, label, value, sort_order: sortOrder, ...chart })
     .select()
     .single();
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     if (error.code === "23505") {
       return NextResponse.json(
         { error: `"${label}" already exists — a label can only appear once in the tree.` },
@@ -200,7 +272,6 @@ export async function POST(req: Request) {
     target_type: "category_subcategory",
     metadata: { op: "create", label, value, groupId },
   });
-  revalidatePath("/browse");
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -230,7 +301,7 @@ export async function PATCH(req: Request) {
       .select()
       .single();
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     await logAdminAction({
@@ -240,12 +311,14 @@ export async function PATCH(req: Request) {
       target_type: "category_group",
       metadata: { op: "update", ...patch },
     });
-    revalidatePath("/browse");
     return NextResponse.json(data);
   }
 
   const id = Number(body.id);
   if (!Number.isFinite(id)) return NextResponse.json({ error: "Which subcategory?" }, { status: 400 });
+  if (body.move === "up" || body.move === "down") {
+    return moveSubcategory(admin.userId, id, body.move === "up" ? -1 : 1);
+  }
 
   const current = await supabase!
     .from("category_subcategories")
@@ -253,7 +326,7 @@ export async function PATCH(req: Request) {
     .eq("id", id)
     .single();
   if (current.error) {
-    if (isTableMissing(current.error)) return tableMissingResponse();
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
     return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
   }
   const before = current.data as { group_id: string; label: string; value: string };
@@ -273,6 +346,10 @@ export async function PATCH(req: Request) {
     const groupId = normalizeSlug(body.groupId);
     if (!groupId) return NextResponse.json({ error: "Pick a group." }, { status: 400 });
     patch.group_id = groupId;
+    // Moved to another group, it goes to the end of that group's list.
+    if (groupId !== before.group_id && body.sortOrder === undefined) {
+      patch.sort_order = await nextSortOrder("category_subcategories", groupId);
+    }
   }
   if (body.sortOrder !== undefined) patch.sort_order = Number(body.sortOrder) || 0;
   const chart = readSizeChart(body);
@@ -287,12 +364,15 @@ export async function PATCH(req: Request) {
     .select()
     .single();
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     if (error.code === "23505") {
       return NextResponse.json(
         { error: `"${patch.label}" already exists elsewhere in the tree.` },
         { status: 409 },
       );
+    }
+    if (error.code === "23503") {
+      return NextResponse.json({ error: `Group "${patch.group_id}" does not exist.` }, { status: 400 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -304,19 +384,19 @@ export async function PATCH(req: Request) {
   const productPatch: Record<string, string | null> = {};
   if (patch.label && patch.label !== before.label) productPatch.subcategory = patch.label as string;
   if (patch.value && patch.value !== before.value) productPatch.category = patch.value as string;
-  const productsUpdated = Object.keys(productPatch).length
+  const repointed = Object.keys(productPatch).length
     ? await repointProducts({ label: before.label, value: before.value }, productPatch)
-    : 0;
+    : { count: 0 };
+  const productsUpdated = repointed.count;
 
   await logAdminAction({
     admin_id: admin.userId,
     action: "categories.updated",
     target_id: String(id),
     target_type: "category_subcategory",
-    metadata: { op: "update", before, after: patch, productsUpdated },
+    metadata: { op: "update", before, after: patch, productsUpdated, ...(repointed.warning ? { productsError: repointed.warning } : {}) },
   });
-  revalidatePath("/browse");
-  return NextResponse.json({ ...data, productsUpdated });
+  return NextResponse.json({ ...data, productsUpdated, ...(repointed.warning ? { warning: repointed.warning } : {}) });
 }
 
 export async function DELETE(req: Request) {
@@ -335,7 +415,11 @@ export async function DELETE(req: Request) {
       .from("category_subcategories")
       .select("id")
       .eq("group_id", rawId);
-    if (children.error && isTableMissing(children.error)) return tableMissingResponse();
+    if (children.error) {
+      if (isMissingTableLoose(children.error)) return tableMissingResponse();
+      // Unread is not empty: deleting now would cascade through whatever it holds.
+      return NextResponse.json({ error: children.error.message }, { status: 500 });
+    }
     if ((children.data ?? []).length > 0) {
       return NextResponse.json(
         {
@@ -348,7 +432,7 @@ export async function DELETE(req: Request) {
     }
     const { error } = await supabase!.from("category_groups").delete().eq("id", rawId);
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     await logAdminAction({
@@ -358,7 +442,6 @@ export async function DELETE(req: Request) {
       target_type: "category_group",
       metadata: { op: "delete" },
     });
-    revalidatePath("/browse");
     return NextResponse.json({ ok: true });
   }
 
@@ -371,29 +454,29 @@ export async function DELETE(req: Request) {
     .eq("id", id)
     .single();
   if (current.error) {
-    if (isTableMissing(current.error)) return tableMissingResponse();
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
     return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
   }
   const { label, value } = current.data as { label: string; value: string };
 
   const { error } = await supabase!.from("category_subcategories").delete().eq("id", id);
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   // Clear the label off its products rather than leaving them pointing at a
   // subcategory that no longer exists. They keep their category, so they stay
   // in the catalog and answer to their whole group again.
-  const productsUpdated = await repointProducts({ label, value }, { subcategory: null });
+  const repointed = await repointProducts({ label, value }, { subcategory: null });
+  const productsUpdated = repointed.count;
 
   await logAdminAction({
     admin_id: admin.userId,
     action: "categories.updated",
     target_id: String(id),
     target_type: "category_subcategory",
-    metadata: { op: "delete", label, value, productsUpdated },
+    metadata: { op: "delete", label, value, productsUpdated, ...(repointed.warning ? { productsError: repointed.warning } : {}) },
   });
-  revalidatePath("/browse");
-  return NextResponse.json({ ok: true, productsUpdated });
+  return NextResponse.json({ ok: true, productsUpdated, ...(repointed.warning ? { warning: repointed.warning } : {}) });
 }

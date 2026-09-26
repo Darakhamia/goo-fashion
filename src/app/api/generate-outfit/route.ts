@@ -4,6 +4,7 @@ import { requirePlan } from "@/lib/server/require-plan";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 import { getPrompt } from "@/lib/server/get-prompt";
+import { isBlockedResolvedHost, validateTargetUrl } from "@/lib/server/parser/fetch";
 import {
   DEFAULT_IMAGE_FIDELITY,
   DEFAULT_IMAGE_MANNEQUIN,
@@ -42,6 +43,67 @@ function browserHeaders(url: string): Record<string, string> {
   };
 }
 
+// Hops followed before a reference is given up on. Each one is re-checked.
+const MAX_REDIRECTS = 3;
+
+/**
+ * Our own Storage bucket. Product photos are mirrored there, and in local
+ * development Supabase lives on localhost — which the private-host check below
+ * would otherwise refuse. Public objects only: nothing else on that host is
+ * something this route should read.
+ */
+function isOwnStoragePublicUrl(url: string): boolean {
+  const base = process.env.SUPABASE_URL;
+  if (!base) return false;
+  try {
+    const u = new URL(url);
+    return (
+      (u.protocol === "https:" || u.protocol === "http:") &&
+      u.host === new URL(base).host &&
+      u.pathname.startsWith("/storage/v1/object/public/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reference URLs arrive in the request body, so the server must not fetch them
+ * blindly: a loopback, private or cloud-metadata address would turn this route
+ * into a proxy into our own network. Same rule as the parser's direct mode,
+ * and the name is resolved too — "169.254.169.254.nip.io" is spelt like a
+ * public host and dials the metadata address.
+ */
+async function isFetchableUrl(url: string): Promise<boolean> {
+  if (isOwnStoragePublicUrl(url)) return true;
+  const valid = validateTargetUrl(url, "direct");
+  if ("error" in valid) return false;
+  return !(await isBlockedResolvedHost(valid.url.hostname));
+}
+
+/**
+ * fetch() that follows redirects itself, so every hop passes the same check —
+ * otherwise a public URL answering "302 → http://169.254.169.254/" walks
+ * straight past the check on the first address. Null when a hop is refused or
+ * there are too many of them.
+ */
+async function fetchCheckingRedirects(
+  url: string,
+  init: { signal: AbortSignal; headers: Record<string, string> }
+): Promise<Response | null> {
+  let current = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (!(await isFetchableUrl(current))) return null;
+    const res = await fetch(current, { ...init, redirect: "manual" });
+    const location =
+      res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+    if (!location) return res;
+    res.body?.cancel().catch(() => undefined); // free the socket of the hop left behind
+    current = new URL(location, current).toString();
+  }
+  return null;
+}
+
 async function fetchBuffer(
   url: string,
   headers: Record<string, string>,
@@ -50,9 +112,9 @@ async function fetchBuffer(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal, headers });
+    const res = await fetchCheckingRedirects(url, { signal: controller.signal, headers });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res || !res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) return null;
     const buf = Buffer.from(await res.arrayBuffer());
@@ -68,6 +130,11 @@ async function fetchBuffer(
 async function fetchAsDataUri(
   url: string
 ): Promise<{ ok: true; dataUri: string } | { ok: false; url: string; reason: string }> {
+  // 0. only public http(s) addresses — not even through the proxy below
+  if (!(await isFetchableUrl(url))) {
+    return { ok: false, url, reason: "not a public http(s) URL" };
+  }
+
   // 1. direct with browser headers
   const direct = await fetchBuffer(url, browserHeaders(url));
   if (direct) {
@@ -163,10 +230,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A photo is required for the try-on style." }, { status: 400 });
   }
 
-  // Collect raw URLs (nano-banana-2 accepts up to 14 references)
+  // Collect raw URLs (nano-banana-2 accepts up to 14 references).
+  // They come from the client, so fetchAsDataUri refuses any that is not a
+  // public http(s) address.
   const rawUrls = pieces
     .map((p) => p.imageUrl)
-    .filter((url): url is string => !!url)
+    .filter((url): url is string => typeof url === "string" && !!url)
     .slice(0, userPhotoDataUri ? 13 : 14); // reserve one slot for the user photo
 
   // Fetch each image server-side and convert to base64 data-URIs.
@@ -293,9 +362,11 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
-    const tokenHint = `${apiToken.slice(0, 5)}…(len ${apiToken.length})`;
+    // Log the details here; the response used to carry the first characters
+    // of the Replicate token, which no client should see.
+    console.error("[generate-outfit] generation failed:", msg);
     return NextResponse.json(
-      { error: msg, tokenHint, failedUrls },
+      { error: msg, failedUrls },
       { status: 500 }
     );
   }

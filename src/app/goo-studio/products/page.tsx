@@ -9,6 +9,7 @@ import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
+import { storeFaviconUrl } from "@/lib/stores";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -46,22 +47,22 @@ const SUGGESTED_BRANDS = [
  * needs on top of it. `swimwear` is not in that tree (nothing on the site
  * filters by it) but keeps its sizes so an existing piece still edits cleanly.
  */
-const SIZE_PRESETS: Record<string, { sizeType: "letter" | "number" | "eu" | "one-size"; sizes: string[] }> = {
-  tops:        { sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL","XXXL"] },
-  shirts:      { sizeType: "letter",   sizes: ["XXS","XS","S","M","L","XL","XXL"] },
-  knitwear:    { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  bottoms:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  jeans:       { sizeType: "number",   sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38"] },
-  shorts:      { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  skirts:      { sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
-  outerwear:   { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  blazers:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  dresses:     { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  jumpsuits:   { sizeType: "letter",   sizes: ["XS","S","M","L","XL","XXL"] },
-  footwear:    { sizeType: "eu",       sizes: ["35","36","37","38","39","40","41","42","43","44","45","46"] },
-  accessories: { sizeType: "one-size", sizes: ["One Size","XS/S","S/M","M/L","L/XL"] },
-  bags:        { sizeType: "one-size", sizes: ["One Size"] },
-  swimwear:    { sizeType: "letter",   sizes: ["XS","S","M","L","XL"] },
+const SIZE_PRESETS: Record<string, { sizes: string[] }> = {
+  tops:        { sizes: ["XXS","XS","S","M","L","XL","XXL","XXXL"] },
+  shirts:      { sizes: ["XXS","XS","S","M","L","XL","XXL"] },
+  knitwear:    { sizes: ["XS","S","M","L","XL","XXL"] },
+  bottoms:     { sizes: ["XS","S","M","L","XL","XXL"] },
+  jeans:       { sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38"] },
+  shorts:      { sizes: ["XS","S","M","L","XL","XXL"] },
+  skirts:      { sizes: ["XS","S","M","L","XL"] },
+  outerwear:   { sizes: ["XS","S","M","L","XL","XXL"] },
+  blazers:     { sizes: ["XS","S","M","L","XL","XXL"] },
+  dresses:     { sizes: ["XS","S","M","L","XL","XXL"] },
+  jumpsuits:   { sizes: ["XS","S","M","L","XL","XXL"] },
+  footwear:    { sizes: ["35","36","37","38","39","40","41","42","43","44","45","46"] },
+  accessories: { sizes: ["One Size","XS/S","S/M","M/L","L/XL"] },
+  bags:        { sizes: ["One Size"] },
+  swimwear:    { sizes: ["XS","S","M","L","XL"] },
 };
 
 /** "Footwear › Boots" for a stored pair, for the table and section headers. */
@@ -95,6 +96,9 @@ const filterSelectCls =
 
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
+
+/** How long the "New" badge shows after a product is added (see db.ts isWithinLastWeek). */
+const NEW_ARRIVAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Photo-backdrop sampling sizes. The sample is small enough to answer "how many
@@ -217,50 +221,6 @@ const selectCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--background)] text-[var(--foreground)] transition-colors";
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
-const sectionCls = "border-t border-[var(--border)] pt-4 mt-1";
-
-// ── CSV Parser ─────────────────────────────────────────────────────────────────
-
-type ImportTab = "csv" | "json";
-
-function parseCSV(text: string): Partial<Product>[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/"/g, ""));
-  return lines.slice(1).map((line) => {
-    const values: string[] = [];
-    let cur = "";
-    let inQ = false;
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ; continue; }
-      if (ch === "," && !inQ) { values.push(cur.trim()); cur = ""; continue; }
-      cur += ch;
-    }
-    values.push(cur.trim());
-    const o: Record<string, string> = {};
-    headers.forEach((h, i) => { o[h] = values[i] ?? ""; });
-    return {
-      name: o.name,
-      brand: o.brand as Product["brand"] || "Zara" as Product["brand"],
-      category: (o.category as Category) || "tops",
-      description: o.description || "",
-      imageUrl: o.imageurl || o.image_url || o.image || "",
-      images: o.imageurl ? [o.imageurl] : [],
-      colors: o.colors ? o.colors.split("|").map((s) => s.trim()) : [],
-      sizes: o.sizes ? o.sizes.split("|").map((s) => s.trim()) : [],
-      material: o.material || "",
-      priceMin: parseFloat(o.pricemin || o.price_min || o.price || "0") || 0,
-      priceMax: parseFloat(o.pricemax || o.price_max || o.price || "0") || 0,
-      styleKeywords: ((o.stylekeywords || o.style_keywords)
-        ? (o.stylekeywords || o.style_keywords).split("|").map((s) => s.trim() as StyleKeyword)
-        : ["minimal" as StyleKeyword]) as StyleKeyword[],
-      isNew: o.isnew === "true" || o.is_new === "true",
-      isSaved: false,
-      currency: "USD",
-      retailers: [],
-    };
-  }).filter((p) => !!p.name);
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -275,30 +235,64 @@ function ImageList({
   onChange,
 }: {
   images: string[];
-  onChange: (imgs: string[]) => void;
+  /**
+   * Takes an updater rather than a new array: an upload finishes up to 30 s
+   * after it started, and must apply to the list as it is by then.
+   */
+  onChange: (update: (imgs: string[]) => string[]) => void;
 }) {
-  const [uploading, setUploading] = useState<number | null>(null);
+  /** The URL being copied to storage; its row shows a spinner meanwhile. */
+  const [uploading, setUploading] = useState<string | null>(null);
+  /**
+   * Why a row's photo is still on someone else's CDN, keyed by the URL that
+   * failed — so the note goes away as soon as the URL is changed.
+   */
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  /** URLs the server has already confirmed are in our storage. */
+  const stored = useRef<Set<string>>(new Set());
 
-  const addRow = () => onChange([...images, ""]);
-  const removeRow = (i: number) => onChange(images.filter((_, idx) => idx !== i));
+  const addRow = () => onChange((imgs) => [...imgs, ""]);
+  const removeRow = (i: number) => onChange((imgs) => imgs.filter((_, idx) => idx !== i));
   const setVal = (i: number, v: string) =>
-    onChange(images.map((img, idx) => (idx === i ? v : img)));
+    onChange((imgs) => imgs.map((img, idx) => (idx === i ? v : img)));
 
+  // Whether a URL is already ours is the server's call (it knows the storage
+  // origin); a substring check here missed the self-hosted domain and
+  // re-uploaded our own files on every blur.
   const handleBlur = async (i: number, url: string) => {
-    if (!url || !url.startsWith("http")) return;
-    // skip if already stored in Supabase
-    if (url.includes("supabase.co/storage")) return;
-    setUploading(i);
+    if (!url || !url.startsWith("http") || stored.current.has(url)) return;
+    setUploading(url);
     try {
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json();
-      if (data.url) setVal(i, data.url);
-    } catch {}
-    setUploading(null);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || `Upload failed (HTTP ${res.status})`);
+      }
+      stored.current.add(data.url);
+      setUploadErrors((e) => {
+        const next = { ...e };
+        delete next[url];
+        return next;
+      });
+      // Swap by value, not by the index the upload started at: rows may have
+      // been removed or edited while it ran. A URL no longer in the list was
+      // removed or retyped, so the stored copy is simply not applied.
+      if (data.url !== url) {
+        onChange((imgs) => {
+          const at = imgs[i] === url ? i : imgs.indexOf(url);
+          return at === -1 ? imgs : imgs.map((img, idx) => (idx === at ? data.url : img));
+        });
+      }
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : "Upload failed";
+      setUploadErrors((prev) => ({ ...prev, [url]: reason }));
+    } finally {
+      setUploading((u) => (u === url ? null : u));
+    }
   };
 
   return (
@@ -313,17 +307,22 @@ function ImageList({
                 onChange={(e) => setVal(i, e.target.value)}
                 onBlur={(e) => handleBlur(i, e.target.value)}
                 placeholder="https://…"
-                className={`${inputCls} ${uploading === i ? "opacity-50" : ""}`}
-                disabled={uploading === i}
+                className={`${inputCls} ${uploading === url ? "opacity-50" : ""}`}
+                disabled={uploading === url}
               />
-              {uploading === i && (
+              {uploading === url && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
                   <span className="w-3.5 h-3.5 border border-[var(--foreground)] border-t-transparent rounded-full animate-spin inline-block" />
                 </span>
               )}
             </div>
-            {url && uploading !== i && (
-              <div className="relative w-12 h-16 border border-[var(--border)] rounded-md overflow-hidden shrink-0">
+            {url && uploadErrors[url] && uploading !== url && (
+              <p className="text-[10px] leading-snug text-red-500">
+                Still on the external site — not copied to storage. {uploadErrors[url]}
+              </p>
+            )}
+            {url && uploading !== url && (
+              <div className="relative w-12 h-16 border border-[var(--border)] rounded-lg overflow-hidden shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
@@ -341,7 +340,8 @@ function ImageList({
             <button
               type="button"
               onClick={() => removeRow(i)}
-              className="mt-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+              aria-label="Remove image"
+              className="md:mt-2 flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -400,13 +400,14 @@ function RetailerList({
           <button
             type="button"
             onClick={() => remove(i)}
-            className="absolute top-2 right-2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            aria-label="Remove retailer"
+            className="absolute top-0 right-0 w-10 h-10 md:top-2 md:right-2 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
               <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </button>
-          <div className="grid grid-cols-2 gap-2 pr-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-8 md:pr-5">
             <div>
               <label className={labelCls}>Store</label>
               <div className="flex items-center gap-2">
@@ -470,7 +471,7 @@ function RetailerList({
               className={inputCls}
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Availability</label>
               <select
@@ -522,137 +523,39 @@ function RetailerList({
   );
 }
 
-// ── Migration modal ────────────────────────────────────────────────────────────
-
-const MIGRATION_SQL = `alter table public.products
-  add column if not exists variant_group_id text    default null,
-  add column if not exists color_hex        text    default null,
-  add column if not exists is_group_primary boolean default false,
-  add column if not exists crop_data        jsonb   default null;
-
-create index if not exists products_variant_group_idx
-  on public.products (variant_group_id)
-  where variant_group_id is not null;`;
-
-function MigrationModal({ onClose, onMigrated }: { onClose: () => void; onMigrated: () => void }) {
-  const [verifying, setVerifying] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<"ok" | "fail" | null>(null);
-
-  const handleVerify = async () => {
-    setVerifying(true);
-    setVerifyResult(null);
-    const res = await fetch("/api/products/group");
-    const data = await res.json();
-    setVerifying(false);
-    if (data.migrated) {
-      setVerifyResult("ok");
-      setTimeout(onMigrated, 1200);
-    } else {
-      setVerifyResult("fail");
-    }
-  };
-
-  const handleAutoMigrate = async () => {
-    setMigrating(true);
-    const res = await fetch("/api/products/group", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "migrate" }),
-    });
-    const data = await res.json();
-    setMigrating(false);
-    if (data.migrated) {
-      setVerifyResult("ok");
-      setTimeout(onMigrated, 1200);
-    } else {
-      setVerifyResult("fail");
-    }
-  };
-
+/** Column-header sort arrows; `dir` is the active direction on this column, if any. */
+function SortIcon({ dir }: { dir: "asc" | "desc" | null }) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
-      <div
-        className="border border-amber-400 rounded-2xl p-6 md:p-8 max-w-xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-        style={{ background: "var(--background)" }}
-      >
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-5">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-0.5 text-amber-500">
-            <path d="M10 2L1 17h18L10 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-            <path d="M10 8v4M10 14.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-          </svg>
-          <div>
-            <h2 className="font-display text-lg font-light text-[var(--foreground)]">
-              Database migration required
-            </h2>
-            <p className="text-xs text-[var(--foreground-muted)] mt-1">
-              Three new columns must be added to the <code className="font-mono">products</code> table before variant grouping can work.
-            </p>
-          </div>
-        </div>
+    <span className="inline-flex flex-col ml-1 gap-[1px] opacity-50 group-hover:opacity-100">
+      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-b-[4px] ${dir === "asc" ? "border-b-[var(--foreground)] opacity-100" : "border-b-[var(--foreground-muted)]"}`} />
+      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-t-[4px] ${dir === "desc" ? "border-t-[var(--foreground)] opacity-100" : "border-t-[var(--foreground-muted)]"}`} />
+    </span>
+  );
+}
 
-        {/* Option 1: Auto */}
-        <div className="border border-[var(--border)] rounded-xl p-4 mb-4">
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 1 — Try automatically</p>
-          <p className="text-xs text-[var(--foreground-muted)] mb-3">
-            Works if your Supabase project has the <code className="font-mono text-[11px]">run_sql</code> RPC function enabled.
-          </p>
-          <button
-            onClick={handleAutoMigrate}
-            disabled={migrating || verifyResult === "ok"}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {migrating ? "Running migration…" : "Run migration automatically"}
-          </button>
-        </div>
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform ${open ? "rotate-180" : ""}`}>
+      <path d="M2 4.5L6 7.5L10 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
 
-        {/* Option 2: Manual */}
-        <div className="border border-[var(--border)] rounded-xl p-4 mb-4">
-          <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-2">Option 2 — Run SQL manually</p>
-          <p className="text-xs text-[var(--foreground-muted)] mb-2">
-            Go to <strong>supabase.com → your project → SQL Editor</strong>, paste and run:
-          </p>
-          <pre
-            className="bg-[var(--surface)] border border-[var(--border)] p-3 text-[11px] font-mono text-[var(--foreground)] overflow-x-auto whitespace-pre leading-relaxed select-all cursor-text"
-          >
-            {MIGRATION_SQL}
-          </pre>
-          <p className="text-[10px] text-[var(--foreground-subtle)] mt-2">
-            After running the SQL, click <strong>Verify</strong> below to confirm it worked.
-          </p>
-        </div>
-
-        {/* Verify result */}
-        {verifyResult === "ok" && (
-          <div className="border border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-300 mb-4">
-            Migration verified! Closing…
-          </div>
-        )}
-        {verifyResult === "fail" && (
-          <div className="border border-red-400 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-xs text-red-700 dark:text-red-400 mb-4">
-            Columns still not found. Run the SQL in Supabase SQL Editor, then wait a few seconds and verify again.
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleVerify}
-            disabled={verifying || verifyResult === "ok"}
-            className="flex-1 border border-[var(--foreground)] text-[var(--foreground)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
-          >
-            {verifying ? "Checking…" : "Verify migration"}
-          </button>
-          <button
-            onClick={onClose}
-            className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+/** A collapsible section header in the product form. */
+function SecHead({ label, hint, open, onToggle }: { label: string; hint?: string; open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--surface)] transition-colors text-left"
+    >
+      <span className="flex items-center gap-2">
+        <span className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{label}</span>
+        {hint && <span className="text-[9px] text-[var(--foreground-subtle)] normal-case tracking-normal font-normal">{hint}</span>}
+      </span>
+      <span className="text-[var(--foreground-subtle)]"><Chevron open={open} /></span>
+    </button>
   );
 }
 
@@ -678,13 +581,23 @@ export default function AdminProductsPage() {
   const subcatToValue = useMemo(() => subcategoryToValue(categoryGroups), [categoryGroups]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  // Why the last catalogue load failed, or null. Kept until a load succeeds,
+  // so a failure does not pass for an empty catalogue once the toast is gone.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  /**
+   * Whether the database is there to write to. Checked once on load: without
+   * it the page says so once and every action that writes is disabled — there
+   * is no in-memory mode pretending to save. `null` while the check runs.
+   */
   const [dbConfigured, setDbConfigured] = useState<boolean | null>(null);
+  const canWrite = dbConfigured === true;
   const [colorGroups, setColorGroups] = useState<ColorGroup[]>(DEFAULT_COLOR_GROUPS);
   // Brands fetched from /api/brands — starts with the static list as a fallback so the
   // datalist is never empty while the request is in flight.
   const [suggestedBrands, setSuggestedBrands] = useState<string[]>(SUGGESTED_BRANDS);
-  // Store library (name + logo) from /api/brands, used by the retailer editor so
-  // each "Where to buy" listing is a real store with its logo, not free text.
+  // Store library (name + logo) from /api/brands and the Retailers rules, used by
+  // the retailer editor so each "Where to buy" listing is a real store with its
+  // logo, not free text.
   const [storeLibrary, setStoreLibrary] = useState<{ name: string; logoUrl: string | null }[]>([]);
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   const [addingBrand, setAddingBrand] = useState(false);
@@ -700,21 +613,18 @@ export default function AdminProductsPage() {
     new Set(["details", "colors", "color-groups", "style", "variants", "retailers"])
   );
   const toggleSection = (key: string) =>
-    setCollapsed((c) => { const n = new Set(c); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setCollapsed((c) => {
+      const n = new Set(c);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
 
-  const [showImport, setShowImport] = useState(false);
-  const [importTab, setImportTab] = useState<ImportTab>("csv");
-  const [importText, setImportText] = useState("");
-  const [importPreview, setImportPreview] = useState<Partial<Product>[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [seeding, setSeeding] = useState(false);
   const [recategorizing, setRecategorizing] = useState(false);
   const [sampling, setSampling] = useState(false);
-  const [importError, setImportError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const [filterGroup, setFilterGroup] = useState<string>("");
   const [filterSubcategory, setFilterSubcategory] = useState<string>("");
@@ -735,91 +645,138 @@ export default function AdminProductsPage() {
   const [cropSaving, setCropSaving] = useState(false);
 
   const handleCropSave = async (cropData: CropData) => {
-    if (!cropProduct) return;
+    if (!cropProduct || !canWrite) return;
     setCropSaving(true);
-    if (dbConfigured) {
+    try {
       const res = await fetch(`/api/products/${cropProduct.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cropData }),
       });
       if (!res.ok) {
-        showToast("Не удалось сохранить кадрирование", "err");
-        setCropSaving(false);
+        const json = await res.json().catch(() => ({}));
+        showToast(`Не удалось сохранить кадрирование${json.error ? `: ${json.error}` : ""}`, "err");
         return;
       }
+      setProducts((prev) =>
+        prev.map((p) => (p.id === cropProduct.id ? { ...p, cropData } : p))
+      );
+      showToast("Кадрирование сохранено.");
+      setCropProduct(null);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Не удалось сохранить кадрирование", "err");
+    } finally {
+      setCropSaving(false);
     }
-    setProducts((prev) =>
-      prev.map((p) => (p.id === cropProduct.id ? { ...p, cropData } : p))
-    );
-    showToast("Кадрирование сохранено.");
-    setCropSaving(false);
-    setCropProduct(null);
   };
 
   const handleCropClear = async (product: Product) => {
-    if (!dbConfigured) return;
-    const res = await fetch(`/api/products/${product.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cropData: null }),
-    });
-    if (!res.ok) { showToast("Ошибка сброса", "err"); return; }
-    setProducts((prev) =>
-      prev.map((p) => (p.id === product.id ? { ...p, cropData: undefined } : p))
-    );
-    showToast("Кадрирование сброшено.");
+    if (!canWrite) return;
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cropData: null }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        showToast(`Ошибка сброса${json.error ? `: ${json.error}` : ""}`, "err");
+        return;
+      }
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, cropData: undefined } : p))
+      );
+      showToast("Кадрирование сброшено.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Ошибка сброса", "err");
+    }
   };
 
   // ── Group variants modal ───────────────────────────────────────────────────
   const [groupModal, setGroupModal] = useState<GroupModalState>({ open: false, entries: [] });
   const [grouping, setGrouping] = useState(false);
   const [variantSearch, setVariantSearch] = useState("");
-  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+  // One timer for whichever toast is showing: a new toast cancels the old
+  // one's timer, so a stale timer can't blank a fresh message early. Errors
+  // stay up longer — they are the ones worth reading — and any toast can be
+  // dismissed by hand.
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dismissToast = () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    setToast(null);
   };
+  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => {
+      toastTimer.current = null;
+      setToast(null);
+    }, type === "err" ? 10000 : 3500);
+  };
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Check if Supabase is configured (GET = read-only, no auto-seeding)
-      const configRes = await fetch("/api/products/seed");
-      setDbConfigured(configRes.status !== 501);
-
       // raw=true returns all products including non-primary variants
       const res = await fetch("/api/products?raw=true");
-      const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch {
-      setProducts([]);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data)) {
+        throw new Error((data && typeof data === "object" && "error" in data && String(data.error)) || `Could not load products (HTTP ${res.status})`);
+      }
+      setProducts(data);
+      setLoadError(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load products";
+      setLoadError(message);
+      showToast(message, "err");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Whether there is a database to write to — asked once, not on every
+    // refetch (GET is read-only).
+    fetch("/api/products/seed")
+      .then((r) => setDbConfigured(r.status !== 501))
+      .catch(() => showToast("Could not check the database connection — reload the page.", "err"));
     fetchProducts();
     fetch("/api/color-groups")
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d)) setColorGroups(d); })
       .catch(() => {});
-    fetch("/api/brands")
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0) {
-          setSuggestedBrands(d.map((b: { name: string }) => b.name).sort());
-          setStoreLibrary(
-            d.map((b: { name: string; logoUrl?: string | null }) => ({
-              name: b.name,
-              logoUrl: b.logoUrl ?? null,
-            }))
-          );
+    // The store library behind the retailer editor's "Store" field: brands
+    // (with their uploaded logos), plus the store names set on the Retailers
+    // page, which are the names imports write (Farfetch, SSENSE…). A store
+    // with no brand entry shows its site's favicon.
+    Promise.all([
+      fetch("/api/brands").then((r) => r.json()).catch(() => null),
+      fetch("/api/admin/retailer-domains?rulesOnly=1").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([brands, retailerDomains]) => {
+      const library = new Map<string, { name: string; logoUrl: string | null }>();
+      if (Array.isArray(brands) && brands.length > 0) {
+        setSuggestedBrands(brands.map((b: { name: string }) => b.name).sort());
+        for (const b of brands as { name: string; logoUrl?: string | null }[]) {
+          library.set(b.name.trim().toLowerCase(), { name: b.name, logoUrl: b.logoUrl ?? null });
         }
-      })
-      .catch(() => {});
+      }
+      const rules = (retailerDomains?.rules ?? []) as { domain: string; name: string }[];
+      for (const r of rules) {
+        const key = r.name?.trim().toLowerCase();
+        if (!key) continue;
+        const known = library.get(key);
+        if (!known) library.set(key, { name: r.name.trim(), logoUrl: storeFaviconUrl(r.domain) });
+        else if (!known.logoUrl) library.set(key, { ...known, logoUrl: storeFaviconUrl(r.domain) });
+      }
+      setStoreLibrary([...library.values()].sort((a, b) => a.name.localeCompare(b.name)));
+    });
+    // Mount-only load; fetchProducts is re-created each render and reads no props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close brand dropdown when clicking outside
@@ -849,10 +806,16 @@ export default function AdminProductsPage() {
         setSuggestedBrands((prev) =>
           [...prev, name.trim()].sort((a, b) => a.localeCompare(b))
         );
+      } else {
+        const json = await res.json().catch(() => ({}));
+        showToast(json.error || `Could not add the brand (HTTP ${res.status})`, "err");
       }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not add the brand", "err");
     } finally {
       setAddingBrand(false);
     }
+    // The name stays on the product either way; only the brand list missed it.
     setForm((f) => ({ ...f, brand: name.trim() }));
     setBrandDropdownOpen(false);
   }
@@ -904,16 +867,14 @@ export default function AdminProductsPage() {
       });
     }
     return list;
-  }, [products, searchQuery, filterGroup, filterSubcategory, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, filterNew, sortKey, sortDir]);
+  }, [products, searchQuery, filterGroup, filterSubcategory, filterBrand, filterColorGroup, filterStyle, filterGender, filterMissing, filterNew, sortKey, sortDir, categoryGroups, subcatToValue]);
 
   // The Audit page links a suspect straight here by name, so the list opens
   // already narrowed to the piece being fixed.
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const search = new URLSearchParams(window.location.search).get("search");
     if (search) setSearchQuery(search);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   /** Brands actually present in the catalogue, so the list can't offer a dead end. */
   const brandsInCatalogue = useMemo(
@@ -938,6 +899,17 @@ export default function AdminProductsPage() {
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
+  /**
+   * The catalogue price from the store prices, when there are any. The price
+   * fields are read-only then, so the form has to show — and save — the range
+   * the stores give now, not whatever the row stored last time.
+   */
+  const withRetailerPrices = (f: ProductFormState): ProductFormState => {
+    const prices = f.retailers.map(retailerUsd).filter((x) => x > 0);
+    if (!prices.length) return f;
+    return { ...f, priceMin: String(Math.min(...prices)), priceMax: String(Math.max(...prices)) };
+  };
+
   const openAddModal = () => {
     setEditingProduct(null);
     setIsDuplicating(false);
@@ -954,7 +926,7 @@ export default function AdminProductsPage() {
           .filter((p) => p.variantGroupId === product.variantGroupId && p.id !== product.id)
           .map((p) => p.id)
       : [];
-    setForm({
+    setForm(withRetailerPrices({
       name: product.name,
       brand: product.brand,
       category: product.category,
@@ -982,7 +954,7 @@ export default function AdminProductsPage() {
       variantColorHex: product.colorHex ?? "#888888",
       linkedProductIds: linkedIds,
       colorGroupIds: product.colorGroupIds ?? [],
-    });
+    }));
     setVariantSearch("");
     setShowModal(true);
   };
@@ -990,7 +962,7 @@ export default function AdminProductsPage() {
   const openDuplicateModal = (product: Product) => {
     setEditingProduct(null);
     setIsDuplicating(true);
-    setForm({
+    setForm(withRetailerPrices({
       name: `${product.name} (Copy)`,
       brand: product.brand,
       category: product.category,
@@ -1018,7 +990,7 @@ export default function AdminProductsPage() {
       variantColorHex: product.colorHex ?? "#888888",
       linkedProductIds: [],
       colorGroupIds: product.colorGroupIds ?? [],
-    });
+    }));
     setVariantSearch("");
     setShowModal(true);
   };
@@ -1031,53 +1003,119 @@ export default function AdminProductsPage() {
     setVariantSearch("");
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) return;
-    setSaving(true);
+  /**
+   * Brings the variant group in line with the form's "Color variants" list.
+   *
+   * Only what changed is written. An edit that leaves the list and the swatch
+   * alone does not touch the group: re-posting it made whichever variant was
+   * saved the group's primary, silently swapping the product the catalogue
+   * shows. The group keeps its primary either way — choosing another is the
+   * Group variants dialog's job. A product taken out of the list is unlinked.
+   */
+  const syncVariants = async (savedId: string): Promise<{ changed: boolean; error: string | null }> => {
+    const ownGroup = editingProduct?.variantGroupId;
+    const before = ownGroup
+      ? products.filter((p) => p.variantGroupId === ownGroup && p.id !== savedId).map((p) => p.id)
+      : [];
+    const after = form.linkedProductIds;
+    const removed = before.filter((id) => !after.includes(id));
+    const added = after.filter((id) => !before.includes(id));
+    const hexChanged = !!ownGroup && (editingProduct?.colorHex ?? "#888888") !== form.variantColorHex;
 
-    const validImages = form.images.filter((u) => u.trim());
-    const colors = deriveColors(form.colorsRaw);
-
-    // NOTE: colorHex, variantGroupId, isGroupPrimary are NOT sent here.
-    // They are set exclusively via /api/products/group after the product is saved.
-    // This avoids errors when the migration columns haven't been added yet.
-    const payload: Partial<Product> = {
-      name: form.name.trim(),
-      brand: form.brand as Product["brand"],
-      category: form.category,
-      // Always sent, so clearing it in the form clears it on the row too.
-      subcategory: form.subcategory,
-      gender: form.gender ? (form.gender as Gender) : undefined,
-      description: form.description.trim(),
-      priceMin: parseFloat(form.priceMin) || 0,
-      priceMax: parseFloat(form.priceMax) || parseFloat(form.priceMin) || 0,
-      imageUrl: validImages[0] || "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90",
-      images: validImages.length ? validImages : ["https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&q=90"],
-      colors,
-      sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
-      material: form.material.trim(),
-      styleKeywords: form.styleKeywords,
-      retailers: form.retailers.map((r) => ({
-        name: r.name,
-        url: r.url,
-        price: parseFloat(r.price) || 0,
-        // The store's own currency, kept. Forcing "USD" here relabelled every
-        // imported hryvnia price as dollars the first time a product was saved.
-        currency: r.currency || "USD",
-        availability: r.availability,
-        isOfficial: r.isOfficial,
-        rating: r.rating ? parseFloat(r.rating) : undefined,
-        reviewCount: r.reviewCount ? parseInt(r.reviewCount, 10) : undefined,
-      })) as Retailer[],
-      isNew: form.isNew,
-      isSaved: false,
-      currency: "USD",
-      colorGroupIds: form.colorGroupIds,
+    const call = async (method: "POST" | "DELETE", body: unknown): Promise<string | null> => {
+      const res = await fetch("/api/products/group", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return null;
+      const err = await res.json().catch(() => ({}));
+      return (err.error as string) || `Variant update failed (HTTP ${res.status})`;
     };
 
-    let savedId: string | null = null;
+    // Everyone else left the list: a group of one is no group.
+    if (!after.length) {
+      if (!ownGroup || !before.length) return { changed: false, error: null };
+      return { changed: true, error: await call("DELETE", { groupId: ownGroup }) };
+    }
+    if (ownGroup && !added.length && !removed.length && !hexChanged) return { changed: false, error: null };
 
-    if (dbConfigured) {
+    if (removed.length) {
+      const error = await call("DELETE", { ids: removed });
+      if (error) return { changed: true, error };
+    }
+
+    // Into this product's own group, else the one its new variants already
+    // share, else a new one.
+    const linkedGroups = new Set(
+      after.map((id) => products.find((x) => x.id === id)?.variantGroupId).filter(Boolean)
+    );
+    const groupId = ownGroup ?? (linkedGroups.size === 1 ? ([...linkedGroups][0] as string) : undefined);
+    // A primaryId outside `ids` leaves the group's primary untouched.
+    const currentPrimary = groupId
+      ? products.find((p) => p.variantGroupId === groupId && p.isGroupPrimary && !removed.includes(p.id))?.id
+      : undefined;
+    const colorHexMap: Record<string, string> = { [savedId]: form.variantColorHex };
+    after.forEach((id) => {
+      colorHexMap[id] = products.find((x) => x.id === id)?.colorHex ?? "#888888";
+    });
+    const error = await call("POST", {
+      ids: [savedId, ...after],
+      primaryId: currentPrimary ?? savedId,
+      colorHexMap,
+      groupId,
+    });
+    return { changed: true, error };
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !canWrite) return;
+    setSaving(true);
+
+    try {
+      const f = withRetailerPrices(form);
+      const validImages = f.images.filter((u) => u.trim());
+      const colors = deriveColors(f.colorsRaw);
+
+      // NOTE: colorHex, variantGroupId, isGroupPrimary are NOT sent here.
+      // They are set exclusively via /api/products/group after the product is saved.
+      const payload: Partial<Product> = {
+        name: f.name.trim(),
+        brand: f.brand as Product["brand"],
+        category: f.category,
+        // Always sent, so clearing it in the form clears it on the row too.
+        subcategory: f.subcategory,
+        gender: f.gender ? (f.gender as Gender) : undefined,
+        description: f.description.trim(),
+        priceMin: parseFloat(f.priceMin) || 0,
+        priceMax: parseFloat(f.priceMax) || parseFloat(f.priceMin) || 0,
+        // No stand-in photo: a product saved without one stays without one, so
+        // the "No image" filter finds it instead of the storefront showing a
+        // stock picture of somebody else's jacket.
+        imageUrl: validImages[0] ?? "",
+        images: validImages,
+        colors,
+        sizes: f.sizes.split(",").map((s) => s.trim()).filter(Boolean),
+        material: f.material.trim(),
+        styleKeywords: f.styleKeywords,
+        retailers: f.retailers.map((r) => ({
+          name: r.name,
+          url: r.url,
+          price: parseFloat(r.price) || 0,
+          // The store's own currency, kept. Forcing "USD" here relabelled every
+          // imported hryvnia price as dollars the first time a product was saved.
+          currency: r.currency || "USD",
+          availability: r.availability,
+          isOfficial: r.isOfficial,
+          rating: r.rating ? parseFloat(r.rating) : undefined,
+          reviewCount: r.reviewCount ? parseInt(r.reviewCount, 10) : undefined,
+        })) as Retailer[],
+        isNew: f.isNew,
+        isSaved: false,
+        currency: "USD",
+        colorGroupIds: f.colorGroupIds,
+      };
+
       const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products";
       const method = editingProduct ? "PUT" : "POST";
       const res = await fetch(url, {
@@ -1085,173 +1123,67 @@ export default function AdminProductsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(err.error || "Failed to save", "err");
-        setSaving(false);
+      const saved = await res.json().catch(() => null);
+      if (!res.ok || !saved?.id) {
+        showToast(saved?.error || `Failed to save (HTTP ${res.status})`, "err");
         return;
       }
-      const saved = await res.json();
-      savedId = saved.id;
       if (editingProduct) {
         setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? saved : p)));
       } else {
         setProducts((prev) => [saved, ...prev]);
       }
+
       // The API drops columns the database does not have rather than failing
       // the save outright — say so, so a missing migration is never silent.
-      if (saved.warning) showToast(saved.warning, "err");
+      const problems: string[] = [];
+      if (saved.warning) problems.push(saved.warning);
+
+      // The product is saved by now: a variant failure is reported, not
+      // retried by leaving the form open (a second Save would add it twice).
+      let variants: { changed: boolean; error: string | null };
+      try {
+        variants = await syncVariants(saved.id);
+      } catch (e) {
+        variants = { changed: true, error: e instanceof Error ? e.message : "network error" };
+      }
+      if (variants.error) problems.push(`Saved, but the colour variants were not updated: ${variants.error}`);
+
+      if (problems.length) showToast(problems.join(" · "), "err");
       else showToast(editingProduct ? "Product updated." : "Product added.");
 
-      // ── Link color variants if requested ─────────────────────────────────
-      if (savedId && form.linkedProductIds.length > 0) {
-        const allIds = [savedId, ...form.linkedProductIds];
-        const colorHexMap: Record<string, string> = { [savedId]: form.variantColorHex };
-        form.linkedProductIds.forEach((id) => {
-          const p = products.find((x) => x.id === id);
-          colorHexMap[id] = p?.colorHex ?? "#888888";
-        });
-        // Reuse an existing group if all linked products share one
-        const existingGroups = new Set(
-          form.linkedProductIds
-            .map((id) => products.find((x) => x.id === id)?.variantGroupId)
-            .filter(Boolean)
-        );
-        const groupRes = await fetch("/api/products/group", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ids: allIds,
-            primaryId: savedId,
-            colorHexMap,
-            groupId: existingGroups.size === 1 ? [...existingGroups][0] : undefined,
-          }),
-        });
-        if (!groupRes.ok) {
-          const err = await groupRes.json();
-          if (err.needsMigration) {
-            setShowMigrationModal(true);
-          } else {
-            showToast(err.error || "Saved but variant linking failed", "err");
-          }
-        } else {
-          showToast("Product saved and variants linked.");
-        }
-        await fetchProducts();
-      }
-    } else {
-      if (editingProduct) {
-        setProducts((prev) =>
-          prev.map((p) => p.id === editingProduct.id ? { ...p, ...payload } : p)
-        );
-      } else {
-        const newProduct: Product = {
-          ...(payload as Product),
-          id: `p-${Date.now()}`,
-        };
-        setProducts((prev) => [newProduct, ...prev]);
-      }
-      showToast("Saved in-memory. Configure Supabase to persist.");
+      if (variants.changed) await fetchProducts();
+      closeModal();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to save", "err");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    closeModal();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this product?")) return;
-    if (dbConfigured) {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-      if (!res.ok) { showToast("Failed to delete", "err"); return; }
-    }
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    showToast("Deleted.");
-  };
-
-  // ── Import ─────────────────────────────────────────────────────────────────
-
-  const parseImport = () => {
-    setImportError("");
+    if (!canWrite || !confirm("Delete this product?")) return;
     try {
-      if (importTab === "json") {
-        const parsed = JSON.parse(importText);
-        setImportPreview(Array.isArray(parsed) ? parsed : [parsed]);
-      } else {
-        const parsed = parseCSV(importText);
-        if (parsed.length === 0) throw new Error("No valid rows found");
-        setImportPreview(parsed);
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        // 409 names the outfits that still use it; the row stays.
+        const json = await res.json().catch(() => ({}));
+        showToast(json.error || `Failed to delete (HTTP ${res.status})`, "err");
+        return;
       }
-    } catch (e: unknown) {
-      setImportError(e instanceof Error ? e.message : "Parse error");
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { setImportText(ev.target?.result as string); setImportPreview([]); };
-    reader.readAsText(file);
-  };
-
-  const handleImport = async () => {
-    if (!importPreview.length) return;
-    setImporting(true);
-    if (dbConfigured) {
-      const res = await fetch("/api/products/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(importPreview),
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setSelectedIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
-      const json = await res.json();
-      if (!res.ok) { showToast(json.error || "Import failed", "err"); setImporting(false); return; }
-      showToast(`Imported ${json.inserted?.length ?? 0} products.`);
-      await fetchProducts();
-    } else {
-      const newProds: Product[] = importPreview.map((p, i) => ({
-        id: `import-${Date.now()}-${i}`,
-        name: p.name ?? "",
-        brand: (p.brand as Product["brand"]) ?? "Zara" as Product["brand"],
-        category: (p.category as Category) ?? "tops",
-        // Validated against the category, so a stray label in pasted JSON
-        // doesn't produce a subcategory the filters can never match.
-        subcategory: resolveSubcategory((p.category as Category) ?? "tops", p.subcategory, categoryGroups),
-        description: p.description ?? "",
-        imageUrl: p.imageUrl ?? "",
-        images: p.images ?? [],
-        colors: p.colors ?? [],
-        sizes: p.sizes ?? [],
-        material: p.material ?? "",
-        retailers: [],
-        priceMin: p.priceMin ?? 0,
-        priceMax: p.priceMax ?? 0,
-        currency: "USD",
-        isNew: p.isNew ?? false,
-        isSaved: false,
-        styleKeywords: (p.styleKeywords ?? ["minimal"]) as Product["styleKeywords"],
-      }));
-      setProducts((prev) => [...newProds, ...prev]);
-      showToast(`Imported ${newProds.length} products (in-memory).`);
+      showToast("Deleted.");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to delete", "err");
     }
-    setImporting(false);
-    setShowImport(false);
-    setImportText("");
-    setImportPreview([]);
   };
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    const res = await fetch("/api/products/seed", { method: "POST" });
-    const json = await res.json();
-    if (!res.ok) { showToast(json.error || "Seed failed", "err"); setSeeding(false); return; }
-    showToast(json.message);
-    await fetchProducts();
-    setSeeding(false);
-  };
-
-  // Re-run the category classifier over EVERY product already in the DB (the
-  // import fix only affects new imports). Dry-run first, show what would change,
-  // and only write after the admin confirms. scope=all re-evaluates the whole
-  // catalog, not just the accessories bucket.
   /* ── Bulk edit: one set of changes across a selection ─────────────────── */
 
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -1431,6 +1363,10 @@ export default function AdminProductsPage() {
     setChosen(new Set());
   };
 
+  // Re-run the category classifier over EVERY product already in the DB (the
+  // import fix only affects new imports). Dry-run first, show what would change,
+  // and only write after the admin confirms. scope=all re-evaluates the whole
+  // catalog, not just the accessories bucket.
   const handleRecategorize = async () => {
     setRecategorizing(true);
     try {
@@ -1590,15 +1526,23 @@ export default function AdminProductsPage() {
 
       // One click works through the catalogue rather than one batch of it. The
       // loop is bounded two ways: a round cap, and a stall check — if a round
-      // measures nothing and declines nothing, everything left is failing to
-      // download and calling again would only repeat that.
+      // saves nothing, either everything left is failing to download or the
+      // writes are failing, and calling again would only repeat that. It counts
+      // what was written, not what was measured: a measurement the database
+      // refused is not progress.
       let rounds = 0;
       let totalMeasured = 0;
       let totalDeclined = 0;
       let totalFailed = 0;
+      let totalApplied = 0;
+      let totalWriteFailures = 0;
+      let lastWriteError = "";
       let thumbnails = 0;
       let notRecorded = false;
       let left: number | undefined;
+      // A round the server refused ends the run; it goes into the summary
+      // below rather than a toast of its own the summary would replace.
+      let roundError = "";
 
       while (rounds < BACKDROP_MAX_ROUNDS) {
         rounds++;
@@ -1607,36 +1551,43 @@ export default function AdminProductsPage() {
           limit: chosenIds.length ? BACKDROP_SAMPLE : BACKDROP_BATCH,
           ids: chosenIds,
         });
-        const round = await res.json();
+        const round = await res.json().catch(() => ({}));
         if (!res.ok) {
-          showToast(round.error || "Apply failed", "err");
+          roundError = round.error || `Apply failed (HTTP ${res.status})`;
           break;
         }
 
+        const applied = (round.applied ?? 0) as number;
+        const writeFailures = (round.writeFailures ?? []) as { id: string; error: string }[];
         totalMeasured += round.measured ?? 0;
         totalDeclined += round.declined ?? 0;
         totalFailed = round.failed ?? 0;
+        totalApplied += applied;
+        totalWriteFailures += writeFailures.length;
+        if (writeFailures.length) lastWriteError = writeFailures[0].error;
         thumbnails += round.viaThumbnail ?? 0;
-        if (round.undoable === false) notRecorded = true;
+        if (round.undoable === false && applied > 0) notRecorded = true;
         // Null when the progress count failed after a successful write — say
         // nothing about what is left rather than guessing at it.
         left = round.progress?.unmeasured as number | undefined;
 
-        const moved = (round.measured ?? 0) + (round.declined ?? 0);
-        if (chosenIds.length || left === undefined || left === 0 || moved === 0) break;
+        if (chosenIds.length || left === undefined || left === 0 || applied === 0) break;
 
-        showToast(`${totalMeasured} measured · ${left} left…`);
+        showToast(`${totalApplied} saved · ${left} left…`);
       }
 
+      const failedWrites = totalWriteFailures > 0;
       showToast(
-        `${totalMeasured} measured · ${totalDeclined} have no backdrop` +
+        (roundError ? `Stopped: ${roundError} · ` : "") +
+        `${totalApplied} saved (${totalMeasured} with a backdrop, ${totalDeclined} without)` +
         (totalFailed ? ` · ${totalFailed} to retry` : "") +
+        (failedWrites ? ` · ${totalWriteFailures} could not be saved: ${lastWriteError}` : "") +
         (left === undefined ? "" : left ? ` · ${left} left, click again` : " · all done") +
         // Worth saying: without renditions every photo came at full size, which
         // is the difference between a minute and an hour on a large catalogue.
         (totalMeasured && !thumbnails ? " — full-size photos, no Storage renditions" : "") +
         (notRecorded ? " — NOT recorded, cannot be undone" : ""),
-        notRecorded ? "err" : "ok",
+        roundError || notRecorded || failedWrites ? "err" : "ok",
       );
       await fetchProducts();
     } catch (e) {
@@ -1771,92 +1722,124 @@ export default function AdminProductsPage() {
   };
 
   const handleGroupSave = async () => {
+    if (!canWrite) return;
     const { entries, existingGroupId } = groupModal;
     const primaryEntry = entries.find((e) => e.isPrimary) ?? entries[0];
     setGrouping(true);
-    const colorHexMap: Record<string, string> = {};
-    entries.forEach((e) => { colorHexMap[e.id] = e.colorHex; });
-    const res = await fetch("/api/products/group", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ids: entries.map((e) => e.id),
-        primaryId: primaryEntry.id,
-        colorHexMap,
-        groupId: existingGroupId,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      setGrouping(false);
-      if (err.needsMigration) {
-        setGroupModal({ open: false, entries: [] });
-        setShowMigrationModal(true);
-      } else {
-        showToast(err.error || "Failed to group products", "err");
+    try {
+      const colorHexMap: Record<string, string> = {};
+      entries.forEach((e) => { colorHexMap[e.id] = e.colorHex; });
+      const res = await fetch("/api/products/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: entries.map((e) => e.id),
+          primaryId: primaryEntry.id,
+          colorHexMap,
+          groupId: existingGroupId,
+        }),
+      });
+      if (!res.ok) {
+        // Includes a database without the variant columns: the message says
+        // which columns to add.
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || `Failed to group products (HTTP ${res.status})`, "err");
+        return;
       }
-      return;
+      showToast(`${entries.length} products grouped as variants.`);
+      setGroupModal({ open: false, entries: [] });
+      setSelectedIds(new Set());
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to group products", "err");
+    } finally {
+      setGrouping(false);
     }
-    showToast(`${entries.length} products grouped as variants.`);
-    setGroupModal({ open: false, entries: [] });
-    setSelectedIds(new Set());
-    setGrouping(false);
-    await fetchProducts();
   };
 
   const handleUngroup = async (groupId: string) => {
-    if (!confirm("Unlink all variants in this group?")) return;
-    const res = await fetch("/api/products/group", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ groupId }),
-    });
-    if (!res.ok) { showToast("Failed to unlink", "err"); return; }
-    showToast("Variants unlinked.");
-    await fetchProducts();
-  };
-
-  const handleBulkDelete = async () => {
-    if (!selectedIds.size) return;
-    const count = selectedIds.size;
-    if (!confirm(`Delete ${count} selected product${count > 1 ? "s" : ""}?`)) return;
-    const ids = [...selectedIds];
-    if (dbConfigured) {
-      await Promise.all(ids.map((id) => fetch(`/api/products/${id}`, { method: "DELETE" })));
+    if (!canWrite || !confirm("Unlink all variants in this group?")) return;
+    try {
+      const res = await fetch("/api/products/group", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || `Failed to unlink (HTTP ${res.status})`, "err");
+        return;
+      }
+      showToast("Variants unlinked.");
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to unlink", "err");
     }
-    setProducts((prev) => prev.filter((p) => !ids.includes(p.id)));
-    setSelectedIds(new Set());
-    showToast(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
   };
 
-  // Sort arrow helper
-  const SortIcon = ({ col }: { col: SortColumn }) => (
-    <span className="inline-flex flex-col ml-1 gap-[1px] opacity-50 group-hover:opacity-100">
-      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-b-[4px] ${sortKey === col && sortDir === "asc" ? "border-b-[var(--foreground)] opacity-100" : "border-b-[var(--foreground-muted)]"}`} />
-      <span className={`block w-0 h-0 border-x-[3px] border-x-transparent border-t-[4px] ${sortKey === col && sortDir === "desc" ? "border-t-[var(--foreground)] opacity-100" : "border-t-[var(--foreground-muted)]"}`} />
-    </span>
-  );
+  /**
+   * Deletes the selection one product at a time and reports what actually
+   * went: only rows the server deleted leave the table, and the ones it
+   * refused — a product still used in an outfit, say — stay selected, with
+   * the reason in the toast.
+   */
+  const handleBulkDelete = async () => {
+    if (!selectedIds.size || !canWrite) return;
+    const ids = [...selectedIds];
+    const count = ids.length;
+    if (!confirm(`Delete ${count} selected product${count > 1 ? "s" : ""}?\n\nProducts used in an outfit are kept.`)) return;
+    setDeleting(true);
+    try {
+      const failures: { id: string; error: string }[] = [];
+      const deleted: string[] = [];
+      // A few at a time rather than hundreds of requests at once.
+      for (let i = 0; i < ids.length; i += 8) {
+        await Promise.all(ids.slice(i, i + 8).map(async (id) => {
+          try {
+            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+            if (res.ok) { deleted.push(id); return; }
+            const json = await res.json().catch(() => ({}));
+            failures.push({ id, error: (json.error as string) || `HTTP ${res.status}` });
+          } catch (e) {
+            failures.push({ id, error: e instanceof Error ? e.message : "Network error" });
+          }
+        }));
+      }
+      const gone = new Set(deleted);
+      setProducts((prev) => prev.filter((p) => !gone.has(p.id)));
+      setSelectedIds(new Set(failures.map((f) => f.id)));
+      if (failures.length) {
+        const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
+        const shown = failures.slice(0, 3).map((f) => `${nameOf(f.id)}: ${f.error}`).join(" · ");
+        showToast(
+          `Deleted ${deleted.length} of ${count}. Not deleted — ${shown}` +
+          (failures.length > 3 ? ` (+${failures.length - 3} more, still selected)` : ""),
+          "err",
+        );
+      } else {
+        showToast(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Bulk delete failed", "err");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  /** Which way a column header's arrows point: its direction when it is the sort. */
+  const sortDirFor = (col: SortColumn) => (sortKey === col ? sortDir : null);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div>
-      {/* DB status banner */}
+      {/* DB status banner — the one place a missing database is explained;
+          every action that writes is disabled below it. */}
       {dbConfigured === false && (
-        <div className="mb-4 border border-amber-300 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-          <strong>Database not configured.</strong> Products are in-memory only.
+        <div className="mb-4 rounded-xl bg-red-400/15 text-red-500 border border-red-400/30 px-4 py-3 text-xs">
+          <strong>Database not configured — nothing on this page can be saved.</strong>{" "}
           Add <code className="font-mono">SUPABASE_URL</code> and{" "}
-          <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel env vars to persist.
-        </div>
-      )}
-      {dbConfigured === true && (
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setShowMigrationModal(true)}
-            className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors underline"
-          >
-            View variant migration SQL
-          </button>
+          <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to the environment and reload.
         </div>
       )}
 
@@ -1864,15 +1847,17 @@ export default function AdminProductsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Products</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-            {products.length} total &middot; {filtered.length} shown
-          </p>
+          {!loadError && (
+            <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+              {products.length} total &middot; {filtered.length} shown
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleRecategorize}
-            disabled={recategorizing || !dbConfigured}
-            title={dbConfigured ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
+            disabled={recategorizing || !canWrite}
+            title={canWrite ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {recategorizing ? "Sorting…" : "Fix categories"}
@@ -1881,8 +1866,8 @@ export default function AdminProductsPage() {
               regret is usually the one from before the page was reloaded. */}
           <button
             onClick={handleUndoRecategorize}
-            disabled={recategorizing || !dbConfigured}
-            title={dbConfigured ? "Put back what the last category fix changed" : "Requires Supabase"}
+            disabled={recategorizing || !canWrite}
+            title={canWrite ? "Put back what the last category fix changed" : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo fix
@@ -1892,9 +1877,9 @@ export default function AdminProductsPage() {
               is one, otherwise on the next batch of never-measured products. */}
           <button
             onClick={handleSampleBackdrops}
-            disabled={sampling || !dbConfigured}
+            disabled={sampling || !canWrite}
             title={
-              dbConfigured
+              canWrite
                 ? selectedIds.size
                   ? `Re-measure the photo backdrop of ${selectedIds.size} selected`
                   : "Measure photo backdrops so cards pad with the photo's own colour"
@@ -1910,19 +1895,11 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={handleUndoBackdrops}
-            disabled={sampling || !dbConfigured}
-            title={dbConfigured ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
+            disabled={sampling || !canWrite}
+            title={canWrite ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo backdrops
-          </button>
-          <button
-            onClick={handleSeed}
-            disabled={seeding || !dbConfigured}
-            title={dbConfigured ? "Seed default catalog" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {seeding ? "Seeding…" : "Seed catalog"}
           </button>
           {/* The cards themselves, drawn as pictures, as one ZIP. Works on the
               selection when there is one, otherwise on everything the filters
@@ -1939,17 +1916,10 @@ export default function AdminProductsPage() {
             }
           />
           <button
-            onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Import
-          </button>
-          <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+            disabled={!canWrite}
+            title={canWrite ? undefined : "Requires Supabase"}
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -2137,12 +2107,12 @@ export default function AdminProductsPage() {
       {bulkOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" {...bulkBackdrop}>
           <div
-            className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
+            className="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
             style={{ background: "var(--background)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-              <div>
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
                 </h2>
@@ -2150,16 +2120,16 @@ export default function AdminProductsPage() {
                   Anything left blank is not touched.
                 </p>
               </div>
-              <button onClick={() => setBulkOpen(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setBulkOpen(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
 
-            <div className="px-6 py-5 flex flex-col gap-5">
+            <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
               {/* Brand + gender */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Brand</label>
                   <input
@@ -2211,7 +2181,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2224,7 +2194,7 @@ export default function AdminProductsPage() {
                         ...b,
                         styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
                       }))}
-                        className={`px-2.5 py-1 text-[11px] border transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
                       >{k}</button>
                     );
                   })}
@@ -2238,7 +2208,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2251,7 +2221,7 @@ export default function AdminProductsPage() {
                         ...b,
                         colorGroupIds: on ? b.colorGroupIds.filter((x) => x !== g.id) : [...b.colorGroupIds, g.id],
                       }))}
-                        className={`px-2.5 py-1 text-[11px] border transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
                       >{g.name}</button>
                     );
                   })}
@@ -2261,7 +2231,7 @@ export default function AdminProductsPage() {
               {/* Names */}
               <div>
                 <label className={labelCls}>Names</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
                   <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
                   <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
@@ -2273,7 +2243,7 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-[var(--border)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)]">
               <span className="text-[11px] text-[var(--foreground-muted)]">
                 {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
               </span>
@@ -2283,7 +2253,7 @@ export default function AdminProductsPage() {
                 </button>
                 <button
                   onClick={applyBulkEdit}
-                  disabled={bulkSaving || !bulkChangeCount}
+                  disabled={bulkSaving || !bulkChangeCount || !canWrite}
                   className="bg-[var(--foreground)] text-[var(--background)] px-5 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                 >
                   {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
@@ -2296,14 +2266,15 @@ export default function AdminProductsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
           <span className="text-xs text-[var(--foreground)]">
             {selectedIds.size} selected
           </span>
           {selectedIds.size >= 2 && (
             <button
               onClick={openGroupModal}
-              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg"
+              disabled={!canWrite}
+              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -2315,7 +2286,8 @@ export default function AdminProductsPage() {
           )}
           <button
             onClick={() => setBulkOpen(true)}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg"
+            disabled={!canWrite}
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--surface)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -2324,12 +2296,13 @@ export default function AdminProductsPage() {
           </button>
           <button
             onClick={handleBulkDelete}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400 text-red-500 dark:text-red-400 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors rounded-lg"
+            disabled={deleting || !canWrite}
+            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-red-400/30 text-red-500 px-3 py-1.5 hover:bg-red-400/15 transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Delete {selectedIds.size}
+            {deleting ? "Deleting…" : `Delete ${selectedIds.size}`}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
@@ -2361,28 +2334,28 @@ export default function AdminProductsPage() {
                 <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-16">Image</th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
                   <button onClick={() => toggleSort("name")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Name <SortIcon col="name" />
+                    Name <SortIcon dir={sortDirFor("name")} />
                   </button>
                 </th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">
                   <button onClick={() => toggleSort("brand")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Brand <SortIcon col="brand" />
+                    Brand <SortIcon dir={sortDirFor("brand")} />
                   </button>
                 </th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
                   <button onClick={() => toggleSort("category")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Category <SortIcon col="category" />
+                    Category <SortIcon dir={sortDirFor("category")} />
                   </button>
                 </th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
                   <button onClick={() => toggleSort("priceMin")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Price <SortIcon col="priceMin" />
+                    Price <SortIcon dir={sortDirFor("priceMin")} />
                   </button>
                 </th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
                 <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
                   <button onClick={() => toggleSort("createdAt")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
-                    Added <SortIcon col="createdAt" />
+                    Added <SortIcon dir={sortDirFor("createdAt")} />
                   </button>
                 </th>
                 <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Actions</th>
@@ -2392,7 +2365,19 @@ export default function AdminProductsPage() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                    No products found.
+                    {loadError ? (
+                      <div role="alert" className="flex flex-col items-center gap-3">
+                        <p className="text-red-500 break-words">{loadError}</p>
+                        <button
+                          onClick={fetchProducts}
+                          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : (
+                      "No products found."
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -2429,7 +2414,7 @@ export default function AdminProductsPage() {
                       <div className="relative w-10 h-[52px] overflow-hidden">
                         {product.imageUrl ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                          <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-[var(--surface)]" />
                         )}
@@ -2440,11 +2425,7 @@ export default function AdminProductsPage() {
                         <span className="text-sm text-[var(--foreground)]">{product.name}</span>
                         {product.variantGroupId && (
                           <span
-                            className="inline-flex items-center gap-1 text-[8px] tracking-[0.12em] uppercase border px-1.5 py-0.5 leading-none"
-                            style={{
-                              borderColor: product.colorHex ?? "var(--border)",
-                              color: product.colorHex ?? "var(--foreground-muted)",
-                            }}
+                            className="inline-flex items-center gap-1 text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] rounded-full px-1.5 py-0.5 leading-none"
                           >
                             {product.isGroupPrimary ? "Primary" : "Variant"}
                             {product.colorHex && (
@@ -2478,9 +2459,11 @@ export default function AdminProductsPage() {
                     <td className="px-2 py-3 hidden lg:table-cell">
                       <span className="text-xs text-[var(--foreground-subtle)] whitespace-nowrap">{fmtDate(product.createdAt)}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {product.variantGroupId && dbConfigured && (
+                    <td className="px-2 md:px-4 py-3">
+                      {/* Three icons to a row on phones keeps the table close
+                          to the screen width. */}
+                      <div className="flex flex-wrap md:flex-nowrap items-center justify-end gap-1 md:gap-2 w-[128px] md:w-auto ml-auto">
+                        {product.variantGroupId && canWrite && (
                           <button
                             onClick={() => handleUngroup(product.variantGroupId!)}
                             title="Unlink from variant group"
@@ -2495,8 +2478,9 @@ export default function AdminProductsPage() {
                         {/* Crop button */}
                         <button
                           onClick={() => setCropProduct(product)}
+                          disabled={!canWrite}
                           title={product.cropData ? "Изменить кадрирование" : "Настроить кадрирование"}
-                          className={`transition-colors p-1 ${
+                          className={`transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed ${
                             product.cropData
                               ? "text-[var(--foreground)] opacity-90"
                               : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -2512,18 +2496,18 @@ export default function AdminProductsPage() {
                         {/* This one piece's card, as a PNG, without going
                             through the selection and the toolbar. */}
                         <DownloadCardButton kind="products" id={product.id} onNotify={showToast} />
-                        <button onClick={() => openEditModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Edit">
+                        <button onClick={() => openEditModal(product)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Edit">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M9.5 2.5L11.5 4.5L4.5 11.5H2.5V9.5L9.5 2.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                           </svg>
                         </button>
-                        <button onClick={() => openDuplicateModal(product)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Duplicate" title="Duplicate product">
+                        <button onClick={() => openDuplicateModal(product)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Duplicate" title="Duplicate product">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <rect x="1.5" y="4.5" width="7" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.2"/>
                             <path d="M5 4.5V3a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                           </svg>
                         </button>
-                        <button onClick={() => handleDelete(product.id)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1" aria-label="Delete">
+                        <button onClick={() => handleDelete(product.id)} disabled={!canWrite} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Delete">
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                           </svg>
@@ -2542,25 +2526,25 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[94vh] flex flex-col overflow-hidden"
+            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
                 </h2>
                 <button
                   onClick={runSuggest}
-                  disabled={suggesting || !dbConfigured}
+                  disabled={suggesting || !canWrite}
                   title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
                   className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {suggesting ? "Reading…" : "Suggest fields"}
                 </button>
               </div>
-              <button onClick={closeModal} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={closeModal} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -2570,14 +2554,14 @@ export default function AdminProductsPage() {
             {/* Suggestions — spans the modal, above both columns, because the
                 fields they land in live in different ones. */}
             {suggestions && suggestions.length > 0 && (
-              <div className="shrink-0 border-b border-[var(--border)] px-6 py-3 bg-[var(--surface)]">
-                <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--surface)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
                     From how the catalogue is filed
                   </p>
                   <div className="flex items-center gap-3">
                     <button onClick={applySuggestions} disabled={!chosen.size}
-                      className="border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40">
+                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--background)] transition-colors disabled:opacity-40">
                       Fill {chosen.size || ""} selected
                     </button>
                     <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
@@ -2596,7 +2580,7 @@ export default function AdminProductsPage() {
                           checked={chosen.has(s.field)}
                           onChange={() => setChosen((prev) => {
                             const next = new Set(prev);
-                            next.has(s.field) ? next.delete(s.field) : next.add(s.field);
+                            if (next.has(s.field)) next.delete(s.field); else next.add(s.field);
                             return next;
                           })}
                           className="mt-0.5 accent-[var(--foreground)]"
@@ -2620,41 +2604,28 @@ export default function AdminProductsPage() {
             )}
 
             {/* Body — two-column */}
-            <div className="grid grid-cols-[220px_1fr] flex-1 min-h-0 divide-x divide-[var(--border)]">
+            {/* One column on a phone (the whole body scrolls), two from md up
+                (each column scrolls on its own). The columns are scroll
+                boxes only from md: below it a scroll box shrinks its grid row
+                and the form would scroll inside a strip. */}
+            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] flex-1 min-h-0 overflow-y-auto divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
 
               {/* ── Left: Images ── */}
-              <div className="flex flex-col gap-3 px-4 py-4 overflow-y-auto">
+              <div className="flex flex-col gap-3 px-4 py-4 md:overflow-y-auto">
                 <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Images</p>
-                <p className="text-[9px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → auto-uploaded to storage.</p>
+                <p className="text-[9px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
                 <ImageList
                   images={form.images}
-                  onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))}
+                  onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
                 />
               </div>
 
               {/* ── Right: Sections ── */}
-              <div className="flex flex-col divide-y divide-[var(--border)] overflow-y-auto">
+              <div className="flex flex-col divide-y divide-[var(--border)] md:overflow-y-auto">
 
-                {/* Chevron helper */}
                 {(() => {
-                  const Chevron = ({ open }: { open: boolean }) => (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform ${open ? "rotate-180" : ""}`}>
-                      <path d="M2 4.5L6 7.5L10 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  );
-                  const SecHead = ({ id, label, hint }: { id: string; label: string; hint?: string }) => (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(id)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--surface)] transition-colors text-left"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{label}</span>
-                        {hint && <span className="text-[9px] text-[var(--foreground-subtle)] normal-case tracking-normal font-normal">{hint}</span>}
-                      </span>
-                      <span className="text-[var(--foreground-subtle)]"><Chevron open={!collapsed.has(id)} /></span>
-                    </button>
-                  );
+                  // Section header wired to the collapsed set.
+                  const sec = (id: string) => ({ open: !collapsed.has(id), onToggle: () => toggleSection(id) });
 
                   return (
                     <>
@@ -2671,7 +2642,7 @@ export default function AdminProductsPage() {
                             className={inputCls}
                           />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="relative">
                         <label className={labelCls}>Brand</label>
                         <input
@@ -2722,7 +2693,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Category ── */}
                   <div>
-                    <SecHead id="category" label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
+                    <SecHead {...sec("category")} label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
                     {!collapsed.has("category") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
@@ -2753,7 +2724,7 @@ export default function AdminProductsPage() {
                                       disabled={!first}
                                       title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
                                       onClick={() => first && pick(first.label)}
-                                      className={`py-1.5 text-[10px] border transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      className={`py-1.5 text-[10px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                     >{g.label}</button>
                                   );
                                 })}
@@ -2764,7 +2735,7 @@ export default function AdminProductsPage() {
                                   {activeGroup.items.map((item) => (
                                     <button key={item.label} type="button"
                                       onClick={() => pick(item.label)}
-                                      className={`px-2.5 py-1.5 text-[11px] border transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      className={`px-2.5 py-1.5 text-[11px] border rounded-full transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                     >{item.label}</button>
                                   ))}
                                 </div>
@@ -2789,7 +2760,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Sizes ── */}
                   <div>
-                    <SecHead id="sizes" label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
+                    <SecHead {...sec("sizes")} label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
                     {!collapsed.has("sizes") && (
                       <div className="px-4 pb-4 flex flex-col gap-2">
                         {(() => {
@@ -2823,7 +2794,7 @@ export default function AdminProductsPage() {
                                     const active = selected.includes(size);
                                     return (
                                       <button key={size} type="button" onClick={() => toggle(size)}
-                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border rounded-full transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                       >{size}</button>
                                     );
                                   })}
@@ -2844,7 +2815,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Pricing ── */}
                   <div>
-                    <SecHead id="pricing" label="Pricing" />
+                    <SecHead {...sec("pricing")} label="Pricing" />
                     {!collapsed.has("pricing") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
                         {(() => {
@@ -2865,7 +2836,7 @@ export default function AdminProductsPage() {
                                   {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
                                 </p>
                               )}
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                   <label className={labelCls}>Price Min ($)</label>
                                   <input
@@ -2894,19 +2865,33 @@ export default function AdminProductsPage() {
                             </>
                           );
                         })()}
-                        <div className="flex items-center gap-3">
-                          <input type="checkbox" id="isNew" checked={form.isNew} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)]" />
-                          <label htmlFor="isNew" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                            New arrival <span className="text-[var(--foreground-subtle)]">(badge auto-hides after 7 days)</span>
-                          </label>
-                        </div>
+                        {(() => {
+                          // The badge shows only in a product's first 7 days,
+                          // counted from when it was added — so on an older
+                          // piece the box can do nothing and says so.
+                          const createdMs = editingProduct?.createdAt ? new Date(editingProduct.createdAt).getTime() : NaN;
+                          const pastNewWindow = Number.isFinite(createdMs) && Date.now() - createdMs >= NEW_ARRIVAL_WINDOW_MS;
+                          return (
+                            <div className="flex items-center gap-3">
+                              <input type="checkbox" id="isNew" checked={form.isNew && !pastNewWindow} disabled={pastNewWindow} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed" />
+                              <label htmlFor="isNew" className={`text-xs text-[var(--foreground-muted)] tracking-wide ${pastNewWindow ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                New arrival{" "}
+                                <span className="text-[var(--foreground-subtle)]">
+                                  {pastNewWindow
+                                    ? `(unavailable — added ${fmtDate(editingProduct?.createdAt)}, more than 7 days ago)`
+                                    : "(badge auto-hides 7 days after the product was added)"}
+                                </span>
+                              </label>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
 
                   {/* ── Details (collapsible) ── */}
                   <div>
-                    <SecHead id="details" label="Details" />
+                    <SecHead {...sec("details")} label="Details" />
                     {!collapsed.has("details") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
                         <div>
@@ -2923,7 +2908,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Colors (collapsible) ── */}
                   <div>
-                    <SecHead id="colors" label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
+                    <SecHead {...sec("colors")} label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
                     {!collapsed.has("colors") && (
                       <div className="px-4 pb-4">
                         <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder="Black, White, Camel" className={inputCls} />
@@ -2933,7 +2918,7 @@ export default function AdminProductsPage() {
 
                   {/* ── Color filter groups (collapsible, compact grid) ── */}
                   <div>
-                    <SecHead id="color-groups" label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
+                    <SecHead {...sec("color-groups")} label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
                     {!collapsed.has("color-groups") && (
                       <div className="px-4 pb-4">
                         <div className="grid grid-cols-2 gap-1 mt-1">
@@ -2947,7 +2932,7 @@ export default function AdminProductsPage() {
                                   ...f,
                                   colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
                                 }))}
-                                className={`flex items-center gap-2 px-2.5 py-2 border text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                               >
                                 <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
                                   style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
@@ -2962,13 +2947,13 @@ export default function AdminProductsPage() {
 
                   {/* ── Style keywords (collapsible) ── */}
                   <div>
-                    <SecHead id="style" label="Style keywords" />
+                    <SecHead {...sec("style")} label="Style keywords" />
                     {!collapsed.has("style") && (
                       <div className="px-4 pb-4">
                         <div className="flex flex-wrap gap-1.5">
                           {STYLE_KEYWORDS.map((kw) => (
                             <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
-                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
+                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
                             >{kw}</button>
                           ))}
                         </div>
@@ -2978,10 +2963,10 @@ export default function AdminProductsPage() {
 
                   {/* ── Color variants (collapsible) ── */}
                   <div>
-                    <SecHead id="variants" label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
+                    <SecHead {...sec("variants")} label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
                     {!collapsed.has("variants") && (
                       <div className="px-4 pb-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
                           <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
                           <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
@@ -2993,7 +2978,8 @@ export default function AdminProductsPage() {
                               if (!lp) return null;
                               return (
                                 <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
-                                  {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} className="w-7 h-9 object-cover shrink-0" />}
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} loading="lazy" decoding="async" className="w-7 h-9 object-cover shrink-0" />}
                                   <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                   <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
                                   <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
@@ -3015,7 +3001,8 @@ export default function AdminProductsPage() {
                               <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--background)" }}>
                                 {matches.map((mp) => (
                                   <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--surface)] transition-colors border-b border-[var(--border)] last:border-0">
-                                    {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} className="w-6 h-8 object-cover shrink-0" />}
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} loading="lazy" decoding="async" className="w-6 h-8 object-cover shrink-0" />}
                                     {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
                                     <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
                                     <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
@@ -3026,7 +3013,11 @@ export default function AdminProductsPage() {
                           })()}
                         </div>
                         {form.linkedProductIds.length > 0 && (
-                          <p className="text-[10px] text-[var(--foreground-subtle)]">This product will be set as the <strong>primary</strong> (catalog representative) for the group.</p>
+                          <p className="text-[10px] text-[var(--foreground-subtle)]">
+                            {editingProduct?.variantGroupId
+                              ? <>Removing a product here unlinks it on save. The group keeps its <strong>primary</strong> — change it with Group variants.</>
+                              : <>A new group gets this product as its <strong>primary</strong> (catalog representative); an existing group keeps its own.</>}
+                          </p>
                         )}
                       </div>
                     )}
@@ -3034,21 +3025,13 @@ export default function AdminProductsPage() {
 
                   {/* ── Retailers (collapsible) ── */}
                   <div>
-                    <SecHead id="retailers" label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
+                    <SecHead {...sec("retailers")} label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
                     {!collapsed.has("retailers") && (
                       <div className="px-4 pb-4">
                         <RetailerList
                           retailers={form.retailers}
                           storeLibrary={storeLibrary}
-                          onChange={(r) => {
-                            const prices = r.map(retailerUsd).filter((x) => x > 0);
-                            setForm((f) => ({
-                              ...f,
-                              retailers: r,
-                              priceMin: prices.length > 0 ? String(Math.min(...prices)) : f.priceMin,
-                              priceMax: prices.length > 0 ? String(Math.max(...prices)) : f.priceMax,
-                            }));
-                          }}
+                          onChange={(r) => setForm((f) => withRetailerPrices({ ...f, retailers: r }))}
                         />
                       </div>
                     )}
@@ -3061,10 +3044,10 @@ export default function AdminProductsPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 px-6 py-4 border-t border-[var(--border)] shrink-0">
+            <div className="flex gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)] shrink-0">
               <button
                 onClick={handleSave}
-                disabled={!form.name.trim() || saving}
+                disabled={!form.name.trim() || saving || !canWrite}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
@@ -3084,14 +3067,14 @@ export default function AdminProductsPage() {
       {cropProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div
-            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-xl w-full mx-4 max-h-[95vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-xl w-full mx-4 max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             {/* Заголовок с кнопкой сброса */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">Кадрирование изображения</h2>
-              <div className="flex items-center gap-3">
-                {cropProduct.cropData && dbConfigured && (
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">Кадрирование изображения</h2>
+              <div className="flex items-center gap-3 ml-auto">
+                {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
                     className="text-[10px] tracking-[0.1em] uppercase text-red-500 hover:text-red-700 underline transition-colors"
@@ -3101,7 +3084,8 @@ export default function AdminProductsPage() {
                 )}
                 <button
                   onClick={() => setCropProduct(null)}
-                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  aria-label="Close"
+                  className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3109,12 +3093,6 @@ export default function AdminProductsPage() {
                 </button>
               </div>
             </div>
-
-            {!dbConfigured && (
-              <div className="mb-4 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-                Supabase не подключён — кадрирование сохранится только в памяти до перезагрузки.
-              </div>
-            )}
 
             <ImageCropEditor
               imageUrl={cropProduct.imageUrl}
@@ -3132,11 +3110,11 @@ export default function AdminProductsPage() {
       {groupModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
-            className="border border-[var(--border)] rounded-2xl p-6 md:p-8 max-w-lg w-full mx-4 max-h-[92vh] overflow-y-auto"
+            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-lg w-full mx-4 max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <div>
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
                 </h2>
@@ -3146,7 +3124,8 @@ export default function AdminProductsPage() {
               </div>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
+                aria-label="Close"
+                className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors shrink-0"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -3168,7 +3147,7 @@ export default function AdminProductsPage() {
                     {/* Thumb */}
                     {p.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.name} className="w-10 h-[52px] object-cover shrink-0" />
+                      <img src={p.imageUrl} alt={p.name} loading="lazy" decoding="async" className="w-10 h-[52px] object-cover shrink-0" />
                     )}
 
                     {/* Name + swatch */}
@@ -3222,7 +3201,7 @@ export default function AdminProductsPage() {
                             })),
                           }))
                         }
-                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border rounded-md transition-colors ${
+                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border rounded-lg transition-colors ${
                           entry.isPrimary
                             ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
                             : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -3243,7 +3222,7 @@ export default function AdminProductsPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={handleGroupSave}
-                disabled={grouping || !dbConfigured}
+                disabled={grouping || !canWrite}
                 className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
@@ -3259,131 +3238,34 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* ── Import Modal ── */}
-      {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="border border-[var(--border)] rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[92vh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">Import Products</h2>
-              <button
-                onClick={() => { setShowImport(false); setImportText(""); setImportPreview([]); setImportError(""); }}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex border-b border-[var(--border)] mb-5">
-              {(["csv", "json"] as ImportTab[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => { setImportTab(tab); setImportPreview([]); setImportError(""); }}
-                  className={`px-4 py-2 text-xs tracking-[0.12em] uppercase border-b-2 transition-colors ${
-                    importTab === tab
-                      ? "border-[var(--foreground)] text-[var(--foreground)]"
-                      : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            {importTab === "csv" && (
-              <div className="mb-4">
-                <p className="text-xs text-[var(--foreground-muted)] mb-3">
-                  Columns: <code className="font-mono text-[10px]">name, brand, category, priceMin, priceMax, imageUrl, isNew, colors (|), sizes (|), description, material, styleKeywords (|)</code>
-                </p>
-                <div className="mb-3">
-                  <input ref={csvInputRef} type="file" accept=".csv,text/csv" onChange={handleFileUpload} className="hidden" />
-                  <button
-                    onClick={() => csvInputRef.current?.click()}
-                    className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-                  >
-                    Upload CSV file
-                  </button>
-                </div>
-                <textarea
-                  value={importText}
-                  onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
-                  placeholder={"name,brand,category,priceMin,priceMax,imageUrl,isNew\nCool Jacket,Zara,outerwear,79,99,https://...,true"}
-                  rows={8}
-                  className={`${inputCls} font-mono text-xs resize-none`}
-                />
-              </div>
-            )}
-
-            {importTab === "json" && (
-              <div className="mb-4">
-                <p className="text-xs text-[var(--foreground-muted)] mb-3">Paste a JSON array of product objects.</p>
-                <textarea
-                  value={importText}
-                  onChange={(e) => { setImportText(e.target.value); setImportPreview([]); }}
-                  placeholder={'[\n  { "name": "Cool Jacket", "brand": "Zara", "category": "outerwear", "priceMin": 79, "priceMax": 99 }\n]'}
-                  rows={10}
-                  className={`${inputCls} font-mono text-xs resize-none`}
-                />
-              </div>
-            )}
-
-            {importError && <p className="text-xs text-red-500 mb-3">{importError}</p>}
-
-            {importPreview.length > 0 && (
-              <div className="mb-4 border border-[var(--border)] rounded-xl max-h-44 overflow-y-auto">
-                <p className="px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)] border-b border-[var(--border)]">
-                  {importPreview.length} products to import
-                </p>
-                {importPreview.map((p, i) => (
-                  <div key={i} className="px-3 py-2 text-xs text-[var(--foreground)] border-b border-[var(--border)] last:border-b-0 flex items-center justify-between gap-4">
-                    <span className="font-medium truncate">{p.name || "—"}</span>
-                    <span className="text-[var(--foreground-muted)] shrink-0">{p.brand} · {p.category} · {fmtPrice(p.priceMin ?? 0)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={parseImport}
-                className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-              >
-                Preview
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={!importPreview.length || importing}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
-              >
-                {importing ? "Importing…" : `Import ${importPreview.length ? importPreview.length + " " : ""}Products`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Migration Required Modal ── */}
-      {showMigrationModal && (
-        <MigrationModal
-          onClose={() => setShowMigrationModal(false)}
-          onMigrated={() => { setShowMigrationModal(false); showToast("Migration applied! Try grouping again."); fetchProducts(); }}
-        />
-      )}
-
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-[100] px-5 py-3 text-sm border rounded-xl ${
-            toast.type === "ok"
-              ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
-              : "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300"
-          }`}
+          role={toast.type === "err" ? "alert" : "status"}
+          // The status tints are translucent; the solid backing keeps the
+          // toast legible over the table in either admin theme.
+          className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-[100] md:max-w-md rounded-xl overflow-hidden"
+          style={{ background: "var(--background)" }}
         >
-          {toast.msg}
+          <div
+            className={`flex items-start gap-3 pl-5 pr-3 py-3 text-sm border rounded-xl ${
+              toast.type === "ok"
+                ? "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
+                : "bg-red-400/15 text-red-500 border-red-400/30"
+            }`}
+          >
+            <span className="flex-1 break-words">{toast.msg}</span>
+            <button
+              type="button"
+              onClick={dismissToast}
+              aria-label="Dismiss"
+              className="shrink-0 mt-0.5 opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>

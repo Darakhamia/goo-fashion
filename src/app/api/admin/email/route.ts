@@ -1,94 +1,36 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { clerkClient } from "@clerk/nextjs/server";
+import { clerkClient, type User } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
+import { buildHtml, buildPlainText, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
+
+// A large audience is sent in many batches; give the loop room to finish.
+export const maxDuration = 300;
 
 const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? "GOO Fashion <hello@goo-fashion.com>";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-// Convert plain-text body with basic markdown-ish formatting into simple HTML.
-function textToHtml(text: string): string {
-  const lines = text.split("\n");
-  const parts: string[] = [];
-  let inList = false;
+/** Clerk's page-size ceiling for getUserList. */
+const CLERK_PAGE = 500;
 
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-
-    if (line.startsWith("## ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<h2 style="margin:24px 0 8px;font-size:18px;font-weight:600;color:#0a0a0a;">${esc(line.slice(3))}</h2>`);
-    } else if (line.startsWith("# ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<h1 style="margin:0 0 16px;font-size:24px;font-weight:600;color:#0a0a0a;">${esc(line.slice(2))}</h1>`);
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      if (!inList) { parts.push('<ul style="margin:8px 0;padding-left:20px;">'); inList = true; }
-      parts.push(`<li style="margin:4px 0;color:#555;">${inlineFormat(esc(line.slice(2)))}</li>`);
-    } else if (line === "") {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push('<div style="height:12px;"></div>');
-    } else {
-      if (inList) { parts.push("</ul>"); inList = false; }
-      parts.push(`<p style="margin:0 0 8px;color:#333;line-height:1.6;">${inlineFormat(esc(line))}</p>`);
-    }
+// Every Clerk user, newest first. getUserList returns at most 500 per call,
+// so walk the pages by offset until totalCount is reached. Someone signing up
+// mid-walk shifts every later page by one, so the last user of a page comes
+// back as the first of the next: users are kept by id, once each.
+async function listAllUsers(): Promise<User[]> {
+  const cc = await clerkClient();
+  const users = new Map<string, User>();
+  for (let offset = 0; ; offset += CLERK_PAGE) {
+    const res = await cc.users.getUserList({ limit: CLERK_PAGE, offset, orderBy: "-created_at" });
+    for (const u of res.data) users.set(u.id, u);
+    if (res.data.length < CLERK_PAGE || users.size >= res.totalCount) break;
   }
-  if (inList) parts.push("</ul>");
-  return parts.join("\n");
+  return [...users.values()];
 }
 
-// Strip markdown to clean plain text for the text/plain part required by Resend
-function buildPlainText(text: string, subject: string): string {
-  const body = text
-    .replace(/^## (.+)$/gm, "\n$1\n" + "-".repeat(30))
-    .replace(/^# (.+)$/gm, "\n$1\n" + "=".repeat(30))
-    .replace(/^\* (.+)$/gm, "• $1")
-    .replace(/^- (.+)$/gm, "• $1")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`(.+?)`/g, "$1")
-    .trim();
-  return `GOO Fashion\n${"=".repeat(40)}\n${subject}\n${"=".repeat(40)}\n\n${body}\n\n---\nYou received this email because you have an account on goo-fashion.com.\n© ${new Date().getFullYear()} GOO Fashion. All rights reserved.`;
-}
-
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function inlineFormat(s: string): string {
-  return s
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, `<code style="background:#f4f4f4;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:13px;">$1</code>`);
-}
-
-function buildHtml(subject: string, bodyHtml: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#f9f9f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f7;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e8e8e4;">
-        <!-- Header -->
-        <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #f0f0ec;">
-          <span style="font-family:Georgia,serif;font-size:26px;font-weight:300;letter-spacing:0.2em;color:#0a0a0a;">GOO</span>
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="padding:36px 40px;">
-          ${bodyHtml}
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="padding:24px 40px;border-top:1px solid #f0f0ec;background:#fafaf8;">
-          <p style="margin:0;font-size:11px;color:#aaa;line-height:1.6;">
-            You received this email because you have an account on <a href="https://goo-fashion.com" style="color:#555;">goo-fashion.com</a>.<br>
-            © ${new Date().getFullYear()} GOO Fashion. All rights reserved.
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+function planOf(u: User): string {
+  return ((u.publicMetadata ?? {}) as { plan?: string }).plan ?? "free";
 }
 
 // Fetch emails from Clerk by audience segment
@@ -97,24 +39,29 @@ async function resolveRecipients(
   customEmails: string[]
 ): Promise<string[]> {
   if (audience === "custom") {
-    return customEmails.filter((e) => e.includes("@")).slice(0, 500);
+    // Validate and de-duplicate on the server too — the list comes from the client.
+    return parseEmailList(customEmails.join("\n")).emails;
   }
 
-  const cc = await clerkClient();
-  const result = await cc.users.getUserList({ limit: 500, orderBy: "-created_at" });
-  let users = result.data;
+  let users = await listAllUsers();
 
   if (audience !== "all") {
-    users = users.filter((u) => {
-      const plan = ((u.publicMetadata ?? {}) as { plan?: string }).plan ?? "free";
-      return plan === audience;
-    });
+    users = users.filter((u) => planOf(u) === audience);
   }
 
-  return users
-    .map((u) => u.emailAddresses[0]?.emailAddress)
-    .filter((e): e is string => !!e && e.includes("@"));
+  // One letter per address, whatever its case.
+  const seen = new Set<string>();
+  const emails: string[] = [];
+  for (const u of users) {
+    const email = u.emailAddresses[0]?.emailAddress;
+    if (!email || !email.includes("@") || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    emails.push(email);
+  }
+  return emails;
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // POST /api/admin/email
 // { audience, subject, body, customEmails?, testOnly? }
@@ -136,7 +83,7 @@ export async function POST(req: Request) {
     audience: string;
     subject: string;
     body: string;
-    customEmails?: string[];
+    customEmails?: unknown;
     testOnly?: boolean;
   };
 
@@ -144,38 +91,53 @@ export async function POST(req: Request) {
   if (!text?.trim())    return NextResponse.json({ error: "Body is required." }, { status: 400 });
   if (!audience)        return NextResponse.json({ error: "Audience is required." }, { status: 400 });
 
+  const customList = Array.isArray(customEmails)
+    ? customEmails.filter((e): e is string => typeof e === "string")
+    : [];
+
   // Resolve recipients
   let recipients: string[];
-  if (testOnly) {
-    // Send only to the admin who triggered it
-    const cc = await clerkClient();
-    const user = await cc.users.getUser(admin.userId);
-    const email = user.emailAddresses[0]?.emailAddress;
-    if (!email) return NextResponse.json({ error: "No email on admin account." }, { status: 400 });
-    recipients = [email];
-  } else {
-    recipients = await resolveRecipients(audience, customEmails);
+  try {
+    if (testOnly) {
+      // Send only to the admin who triggered it
+      const cc = await clerkClient();
+      const user = await cc.users.getUser(admin.userId);
+      const email = user.emailAddresses[0]?.emailAddress;
+      if (!email) return NextResponse.json({ error: "No email on admin account." }, { status: 400 });
+      recipients = [email];
+    } else {
+      recipients = await resolveRecipients(audience, customList);
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `Could not load recipients from Clerk: ${message}` }, { status: 502 });
   }
 
   if (recipients.length === 0) {
     return NextResponse.json({ error: "No recipients found for the selected audience." }, { status: 400 });
   }
 
-  const bodyHtml = textToHtml(text);
-  const html = buildHtml(subject, bodyHtml);
-  const plainText = buildPlainText(text, subject.trim());
+  // The test email carries the same footer the chosen audience would get.
+  const footer = footerKindFor(audience);
+  const html = buildHtml(subject, textToHtml(text), footer);
+  const plainText = buildPlainText(text, subject.trim(), footer);
   const resend = new Resend(RESEND_API_KEY);
 
   // Send individually so recipients cannot see each other's addresses.
   // Resend batch API supports up to 100 sends per call.
   const BATCH = 100;
+  // Resend rate-limits API calls per second; pace the batches of a large send.
+  const BATCH_PAUSE_MS = 600;
   let sent = 0;
   const errors: string[] = [];
 
   for (let i = 0; i < recipients.length; i += BATCH) {
     const batch = recipients.slice(i, i + BATCH);
+    const range = recipients.length > BATCH ? `Recipients ${i + 1}–${i + batch.length}: ` : "";
+    if (i > 0) await sleep(BATCH_PAUSE_MS);
     try {
-      await resend.batch.send(
+      // Resend v6 does not throw on an API error — it resolves with { error }.
+      const res = await resend.batch.send(
         batch.map((to) => ({
           from: FROM_ADDRESS,
           to: [to],
@@ -184,10 +146,30 @@ export async function POST(req: Request) {
           text: plainText,
         }))
       );
-      sent += batch.length;
+      if (res.error) {
+        errors.push(`${range}${res.error.message}`);
+      } else {
+        sent += batch.length;
+      }
     } catch (e) {
-      errors.push(e instanceof Error ? e.message : "Batch send failed");
+      errors.push(`${range}${e instanceof Error ? e.message : "Batch send failed"}`);
     }
+  }
+
+  // A test goes to the sender alone; only a real send is an action to record.
+  if (!testOnly) {
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "email.sent",
+      target_type: "email_broadcast",
+      metadata: {
+        audience,
+        subject: subject.trim(),
+        sent,
+        total: recipients.length,
+        failedBatches: errors.length,
+      },
+    });
   }
 
   return NextResponse.json({
@@ -207,17 +189,20 @@ export async function GET() {
   const configured = !!RESEND_API_KEY;
   const fromAddress = FROM_ADDRESS;
 
-  // Get rough audience counts from Clerk
-  let counts: Record<string, number> = { all: 0, free: 0, basic: 0, pro: 0, premium: 0 };
+  // Audience counts from Clerk. On failure report countsError instead of
+  // zeros, so the page can say the audience is unknown rather than empty.
+  let counts: Record<string, number> | null = null;
+  let countsError: string | undefined;
   try {
-    const cc = await clerkClient();
-    const result = await cc.users.getUserList({ limit: 500, orderBy: "-created_at" });
-    counts.all = result.data.length;
-    for (const u of result.data) {
-      const plan = ((u.publicMetadata ?? {}) as { plan?: string }).plan ?? "free";
+    const users = await listAllUsers();
+    counts = { all: users.length, free: 0, basic: 0, pro: 0, premium: 0 };
+    for (const u of users) {
+      const plan = planOf(u);
       counts[plan] = (counts[plan] ?? 0) + 1;
     }
-  } catch { /* non-fatal */ }
+  } catch (e) {
+    countsError = e instanceof Error ? e.message : String(e);
+  }
 
-  return NextResponse.json({ configured, fromAddress, counts });
+  return NextResponse.json({ configured, fromAddress, counts, countsError });
 }

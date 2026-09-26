@@ -20,8 +20,16 @@
 
 - Добавляешь или меняешь элемент интерфейса — сверься с `DESIGN_SYSTEM.md` и пройди чеклист из раздела 10 до коммита.
 - Цвет только через CSS-переменные (`bg-[var(--surface)]`), никаких `text-gray-*` и hex-литералов.
-- `src/components/ui/button.tsx` не импортировать: он мёртв, его варианты расходятся с реальным языком. Кнопки собираются по рецептам раздела 5.3.
+- `src/components/ui/button.tsx` не импортировать: он мёртв, его варианты расходятся с реальным языком, файл ждёт разрешения CEO на удаление (список мёртвых файлов — `docs/CODE_REVIEW_2026-09.md`). Кнопки собираются по рецептам раздела 5.3; в админке — по разделу 9.
 - Раздел 11 — список найденных расхождений. Это наблюдения, а не наряд на работу: чинить их можно только отдельной задачей по решению CEO.
+
+## Документация
+
+- `README.md` — стек, запуск, структура репозитория, деплой (Coolify) и указатель на все документы.
+- `docs/ADMIN.md` — руководство по админке `goo-studio`: разделы, доступы, журнал действий, типовые сценарии.
+- `docs/CODE_REVIEW_2026-09.md` — код-ревью сентября 2026: находки, решения CEO, что сделано и что открыто.
+- `AI_ARCHITECTURE.md`, `BILLING.md`, `PARSER.md`, `MIGRATION_RUNBOOK.md`, `extension/README.md` — по своим областям. Выполненные планы — в `docs/archive/`, как история, не как инструкция.
+- Прод живёт на Coolify, не на Vercel: `vercel.json` на проде не работает, cron продления подписок — Scheduled Task в Coolify (`BILLING.md`).
 
 ## Branch Policy
 - Always work directly on the `master` branch
@@ -31,6 +39,8 @@
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+The CLI (`graphifyy` from PyPI) is installed automatically by the SessionStart hook in `.claude/settings.json` when it is missing.
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.

@@ -131,8 +131,8 @@ const SECTIONS = [
         <div>
           <SubLabel>Communications</SubLabel>
           <P>
-            Your email address if you join the waitlist, the content of bug reports (description, page
-            address, an optional screenshot), and any messages you send us by email.
+            Your email address if you joined our pre-launch waitlist, the content of bug reports
+            (description, page address, an optional screenshot), and any messages you send us by email.
           </P>
         </div>
         <div>
@@ -181,7 +181,7 @@ const SECTIONS = [
             "AI Stylist chat — your messages, recent conversation history, your style-personalisation details and relevant catalogue excerpts are sent to Replicate, which runs the language model that generates the reply",
             "Catalogue search — your search or chat query may be converted into an embedding via OpenAI to match it against our catalogue",
             "Virtual try-on — your uploaded photo and the selected product images are sent to an image model hosted on Replicate; your photo is processed transiently and is not stored by us; the generated image is stored in our storage and linked to your account",
-            "Bug reports — your report text and optional screenshot are analysed by Anthropic (Claude) and the structured result is filed in our internal issue tracker",
+            "Bug reports — your report text and optional screenshot are analysed by OpenAI and the structured result is filed in our internal issue tracker",
           ]}
         />
         <P>
@@ -216,11 +216,10 @@ const SECTIONS = [
         <div className="space-y-4">
           <Processor name="Clerk (USA)" purpose="Authentication and account management." data="account data, style profile" />
           <Processor name="Supabase" purpose="Database and file storage." data="likes, looks, chat history, subscriptions, analytics events" />
-          <Processor name="Vercel (USA)" purpose="Website hosting and cookieless web analytics." data="request data; IP addresses appear transiently in server logs" />
+          <Processor name="Server hosting provider" purpose="Hosting the servers the website runs on." data="request data; IP addresses appear transiently in server logs" />
           <Processor name="monobank / Plata by mono (Ukraine)" purpose="Payment processing and card tokenisation on their hosted payment page." data="payment details, subscription reference including your account identifier" />
           <Processor name="Replicate (USA)" purpose="Running the AI models behind the stylist chat and virtual try-on." data="chat messages, style personalisation, try-on photos, product images" />
-          <Processor name="OpenAI (USA)" purpose="Search embeddings for catalogue matching." data="search and chat queries; product texts" />
-          <Processor name="Anthropic (USA)" purpose="Structuring bug reports." data="report text, page address, optional screenshot" />
+          <Processor name="OpenAI (USA)" purpose="Search embeddings for catalogue matching, and structuring bug reports." data="search and chat queries; product texts; bug report text, page address, optional screenshot" />
           <Processor name="Resend (USA)" purpose="Email delivery." data="email address, message content" />
           <Processor name="Upstash" purpose="Rate limiting to prevent abuse." data="IP addresses and account identifiers, kept from about a minute up to one day" />
           <Processor name="PostHog (EU hosting)" purpose="Product analytics — loaded only after you accept analytics cookies in the consent banner." data="usage events and visited page addresses" />
@@ -381,7 +380,7 @@ export default function PrivacyPage() {
               Privacy Policy
             </h1>
             <p className="text-sm text-[var(--foreground-subtle)]">
-              Last updated: August 10, 2026
+              Last updated: September 26, 2026
             </p>
           </div>
 

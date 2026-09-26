@@ -1,26 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import OpenAI from "openai";
+import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
+import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { checkNamedRateLimit } from "@/lib/server/rate-limit";
 
 // This route spends money on someone else's behalf: it hands user-supplied text
-// and an image straight to the Anthropic API. Left open it is a faucet anyone
+// and an image straight to the OpenAI API. Left open it is a faucet anyone
 // on the internet can turn on, so it is gated three ways — sign-in, a per-user
 // hourly cap, and hard limits on how much text and image a single call may
 // carry. The description and screenshot caps are what bound the token cost of
 // one accepted request; the hourly cap bounds how many of those a person gets.
 const REPORTS_PER_HOUR = 5;
 const MAX_DESCRIPTION_CHARS = 4_000;
-// ~3.6 MB of image once decoded, comfortably under Anthropic's own 5 MB ceiling.
+// ~3.6 MB of image once decoded, far under OpenAI's own per-image ceiling.
 const MAX_SCREENSHOT_BASE64_CHARS = 5_000_000;
+// Same vision-capable model the rest of the OpenAI features use.
+const MODEL = "gpt-4o-mini";
 
-interface ClaudeResult {
+interface StructuredResult {
   title: string;
   steps: string[];
   expected: string;
   actual: string;
   priority: string;
+}
+
+// Everything interpolated into the Plane issue body is user or model text.
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export async function POST(req: NextRequest) {
@@ -59,16 +72,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Screenshot is too large." }, { status: 413 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      // Without the key the Anthropic client throws on construction, which used
-      // to surface as an unexplained 500. Say what is actually wrong instead.
-      console.error("report-bug: ANTHROPIC_API_KEY is not set");
+    const apiKey = await getOpenAIKey();
+    if (!apiKey) {
+      // Without the key the OpenAI client throws on construction, which would
+      // surface as an unexplained 500. Say what is actually wrong instead.
+      console.error("report-bug: OpenAI API key is not configured");
       return NextResponse.json(
         { error: "Bug reporting is not configured on this deployment." },
         { status: 503 },
       );
     }
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const openai = new OpenAI({ apiKey });
 
     const textPrompt = `Analyze this bug report and return ONLY a JSON object with:
 - title: short bug title in Russian (max 60 chars)
@@ -85,40 +99,49 @@ Priority: ${priority}`;
     const validMimes = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
     type ValidMime = (typeof validMimes)[number];
 
-    const messageContent: MessageParam["content"] = [];
+    const messageContent: ChatCompletionContentPart[] = [];
 
-    if (screenshotBase64 && screenshotMime && validMimes.includes(screenshotMime as ValidMime)) {
+    const hasScreenshot = Boolean(
+      screenshotBase64 && screenshotMime && validMimes.includes(screenshotMime as ValidMime),
+    );
+    if (hasScreenshot) {
       messageContent.push({
-        type: "image",
-        source: { type: "base64", media_type: screenshotMime as ValidMime, data: screenshotBase64 },
+        type: "image_url",
+        image_url: { url: `data:${screenshotMime};base64,${screenshotBase64}` },
       });
     }
     messageContent.push({ type: "text", text: textPrompt });
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
       max_tokens: 1024,
+      response_format: { type: "json_object" },
       messages: [{ role: "user", content: messageContent }],
     });
 
-    const rawText = message.content[0].type === "text" ? message.content[0].text : "";
+    const rawText = completion.choices[0]?.message?.content ?? "";
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error("Claude raw response:", rawText);
-      return NextResponse.json({ error: "Failed to parse Claude response", raw: rawText }, { status: 500 });
+      console.error("report-bug raw AI response:", rawText);
+      return NextResponse.json({ error: "Failed to parse AI response", raw: rawText }, { status: 500 });
     }
 
-    let structured: ClaudeResult;
+    let structured: StructuredResult;
     try {
       structured = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
       console.error("JSON parse error:", parseErr, "raw:", jsonMatch[0]);
-      return NextResponse.json({ error: "Invalid JSON from Claude" }, { status: 500 });
+      return NextResponse.json({ error: "Invalid JSON from AI" }, { status: 500 });
     }
+    if (!Array.isArray(structured.steps)) structured.steps = [];
 
-    const stepsHtml = structured.steps.map((s: string) => `<li>${s}</li>`).join("");
-    const screenshotNote = screenshotBase64 ? `<p><b>Скриншот:</b> прикреплён к репорту</p>` : "";
-    const descriptionHtml = `<p><b>Шаги:</b></p><ol>${stepsHtml}</ol><p><b>Ожидалось:</b> ${structured.expected}</p><p><b>Фактически:</b> ${structured.actual}</p><p><b>Репортер:</b> ${reporter}</p><p><b>URL:</b> ${url || "не указан"}</p>${screenshotNote}`;
+    const stepsHtml = structured.steps.map((s: string) => `<li>${escapeHtml(s)}</li>`).join("");
+    // The screenshot is only shown to the model; it is not uploaded to Plane,
+    // so the issue must not claim it is attached.
+    const screenshotNote = hasScreenshot
+      ? `<p><b>Скриншот:</b> был приложен и учтён при разборе, в задачу не загружается</p>`
+      : "";
+    const descriptionHtml = `<p><b>Шаги:</b></p><ol>${stepsHtml}</ol><p><b>Ожидалось:</b> ${escapeHtml(structured.expected)}</p><p><b>Фактически:</b> ${escapeHtml(structured.actual)}</p><p><b>Репортер:</b> ${escapeHtml(reporter)}</p><p><b>URL:</b> ${escapeHtml(url || "не указан")}</p>${screenshotNote}`;
 
     const planeRes = await fetch(
       "https://plane.goo-fashion.com/api/v1/workspaces/goo-fashion/projects/5daa7410-231b-434b-a220-f230079dbc35/issues/",

@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
+import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 
 type Audience = "all" | "free" | "basic" | "pro" | "premium" | "custom";
 
 interface StatusData {
   configured: boolean;
   fromAddress: string;
-  counts: Record<string, number>;
+  /** null when Clerk could not be read — see countsError. */
+  counts: Record<string, number> | null;
+  countsError?: string;
 }
 
 interface SendResult {
@@ -19,20 +22,38 @@ interface SendResult {
   testOnly?: boolean;
 }
 
-const AUDIENCE_OPTIONS: { value: Audience; label: string; desc: string }[] = [
-  { value: "all",     label: "All users",     desc: "Everyone with an account" },
-  { value: "free",    label: "Free plan",     desc: "Users on the free tier" },
-  { value: "basic",   label: "Basic plan",    desc: "Basic subscribers" },
-  { value: "pro",     label: "Pro plan",      desc: "Pro subscribers" },
-  { value: "premium", label: "Premium plan",  desc: "Premium subscribers" },
+// Only "custom" shows its description — the other cards show a recipient count.
+const AUDIENCE_OPTIONS: { value: Audience; label: string; desc?: string }[] = [
+  { value: "all",     label: "All users" },
+  { value: "free",    label: "Free plan" },
+  { value: "basic",   label: "Basic plan" },
+  { value: "pro",     label: "Pro plan" },
+  { value: "premium", label: "Premium plan" },
   { value: "custom",  label: "Custom emails", desc: "Paste email addresses below" },
 ];
 
-const inputCls = "w-full px-4 py-3 text-sm bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--foreground)]";
+const FORMAT_HELP: { input: string; output: string }[] = [
+  { input: "# Heading",     output: "Email title (H1)" },
+  { input: "## Subheading", output: "Section heading (H2)" },
+  { input: "Plain text",    output: "Paragraph" },
+  { input: "- Item",        output: "Bulleted list" },
+  { input: "**bold**",      output: "Bold text" },
+  { input: "*italic*",      output: "Italic text" },
+  { input: "`code`",        output: "Inline code" },
+  { input: "(empty line)",  output: "Space between paragraphs" },
+];
+
+const inputCls = "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]";
 const labelCls = "block text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2";
+
+// Admin status recipe (DESIGN_SYSTEM.md §9)
+const statusOk   = "bg-emerald-400/15 text-emerald-500 border border-emerald-400/30";
+const statusWarn = "bg-amber-400/15 text-amber-500 border border-amber-400/30";
+const statusErr  = "bg-red-400/15 text-red-500 border border-red-400/30";
 
 export default function AdminEmailPage() {
   const [status, setStatus] = useState<StatusData | null>(null);
+  const [statusError, setStatusError] = useState("");
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   const [audience, setAudience] = useState<Audience>("all");
@@ -40,11 +61,12 @@ export default function AdminEmailPage() {
   const [body, setBody] = useState("");
   const [customEmails, setCustomEmails] = useState("");
   const [showPreview, setShowPreview] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState("");
+  const [showFormatHelp, setShowFormatHelp] = useState(false);
 
   const [sending, setSending] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
+  const [sendError, setSendError] = useState("");
   const [confirmSend, setConfirmSend] = useState(false);
 
   // AI writing
@@ -56,52 +78,63 @@ export default function AdminEmailPage() {
   // Templates
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [templatesError, setTemplatesError] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [saveTemplateError, setSaveTemplateError] = useState("");
+  // Guards against a second POST from a held Enter before the state re-renders.
+  const savingTemplateRef = useRef(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/email")
-      .then((r) => r.json())
-      .then((d) => setStatus(d))
-      .catch(() => setStatus(null))
-      .finally(() => setLoadingStatus(false));
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/email");
+        const data = await res.json().catch(() => null);
+        if (res.ok && data) setStatus(data as StatusData);
+        else setStatusError(data?.error ?? `Request failed (HTTP ${res.status}).`);
+      } catch {
+        setStatusError("Network error.");
+      } finally {
+        setLoadingStatus(false);
+      }
+    })();
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/email/templates")
-      .then((r) => r.json())
-      .then((d) => setTemplates(Array.isArray(d) ? d : []))
-      .catch(() => setTemplates([]))
-      .finally(() => setLoadingTemplates(false));
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/email/templates");
+        const data = await res.json().catch(() => null);
+        if (res.ok && Array.isArray(data)) setTemplates(data);
+        else setTemplatesError(data?.error ?? `Request failed (HTTP ${res.status}).`);
+      } catch {
+        setTemplatesError("Network error.");
+      } finally {
+        setLoadingTemplates(false);
+      }
+    })();
   }, []);
+
+  const customParsed = useMemo(() => parseEmailList(customEmails), [customEmails]);
 
   const recipientCount =
     audience === "custom"
-      ? customEmails.split(/[\n,]/).filter((e) => e.trim().includes("@")).length
-      : (status?.counts[audience] ?? 0);
+      ? customParsed.emails.length
+      : (status?.counts?.[audience] ?? 0);
 
-  const buildPreview = useCallback(async () => {
-    const res = await fetch("/api/admin/email/preview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, body }),
-    }).catch(() => null);
-
-    if (res?.ok) {
-      const data = await res.json();
-      setPreviewHtml(data.html ?? "");
-    }
-  }, [subject, body]);
-
-  const handlePreviewToggle = async () => {
-    if (!showPreview) await buildPreview();
-    setShowPreview((v) => !v);
-  };
+  // Rendered in the browser with the same helpers the send route uses.
+  const previewHtml = useMemo(
+    () => (showPreview
+      ? buildHtml(subject.trim() || "(no subject)", textToHtml(body.trim()), footerKindFor(audience))
+      : ""),
+    [showPreview, subject, body, audience]
+  );
 
   const sendEmail = async (testOnly: boolean) => {
     setResult(null);
+    setSendError("");
     if (testOnly) setTestSending(true); else setSending(true);
     try {
       const res = await fetch("/api/admin/email", {
@@ -111,14 +144,27 @@ export default function AdminEmailPage() {
           audience,
           subject: subject.trim(),
           body: body.trim(),
-          customEmails: audience === "custom"
-            ? customEmails.split(/[\n,]/).map((e) => e.trim()).filter((e) => e.includes("@"))
-            : [],
+          customEmails: audience === "custom" ? customParsed.emails : [],
           testOnly,
         }),
       });
-      const data = await res.json();
-      setResult(data);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setResult(data as SendResult);
+      } else {
+        // No JSON means the request died mid-way (e.g. a gateway timeout),
+        // possibly after some batches had already gone out.
+        setSendError(
+          data?.error ??
+            `Request failed (HTTP ${res.status}).${testOnly ? "" : " Some emails may already have gone out — check the Resend dashboard before sending again."}`
+        );
+      }
+    } catch {
+      setSendError(
+        testOnly
+          ? "Network error — the test email may not have been sent."
+          : "Network error — the request was interrupted. Some emails may already have gone out — check the Resend dashboard before sending again."
+      );
     } finally {
       if (testOnly) setTestSending(false); else setSending(false);
       setConfirmSend(false);
@@ -134,39 +180,53 @@ export default function AdminEmailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject: subject.trim(), brief: aiBrief.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) { setAiWriteError(data.error ?? "Failed"); return; }
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) { setAiWriteError(data?.error ?? `Request failed (HTTP ${res.status}).`); return; }
       setBody(data.body ?? "");
       setShowAiModal(false);
       setAiBrief("");
+    } catch {
+      setAiWriteError("Network error.");
     } finally {
       setAiWriting(false);
     }
   };
 
   const handleLoadTemplate = (t: EmailTemplate) => {
+    const hasDraft = subject.trim() || body.trim();
+    const isSame = subject === t.subject && body === t.body;
+    if (hasDraft && !isSame && !confirm(`Replace the current subject and body with "${t.name}"?`)) return;
     setSubject(t.subject);
     setBody(t.body);
     setShowPreview(false);
     setResult(null);
+    setSendError("");
   };
 
   const handleSaveTemplate = async () => {
+    if (savingTemplateRef.current) return;
     if (!templateName.trim() || !subject.trim() || !body.trim()) return;
+    savingTemplateRef.current = true;
     setSavingTemplate(true);
+    setSaveTemplateError("");
     try {
       const res = await fetch("/api/admin/email/templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: templateName.trim(), subject: subject.trim(), body: body.trim() }),
       });
-      if (res.ok) {
-        const created: EmailTemplate = await res.json();
-        setTemplates((prev) => [created, ...prev]);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setTemplates((prev) => [data as EmailTemplate, ...prev]);
         setShowSaveModal(false);
         setTemplateName("");
+      } else {
+        setSaveTemplateError(data?.error ?? `Request failed (HTTP ${res.status}).`);
       }
+    } catch {
+      setSaveTemplateError("Network error.");
     } finally {
+      savingTemplateRef.current = false;
       setSavingTemplate(false);
     }
   };
@@ -174,33 +234,56 @@ export default function AdminEmailPage() {
   const handleDeleteTemplate = async (id: string) => {
     if (!confirm("Delete this template?")) return;
     setDeletingId(id);
+    setTemplatesError("");
     try {
-      const res = await fetch(`/api/admin/email/templates?id=${id}`, { method: "DELETE" });
-      if (res.ok) setTemplates((prev) => prev.filter((t) => t.id !== id));
+      const res = await fetch(`/api/admin/email/templates?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (res.ok) {
+        setTemplates((prev) => prev.filter((t) => t.id !== id));
+      } else {
+        const data = await res.json().catch(() => null);
+        setTemplatesError(`Delete failed: ${data?.error ?? `HTTP ${res.status}`}`);
+      }
+    } catch {
+      setTemplatesError("Delete failed: network error.");
     } finally {
       setDeletingId(null);
     }
   };
 
   const canSend = subject.trim() && body.trim() && audience &&
-    (audience !== "custom" || customEmails.trim()) &&
+    (audience !== "custom" || customParsed.emails.length > 0) &&
     status?.configured;
+
+  const failedBatches = result?.errors?.length ?? 0;
 
   return (
     <div className="max-w-5xl">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Email</h1>
+        <p className="text-xs text-[var(--foreground-muted)] mt-1">
+          Broadcast to your users via Resend — each recipient gets an individual copy
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
 
         {/* ── Left: compose ── */}
         <div className="space-y-8">
 
           {/* Status banner */}
+          {!loadingStatus && statusError && (
+            <div className={`rounded-xl px-5 py-4 text-xs ${statusErr}`}>
+              <span className="font-medium">Couldn&apos;t load email settings.</span> {statusError}
+            </div>
+          )}
           {!loadingStatus && status && (
-            <div className={`flex items-start gap-4 px-5 py-4 border text-xs ${
+            <div className={`rounded-xl flex items-start gap-4 px-5 py-4 text-xs ${
               status.configured
-                ? "border-[var(--border)] bg-[var(--background)]"
-                : "border-amber-300/40 bg-amber-50/5"
+                ? "border border-[var(--border)] bg-[var(--background)]"
+                : statusWarn
             }`}>
-              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${status.configured ? "bg-emerald-500" : "bg-amber-400"}`} />
+              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${status.configured ? "bg-emerald-500" : "bg-amber-500"}`} />
               <div className="flex-1 min-w-0">
                 {status.configured ? (
                   <p className="text-[var(--foreground-muted)]">
@@ -208,7 +291,7 @@ export default function AdminEmailPage() {
                     <span className="ml-2 text-[var(--foreground-subtle)]">· each recipient sent individually</span>
                   </p>
                 ) : (
-                  <p className="text-amber-400">
+                  <p>
                     <span className="font-medium">Resend not configured.</span>{" "}
                     Add <code className="bg-[var(--surface)] px-1">RESEND_API_KEY</code> to your environment variables.
                   </p>
@@ -222,12 +305,12 @@ export default function AdminEmailPage() {
             <label className={labelCls}>Audience</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AUDIENCE_OPTIONS.map((opt) => {
-                const count = opt.value === "custom" ? null : (status?.counts[opt.value] ?? 0);
+                const count = opt.value === "custom" ? null : status?.counts?.[opt.value];
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => { setAudience(opt.value); setResult(null); }}
-                    className={`text-left px-4 py-3 border transition-colors ${
+                    onClick={() => { setAudience(opt.value); setResult(null); setSendError(""); }}
+                    className={`text-left px-4 py-3 rounded-xl border transition-colors ${
                       audience === opt.value
                         ? "border-[var(--foreground)] bg-[var(--surface)]"
                         : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--background)]"
@@ -235,12 +318,20 @@ export default function AdminEmailPage() {
                   >
                     <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">{opt.label}</p>
                     <p className="text-[10px] text-[var(--foreground-subtle)]">
-                      {count !== null ? `${count} recipient${count !== 1 ? "s" : ""}` : opt.desc}
+                      {opt.desc ?? (count != null
+                        ? `${count} recipient${count !== 1 ? "s" : ""}`
+                        : loadingStatus ? "…" : "Count unavailable")}
                     </p>
                   </button>
                 );
               })}
             </div>
+
+            {status?.countsError && (
+              <p className={`mt-3 rounded-lg px-3 py-2 text-xs ${statusErr}`}>
+                Couldn&apos;t load the audience from Clerk: {status.countsError}. Reload the page to retry — Custom emails still work.
+              </p>
+            )}
 
             {audience === "custom" && (
               <div className="mt-3">
@@ -251,8 +342,11 @@ export default function AdminEmailPage() {
                   rows={4}
                   className={`${inputCls} resize-none font-mono`}
                 />
-                {recipientCount > 0 && (
-                  <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">{recipientCount} valid address{recipientCount !== 1 ? "es" : ""} detected</p>
+                {(customParsed.emails.length > 0 || customParsed.skipped > 0) && (
+                  <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">
+                    {customParsed.emails.length} valid address{customParsed.emails.length !== 1 ? "es" : ""}
+                    {customParsed.skipped > 0 && ` · ${customParsed.skipped} skipped (invalid or duplicate)`}
+                  </p>
                 )}
               </div>
             )}
@@ -272,18 +366,29 @@ export default function AdminEmailPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                 <label className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
                   Body
                 </label>
-                <div className="flex items-center gap-3">
-                  <span className="text-[9px] text-[var(--foreground-subtle)] tracking-[0.06em]">
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* The "?" guide says the same on phones, where this line does not fit. */}
+                  <span className="hidden sm:inline text-[10px] text-[var(--foreground-subtle)]">
                     Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic*
                   </span>
                   <button
                     type="button"
+                    onClick={() => setShowFormatHelp((v) => !v)}
+                    aria-expanded={showFormatHelp}
+                    aria-label="Formatting help"
+                    title="Formatting help"
+                    className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                  >
+                    ?
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
-                    className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                       <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1" />
@@ -294,6 +399,23 @@ export default function AdminEmailPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Format guide — behind the "?" toggle */}
+              {showFormatHelp && (
+                <div className="mb-2 rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
+                  <div className="px-3 py-2 flex items-center justify-between">
+                    <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Formatting</p>
+                    <p className="text-[10px] text-[var(--foreground-subtle)]">you type → the email shows</p>
+                  </div>
+                  {FORMAT_HELP.map(({ input, output }) => (
+                    <div key={input} className="grid grid-cols-[1fr_1fr] px-3 py-1.5 gap-4">
+                      <code className="text-[11px] text-[var(--foreground-muted)] font-mono">{input}</code>
+                      <span className="text-[11px] text-[var(--foreground-subtle)]">{output}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
@@ -301,42 +423,15 @@ export default function AdminEmailPage() {
                 rows={12}
                 className={`${inputCls} resize-y font-mono leading-relaxed`}
               />
-
-              {/* Format guide */}
-              <div className="mt-2 rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Формат текста</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)]">пишешь → так отображается в письме</p>
-                </div>
-                {[
-                  { input: "# Заголовок",        output: "Большой заголовок письма (H1)" },
-                  { input: "## Подзаголовок",     output: "Раздел внутри письма (H2)" },
-                  { input: "Обычный текст",       output: "Параграф — просто пиши как обычно" },
-                  { input: "- Пункт один",        output: "• Маркированный список" },
-                  { input: "**жирный текст**",    output: "жирный текст" },
-                  { input: "*курсив*",            output: "курсив" },
-                  { input: "(пустая строка)",     output: "Отступ между параграфами" },
-                ].map(({ input, output }) => (
-                  <div key={input} className="grid grid-cols-[1fr_1fr] px-3 py-1.5 gap-4">
-                    <code className="text-[11px] text-[var(--foreground-muted)] font-mono">{input}</code>
-                    <span className="text-[11px] text-[var(--foreground-subtle)]">{output}</span>
-                  </div>
-                ))}
-                <div className="px-3 py-2 bg-[var(--surface)]">
-                  <p className="text-[10px] text-[var(--foreground-subtle)]">
-                    Нажми <span className="text-[var(--foreground-muted)] font-medium">AI Write</span> чтобы не писать вручную — опиши что должно быть в письме и GPT напишет сам.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 
           {/* Preview toggle */}
           <div>
             <button
-              onClick={handlePreviewToggle}
-              disabled={!subject.trim() || !body.trim()}
-              className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => setShowPreview((v) => !v)}
+              disabled={!showPreview && (!subject.trim() || !body.trim())}
+              className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {showPreview ? "Hide preview" : "Show email preview"}
             </button>
@@ -364,7 +459,7 @@ export default function AdminEmailPage() {
             <button
               onClick={() => sendEmail(true)}
               disabled={!canSend || testSending || sending}
-              className="text-xs tracking-[0.12em] uppercase text-[var(--foreground)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--foreground)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {testSending ? (
                 <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending test…</>
@@ -375,19 +470,19 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setConfirmSend(true)}
                 disabled={!canSend || testSending || sending || recipientCount === 0}
-                className="text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Send to {recipientCount > 0 ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""}` : "audience"}
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs text-[var(--foreground-muted)]">
                   Send to <strong className="text-[var(--foreground)]">{recipientCount}</strong> {recipientCount === 1 ? "person" : "people"}?
                 </span>
                 <button
                   onClick={() => sendEmail(false)}
                   disabled={sending}
-                  className="text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-4 py-2 hover:opacity-80 disabled:opacity-40 transition-opacity flex items-center gap-2"
+                  className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-4 py-2 hover:opacity-80 disabled:opacity-40 transition-opacity flex items-center gap-2"
                 >
                   {sending ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending…</>
@@ -395,7 +490,8 @@ export default function AdminEmailPage() {
                 </button>
                 <button
                   onClick={() => setConfirmSend(false)}
-                  className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  disabled={sending}
+                  className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
                 >
                   Cancel
                 </button>
@@ -404,25 +500,29 @@ export default function AdminEmailPage() {
           </div>
 
           {/* Result */}
+          {sendError && (
+            <div className={`rounded-xl px-5 py-4 text-sm ${statusErr}`}>
+              <p className="font-medium">Send failed.</p>
+              <p className="text-xs mt-1">{sendError}</p>
+            </div>
+          )}
           {result && (
-            <div className={`px-5 py-4 border text-sm ${
-              result.ok
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-red-400/30 bg-red-400/5"
-            }`}>
+            <div className={`rounded-xl px-5 py-4 text-sm ${result.ok ? statusOk : statusErr}`}>
               {result.ok ? (
-                <p className="text-emerald-400">
+                <p>
                   {result.testOnly
                     ? `Test email sent to your address.`
                     : `Sent to ${result.sent} of ${result.total} recipient${result.total !== 1 ? "s" : ""} individually — addresses not visible to each other.`}
                 </p>
               ) : (
                 <div>
-                  <p className="text-red-400 font-medium mb-1">
-                    Sent {result.sent} of {result.total} — {result.errors?.length} batch{(result.errors?.length ?? 0) > 1 ? "es" : ""} failed.
+                  <p className="font-medium mb-1">
+                    {result.testOnly
+                      ? "Test email was not sent."
+                      : `Sent ${result.sent} of ${result.total} — ${failedBatches} batch${failedBatches !== 1 ? "es" : ""} failed.`}
                   </p>
                   {result.errors?.map((err, i) => (
-                    <p key={i} className="text-xs text-[var(--foreground-muted)] mt-1">{err}</p>
+                    <p key={i} className="text-xs mt-1">{err}</p>
                   ))}
                 </div>
               )}
@@ -437,10 +537,11 @@ export default function AdminEmailPage() {
               Templates
             </p>
             <button
-              onClick={() => { setTemplateName(""); setShowSaveModal(true); }}
+              onClick={() => { setTemplateName(""); setSaveTemplateError(""); setShowSaveModal(true); }}
               disabled={!subject.trim() || !body.trim()}
               title="Save current draft as template"
-              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Save current draft as template"
+              className="flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -448,18 +549,24 @@ export default function AdminEmailPage() {
             </button>
           </div>
 
+          {templatesError && (
+            <p className={`mx-4 my-3 rounded-lg px-3 py-2 text-[11px] ${statusErr}`}>{templatesError}</p>
+          )}
+
           <div className="divide-y divide-[var(--border)]">
             {loadingTemplates ? (
               <div className="px-4 py-6 text-center text-[11px] text-[var(--foreground-subtle)] animate-pulse">
                 Loading…
               </div>
             ) : templates.length === 0 ? (
-              <div className="px-4 py-8 text-center">
-                <p className="text-[11px] text-[var(--foreground-subtle)]">No templates yet.</p>
-                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1 opacity-60">
-                  Fill in a subject + body above, then click + to save.
-                </p>
-              </div>
+              !templatesError && (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-[11px] text-[var(--foreground-subtle)]">No templates yet.</p>
+                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-1 opacity-60">
+                    Fill in a subject + body above, then click + to save.
+                  </p>
+                </div>
+              )
             ) : (
               templates.map((t) => (
                 <div key={t.id} className="px-4 py-3 group hover:bg-[var(--surface)] transition-colors">
@@ -468,11 +575,14 @@ export default function AdminEmailPage() {
                       <p className="text-xs font-medium text-[var(--foreground)] truncate">{t.name}</p>
                       <p className="text-[10px] text-[var(--foreground-muted)] truncate mt-0.5">{t.subject}</p>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {/* Revealed on hover where there is a pointer; always shown on
+                        touch screens, which have no hover, and while focused. */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
                       <button
                         onClick={() => handleLoadTemplate(t)}
                         title="Load into editor"
-                        className="p-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                        aria-label={`Load template ${t.name} into the editor`}
+                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -482,7 +592,8 @@ export default function AdminEmailPage() {
                         onClick={() => handleDeleteTemplate(t.id)}
                         disabled={deletingId === t.id}
                         title="Delete template"
-                        className="p-1 text-[var(--foreground-muted)] hover:text-red-400 transition-colors disabled:opacity-40"
+                        aria-label={`Delete template ${t.name}`}
+                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-red-500 transition-colors disabled:opacity-40"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -500,7 +611,13 @@ export default function AdminEmailPage() {
       {/* AI Write modal */}
       {showAiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="rounded-xl border border-[var(--border)] w-full max-w-md" style={{ background: "var(--background)" }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Write with AI"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
+            style={{ background: "var(--background)" }}
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
                 <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
@@ -508,7 +625,7 @@ export default function AdminEmailPage() {
                   Describe what to write — AI generates the email body
                 </p>
               </div>
-              <button onClick={() => setShowAiModal(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+              <button onClick={() => setShowAiModal(false)} aria-label="Close" className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -516,7 +633,7 @@ export default function AdminEmailPage() {
             </div>
             <div className="px-5 py-4 space-y-3">
               {subject && (
-                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]">
                   Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
                 </div>
               )}
@@ -532,7 +649,7 @@ export default function AdminEmailPage() {
                   disabled={aiWriting}
                 />
               </div>
-              {aiWriteError && <p className="text-xs text-red-400">{aiWriteError}</p>}
+              {aiWriteError && <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>{aiWriteError}</p>}
               {aiWriting && (
                 <p className="text-xs text-[var(--foreground-muted)] animate-pulse">Writing your email…</p>
               )}
@@ -563,13 +680,17 @@ export default function AdminEmailPage() {
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div
-            className="rounded-2xl border border-[var(--border)] w-full max-w-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Save template"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-sm max-h-[90dvh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="font-display text-lg font-light text-[var(--foreground)]">Save template</h2>
               <button
                 onClick={() => setShowSaveModal(false)}
+                aria-label="Close"
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -584,7 +705,7 @@ export default function AdminEmailPage() {
                   type="text"
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveTemplate()}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) handleSaveTemplate(); }}
                   placeholder="e.g. Monthly newsletter"
                   className={inputCls}
                   autoFocus
@@ -594,6 +715,9 @@ export default function AdminEmailPage() {
                 <p><span className="text-[var(--foreground-muted)]">Subject:</span> {subject}</p>
                 <p><span className="text-[var(--foreground-muted)]">Body:</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
               </div>
+              {saveTemplateError && (
+                <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>Couldn&apos;t save the template: {saveTemplateError}</p>
+              )}
             </div>
             <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
               <button

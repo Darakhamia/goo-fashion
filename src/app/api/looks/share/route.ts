@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { checkNamedRateLimit } from "@/lib/server/rate-limit";
+import {
+  ANONYMOUS_LOOK_OWNER,
+  getProductsByIds,
+  isOwnStorageUrl,
+  isTrustedPiecePhoto,
+} from "@/lib/data/db";
 
 // POST /api/looks/share
 //
@@ -18,9 +25,22 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 // Look ids are minted client-side as `outfit-${Date.now()}` and can collide
 // across users. A row owned by someone else is never overwritten — a fresh id
 // is minted for this snapshot instead.
-
-const ANON_USER = "anonymous";
+//
+// Anyone can call this without signing in, and every call can write a row, so
+// it is rate-limited (per user, else per IP) in a bucket of its own and takes
+// images only as short http(s) links: a data URL would put megabytes into the
+// row. The generated photo must also live in our own storage (where
+// generate-outfit persists it): the row renders as a page on our domain, so a
+// picture from anywhere else would let anyone publish one under our name. A
+// 429 still doesn't dead-end the button — the client treats any non-OK answer
+// as "not persisted" and hands out the self-contained link.
+//
+// A look shared while signed out has nobody behind it, so its piece photos are
+// held to the ?d= link's rule: our own storage or that product's catalogue
+// photos only. Its page is not indexed either (see app/look/[id]).
 const MAX_PIECES = 12;
+const SHARES_PER_HOUR = 30;
+const MAX_URL_LENGTH = 2000;
 
 type RawPiece = {
   slot?: unknown;
@@ -37,6 +57,12 @@ function asTrimmedString(v: unknown, maxLen: number): string | null {
   return s;
 }
 
+/** A hosted http(s) image link, or null — never a data: or other URI. */
+function asHttpUrl(v: unknown): string | null {
+  const s = asTrimmedString(v, MAX_URL_LENGTH);
+  return s && /^https?:\/\//i.test(s) ? s : null;
+}
+
 function sanitizePieces(raw: unknown): Array<Record<string, unknown>> | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_PIECES) return null;
   const pieces: Array<Record<string, unknown>> = [];
@@ -47,13 +73,35 @@ function sanitizePieces(raw: unknown): Array<Record<string, unknown>> | null {
     const piece: Record<string, unknown> = { slot, productId };
     const variantId = asTrimmedString(item?.variantId, 100);
     if (variantId) piece.variantId = variantId;
-    const imageUrl = asTrimmedString(item?.imageUrl, 2000);
+    const imageUrl = asHttpUrl(item?.imageUrl);
     if (imageUrl) piece.imageUrl = imageUrl;
     const name = asTrimmedString(item?.name, 300);
     if (name) piece.name = name;
     pieces.push(piece);
   }
   return pieces;
+}
+
+/**
+ * For a signed-out share: keep a piece's photo only when it is on our storage
+ * or is a catalogue photo of that product (or of the colour variant it names).
+ * A dropped photo is not a failure — the look page shows the catalogue photo.
+ */
+async function dropUntrustedPiecePhotos(pieces: Array<Record<string, unknown>>): Promise<void> {
+  const withPhoto = pieces.filter(
+    (p) => typeof p.imageUrl === "string" && !isOwnStorageUrl(p.imageUrl),
+  );
+  if (withPhoto.length === 0) return;
+  const ids = withPhoto.flatMap((p) =>
+    [p.productId, p.variantId].filter((v): v is string => typeof v === "string"),
+  );
+  const byId = new Map((await getProductsByIds(ids)).map((p) => [p.id, p]));
+  for (const piece of withPhoto) {
+    const related = [piece.productId, piece.variantId].map((v) =>
+      typeof v === "string" ? byId.get(v) : undefined,
+    );
+    if (!isTrustedPiecePhoto(piece.imageUrl as string, related)) delete piece.imageUrl;
+  }
 }
 
 function mintLookId(): string {
@@ -72,7 +120,20 @@ function isMissingColumnError(e: { code?: string; message?: string } | null): bo
 
 export async function POST(req: Request) {
   const { userId } = await auth().catch(() => ({ userId: null as string | null }));
-  const owner = userId ?? ANON_USER;
+  const owner = userId ?? ANONYMOUS_LOOK_OWNER;
+
+  const limit = await checkNamedRateLimit(req, {
+    name: "look-share",
+    requests: SHARES_PER_HOUR,
+    window: "1 h",
+    key: userId,
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many shares. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const requestedId = asTrimmedString(body?.id, 100);
@@ -86,13 +147,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: requestedId, persisted: false });
   }
 
+  if (!userId) await dropUntrustedPiecePhotos(pieces);
+
   const name = asTrimmedString(body?.name, 200);
   const description = asTrimmedString(body?.description, 2000);
-  // Generated previews may be data URLs, so the cap is generous.
-  const generatedImage =
-    typeof body?.generatedImage === "string" && body.generatedImage.length <= 2_000_000
-      ? body.generatedImage
-      : null;
+  // Generated photos are persisted to storage and shared by URL. A data URL,
+  // or a link to anywhere but our storage, is dropped rather than failing the
+  // share: the look page falls back to a collage of the pieces.
+  const hostedImage = asHttpUrl(body?.generatedImage);
+  const generatedImage = hostedImage && isOwnStorageUrl(hostedImage) ? hostedImage : null;
+  const generatedStyle = asTrimmedString(body?.generatedStyle, 40);
   const styleKeywords = Array.isArray(body?.styleKeywords)
     ? (body.styleKeywords as unknown[])
         .filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 60)
@@ -113,7 +177,7 @@ export async function POST(req: Request) {
     total_price: totalPrice,
     style_keywords: styleKeywords,
     generated_image: generatedImage,
-    generated_style: body?.generatedStyle ?? null,
+    generated_style: generatedStyle,
   };
   const nameColumns = { look_name: name, look_description: description };
 
@@ -130,14 +194,21 @@ export async function POST(req: Request) {
 
   // Fast path: the look is already in place (builder sync) and owned by this
   // user — the link already works. Refresh content best-effort; a failed
-  // refresh must not block sharing.
-  if (existing && existing.user_id === owner) {
+  // refresh must not block sharing. Signed-in only: every signed-out share has
+  // the same owner, so for them "owned by this user" would let anyone rewrite
+  // anyone else's shared look by its id — they get a fresh snapshot instead.
+  if (existing && userId && existing.user_id === userId) {
+    // This row is also the user's own saved look (synced by /api/user/looks,
+    // which may hold an old data-URL photo). A photo not accepted here must
+    // not wipe the one the row already has, so it is left out of the refresh.
+    const refreshColumns: Record<string, unknown> = { ...contentColumns };
+    if (!generatedImage) delete refreshColumns.generated_image;
     const { error: updateError } = await supabase
       .from("user_looks")
-      .update({ ...contentColumns, ...nameColumns })
+      .update({ ...refreshColumns, ...nameColumns })
       .eq("id", requestedId);
     if (isMissingColumnError(updateError)) {
-      await supabase.from("user_looks").update(contentColumns).eq("id", requestedId);
+      await supabase.from("user_looks").update(refreshColumns).eq("id", requestedId);
     } else if (updateError) {
       console.error("[looks/share] refresh failed:", updateError.message);
     }

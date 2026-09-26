@@ -201,14 +201,14 @@ export default function ReportPage() {
               <span className="text-white/20">·</span>
               <span className="text-white font-medium">Bug Report</span>
             </div>
-            <p className="text-white/30 text-xs">Claude structures it, Plane tracks it.</p>
+            <p className="text-white/30 text-xs">AI structures it, Plane tracks it.</p>
           </div>
           <span className="text-[11px] uppercase tracking-widest text-white/30 border border-white/10 px-2 py-0.5 rounded-full">
             Internal Tool
           </span>
         </div>
 
-        {/* Filing a report spends Anthropic credit, so the API requires a signed-in
+        {/* Filing a report spends OpenAI credit, so the API requires a signed-in
             user. Say so up front rather than letting someone write a report and
             collect a 401 on submit. */}
         <SignedOut>

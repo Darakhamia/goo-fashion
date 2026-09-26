@@ -28,6 +28,7 @@
  * point of the extension — their IP, their cookies, their already-passed
  * challenge. The server only ever sees the text that came back.
  */
+import { escapeRegExp } from "@/lib/text";
 
 /**
  * The rules from one robots.txt, already reduced to the `*` group.
@@ -48,15 +49,6 @@ export interface RobotsRules {
   /** False when the text could not be read as robots.txt at all (404 page, HTML). */
   parsed: boolean;
 }
-
-/** What an absent or unreadable robots.txt means: nothing is forbidden. */
-export const PERMISSIVE: RobotsRules = {
-  allow: [],
-  disallow: [],
-  crawlDelayMs: null,
-  sitemaps: [],
-  parsed: false,
-};
 
 /**
  * A robots.txt path pattern as a regex anchored at the start of the path.
@@ -80,7 +72,7 @@ function patternToRegex(pattern: string): RegExp {
       out += "$";
       continue;
     }
-    out += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out += escapeRegExp(ch);
   }
   return new RegExp(`^${out}`);
 }

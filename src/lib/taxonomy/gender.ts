@@ -22,6 +22,7 @@
  * mentioned women, and "Boyfriend Jeans" read as men from "boy".
  */
 import type { Gender } from "@/lib/types";
+import { escapeRegExp, isCyrillic } from "@/lib/text";
 
 export type GenderSource = "name" | "address" | "description";
 
@@ -51,12 +52,10 @@ const ADDRESS_MEN = [
   "man", "uomo", "hombre", "muzhskaya", "muzhskie", "muzhskoe", "cholovichi", "cholovicha", "cholovikam",
 ];
 
-const isCyrillic = (s: string) => /[Ѐ-ӿ]/.test(s);
-
 /** Whole words for Latin terms, stems for Cyrillic — the dictionaries' usual rule. */
 function compile(terms: string[]): RegExp {
   const parts = terms.map((t) => {
-    const words = t.split(" ").map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const words = t.split(" ").map(escapeRegExp);
     return isCyrillic(t) ? `${words.join(" ")}\\p{L}*` : words.join(" ");
   });
   return new RegExp(` (?:${parts.join("|")})(?= )`, "u");
@@ -70,7 +69,11 @@ const RE = {
   addressMen: compile([...MEN, ...ADDRESS_MEN]),
 };
 
-/** Lowercase, apostrophes dropped ("men's" → "mens"), every other non-letter a space, padded. */
+/**
+ * Lowercase, apostrophes dropped ("men's" → "mens"), every other non-letter a
+ * space, padded. The shared `normalize` in lib/text would read "men's" as
+ * "men s" instead, hence this one.
+ */
 function normalize(text: string): string {
   return ` ${(text ?? "")
     .toLowerCase()

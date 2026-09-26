@@ -18,7 +18,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { discoverProductUrls } from "@/lib/server/parser/crawl";
-import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -55,7 +55,6 @@ export async function POST(req: Request) {
     const result = await discoverProductUrls(url, {
       fetchSettings,
       fetchApiKey: keyInfo.key,
-      siteConfigs,
       limit: Math.max(1, Math.min(Number(body?.limit) || 60, 2_000)),
       maxPages: Math.max(1, Math.min(Number(body?.maxPages) || 1, 20)),
     });
@@ -134,6 +133,7 @@ export async function POST(req: Request) {
         name: product.name,
         usedAi,
         imagesMirrored: imported.imagesMirrored ?? 0,
+        ...(imported.droppedColumns?.length && { warning: droppedColumnsWarning(imported.droppedColumns) }),
       });
     } catch (err) {
       results.push({

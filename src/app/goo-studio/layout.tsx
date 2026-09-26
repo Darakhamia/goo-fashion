@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/context/auth-context";
+import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 
-const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const NAV_ORDER_KEY = "goo-admin-nav-order";
 const ADMIN_THEME_KEY = "goo-admin-theme";
 
@@ -194,7 +194,7 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/goo-studio/brightdata",
+    href: "/goo-studio/import",
     label: "Import",
     category: "imports",
     icon: (
@@ -250,35 +250,120 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const darkVars: React.CSSProperties = {
-  "--background": "#0A0A0A",
-  "--surface": "#141414",
-  "--foreground": "#F0EEE8",
-  "--foreground-muted": "#888884",
-  "--foreground-subtle": "#6E6E6A",
-  "--border": "#222220",
-  "--border-strong": "#3A3A38",
-} as React.CSSProperties;
+/*
+ * The admin theme is independent of the site theme on <html> (dark by
+ * default). The admin root carries `.admin-theme-light` or `.admin-theme-dark`,
+ * which re-declare the full token set in globals.css, so every admin element
+ * resolves its colors from the admin theme rather than the inherited site one.
+ */
+const THEME_CLASS = {
+  light: "admin-theme-light",
+  dark: "admin-theme-dark",
+} as const;
 
-const pageTitles: Record<string, string> = {
-  "/goo-studio": "Dashboard",
-  "/goo-studio/products": "Products",
-  "/goo-studio/outfits": "Outfits",
-  "/goo-studio/blog": "Blog",
-  "/goo-studio/analytics": "Analytics",
-  "/goo-studio/subscriptions": "Subscriptions",
-  "/goo-studio/users": "Users",
-  "/goo-studio/brands": "Brands",
-  "/goo-studio/categories": "Categories",
-  "/goo-studio/audit": "Audit",
-  "/goo-studio/waitlist": "Waitlist",
-  "/goo-studio/email": "Email",
-  "/goo-studio/brightdata": "Import",
-  "/goo-studio/parser": "Universal Parser",
-  "/goo-studio/settings": "Settings",
-  "/goo-studio/prompts": "Prompts",
-  "/goo-studio/activity": "Activity",
+/*
+ * The server cannot read localStorage, so the server render and hydration use
+ * the light theme. This script is the first child of the admin root: it runs
+ * while the page is parsed, before the first paint, and moves the root to the
+ * saved dark theme, so a reload with Dark selected does not flash white.
+ * Hydration leaves the class as the script set it (hence
+ * suppressHydrationWarning on the root), and React sets the same class right
+ * after, once useSetting reads the saved value. On a client-side navigation
+ * into the admin the saved value is read on the first render, and React never
+ * runs a script it creates on the client.
+ */
+const THEME_BOOT_SCRIPT = `(function(){try{if(localStorage.getItem(${JSON.stringify(
+  ADMIN_THEME_KEY
+)})==="dark"){var r=document.currentScript.parentElement;r.classList.remove(${JSON.stringify(
+  THEME_CLASS.light
+)});r.classList.add(${JSON.stringify(THEME_CLASS.dark)})}}catch(e){}})()`;
+
+// Nested pages without a menu entry of their own; shown as a third breadcrumb
+// segment under their parent menu item.
+const SUBPAGE_TITLES: Record<string, string> = {
+  "/goo-studio/parser/collect": "Collect",
 };
+
+/** Menu item a path belongs to: the longest href it equals or sits under. */
+function navItemFor(pathname: string): NavItem | undefined {
+  let match: NavItem | undefined;
+  for (const item of NAV_ITEMS) {
+    const hit =
+      item.href === "/goo-studio"
+        ? pathname === item.href
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (hit && (!match || item.href.length > match.href.length)) match = item;
+  }
+  return match;
+}
+
+/*
+ * Admin preferences (theme, menu order) live in localStorage and are read
+ * through useSyncExternalStore: the server render and hydration use the
+ * defaults, the saved values apply right after, and there is no hydration
+ * mismatch. The one exception is the dark theme, which THEME_BOOT_SCRIPT puts
+ * on the admin root before the first paint. When storage is blocked (private
+ * mode, quota) a written value is kept in memory, so it still applies until
+ * reload.
+ */
+const settingListeners = new Set<() => void>();
+const memorySettings = new Map<string, string | null>();
+
+function readSetting(key: string): string | null {
+  if (memorySettings.has(key)) return memorySettings.get(key) ?? null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSetting(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+    memorySettings.delete(key);
+  } catch {
+    memorySettings.set(key, value);
+  }
+  settingListeners.forEach((notify) => notify());
+}
+
+function subscribeSettings(onChange: () => void) {
+  settingListeners.add(onChange);
+  // Another admin tab changed a preference.
+  window.addEventListener("storage", onChange);
+  return () => {
+    settingListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function useSetting(key: string): string | null {
+  return useSyncExternalStore(
+    subscribeSettings,
+    () => readSetting(key),
+    () => null
+  );
+}
+
+const DEFAULT_NAV_ORDER = NAV_ITEMS.map((i) => i.href);
+
+/** Saved order with unknown hrefs dropped and new menu items appended. */
+function parseNavOrder(saved: string | null): string[] {
+  if (!saved) return DEFAULT_NAV_ORDER;
+  try {
+    const parsed: unknown = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return DEFAULT_NAV_ORDER;
+    const known = new Set(parsed);
+    return [
+      ...parsed.filter((h): h is string => typeof h === "string" && DEFAULT_NAV_ORDER.includes(h)),
+      ...DEFAULT_NAV_ORDER.filter((h) => !known.has(h)),
+    ];
+  } catch {
+    return DEFAULT_NAV_ORDER;
+  }
+}
 
 function GripIcon() {
   return (
@@ -294,102 +379,339 @@ function GripIcon() {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const savedTheme = useSetting(ADMIN_THEME_KEY);
+  const theme: "light" | "dark" = savedTheme === "dark" ? "dark" : "light";
+  const savedNavOrder = useSetting(NAV_ORDER_KEY);
+  const navOrder = useMemo(() => parseNavOrder(savedNavOrder), [savedNavOrder]);
+
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
-  const [navOrder, setNavOrder] = useState<string[]>(() =>
-    NAV_ITEMS.map((i) => i.href)
-  );
-  const [dragOver, setDragOver] = useState<number | null>(null);
-  const dragItem = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const dragHref = useRef<string | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const pathname = usePathname();
   const { user } = useAuth();
 
+  // Any route change closes the phone menu. Its links close it on click, but
+  // the browser's back gesture navigates without touching them. Adjusted
+  // during render, so the drawer never paints over the new page.
+  const [drawerPathname, setDrawerPathname] = useState(pathname);
+  if (drawerPathname !== pathname) {
+    setDrawerPathname(pathname);
+    setMobileNavOpen(false);
+  }
+
+  useScrollLock(mobileNavOpen);
+
+  // Super-admin status comes from the server (SUPER_ADMIN_USER_ID), the same
+  // check the Activity API applies, so the menu and the API cannot disagree.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(NAV_ORDER_KEY);
-      if (saved) {
-        const parsed: string[] = JSON.parse(saved);
-        const known = new Set(parsed);
-        const allHrefs = NAV_ITEMS.map((i) => i.href);
-        const merged = [
-          ...parsed.filter((h) => allHrefs.includes(h)),
-          ...allHrefs.filter((h) => !known.has(h)),
-        ];
-        setNavOrder(merged);
-      }
-    } catch {
-      // ignore
-    }
+    let cancelled = false;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me: { isSuperAdmin?: boolean } | null) => {
+        if (!cancelled) setIsSuperAdmin(me?.isSuperAdmin === true);
+      })
+      .catch(() => {
+        // Keep the regular admin menu; super-admin APIs enforce access anyway.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ADMIN_THEME_KEY);
-      if (saved === "dark" || saved === "light") setTheme(saved);
-    } catch {}
-  }, []);
+    if (!customizing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCustomizing(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [customizing]);
 
-  const toggleTheme = () =>
-    setTheme((t) => {
-      const next = t === "light" ? "dark" : "light";
-      try { localStorage.setItem(ADMIN_THEME_KEY, next); } catch {}
-      return next;
-    });
-
-  const isSuperAdmin = !!user && !!SUPER_ADMIN_ID && user.id === SUPER_ADMIN_ID;
-
-  const currentTitle = pageTitles[pathname] ?? "Admin";
-  const initials = user?.name
-    ? user.name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
-    : "AD";
-
-  const orderedItems = navOrder
-    .map((href) => NAV_ITEMS.find((i) => i.href === href))
-    .filter((i): i is NavItem => !!i && (!i.superAdminOnly || isSuperAdmin));
-
-  const customizableItems = navOrder
-    .map((href) => NAV_ITEMS.find((i) => i.href === href))
-    .filter((i): i is NavItem => !!i && (!i.superAdminOnly || isSuperAdmin));
-
-  const handleDragStart = (index: number) => {
-    dragItem.current = index;
+  /** Closes the phone menu; focus goes back to the button that opened it. */
+  const dismissMobileNav = () => {
+    setMobileNavOpen(false);
+    menuButtonRef.current?.focus();
   };
 
-  const handleDragEnter = (index: number) => {
-    setDragOver(index);
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    // Rotated or resized past md, where the sidebar is back: the drawer and
+    // its scroll lock go away with it. Same query as Tailwind's `md:`.
+    const desktop = window.matchMedia("(width >= 48rem)");
+    const onResize = (e: MediaQueryListEvent) => {
+      if (e.matches) setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    desktop.addEventListener("change", onResize);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      desktop.removeEventListener("change", onResize);
+    };
+  }, [mobileNavOpen]);
+
+  const toggleTheme = () =>
+    writeSetting(ADMIN_THEME_KEY, theme === "light" ? "dark" : "light");
+
+  const activeItem = navItemFor(pathname);
+  const subpageTitle = SUBPAGE_TITLES[pathname];
+  const initials = user?.name
+    ? user.name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
+    : "";
+
+  // Menu items in the saved order. The sidebar and the Customize dialog both
+  // render them grouped by category (groups in fixed order), so reordering is
+  // only meaningful within a group.
+  const navItems = navOrder
+    .map((href) => NAV_ITEMS.find((i) => i.href === href))
+    .filter((i): i is NavItem => !!i && (!i.superAdminOnly || isSuperAdmin));
+
+  const categoryOf = (href: string | null) =>
+    NAV_ITEMS.find((i) => i.href === href)?.category;
+
+  /** Moves `href` into the slot of `targetHref`; both must share a group. */
+  const moveItem = (href: string, targetHref: string) => {
+    if (href === targetHref || categoryOf(href) !== categoryOf(targetHref)) return;
+    const to = navOrder.indexOf(targetHref);
+    if (to === -1) return;
+    const next = navOrder.filter((h) => h !== href);
+    next.splice(to, 0, href);
+    writeSetting(NAV_ORDER_KEY, JSON.stringify(next));
+  };
+
+  // The move happens on drop, so a drag released outside the list or
+  // cancelled with Escape leaves the order as it was.
+  const handleDrop = (e: React.DragEvent, targetHref: string) => {
+    // Without this Firefox treats the dropped text/plain as a link to open.
+    e.preventDefault();
+    const from = dragHref.current;
+    if (from) moveItem(from, targetHref);
   };
 
   const handleDragEnd = () => {
-    const from = dragItem.current;
-    const to = dragOver;
-    dragItem.current = null;
+    dragHref.current = null;
     setDragOver(null);
-    if (from === null || to === null || from === to) return;
-
-    const visibleHrefs = customizableItems.map((i) => i.href);
-    const newVisible = [...visibleHrefs];
-    const [removed] = newVisible.splice(from, 1);
-    newVisible.splice(to, 0, removed);
-
-    const hiddenItems = navOrder.filter((h) => !visibleHrefs.includes(h));
-    const newOrder = [...newVisible, ...hiddenItems];
-    setNavOrder(newOrder);
-    localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(newOrder));
   };
 
-  const resetOrder = () => {
-    const defaultOrder = NAV_ITEMS.map((i) => i.href);
-    setNavOrder(defaultOrder);
-    localStorage.removeItem(NAV_ORDER_KEY);
-  };
+  const resetOrder = () => writeSetting(NAV_ORDER_KEY, null);
+
+  /*
+   * Menu and bottom controls, shared by the desktop sidebar and the phone
+   * drawer. `compact` is the collapsed desktop rail (icons only); the drawer
+   * is always expanded and passes `onNavigate` to close itself. Rows are
+   * 40px+ tall below md for touch and keep their desktop padding from md up.
+   */
+  const renderMenu = (compact: boolean, onNavigate?: () => void) => (
+    <nav className="flex-1 py-3 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
+      {NAV_CATEGORIES.map((cat) => {
+        const items = navItems.filter((i) => i.category === cat.key);
+        if (items.length === 0) return null;
+        return (
+          <div key={cat.key} className="mb-1">
+            <AnimatePresence initial={false}>
+              {!compact && (
+                <motion.div
+                  key={`cat-${cat.key}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1 }}
+                  className="px-5 pt-3 pb-1"
+                >
+                  <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                    {cat.label}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {compact && (
+              <div className="mx-3 my-1 border-t border-[var(--border)]" />
+            )}
+            <div className="flex flex-col gap-0.5 px-2">
+              {items.map((item) => {
+                const isActive = activeItem?.href === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={isActive ? "page" : undefined}
+                    title={compact ? item.label : undefined}
+                    className={`flex items-center transition-colors rounded-xl ${
+                      compact
+                        ? "justify-center px-0 py-3"
+                        : "gap-3 px-3 py-3 md:py-2"
+                    } text-xs tracking-[0.1em] uppercase ${
+                      isActive
+                        ? "text-[var(--foreground)] bg-[var(--surface)]"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
+                    }`}
+                  >
+                    <span className="flex-shrink-0">{item.icon}</span>
+                    <AnimatePresence initial={false}>
+                      {!compact && (
+                        <motion.span
+                          key={`label-${item.href}`}
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{ opacity: 1, width: "auto" }}
+                          exit={{ opacity: 0, width: 0 }}
+                          transition={{ duration: 0.12 }}
+                          className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden whitespace-nowrap"
+                        >
+                          {item.label}
+                          {item.superAdminOnly && (
+                            <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                              SA
+                            </span>
+                          )}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </nav>
+  );
+
+  const renderControls = (compact: boolean, onNavigate?: () => void) => (
+    <div className="pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-[var(--border)] flex flex-col gap-0.5 flex-shrink-0 px-2">
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        title={compact ? (theme === "light" ? "Dark mode" : "Light mode") : undefined}
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
+          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
+        }`}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          {theme === "light" ? (
+            <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11A6 6 0 0013.5 10z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+          ) : (
+            <>
+              <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </>
+          )}
+        </svg>
+        <AnimatePresence initial={false}>
+          {!compact && (
+            <motion.span
+              key="theme-label"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.12 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              {theme === "light" ? "Dark mode" : "Light mode"}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+
+      {/* Customize */}
+      <button
+        onClick={() => {
+          onNavigate?.();
+          setCustomizing(true);
+        }}
+        title={compact ? "Customize menu" : undefined}
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
+          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
+        }`}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M11 2L13 4L11 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <AnimatePresence initial={false}>
+          {!compact && (
+            <motion.span
+              key="customize-label"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.12 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              Customize
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+
+      {/* Back to site */}
+      <Link
+        href="/"
+        onClick={onNavigate}
+        title={compact ? "Back to site" : undefined}
+        className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl ${
+          compact ? "justify-center py-3" : "gap-3 px-3 py-3 md:py-2.5"
+        }`}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <AnimatePresence initial={false}>
+          {!compact && (
+            <motion.span
+              key="back-label"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.12 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              Back to site
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </Link>
+    </div>
+  );
+
+  const logo = (onNavigate?: () => void) => (
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className="flex items-center gap-2.5 pl-5 pr-2 flex-1 min-w-0 whitespace-nowrap"
+    >
+      <span className="font-display text-xl tracking-[0.2em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity">
+        GOO
+      </span>
+      <span className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-1.5 py-0.5 leading-none rounded-md">
+        Admin
+      </span>
+    </Link>
+  );
+
+  const crumbs = ["Admin", activeItem?.label, subpageTitle].filter(Boolean) as string[];
 
   return (
-    <div className="flex h-screen overflow-hidden" style={theme === "dark" ? darkVars : undefined}>
-      {/* ── Sidebar ── */}
+    <div
+      suppressHydrationWarning
+      className={`flex h-dvh overflow-hidden bg-[var(--surface)] text-[var(--foreground)] ${THEME_CLASS[theme]}`}
+    >
+      {/* Saved dark theme before the first paint — see THEME_BOOT_SCRIPT. */}
+      <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+
+      {/* ── Sidebar (md and up) ── */}
       <aside
-        className={`flex-shrink-0 flex flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${
+        className={`hidden md:flex flex-shrink-0 flex-col border-r border-[var(--border)] h-full transition-[width] duration-200 ease-in-out overflow-hidden ${
           collapsed ? "w-[60px]" : "w-56"
         }`}
         style={{ background: "var(--background)" }}
@@ -406,17 +728,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <Link
-                  href="/"
-                  className="flex items-center gap-2.5 pl-5 pr-2 flex-1 min-w-0 whitespace-nowrap"
-                >
-                  <span className="font-display text-xl tracking-[0.2em] uppercase text-[var(--foreground)] hover:opacity-60 transition-opacity">
-                    GOO
-                  </span>
-                  <span className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-1.5 py-0.5 leading-none rounded-md">
-                    Admin
-                  </span>
-                </Link>
+                {logo()}
               </motion.div>
             )}
           </AnimatePresence>
@@ -439,202 +751,72 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-3 flex flex-col overflow-y-auto overflow-x-hidden">
-          {NAV_CATEGORIES.map((cat) => {
-            const items = orderedItems.filter((i) => i.category === cat.key);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat.key} className="mb-1">
-                <AnimatePresence initial={false}>
-                  {!collapsed && (
-                    <motion.div
-                      key={`cat-${cat.key}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.1 }}
-                      className="px-5 pt-3 pb-1"
-                    >
-                      <span className="text-[8px] tracking-[0.22em] uppercase text-[var(--foreground-subtle)]">
-                        {cat.label}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                {collapsed && (
-                  <div className="mx-3 my-1 border-t border-[var(--border)]" />
-                )}
-                <div className="flex flex-col gap-0.5 px-2">
-                  {items.map((item) => {
-                    const isActive =
-                      item.href === "/goo-studio"
-                        ? pathname === "/goo-studio"
-                        : pathname.startsWith(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        title={collapsed ? item.label : undefined}
-                        className={`flex items-center transition-colors rounded-xl ${
-                          collapsed
-                            ? "justify-center px-0 py-3"
-                            : "gap-3 px-3 py-2"
-                        } text-xs tracking-[0.1em] uppercase ${
-                          isActive
-                            ? "text-[var(--foreground)] bg-[var(--surface)]"
-                            : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)]"
-                        }`}
-                      >
-                        <span className="flex-shrink-0">{item.icon}</span>
-                        <AnimatePresence initial={false}>
-                          {!collapsed && (
-                            <motion.span
-                              key={`label-${item.href}`}
-                              initial={{ opacity: 0, width: 0 }}
-                              animate={{ opacity: 1, width: "auto" }}
-                              exit={{ opacity: 0, width: 0 }}
-                              transition={{ duration: 0.12 }}
-                              className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden whitespace-nowrap"
-                            >
-                              {item.label}
-                              {item.superAdminOnly && (
-                                <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
-                                  SA
-                                </span>
-                              )}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Bottom controls */}
-        <div className={`py-3 border-t border-[var(--border)] flex flex-col gap-0.5 flex-shrink-0 px-2`}>
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            title={collapsed ? (theme === "light" ? "Dark mode" : "Light mode") : undefined}
-            className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
-              collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"
-            }`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              {theme === "light" ? (
-                <path d="M13.5 10A6 6 0 016 2.5a6 6 0 100 11A6 6 0 0013.5 10z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-              ) : (
-                <>
-                  <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.4 3.4L4.5 4.5M11.5 11.5L12.6 12.6M3.4 12.6L4.5 11.5M11.5 4.5L12.6 3.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </>
-              )}
-            </svg>
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.span
-                  key="theme-label"
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.12 }}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  {theme === "light" ? "Dark mode" : "Light mode"}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-
-          {/* Customize */}
-          <button
-            onClick={() => setCustomizing(true)}
-            title={collapsed ? "Customize menu" : undefined}
-            className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl w-full ${
-              collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"
-            }`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <path d="M11 2L13 4L11 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.span
-                  key="customize-label"
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.12 }}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  Customize
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-
-          {/* Back to site */}
-          <Link
-            href="/"
-            title={collapsed ? "Back to site" : undefined}
-            className={`flex items-center transition-colors text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-xl ${
-              collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"
-            }`}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.span
-                  key="back-label"
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.12 }}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  Back to site
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Link>
-        </div>
+        {renderMenu(collapsed)}
+        {renderControls(collapsed)}
       </aside>
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0" style={{ background: "var(--surface)" }}>
         {/* Top bar */}
         <div
-          className="h-16 flex items-center justify-between px-8 border-b border-[var(--border)] flex-shrink-0"
+          className="h-14 md:h-16 flex items-center justify-between gap-3 px-4 md:px-8 border-b border-[var(--border)] flex-shrink-0"
           style={{ background: "var(--background)" }}
         >
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Admin</span>
-            <span className="text-[var(--border-strong)]">/</span>
-            <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground)]">{currentTitle}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Below md the sidebar is a drawer opened from here. */}
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={mobileNavOpen}
+              aria-controls="admin-mobile-nav"
+              className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+            {crumbs.map((part, i) => (
+              // On phones the leading "Admin" crumb is dropped to leave room
+              // for the page name.
+              <span
+                key={i}
+                className={`items-center gap-2 min-w-0 ${
+                  i === 0 && crumbs.length > 1 ? "hidden md:flex" : "flex"
+                }`}
+              >
+                {i > 0 && (
+                  <span className={`text-[var(--border-strong)] ${i === 1 ? "hidden md:inline" : ""}`}>/</span>
+                )}
+                <span
+                  className={`text-[10px] tracking-[0.18em] uppercase truncate ${
+                    i === crumbs.length - 1 ? "text-[var(--foreground)]" : "text-[var(--foreground-muted)]"
+                  }`}
+                >
+                  {part}
+                </span>
+              </span>
+            ))}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="flex items-center justify-end gap-1.5 mb-0.5">
-                <p className="text-xs text-[var(--foreground)] leading-none">{user?.name ?? "Admin"}</p>
-                {isSuperAdmin && (
-                  <span className="text-[7px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
-                    Super Admin
-                  </span>
-                )}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Nothing until the profile loads — no placeholder identity. */}
+            {user && (
+              <div className="text-right hidden sm:block min-w-0 max-w-[16rem]">
+                <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                  <p className="text-xs text-[var(--foreground)] leading-none truncate">{user.name}</p>
+                  {isSuperAdmin && (
+                    <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full flex-shrink-0">
+                      Super Admin
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--foreground-subtle)] leading-none truncate">{user.email}</p>
               </div>
-              <p className="text-[10px] text-[var(--foreground-subtle)] leading-none">{user?.email ?? "admin@goo.com"}</p>
-            </div>
+            )}
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center border text-[10px] tracking-[0.1em] font-medium text-[var(--foreground)] flex-shrink-0 ${
                 isSuperAdmin ? "border-amber-400/60" : "border-[var(--border-strong)]"
               }`}
               style={{ background: "var(--surface)" }}
@@ -644,8 +826,56 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <main className="flex-1 overflow-auto p-8">{children}</main>
+        <main className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">{children}</main>
       </div>
+
+      {/* ── Phone menu drawer ── */}
+      <AnimatePresence>
+        {mobileNavOpen && (
+          <motion.div
+            key="mobile-nav-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={dismissMobileNav}
+            aria-hidden="true"
+          />
+        )}
+        {mobileNavOpen && (
+          <motion.div
+            key="mobile-nav"
+            id="admin-mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Admin menu"
+            initial={{ x: -280, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -280, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 380, damping: 38, mass: 0.8 }}
+            className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] max-w-[85vw] flex flex-col border-r border-[var(--border)]"
+            style={{ background: "var(--background)" }}
+          >
+            <div className="h-14 flex items-center justify-between pr-3 border-b border-[var(--border)] flex-shrink-0">
+              {logo(() => setMobileNavOpen(false))}
+              <button
+                type="button"
+                onClick={dismissMobileNav}
+                aria-label="Close menu"
+                autoFocus
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            {renderMenu(false, () => setMobileNavOpen(false))}
+            {renderControls(false, () => setMobileNavOpen(false))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Customize modal ── */}
       <AnimatePresence>
@@ -656,8 +886,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.5)" }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setCustomizing(false)}
           >
             <motion.div
@@ -665,19 +894,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.15 }}
-              className="relative w-80 border border-[var(--border)] flex flex-col rounded-2xl overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="customize-menu-title"
+              className="relative w-full max-w-80 max-h-[90dvh] border border-[var(--border)] flex flex-col rounded-2xl overflow-hidden"
               style={{ background: "var(--background)" }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between">
+              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0">
                 <div>
                   <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Sidebar</p>
-                  <h2 className="font-display text-base font-light text-[var(--foreground)]">Customize Menu</h2>
+                  <h2 id="customize-menu-title" className="font-display text-base font-light text-[var(--foreground)]">Customize Menu</h2>
                 </div>
                 <button
                   onClick={() => setCustomizing(false)}
-                  className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1.5 rounded-lg hover:bg-[var(--surface)]"
+                  className="w-10 h-10 md:w-auto md:h-auto md:p-1.5 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors rounded-lg hover:bg-[var(--surface)]"
                   aria-label="Close"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -688,55 +920,105 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
               {/* Hint */}
               <p className="px-5 pt-3 pb-1 text-[10px] text-[var(--foreground-subtle)] tracking-wide">
-                Drag items to reorder. Changes save automatically.
+                Drag items or use the arrows to reorder them within a group. Changes save automatically.
               </p>
 
-              {/* Draggable list */}
-              <ul className="px-3 py-2 flex flex-col gap-1 select-none">
-                {customizableItems.map((item, index) => (
-                  <li
-                    key={item.href}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragEnter={() => handleDragEnter(index)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 px-3 py-2.5 border rounded-xl transition-colors cursor-grab active:cursor-grabbing ${
-                      dragOver === index
-                        ? "border-[var(--foreground)] bg-[var(--surface)]"
-                        : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]"
-                    }`}
-                  >
-                    <span className="text-[var(--foreground-subtle)]">
-                      <GripIcon />
-                    </span>
-                    <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
-                    <span className="text-xs tracking-[0.1em] uppercase text-[var(--foreground)] flex-1">
-                      {item.label}
-                    </span>
-                    {item.superAdminOnly && (
-                      <span className="text-[7px] tracking-[0.14em] uppercase px-1 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-md">
-                        SA
-                      </span>
-                    )}
-                    {dragOver === index && (
-                      <span className="w-1 h-4 bg-[var(--foreground)] flex-shrink-0 rounded-full" />
-                    )}
-                  </li>
-                ))}
-              </ul>
+              {/* Grouped list — the sidebar keeps groups in a fixed order, so
+                  items move only inside their own group. Dragging needs a
+                  mouse; on touch screens the arrows do the same. */}
+              <div className="px-3 py-2 flex flex-col gap-3 overflow-y-auto overscroll-contain select-none">
+                {NAV_CATEGORIES.map((cat) => {
+                  const items = navItems.filter((i) => i.category === cat.key);
+                  if (items.length === 0) return null;
+                  const sortable = items.length > 1;
+                  return (
+                    <div key={cat.key}>
+                      <p className="px-2 pb-1 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                        {cat.label}
+                      </p>
+                      <ul className="flex flex-col gap-1">
+                        {items.map((item, index) => {
+                          const sameGroup = () => categoryOf(dragHref.current) === item.category;
+                          return (
+                            <li
+                              key={item.href}
+                              draggable={sortable}
+                              onDragStart={(e) => {
+                                dragHref.current = item.href;
+                                // Firefox starts a drag only when data is set.
+                                e.dataTransfer.effectAllowed = "move";
+                                e.dataTransfer.setData("text/plain", item.href);
+                              }}
+                              onDragEnter={() => setDragOver(sameGroup() ? item.href : null)}
+                              onDragOver={(e) => { if (sameGroup()) e.preventDefault(); }}
+                              onDrop={(e) => handleDrop(e, item.href)}
+                              onDragEnd={handleDragEnd}
+                              className={`flex items-center gap-3 px-3 py-2 border rounded-xl transition-colors ${
+                                sortable ? "md:cursor-grab md:active:cursor-grabbing" : ""
+                              } ${
+                                dragOver === item.href
+                                  ? "border-[var(--foreground)] bg-[var(--surface)]"
+                                  : "border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--surface)]"
+                              }`}
+                            >
+                              <span className={`hidden md:inline ${sortable ? "text-[var(--foreground-subtle)]" : "text-[var(--foreground-subtle)] opacity-40"}`}>
+                                <GripIcon />
+                              </span>
+                              <span className="text-[var(--foreground-muted)] flex-shrink-0">{item.icon}</span>
+                              <span className="text-xs tracking-[0.1em] uppercase text-[var(--foreground)] flex-1 min-w-0 truncate">
+                                {item.label}
+                              </span>
+                              {item.superAdminOnly && (
+                                <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 bg-amber-400/15 text-amber-500 border border-amber-400/30 leading-none rounded-full">
+                                  SA
+                                </span>
+                              )}
+                              {sortable && (
+                                <span className="flex items-center flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveItem(item.href, items[index - 1].href)}
+                                    disabled={index === 0}
+                                    aria-label={`Move ${item.label} up`}
+                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveItem(item.href, items[index + 1].href)}
+                                    disabled={index === items.length - 1}
+                                    aria-label={`Move ${item.label} down`}
+                                    className="w-10 h-10 md:w-auto md:h-auto md:p-1 flex items-center justify-center rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </button>
+                                </span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Footer */}
-              <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
+              <div className="px-5 py-3 md:py-4 border-t border-[var(--border)] flex items-center justify-between flex-shrink-0">
                 <button
                   onClick={resetOrder}
-                  className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                  className="py-3 md:py-0 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
                   Reset to default
                 </button>
                 <button
                   onClick={() => setCustomizing(false)}
-                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-5 py-2 hover:opacity-80 transition-opacity rounded-lg"
+                  className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--background)] px-5 py-3 md:py-2 hover:opacity-80 transition-opacity rounded-lg"
                 >
                   Done
                 </button>

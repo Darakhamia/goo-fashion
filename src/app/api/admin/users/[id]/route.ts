@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, isSuperAdminId } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { cancelAutoRenew, getSubscription, logBillingEvent, type SubscriptionRow } from "@/lib/server/subscriptions";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isMissingTable } from "@/lib/server/db-errors";
+import { envAdminIds } from "../user-list";
 
 interface ClerkError {
   errors?: { message?: string }[];
@@ -28,6 +31,9 @@ export async function GET(
     const cc = await clerkClient();
     const u = await cc.users.getUser(id);
     const meta = (u.publicMetadata ?? {}) as { plan?: string; isAdmin?: boolean };
+    // Same rule as the list: ADMIN_USER_IDS counts as admin too. Such users get
+    // "admin via env" in the drawer instead of a toggle that can't revoke it.
+    const adminViaEnv = envAdminIds().includes(u.id);
 
     // Billing ledger row (if the user ever subscribed via monobank)
     let subscription: {
@@ -60,7 +66,6 @@ export async function GET(
       lastName: u.lastName,
       username: u.username,
       email: u.emailAddresses[0]?.emailAddress ?? null,
-      emailAddresses: u.emailAddresses.map((e) => ({ id: e.id, email: e.emailAddress, verified: e.verification?.status === "verified" })),
       imageUrl: u.imageUrl,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
@@ -69,10 +74,9 @@ export async function GET(
       banned: u.banned,
       locked: u.locked,
       twoFactorEnabled: u.twoFactorEnabled,
-      publicMetadata: u.publicMetadata,
-      privateMetadata: u.privateMetadata,
       plan: meta.plan ?? "free",
-      isAdmin: meta.isAdmin === true,
+      isAdmin: meta.isAdmin === true || adminViaEnv,
+      adminViaEnv,
       isSuperAdmin: isSuperAdminId(u.id),
     });
   } catch (e) {
@@ -151,13 +155,28 @@ export async function PATCH(
       await cc.users.updateUserMetadata(id, { publicMetadata: nextMeta });
 
       if ("plan" in body && body.plan !== currentMeta.plan) {
+        // The plan lives in Clerk and billing does not follow it, so the entry
+        // notes whether a paid subscription kept running underneath.
+        let subscription: { plan: string; status: string; autoRenew: boolean } | null = null;
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const sub = await getSubscription(id);
+            if (sub) subscription = { plan: sub.plan, status: sub.status, autoRenew: sub.auto_renew };
+          } catch { /* non-critical */ }
+        }
         void logAdminAction({
           admin_id: admin.userId,
           admin_email: adminEmail,
           action: "user.plan_changed",
           target_id: id,
           target_type: "user",
-          metadata: { from: currentMeta.plan ?? "free", to: body.plan },
+          metadata: {
+            from: currentMeta.plan ?? "free",
+            to: body.plan,
+            subscription,
+            // "Live" as the Users and Subscriptions pages count it: past_due too.
+            activeSubscription: subscription?.status === "active" || subscription?.status === "past_due",
+          },
         });
       }
       if ("isAdmin" in body && typeof body.isAdmin === "boolean") {
@@ -202,6 +221,7 @@ export async function PATCH(
 
     const updated = await cc.users.getUser(id);
     const meta = (updated.publicMetadata ?? {}) as { plan?: string; isAdmin?: boolean };
+    const adminViaEnv = envAdminIds().includes(updated.id);
     return NextResponse.json({
       id: updated.id,
       firstName: updated.firstName,
@@ -211,7 +231,8 @@ export async function PATCH(
       banned: updated.banned,
       locked: updated.locked,
       plan: meta.plan ?? "free",
-      isAdmin: meta.isAdmin === true,
+      isAdmin: meta.isAdmin === true || adminViaEnv,
+      adminViaEnv,
       isSuperAdmin: isSuperAdminId(updated.id),
     });
   } catch (e) {
@@ -258,7 +279,48 @@ export async function DELETE(
       targetEmail = target.emailAddresses[0]?.emailAddress;
     } catch { /* non-critical */ }
 
-    await cc.users.deleteUser(id);
+    // The renewal cron charges off the subscriptions row, not the Clerk
+    // account, so deleting the account alone would keep billing the saved card.
+    // Turn auto-renew off first; if that fails, do not delete. A database whose
+    // subscriptions migration never ran has nothing to charge, so a missing
+    // table reads as "no subscription" rather than blocking the delete.
+    let autoRenewDisabled = false;
+    let subscriptionPlan: string | null = null;
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: sub, error: subError } = await supabase
+          .from("subscriptions")
+          .select("plan, auto_renew")
+          .eq("user_id", id)
+          .maybeSingle<Pick<SubscriptionRow, "plan" | "auto_renew">>();
+        if (subError && !isMissingTable(subError)) throw new Error(subError.message);
+        if (sub) {
+          await cancelAutoRenew(id);
+          subscriptionPlan = sub.plan;
+          if (sub.auto_renew) {
+            autoRenewDisabled = true;
+            await logBillingEvent({
+              userId: id,
+              eventType: "canceled",
+              plan: sub.plan,
+              detail: "auto-renew disabled: account deleted by admin",
+            });
+          }
+        }
+      } catch (e) {
+        return NextResponse.json(
+          { error: `Could not turn off auto-renew, so the user was not deleted: ${errMsg(e)}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    try {
+      await cc.users.deleteUser(id);
+    } catch (e) {
+      const note = autoRenewDisabled ? " (auto-renew was already turned off)" : "";
+      return NextResponse.json({ error: `${errMsg(e)}${note}` }, { status: 500 });
+    }
 
     void logAdminAction({
       admin_id: admin.userId,
@@ -266,10 +328,14 @@ export async function DELETE(
       action: "user.deleted",
       target_id: id,
       target_type: "user",
-      metadata: { target_email: targetEmail },
+      metadata: {
+        target_email: targetEmail,
+        subscription_plan: subscriptionPlan,
+        auto_renew_disabled: autoRenewDisabled,
+      },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, autoRenewDisabled });
   } catch (e) {
     return NextResponse.json({ error: errMsg(e) }, { status: 500 });
   }

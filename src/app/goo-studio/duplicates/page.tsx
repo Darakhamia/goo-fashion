@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { bareHost } from "@/lib/url";
 
 type Reason = "gtin" | "mpn" | "name";
 
@@ -69,14 +70,6 @@ function money(amount: number, currency: string): string {
   }
 }
 
-function hostOf(url: string | null | undefined): string {
-  try {
-    return url ? new URL(url).hostname.replace(/^www\./, "") : "";
-  } catch {
-    return "";
-  }
-}
-
 function GroupCard({
   group,
   busy,
@@ -86,11 +79,15 @@ function GroupCard({
   group: Group;
   busy: boolean;
   onMerge: (keepId: string, mergeIds: string[]) => void;
-  onDismiss: (ids: string[]) => void;
+  /** `against` empty: every card in `ids` is a different item. Otherwise each of `ids` differs from each of `against`. */
+  onDismiss: (ids: string[], against: string[]) => void;
 }) {
   const [keepId, setKeepId] = useState(group.keepId);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const mergeIds = group.products.map((p) => p.id).filter((id) => id !== keepId && !excluded.has(id));
+  // With some cards unticked, "not the same" means those cards, against the
+  // ones kept together — not the whole group.
+  const unticked = group.products.map((p) => p.id).filter((id) => id !== keepId && excluded.has(id));
   const first = group.products[0];
   const reasons = [...new Set(Object.values(group.reasons))];
 
@@ -122,12 +119,12 @@ function GroupCard({
           return (
             <li
               key={p.id}
-              className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-4 transition-colors ${
+              className={`px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-3 md:gap-4 transition-colors ${
                 included ? "" : "opacity-45"
               }`}
             >
               <div className="flex flex-col items-center gap-2 pt-1 shrink-0 w-14">
-                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                   <input
                     type="radio"
                     name={`keep-${group.keepId}`}
@@ -146,7 +143,7 @@ function GroupCard({
                   Keep
                 </label>
                 {!keeping && (
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                  <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
                     <input
                       type="checkbox"
                       checked={included}
@@ -161,9 +158,9 @@ function GroupCard({
 
               {p.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.image} alt="" className="w-16 h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
+                <img src={p.image} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
               ) : (
-                <div className="w-16 h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
               )}
 
               <div className="min-w-0 flex-1">
@@ -190,11 +187,11 @@ function GroupCard({
                     .join(" · ")}
                 </p>
                 <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                  {(p.stores.length ? p.stores : [{ name: hostOf(p.sourceUrl), url: p.sourceUrl ?? "", price: p.priceMin, currency: "USD", isOfficial: false }]).map((s) => (
+                  {(p.stores.length ? p.stores : [{ name: bareHost(p.sourceUrl), url: p.sourceUrl ?? "", price: p.priceMin, currency: "USD", isOfficial: false }]).map((s) => (
                     <li key={`${s.url}|${s.name}`} className="text-[13px] text-[var(--foreground)]">
                       {s.url ? (
                         <a href={s.url} target="_blank" rel="noreferrer" className="hover:underline underline-offset-2">
-                          {s.name || hostOf(s.url)}
+                          {s.name || bareHost(s.url)}
                         </a>
                       ) : (
                         s.name
@@ -215,9 +212,22 @@ function GroupCard({
           Merging moves every store and price onto the kept card, fills its empty fields, moves likes, outfits
           and looks over to it, and deletes the others.
         </p>
-        <div className="flex items-center gap-2">
-          <button onClick={() => onDismiss(group.products.map((p) => p.id))} disabled={busy} className={GHOST}>
-            Not the same item
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() =>
+              unticked.length
+                ? onDismiss(unticked, [keepId, ...mergeIds])
+                : onDismiss(group.products.map((p) => p.id), [])
+            }
+            disabled={busy}
+            title={
+              unticked.length
+                ? "Remember the unticked cards as different from the ones kept together"
+                : "Remember every card in this group as a different item"
+            }
+            className={GHOST}
+          >
+            {unticked.length ? `Unticked aren't the same (${unticked.length})` : "Not the same item"}
           </button>
           <button onClick={() => onMerge(keepId, mergeIds)} disabled={busy || !mergeIds.length} className={PRIMARY}>
             {busy ? "Working…" : `Merge ${mergeIds.length} into kept`}
@@ -287,7 +297,7 @@ export default function DuplicatesPage() {
 
   const merge = async (group: Group, keepId: string, mergeIds: string[]) => {
     const keep = group.products.find((p) => p.id === keepId);
-    const names = group.products.filter((p) => mergeIds.includes(p.id)).map((p) => `• ${p.name} (${hostOf(p.sourceUrl) || "no store"})`);
+    const names = group.products.filter((p) => mergeIds.includes(p.id)).map((p) => `• ${p.name} (${bareHost(p.sourceUrl) || "no store"})`);
     if (!confirm(`Keep "${keep?.name}" and merge into it:\n${names.join("\n")}\n\nThe merged cards are deleted. Their stores, prices, likes and looks move to the kept card.`)) return;
     const json = await post(group.keepId, { action: "merge", keepId, mergeIds });
     if (!json) return;
@@ -301,17 +311,44 @@ export default function DuplicatesPage() {
     removeGroup(group.keepId);
   };
 
-  const dismiss = async (group: Group, ids: string[]) => {
-    const json = await post(group.keepId, { action: "dismiss", ids });
+  const dismiss = async (group: Group, ids: string[], against: string[]) => {
+    const line = (id: string) => {
+      const p = group.products.find((x) => x.id === id);
+      return p ? `• ${p.name} (${bareHost(p.sourceUrl) || "no store"})` : `• ${id}`;
+    };
+    const question = against.length
+      ? `Remember these as different items from the cards kept together:\n${ids.map(line).join("\n")}\n\nThey won't be proposed with those cards again. The rest of the group stays.`
+      : `Remember every card here as a different item:\n${ids.map(line).join("\n")}\n\nThey won't be proposed together again, and this can't be undone from here.`;
+    if (!confirm(question)) return;
+    const json = await post(group.keepId, { action: "dismiss", ids, ...(against.length ? { against } : {}) });
     if (!json) return;
-    setToast({ type: "ok", msg: "Marked as different items — won't be suggested again" });
-    removeGroup(group.keepId);
+    if (!against.length) {
+      setToast({ type: "ok", msg: "Marked as different items — won't be suggested again" });
+      removeGroup(group.keepId);
+      return;
+    }
+    // Only the unticked cards leave; what remains is still a proposal, unless
+    // a single card is left.
+    const gone = new Set(ids);
+    setReport((r) =>
+      r
+        ? {
+            ...r,
+            groups: r.groups.flatMap((g) => {
+              if (g.keepId !== group.keepId) return [g];
+              const products = g.products.filter((p) => !gone.has(p.id));
+              return products.length > 1 ? [{ ...g, products }] : [];
+            }),
+          }
+        : r,
+    );
+    setToast({ type: "ok", msg: `Marked ${ids.length} card(s) as different — won't be suggested with the rest again` });
   };
 
   return (
     <div>
       <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Duplicates</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {report
@@ -357,7 +394,7 @@ export default function DuplicatesPage() {
             group={group}
             busy={busyGroup === group.keepId}
             onMerge={(keepId, mergeIds) => merge(group, keepId, mergeIds)}
-            onDismiss={(ids) => dismiss(group, ids)}
+            onDismiss={(ids, against) => dismiss(group, ids, against)}
           />
         ))}
       </div>
@@ -374,7 +411,7 @@ export default function DuplicatesPage() {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
+          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
               ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
               : "bg-[var(--background)] text-red-500 border-red-400/30"
