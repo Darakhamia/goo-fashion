@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { getPrompt } from "@/lib/server/get-prompt";
+import { slugify } from "@/lib/blog-render";
 import {
   DEFAULT_BLOG_SYSTEM_PROMPT,
   DEFAULT_BLOG_USER_PROMPT,
@@ -13,15 +14,11 @@ import {
 const BRIEF_MIN = 12;
 const BRIEF_MAX = 4000;
 
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 90);
-}
+/**
+ * Response budget. The URL prompt asks for 500–800 words of HTML plus six
+ * JSON fields; at 1500 a longer article got its JSON cut mid-string.
+ */
+const MAX_COMPLETION_TOKENS = 3000;
 
 /**
  * SSRF guard: only allow public http(s) URLs — reject internal hostnames and
@@ -144,6 +141,11 @@ export async function POST(req: Request) {
       ? userPromptTemplate.replace("{{url}}", url).replace("{{content}}", scraped.text)
       : userPromptTemplate.replace("{{brief}}", brief.trim());
 
+    // JSON mode rejects the request unless the messages say "JSON". The stock
+    // prompts do; a prompt rewritten in Settings may not, and then plain text
+    // with the extraction fallback below beats a hard 400.
+    const mentionsJson = /json/i.test(systemPrompt) || /json/i.test(userPrompt);
+
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -151,10 +153,20 @@ export async function POST(req: Request) {
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 1500,
+      max_tokens: MAX_COMPLETION_TOKENS,
+      ...(mentionsJson ? { response_format: { type: "json_object" as const } } : {}),
     });
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const choice = completion.choices[0];
+    if (choice?.finish_reason === "length") {
+      // A cut-off reply is half a JSON object — say so instead of "could not parse".
+      return NextResponse.json(
+        { error: "The AI response was cut off before the post was finished. Try again, or use a shorter source." },
+        { status: 502 }
+      );
+    }
+
+    const raw = choice?.message?.content ?? "";
     let parsed: Record<string, string>;
     try {
       parsed = JSON.parse(raw);

@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { updateBlogPost, deleteBlogPost, blogPostToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
+
+/**
+ * The post's slug as stored now, read before a rename or delete: /blog/<slug>
+ * is cached, and the old address has to be dropped from that cache too.
+ */
+async function currentSlug(id: string): Promise<string | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("[api/blog] current slug:", error.message);
+    return null;
+  }
+  return (data?.slug as string | undefined) || null;
+}
 
 export async function PUT(
   req: Request,
@@ -17,6 +35,7 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
   const row = blogPostToDb(body);
+  const previousSlug = await currentSlug(id);
   const { post, error } = await updateBlogPost(id, row);
 
   if (!post) {
@@ -27,6 +46,7 @@ export async function PUT(
 
   revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);
+  if (previousSlug && previousSlug !== post.slug) revalidatePath(`/blog/${previousSlug}`);
   revalidatePath("/sitemap.xml");
 
   return NextResponse.json(post);
@@ -43,6 +63,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const slug = await currentSlug(id);
   const ok = await deleteBlogPost(id);
 
   if (!ok) {
@@ -50,6 +71,7 @@ export async function DELETE(
   }
 
   revalidatePath("/blog");
+  if (slug) revalidatePath(`/blog/${slug}`);
   revalidatePath("/sitemap.xml");
 
   return NextResponse.json({ success: true });
