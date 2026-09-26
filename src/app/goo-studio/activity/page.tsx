@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/lib/context/auth-context";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AdminAction } from "@/lib/server/audit";
 
 interface AuditEntry {
   id: number;
@@ -14,7 +14,15 @@ interface AuditEntry {
   created_at: string;
 }
 
-const ACTION_LABELS: Record<string, string> = {
+interface AdminOption {
+  id: string;
+  email: string | null;
+}
+
+const PAGE_SIZE = 50;
+
+// Typed against AdminAction so a new action cannot ship without a label here.
+const ACTION_LABELS: Record<AdminAction, string> = {
   "user.name_updated":     "Updated name",
   "user.plan_changed":     "Changed plan",
   "user.admin_granted":    "Granted admin",
@@ -24,17 +32,113 @@ const ACTION_LABELS: Record<string, string> = {
   "user.deleted":          "Deleted user",
   "settings.api_key_updated": "Updated API key",
   "settings.api_key_deleted": "Deleted API key",
+  "settings.homepage_showcase_updated": "Updated homepage showcase",
+  "settings.homepage_stylist_updated":  "Updated homepage stylist",
+  "settings.prompt_updated": "Updated prompt",
+  "settings.prompt_reset":   "Reset prompt",
+  "parser.config_updated":   "Updated parser config",
+  "parser.product_imported": "Imported product",
+  "parser.crawl_batch":      "Crawled batch",
+  "parser.collect_ingest":   "Collected products",
+  "categories.updated":      "Updated categories",
+  "products.created":        "Created product",
+  "products.updated":        "Edited product",
+  "products.deleted":        "Deleted product",
+  "products.bulk_deleted":   "Bulk-deleted products",
+  "products.recategorized":  "Recategorized products",
+  "products.recategorize_undone": "Undid recategorize",
+  "products.label_fixed":    "Fixed labels",
+  "products.bulk_edited":    "Bulk-edited products",
+  "products.bg_color_sampled": "Sampled backgrounds",
+  "products.bg_color_undone":  "Undid backgrounds",
+  "products.duplicates_merged":    "Merged duplicates",
+  "products.duplicates_dismissed": "Dismissed duplicates",
+  "outfits.created":         "Created outfit",
+  "outfits.updated":         "Edited outfit",
+  "outfits.deleted":         "Deleted outfit",
+  "looks.approved":          "Approved look",
+  "looks.rejected":          "Rejected look",
+  "blog.created":            "Created post",
+  "blog.updated":            "Edited post",
+  "blog.deleted":            "Deleted post",
+  "brands.created":          "Added brand",
+  "brands.deleted":          "Deleted brand",
+  "brands.logo_updated":     "Updated brand logo",
+  "brands.logo_removed":     "Removed brand logo",
+  "retailer_domain.saved":   "Saved retailer rule",
+  "retailer_domain.deleted": "Deleted retailer rule",
+  "retailer_domain.applied": "Applied retailer rule",
+  "import.csv":              "Imported CSV",
+  "stylist_usage.reset":     "Reset stylist limit",
+  "email.sent":              "Sent email",
+  "waitlist.deleted":        "Deleted from waitlist",
 };
 
-const ACTION_COLORS: Record<string, string> = {
-  "user.banned":           "bg-red-500/15 text-red-600 border-red-500/30",
-  "user.deleted":          "bg-red-500/15 text-red-600 border-red-500/30",
-  "user.admin_granted":    "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
-  "user.admin_revoked":    "bg-amber-500/15 text-amber-600 border-amber-500/30",
-  "user.plan_changed":     "bg-blue-500/15 text-blue-600 border-blue-500/30",
-  "settings.api_key_updated": "bg-purple-500/15 text-purple-600 border-purple-500/30",
-  "settings.api_key_deleted": "bg-red-500/15 text-red-600 border-red-500/30",
+type Tone = "danger" | "warn" | "ok";
+
+// Only the three admin statuses (DESIGN_SYSTEM.md §9); everything else is neutral.
+const ACTION_TONES: Partial<Record<AdminAction, Tone>> = {
+  "user.banned":             "danger",
+  "user.deleted":            "danger",
+  "settings.api_key_deleted": "danger",
+  "products.deleted":        "danger",
+  "products.bulk_deleted":   "danger",
+  "outfits.deleted":         "danger",
+  "blog.deleted":            "danger",
+  "brands.deleted":          "danger",
+  "retailer_domain.deleted": "danger",
+  "waitlist.deleted":        "danger",
+  "user.admin_granted":      "ok",
+  "looks.approved":          "ok",
+  "user.admin_revoked":      "warn",
+  "user.plan_changed":       "warn",
+  "settings.api_key_updated": "warn",
+  "stylist_usage.reset":     "warn",
+  "email.sent":              "warn",
 };
+
+const TONE_CLASSES: Record<Tone, string> = {
+  danger: "bg-red-400/15 text-red-500 border-red-400/30",
+  warn:   "bg-amber-400/15 text-amber-500 border-amber-400/30",
+  ok:     "bg-emerald-400/15 text-emerald-500 border-emerald-400/30",
+};
+
+const GROUP_LABELS: Record<string, string> = {
+  user: "Users",
+  settings: "Settings",
+  parser: "Parser",
+  categories: "Categories",
+  products: "Products",
+  outfits: "Outfits",
+  looks: "Looks",
+  blog: "Blog",
+  brands: "Brands",
+  retailer_domain: "Retailers",
+  import: "Import",
+  stylist_usage: "Stylist",
+  email: "Email",
+  waitlist: "Waitlist",
+};
+
+// Action filter options, grouped by the part of the key before the dot.
+const ACTION_GROUPS: [string, AdminAction[]][] = Object.entries(
+  (Object.keys(ACTION_LABELS) as AdminAction[]).reduce<Record<string, AdminAction[]>>((acc, a) => {
+    const group = a.split(".")[0];
+    (acc[group] ??= []).push(a);
+    return acc;
+  }, {}),
+);
+
+function isKnownAction(action: string): action is AdminAction {
+  return Object.prototype.hasOwnProperty.call(ACTION_LABELS, action);
+}
+
+const pillCls = (active: boolean) =>
+  `px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+    active
+      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+      : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+  }`;
 
 function fmtRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -72,47 +176,103 @@ function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; a
       return <span className="text-[10px] text-[var(--foreground-subtle)]">{parts.join(" ")}</span>;
     }
   }
+  // Whatever names the target, if the entry recorded one.
+  const name = [metadata.name, metadata.title, metadata.subject, metadata.domain].find(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  if (name) {
+    return <span className="text-[10px] text-[var(--foreground-subtle)] truncate max-w-[240px]">{name}</span>;
+  }
   return null;
 }
 
 export default function AdminActivityPage() {
-  const { user } = useAuth();
-  const superAdminId = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
-
+  const [access, setAccess]       = useState<"checking" | "granted" | "denied">("checking");
   const [entries, setEntries]     = useState<AuditEntry[]>([]);
   const [total, setTotal]         = useState(0);
-  const [loading, setLoading]     = useState(true);
+  const [admins, setAdmins]       = useState<AdminOption[]>([]);
+  const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const [adminFilter, setAdminFilter] = useState("");
+  const [adminFilter, setAdminFilter]   = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  // Bumped on every request, so a slow answer for an older filter is dropped.
+  const requestId = useRef(0);
 
-  const load = useCallback(async () => {
+  // Super-admin status comes from the server (SUPER_ADMIN_USER_ID), the same
+  // check the audit API applies, so the page and the API cannot disagree.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me: { isSuperAdmin?: boolean } | null) => {
+        if (!cancelled) setAccess(me?.isSuperAdmin === true ? "granted" : "denied");
+      })
+      .catch(() => {
+        // Could not ask; the audit API still answers 403 to anyone else.
+        if (!cancelled) setAccess("granted");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fetchPage = useCallback(async (offset: number) => {
+    const id = ++requestId.current;
     setLoading(true);
     setError(null);
     try {
-      const qs = new URLSearchParams({ limit: "100" });
-      if (adminFilter) qs.set("admin_id", adminFilter);
+      const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
+      if (adminFilter)  qs.set("admin_id", adminFilter);
+      if (actionFilter) qs.set("action", actionFilter);
       const res = await fetch(`/api/admin/audit?${qs}`, { cache: "no-store" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+      const body = await res.json().catch(() => ({})) as {
+        entries?: AuditEntry[]; total?: number; admins?: AdminOption[]; error?: string;
+      };
+      if (id !== requestId.current) return;
+      if (res.status === 403) {
+        setAccess("denied");
+        return;
       }
-      const body = await res.json() as { entries: AuditEntry[]; total: number };
-      setEntries(body.entries);
-      setTotal(body.total);
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      const page = body.entries ?? [];
+      setEntries((prev) => {
+        if (offset === 0) return page;
+        // New actions shift the offsets while paging; skip rows already shown.
+        const seen = new Set(prev.map((e) => e.id));
+        return [...prev, ...page.filter((e) => !seen.has(e.id))];
+      });
+      setTotal(body.total ?? 0);
+      if (body.admins) setAdmins(body.admins);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      if (id === requestId.current) setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  }, [adminFilter]);
+  }, [adminFilter, actionFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (access === "granted") fetchPage(0);
+  }, [access, fetchPage]);
 
-  // Group by admin for the filter selector
-  const adminIds = Array.from(new Set(entries.map((e) => e.admin_id)));
+  // A new filter starts from an empty list: rows of the old filter must not
+  // stay on screen, or be paged past with "Load more", if the new request fails.
+  const changeFilter = (admin: string, action: string) => {
+    if (admin === adminFilter && action === actionFilter) return;
+    requestId.current++;
+    setEntries([]);
+    setTotal(0);
+    setError(null);
+    setLoading(true);
+    setAdminFilter(admin);
+    setActionFilter(action);
+  };
+
+  if (access === "checking") {
+    return <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>;
+  }
 
   // Access guard — non-super admins get a locked view
-  if (user && superAdminId && user.id !== superAdminId) {
+  if (access === "denied") {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-[var(--foreground-muted)]">
@@ -124,6 +284,8 @@ export default function AdminActivityPage() {
     );
   }
 
+  const filtered = !!(adminFilter || actionFilter);
+
   return (
     <div>
       {/* Header */}
@@ -131,16 +293,16 @@ export default function AdminActivityPage() {
         <div>
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Admin Activity</h1>
-            <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border bg-amber-400/10 text-amber-600 border-amber-400/30">
+            <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border rounded-full bg-amber-400/15 text-amber-500 border-amber-400/30">
               Super Admin
             </span>
           </div>
           <p className="text-xs text-[var(--foreground-muted)]">
-            {total} recorded actions across all admins
+            {total.toLocaleString()} recorded action{total === 1 ? "" : "s"} {filtered ? "matching the filter" : "across all admins"}
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={() => fetchPage(0)}
           disabled={loading}
           className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
@@ -150,55 +312,62 @@ export default function AdminActivityPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <button
-          onClick={() => setAdminFilter("")}
-          className={`text-[9px] tracking-[0.14em] uppercase px-3 py-2 border transition-colors ${
-            !adminFilter
-              ? "border-[var(--foreground)] text-[var(--foreground)]"
-              : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
-          }`}
-        >
+        <button onClick={() => changeFilter("", actionFilter)} aria-pressed={!adminFilter} className={pillCls(!adminFilter)}>
           All admins
         </button>
-        {adminIds.map((aid) => {
-          const email = entries.find((e) => e.admin_id === aid)?.admin_email;
-          return (
-            <button
-              key={aid}
-              onClick={() => setAdminFilter(aid)}
-              className={`text-[9px] tracking-[0.14em] uppercase px-3 py-2 border transition-colors truncate max-w-[200px] ${
-                adminFilter === aid
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
-              }`}
-              title={aid}
-            >
-              {email ?? aid.slice(0, 16) + "…"}
-            </button>
-          );
-        })}
+        {admins.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => changeFilter(a.id, actionFilter)}
+            aria-pressed={adminFilter === a.id}
+            className={`${pillCls(adminFilter === a.id)} truncate max-w-[200px]`}
+            title={a.id}
+          >
+            {a.email ?? a.id.slice(0, 16) + "…"}
+          </button>
+        ))}
+        <span className="w-px h-4 bg-[var(--border)] mx-1" />
+        <select
+          value={actionFilter}
+          onChange={(e) => changeFilter(adminFilter, e.target.value)}
+          aria-label="Filter by action"
+          className="rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
+        >
+          <option value="">All actions</option>
+          {ACTION_GROUPS.map(([group, actions]) => (
+            <optgroup key={group} label={GROUP_LABELS[group] ?? group}>
+              {actions.map((a) => (
+                <option key={a} value={a}>{ACTION_LABELS[a]}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </div>
 
       {error && (
-        <div className="mb-6 border border-red-500/40 bg-red-500/5 text-red-600 text-xs px-4 py-3">
+        <div role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Timeline */}
-      <div className="rounded-xl border border-[var(--border)]">
+      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
         {loading && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
         )}
-        {!loading && entries.length === 0 && (
+        {!loading && !error && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">
-            No activity recorded yet. Actions by admins will appear here.
+            {filtered
+              ? "No actions match this filter."
+              : "No activity recorded yet. Actions by admins will appear here."}
           </div>
         )}
 
         {entries.map((entry, i) => {
-          const label = ACTION_LABELS[entry.action] ?? entry.action;
-          const colorCls = ACTION_COLORS[entry.action] ?? "border-[var(--border)] text-[var(--foreground-muted)]";
+          const action = isKnownAction(entry.action) ? entry.action : null;
+          const label = action ? ACTION_LABELS[action] : entry.action;
+          const tone = action ? ACTION_TONES[action] : undefined;
+          const colorCls = tone ? TONE_CLASSES[tone] : "border-[var(--border)] text-[var(--foreground-muted)]";
           const isLast = i === entries.length - 1;
 
           return (
@@ -214,11 +383,11 @@ export default function AdminActivityPage() {
               {/* Main info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border ${colorCls}`}>
+                  <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border rounded-full ${colorCls}`}>
                     {label}
                   </span>
                   {entry.target_type && (
-                    <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] px-1.5 py-0.5">
+                    <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
                       {entry.target_type}
                     </span>
                   )}
@@ -252,13 +421,25 @@ export default function AdminActivityPage() {
           );
         })}
       </div>
+
+      {entries.length > 0 && entries.length < total && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => fetchPage(entries.length)}
+            disabled={loading}
+            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors disabled:opacity-40"
+          >
+            {loading ? "Loading…" : `Load more · ${entries.length.toLocaleString()} of ${total.toLocaleString()}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function ActionIcon({ action }: { action: string }) {
   const cls = "text-[var(--foreground-subtle)]";
-  if (action === "user.banned" || action === "user.deleted") {
+  if (action === "user.banned" || action.endsWith(".deleted") || action.endsWith("_deleted")) {
     return (
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />

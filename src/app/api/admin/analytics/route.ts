@@ -3,24 +3,40 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // ──────────────────────────────────────────────────────────────────────────
-// Aggregator for /admin/analytics. Fetches raw rows from page_views,
+// Aggregator for /goo-studio/analytics. Reads raw rows from page_views,
 // web_vitals, and analytics_events within the selected range and rolls
-// them up in-process. Fine up to a few hundred thousand rows.
+// them up in-process. Tables are read page by page (see readAll), so the
+// totals are not clipped at the PostgREST row cap.
+//
+// Everything keyed on session_id counts sessions, not people: the tracker
+// starts a new session after 30 minutes idle.
 // ──────────────────────────────────────────────────────────────────────────
 
 type Range = "24h" | "7d" | "30d" | "90d";
 
+const HOUR_MS = 3_600_000;
+const DAY_MS  = 86_400_000;
+
 function rangeMs(r: Range): number {
   switch (r) {
-    case "24h": return 24 * 3_600_000;
-    case "7d":  return 7 * 86_400_000;
-    case "30d": return 30 * 86_400_000;
-    case "90d": return 90 * 86_400_000;
+    case "24h": return 24 * HOUR_MS;
+    case "7d":  return 7 * DAY_MS;
+    case "30d": return 30 * DAY_MS;
+    case "90d": return 90 * DAY_MS;
   }
 }
 
 function bucketSize(r: Range): "hour" | "day" {
   return r === "24h" ? "hour" : "day";
+}
+
+function bucketCount(r: Range): number {
+  switch (r) {
+    case "24h": return 24;
+    case "7d":  return 7;
+    case "30d": return 30;
+    case "90d": return 90;
+  }
 }
 
 interface PageViewRow {
@@ -30,40 +46,76 @@ interface PageViewRow {
   path: string;
   referrer: string | null;
   utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
   country: string | null;
   device: string | null;
   browser: string | null;
-  os: string | null;
   load_ms: number | null;
-  ttfb_ms: number | null;
 }
 
 interface WebVitalRow {
-  ts: string;
   metric: string;
   value: number;
-  path: string;
-  rating: string | null;
-  device: string | null;
 }
 
 interface EventRow {
-  ts: string;
   session_id: string;
-  user_id: string | null;
   event: string;
-  target_id: string | null;
   props: Record<string, unknown> | null;
 }
 
-interface SubscriptionRow {
-  plan: string;
-  status: string;
-  amount: number;
-  auto_renew: boolean;
-  current_period_end: string | null;
+// ── Paged reads ─────────────────────────────────────────────────────────────
+// PostgREST answers any request with at most PGRST_DB_MAX_ROWS rows (1000
+// unless the server raises it), whatever .limit() asks for, so one request
+// per table stalls every counter at that cap. Tables are read page by page.
+
+const PAGE_SIZE = 1000;
+/** Past this many rows only the newest are read, and the response says so. */
+const MAX_ROWS = 200_000;
+/** Pages of one table requested at the same time. */
+const PAGE_CONCURRENCY = 4;
+
+type PageResponse<T> = { data: T[] | null; error: { message: string } | null; count?: number | null };
+type PagedQuery<T> = { range(from: number, to: number): PromiseLike<PageResponse<T>> };
+
+interface ReadResult<T> {
+  rows: T[];
+  /** More rows matched than MAX_ROWS; the oldest were left out. */
+  truncated: boolean;
+  error: string | null;
+}
+
+/**
+ * Reads every row of a query, MAX_ROWS at most. `query` must order the rows
+ * newest first on a unique key, so pages neither overlap nor skip and a
+ * capped read keeps the most recent rows.
+ */
+async function readAll<T>(query: (withCount: boolean) => PagedQuery<T>): Promise<ReadResult<T>> {
+  const first = await query(true).range(0, PAGE_SIZE - 1);
+  if (first.error) return { rows: [], truncated: false, error: first.error.message };
+  const rows = first.data ?? [];
+  const total = first.count ?? rows.length;
+  const wanted = Math.min(total, MAX_ROWS);
+  // The server may cap a page below PAGE_SIZE; step by what it actually sent.
+  const step = rows.length;
+  if (step === 0 || step >= wanted) {
+    return { rows: rows.slice(0, wanted), truncated: total > wanted, error: null };
+  }
+
+  const starts: number[] = [];
+  for (let from = step; from < wanted; from += step) starts.push(from);
+  const pages: T[][] = [];
+  for (let i = 0; i < starts.length; i += PAGE_CONCURRENCY) {
+    const batch = await Promise.all(
+      starts.slice(i, i + PAGE_CONCURRENCY).map((from) =>
+        query(false).range(from, Math.min(from + step, wanted) - 1),
+      ),
+    );
+    for (const page of batch) {
+      if (page.error) return { rows: [], truncated: false, error: page.error.message };
+      pages.push(page.data ?? []);
+    }
+  }
+  return { rows: rows.concat(...pages), truncated: total > wanted, error: null };
 }
 
 function safeReferrerHost(ref: string | null): string | null {
@@ -97,6 +149,11 @@ function topN<T extends { count: number }>(map: Map<string, T>, n = 10): Array<T
     .slice(0, n);
 }
 
+// The site does not send these events yet (audit plan task Б4-2; see the
+// track() callers). Until one arrives, their zero means "not measured", not
+// "nobody did it", and the page says so.
+const NOT_YET_SENT = new Set(["save_outfit", "generate_success", "generate_error"]);
+
 export async function GET(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -104,6 +161,7 @@ export async function GET(req: Request) {
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 501 });
   }
+  const sb = supabase;
 
   const { searchParams } = new URL(req.url);
   const range = (searchParams.get("range") as Range) || "7d";
@@ -113,99 +171,110 @@ export async function GET(req: Request) {
 
   const now = Date.now();
   const since = new Date(now - rangeMs(range)).toISOString();
-  const bucket = bucketSize(range);
   const prevSince = new Date(now - 2 * rangeMs(range)).toISOString();
+  // Exclusive upper bound: rows written while the pages are being read stay
+  // out, so the offsets do not shift under the reader.
+  const until = new Date(now + 1).toISOString();
+  const bucket = bucketSize(range);
+
+  // Chart buckets: whole hours / UTC days ending with the current one, so the
+  // chart includes this hour and today. The partial bucket at the start of the
+  // rolling window is not drawn.
+  const stepMs = bucket === "hour" ? HOUR_MS : DAY_MS;
+  const buckets: string[] = [];
+  for (let i = bucketCount(range) - 1; i >= 0; i--) {
+    buckets.push(bucketKey(new Date(now - i * stepMs).toISOString(), bucket));
+  }
+  // Stylist usage is stored per UTC day: 24h shows today, longer ranges the
+  // same calendar days as the chart.
+  const stylistSinceDate = bucket === "hour" ? bucketKey(new Date(now).toISOString(), "day") : buckets[0];
+
+  // Rows of `table` with ts in [from, to), newest first. The column list is
+  // built at runtime, so supabase-js cannot type the rows; T names them.
+  const newestFirst = <T>(table: string, columns: string, from: string, to: string) =>
+    (withCount: boolean) =>
+      sb.from(table)
+        .select(columns, withCount ? { count: "exact" } : undefined)
+        .gte("ts", from)
+        .lt("ts", to)
+        .order("ts", { ascending: false })
+        .order("id", { ascending: false }) as unknown as PagedQuery<T>;
 
   // ── Fetch raw rows ────────────────────────────────────────────────────────
   const fiveMinAgo = new Date(now - 5 * 60_000).toISOString();
-  const [pvQ, pvPrevQ, wvQ, evQ, onlineQ, subsQ, stylistQ, monthQ] = await Promise.all([
-    supabase.from("page_views")
-      .select("ts,session_id,user_id,path,referrer,utm_source,utm_medium,utm_campaign,country,device,browser,os,load_ms,ttfb_ms")
-      .gte("ts", since)
-      .order("ts", { ascending: true })
-      .limit(200_000),
-    // Previous window — for comparison deltas (only need session_id + user_id)
-    supabase.from("page_views")
-      .select("session_id,user_id")
-      .gte("ts", prevSince)
-      .lt("ts", since)
-      .limit(200_000),
-    supabase.from("web_vitals")
-      .select("ts,metric,value,path,rating,device")
-      .gte("ts", since)
-      .limit(200_000),
-    supabase.from("analytics_events")
-      .select("ts,session_id,user_id,event,target_id,props")
-      .gte("ts", since)
-      .limit(200_000),
+  // Sessions over the last 30 days — the session windows below use their own
+  // spans, not the selected range. A 30d or 90d range already holds them.
+  const reuseMonth = range === "30d" || range === "90d";
+  const [pvR, pvPrevR, wvR, evR, onlineR, monthR, stylistR] = await Promise.all([
+    readAll(newestFirst<PageViewRow>(
+      "page_views",
+      "ts,session_id,user_id,path,referrer,utm_source,country,device,browser,load_ms",
+      since, until,
+    )),
+    // Previous window — for the comparison delta
+    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", prevSince, since)),
+    readAll(newestFirst<WebVitalRow>("web_vitals", "metric,value", since, until)),
+    readAll(newestFirst<EventRow>("analytics_events", "session_id,event,props", since, until)),
     // Realtime: sessions seen in the last 5 minutes
-    supabase.from("page_views")
-      .select("session_id")
-      .gte("ts", fiveMinAgo)
-      .limit(10_000),
-    // Billing ledger — may not exist if the migration hasn't been run
-    supabase.from("subscriptions")
-      .select("plan,status,amount,auto_renew,current_period_end")
-      .limit(50_000),
+    readAll(newestFirst<{ session_id: string }>("page_views", "session_id", fiveMinAgo, until)),
+    reuseMonth
+      ? Promise.resolve(null)
+      : readAll(
+          newestFirst<{ ts: string; session_id: string }>("page_views", "ts,session_id", new Date(now - 30 * DAY_MS).toISOString(), until),
+        ),
     // Stylist AI usage per day over the range
-    supabase.from("stylist_daily_usage")
-      .select("usage_date,count")
-      .gte("usage_date", since.slice(0, 10))
-      .limit(100_000),
-    // Sessions over the last 30 days — DAU/WAU/MAU must use their own windows,
-    // not the selected range (otherwise "MAU" on a 24h range is just DAU).
-    supabase.from("page_views")
-      .select("ts,session_id")
-      .gte("ts", new Date(now - 30 * 86_400_000).toISOString())
-      .limit(200_000),
+    readAll<{ usage_date: string; count: number }>((withCount) =>
+      sb.from("stylist_daily_usage")
+        .select("usage_date,count", withCount ? { count: "exact" } : undefined)
+        .gte("usage_date", stylistSinceDate)
+        .order("usage_date", { ascending: false })
+        .order("user_id", { ascending: false }),
+    ),
   ]);
 
-  const pageViews = (pvQ.data ?? []) as PageViewRow[];
-  const pageViewsPrev = (pvPrevQ.data ?? []) as { session_id: string; user_id: string | null }[];
-  const vitals    = (wvQ.data ?? []) as WebVitalRow[];
-  const events    = (evQ.data ?? []) as EventRow[];
-  const onlineRows = (onlineQ.data ?? []) as { session_id: string }[];
-  const subs = (subsQ.error ? [] : (subsQ.data ?? [])) as SubscriptionRow[];
-  const stylistUsage = (stylistQ.error ? [] : (stylistQ.data ?? [])) as { usage_date: string; count: number }[];
-  const monthViews = (monthQ.data ?? []) as { ts: string; session_id: string }[];
+  // Zeros from a failed read would pass for "no traffic" — fail loudly instead.
+  const mainReads: [string, ReadResult<unknown> | null][] = [
+    ["page_views", pvR],
+    ["page_views (previous period)", pvPrevR],
+    ["web_vitals", wvR],
+    ["analytics_events", evR],
+    ["page_views (online now)", onlineR],
+    ["page_views (last 30 days)", monthR],
+  ];
+  for (const [label, r] of mainReads) {
+    if (r?.error) {
+      return NextResponse.json({ error: `Could not read ${label}: ${r.error}` }, { status: 500 });
+    }
+  }
+
+  const pageViews = pvR.rows;
+  const vitals    = wvR.rows;
+  const events    = evR.rows;
+  const monthViews = monthR
+    ? monthR.rows
+    : pageViews.filter((pv) => now - Date.parse(pv.ts) <= 30 * DAY_MS);
+  const truncated = [...mainReads.map(([, r]) => r), stylistR].some((r) => r?.truncated);
 
   // ── Summary counters ──────────────────────────────────────────────────────
-  const uniqueSessions = new Set(pageViews.map((r) => r.session_id));
-  const uniqueUsers    = new Set(pageViews.filter((r) => r.user_id).map((r) => r.user_id));
-  const prevSessions   = new Set(pageViewsPrev.map((r) => r.session_id));
+  const sessions     = new Set(pageViews.map((r) => r.session_id));
+  const users        = new Set(pageViews.filter((r) => r.user_id).map((r) => r.user_id));
+  const prevSessions = new Set(pvPrevR.rows.map((r) => r.session_id));
 
   const loadMsSamples = pageViews.map((r) => r.load_ms).filter((v): v is number => typeof v === "number");
-  const ttfbSamples   = pageViews.map((r) => r.ttfb_ms).filter((v): v is number => typeof v === "number");
 
   const summary = {
-    pageViews:       pageViews.length,
-    uniqueVisitors:  uniqueSessions.size,
-    signedInVisitors:uniqueUsers.size,
-    avgLoadMs:       loadMsSamples.length ? Math.round(loadMsSamples.reduce((s, v) => s + v, 0) / loadMsSamples.length) : null,
-    medianLoadMs:    percentile(loadMsSamples, 50),
-    p75LoadMs:       percentile(loadMsSamples, 75),
-    avgTtfbMs:       ttfbSamples.length ? Math.round(ttfbSamples.reduce((s, v) => s + v, 0) / ttfbSamples.length) : null,
-    visitorsDelta:   prevSessions.size === 0
-      ? (uniqueSessions.size > 0 ? 100 : 0)
-      : Math.round(((uniqueSessions.size - prevSessions.size) / prevSessions.size) * 100),
+    pageViews:     pageViews.length,
+    sessions:      sessions.size,
+    signedInUsers: users.size,
+    avgLoadMs:     loadMsSamples.length ? Math.round(loadMsSamples.reduce((s, v) => s + v, 0) / loadMsSamples.length) : null,
+    p75LoadMs:     percentile(loadMsSamples, 75),
+    sessionsDelta: prevSessions.size === 0
+      ? (sessions.size > 0 ? 100 : 0)
+      : Math.round(((sessions.size - prevSessions.size) / prevSessions.size) * 100),
+    onlineNow:     new Set(onlineR.rows.map((r) => r.session_id)).size,
   };
 
   // ── Time series ───────────────────────────────────────────────────────────
-  // Generate empty buckets so the chart is continuous.
-  const start = new Date(now - rangeMs(range));
-  const buckets: string[] = [];
-  if (bucket === "hour") {
-    for (let i = 0; i < 24; i++) {
-      const d = new Date(start.getTime() + i * 3_600_000);
-      buckets.push(bucketKey(d.toISOString(), "hour"));
-    }
-  } else {
-    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start.getTime() + i * 86_400_000);
-      buckets.push(bucketKey(d.toISOString(), "day"));
-    }
-  }
   const tsViews    = new Map<string, number>();
   const tsSessions = new Map<string, Set<string>>();
   buckets.forEach((b) => { tsViews.set(b, 0); tsSessions.set(b, new Set()); });
@@ -217,9 +286,9 @@ export async function GET(req: Request) {
     tsSessions.set(k, set);
   }
   const timeseries = buckets.map((b) => ({
-    bucket: b,
-    views:  tsViews.get(b)    ?? 0,
-    uniqueVisitors: tsSessions.get(b)?.size ?? 0,
+    bucket:   b,
+    views:    tsViews.get(b) ?? 0,
+    sessions: tsSessions.get(b)?.size ?? 0,
   }));
 
   // ── Top pages ─────────────────────────────────────────────────────────────
@@ -282,15 +351,22 @@ export async function GET(req: Request) {
     return {
       metric,
       p75:      percentile(samples, 75),
-      p90:      percentile(samples, 90),
-      median:   percentile(samples, 50),
       samples:  samples.length,
     };
   });
 
+  // ── Domain events breakdown ───────────────────────────────────────────────
+  const eventBreakdown = new Map<string, number>();
+  for (const e of events) {
+    eventBreakdown.set(e.event, (eventBreakdown.get(e.event) ?? 0) + 1);
+  }
+  const eventsList = Array.from(eventBreakdown.entries())
+    .map(([event, count]) => ({ event, count }))
+    .sort((a, b) => b.count - a.count);
+  const isTracked = (event: string) => !NOT_YET_SENT.has(event) || eventBreakdown.has(event);
+
   // ── Funnel ────────────────────────────────────────────────────────────────
-  // Count unique sessions that hit each step, in order.
-  const visitSessions    = uniqueSessions;
+  // Count sessions that hit each step, in order.
   const productSessions  = new Set<string>();
   const saveSessions     = new Set<string>();
   const generateSessions = new Set<string>();
@@ -302,76 +378,41 @@ export async function GET(req: Request) {
     if (e.event === "generate_success")generateSessions.add(e.session_id);
   }
   const funnel = [
-    { step: "Visited site",        sessions: visitSessions.size    },
-    { step: "Viewed product",      sessions: productSessions.size  },
-    { step: "Saved outfit",        sessions: saveSessions.size     },
-    { step: "Generated look",      sessions: generateSessions.size },
+    { step: "Visited site",   sessions: sessions.size,         tracked: true },
+    { step: "Viewed product", sessions: productSessions.size,  tracked: true },
+    { step: "Saved outfit",   sessions: saveSessions.size,     tracked: isTracked("save_outfit") },
+    { step: "Generated look", sessions: generateSessions.size, tracked: isTracked("generate_success") },
   ];
 
-  // ── Retention (DAU / WAU / MAU) ───────────────────────────────────────────
+  // ── Session windows (24h / 7d / 30d) ──────────────────────────────────────
   // Computed from a fixed 30-day window (monthViews), independent of the
   // selected range, so the numbers mean what their labels say.
-  const dayMs = 86_400_000;
-  const dau = new Set<string>();
-  const wau = new Set<string>();
-  const mau = new Set<string>();
+  const last24h = new Set<string>();
+  const last7d  = new Set<string>();
+  const last30d = new Set<string>();
   for (const pv of monthViews) {
     const age = now - Date.parse(pv.ts);
-    if (age <= dayMs)       dau.add(pv.session_id);
-    if (age <= 7 * dayMs)   wau.add(pv.session_id);
-    mau.add(pv.session_id);
+    if (age <= DAY_MS)     last24h.add(pv.session_id);
+    if (age <= 7 * DAY_MS) last7d.add(pv.session_id);
+    last30d.add(pv.session_id);
   }
-  const retention = {
-    dau: dau.size,
-    wau: wau.size,
-    mau: mau.size,
-    stickiness: mau.size > 0 ? Math.round((dau.size / mau.size) * 100) : 0,
-  };
-
-  // ── Domain events breakdown ───────────────────────────────────────────────
-  const eventBreakdown = new Map<string, number>();
-  for (const e of events) {
-    eventBreakdown.set(e.event, (eventBreakdown.get(e.event) ?? 0) + 1);
-  }
-  const eventsList = Array.from(eventBreakdown.entries())
-    .map(([event, count]) => ({ event, count }))
-    .sort((a, b) => b.count - a.count);
-
-  // ── Realtime + new vs returning ──────────────────────────────────────────
-  const onlineNow = new Set(onlineRows.map((r) => r.session_id)).size;
-  let returningSessions = 0;
-  for (const s of uniqueSessions) if (prevSessions.has(s)) returningSessions++;
-  const newVsReturning = {
-    newSessions: uniqueSessions.size - returningSessions,
-    returningSessions,
-  };
-
-  // ── Business (subscriptions ledger) ──────────────────────────────────────
-  const activeSubs = subs.filter((s) => s.status === "active");
-  const byPlan = new Map<string, number>();
-  for (const s of activeSubs) byPlan.set(s.plan, (byPlan.get(s.plan) ?? 0) + 1);
-  const business = {
-    // amount is stored in minor units (kopiykas) — MRR in whole UAH
-    mrrUah: Math.round(activeSubs.reduce((sum, s) => sum + s.amount, 0) / 100),
-    activeSubscriptions: activeSubs.length,
-    byPlan: Array.from(byPlan.entries()).map(([plan, count]) => ({ plan, count })),
-    pastDue: subs.filter((s) => s.status === "past_due").length,
-    canceled: subs.filter((s) => s.status === "canceled").length,
-    autoRenewOff: activeSubs.filter((s) => !s.auto_renew).length,
-  };
+  const sessionWindows = { last24h: last24h.size, last7d: last7d.size, last30d: last30d.size };
 
   // ── AI usage ──────────────────────────────────────────────────────────────
+  const stylistUsage = stylistR.rows;
   const stylistByDay = new Map<string, number>();
   for (const r of stylistUsage) {
     stylistByDay.set(r.usage_date, (stylistByDay.get(r.usage_date) ?? 0) + r.count);
   }
   const aiUsage = {
-    stylistMessages: stylistUsage.reduce((s, r) => s + r.count, 0),
+    stylistMessages: stylistR.error ? null : stylistUsage.reduce((s, r) => s + r.count, 0),
+    stylistError: stylistR.error,
     stylistDaily: Array.from(stylistByDay.entries())
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     imageGenerations: eventBreakdown.get("generate_success") ?? 0,
     imageGenerationErrors: eventBreakdown.get("generate_error") ?? 0,
+    imageGenerationsTracked: isTracked("generate_success") || isTracked("generate_error"),
   };
 
   // ── Search terms ──────────────────────────────────────────────────────────
@@ -412,10 +453,10 @@ export async function GET(req: Request) {
   const topOutfitsRaw  = topN(outfitViews, 10);
   const [prodNamesQ, outfitNamesQ] = await Promise.all([
     topProductsRaw.length
-      ? supabase.from("products").select("id,name,brand,image_url").in("id", topProductsRaw.map((p) => p.key))
+      ? sb.from("products").select("id,name,brand,image_url").in("id", topProductsRaw.map((p) => p.key))
       : Promise.resolve({ data: [], error: null }),
     topOutfitsRaw.length
-      ? supabase.from("outfits").select("id,name,image_url").in("id", topOutfitsRaw.map((o) => o.key))
+      ? sb.from("outfits").select("id,name,image_url").in("id", topOutfitsRaw.map((o) => o.key))
       : Promise.resolve({ data: [], error: null }),
   ]);
   const prodMeta = new Map(
@@ -439,9 +480,9 @@ export async function GET(req: Request) {
   }));
 
   return NextResponse.json({
-    generatedAt: new Date().toISOString(),
     range,
-    summary: { ...summary, onlineNow },
+    truncated,
+    summary,
     timeseries,
     topPages,
     topProducts,
@@ -454,9 +495,7 @@ export async function GET(req: Request) {
     searchTerms: topN(searchTerms, 10),
     vitals:      vitalsSummary,
     funnel,
-    retention,
-    newVsReturning,
-    business,
+    sessionWindows,
     aiUsage,
     heatmap,
     events:      eventsList,
