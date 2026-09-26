@@ -151,6 +151,45 @@ export function invalidateRetailerRules(): void {
   cache = null;
 }
 
+/** Rows per request: PostgREST answers at most 1000 rows unless told otherwise. */
+const SCAN_PAGE = 1000;
+
+/** Safety ceiling on a catalogue scan; reaching it is reported, never silent. */
+export const RETAILER_SCAN_MAX = 50_000;
+
+export interface ProductRetailersRow {
+  id: string;
+  retailers?: unknown;
+}
+
+/**
+ * Every product's `retailers`, read a page at a time in id order.
+ *
+ * A single `.limit(n)` read stops at PostgREST's 1000-row ceiling without
+ * saying so, which left the domain list and "Apply to existing" working on part
+ * of any catalogue past that size. Paging by id reads all of it; `truncated`
+ * says the safety ceiling was reached before the end.
+ */
+export async function scanProductRetailers(
+  max = RETAILER_SCAN_MAX,
+): Promise<{ rows: ProductRetailersRow[]; truncated: boolean }> {
+  if (!supabase) throw new Error("Database not configured");
+  const rows: ProductRetailersRow[] = [];
+  for (let from = 0; from < max; from += SCAN_PAGE) {
+    const to = Math.min(from + SCAN_PAGE, max) - 1;
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, retailers")
+      .order("id")
+      .range(from, to);
+    if (error) throw new Error(error.message);
+    const batch = (data ?? []) as ProductRetailersRow[];
+    rows.push(...batch);
+    if (batch.length < to - from + 1) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
+
 /**
  * The admin's stated gender for a link's store, from the most specific rule
  * that states one ("uk.shop.com" before "shop.com").
