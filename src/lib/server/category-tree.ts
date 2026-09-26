@@ -9,6 +9,7 @@
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DEFAULT_CATEGORY_GROUPS, type CategoryGroup, type CategoryItem } from "@/lib/categories";
+import { isMissingTable } from "@/lib/server/db-errors";
 
 export type TreeSource = "db" | "default";
 
@@ -22,11 +23,6 @@ export interface CategoryTree {
   reason?: "no-database" | "tables-missing" | "tables-empty" | "read-failed";
   /** The database's own words, when `reason` is `read-failed`. */
   detail?: string;
-}
-
-/** Postgres undefined_table, and PostgREST's "no such table in schema cache". */
-function isTableMissing(error: { code?: string; message?: string }): boolean {
-  return error.code === "42P01" || error.code === "PGRST205" || /relation .+ does not exist/i.test(error.message ?? "");
 }
 
 type GroupRow = { id: string; label: string; sort_order: number };
@@ -72,7 +68,7 @@ export async function loadCategoryTree(): Promise<CategoryTree> {
   // the tables being absent.
   const readError = groupsRes.error ?? subsRes.error;
   if (readError) {
-    if (isTableMissing(readError)) {
+    if (isMissingTable(readError)) {
       return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "tables-missing" };
     }
     console.error("[category-tree] read failed:", readError.message);

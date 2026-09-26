@@ -14,12 +14,8 @@ import { supabase } from "@/lib/supabase";
 import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import type { Gender } from "@/lib/types";
 
-/**
- * The table isn't there yet. Postgres says 42P01; PostgREST, which answers from
- * its own schema cache, says PGRST205 — and its message ("could not find the
- * table … in the schema cache") tells an admin nothing about what to do.
- */
-export const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+// Re-exported: the retailer-domains route reads "table not there yet" from here.
+export { isMissingTable } from "@/lib/server/db-errors";
 
 /**
  * The table is there but predates `default_gender` (migration 022). PostgREST
@@ -29,13 +25,12 @@ export const MISSING_COLUMN_CODES = new Set(["PGRST204", "42703"]);
 export const MISSING_GENDER_COLUMN_MESSAGE =
   "Saving a store's gender needs supabase/migrations/022_retailer_default_gender.sql — run it, then save again.";
 
-/** The message to show instead, which names the actual next action. */
+/**
+ * What to show instead of PostgREST's "could not find the table … in the schema
+ * cache", which tells an admin nothing: the actual next action.
+ */
 export const MISSING_TABLE_MESSAGE =
   "The retailer_domains table does not exist yet — run supabase/migrations/018_retailer_domains.sql, then reload this page.";
-
-export function isMissingTable(error: { code?: string } | null | undefined): boolean {
-  return !!error?.code && MISSING_TABLE_CODES.has(error.code);
-}
 
 export interface RetailerRule {
   domain: string;

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
-import { isMissingTable, MISSING_COLUMN_CODES } from "@/lib/server/retailer-domains";
+import { isMissingTable } from "@/lib/server/db-errors";
+import { MISSING_COLUMN_CODES } from "@/lib/server/retailer-domains";
 
 // The default brand list lives in supabase-schema.sql alone: an unreachable or
 // missing table is reported as an error, never papered over with a stand-in list.

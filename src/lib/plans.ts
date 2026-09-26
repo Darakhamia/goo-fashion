@@ -9,6 +9,7 @@
  * Free = signed-in user who has not subscribed. It is the default and is NOT
  * listed on the pricing page; we treat it as "no AI, nudge toward Basic".
  */
+import { currencySymbol } from "@/lib/currency";
 
 export type PlanId = "free" | "basic" | "pro" | "premium";
 
@@ -85,7 +86,7 @@ export const STYLIST_DAILY_LIMITS: Record<PlanId, number | null> = {
  * (MONOBANK_PRICE_BASIC / _PRO / _PREMIUM, in hryvnia) without touching code.
  */
 export const BILLING_CCY = 980; // ISO 4217 numeric for UAH
-export const BILLING_CCY_SYMBOL = "₴";
+export const BILLING_CCY_SYMBOL = currencySymbol("UAH");
 
 /**
  * Approximate UAH per 1 USD, used only for *display* of $-equivalents in the
@@ -120,7 +121,7 @@ export function planPriceMinor(plan: PaidPlanId): number {
 
 /** Hryvnia label for UI, e.g. "399 ₴" (the amount actually charged). */
 export function planPriceLabel(plan: PlanId): string {
-  if (plan === "free") return "0 ₴";
+  if (plan === "free") return `0 ${BILLING_CCY_SYMBOL}`;
   return `${PLAN_PRICE_UAH[plan].toLocaleString("uk-UA")} ${BILLING_CCY_SYMBOL}`;
 }
 

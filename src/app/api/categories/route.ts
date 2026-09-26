@@ -21,20 +21,11 @@ import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { loadCategoryTree, loadSubcategoryCounts } from "@/lib/server/category-tree";
 import { normalizeSlug, isValidSlug } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
-
-/** Postgres undefined_table, and PostgREST's "no such table in schema cache". */
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    !!error.message?.includes("does not exist")
-  );
-}
 
 function tableMissingResponse() {
   return NextResponse.json(
@@ -145,7 +136,7 @@ async function nextSortOrder(table: "category_groups" | "category_subcategories"
 async function moveSubcategory(adminId: string, id: number, delta: -1 | 1): Promise<NextResponse> {
   const current = await supabase!.from("category_subcategories").select("id, group_id").eq("id", id).single();
   if (current.error) {
-    if (isTableMissing(current.error)) return tableMissingResponse();
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
     return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
   }
   const groupId = (current.data as { group_id: string }).group_id;
@@ -224,7 +215,7 @@ export async function POST(req: Request) {
       .select()
       .single();
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       if (error.code === "23505") {
         return NextResponse.json({ error: `Group "${id}" already exists.` }, { status: 409 });
       }
@@ -261,7 +252,7 @@ export async function POST(req: Request) {
     .select()
     .single();
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     if (error.code === "23505") {
       return NextResponse.json(
         { error: `"${label}" already exists — a label can only appear once in the tree.` },
@@ -310,7 +301,7 @@ export async function PATCH(req: Request) {
       .select()
       .single();
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     await logAdminAction({
@@ -335,7 +326,7 @@ export async function PATCH(req: Request) {
     .eq("id", id)
     .single();
   if (current.error) {
-    if (isTableMissing(current.error)) return tableMissingResponse();
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
     return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
   }
   const before = current.data as { group_id: string; label: string; value: string };
@@ -373,7 +364,7 @@ export async function PATCH(req: Request) {
     .select()
     .single();
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     if (error.code === "23505") {
       return NextResponse.json(
         { error: `"${patch.label}" already exists elsewhere in the tree.` },
@@ -425,7 +416,7 @@ export async function DELETE(req: Request) {
       .select("id")
       .eq("group_id", rawId);
     if (children.error) {
-      if (isTableMissing(children.error)) return tableMissingResponse();
+      if (isMissingTableLoose(children.error)) return tableMissingResponse();
       // Unread is not empty: deleting now would cascade through whatever it holds.
       return NextResponse.json({ error: children.error.message }, { status: 500 });
     }
@@ -441,7 +432,7 @@ export async function DELETE(req: Request) {
     }
     const { error } = await supabase!.from("category_groups").delete().eq("id", rawId);
     if (error) {
-      if (isTableMissing(error)) return tableMissingResponse();
+      if (isMissingTableLoose(error)) return tableMissingResponse();
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     await logAdminAction({
@@ -463,14 +454,14 @@ export async function DELETE(req: Request) {
     .eq("id", id)
     .single();
   if (current.error) {
-    if (isTableMissing(current.error)) return tableMissingResponse();
+    if (isMissingTableLoose(current.error)) return tableMissingResponse();
     return NextResponse.json({ error: "Subcategory not found." }, { status: 404 });
   }
   const { label, value } = current.data as { label: string; value: string };
 
   const { error } = await supabase!.from("category_subcategories").delete().eq("id", id);
   if (error) {
-    if (isTableMissing(error)) return tableMissingResponse();
+    if (isMissingTableLoose(error)) return tableMissingResponse();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

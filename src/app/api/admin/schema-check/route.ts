@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isMissingTable } from "@/lib/server/db-errors";
 import { OPTIONAL_COLUMNS } from "@/lib/data/db";
 
 export const dynamic = "force-dynamic";
@@ -26,12 +27,6 @@ export const dynamic = "force-dynamic";
 
 /** PostgREST's code for "you selected a column I don't know about". */
 const UNDEFINED_COLUMN = "42703";
-/**
- * A whole table that isn't there yet reads as the same problem to the admin —
- * a migration to run — so it is reported the same way. Postgres answers 42P01;
- * PostgREST, which knows the schema from its own cache, answers PGRST205.
- */
-const UNDEFINED_TABLE = new Set(["42P01", "PGRST205"]);
 
 interface Check {
   table: string;
@@ -212,7 +207,10 @@ async function present(table: string, column: string): Promise<{ present: boolea
   // as "the column is absent", which would send someone to re-run a migration
   // that was never the problem.
   if (error.code === UNDEFINED_COLUMN) return { present: false };
-  if (error.code && UNDEFINED_TABLE.has(error.code)) return { present: false };
+  // A whole table that isn't there yet reads as the same problem to the admin —
+  // a migration to run — so it is reported the same way. By code only: a looser
+  // "does not exist" match would swallow errors this check must show.
+  if (isMissingTable(error)) return { present: false };
   return { present: false, error: error.message };
 }
 

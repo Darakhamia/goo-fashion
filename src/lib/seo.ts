@@ -4,6 +4,7 @@
  * from server components, generateMetadata, sitemap, etc.
  */
 import type { Outfit, Product } from "@/lib/types";
+import { CURRENCIES, currencyInfo, withCurrencySymbol } from "@/lib/currency";
 
 /** Canonical site origin — always the non-www apex domain. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goo-fashion.com").replace(/\/$/, "");
@@ -14,12 +15,7 @@ export function absoluteUrl(path = "/"): string {
 }
 
 // ── Currency ────────────────────────────────────────────────────────────────
-
-const CURRENCY_SYMBOL: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", UAH: "₴", CZK: "Kč", JPY: "¥", TRY: "₺",
-};
-// Currencies conventionally written after the amount.
-const SUFFIX_CURRENCIES = new Set(["EUR", "UAH", "CZK", "TRY"]);
+// Signs and their position come from the site-wide table in lib/currency.
 
 /**
  * Map a raw currency value (ISO code or bare symbol) to a valid ISO 4217 code.
@@ -28,10 +24,10 @@ const SUFFIX_CURRENCIES = new Set(["EUR", "UAH", "CZK", "TRY"]);
 export function normalizeCurrencyCode(currency?: string): string {
   if (!currency) return "USD";
   const raw = currency.trim();
-  const bySymbol = Object.entries(CURRENCY_SYMBOL).find(([, sym]) => sym === raw);
-  if (bySymbol) return bySymbol[0];
+  const bySymbol = CURRENCIES.find((c) => c.symbol === raw);
+  if (bySymbol) return bySymbol.code;
   const code = raw.toUpperCase();
-  return CURRENCY_SYMBOL[code] ? code : "USD";
+  return currencyInfo(code) ? code : "USD";
 }
 
 /**
@@ -40,10 +36,9 @@ export function normalizeCurrencyCode(currency?: string): string {
  * Deterministic (does not depend on server locale).
  */
 export function formatMetaPrice(amount: number, currency?: string): string {
-  const code = normalizeCurrencyCode(currency);
-  const symbol = CURRENCY_SYMBOL[code] ?? "$";
+  const info = currencyInfo(normalizeCurrencyCode(currency)) ?? CURRENCIES[0];
   const num = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(amount));
-  return SUFFIX_CURRENCIES.has(code) ? `${num} ${symbol}` : `${symbol}${num}`;
+  return withCurrencySymbol(num, info);
 }
 
 // ── Outfit SEO (unique titles/descriptions) ──────────────────────────────────

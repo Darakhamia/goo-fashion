@@ -7,26 +7,12 @@ import {
   useEffect,
   useState,
 } from "react";
+import { CURRENCIES, withCurrencySymbol, type CurrencyCode } from "@/lib/currency";
 
 // ── Supported currencies ───────────────────────────────────────────────────
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "UAH" | "CZK" | "JPY" | "TRY";
-
-export interface CurrencyInfo {
-  code: CurrencyCode;
-  symbol: string;
-  position: "prefix" | "suffix";
-  name: string;
-}
-
-export const CURRENCIES: CurrencyInfo[] = [
-  { code: "USD", symbol: "$",  position: "prefix", name: "US Dollar" },
-  { code: "EUR", symbol: "€",  position: "suffix", name: "Euro" },
-  { code: "GBP", symbol: "£",  position: "prefix", name: "Pound" },
-  { code: "UAH", symbol: "₴",  position: "suffix", name: "Hryvnia" },
-  { code: "CZK", symbol: "Kč", position: "suffix", name: "Koruna" },
-  { code: "JPY", symbol: "¥",  position: "prefix", name: "Yen" },
-  { code: "TRY", symbol: "₺",  position: "suffix", name: "Lira" },
-];
+// The table lives in lib/currency, where the server's meta prices read it too;
+// re-exported for the components that import it from here.
+export { CURRENCIES, type CurrencyCode, type CurrencyInfo } from "@/lib/currency";
 
 // ── Format helper ──────────────────────────────────────────────────────────
 // amount     – price in sourceCurrency (default "USD")
@@ -52,9 +38,7 @@ export function applyFormat(
   const rate = currency === "USD" ? 1 : (rates[currency] ?? 1);
   const value = Math.round(usdAmount * rate);
   const numStr = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
-  return info.position === "prefix"
-    ? `${info.symbol}${numStr}`
-    : `${numStr} ${info.symbol}`;
+  return withCurrencySymbol(numStr, info);
 }
 
 // ── Cache keys ─────────────────────────────────────────────────────────────

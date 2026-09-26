@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { bareHost } from "@/lib/url";
 
 type Reason = "gtin" | "mpn" | "name";
 
@@ -66,14 +67,6 @@ function money(amount: number, currency: string): string {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 2 }).format(amount);
   } catch {
     return `${amount} ${currency}`;
-  }
-}
-
-function hostOf(url: string | null | undefined): string {
-  try {
-    return url ? new URL(url).hostname.replace(/^www\./, "") : "";
-  } catch {
-    return "";
   }
 }
 
@@ -194,11 +187,11 @@ function GroupCard({
                     .join(" · ")}
                 </p>
                 <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
-                  {(p.stores.length ? p.stores : [{ name: hostOf(p.sourceUrl), url: p.sourceUrl ?? "", price: p.priceMin, currency: "USD", isOfficial: false }]).map((s) => (
+                  {(p.stores.length ? p.stores : [{ name: bareHost(p.sourceUrl), url: p.sourceUrl ?? "", price: p.priceMin, currency: "USD", isOfficial: false }]).map((s) => (
                     <li key={`${s.url}|${s.name}`} className="text-[13px] text-[var(--foreground)]">
                       {s.url ? (
                         <a href={s.url} target="_blank" rel="noreferrer" className="hover:underline underline-offset-2">
-                          {s.name || hostOf(s.url)}
+                          {s.name || bareHost(s.url)}
                         </a>
                       ) : (
                         s.name
@@ -304,7 +297,7 @@ export default function DuplicatesPage() {
 
   const merge = async (group: Group, keepId: string, mergeIds: string[]) => {
     const keep = group.products.find((p) => p.id === keepId);
-    const names = group.products.filter((p) => mergeIds.includes(p.id)).map((p) => `• ${p.name} (${hostOf(p.sourceUrl) || "no store"})`);
+    const names = group.products.filter((p) => mergeIds.includes(p.id)).map((p) => `• ${p.name} (${bareHost(p.sourceUrl) || "no store"})`);
     if (!confirm(`Keep "${keep?.name}" and merge into it:\n${names.join("\n")}\n\nThe merged cards are deleted. Their stores, prices, likes and looks move to the kept card.`)) return;
     const json = await post(group.keepId, { action: "merge", keepId, mergeIds });
     if (!json) return;
@@ -321,7 +314,7 @@ export default function DuplicatesPage() {
   const dismiss = async (group: Group, ids: string[], against: string[]) => {
     const line = (id: string) => {
       const p = group.products.find((x) => x.id === id);
-      return p ? `• ${p.name} (${hostOf(p.sourceUrl) || "no store"})` : `• ${id}`;
+      return p ? `• ${p.name} (${bareHost(p.sourceUrl) || "no store"})` : `• ${id}`;
     };
     const question = against.length
       ? `Remember these as different items from the cards kept together:\n${ids.map(line).join("\n")}\n\nThey won't be proposed with those cards again. The rest of the group stays.`

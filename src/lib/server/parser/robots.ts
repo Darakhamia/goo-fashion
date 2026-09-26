@@ -28,6 +28,7 @@
  * point of the extension — their IP, their cookies, their already-passed
  * challenge. The server only ever sees the text that came back.
  */
+import { escapeRegExp } from "@/lib/text";
 
 /**
  * The rules from one robots.txt, already reduced to the `*` group.
@@ -71,7 +72,7 @@ function patternToRegex(pattern: string): RegExp {
       out += "$";
       continue;
     }
-    out += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out += escapeRegExp(ch);
   }
   return new RegExp(`^${out}`);
 }

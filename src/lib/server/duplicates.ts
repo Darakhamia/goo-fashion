@@ -20,6 +20,7 @@
 import type { Retailer } from "@/lib/types";
 import { colourRelation, pieceName, samePiece } from "@/lib/server/parser/piece-name";
 import { foldBrand } from "@/lib/server/parser/brand-from-name";
+import { bareHost } from "@/lib/url";
 
 /** Widest gap between two cards' prices for one item — as in `same-item.ts`. */
 const MAX_PRICE_RATIO = 3;
@@ -50,17 +51,9 @@ export interface DuplicateGroup {
   reasons: Record<string, DuplicateReason>;
 }
 
-function hostOf(url: string | null | undefined): string {
-  try {
-    return url ? new URL(url).hostname.replace(/^www\./, "").toLowerCase() : "";
-  } catch {
-    return "";
-  }
-}
-
 /** Every store a card is bought from: its source page and its retailer links. */
 export function storesOf(row: Pick<CatalogueRow, "sourceUrl" | "retailers">): Set<string> {
-  return new Set([row.sourceUrl, ...(row.retailers ?? []).map((r) => r.url)].map(hostOf).filter(Boolean));
+  return new Set([row.sourceUrl, ...(row.retailers ?? []).map((r) => r.url)].map(bareHost).filter(Boolean));
 }
 
 /** The order of preference among a group's cards: brand's own store, most stores, oldest. */
@@ -135,7 +128,7 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
   // only when each side picks the other — seen from one of etnies' two blacks,
   // the reseller's "Black" is the only candidate, and that alone would fold
   // two different colourways into one group.
-  const primaryStore = (r: CatalogueRow) => hostOf(r.sourceUrl) || hostOf(r.retailers?.[0]?.url);
+  const primaryStore = (r: CatalogueRow) => bareHost(r.sourceUrl) || bareHost(r.retailers?.[0]?.url);
   const partners = new Map<string, Set<string>>();
   for (const bucket of buckets.values()) {
     if (bucket.length < 2) continue;

@@ -7,6 +7,7 @@
  * they can run in any serverless route.
  */
 import { garmentCategory } from "@/lib/taxonomy/garments";
+import { escapeRegExp } from "@/lib/text";
 import {
   COLOUR_PHRASES,
   COLOUR_STEMS,
@@ -138,7 +139,7 @@ export function tidyProductName(raw: string, opts: TidyNameOptions = {}): string
   // 3. The brand said twice at the front.
   const brand = (opts.brand ?? "").trim();
   if (brand) {
-    const doubled = new RegExp(`^(${escapeRe(brand)})\\s+\\1\\b`, "i");
+    const doubled = new RegExp(`^(${escapeRegExp(brand)})\\s+\\1\\b`, "i");
     name = name.replace(doubled, "$1").trim();
   }
 
@@ -148,10 +149,6 @@ export function tidyProductName(raw: string, opts: TidyNameOptions = {}): string
   // Never hand back nothing: if the rules ate the whole title, the original was
   // a better answer than an empty one.
   return name || (raw ?? "").trim();
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

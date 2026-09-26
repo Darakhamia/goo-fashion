@@ -53,6 +53,7 @@
  * moment the admin adds "Loafers" in the studio, every loafer is filed there.
  */
 import type { Category } from "@/lib/types";
+import { escapeRegExp, isCyrillic, normalize } from "@/lib/text";
 
 type Term = string | RegExp;
 
@@ -723,13 +724,6 @@ export const GARMENT_TYPES: readonly GarmentType[] = [
 
 // ── Matching ─────────────────────────────────────────────────────────────────
 
-/** Lowercase, and turn every run of non-letters/digits into one space. */
-function normalize(text: string): string {
-  return ` ${(text ?? "").toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
-}
-
-const isCyrillic = (s: string) => /[Ѐ-ӿ]/.test(s);
-
 interface CompiledTerm {
   type: GarmentType;
   /** Order of the type in the list: lower is more specific. */
@@ -743,7 +737,6 @@ interface CompiledTerm {
 
 function compileWordTerm(raw: string): { re: RegExp; cyrillic: boolean; length: number } {
   const cyrillic = isCyrillic(raw);
-  const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // Split on spaces *before* normalising, so the "!" that marks a word exact
   // survives to be read. Normalising first strips punctuation, "!" with it, and
@@ -761,7 +754,7 @@ function compileWordTerm(raw: string): { re: RegExp; cyrillic: boolean; length: 
   }
 
   const pattern = words.map(({ text, exact }, i) => {
-    const word = escape(text);
+    const word = escapeRegExp(text);
     if (cyrillic) {
       // A stem: the word may continue with any ending, unless marked exact.
       return exact ? word : `${word}[\\p{L}]*`;

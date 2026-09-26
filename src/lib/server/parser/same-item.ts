@@ -29,6 +29,7 @@
 import type { Retailer } from "@/lib/types";
 import { colourRelation, samePiece } from "./piece-name";
 import { foldBrand } from "./brand-from-name";
+import { bareHost } from "@/lib/url";
 
 /** The columns the importer needs to decide and to merge. */
 export interface ExistingItem {
@@ -93,14 +94,6 @@ export interface NamedItem extends ExistingItem {
  */
 const MAX_PRICE_RATIO = 3;
 
-function hostOf(url: string | null | undefined): string {
-  try {
-    return url ? new URL(url).hostname.replace(/^www\./, "").toLowerCase() : "";
-  } catch {
-    return "";
-  }
-}
-
 /**
  * The existing row this page is another store's listing of, by name — or null.
  *
@@ -129,7 +122,7 @@ export function pickSameItemByName(
   },
   rows: NamedItem[],
 ): NamedItem | null {
-  const ourHost = hostOf(incoming.sourceUrl);
+  const ourHost = bareHost(incoming.sourceUrl);
   // Without an address there is no place to buy to add.
   if (!ourHost || !incoming.brand.trim()) return null;
 
@@ -147,7 +140,7 @@ export function pickSameItemByName(
 
     const retailers = row.retailers ?? [];
     if (retailers.some((r) => r.url && r.url === incoming.sourceUrl)) return row;
-    const hosts = [row.sourceUrl, ...retailers.map((r) => r.url)].map(hostOf);
+    const hosts = [row.sourceUrl, ...retailers.map((r) => r.url)].map(bareHost);
     if (hosts.includes(ourHost)) continue;
 
     const theirs = typeof row.priceMin === "number" ? row.priceMin : 0;

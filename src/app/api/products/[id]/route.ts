@@ -5,6 +5,7 @@ import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from 
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 
 const noDb = () =>
   NextResponse.json(
@@ -103,7 +104,8 @@ export async function DELETE(
     // As a JSON string: supabase-js writes a JS array as a Postgres array
     // literal, which a jsonb column never contains.
     .contains("items", JSON.stringify([{ product_id: id }]));
-  if (usedError && !isMissingTable(usedError)) {
+  // An `outfits` table this database never created is "no outfits", not a failure.
+  if (usedError && !isMissingTableLoose(usedError)) {
     return NextResponse.json(
       { error: `Could not check which outfits use this product: ${usedError.message}` },
       { status: 500 }
@@ -142,9 +144,4 @@ export async function DELETE(
   revalidatePath("/");
   revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
-}
-
-/** An `outfits` table this database never created is "no outfits", not a failure. */
-function isMissingTable(error: { code?: string; message?: string }): boolean {
-  return error.code === "42P01" || error.code === "PGRST205" || !!error.message?.includes("does not exist");
 }

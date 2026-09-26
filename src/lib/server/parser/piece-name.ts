@@ -24,6 +24,7 @@
 import { cleanName, colorWordsIn, canonicalColor } from "@/lib/server/product-fields";
 import { garmentTypesConflict } from "@/lib/taxonomy/garments";
 import { foldBrand } from "./brand-from-name";
+import { escapeRegExp } from "@/lib/text";
 
 /**
  * Shortest reduced name worth matching on. Below this a name is a word, not an
@@ -57,17 +58,14 @@ const TYPE_WORDS = new Set([
   "hat", "beanie", "scarf", "vest", "gilet", "polo", "longsleeve",
 ]);
 
+// Any Cyrillic-script letter: wider than `isCyrillic` in lib/text, which checks U+0400–U+04FF only.
 const CYRILLIC = /\p{Script=Cyrillic}/u;
 const LATIN = /[a-z]/;
-
-function escapeRe(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /** A folded phrase as a whole-word pattern, spacing loose. */
 function phrase(folded: string): RegExp {
   return new RegExp(
-    `(?<![\\p{L}\\p{N}])${escapeRe(folded).replace(/ /g, "\\s+")}(?![\\p{L}\\p{N}])`,
+    `(?<![\\p{L}\\p{N}])${escapeRegExp(folded).replace(/ /g, "\\s+")}(?![\\p{L}\\p{N}])`,
     "gu",
   );
 }

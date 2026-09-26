@@ -29,6 +29,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { subcategoryToValue } from "@/lib/categories";
 import { matchCategory, inferGenderFromText } from "@/lib/server/product-fields";
@@ -78,8 +79,7 @@ async function loadDismissed(): Promise<{ claims: Set<string>; available: boolea
     .from("label_audit_dismissals")
     .select("product_id, field, stored, suggested");
   if (error) {
-    const missing =
-      error.code === "42P01" || error.code === "PGRST205" || !!error.message?.includes("does not exist");
+    const missing = isMissingTableLoose(error);
     return { claims: new Set(), available: !missing, error: missing ? null : error.message };
   }
   const claims = new Set(
