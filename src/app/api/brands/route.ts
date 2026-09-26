@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { isMissingTable, MISSING_COLUMN_CODES } from "@/lib/server/retailer-domains";
 
 // The default brand list lives in supabase-schema.sql alone: an unreachable or
 // missing table is reported as an error, never papered over with a stand-in list.
 const TABLE_MISSING_MESSAGE =
   "The brands table does not exist yet — run the brands section of supabase-schema.sql (and supabase-migration-brand-logos.sql for logos), then reload this page.";
+
+/**
+ * A failed read of the list. The route is public, so the database's own message
+ * goes to the log and to admins only; anyone else gets a plain one.
+ */
+async function readFailed(message: string) {
+  console.error("[api/brands] list:", message);
+  const admin = await requireAdmin();
+  return NextResponse.json(
+    { error: admin ? `Could not load brands: ${message}` : "Could not load brands." },
+    { status: 500 },
+  );
+}
 
 export async function GET() {
   if (!isSupabaseConfigured || !supabase) {
@@ -27,14 +41,12 @@ export async function GET() {
       .from("brands")
       .select("name")
       .order("name", { ascending: true });
-    if (nameOnly.error) {
-      return NextResponse.json({ error: nameOnly.error.message }, { status: 500 });
-    }
+    if (nameOnly.error) return readFailed(nameOnly.error.message);
     rows = (nameOnly.data ?? []) as BrandRow[];
   } else if (isMissingTable(withLogo.error)) {
     return NextResponse.json({ error: TABLE_MISSING_MESSAGE, code: "TABLE_MISSING" }, { status: 503 });
   } else {
-    return NextResponse.json({ error: withLogo.error.message }, { status: 500 });
+    return readFailed(withLogo.error.message);
   }
 
   return NextResponse.json(rows.map((r) => ({ name: r.name, logoUrl: r.logo_url ?? null })));
@@ -66,5 +78,12 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "brands.created",
+    target_id: data.name,
+    target_type: "brand",
+    metadata: { name: data.name },
+  });
   return NextResponse.json(data, { status: 201 });
 }

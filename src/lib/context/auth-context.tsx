@@ -15,9 +15,7 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   // Opens Clerk's sign-in modal; Clerk's own UI collects the credentials.
-  // Any arguments are ignored: the rest parameter only keeps the remaining
-  // `login("", "")` call sites compiling until they call `login()`.
-  login: (..._ignored: string[]) => void;
+  login: () => void;
   logout: () => void;
   isLoggedIn: boolean;
 }

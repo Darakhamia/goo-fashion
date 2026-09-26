@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // Read-only archive: the public signup form was removed in September 2026, so
@@ -39,5 +40,11 @@ export async function DELETE(req: Request) {
   if (!data || data.length === 0) {
     return NextResponse.json({ ok: false, error: "Nothing was deleted — the address is no longer in the waitlist." }, { status: 404 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "waitlist.deleted",
+    target_id: email,
+    target_type: "waitlist",
+  });
   return NextResponse.json({ ok: true });
 }

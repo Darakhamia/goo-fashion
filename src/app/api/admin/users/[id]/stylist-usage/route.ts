@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 /**
@@ -42,6 +43,13 @@ export async function POST(
         .eq("usage_date", today);
       if (error) throw error;
     }
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "stylist_usage.reset",
+      target_id: id,
+      target_type: "user",
+      metadata: { scope },
+    });
     return NextResponse.json({ ok: true, scope });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

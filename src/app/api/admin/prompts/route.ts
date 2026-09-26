@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { supabase } from "@/lib/supabase";
 import { PROMPT_META, missingPlaceholders } from "@/lib/server/prompt-defaults";
 
@@ -53,6 +54,13 @@ export async function POST(req: Request) {
   if (!text) {
     const { error } = await supabase.from("settings").delete().eq("key", key);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "settings.prompt_reset",
+      target_id: key,
+      target_type: "settings",
+      metadata: { key },
+    });
     return NextResponse.json({ ok: true, reset: true });
   }
 
@@ -69,6 +77,13 @@ export async function POST(req: Request) {
     .upsert({ key, value: text, updated_at: new Date().toISOString() }, { onConflict: "key" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "settings.prompt_updated",
+    target_id: key,
+    target_type: "settings",
+    metadata: { key },
+  });
   return NextResponse.json({ ok: true, reset: false });
 }
 
@@ -83,5 +98,12 @@ export async function DELETE(req: Request) {
 
   const { error } = await supabase.from("settings").delete().eq("key", key);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "settings.prompt_reset",
+    target_id: key,
+    target_type: "settings",
+    metadata: { key },
+  });
   return NextResponse.json({ ok: true });
 }

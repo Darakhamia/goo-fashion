@@ -14,7 +14,7 @@ export default function OutfitLikeButton({ outfitId }: { outfitId: string }) {
   const liked = isOutfitLiked(outfitId);
 
   const handleLike = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     toggleOutfitLike(outfitId);
   };
 

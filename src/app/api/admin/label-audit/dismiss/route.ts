@@ -17,6 +17,7 @@
  */
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,13 @@ export async function POST(req: Request) {
     if (isTableMissing(error)) return tableMissing();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.label_dismissed",
+    target_id: claim.product_id,
+    target_type: "product",
+    metadata: { field: claim.field, stored: claim.stored, suggested: claim.suggested },
+  });
   return NextResponse.json({ ok: true, dismissed: claim });
 }
 
@@ -104,5 +112,12 @@ export async function DELETE(req: Request) {
     if (isTableMissing(error)) return tableMissing();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.label_restored",
+    target_id: claim.product_id,
+    target_type: "product",
+    metadata: { field: claim.field, stored: claim.stored, suggested: claim.suggested },
+  });
   return NextResponse.json({ ok: true, restored: claim });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getProductsByIds } from "@/lib/data/db";
 import { toUsd } from "@/lib/server/fx";
@@ -142,6 +143,14 @@ export async function POST(req: Request) {
       { status: 409 }
     );
   }
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "looks.approved",
+    target_id: id,
+    target_type: "pending_look",
+    metadata: { outfitId: outfit.id, name: pick("name", "Community Look") },
+  });
 
   revalidatePath("/");
   return NextResponse.json({ ok: true, outfitId: outfit.id });

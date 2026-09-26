@@ -27,6 +27,8 @@ export type AdminAction =
   | "products.recategorized"
   | "products.recategorize_undone"
   | "products.label_fixed"
+  | "products.label_dismissed"
+  | "products.label_restored"
   | "products.bulk_edited"
   | "products.bg_color_sampled"
   | "products.bg_color_undone"
@@ -63,13 +65,29 @@ interface AuditEntry {
 }
 
 /**
+ * Admin emails looked up for the log, kept a few minutes: the studio's bulk
+ * delete calls DELETE /api/products/[id] once per product, and each would
+ * otherwise ask Clerk for the same admin's email again.
+ */
+const EMAIL_TTL_MS = 5 * 60 * 1000;
+const emailCache = new Map<string, { email: string; at: number }>();
+
+async function adminEmail(adminId: string): Promise<string | undefined> {
+  const hit = emailCache.get(adminId);
+  if (hit && Date.now() - hit.at < EMAIL_TTL_MS) return hit.email;
+  const email = (await resolveAdminEmails([adminId])).get(adminId);
+  if (email) emailCache.set(adminId, { email, at: Date.now() });
+  return email;
+}
+
+/**
  * Write an admin action to the audit log. Never throws: a failed write is
  * reported with console.error and the caller's response goes on regardless.
  */
 export async function logAdminAction(entry: AuditEntry): Promise<void> {
   if (!supabase) return;
   try {
-    const email = entry.admin_email || (await resolveAdminEmails([entry.admin_id])).get(entry.admin_id);
+    const email = entry.admin_email || (await adminEmail(entry.admin_id));
     const { error } = await supabase.from("admin_audit_log").insert({
       admin_id: entry.admin_id,
       admin_email: email ?? null,

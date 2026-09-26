@@ -154,13 +154,28 @@ export async function PATCH(
       await cc.users.updateUserMetadata(id, { publicMetadata: nextMeta });
 
       if ("plan" in body && body.plan !== currentMeta.plan) {
+        // The plan lives in Clerk and billing does not follow it, so the entry
+        // notes whether a paid subscription kept running underneath.
+        let subscription: { plan: string; status: string; autoRenew: boolean } | null = null;
+        if (isSupabaseConfigured && supabase) {
+          try {
+            const sub = await getSubscription(id);
+            if (sub) subscription = { plan: sub.plan, status: sub.status, autoRenew: sub.auto_renew };
+          } catch { /* non-critical */ }
+        }
         void logAdminAction({
           admin_id: admin.userId,
           admin_email: adminEmail,
           action: "user.plan_changed",
           target_id: id,
           target_type: "user",
-          metadata: { from: currentMeta.plan ?? "free", to: body.plan },
+          metadata: {
+            from: currentMeta.plan ?? "free",
+            to: body.plan,
+            subscription,
+            // "Live" as the Users and Subscriptions pages count it: past_due too.
+            activeSubscription: subscription?.status === "active" || subscription?.status === "past_due",
+          },
         });
       }
       if ("isAdmin" in body && typeof body.isAdmin === "boolean") {

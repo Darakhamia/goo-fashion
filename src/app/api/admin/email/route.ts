@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { clerkClient, type User } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { buildHtml, buildPlainText, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 
 // A large audience is sent in many batches; give the loop room to finish.
@@ -144,6 +145,22 @@ export async function POST(req: Request) {
     } catch (e) {
       errors.push(`${range}${e instanceof Error ? e.message : "Batch send failed"}`);
     }
+  }
+
+  // A test goes to the sender alone; only a real send is an action to record.
+  if (!testOnly) {
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "email.sent",
+      target_type: "email_broadcast",
+      metadata: {
+        audience,
+        subject: subject.trim(),
+        sent,
+        total: recipients.length,
+        failedBatches: errors.length,
+      },
+    });
   }
 
   return NextResponse.json({

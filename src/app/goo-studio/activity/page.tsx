@@ -48,6 +48,8 @@ const ACTION_LABELS: Record<AdminAction, string> = {
   "products.recategorized":  "Recategorized products",
   "products.recategorize_undone": "Undid recategorize",
   "products.label_fixed":    "Fixed labels",
+  "products.label_dismissed": "Dismissed label suggestion",
+  "products.label_restored":  "Restored label suggestion",
   "products.bulk_edited":    "Bulk-edited products",
   "products.bg_color_sampled": "Sampled backgrounds",
   "products.bg_color_undone":  "Undid backgrounds",

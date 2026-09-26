@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { createBlogPost, readAllBlogPosts, blogPostToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
 // Admin list only — drafts included. The public /blog pages read posts through
 // db.ts on the server and never call this route.
@@ -40,6 +41,14 @@ export async function POST(req: Request) {
     const status = msg.includes("duplicate") || msg.includes("unique") ? 409 : 500;
     return NextResponse.json({ error: msg }, { status });
   }
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "blog.created",
+    target_id: post.id,
+    target_type: "post",
+    metadata: { title: post.title, slug: post.slug, isPublished: post.isPublished },
+  });
 
   revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);

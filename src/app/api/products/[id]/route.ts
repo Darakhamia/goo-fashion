@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
 const noDb = () =>
   NextResponse.json(
@@ -42,9 +43,18 @@ export async function PUT(
     supabase!.from("products").update(payload).eq("id", id).select().single(),
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const saved = data as DbProduct;
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: id,
+    target_type: "product",
+    metadata: { name: saved.name, brand: saved.brand },
+  });
   revalidatePath("/");
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({
-    ...dbToProduct(data as DbProduct),
+    ...dbToProduct(saved),
     ...(dropped.length && { warning: missingColumnWarning(dropped) }),
   });
 }
@@ -64,6 +74,14 @@ export async function PATCH(
     .update({ crop_data: body.cropData ?? null })
     .eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: id,
+    target_type: "product",
+    metadata: { fields: ["crop_data"] },
+  });
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
 }
 
@@ -105,9 +123,24 @@ export async function DELETE(
     );
   }
 
-  const { error } = await supabase.from("products").delete().eq("id", id);
+  const { data: deleted, error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id)
+    .select("name, brand");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const gone = ((deleted ?? []) as { name: string | null; brand: string | null }[])[0];
+  if (gone) {
+    await logAdminAction({
+      admin_id: admin.userId,
+      action: "products.deleted",
+      target_id: id,
+      target_type: "product",
+      metadata: { name: gone.name, brand: gone.brand },
+    });
+  }
   revalidatePath("/");
+  revalidatePath(`/product/${id}`);
   return NextResponse.json({ success: true });
 }
 

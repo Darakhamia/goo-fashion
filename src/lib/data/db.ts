@@ -1074,7 +1074,7 @@ export async function getAllBlogPosts(opts: { publishedOnly?: boolean } = {}): P
 }
 
 /**
- * getAllBlogPosts that reports a failed read. The admin list (?all=true) must
+ * getAllBlogPosts that reports a failed read. The admin list (GET /api/blog) must
  * show the failure: an empty list there invites writing posts that already
  * exist, and the demo posts it used to get instead could not be edited or
  * deleted at all.

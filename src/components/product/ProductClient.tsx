@@ -46,7 +46,7 @@ export default function ProductClient({ product, relatedProducts, outfitsWithPro
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     toggleProductLike(product.id);
   };
   const defaultColor = useMemo(() => {

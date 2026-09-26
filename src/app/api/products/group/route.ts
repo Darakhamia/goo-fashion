@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
 const MIGRATION_COLUMNS = ["variant_group_id", "color_hex", "is_group_primary"];
 
@@ -72,6 +73,14 @@ export async function POST(req: Request) {
     );
   }
 
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: groupId,
+    target_type: "variant_group",
+    metadata: { variants: "grouped", ids, primaryId },
+  });
+
   return NextResponse.json({ groupId, updated: ids.length });
 }
 
@@ -98,9 +107,9 @@ export async function DELETE(req: Request) {
   const unlink = supabase
     .from("products")
     .update({ variant_group_id: null, is_group_primary: false, color_hex: null });
-  const { error } = groupId
-    ? await unlink.eq("variant_group_id", groupId)
-    : await unlink.in("id", idList);
+  const { data: unlinked, error } = groupId
+    ? await unlink.eq("variant_group_id", groupId).select("id")
+    : await unlink.in("id", idList).select("id");
 
   if (error) {
     if (isMissingColumnError(error.message)) {
@@ -108,6 +117,15 @@ export async function DELETE(req: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.updated",
+    target_id: groupId,
+    target_type: "variant_group",
+    // The rows actually unlinked: a whole group is asked for by its id alone.
+    metadata: { variants: "ungrouped", ids: ((unlinked ?? []) as { id: string }[]).map((r) => r.id) },
+  });
 
   return NextResponse.json({ ok: true });
 }

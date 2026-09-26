@@ -5,6 +5,7 @@ import { getAllProducts, getProductsByIds, readAllProducts } from "@/lib/data/db
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
 
 /** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
@@ -28,9 +29,14 @@ export async function GET(req: Request) {
     });
   }
 
-  // raw=true → skip variant grouping. Only the admin panel asks for this, so a
-  // failed read is reported as one rather than as an empty catalogue.
+  // raw=true → skip variant grouping. Only the admin panel asks for this, so it
+  // is admin-only (an uncached read of the whole catalogue), and a failed read
+  // is reported as one rather than as an empty catalogue.
   if (searchParams.get("raw") === "true") {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    }
     const { products, error } = await readAllProducts(true);
     if (error) {
       return NextResponse.json(
@@ -74,6 +80,14 @@ export async function POST(req: Request) {
   const created = data as DbProduct;
   const bgColor =
     created.bg_color ?? (created.image_url ? await storeBackgroundColor(created.id, created.image_url) : null);
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.created",
+    target_id: created.id,
+    target_type: "product",
+    metadata: { name: created.name, brand: created.brand },
+  });
 
   revalidatePath("/");
   return NextResponse.json(
