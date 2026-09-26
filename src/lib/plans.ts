@@ -91,6 +91,10 @@ export const BILLING_CCY_SYMBOL = "₴";
  * Approximate UAH per 1 USD, used only for *display* of $-equivalents in the
  * admin dashboard (real charges are always the exact UAH amounts below).
  * Override via env without a redeploy of the pricing logic.
+ *
+ * Server-only: BILLING_USD_UAH_RATE has no NEXT_PUBLIC_ prefix, so in a client
+ * bundle this is always the fallback. /api/admin/subscriptions reads it and
+ * sends it to the page as `summary.usdUahRate`.
  */
 export const USD_UAH_RATE = Number(process.env.BILLING_USD_UAH_RATE) || 41;
 

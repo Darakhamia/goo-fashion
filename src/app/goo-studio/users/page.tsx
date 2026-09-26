@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "@/components/ui/Image";
 
-const SUPER_ADMIN_ID = process.env.NEXT_PUBLIC_SUPER_ADMIN_USER_ID ?? "";
 const PAGE_SIZE = 25;
 
 interface UserSubscription {
@@ -29,18 +28,37 @@ interface UserRow {
   locked: boolean;
   plan: string;
   isAdmin: boolean;
-  isSuperAdmin?: boolean;
+  /** Admin through the ADMIN_USER_IDS env var — not revocable from here. */
+  adminViaEnv: boolean;
+  isSuperAdmin: boolean;
   subscription?: UserSubscription | null;
 }
 
 interface UserDetail extends UserRow {
   username: string | null;
-  emailAddresses: { id: string; email: string; verified: boolean }[];
   updatedAt: number;
   twoFactorEnabled: boolean;
-  publicMetadata: Record<string, unknown>;
-  isSuperAdmin: boolean;
   subscription: UserSubscription | null;
+}
+
+/** Tallies from /api/admin/users/counts — across all users, not the loaded page. */
+interface UserCounts {
+  total: number;
+  premium: number;
+  pro: number;
+  basic: number;
+  free: number;
+  banned: number;
+  /** True when Clerk holds more users than the server scanned. */
+  partial: boolean;
+  scanned: number;
+}
+
+interface BulkResult {
+  action: string;
+  ok: number;
+  total: number;
+  errors: string[];
 }
 
 const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
@@ -48,10 +66,10 @@ const STATUS_OPTIONS = ["all", "active", "banned", "locked"] as const;
 type StatusFilter = (typeof STATUS_OPTIONS)[number];
 
 const planBadge: Record<string, string> = {
-  free:    "border border-[var(--border)] text-[var(--foreground-muted)]",
-  basic:   "border border-[var(--border-strong)] text-[var(--foreground)]",
-  pro:     "bg-amber-400/15 text-amber-600 border border-amber-400/30",
-  premium: "bg-[var(--foreground)] text-[var(--background)]",
+  free:    "rounded-full border border-[var(--border)] text-[var(--foreground-muted)]",
+  basic:   "rounded-full border border-[var(--border-strong)] text-[var(--foreground)]",
+  pro:     "rounded-full bg-amber-400/15 text-amber-500 border border-amber-400/30",
+  premium: "rounded-full bg-[var(--foreground)] text-[var(--background)]",
 };
 
 function initials(first: string | null, last: string | null, email: string | null) {
@@ -91,8 +109,38 @@ function fmtDuration(iso: string): string {
   return `${years} y ${months % 12} mo`;
 }
 
+function rowLabel(u: Pick<UserRow, "firstName" | "lastName" | "email" | "id">): string {
+  return [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id;
+}
+
+/** A subscription the billing ledger still treats as live (it can be charged). */
+function liveSubscription(s: UserSubscription | null | undefined): s is UserSubscription {
+  return !!s && (s.status === "active" || s.status === "past_due");
+}
+
+function describeSubscription(s: UserSubscription): string {
+  return `${s.plan}, ${s.amountUah} ₴/mo, ${s.status.replace("_", " ")}, auto-renew ${s.autoRenew ? "on" : "off"}`;
+}
+
+/** "a@b.c, d@e.f and 3 more" — for confirm dialogs. */
+function listLabels(rows: UserRow[], max = 5): string {
+  const shown = rows.slice(0, max).map(rowLabel).join(", ");
+  return rows.length > max ? `${shown} and ${rows.length - max} more` : shown;
+}
+
+// The admin panel changes the plan in Clerk only; the monobank subscription
+// row is untouched, so a renewal keeps charging and puts the paid plan back.
+const PLAN_BILLING_NOTE = "Only the plan in Clerk changes — billing does not.";
+const RENEWAL_NOTE = "Charges continue, and the next renewal restores the paid plan.";
+
+function deleteSubscriptionWarning(s: UserSubscription | null | undefined): string {
+  if (!liveSubscription(s)) return "";
+  return `\n\nThis user has an active subscription (${describeSubscription(s)}). ` +
+    "Auto-renew is turned off before the account is deleted, so the saved card is not charged again.";
+}
+
 const subStatusBadge: Record<string, string> = {
-  active:   "text-emerald-600",
+  active:   "text-emerald-500",
   pending:  "text-amber-500",
   past_due: "text-red-500",
   canceled: "text-[var(--foreground-subtle)]",
@@ -119,7 +167,10 @@ export default function AdminUsersPage() {
   }, []);
 
   const [users, setUsers] = useState<UserRow[]>([]);
+  /** Users matching the current search/filters — drives pagination. */
   const [total, setTotal] = useState(0);
+  const [listPartial, setListPartial] = useState(false);
+  const [subsError, setSubsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -128,65 +179,83 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Bulk state
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [counts, setCounts] = useState<UserCounts | null>(null);
+  const [countsError, setCountsError] = useState<string | null>(null);
+
+  // Bulk state. Selected rows are kept whole so a selection survives paging
+  // (only the current page is loaded) and confirms can see subscriptions.
+  const [selected, setSelected] = useState<Map<string, UserRow>>(new Map());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkPlan, setBulkPlan] = useState<typeof PLAN_OPTIONS[number]>("free");
+  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+
+  // Ignores responses that arrive after a newer request was sent.
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError(null);
     try {
       const qs = new URLSearchParams();
-      if (search)               qs.set("q", search);
-      if (planFilter !== "all") qs.set("plan", planFilter);
-      qs.set("limit", "200");
+      if (search)                 qs.set("q", search);
+      if (planFilter !== "all")   qs.set("plan", planFilter);
+      if (statusFilter !== "all") qs.set("status", statusFilter);
+      qs.set("limit", String(PAGE_SIZE));
+      qs.set("offset", String(page * PAGE_SIZE));
       const res = await fetch(`/api/admin/users?${qs.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
       const body = await res.json();
+      if (seq !== loadSeq.current) return;
       setUsers(body.users);
       setTotal(body.totalCount);
+      setListPartial(body.partial === true);
+      setSubsError(body.subscriptionsError ?? null);
+      // The last page emptied (e.g. after a delete) — step back to the new last page.
+      if (body.users.length === 0 && page > 0) {
+        setPage(Math.max(0, Math.ceil(body.totalCount / PAGE_SIZE) - 1));
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      if (seq === loadSeq.current) setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
-  }, [search, planFilter]);
+  }, [search, planFilter, statusFilter, page]);
+
+  const loadCounts = useCallback(async () => {
+    setCountsError(null);
+    try {
+      const res = await fetch("/api/admin/users/counts", { cache: "no-store" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      setCounts(body as UserCounts);
+    } catch (e) {
+      setCountsError(e instanceof Error ? e.message : "Failed to load counts");
+    }
+  }, []);
 
   useEffect(() => {
     const id = setTimeout(() => { load(); }, 300);
     return () => clearTimeout(id);
   }, [load]);
 
+  useEffect(() => { loadCounts(); }, [loadCounts]);
+
+  const refresh = () => { load(); loadCounts(); };
+
   // Reset page when filters change
-  useEffect(() => { setPage(0); setSelected(new Set()); }, [search, planFilter, statusFilter]);
+  useEffect(() => { setPage(0); setSelected(new Map()); }, [search, planFilter, statusFilter]);
 
-  const stats = useMemo(() => ({
-    total,
-    premium: users.filter((u) => u.plan === "premium").length,
-    pro:     users.filter((u) => u.plan === "pro").length,
-    basic:   users.filter((u) => u.plan === "basic").length,
-    free:    users.filter((u) => u.plan === "free").length,
-    banned:  users.filter((u) => u.banned).length,
-  }), [users, total]);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const filteredUsers = useMemo(() => {
-    if (statusFilter === "banned")  return users.filter((u) => u.banned);
-    if (statusFilter === "locked")  return users.filter((u) => u.locked);
-    if (statusFilter === "active")  return users.filter((u) => !u.banned && !u.locked);
-    return users;
-  }, [users, statusFilter]);
+  const selectableOnPage = users.filter((u) => !u.isSuperAdmin);
+  const allOnPageSelected = selectableOnPage.length > 0 && selectableOnPage.every((u) => selected.has(u.id));
+  const someOnPageSelected = selectableOnPage.some((u) => selected.has(u.id));
 
-  const totalPages  = Math.ceil(filteredUsers.length / PAGE_SIZE);
-  const pagedUsers  = filteredUsers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  const allOnPageSelected = pagedUsers.length > 0 && pagedUsers.every((u) => selected.has(u.id));
-  const someOnPageSelected = pagedUsers.some((u) => selected.has(u.id));
-
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (u: UserRow) => {
     setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const next = new Map(prev);
+      if (next.has(u.id)) next.delete(u.id); else next.set(u.id, u);
       return next;
     });
   };
@@ -194,90 +263,105 @@ export default function AdminUsersPage() {
   const toggleSelectAll = () => {
     if (allOnPageSelected) {
       setSelected((prev) => {
-        const next = new Set(prev);
-        pagedUsers.forEach((u) => next.delete(u.id));
+        const next = new Map(prev);
+        selectableOnPage.forEach((u) => next.delete(u.id));
         return next;
       });
     } else {
       setSelected((prev) => {
-        const next = new Set(prev);
-        pagedUsers.forEach((u) => next.add(u.id));
+        const next = new Map(prev);
+        selectableOnPage.forEach((u) => next.set(u.id, u));
         return next;
       });
     }
   };
 
-  const isSuperAdmin = (u: UserRow) =>
-    u.isSuperAdmin ?? (SUPER_ADMIN_ID ? u.id === SUPER_ADMIN_ID : false);
+  const safeSelected = () => [...selected.values()].filter((u) => !u.isSuperAdmin);
 
-  const safeSelected = () =>
-    [...selected].filter((id) => {
-      const u = users.find((u) => u.id === id);
-      return u && !isSuperAdmin(u);
+  /**
+   * One request per user. Reports "N of M" with the failures, keeps the
+   * failed users selected for a retry, and always releases the buttons.
+   */
+  const runBulk = async (action: string, rows: UserRow[], request: (id: string) => Promise<Response>) => {
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const results = await Promise.allSettled(
+        rows.map(async (u) => {
+          const res = await request(u.id);
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+        })
+      );
+      const failed = new Set<string>();
+      const errors: string[] = [];
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          failed.add(rows[i].id);
+          errors.push(`${rowLabel(rows[i])}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+        }
+      });
+      setBulkResult({ action, ok: rows.length - failed.size, total: rows.length, errors });
+      setSelected((prev) => new Map([...prev].filter(([id]) => failed.has(id))));
+    } finally {
+      setBulkLoading(false);
+      refresh();
+    }
+  };
+
+  const patchUser = (body: Record<string, unknown>) => (id: string) =>
+    fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
 
   const bulkBan = async (ban: boolean) => {
-    const ids = safeSelected();
-    if (!ids.length) return;
-    if (!confirm(`${ban ? "Ban" : "Unban"} ${ids.length} user(s)?`)) return;
-    setBulkLoading(true);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`/api/admin/users/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ banned: ban }),
-        })
-      )
-    );
-    setBulkLoading(false);
-    setSelected(new Set());
-    load();
+    const rows = safeSelected();
+    if (!rows.length) return;
+    if (!confirm(`${ban ? "Ban" : "Unban"} ${rows.length} user(s)?`)) return;
+    await runBulk(ban ? "Ban" : "Unban", rows, patchUser({ banned: ban }));
   };
 
   const bulkSetPlan = async () => {
-    const ids = safeSelected();
-    if (!ids.length) return;
-    if (!confirm(`Set plan to "${bulkPlan}" for ${ids.length} user(s)?`)) return;
-    setBulkLoading(true);
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`/api/admin/users/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan: bulkPlan }),
-        })
-      )
-    );
-    setBulkLoading(false);
-    setSelected(new Set());
-    load();
+    const rows = safeSelected();
+    if (!rows.length) return;
+    const paying = rows.filter((u) => liveSubscription(u.subscription));
+    const renewing = paying.some((u) => u.subscription?.autoRenew);
+    const warn = paying.length
+      ? `\n\n${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
+        `${PLAN_BILLING_NOTE}${renewing ? ` ${RENEWAL_NOTE}` : ""}`
+      : "";
+    if (!confirm(`Set plan to "${bulkPlan}" for ${rows.length} user(s)?${warn}`)) return;
+    await runBulk(`Plan → ${bulkPlan}`, rows, patchUser({ plan: bulkPlan }));
   };
 
   const bulkDelete = async () => {
-    const ids = safeSelected();
-    if (!ids.length) return;
-    if (!confirm(`Permanently delete ${ids.length} user(s)? This cannot be undone.`)) return;
-    setBulkLoading(true);
-    await Promise.all(ids.map((id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" })));
-    setBulkLoading(false);
-    setSelected(new Set());
-    load();
+    const rows = safeSelected();
+    if (!rows.length) return;
+    const paying = rows.filter((u) => liveSubscription(u.subscription));
+    const warn = paying.length
+      ? `\n\n${paying.length} of them ${paying.length === 1 ? "has" : "have"} an active subscription (${listLabels(paying)}). ` +
+        "Auto-renew is turned off before each account is deleted, so saved cards are not charged again."
+      : "";
+    if (!confirm(`Permanently delete ${rows.length} user(s)? This cannot be undone.${warn}`)) return;
+    await runBulk("Delete", rows, (id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" }));
   };
 
-  const handleDelete = async (id: string, label: string) => {
-    if (!confirm(`Delete ${label}? This permanently removes the Clerk account.`)) return;
-    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+  const handleDelete = async (u: UserRow) => {
+    if (!confirm(`Delete ${rowLabel(u)}? This permanently removes the Clerk account.${deleteSubscriptionWarning(u.subscription)}`)) return;
+    const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
     if (!res.ok) {
       alert((await res.json().catch(() => ({}))).error || "Failed to delete");
       return;
     }
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    if (selectedId === id) setSelectedId(null);
+    setSelected((prev) => { const next = new Map(prev); next.delete(u.id); return next; });
+    if (selectedId === u.id) setSelectedId(null);
+    refresh();
   };
 
   const handleUpdated = (updated: UserRow) => {
     setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+    loadCounts();
   };
 
   return (
@@ -286,11 +370,14 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Users</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1">
-            {total.toLocaleString()} registered{error ? <span className="text-red-500"> · {error}</span> : null}
+            {counts ? counts.total.toLocaleString() : "—"} registered
+            {error ? <span className="text-red-500"> · {error}</span> : null}
+            {countsError ? <span className="text-red-500"> · counts unavailable: {countsError}</span> : null}
+            {subsError ? <span className="text-red-500"> · subscription data unavailable: {subsError}</span> : null}
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={refresh}
           disabled={loading}
           className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
@@ -298,20 +385,23 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      {/* Stats — 6 cards in a 3-col / 6-col grid */}
+      {/* Stats — 6 cards in a 3-col / 6-col grid. Counted server-side across
+          all users; if Clerk holds more than the server scans, say so. */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {[
-          { label: "Total",   value: stats.total,   note: "registered" },
-          { label: "Premium", value: stats.premium, note: "subscribers" },
-          { label: "Pro",     value: stats.pro,     note: "subscribers" },
-          { label: "Basic",   value: stats.basic,   note: "subscribers" },
-          { label: "Free",    value: stats.free,    note: "accounts" },
-          { label: "Banned",  value: stats.banned,  note: "suspended" },
+          { label: "Total",   value: counts?.total,   note: "registered" },
+          { label: "Premium", value: counts?.premium, note: "subscribers" },
+          { label: "Pro",     value: counts?.pro,     note: "subscribers" },
+          { label: "Basic",   value: counts?.basic,   note: "subscribers" },
+          { label: "Free",    value: counts?.free,    note: "accounts" },
+          { label: "Banned",  value: counts?.banned,  note: "suspended" },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--background)] border border-[var(--border)] rounded-2xl p-5">
             <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{s.label}</p>
-            <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value}</p>
-            <p className="text-[10px] text-[var(--foreground-muted)] mt-1">{s.note}</p>
+            <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value === undefined ? "—" : s.value.toLocaleString()}</p>
+            <p className="text-[10px] text-[var(--foreground-muted)] mt-1">
+              {counts?.partial && s.label !== "Total" ? `of newest ${counts.scanned.toLocaleString()}` : s.note}
+            </p>
           </div>
         ))}
       </div>
@@ -404,7 +494,7 @@ export default function AdminUsersPage() {
             Delete
           </button>
           <button
-            onClick={() => setSelected(new Set())}
+            onClick={() => setSelected(new Map())}
             className="ml-auto text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
           >
             Clear
@@ -412,137 +502,170 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Bulk outcome — "N of M", with each failure; failed users stay selected */}
+      {bulkResult && (
+        <div
+          role="status"
+          className={`rounded-xl border px-4 py-3 mb-4 text-xs ${
+            bulkResult.errors.length
+              ? "bg-red-400/15 text-red-500 border-red-400/30"
+              : "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p>
+              {bulkResult.action}: {bulkResult.ok} of {bulkResult.total} succeeded
+              {bulkResult.errors.length ? " — the failed users are still selected." : "."}
+            </p>
+            <button
+              onClick={() => setBulkResult(null)}
+              className="text-[9px] tracking-[0.14em] uppercase opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+          {bulkResult.errors.length > 0 && (
+            <ul className="mt-2 space-y-0.5">
+              {bulkResult.errors.map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-xl border border-[var(--border)] overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
-              {/* Checkbox select-all */}
-              <th className="px-4 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allOnPageSelected}
-                  ref={(el) => { if (el) el.indeterminate = someOnPageSelected && !allOnPageSelected; }}
-                  onChange={toggleSelectAll}
-                  className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                />
-              </th>
-              {["User", "Email", "Plan", "Subscription", "Joined", "Last active", "Status", ""].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] font-medium">
-                  {h}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+                {/* Checkbox select-all */}
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    ref={(el) => { if (el) el.indeterminate = someOnPageSelected && !allOnPageSelected; }}
+                    onChange={toggleSelectAll}
+                    className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                  />
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pagedUsers.map((u) => {
-              const label = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id;
-              const isSuper = isSuperAdmin(u);
-              return (
-                <tr
-                  key={u.id}
-                  onClick={() => setSelectedId(u.id)}
-                  className={`border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors last:border-0 cursor-pointer ${selected.has(u.id) ? "bg-[var(--surface)]" : ""}`}
-                >
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    {!isSuper && (
-                      <input
-                        type="checkbox"
-                        checked={selected.has(u.id)}
-                        onChange={() => toggleSelect(u.id)}
-                        className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
-                      />
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {u.imageUrl ? (
-                        <Image src={u.imageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                {["User", "Email", "Plan", "Subscription", "Joined", "Last active", "Status", ""].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => {
+                const label = rowLabel(u);
+                const isSuper = u.isSuperAdmin;
+                return (
+                  <tr
+                    key={u.id}
+                    onClick={() => setSelectedId(u.id)}
+                    className={`border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors last:border-0 cursor-pointer ${selected.has(u.id) ? "bg-[var(--surface)]" : ""}`}
+                  >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {!isSuper && (
+                        <input
+                          type="checkbox"
+                          checked={selected.has(u.id)}
+                          onChange={() => toggleSelect(u)}
+                          className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer"
+                        />
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {u.imageUrl ? (
+                          <Image src={u.imageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)] shrink-0">
+                            {initials(u.firstName, u.lastName, u.email)}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
+                          {isSuper ? (
+                            <span className="text-[9px] tracking-[0.1em] uppercase text-amber-500">Super Admin</span>
+                          ) : u.isAdmin ? (
+                            <span className="text-[9px] tracking-[0.1em] uppercase text-emerald-500">Admin</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px]">{u.email ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
+                        {u.plan}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {u.subscription ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`text-[10px] tracking-[0.06em] uppercase ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                            {u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
+                          </span>
+                          <span className="text-[10px] text-[var(--foreground-subtle)]">
+                            {fmtDuration(u.subscription.startedAt)}
+                            {u.subscription.currentPeriodEnd && u.subscription.status === "active"
+                              ? ` · ${u.subscription.autoRenew ? "renews" : "ends"} ${fmtDate(Date.parse(u.subscription.currentPeriodEnd))}`
+                              : ""}
+                          </span>
+                        </div>
                       ) : (
-                        <div className="w-7 h-7 flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)] shrink-0">
-                          {initials(u.firstName, u.lastName, u.email)}
+                        <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
+                    <td className="px-4 py-3">
+                      {u.banned ? (
+                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-red-400/15 text-red-500 border border-red-400/30">Banned</span>
+                      ) : u.locked ? (
+                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-amber-400/15 text-amber-500 border border-amber-400/30">Locked</span>
+                      ) : (
+                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isSuper ? (
+                        <div className="flex justify-end">
+                          <span className="text-[9px] tracking-[0.12em] uppercase text-amber-500 bg-amber-400/15 border border-amber-400/30 rounded-full px-2 py-1">Protected</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
+                            className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                            title="Edit"
+                            aria-label="Edit user"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                              <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(u); }}
+                            className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
+                            title="Delete"
+                            aria-label="Delete user"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                              <path d="M3 4H13M6 4V2H10V4M5 4L5.5 13H10.5L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
                         </div>
                       )}
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
-                        {isSuper ? (
-                          <span className="text-[9px] tracking-[0.1em] uppercase text-amber-500">Super Admin</span>
-                        ) : u.isAdmin ? (
-                          <span className="text-[9px] tracking-[0.1em] uppercase text-emerald-600">Admin</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px]">{u.email ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
-                      {u.plan}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.subscription ? (
-                      <div className="flex flex-col gap-0.5">
-                        <span className={`text-[10px] tracking-[0.06em] uppercase ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                          {u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
-                        </span>
-                        <span className="text-[10px] text-[var(--foreground-subtle)]">
-                          {fmtDuration(u.subscription.startedAt)}
-                          {u.subscription.currentPeriodEnd && u.subscription.status === "active"
-                            ? ` · ${u.subscription.autoRenew ? "renews" : "ends"} ${fmtDate(Date.parse(u.subscription.currentPeriodEnd))}`
-                            : ""}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtDate(u.createdAt)}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--foreground-muted)]">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
-                  <td className="px-4 py-3">
-                    {u.banned ? (
-                      <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 bg-red-500/15 text-red-600 border border-red-500/30">Banned</span>
-                    ) : u.locked ? (
-                      <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 bg-amber-500/15 text-amber-600 border border-amber-500/30">Locked</span>
-                    ) : (
-                      <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isSuper ? (
-                      <div className="flex justify-end">
-                        <span className="text-[8px] tracking-[0.12em] uppercase text-amber-500 border border-amber-400/30 px-2 py-1">Protected</span>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(u.id); }}
-                          className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
-                          title="Edit"
-                          aria-label="Edit user"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                            <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(u.id, label); }}
-                          className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors"
-                          title="Delete"
-                          aria-label="Delete user"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                            <path d="M3 4H13M6 4V2H10V4M5 4L5.5 13H10.5L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {!loading && filteredUsers.length === 0 && (
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!loading && users.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">No users found</div>
         )}
         {loading && users.length === 0 && (
@@ -550,11 +673,13 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination — also shown for a single page when the filter scan was
+          capped, so the "newest users only" caveat is never hidden. */}
+      {(totalPages > 1 || listPartial) && total > 0 && (
         <div className="flex items-center justify-between mt-4">
           <span className="text-[10px] text-[var(--foreground-muted)]">
-            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length}
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
+            {listPartial ? " · filter covers the newest users only" : ""}
           </span>
           <div className="flex gap-2">
             <button
@@ -582,8 +707,9 @@ export default function AdminUsersPage() {
           onClose={() => setSelectedId(null)}
           onUpdated={handleUpdated}
           onDeleted={(id) => {
-            setUsers((prev) => prev.filter((u) => u.id !== id));
+            setSelected((prev) => { const next = new Map(prev); next.delete(id); return next; });
             setSelectedId(null);
+            refresh();
           }}
         />
       )}
@@ -624,6 +750,14 @@ function UserDrawer({
     looksPublished:   number;
   }
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  // Escape closes the drawer, like the other modal layers.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -644,7 +778,11 @@ function UserDrawer({
         setPlan(body.plan);
         setIsAdmin(body.isAdmin);
         setBanned(body.banned);
-        if (statsRes.ok) setStats(await statsRes.json() as UserStats);
+        if (statsRes.ok) {
+          setStats(await statsRes.json() as UserStats);
+        } else {
+          setStatsError((await statsRes.json().catch(() => ({}))).error || `HTTP ${statsRes.status}`);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -658,6 +796,10 @@ function UserDrawer({
 
   const resetStylistUsage = async (scope: "today" | "all") => {
     if (resetting) return;
+    if (scope === "all" && !confirm(
+      "Delete this user's entire AI Stylist message history? It also disappears from the AI-usage chart in Analytics and cannot be undone.\n\n" +
+      "To lift today's limit, \"Reset today's limit\" is enough."
+    )) return;
     setResetting(true);
     try {
       const res = await fetch(`/api/admin/users/${userId}/stylist-usage`, {
@@ -669,6 +811,7 @@ function UserDrawer({
       // Refresh stats so the counter reflects the reset
       const statsRes = await fetch(`/api/admin/users/${userId}/stats`, { cache: "no-store" });
       if (statsRes.ok) setStats(await statsRes.json() as UserStats);
+      else setError("Usage was reset, but the stats could not be refreshed.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to reset usage");
     } finally {
@@ -681,7 +824,7 @@ function UserDrawer({
       firstName !== (detail.firstName ?? "") ||
       lastName  !== (detail.lastName ?? "")  ||
       plan      !== detail.plan              ||
-      (currentIsSuperAdmin && isAdmin !== detail.isAdmin) ||
+      (currentIsSuperAdmin && !detail.adminViaEnv && isAdmin !== detail.isAdmin) ||
       banned    !== detail.banned
     );
 
@@ -694,7 +837,7 @@ function UserDrawer({
       if (firstName !== (detail.firstName ?? "")) patch.firstName = firstName;
       if (lastName  !== (detail.lastName ?? ""))  patch.lastName  = lastName;
       if (plan      !== detail.plan)                             patch.plan    = plan;
-      if (currentIsSuperAdmin && isAdmin !== detail.isAdmin)  patch.isAdmin = isAdmin;
+      if (currentIsSuperAdmin && !detail.adminViaEnv && isAdmin !== detail.isAdmin) patch.isAdmin = isAdmin;
       if (banned    !== detail.banned)            patch.banned    = banned;
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
@@ -714,8 +857,7 @@ function UserDrawer({
 
   const del = async () => {
     if (!detail) return;
-    const label = [detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || detail.id;
-    if (!confirm(`Delete ${label}? This permanently removes the Clerk account.`)) return;
+    if (!confirm(`Delete ${rowLabel(detail)}? This permanently removes the Clerk account.${deleteSubscriptionWarning(detail.subscription)}`)) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
@@ -728,18 +870,17 @@ function UserDrawer({
     }
   };
 
-  const displayName = detail
-    ? ([detail.firstName, detail.lastName].filter(Boolean).join(" ") || detail.email || detail.id)
-    : "Loading…";
+  const displayName = detail ? rowLabel(detail) : "Loading…";
 
-  const isSuperAdmin = detail
-    ? (detail.isSuperAdmin ?? (SUPER_ADMIN_ID ? detail.id === SUPER_ADMIN_ID : false))
-    : false;
+  const isSuperAdmin = detail?.isSuperAdmin ?? false;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/60" />
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-drawer-title"
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md h-full overflow-y-auto border-l border-[var(--border)]"
         style={{ background: "var(--background)" }}
@@ -747,7 +888,7 @@ function UserDrawer({
         <div className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between sticky top-0 z-10" style={{ background: "var(--background)" }}>
           <div>
             <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">User Detail</p>
-            <h2 className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
+            <h2 id="user-drawer-title" className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
           </div>
           <button
             onClick={onClose}
@@ -765,17 +906,17 @@ function UserDrawer({
         )}
 
         {error && (
-          <div className="mx-6 my-4 border border-red-500/40 bg-red-500/5 text-red-600 text-xs px-3 py-2">{error}</div>
+          <div className="mx-6 my-4 rounded-xl border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-3 py-2">{error}</div>
         )}
 
         {detail && !loading && (
           <div className="px-6 py-5 space-y-6">
             {isSuperAdmin && (
-              <div className="flex items-center gap-3 border border-amber-400/30 bg-amber-400/8 px-4 py-3">
+              <div className="flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-500 flex-shrink-0">
                   <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
-                <p className="text-[10px] tracking-[0.1em] uppercase text-amber-600">
+                <p className="text-[10px] tracking-[0.1em] uppercase text-amber-500">
                   Super admin — this account is protected and cannot be modified.
                 </p>
               </div>
@@ -838,11 +979,9 @@ function UserDrawer({
             <div>
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Activity</p>
               {!stats ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="border border-[var(--border)] rounded-xl p-3 animate-pulse h-14" />
-                  ))}
-                </div>
+                <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
+                  Stats unavailable{statsError ? ` — ${statsError}` : ""}.
+                </p>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {/* AI Stylist today */}
@@ -937,28 +1076,43 @@ function UserDrawer({
                   </button>
                 ))}
               </div>
+              {liveSubscription(detail.subscription) && (
+                <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/15 text-amber-500 text-[10px] px-3 py-2">
+                  Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
+                  {detail.subscription.autoRenew ? ` ${RENEWAL_NOTE}` : ""}
+                </p>
+              )}
             </div>
 
             <div>
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Access</p>
               <div className="space-y-2">
-                {currentIsSuperAdmin && (
+                {detail.adminViaEnv ? (
+                  // ADMIN_USER_IDS grants access regardless of the metadata flag,
+                  // so a toggle here would look like it revokes access and not.
+                  <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-[var(--foreground)]">Admin</p>
+                      <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
+                    </div>
+                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 rounded-full px-2 py-1">Via env</span>
+                  </div>
+                ) : currentIsSuperAdmin ? (
                   <ToggleRow
                     label="Admin"
                     description="Grants access to /goo-studio. Only super admin can change this."
                     checked={isAdmin}
                     onChange={setIsAdmin}
                   />
-                )}
-                {!currentIsSuperAdmin && detail?.isAdmin && (
+                ) : detail.isAdmin ? (
                   <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
                       <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
                     </div>
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-500/10 px-2 py-1">Enabled</span>
+                    <span className="text-[9px] tracking-[0.12em] uppercase text-emerald-500 bg-emerald-400/15 border border-emerald-400/30 rounded-full px-2 py-1">Enabled</span>
                   </div>
-                )}
+                ) : null}
                 <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
               </div>
             </div>
