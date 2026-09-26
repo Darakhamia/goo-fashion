@@ -18,7 +18,7 @@
  * admin confirms every merge; nothing here writes.
  */
 import type { Retailer } from "@/lib/types";
-import { colourRelation, pieceName, samePiece } from "@/lib/server/parser/piece-name";
+import { colourRelation, pieceName, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
 import { foldBrand } from "@/lib/server/parser/brand-from-name";
 
 /** Widest gap between two cards' prices for one item — as in `same-item.ts`. */
@@ -191,6 +191,102 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
   return groups.sort(
     (a, b) => b.ids.length - a.ids.length || (byId.get(a.keepId)?.name ?? "").localeCompare(byId.get(b.keepId)?.name ?? ""),
   );
+}
+
+// ── Colour groups that hold more than one model ──────────────────────────────
+
+export interface GroupMember {
+  id: string;
+  brand: string;
+  name: string;
+  category: string | null;
+  colors: string[];
+  variantGroupId: string;
+  isGroupPrimary: boolean;
+}
+
+export interface MixedGroup {
+  groupId: string;
+  /** The models in the group, each a list of member ids; the suggested one to keep first. */
+  families: string[][];
+}
+
+/** Members split into models: two members are one model when `sameModelFamily` says so. */
+export function modelFamilies(members: GroupMember[]): string[][] {
+  const parent = new Map(members.map((m) => [m.id, m.id]));
+  const find = (id: string): string => {
+    let root = id;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    parent.set(id, root);
+    return root;
+  };
+  for (let i = 0; i < members.length; i++) {
+    for (let j = i + 1; j < members.length; j++) {
+      const a = members[i];
+      const b = members[j];
+      if (find(a.id) === find(b.id)) continue;
+      if (sameModelFamily(a.brand || b.brand, a, b)) parent.set(find(a.id), find(b.id));
+    }
+  }
+  const families = new Map<string, string[]>();
+  for (const m of members) families.set(find(m.id), [...(families.get(find(m.id)) ?? []), m.id]);
+  return [...families.values()];
+}
+
+/**
+ * Colour groups whose members are more than one model — what a store's
+ * "you may also like" rail made of them when it was read as the colour row.
+ * The model to keep in the group is the one holding its primary card, else the
+ * largest.
+ */
+export function findMixedColourGroups(members: GroupMember[]): MixedGroup[] {
+  const byGroup = new Map<string, GroupMember[]>();
+  for (const m of members) {
+    if (!m.variantGroupId) continue;
+    byGroup.set(m.variantGroupId, [...(byGroup.get(m.variantGroupId) ?? []), m]);
+  }
+  const out: MixedGroup[] = [];
+  for (const [groupId, list] of byGroup) {
+    if (list.length < 2) continue;
+    const families = modelFamilies(list);
+    if (families.length < 2) continue;
+    const primary = list.find((m) => m.isGroupPrimary)?.id;
+    families.sort((a, b) => Number(b.includes(primary ?? "")) - Number(a.includes(primary ?? "")) || b.length - a.length);
+    out.push({ groupId, families });
+  }
+  return out.sort((a, b) => b.families.length - a.families.length);
+}
+
+/**
+ * What to write when a mixed group is split: the kept model stays in the
+ * group (with one primary), every other model of two or more cards becomes a
+ * group of its own, and a lone card leaves grouping altogether.
+ */
+export function splitPlan(
+  members: GroupMember[],
+  keepIds: Set<string>,
+  newGroupId: () => string,
+): { id: string; variant_group_id: string | null; is_group_primary: boolean }[] {
+  const kept = members.filter((m) => keepIds.has(m.id));
+  const rest = members.filter((m) => !keepIds.has(m.id));
+  const writes: { id: string; variant_group_id: string | null; is_group_primary: boolean }[] = [];
+
+  const keptPrimary = kept.find((m) => m.isGroupPrimary) ?? kept[0];
+  for (const m of kept) {
+    if (kept.length < 2) writes.push({ id: m.id, variant_group_id: null, is_group_primary: false });
+    else writes.push({ id: m.id, variant_group_id: m.variantGroupId, is_group_primary: m.id === keptPrimary?.id });
+  }
+  for (const family of modelFamilies(rest)) {
+    const cards = rest.filter((m) => family.includes(m.id));
+    if (cards.length < 2) {
+      writes.push({ id: cards[0].id, variant_group_id: null, is_group_primary: false });
+      continue;
+    }
+    const group = newGroupId();
+    const primary = cards.find((m) => m.isGroupPrimary) ?? cards[0];
+    for (const m of cards) writes.push({ id: m.id, variant_group_id: group, is_group_primary: m.id === primary.id });
+  }
+  return writes;
 }
 
 // ── Merging ──────────────────────────────────────────────────────────────────
