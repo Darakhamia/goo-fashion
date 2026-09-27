@@ -215,7 +215,7 @@ export default function SubscriptionsPage() {
             Until it runs, no subscription is renewed or charged and no one is downgraded.
           </p>
           <p>
-            Production runs on Coolify, where <code>vercel.json</code> crons do nothing: renewals are
+            Production runs on Coolify, and nothing else schedules renewals: they are
             started by a Scheduled Task in Coolify. It must call
             <code className="mx-1">GET /api/billing/cron/renew</code> once a day (e.g. <code>0 9 * * *</code>) with
             the header <code>Authorization: Bearer $CRON_SECRET</code>. Check in Coolify that the

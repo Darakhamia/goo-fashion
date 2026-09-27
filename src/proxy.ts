@@ -58,7 +58,7 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
   const host = req.headers.get("host") ?? "";
   if (host.startsWith("www.")) {
-    // Build the URL from scratch: behind Vercel's proxy req.nextUrl carries the
+    // Build the URL from scratch: behind the reverse proxy req.nextUrl carries the
     // internal port (e.g. :3000), which would leak into the redirect Location.
     const url = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${host.slice(4)}`);
     // 308 (not 301): preserves the HTTP method and body. A 301 turns a POST

@@ -29,8 +29,8 @@ export const maxDuration = 60;
 /**
  * Monthly auto-renewal sweep.
  *
- * Triggered once a day by a Coolify Scheduled Task (production runs on
- * Coolify; the crons entry in vercel.json only applies on Vercel). For every
+ * Triggered once a day by a Coolify Scheduled Task — the only scheduler
+ * production has (BILLING.md → "Renewal cron on Coolify"). For every
  * active subscription whose paid period has ended, charge the saved card via monobank's
  * merchant-initiated wallet payment. On success we extend the period (the
  * webhook also confirms, idempotently); on failure we record it and eventually
