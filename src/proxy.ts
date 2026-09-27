@@ -49,6 +49,39 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   }
 });
 
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Whether a request is a browser write to our API sent from another site.
+ *
+ * The API authenticates by the Clerk session cookie alone, and most routes
+ * parse the body with `req.json()`, which also reads a `text/plain` body — so a
+ * page on any same-site host (the storage domain serves files from outside
+ * sources) could POST with the admin's cookie and no CORS preflight. Browsers
+ * send `Origin` on every non-GET request; `Sec-Fetch-Site` covers the rest.
+ * A request with neither (curl, a server) is not a browser acting for a
+ * signed-in visitor, so it passes. The billing webhook and cron are called
+ * server to server and are never refused here.
+ */
+export function isCrossSiteApiWrite(method: string, pathname: string, headers: Headers): boolean {
+  if (pathname !== "/api" && !pathname.startsWith("/api/")) return false;
+  if (SAFE_METHODS.has(method.toUpperCase())) return false;
+  if (pathname === "/api/billing/webhook" || pathname.startsWith("/api/billing/cron/")) return false;
+
+  const origin = headers.get("origin");
+  if (origin) {
+    // The same Host the www redirect reads. "null" (a sandboxed frame, a
+    // file:// page) does not parse and is refused with the rest.
+    const host = (headers.get("host") ?? "").toLowerCase();
+    try {
+      return new URL(origin).host.toLowerCase() !== host;
+    } catch {
+      return true;
+    }
+  }
+  return headers.get("sec-fetch-site") === "cross-site";
+}
+
 /**
  * Canonical host enforcement runs *before* Clerk: permanently (301) redirect
  * www → bare apex domain so the site isn't served as a duplicate on both hosts.
@@ -65,6 +98,11 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
     // into a bodyless GET, which would silently drop API writes (e.g. saving a
     // look) submitted from the www host.
     return NextResponse.redirect(url, 308);
+  }
+  // After the www redirect, so the check compares against the canonical host,
+  // and before Clerk, so a refused request costs no session lookup.
+  if (isCrossSiteApiWrite(req.method, req.nextUrl.pathname, req.headers)) {
+    return NextResponse.json({ error: "Cross-site request refused." }, { status: 403 });
   }
   return clerk(req, event);
 }

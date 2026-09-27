@@ -11,6 +11,8 @@ interface StatusData {
   fromAddress: string;
   /** null when Clerk could not be read — see countsError. */
   counts: Record<string, number> | null;
+  /** Plan counts cover only the newest users Clerk was scanned for; "all" is exact. */
+  countsPartial?: boolean;
   countsError?: string;
 }
 
@@ -319,13 +321,19 @@ export default function AdminEmailPage() {
                     <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">{opt.label}</p>
                     <p className="text-[10px] text-[var(--foreground-subtle)]">
                       {opt.desc ?? (count != null
-                        ? `${count} recipient${count !== 1 ? "s" : ""}`
+                        ? `${count}${status?.countsPartial && opt.value !== "all" ? "+" : ""} recipient${count !== 1 ? "s" : ""}`
                         : loadingStatus ? "…" : "Count unavailable")}
                     </p>
                   </button>
                 );
               })}
             </div>
+
+            {status?.countsPartial && (
+              <p className="mt-3 text-[10px] text-[var(--foreground-subtle)]">
+                Plan counts cover the newest 10,000 users only, so they are a lower bound. The send itself reaches everyone on the plan.
+              </p>
+            )}
 
             {status?.countsError && (
               <p className={`mt-3 rounded-lg px-3 py-2 text-xs ${statusErr}`}>

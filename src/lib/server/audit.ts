@@ -8,6 +8,8 @@ export type AdminAction =
   | "user.admin_revoked"
   | "user.banned"
   | "user.unbanned"
+  | "user.locked"
+  | "user.unlocked"
   | "user.deleted"
   | "settings.api_key_updated"
   | "settings.api_key_deleted"

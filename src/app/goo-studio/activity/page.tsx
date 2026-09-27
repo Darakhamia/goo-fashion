@@ -29,6 +29,8 @@ const ACTION_LABELS: Record<AdminAction, string> = {
   "user.admin_revoked":    "Revoked admin",
   "user.banned":           "Banned user",
   "user.unbanned":         "Unbanned user",
+  "user.locked":           "Locked user",
+  "user.unlocked":         "Unlocked user",
   "user.deleted":          "Deleted user",
   "settings.api_key_updated": "Updated API key",
   "settings.api_key_deleted": "Deleted API key",
@@ -82,6 +84,7 @@ type Tone = "danger" | "warn" | "ok";
 // Only the three admin statuses (DESIGN_SYSTEM.md §9); everything else is neutral.
 const ACTION_TONES: Partial<Record<AdminAction, Tone>> = {
   "user.banned":             "danger",
+  "user.locked":             "danger",
   "user.deleted":            "danger",
   "settings.api_key_deleted": "danger",
   "products.deleted":        "danger",
@@ -442,7 +445,7 @@ export default function AdminActivityPage() {
 
 function ActionIcon({ action }: { action: string }) {
   const cls = "text-[var(--foreground-subtle)]";
-  if (action === "user.banned" || action.endsWith(".deleted") || action.endsWith("_deleted")) {
+  if (action === "user.banned" || action === "user.locked" || action.endsWith(".deleted") || action.endsWith("_deleted")) {
     return (
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={cls}>
         <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />

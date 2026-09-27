@@ -413,6 +413,7 @@
 | | `user.plan_changed` | Changed plan | смена плана (одиночная или массовая); в подробностях «из → в» и была ли подписка |
 | | `user.admin_granted` / `user.admin_revoked` | Granted / Revoked admin | супер-админ переключил Admin |
 | | `user.banned` / `user.unbanned` | Banned / Unbanned user | бан и разбан (одиночный или массовый) |
+| | `user.locked` / `user.unlocked` | Locked / Unlocked user | блокировка входа через API (`PATCH /api/admin/users/[id]` с `locked`); кнопки в интерфейсе нет |
 | | `user.deleted` | Deleted user | удаление; в подробностях email, план, выключено ли автопродление |
 | Stylist | `stylist_usage.reset` | Reset stylist limit | Reset today's limit / Reset all-time |
 | Settings | `settings.api_key_updated` / `settings.api_key_deleted` | Updated / Deleted API key | ключ OpenAI в Settings |

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { logAdminAction } from "@/lib/server/audit";
+import { AUDIT_PREVIOUS_CAP } from "@/lib/server/bulk-edit";
 import {
   domainCandidates,
   domainFromUrl,
@@ -57,12 +58,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const updates: { id: string; retailers: StoredRetailer[] }[] = [];
-
-  for (const { id, retailers } of scan.rows) {
-    if (!Array.isArray(retailers)) continue;
-
-    let changed = false;
+  // The rule applied to one product's links. Only this domain's entries are
+  // touched; `before` keeps what each of them said, for the audit entry.
+  const applyRule = (retailers: unknown) => {
+    if (!Array.isArray(retailers)) return null;
+    const before: { url: unknown; name: unknown; isOfficial: unknown }[] = [];
     const next = (retailers as StoredRetailer[]).map((entry) => {
       // Matched the same way an import would: the rule owns this domain and any
       // subdomain of it that has no rule of its own.
@@ -72,34 +72,51 @@ export async function POST(req: Request) {
       const owner = domainCandidates(host).find((c) => rules.has(c));
       if (owner !== domain) return entry;
       if (entry.name === rule.name && entry.isOfficial === rule.isOfficial) return entry;
-      changed = true;
+      before.push({ url: entry.url, name: entry.name, isOfficial: entry.isOfficial });
       return { ...entry, name: rule.name, isOfficial: rule.isOfficial };
     });
+    return before.length ? { next, before } : null;
+  };
 
-    if (changed) updates.push({ id, retailers: next });
-  }
+  const matched = scan.rows.filter((r) => applyRule(r.retailers)).map((r) => r.id);
 
   // One row at a time, in small waves: this touches a jsonb column on products
   // that may be being read at the same time, and a failure halfway through
   // should leave a partial, correct result rather than an unknown one.
+  //
+  // Each wave is re-read right before it is written. The scan can be minutes
+  // old on a large catalogue, and writing back the array it read would drop a
+  // link an import added to the product in the meantime.
   let updated = 0;
   const failures: string[] = [];
+  const previous: { id: string; before: unknown }[] = [];
   const WAVE = 20;
-  for (let i = 0; i < updates.length; i += WAVE) {
-    const wave = updates.slice(i, i + WAVE);
+  for (let i = 0; i < matched.length; i += WAVE) {
+    const ids = matched.slice(i, i + WAVE);
+    const { data: fresh, error: readError } = await supabase
+      .from("products")
+      .select("id, retailers")
+      .in("id", ids);
+    if (readError) {
+      failures.push(...ids);
+      continue;
+    }
     const results = await Promise.all(
-      wave.map(async (u) => {
+      ((fresh ?? []) as { id: string; retailers?: unknown }[]).map(async (row) => {
+        const change = applyRule(row.retailers);
+        // Already right (or the link is gone): nothing to write.
+        if (!change) return null;
         const { error: e } = await supabase!
           .from("products")
-          .update({ retailers: u.retailers })
-          .eq("id", u.id);
-        return e ? u.id : null;
+          .update({ retailers: change.next })
+          .eq("id", row.id);
+        if (e) return row.id;
+        previous.push({ id: row.id, before: change.before });
+        updated += 1;
+        return null;
       }),
     );
-    for (const failed of results) {
-      if (failed) failures.push(failed);
-      else updated += 1;
-    }
+    for (const failed of results) if (failed) failures.push(failed);
   }
 
   await logAdminAction({
@@ -107,12 +124,21 @@ export async function POST(req: Request) {
     action: "retailer_domain.applied",
     target_type: "retailer_domain",
     target_id: domain,
-    metadata: { name: rule.name, isOfficial: rule.isOfficial, updated, failed: failures.length },
+    metadata: {
+      name: rule.name,
+      isOfficial: rule.isOfficial,
+      updated,
+      failed: failures.length,
+      // What the rule replaced, per product, so a rule applied to the wrong
+      // store can be put back.
+      previous: previous.slice(0, AUDIT_PREVIOUS_CAP),
+      previousTotal: previous.length,
+    },
   });
 
   return NextResponse.json({
     ok: true,
-    matched: updates.length,
+    matched: matched.length,
     updated,
     failed: failures.length,
     scanLimit: RETAILER_SCAN_MAX,
