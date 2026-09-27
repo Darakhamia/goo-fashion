@@ -10,7 +10,10 @@
  * Corrections are one product at a time, against visible evidence. A rule
  * disagreeing with a label means one of the two is wrong, and which one is a
  * judgement — so there is no "apply all" here, and there should not be. The
- * checks that are exact are marked as such; the rest are suggestions.
+ * checks that are exact are marked as such; the rest are suggestions. The one
+ * exception is a colour that is a size or a file name: that is never a matter
+ * of judgement, and an import can leave a whole store of them, so that section
+ * can be applied at once — still one checked write per product.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -35,7 +38,14 @@ interface AuditReport {
 }
 
 /** Section copy: what the check is, and how much it can be trusted. */
-const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] = [
+const SECTIONS: { key: string; title: string; note: string; exact?: boolean; bulk?: boolean }[] = [
+  {
+    key: "colour_label_not_a_colour",
+    title: "Colour that is not a colour",
+    note: "The colour label is a size or a file name — a size row built from swatches reads to the importer like the picked colour. Applying replaces it with the colourway the name ends with (“Mia Jacket - Beige/White”), or the colour the name mentions, or clears it.",
+    exact: true,
+    bulk: true,
+  },
   {
     key: "subcategory_not_in_tree",
     title: "Subcategory that no longer exists",
@@ -99,12 +109,12 @@ function sectionsToRender(report: AuditReport) {
   const known = new Set(SECTIONS.map((s) => s.key));
   const extra = Object.keys(report.suspects)
     .filter((key) => !known.has(key))
-    .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false }));
+    .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false, bulk: false }));
   return [...SECTIONS, ...extra];
 }
 
 /** Fields this page can write. Anything else is for the product editor. */
-const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group"]);
+const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group", "colour"]);
 
 export default function AdminAuditPage() {
   const [report, setReport] = useState<AuditReport | null>(null);
@@ -149,9 +159,8 @@ export default function AdminAuditPage() {
     load(showDismissed);
   }, [load, showDismissed]);
 
-  const apply = async (s: Suspect) => {
-    const key = `${s.field}:${s.id}`;
-    setBusyId(key);
+  /** One checked write; the error text when it was refused. */
+  const applyOne = async (s: Suspect): Promise<string | null> => {
     try {
       const res = await fetch("/api/admin/label-audit/apply", {
         method: "POST",
@@ -159,20 +168,40 @@ export default function AdminAuditPage() {
         body: JSON.stringify({ id: s.id, field: s.field, value: s.suggested }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        showToast(json.error ?? "Could not apply.", "err");
-        return;
-      }
+      if (!res.ok) return json.error ?? "Could not apply.";
       // Struck through in place rather than removed: seeing what was just
       // changed is the point, and a list that reshuffles under the cursor is
       // hard to work through.
-      setDone((prev) => new Set(prev).add(key));
-      showToast(`${s.name.slice(0, 40)} → ${s.suggested}`);
+      setDone((prev) => new Set(prev).add(`${s.field}:${s.id}`));
+      return null;
     } catch {
-      showToast("Could not reach the server.", "err");
-    } finally {
-      setBusyId(null);
+      return "Could not reach the server.";
     }
+  };
+
+  const apply = async (s: Suspect) => {
+    setBusyId(`${s.field}:${s.id}`);
+    const failed = await applyOne(s);
+    setBusyId(null);
+    showToast(failed ?? `${s.name.slice(0, 40)} → ${s.suggested}`, failed ? "err" : "ok");
+  };
+
+  /** A whole exact section, one product after another. */
+  const applyAll = async (key: string, list: Suspect[]) => {
+    const todo = list.filter((s) => !s.dismissed && !done.has(`${s.field}:${s.id}`) && !hidden.has(`${s.field}:${s.id}`));
+    if (!todo.length) return;
+    setBusyId(`section:${key}`);
+    let fixed = 0;
+    let refused = 0;
+    for (const s of todo) {
+      if (await applyOne(s)) refused++;
+      else fixed++;
+    }
+    setBusyId(null);
+    showToast(
+      refused ? `Fixed ${fixed}; ${refused} refused — re-check to see why` : `Fixed ${fixed}`,
+      refused ? "err" : "ok",
+    );
   };
 
   const claimBody = (s: Suspect) => ({
@@ -290,9 +319,10 @@ export default function AdminAuditPage() {
 
       <div className="flex flex-col gap-5">
         {report &&
-          sectionsToRender(report).map(({ key, title, note, exact }) => {
+          sectionsToRender(report).map(({ key, title, note, exact, bulk }) => {
             const list = report.suspects[key] ?? [];
             if (!list.length) return null;
+            const open = list.filter((s) => !s.dismissed && !done.has(`${s.field}:${s.id}`) && !hidden.has(`${s.field}:${s.id}`)).length;
             return (
               <section key={key} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
                 <header className="px-5 py-3.5 border-b border-[var(--border)]">
@@ -305,6 +335,15 @@ export default function AdminAuditPage() {
                       <span className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
                         exact
                       </span>
+                    )}
+                    {bulk && open > 0 && (
+                      <button
+                        onClick={() => applyAll(key, list)}
+                        disabled={busyId !== null}
+                        className="ml-auto shrink-0 whitespace-nowrap bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40"
+                      >
+                        {busyId === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
+                      </button>
                     )}
                   </div>
                   {note && <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed max-w-3xl">{note}</p>}
