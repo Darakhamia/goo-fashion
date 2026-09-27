@@ -11,6 +11,11 @@ const DEFAULT_LLM_MODEL = "openai/gpt-4.1";
 const LLM_MODEL = (process.env.STYLIST_LLM_MODEL?.trim() ||
   DEFAULT_LLM_MODEL) as `${string}/${string}`;
 
+// A chat reply is waited on by a person. When Replicate is queueing (cold
+// start, overload) a call would otherwise hang for minutes while the user
+// retries, and every retry is another billed prediction.
+const CHAT_TIMEOUT_MS = 30_000;
+
 function client(): Replicate {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) throw new Error("REPLICATE_API_TOKEN is not set.");
@@ -50,14 +55,46 @@ function flattenPrompt(history: ChatTurn[], userMessage: string): string {
   return prompt;
 }
 
+/**
+ * `replicate.run` that stops when `signal` fires. The SDK (1.4) only looks at
+ * the signal between polls: its first request blocks for up to 60 s under
+ * `Prefer: wait` regardless, and on abort it cancels the prediction and
+ * *returns* whatever the cancelled prediction holds instead of throwing. So the
+ * abort is raced here, and the SDK finishes the cancel in the background once
+ * it has the prediction's id.
+ */
+async function runUntil(
+  replicate: Replicate,
+  input: object,
+  signal: AbortSignal,
+): Promise<object> {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([replicate.run(LLM_MODEL, { input, signal }), aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+
 export async function chatCompletion(opts: {
   systemPrompt: string;
   history: ChatTurn[];
   userMessage: string;
   maxTokens?: number;
   temperature?: number;
+  /** Aborts the call and cancels the prediction, e.g. the request's own signal. */
+  signal?: AbortSignal;
+  /** Budget for the whole completion, fallback call included. */
+  timeoutMs?: number;
 }): Promise<string> {
   const replicate = client();
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? CHAT_TIMEOUT_MS);
+  const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
 
   const shared = {
     max_completion_tokens: opts.maxTokens ?? 600,
@@ -75,24 +112,27 @@ export async function chatCompletion(opts: {
   ];
 
   try {
-    const output = await replicate.run(LLM_MODEL, {
-      input: { ...shared, messages },
-    });
+    const output = await runUntil(replicate, { ...shared, messages }, signal);
     return normalizeOutput(output);
   } catch (err) {
+    // A timeout or a client that went away says nothing about the schema: a
+    // second call would only start, and bill, a prediction nobody waits for.
+    if (signal.aborted) throw err;
     // Model schema may not support `messages` (e.g. a non-OpenAI model set via
     // STYLIST_LLM_MODEL). Retry once with the flattened-transcript contract.
     console.warn(
       "[replicate-ai] structured messages call failed, falling back to flattened prompt:",
       err instanceof Error ? err.message : err
     );
-    const output = await replicate.run(LLM_MODEL, {
-      input: {
+    const output = await runUntil(
+      replicate,
+      {
         ...shared,
         prompt: flattenPrompt(opts.history, opts.userMessage),
         system_prompt: opts.systemPrompt,
       },
-    });
+      signal,
+    );
     return normalizeOutput(output);
   }
 }

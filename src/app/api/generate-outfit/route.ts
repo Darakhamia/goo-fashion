@@ -106,6 +106,9 @@ async function fetchCheckingRedirects(
   return null;
 }
 
+/** Longest the image model is waited for before the prediction is cancelled. */
+const IMAGE_TIMEOUT_MS = 120_000;
+
 /** Largest reference photo read; the whole body is sent on as a data URI. */
 const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;
 
@@ -330,6 +333,10 @@ export async function POST(req: Request) {
         resolution: "1K",
         output_format: "jpg",
       },
+      // When Replicate is queueing, or the builder tab is closed, stop waiting
+      // and let the SDK cancel the prediction instead of polling for minutes.
+      // After an abort it returns no image, which is answered below.
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(IMAGE_TIMEOUT_MS)]),
     });
 
     const imageUrl = Array.isArray(output)
