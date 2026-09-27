@@ -87,12 +87,25 @@ export interface PushResult {
   /** The look reached the account. */
   ok: boolean;
   /**
+   * The id the look now has. Differs from the one pushed when the account
+   * refused that id as someone else's (see pushLook); the local copy has been
+   * renamed to it, and a caller holding the look in state should follow.
+   */
+  id: string;
+  /**
    * Fields the account accepted the look *without*, because the database has
    * no column for them yet. `ok` is still true — the look is saved — but a name
    * listed here exists on this device only, which is the whole reason a rename
    * could look saved on one phone and be absent everywhere else.
    */
   dropped: string[];
+}
+
+/** Give the local copy of a look a new id, keeping its place in the list. */
+function renameLocalLook(fromId: string, toId: string): void {
+  const looks = loadLocalLooks();
+  if (!looks.some((l) => l.id === fromId)) return;
+  saveLocalLooks(looks.map((l) => (l.id === fromId ? { ...l, id: toId } : l)));
 }
 
 /**
@@ -102,36 +115,54 @@ export interface PushResult {
  * app being backgrounded — the main reason looks created on mobile never
  * reached the server. Retries transient/network failures. Marks the look as
  * server-synced on success so future syncs can reason about remote deletions.
+ *
+ * A 409 means the id is already someone else's row. The usual case is a look
+ * shared while signed out: /api/looks/share stored that snapshot under the
+ * look's own id with no owner, so once the person signs in, the account can
+ * never take that id. Every sync used to fail the same way and the look stayed
+ * on one device. It now gets a fresh id — here and in local storage — and is
+ * pushed once more. Only once: a second 409 is a failure like any other, so
+ * this cannot loop. The shared link keeps working; it points at the snapshot.
  */
 export async function pushLook(
   look: SavedLook,
   { keepalive = true }: { keepalive?: boolean } = {},
 ): Promise<PushResult> {
+  let current = look;
+  let reminted = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch("/api/user/looks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(look),
+        body: JSON.stringify(current),
         keepalive,
       });
       if (res.ok) {
-        markSynced(look.id);
+        markSynced(current.id);
         // The endpoint says which optional columns it had to leave out. Read
         // it rather than discard it: this is the only moment anything knows
         // that the name just typed did not actually leave this device.
         const body = await res.json().catch(() => null);
         const dropped = Array.isArray(body?.dropped) ? (body.dropped as string[]) : [];
-        return { ok: true, dropped };
+        return { ok: true, id: current.id, dropped };
+      }
+      if (res.status === 409 && !reminted) {
+        reminted = true;
+        const fresh = { ...current, id: newLookId() };
+        renameLocalLook(current.id, fresh.id);
+        current = fresh;
+        attempt--; // a new id is a new request, not a retry of a failed one
+        continue;
       }
       // Client errors (other than rate limiting) won't succeed on retry.
-      if (res.status < 500 && res.status !== 429) return { ok: false, dropped: [] };
+      if (res.status < 500 && res.status !== 429) return { ok: false, id: current.id, dropped: [] };
     } catch {
       // network error — fall through to retry
     }
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
-  return { ok: false, dropped: [] };
+  return { ok: false, id: current.id, dropped: [] };
 }
 
 /** Remove a look from the account and from the local synced bookkeeping. */
@@ -187,11 +218,21 @@ export async function syncLooks(isLoggedIn: boolean): Promise<SavedLook[]> {
   }
 
   const localById = new Map(local.map((l) => [l.id, l]));
-  const reconciled = server.map((s) => ({
-    ...s,
-    name: s.name ?? localById.get(s.id)?.name,
-    description: s.description ?? localById.get(s.id)?.description,
-  }));
+  const reconciled = server.map((s) => {
+    const localCopy = localById.get(s.id);
+    return {
+      ...s,
+      name: s.name ?? localCopy?.name,
+      description: s.description ?? localCopy?.description,
+      // The account stores photos by link only, so a photo this device kept as
+      // a data URL (how the builder stored them before generate-outfit saved
+      // them to storage) never reaches it. Keep that copy here rather than let
+      // the account's empty field erase the only one there is.
+      generatedImage:
+        s.generatedImage ??
+        (localCopy?.generatedImage?.startsWith("data:") ? localCopy.generatedImage : s.generatedImage),
+    };
+  });
 
   // A name this device knows and the account does not.
   //
@@ -211,8 +252,6 @@ export async function syncLooks(isLoggedIn: boolean): Promise<SavedLook[]> {
     return (!before?.name && !!l.name) || (!before?.description && !!l.description);
   });
 
-  const merged = sortBySavedAt([...reconciled, ...localOnly]);
-
   // Push what the account is missing: looks it has never seen, and names it
   // lost. Both are idempotent upserts.
   //
@@ -224,8 +263,26 @@ export async function syncLooks(isLoggedIn: boolean): Promise<SavedLook[]> {
   // recovered names on the floor at the moment they were finally being sent.
   // keepalive earns its place on a single save, where the page may be
   // navigating away; a background sync can simply run again.
-  await Promise.allSettled(
-    [...localOnly, ...recoverable].map((l) => pushLook(l, { keepalive: false })),
+  const toPush = [...localOnly, ...recoverable];
+  const pushed = await Promise.allSettled(
+    toPush.map((l) => pushLook(l, { keepalive: false })),
+  );
+
+  // A look the account refused by id went up under a new one (see pushLook).
+  // The cache written below replaces local storage wholesale, so it has to
+  // carry the new id too — otherwise the next sync would push the old id,
+  // meet the same 409 and store the look a second time.
+  const renamed = new Map<string, string>();
+  pushed.forEach((r, i) => {
+    if (r.status === "fulfilled" && r.value.id !== toPush[i].id) {
+      renamed.set(toPush[i].id, r.value.id);
+    }
+  });
+  const merged = sortBySavedAt(
+    [...reconciled, ...localOnly].map((l) => {
+      const id = renamed.get(l.id);
+      return id ? { ...l, id } : l;
+    }),
   );
 
   // Cache the union and record every id we now know lives on the account.

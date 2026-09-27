@@ -737,7 +737,21 @@ export default function BuilderPage() {
       // was killed when the page was backgrounded mid-navigation.
       if (isLoggedIn) {
         const look = (updated as unknown as SavedLook[]).find((o) => o.id === savedId);
-        if (look) return (await pushLook(look)).ok;
+        if (look) {
+          const pushed = await pushLook(look);
+          // A new id when the account refused this one as someone else's (see
+          // pushLook): the next save of this look must use it, and so must an
+          // ?editId= in the address, which is read before persistedLookId.
+          if (pushed.id !== savedId) {
+            setPersistedLookId(pushed.id);
+            const address = new URL(window.location.href);
+            if (address.searchParams.get("editId") === savedId) {
+              address.searchParams.set("editId", pushed.id);
+              window.history.replaceState(window.history.state, "", address);
+            }
+          }
+          return pushed.ok;
+        }
       }
       return true;
     } catch {

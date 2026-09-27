@@ -6,6 +6,18 @@ import { isUntrackedPath } from "@/lib/analytics/paths";
 
 const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost)/;
 
+// The rate limit counts requests, not bytes, and none of these columns has a
+// size limit of its own: a script could send megabyte referrers well inside
+// the limit and fill the disk. A real beacon is well under a kilobyte, so the
+// body is refused above this, and each field is cut to a length real values
+// fit in.
+const MAX_BODY_BYTES = 16 * 1024;
+
+/** A string cut to `max` characters (never mid-emoji), or null. */
+function capped(v: unknown, max: number): string | null {
+  return typeof v === "string" ? v.slice(0, max).replace(/[\uD800-\uDBFF]$/, "") : null;
+}
+
 async function resolveCountry(req: Request): Promise<string | null> {
   const fromHeader =
     req.headers.get("x-vercel-ip-country") ||
@@ -36,6 +48,10 @@ async function resolveCountry(req: Request): Promise<string | null> {
 export async function POST(req: Request) {
   if (!isSupabaseConfigured || !supabase) return NextResponse.json({ ok: true });
 
+  if (Number(req.headers.get("content-length")) > MAX_BODY_BYTES) {
+    return NextResponse.json({ ok: false }, { status: 413 });
+  }
+
   const body = await req.json().catch(() => null);
   if (!body || typeof body.session_id !== "string" || typeof body.path !== "string") {
     return NextResponse.json({ ok: true });
@@ -65,17 +81,17 @@ export async function POST(req: Request) {
   const country = clientCountry ?? await resolveCountry(req);
 
   await supabase.from("page_views").insert({
-    session_id:   body.session_id,
+    session_id:   capped(body.session_id, 256),
     user_id:      userId,
-    path:         body.path,
-    referrer:     body.referrer     ?? null,
-    utm_source:   body.utm_source   ?? null,
-    utm_medium:   body.utm_medium   ?? null,
-    utm_campaign: body.utm_campaign ?? null,
+    path:         capped(body.path, 1000),
+    referrer:     capped(body.referrer, 512),
+    utm_source:   capped(body.utm_source, 256),
+    utm_medium:   capped(body.utm_medium, 256),
+    utm_campaign: capped(body.utm_campaign, 256),
     country,
-    device:  body.device  ?? null,
-    browser: body.browser ?? null,
-    os:      body.os      ?? null,
+    device:  capped(body.device, 256),
+    browser: capped(body.browser, 256),
+    os:      capped(body.os, 256),
     load_ms: typeof body.load_ms === "number" ? body.load_ms : null,
     ttfb_ms: typeof body.ttfb_ms === "number" ? body.ttfb_ms : null,
   });
