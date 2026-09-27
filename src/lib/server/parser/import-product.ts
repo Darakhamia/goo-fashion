@@ -369,11 +369,13 @@ async function findSameItemByName(incoming: {
   brand: string;
   name: string;
   colors: string[];
+  coloursStated: boolean;
   category: string;
   price: number;
   sourceUrl: string | null;
-}): Promise<{ item: NamedItem; unread: string[] } | null> {
-  if (!incoming.brand || !incoming.sourceUrl) return null;
+}): Promise<{ item: NamedItem | null; unread: string[]; miss?: string }> {
+  if (!incoming.brand) return { item: null, unread: [], miss: "no brand to match by" };
+  if (!incoming.sourceUrl) return { item: null, unread: [], miss: "no address to add as a store" };
   try {
     for (const columns of NAME_MATCH_COLUMNS) {
       const { data, error } = await supabase!
@@ -386,15 +388,14 @@ async function findSameItemByName(incoming: {
         name: string | null;
         category: string | null;
       })[]).map((row) => ({ ...toExisting(row), name: row.name ?? "", category: row.category }));
-      const item = pickSameItemByName(incoming, rows);
-      if (!item) return null;
+      const match = pickSameItemByName(incoming, rows);
       const read = columns.split(",").map((c) => c.trim());
-      return { item, unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)) };
+      return { item: match.item, miss: match.miss, unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)) };
     }
   } catch {
     /* no connection — an ordinary insert, as before */
   }
-  return null;
+  return { item: null, unread: [], miss: "the catalogue could not be read" };
 }
 
 /**
@@ -438,6 +439,13 @@ async function keepOtherStores(
 export interface ImportOptions {
   /** Download photos into Supabase Storage and store our URLs instead. */
   mirrorImages?: boolean;
+  /**
+   * The page only adds a place to buy. A piece the catalogue already has gains
+   * this store's link and price and nothing else; a piece it does not have is
+   * skipped rather than created. For collecting a second store's links onto
+   * cards made from the first.
+   */
+  linksOnly?: boolean;
 }
 
 export interface ImportResult {
@@ -469,6 +477,10 @@ export interface ImportResult {
   mergedBy?: "code" | "name";
   /** What the merge filled in on that product. */
   mergedFields?: string[];
+  /** Set when nothing was written, and why: a links-only page with no card to join. */
+  skipped?: string;
+  /** What a links-only page did to a card, when it was not a merge. */
+  linkNote?: string;
 }
 
 export async function importParsedProduct(
@@ -560,9 +572,10 @@ export async function importParsedProduct(
 
   // Mirror photos to our storage before writing the row, so the catalog only
   // ever references URLs we control. A failed download keeps its original URL.
+  // A links-only page writes no photo anywhere, so it copies none.
   let imagesMirrored: number | undefined;
   let imagesFailed: number | undefined;
-  if (opts.mirrorImages && (imageUrl || images.length)) {
+  if (opts.mirrorImages && !opts.linksOnly && (imageUrl || images.length)) {
     const mirror = await mirrorProductImages({ imageUrl, images });
     if (mirror.attempted) {
       imageUrl = mirror.imageUrl;
@@ -579,7 +592,11 @@ export async function importParsedProduct(
     .map((c: unknown) => String(c).trim())
     .filter((c: string) => looksLikeColourLabel(c))
     .slice(0, 10);
-  const sizes = (Array.isArray(p.sizes) ? p.sizes : [])
+  // What the page itself said, kept apart from the photo's reading below: the
+  // same-item test trusts a stated colour to rule a card out, and a reading
+  // only to choose among cards.
+  const coloursStated = colors.length > 0;
+  const sizes =(Array.isArray(p.sizes) ? p.sizes : [])
     .map((s: unknown) => String(s).trim())
     .filter(Boolean)
     .slice(0, 40);
@@ -675,10 +692,12 @@ export async function importParsedProduct(
     }
   }
   const styleProposal = proposeStyles(
-    { brand, keywordStyles: normalizeStyleKeywords(p.styleKeywords), colors, colorGroups: groupNames },
+    { brand, keywordStyles: normalizeStyleKeywords(p.styleKeywords), colors, colorGroups: groupNames, sourceUrl },
     profile,
   );
-  let styleNote = styleProposal.styles.length ? `style ${styleProposal.reasons.join("; ")}` : undefined;
+  let styleNote = styleProposal.styles.length
+    ? `style ${styleProposal.reasons.join("; ")}`
+    : styleProposal.missing;
 
   const product: Partial<Product> = {
     name,
@@ -761,6 +780,31 @@ export async function importParsedProduct(
       existingGendered = !!found?.gender;
     }
 
+    if (existingId && opts.linksOnly) {
+      // This page made its own card on an earlier run. A links-only run adds
+      // stores and changes nothing else, so only this store's entry — its
+      // price — is refreshed. Were the card a copy of another store's, the
+      // Duplicates screen is where the two become one.
+      const id = existingId;
+      const patch: Record<string, unknown> = retailers[0]
+        ? { retailers: withRetailer(existingRetailers, retailers[0]) }
+        : {};
+      if (Object.keys(patch).length) {
+        const { error } = await writeProductRow<{ id: string }>(patch, (r) =>
+          supabase!.from("products").update(r).eq("id", id).select("id").maybeSingle(),
+        );
+        if (error) throw new Error(error.message);
+      }
+      return {
+        ok: true,
+        productId: id,
+        updated: true,
+        priceNote,
+        brandNote,
+        linkNote: "this page's own card from an earlier run: only its price here was refreshed",
+      };
+    }
+
     if (existingId) {
       const id = existingId;
       const row = await keepOtherStores(dbRow, existingRetailers, retailers[0], sourceUrl);
@@ -813,16 +857,19 @@ export async function importParsedProduct(
       let twin: ExistingItem | null = await findSameItem(incoming, sourceUrl);
       let mergedBy: ImportResult["mergedBy"] = twin ? "code" : undefined;
       let unread: string[] = [];
+      let miss: string | undefined;
       if (!twin) {
         const byName = await findSameItemByName({
           brand,
           name,
           colors,
+          coloursStated,
           category,
           price: incoming.price,
           sourceUrl,
         });
-        if (byName) {
+        miss = byName.miss;
+        if (byName.item) {
           twin = byName.item;
           unread = byName.unread;
           mergedBy = "name";
@@ -831,7 +878,7 @@ export async function importParsedProduct(
 
       if (twin) {
         const twinId = twin.id;
-        const merged = mergePatch(twin, incoming);
+        const merged = mergePatch(twin, incoming, { linksOnly: opts.linksOnly });
         const patch = merged.patch;
         for (const column of unread) delete patch[column];
         const filled = merged.filled.filter((f) => !unread.includes(f));
@@ -843,6 +890,8 @@ export async function importParsedProduct(
           supabase!.from("products").update(row).eq("id", twinId).select("id").maybeSingle(),
         );
         if (error) throw new Error(error.message);
+        // Gender and style are not in the merge — the card keeps its own — so
+        // they are not reported, and neither is a colour the card did not take.
         return {
           ok: true,
           productId: twinId,
@@ -852,12 +901,20 @@ export async function importParsedProduct(
           images: images.length,
           priceNote,
           brandNote,
-          colorNote,
-          genderNote,
-          styleNote,
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
+        };
+      }
+
+      if (opts.linksOnly) {
+        return {
+          ok: true,
+          productId: null,
+          updated: false,
+          priceNote,
+          brandNote,
+          skipped: `links only: ${miss ?? "not in the catalogue"}`,
         };
       }
 

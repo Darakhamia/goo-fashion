@@ -8,10 +8,12 @@
  *
  *   by code   the same GTIN, or the same maker's part number within a brand;
  *   by name   the same brand, the same piece once reduced, the same colours in
- *             any order, no store in common, and prices within a factor of
- *             three. Two words for one set of colours count only when a row
- *             has exactly one such candidate — a model made in two blacks is
- *             ambiguous, and a wrong merge sends a shopper to the other one.
+ *             any order — or some of them ("Grey" beside "grey/white/leather"),
+ *             or none stated where the store has one card of the piece — no
+ *             store in common, and prices within a factor of three. Anything
+ *             short of the same colour word counts only when a row has exactly
+ *             one such candidate — a model made in two blacks is ambiguous,
+ *             and a wrong merge sends a shopper to the other one.
  *
  * Pairs join into groups, and each group suggests the card to keep: the one on
  * the brand's own store, then the one with most stores, then the oldest. The
@@ -142,26 +144,34 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
     for (const a of bucket) {
       const storesA = storesOf(a);
       if (!storesA.size) continue;
-      const perStore = new Map<string, { exact: string[]; near: string[] }>();
+      type Slot = { exact: string[]; near: string[]; partial: string[]; unstated: string[]; all: string[] };
+      const perStore = new Map<string, Slot>();
       for (const b of bucket) {
         if (a.id === b.id) continue;
         if (!samePiece(a.brand, a, b)) continue;
-        const relation = colourRelation(a.colors, b.colors);
-        if (relation !== "same" && relation !== "near") continue;
         const storesB = storesOf(b);
         if (!storesB.size || [...storesB].some((s) => storesA.has(s))) continue;
         const pa = a.priceMin ?? 0;
         const pb = b.priceMin ?? 0;
         if (pa > 0 && pb > 0 && Math.max(pa, pb) / Math.min(pa, pb) > MAX_PRICE_RATIO) continue;
         const store = primaryStore(b);
-        const slot = perStore.get(store) ?? { exact: [], near: [] };
-        (relation === "same" ? slot.exact : slot.near).push(b.id);
+        const slot = perStore.get(store) ?? { exact: [], near: [], partial: [], unstated: [], all: [] };
+        const relation = colourRelation(a.colors, b.colors);
+        if (relation === "same") slot.exact.push(b.id);
+        else if (relation === "near") slot.near.push(b.id);
+        else if (relation === "partial") slot.partial.push(b.id);
+        else if (relation === "unknown" || relation === "none") slot.unstated.push(b.id);
+        slot.all.push(b.id);
         perStore.set(store, slot);
       }
+      // The importer's order (`pickSameItemByName`): the same colour, the same
+      // colours in other words, some of the colours; and a card with no colour
+      // on either side only when the store has one card of the piece at all.
       const chosen = new Set<string>();
-      for (const { exact, near } of perStore.values()) {
-        const pick = exact.length ? exact : near;
+      for (const { exact, near, partial, unstated, all } of perStore.values()) {
+        const pick = exact.length ? exact : near.length ? near : partial;
         if (pick.length === 1) chosen.add(pick[0]);
+        else if (!pick.length && all.length === 1 && (!a.colors.length || unstated.length === 1)) chosen.add(all[0]);
       }
       partners.set(a.id, chosen);
     }
