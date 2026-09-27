@@ -18,7 +18,8 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { discoverProductUrls } from "@/lib/server/parser/crawl";
-import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
+import { droppedColumnsWarning, importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
+import { orderForLinksOnly } from "@/lib/server/parser/catalogue-match";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -52,12 +53,28 @@ export async function POST(req: Request) {
     const url = typeof body?.url === "string" ? body.url.trim() : "";
     if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
 
+    const limit = Math.max(1, Math.min(Number(body?.limit) || 60, 2_000));
+    const linksOnly = body?.linksOnly === true;
     const result = await discoverProductUrls(url, {
       fetchSettings,
       fetchApiKey: keyInfo.key,
-      limit: Math.max(1, Math.min(Number(body?.limit) || 60, 2_000)),
+      // A links-only run looks through as much of the store as it can reach and
+      // opens only what looks like ours, so it is not cut at `limit` here.
+      limit: linksOnly ? 2_000 : limit,
       maxPages: Math.max(1, Math.min(Number(body?.maxPages) || 1, 20)),
     });
+
+    if (linksOnly && result.ok && !result.isSingleProduct) {
+      const catalogue = await loadCatalogueIndex();
+      if (!catalogue) {
+        result.urls = result.urls.slice(0, limit);
+        result.hint = joinHints("Links only: the catalogue could not be read, so pages are opened in the store's order.", result.hint);
+      } else {
+        const order = orderForLinksOnly(result.urls, catalogue);
+        result.urls = order.urls.slice(0, limit);
+        result.hint = joinHints(linksHint(order, catalogue.size), result.hint);
+      }
+    }
 
     return NextResponse.json(result);
   }
@@ -173,4 +190,20 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, results, imported, updated });
+}
+
+/** What a links-only search found among the store's pages, for the admin. */
+function linksHint(
+  order: { matched: number; unnamed: number; linked: number; other: number },
+  cards: number,
+): string {
+  const parts = [`Links only: ${order.matched} of the store's pages name one of our ${cards} cards`];
+  if (order.unnamed) parts.push(`${order.unnamed} name nothing by their address and come after them`);
+  if (order.linked) parts.push(`${order.linked} are already on a card and come last`);
+  if (order.other) parts.push(`${order.other} name something we do not have and are not opened`);
+  return `${parts.join("; ")}.`;
+}
+
+function joinHints(...hints: (string | undefined)[]): string {
+  return hints.filter(Boolean).join(" ");
 }

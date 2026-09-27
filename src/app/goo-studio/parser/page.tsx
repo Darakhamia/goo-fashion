@@ -282,7 +282,7 @@ function CollectTab({
       const res = await fetch("/api/admin/parser/crawl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "discover", url: target, limit, maxPages }),
+        body: JSON.stringify({ action: "discover", url: target, limit, maxPages, linksOnly }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -393,7 +393,7 @@ function CollectTab({
               on={linksOnly}
               disabled={running}
               onChange={setLinksOnly}
-              label="Links only — add this store to pieces we already have, skip the rest"
+              label="Links only — find the pieces we already have in this store and add its link to them; create nothing"
             />
           </div>
         </div>
