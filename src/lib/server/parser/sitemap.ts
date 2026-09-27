@@ -74,6 +74,31 @@ export function locations(xml: string): string[] {
   return out;
 }
 
+/**
+ * The name a sitemap gives each page, where it gives one: Shopify writes the
+ * product's title beside its photo (`<image:title>`) for every product it
+ * lists. Keyed by `<loc>` as `locations` reads it.
+ */
+export function titles(xml: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const entry = /<url>([\s\S]*?)<\/url>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = entry.exec(xml))) {
+    const loc = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/i.exec(m[1])?.[1];
+    const title = /<image:title>\s*(?:<!\[CDATA\[)?([^<\]]*)/i.exec(m[1])?.[1];
+    if (!loc || !title?.trim()) continue;
+    out.set(
+      loc.replace(/&amp;/g, "&"),
+      title
+        .replace(/&#0*39;|&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&")
+        .trim(),
+    );
+  }
+  return out;
+}
+
 /** Gzip announces itself in its first two bytes, whatever the URL ends with. */
 function textFromBytes(bytes: Uint8Array): string | null {
   try {

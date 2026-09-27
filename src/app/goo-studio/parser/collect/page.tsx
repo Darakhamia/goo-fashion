@@ -69,9 +69,25 @@ const MODES = [
   {
     label: "Links only",
     linksOnly: true,
-    says: "Only adds this store's link and price to pieces we already have. Pieces we don't have are skipped.",
+    says: "Looks through this store for the pieces we already have and adds its link and price to them. Nothing new is created, and pages that are not ours are not opened.",
   },
 ] as const;
+
+/**
+ * Where the chosen mode is kept, so every collect tab runs in it: the extension
+ * opens a collect tab of its own when it finds none, and a fresh tab used to
+ * start in "Make cards" whatever the admin had chosen in another one.
+ */
+const MODE_KEY = "goo-collect-mode";
+
+/** What a links-only run's plan found among the store's pages. */
+interface LinkSearch {
+  cards: number;
+  matched: number;
+  unnamed: number;
+  linked: number;
+  other: number;
+}
 
 interface RobotsInfo {
   parsed: boolean;
@@ -88,15 +104,38 @@ export default function CollectPage() {
   const [planned, setPlanned] = useState(0);
   const [delayMs, setDelayMs] = useState(0);
   const [robots, setRobots] = useState<RobotsInfo | null>(null);
+  const [linkSearch, setLinkSearch] = useState<LinkSearch | null>(null);
   const [notice, setNotice] = useState("");
   /**
    * Whether this run makes cards or only adds this store to the cards we have.
-   * Chosen here rather than in the extension: this tab makes every import
-   * call, so the choice travels with them and the extension needs no change.
-   * Mirrored in a ref for the same reason as Stop below.
+   * Chosen here rather than in the extension: this tab makes every plan and
+   * import call, so the choice travels with them and the extension needs no
+   * change. Mirrored in a ref for the same reason as Stop below, and kept in
+   * the browser (`MODE_KEY`) so a tab the extension opens runs in it too.
    */
   const [linksOnly, setLinksOnly] = useState(false);
   const linksOnlyRef = useRef(false);
+
+  // Before the bridge's listener below, so a tab the extension has just opened
+  // knows its mode by the time the first plan arrives. Another collect tab
+  // changing it changes it here too: the worker may be talking to either.
+  useEffect(() => {
+    const apply = (value: string | null) => {
+      const on = value === "links";
+      linksOnlyRef.current = on;
+      setLinksOnly(on);
+    };
+    try {
+      apply(window.localStorage.getItem(MODE_KEY));
+    } catch {
+      /* storage blocked — the mode starts at "Make cards" and lives in this tab */
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === MODE_KEY) apply(event.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   /**
    * Stop as a ref, not state: the message handler is registered once and would
@@ -165,11 +204,13 @@ export default function CollectPage() {
           const target = typeof payload.url === "string" ? payload.url : "";
           setStore(target);
           try {
-            const data = await callApi({ action: "plan", ...payload });
+            const data = await callApi({ action: "plan", ...payload, linksOnly: linksOnlyRef.current });
             const urls = Array.isArray(data.urls) ? (data.urls as string[]) : [];
             setPlanned((n) => n + urls.length);
             setDelayMs(Number(data.delayMs) || 0);
             setRobots((data.robots as RobotsInfo) ?? null);
+            setLinkSearch((data.links as LinkSearch) ?? null);
+            if (typeof data.linksNote === "string") setNotice(`Links only: ${data.linksNote}.`);
             if (urls.length) setPhase("collecting");
             reply(msg.id, true, data);
           } catch (err) {
@@ -239,6 +280,11 @@ export default function CollectPage() {
   function chooseMode(value: boolean) {
     linksOnlyRef.current = value;
     setLinksOnly(value);
+    try {
+      window.localStorage.setItem(MODE_KEY, value ? "links" : "cards");
+    } catch {
+      /* storage blocked — the choice holds for this tab only */
+    }
   }
 
   function stop() {
@@ -254,6 +300,7 @@ export default function CollectPage() {
     setPlanned(0);
     setNotice("");
     setRobots(null);
+    setLinkSearch(null);
     setPhase("idle");
   }
 
@@ -389,6 +436,32 @@ export default function CollectPage() {
           </span>
           {robots.blocked > 0 && (
             <span className="text-amber-500 tabular-nums">{robots.blocked} disallowed, skipped</span>
+          )}
+        </div>
+      )}
+
+      {linkSearch && (
+        <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+          <span className={labelCls + " mb-0"}>Looking for ours</span>
+          <span className="text-[var(--foreground-muted)]">
+            <span className="text-[var(--foreground)] tabular-nums">{linkSearch.matched}</span> store
+            pages name one of our {linkSearch.cards} cards
+          </span>
+          {linkSearch.unnamed > 0 && (
+            <span className="text-[var(--foreground-muted)]">
+              <span className="tabular-nums">{linkSearch.unnamed}</span> name nothing by their
+              address, opened after
+            </span>
+          )}
+          {linkSearch.linked > 0 && (
+            <span className="text-[var(--foreground-muted)]">
+              <span className="tabular-nums">{linkSearch.linked}</span> already on a card
+            </span>
+          )}
+          {linkSearch.other > 0 && (
+            <span className="text-[var(--foreground-subtle)]">
+              <span className="tabular-nums">{linkSearch.other}</span> not ours, not opened
+            </span>
           )}
         </div>
       )}
