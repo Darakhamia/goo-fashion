@@ -28,7 +28,6 @@
  * point of the extension — their IP, their cookies, their already-passed
  * challenge. The server only ever sees the text that came back.
  */
-import { escapeRegExp } from "@/lib/text";
 
 /**
  * The rules from one robots.txt, already reduced to the `*` group.
@@ -51,38 +50,66 @@ export interface RobotsRules {
 }
 
 /**
- * A robots.txt path pattern as a regex anchored at the start of the path.
+ * How much of robots.txt is read — Google's own limit; rules past it are
+ * ignored, as Google ignores them.
+ */
+const MAX_ROBOTS_CHARS = 500 * 1024;
+
+/**
+ * Rules we keep. Every rule is tried against every address in a run of up to
+ * 2,000, on the event loop the site shares, so the file decides how long that
+ * takes. A real rule is a path with a wildcard or two, and a real file has a
+ * few hundred rules at most: one far longer or starrier is not a rule anyone
+ * wrote for a crawler and is dropped, and rules past the thousandth are
+ * ignored, as rules past 500 KB are.
+ */
+const MAX_PATTERN_CHARS = 500;
+const MAX_PATTERN_STARS = 10;
+const MAX_RULES = 1_000;
+
+/**
+ * Does a robots.txt path pattern match `path`, anchored at its start?
  *
  * The format is not a glob and not a regex: `*` stands for any run of
  * characters, a trailing `$` anchors the end, and every other character is
- * literal — including the `.` and `?` that turn up in `/*.php?` style rules and
- * would otherwise quietly match far more than the store wrote.
+ * literal — including the `.` and `?` that turn up in `/*.php?` style rules.
+ *
+ * Matched piece by piece rather than as a regex. `*` as `.*` backtracks on
+ * every star, and the pattern is the store's to write: `/*a*a*a*a*a*a*a*a*a*a*b`
+ * against a 40-character path took half a minute, on the event loop every
+ * visitor shares. Here each literal piece is found with `indexOf` after the
+ * one before it — the leftmost place is always the best place, since it leaves
+ * the most path for what follows — so a match costs one pass over the path.
  */
-function patternToRegex(pattern: string): RegExp {
-  let out = "";
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === "*") {
-      out += ".*";
-      continue;
-    }
-    // `$` is an end-anchor only as the final character; anywhere else it is a
-    // literal dollar sign, which is how some stores write query-string rules.
-    if (ch === "$" && i === pattern.length - 1) {
-      out += "$";
-      continue;
-    }
-    out += escapeRegExp(ch);
+function matchesPattern(pattern: string, path: string): boolean {
+  // `$` is an end-anchor only as the final character; anywhere else it is a
+  // literal dollar sign, which is how some stores write query-string rules.
+  const anchored = pattern.endsWith("$");
+  const parts = (anchored ? pattern.slice(0, -1) : pattern).split("*");
+  const first = parts[0];
+  if (!path.startsWith(first)) return false;
+  if (parts.length === 1) return !anchored || path.length === first.length;
+
+  // With `$` the last piece must end the path, so the ones between have to fit
+  // before it; without it, the last piece is found like any other.
+  const last = parts[parts.length - 1];
+  const end = anchored ? path.length - last.length : path.length;
+  if (anchored && (end < first.length || !path.endsWith(last))) return false;
+  let at = first.length;
+  for (let i = 1; i < parts.length - (anchored ? 1 : 0); i++) {
+    const found = path.indexOf(parts[i], at);
+    if (found < 0 || found + parts[i].length > end) return false;
+    at = found + parts[i].length;
   }
-  return new RegExp(`^${out}`);
+  return true;
 }
 
 /** The longest pattern in `patterns` that matches `path`, or -1 for none. */
 function longestMatch(patterns: string[], path: string): number {
   let best = -1;
   for (const p of patterns) {
-    if (p.length <= best) continue; // cannot win — skip the regex entirely
-    if (patternToRegex(p).test(path)) best = p.length;
+    if (p.length <= best) continue; // cannot win — skip the match entirely
+    if (matchesPattern(p, path)) best = p.length;
   }
   return best;
 }
@@ -115,6 +142,7 @@ export function parseRobots(text: string): RobotsRules {
   // that as "no rules" is right, but treating it as a *parsed* empty file is
   // not — the caller shows the difference to the admin.
   if (/^\s*</.test(text)) return rules;
+  if (text.length > MAX_ROBOTS_CHARS) text = text.slice(0, MAX_ROBOTS_CHARS);
 
   /** Agents naming the group we are currently inside. */
   let agents: string[] = [];
@@ -171,8 +199,9 @@ export function parseRobots(text: string): RobotsRules {
     // so it must not become a pattern that matches every path. An empty
     // `Allow:` carries no meaning at all.
     if (!value) continue;
-    if (field === "allow") rules.allow.push(value);
-    else rules.disallow.push(value);
+    if (value.length > MAX_PATTERN_CHARS || value.split("*").length - 1 > MAX_PATTERN_STARS) continue;
+    const list = field === "allow" ? rules.allow : rules.disallow;
+    if (list.length < MAX_RULES) list.push(value);
   }
 
   rules.parsed = sawDirective;

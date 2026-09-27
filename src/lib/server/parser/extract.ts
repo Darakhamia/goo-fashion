@@ -12,6 +12,7 @@
 import type { ParserSiteConfig, RawExtract, ParserRuleField, PageEvidence } from "./types";
 import { harvestGalleryImages } from "./gallery";
 import { chooseColour } from "./colour-choice";
+import { MAX_HTML_BYTES } from "./fetch";
 import {
   canonicalColor,
   extractCurrencyFromDisplay,
@@ -1316,6 +1317,55 @@ export function isNonProductPath(pathname: string): boolean {
 }
 
 /**
+ * How much of a page the tag scans below read: the parser's own page ceiling.
+ * A server fetch stops there anyway; this holds for markup from anywhere else.
+ */
+const MAX_TAG_SCAN_CHARS = MAX_HTML_BYTES;
+
+/** How much of one tag is read for its attributes — far more than a real tag carries. */
+const MAX_TAG_CHARS = 4_000;
+
+/**
+ * The attribute text of every opening tag called `name` (a regex alternation,
+ * "a" or "link|a"), in document order: `<a class="x" href="/p">` gives
+ * ` class="x" href="/p"`.
+ *
+ * Walked, not backtracked. `/<a\b[^>]*\bhref=…/` over markup the store
+ * controls is quadratic: every `<a` with no `>` after it runs `[^>]*` to the
+ * end of the page and backs off a character at a time, so 120 KB of `<a ` held
+ * the event loop the whole site shares for four seconds. Here a tag is cut at
+ * its own `>` by one `indexOf` and the search resumes past it, so the page is
+ * read once, and the attribute regexes that follow run over one tag at a time.
+ */
+export function openingTags(html: string, name: string): string[] {
+  const text = html.length > MAX_TAG_SCAN_CHARS ? html.slice(0, MAX_TAG_SCAN_CHARS) : html;
+  const open = new RegExp(`<(?:${name})\\b`, "gi");
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = open.exec(text))) {
+    const from = m.index + m[0].length;
+    const close = text.indexOf(">", from);
+    out.push(text.slice(from, Math.min(close < 0 ? text.length : close, from + MAX_TAG_CHARS)));
+    // No `>` anywhere after this: the rest of the page is this one open tag.
+    if (close < 0) break;
+    open.lastIndex = close + 1;
+  }
+  return out;
+}
+
+/**
+ * The last `href` among a tag's attributes that `re` (global) accepts. A tag
+ * carrying two (`href` and a `data-href`) has always given the last one — the
+ * greedy regex this scan replaced backed off from the tag's end — and the links
+ * a listing yields should not move because the way it is read did.
+ */
+export function lastHref(attrs: string, re: RegExp): string | null {
+  let href: string | null = null;
+  for (const m of attrs.matchAll(re)) href = m[1];
+  return href;
+}
+
+/**
  * Discover product-page URLs on a listing page. Combines schema.org ItemList
  * URLs with same-host anchors that look like product links — used to "parse
  * each" when the listing doesn't embed full product data.
@@ -1336,11 +1386,11 @@ export function extractProductLinks(html: string, baseUrl: string, max = 60): st
   }
 
   // 2. Anchors that look like product pages on the same host.
-  const anchorRe = /<a\b[^>]*\bhref=["']([^"'#]+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = anchorRe.exec(html))) {
+  for (const attrs of openingTags(html, "a")) {
+    const href = lastHref(attrs, /\bhref=["']([^"'#]+)["']/gi);
+    if (!href) continue;
     let abs: URL;
-    try { abs = new URL(m[1], baseUrl); } catch { continue; }
+    try { abs = new URL(href, baseUrl); } catch { continue; }
     if (abs.protocol !== "http:" && abs.protocol !== "https:") continue;
     if (host && abs.hostname.replace(/^www\./, "") !== host) continue;
     if (!looksLikeProductPath(abs.pathname)) continue;

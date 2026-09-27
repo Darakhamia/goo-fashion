@@ -951,10 +951,19 @@ mirror, backdrop sampling, card export — on every redirect hop), the admin's
 upload-by-URL and the outfit generator's reference images. Provider modes are
 not checked — the provider fetches from its own network, not ours.
 
-Known limits: DNS is not resolved, so a public name that points at a private
-address passes; and `fetchHtml` / `fetchBinary` let `fetch` follow redirects
-(`redirect: "follow"`) without re-checking where they lead — only the photo
-mirror follows redirects by hand.
+Known limits: the parser's page fetches (`fetchHtml` / `fetchBinary` in
+`direct` mode) and the `custom` endpoint, in every mode, now go through the
+same check with the name resolved (`isBlockedResolvedHost`), and follow
+redirects by hand with the check on every hop, at most 5 hops. A `direct`
+fetch also refuses any port but 80 and 443, and a `custom` endpoint must be on
+a public address — a scraping service on our own Docker network is refused.
+ScrapingBee, ScraperAPI and ZenRows are not checked. Still open: DNS
+rebinding. The check looks the name up and `fetch` then looks it up again, so
+a resolver that changes its answer in between is not caught. Bodies are read
+with a ceiling (`read-capped.ts`): 10 MB for a page, 20 MB for a sitemap, a
+`.xml.gz` or a storefront JSON page, 50 MB for a sitemap once unzipped. A body
+past it fails that one fetch with the reason. robots.txt is read up to 500 KB
+and 1,000 rules per list, and a rule over 500 characters or 10 `*` is dropped.
 
 Note on `finalUrl`: only a `direct` fetch reports a meaningful final URL. In
 provider mode the response URL belongs to the **scraping service**, so

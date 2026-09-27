@@ -18,7 +18,7 @@
  * sitemaps out of an index.
  */
 import { gunzipSync } from "node:zlib";
-import { fetchHtml, fetchBinary } from "./fetch";
+import { fetchHtml, fetchBinary, MAX_CATALOGUE_BYTES } from "./fetch";
 import { looksLikeProductPath, isNonProductPath } from "./extract";
 import { parseRobots } from "./robots";
 import type { ParserFetchSettings } from "./types";
@@ -99,10 +99,21 @@ export function titles(xml: string): Map<string, string> {
   return out;
 }
 
+/**
+ * The most an unzipped sitemap may grow to: the protocol's own limit for one
+ * uncompressed file. A gzip of zeros unpacks a thousandfold, and without a
+ * ceiling a 20 MB download would become 20 GB in the one process the site runs in.
+ */
+const MAX_UNZIPPED_BYTES = 50 * 1024 * 1024;
+
 /** Gzip announces itself in its first two bytes, whatever the URL ends with. */
 function textFromBytes(bytes: Uint8Array): string | null {
   try {
-    const body = bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes) : bytes;
+    // Past the ceiling gunzipSync throws, and this one document reads as unreadable.
+    const body =
+      bytes[0] === 0x1f && bytes[1] === 0x8b
+        ? gunzipSync(bytes, { maxOutputLength: MAX_UNZIPPED_BYTES })
+        : bytes;
     return Buffer.from(body).toString("utf8");
   } catch {
     return null;
@@ -154,7 +165,8 @@ async function getText(
     const res = await fetchBinary(url, settings);
     return res.ok && res.bytes ? textFromBytes(res.bytes) : null;
   }
-  const res = await fetchHtml(url, settings, apiKey);
+  // A sitemap lists a whole catalogue and runs past a page's ceiling.
+  const res = await fetchHtml(url, settings, apiKey, MAX_CATALOGUE_BYTES);
   return res.ok && res.html ? res.html : null;
 }
 
