@@ -36,6 +36,7 @@ import { STYLE_KEYWORD_LIST, isStyleKeyword } from "@/lib/style-keywords";
 import { genderFromPage } from "@/lib/taxonomy/gender";
 import { loadRetailerRules, storeDefaultGender } from "@/lib/server/retailer-domains";
 import {
+  brandKey,
   buildCatalogueProfile,
   proposeGender,
   proposeStyles,
@@ -207,6 +208,8 @@ export async function GET(req: Request) {
 
   const brandOnlyStyles = (r: Row, profile: CatalogueProfile) =>
     proposeStyles({ brand: r.brand, keywordStyles: [], colors: [], colorGroups: [] }, profile).styles;
+  const storeOnlyStyles = (r: Row, profile: CatalogueProfile) =>
+    proposeStyles({ brand: "", keywordStyles: [], colors: [], colorGroups: [], sourceUrl: r.sourceUrl }, profile).styles;
   const combinedStyles = (r: Row, profile: CatalogueProfile) =>
     proposeStyles(
       {
@@ -214,9 +217,21 @@ export async function GET(req: Request) {
         keywordStyles: (importerRead(r).styleKeywords ?? []).filter(isStyleKeyword),
         colors: r.colors,
         colorGroups: r.colorGroups,
+        sourceUrl: r.sourceUrl,
       },
       profile,
     ).styles;
+
+  // A brand the catalogue has never seen — what "I added new things and they
+  // came in without styles" is. Folds are drawn by brand, so each product is
+  // read with a profile that holds none of its brand's pieces: exactly what
+  // the importer knows about the first piece of a new brand. The fallback line
+  // scores filling the gaps with the catalogue's most common style.
+  const brandFoldOf = (r: Row) => foldOf(brandKey(r.brand) || r.id);
+  const brandFoldRows = Array.from({ length: FOLDS }, (_, k) => loaded.filter((r) => brandFoldOf(r) !== k));
+  const brandFoldProfiles = brandFoldRows.map((rows) => buildCatalogueProfile(rows));
+  const brandFoldMajority = brandFoldRows.map((rows) => majorityLabels(rows, (r) => r.styleKeywords).slice(0, 1));
+  const unseenBrand = (r: Row) => combinedStyles(r, brandFoldProfiles[brandFoldOf(r)]);
   const pageGender = (r: Row) =>
     genderFromPage({ name: r.name, url: r.sourceUrl ?? undefined, description: r.description })?.gender ?? null;
   const chainGender = (r: Row, profile: CatalogueProfile) => {
@@ -327,6 +342,12 @@ export async function GET(req: Request) {
       style_brand: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => brandOnlyStyles(r, profileTrain)),
       style_combined: scoreMultiLabel(holdout, (r) => r.styleKeywords, (r) => combinedStyles(r, profileTrain)),
       style_combined_all_oof: scoreMultiLabel(loaded, (r) => r.styleKeywords, (r) => combinedStyles(r, outOfFold(r))),
+      style_store_all_oof: scoreMultiLabel(loaded, (r) => r.styleKeywords, (r) => storeOnlyStyles(r, outOfFold(r))),
+      style_new_brand: scoreMultiLabel(loaded, (r) => r.styleKeywords, unseenBrand),
+      style_new_brand_plus_majority: scoreMultiLabel(loaded, (r) => r.styleKeywords, (r) => {
+        const got = unseenBrand(r);
+        return got.length ? got : brandFoldMajority[brandFoldOf(r)];
+      }),
       gender_page: scoreSingleLabel(holdout, (r) => r.gender, (r) => pageGender(r), (r) => r.name),
       gender_page_store_brand: scoreSingleLabel(holdout, (r) => r.gender, (r) => chainGender(r, profileTrain)?.gender ?? null, (r) => r.name),
       gender_page_store_brand_all_oof: scoreSingleLabel(loaded, (r) => r.gender, (r) => chainGender(r, outOfFold(r))?.gender ?? null, (r) => r.name),
@@ -410,6 +431,9 @@ export async function GET(req: Request) {
   lines.push("  answers = share of products it had any answer for");
   lines.push("  correct = share of those answers matching the editor's choice");
   lines.push("  P/R     = precision / recall over multi-label style keywords");
+  lines.push("  style_new_brand = what the importer writes for a brand it has never seen");
+  lines.push("  (each product read without any of its brand's pieces); *_plus_majority fills");
+  lines.push("  its gaps with the catalogue's most common style.");
   lines.push("");
   lines.push("STYLE BY STYLE  (importer's keyword tags, whole catalogue)");
   lines.push(`  ${"style".padEnd(14)} ${"tagged".padStart(7)} ${"right".padStart(6)} ${"editor".padStart(7)} ${"precision".padStart(10)} ${"recall".padStart(7)}`);

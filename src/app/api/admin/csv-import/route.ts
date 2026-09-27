@@ -9,9 +9,12 @@ import {
   parseRetailCategory,
   matchCategory,
   colorToHex,
+  colorGroupNamesFor,
   storeNameFromUrl,
 } from "@/lib/server/product-fields";
-import { loadRetailerRules, resolveRetailer } from "@/lib/server/retailer-domains";
+import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
+import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
+import { inferStyleKeywords } from "@/lib/taxonomy/styles";
 import type { Product, Category, Gender } from "@/lib/types";
 import type { CSVMappedRow } from "@/app/goo-studio/brightdata/page";
 
@@ -393,6 +396,11 @@ export async function PUT(req: Request) {
   // Domain rules, read once for the whole import rather than per row: a CSV is
   // thousands of links and the rules do not change while it runs.
   const retailerRules = await loadRetailerRules();
+  // Style and the unstated gender come from the editor's own labelling, as on
+  // the URL importer (`catalogue-profile.ts`). This import used to write every
+  // product with no style at all — and, on a re-import, wrote that empty list
+  // over the styles an editor had since chosen.
+  const profile = await loadCatalogueProfile();
 
   // ── Step 3: import one product per colorKey
   let imported = 0;
@@ -442,6 +450,26 @@ export async function PUT(req: Request) {
     const displayName = variantGroupId ? getBaseProductName(repr.name) : repr.name;
     const colorHex = repr.colors[0] ? colorToHex(repr.colors[0]) : undefined;
 
+    // source_url = first aw_deep_link in the group (for deduplication on re-import)
+    const sourceUrl = repr.referralUrl || null;
+    const brand = String(repr.brand || repr.merchant || "");
+    const styles = proposeStyles(
+      {
+        brand,
+        keywordStyles: inferStyleKeywords(`${repr.name} ${repr.description || ""}`),
+        colors: repr.colors,
+        colorGroups: colorGroupNamesFor(repr.colors, "field"),
+        sourceUrl,
+      },
+      profile,
+    ).styles;
+    const gender =
+      repr.gender ??
+      proposeGender(
+        { brand, sourceUrl, storeDefault: sourceUrl ? storeDefaultGender(sourceUrl, retailerRules) : undefined },
+        profile,
+      )?.gender;
+
     const product: Partial<Product> = {
       name: displayName,
       brand: (repr.brand || repr.merchant) as Product["brand"],
@@ -457,27 +485,34 @@ export async function PUT(req: Request) {
       currency,
       isNew: true,
       isSaved: false,
-      gender: repr.gender,
-      styleKeywords: [],
+      gender,
+      styleKeywords: styles,
       retailers,
       ...(variantGroupId ? { variantGroupId, isGroupPrimary: isPrimary, colorHex } : {}),
     };
 
-    // source_url = first aw_deep_link in the group (for deduplication on re-import)
-    const sourceUrl = repr.referralUrl || null;
-    const dbRow = { ...productToDb(product), source_url: sourceUrl };
+    const dbRow: Record<string, unknown> = { ...productToDb(product), source_url: sourceUrl };
 
     try {
+      // PostgREST reports a failed write in `error` rather than throwing, so
+      // each write is checked — unchecked, a refused row counted as imported.
       if (sourceUrl) {
         const { data: existing } = await supabase
-          .from("products").select("id").eq("source_url", sourceUrl).maybeSingle();
-        if (existing?.id) {
-          await supabase.from("products").update(dbRow).eq("id", existing.id);
+          .from("products").select("id, style_keywords, gender").eq("source_url", sourceUrl).maybeSingle();
+        const found = existing as { id: string; style_keywords: string[] | null; gender: string | null } | null;
+        if (found?.id) {
+          // The editor's style and gender stand; only an empty one is filled.
+          if (found.style_keywords?.length) delete dbRow.style_keywords;
+          if (found.gender) delete dbRow.gender;
+          const { error } = await supabase.from("products").update(dbRow).eq("id", found.id);
+          if (error) throw new Error(error.message);
         } else {
-          await supabase.from("products").insert(dbRow);
+          const { error } = await supabase.from("products").insert(dbRow);
+          if (error) throw new Error(error.message);
         }
       } else {
-        await supabase.from("products").insert(dbRow);
+        const { error } = await supabase.from("products").insert(dbRow);
+        if (error) throw new Error(error.message);
       }
       imported++;
     } catch (err) {

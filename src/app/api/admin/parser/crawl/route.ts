@@ -75,6 +75,7 @@ export async function POST(req: Request) {
   const mirrorImages =
     typeof body?.mirrorImages === "boolean" ? body.mirrorImages : aiSettings.downloadImages;
   const dryRun = body?.dryRun === true;
+  const linksOnly = body?.linksOnly === true;
 
   const results: CrawlItemResult[] = [];
 
@@ -119,9 +120,13 @@ export async function POST(req: Request) {
       const imported = await importParsedProduct(
         product as unknown as Record<string, unknown>,
         product.sourceUrl || url,
-        { mirrorImages },
+        { mirrorImages, linksOnly },
       );
 
+      if (imported.skipped) {
+        results.push({ url, status: "skipped", reason: imported.skipped, name: product.name, usedAi });
+        continue;
+      }
       if (!imported.ok) {
         results.push({ url, status: "failed", reason: imported.error, name: product.name, usedAi });
         continue;
@@ -134,6 +139,10 @@ export async function POST(req: Request) {
         name: product.name,
         usedAi,
         imagesMirrored: imported.imagesMirrored ?? 0,
+        merged: !!imported.mergedInto,
+        mergedBy: imported.mergedBy,
+        mergedFields: imported.mergedFields,
+        linkNote: imported.linkNote,
       });
     } catch (err) {
       results.push({
