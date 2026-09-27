@@ -81,11 +81,20 @@ export function locations(xml: string): string[] {
  */
 export function titles(xml: string): Map<string, string> {
   const out = new Map<string, string>();
-  const entry = /<url>([\s\S]*?)<\/url>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = entry.exec(xml))) {
-    const loc = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/i.exec(m[1])?.[1];
-    const title = /<image:title>\s*(?:<!\[CDATA\[)?([^<\]]*)/i.exec(m[1])?.[1];
+  // Each `<url>…</url>` as `/<url>([\s\S]*?)<\/url>/gi` finds them, by search:
+  // over a document the store controls that lazy scan ran to the end once for
+  // every `<url>` with no `</url>` after it. When one has none, neither has any
+  // `<url>` after it, and the entries end there.
+  const open = /<url>/gi;
+  const close = /<\/url>/gi;
+  while (open.exec(xml)) {
+    close.lastIndex = open.lastIndex;
+    const end = close.exec(xml);
+    if (!end) break;
+    const entry = xml.slice(open.lastIndex, end.index);
+    open.lastIndex = close.lastIndex;
+    const loc = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/i.exec(entry)?.[1];
+    const title = /<image:title>\s*(?:<!\[CDATA\[)?([^<\]]*)/i.exec(entry)?.[1];
     if (!loc || !title?.trim()) continue;
     out.set(
       loc.replace(/&amp;/g, "&"),

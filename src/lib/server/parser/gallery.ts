@@ -156,7 +156,13 @@ export function imageKey(url: string): string {
       .replace(/@[23]x(?=\.[a-z0-9]+$)/, "")
       .replace(/\.(?:jpe?g|png)\.(?:webp|avif)$/, ".jpg")
       .replace(/\.(?:jpe?g|png|webp|avif)$/, "");
-    if (host.endsWith("farfetch-contents.com")) path = path.replace(/(\d+_\d+)_\d{3,4}$/, "$1");
+    // `path.replace(/(\d+_\d+)_\d{3,4}$/, "$1")`, tested where it can only
+    // match: that regex retried a run of digits from each digit in it, and an
+    // image address is the page's to write — 120 KB of digits took thirteen
+    // seconds. Both drop the trailing `_<size>` after `<id>_<id>`.
+    if (host.endsWith("farfetch-contents.com") && /\d_\d+_\d{3,4}$/.test(path)) {
+      path = path.replace(/_\d{3,4}$/, "");
+    }
     return `${host}${path}`;
   } catch {
     return url.toLowerCase();
@@ -332,14 +338,39 @@ const STEM_MATCH_MIN = 10;
  */
 const STEM_TAIL_MAX = 12;
 
+/**
+ * `re` (global) searched in `text` from a position that only moves forward:
+ * the first match at or after it, or null. A find is reused while the position
+ * has not passed it, so however many openings ask, the text is read once.
+ */
+function forwardSearch(text: string, re: RegExp): (from: number) => RegExpExecArray | null {
+  let searchedFrom = Infinity;
+  let found: RegExpExecArray | null = null;
+  return (from) => {
+    if (from < searchedFrom || (found && from > found.index)) {
+      re.lastIndex = from;
+      found = re.exec(text);
+      searchedFrom = from;
+    }
+    return found;
+  };
+}
+
 /** Pull every image reference out of the markup, in document order. */
 function collectCandidates(html: string): string[] {
   const out: string[] = [];
 
+  // The tag scans below run only up to the page's last `>`. A `<img\b[^>]*>`
+  // over markup the store controls is quadratic past it — every `<img` there
+  // runs `[^>]*` to the end of the page and backs off, and 120 KB of `<img `
+  // took two seconds — while before it every opening finds its `>` at the
+  // first try. No tag closes after the last `>`, so the matches are the same.
+  const tagText = html.slice(0, html.lastIndexOf(">") + 1);
+
   // <img src> / data-src / data-original — lazy-loading libraries use all three.
   const imgRe = /<img\b[^>]*>/gi;
   let m: RegExpExecArray | null;
-  while ((m = imgRe.exec(html))) {
+  while ((m = imgRe.exec(tagText))) {
     const tag = m[0];
     for (const attr of [
       "src", "data-src", "data-original", "data-lazy", "data-image",
@@ -354,8 +385,26 @@ function collectCandidates(html: string): string[] {
 
   // CSS background images — carousels built out of <div>s carry the gallery here
   // and have no <img> tag at all.
-  const bgRe = /background(?:-image)?\s*:\s*url\((["']?)([^"')]+)\1\)/gi;
-  while ((m = bgRe.exec(html))) out.push(m[2]);
+  //
+  // What `/background(?:-image)?\s*:\s*url\((["']?)([^"')]+)\1\)/gi` matched,
+  // with the value's end found by search. That regex was quadratic on a page of
+  // `background:url(` and no quote or `)`: each opening ran to the end of the
+  // page. A value ends at the first quote or `)` after it, and that character
+  // alone settles the match, so one search for it serves every opening before.
+  const bgRe = /background(?:-image)?\s*:\s*url\(/gi;
+  const valueEnd = forwardSearch(html, /["')]/g);
+  while ((m = bgRe.exec(html))) {
+    const open = m.index + m[0].length;
+    const quote = html[open] === '"' || html[open] === "'" ? html[open] : "";
+    const from = open + quote.length;
+    const end = valueEnd(from)?.index ?? -1;
+    if (end > from && html[end] === (quote || ")") && (!quote || html[end + 1] === ")")) {
+      out.push(html.slice(from, end));
+      bgRe.lastIndex = end + quote.length + 1;
+    } else {
+      bgRe.lastIndex = m.index + 1;
+    }
+  }
 
   // srcset on <img> and <source>: take every candidate; the largest wins after
   // the rendition suffix and size params are stripped, so order is irrelevant.
@@ -368,8 +417,12 @@ function collectCandidates(html: string): string[] {
   }
 
   // <link rel="preload" as="image"> — browsers preload the gallery's hero shots.
-  const preloadRe = /<link\b[^>]*\bas=["']image["'][^>]*>/gi;
-  while ((m = preloadRe.exec(html))) {
+  // Every `<link>` is read and the `as` tested on it: tested inside the regex,
+  // a `<link` without it backed off through the whole tag, and so did each
+  // `<link` written inside that tag.
+  const linkRe = /<link\b[^>]*>/gi;
+  while ((m = linkRe.exec(tagText))) {
+    if (!/\bas=["']image["']/i.test(m[0])) continue;
     const href = m[0].match(/\bhref\s*=\s*["']([^"']+)["']/i);
     if (href) out.push(href[1]);
     const imagesrcset = m[0].match(/\bimagesrcset\s*=\s*["']([^"']+)["']/i);
@@ -390,9 +443,32 @@ function collectCandidates(html: string): string[] {
   // `https:\/\/cdn.shopify.com\/s\/files\/1\/photo.jpg`, and a pattern that
   // stops at the first backslash never reaches the extension that identifies it
   // as an image. It matched the scheme and then quietly found nothing.
-  const jsonUrlRe =
-    /(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?\.(?:jpe?g|png|webp|avif)(?:\?(?:[^"'\s\\)>]|\\\/)*)?/gi;
-  while ((m = jsonUrlRe.exec(html))) out.push(m[0].replace(/\\\//g, "/"));
+  //
+  // What `(?:https?:)?(?:\\?\/){2}(?:[^"'\s\\)>]|\\\/)+?\.(?:jpe?g|png|webp|avif)(?:\?(?:[^"'\s\\)>]|\\\/)*)?`
+  // matched, with its two open-ended runs found by search. As one regex it was
+  // quadratic on a run of `//` with no extension after it — 120 KB took nine
+  // seconds — each `//` reading on to the end of the run. A URL cannot run past
+  // a quote, a space, `)`, `>` or a backslash that does not escape a `/`; the
+  // first extension before that ends it. A later `//` in the same run can only
+  // reach extensions an earlier one reached, so one that finds none rules out
+  // the rest of its run.
+  const urlStart = /(?:https?:)?(?:\\?\/){2}/gi;
+  const nextExt = forwardSearch(html, /\.(?:jpe?g|png|webp|avif)/gi);
+  const nextStop = forwardSearch(html, /["'\s)>]|\\(?!\/)/g);
+  while ((m = urlStart.exec(html))) {
+    const path = m.index + m[0].length;
+    const runEnd = nextStop(path)?.index ?? html.length;
+    // `+?`: at least one character between the slashes and the extension.
+    const ext = nextExt(path + 1);
+    if (!ext || ext.index >= runEnd) {
+      urlStart.lastIndex = runEnd;
+      continue;
+    }
+    let end = ext.index + ext[0].length;
+    if (html[end] === "?") end = nextStop(end + 1)?.index ?? html.length;
+    out.push(html.slice(m.index, end).replace(/\\\//g, "/"));
+    urlStart.lastIndex = end;
+  }
 
   return out;
 }

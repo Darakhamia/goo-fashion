@@ -89,9 +89,14 @@ export interface PieceName {
  * CW2288-111") named a piece the brand's own site calls "Air Force 1 '07",
  * and the extra "cw2288 111" kept the two apart. A model named by digits first
  * ("2002R", "990v6") is not a code.
+ *
+ * `\d{3}` rather than `\d{3,}`: the `[a-z0-9]*` after it takes any further
+ * digits, so the codes matched are the same, but the two loops over one run of
+ * digits backtracked against each other — a name of a letter, 30,000 digits
+ * and a Cyrillic letter took nine seconds.
  */
 const ARTICLE_CODE =
-  /(?<![\p{L}\p{N}])(?:[a-z]{1,4}\d{3,}[a-z0-9]*(?:[-‐–/][a-z0-9]{2,4}|\s\d{3}(?![\p{L}\p{N}]))?|\d{6,}(?:[-/]\d{1,4})?)(?![\p{L}\p{N}])/gu;
+  /(?<![\p{L}\p{N}])(?:[a-z]{1,4}\d{3}[a-z0-9]*(?:[-‐–/][a-z0-9]{2,4}|\s\d{3}(?![\p{L}\p{N}]))?|\d{6,}(?:[-/]\d{1,4})?)(?![\p{L}\p{N}])/gu;
 
 /** A season, not an article: "SS26", "FW2026". */
 const SEASON_CODE = /^(?:ss|fw|aw|sp|fa|su|ho|pf|re)\d{2,4}$/;
