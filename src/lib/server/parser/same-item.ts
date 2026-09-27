@@ -28,9 +28,10 @@
  * is the one an admin may already have edited.
  */
 import type { Retailer } from "@/lib/types";
-import { articleCodes, colourRelation, samePiece, shareArticleCode } from "./piece-name";
+import { articleCodes, colourRelation, fullNameKey, nameVariant, samePiece, shareArticleCode, variantsDiffer } from "./piece-name";
 import { brandsAgree, brandsFit } from "./brand-from-name";
 import { sameListing, sameStore, storeHost } from "./listing-url";
+import { colorWordsIn } from "@/lib/server/product-fields";
 
 /** The columns the importer needs to decide and to merge. */
 export interface ExistingItem {
@@ -123,6 +124,12 @@ export interface SameItemMatch {
   item: NamedItem | null;
   /** Set when `item` is null: why nothing fitted, in words the admin reads on the run's row. */
   miss?: string;
+  /**
+   * Cards that carry this very page as a store link although their name
+   * states another variant — left there by a run before the variant was
+   * read off the name. The importer takes the page's link off them.
+   */
+  stale?: NamedItem[];
 }
 
 /** A card's colour as the admin would name it. */
@@ -152,6 +159,12 @@ const colourOf = (row: NamedItem) => (row.colors ?? []).filter(Boolean).join("/"
  * model on its own ("Air Max 90", "Bullet Hole Jeans") matches — a lone word
  * could be any maker's.
  *
+ * A name that states its variant settles it before any colour field does:
+ * "(Black/White)" is never "(Grey/Black)" or "(Cheetah)", and the same name
+ * with the same variant is the same card. Colour fields are readings — of a
+ * photo, of whichever swatch was selected — and two stores read one hoodie
+ * as "Sport Grey" and "Black".
+ *
  * A card already carrying this store under another address is taken only in
  * the very colour it has: that is the store's same page moved (a collection
  * path, a tracking tag). In any other colour it is the store's other listing —
@@ -170,6 +183,13 @@ export function pickSameItemByName(
     sourceUrl: string | null;
     /** Article codes the page carries outside its name: the maker's part number. */
     codes?: string[];
+    /**
+     * A links-only run: the page makes no card, so a name identical to the one
+     * card that has it takes the link even when the two colour fields disagree
+     * — skipped, the link would be lost. A run that makes cards gives that
+     * page a card of its own in the colour group instead.
+     */
+    linksOnly?: boolean;
   },
   rows: NamedItem[],
 ): SameItemMatch {
@@ -177,11 +197,18 @@ export function pickSameItemByName(
   // Without an address there is no place to buy to add.
   if (!ourHost) return { item: null, miss: "no address to add as a store" };
 
-  // This very page, already on a card.
+  // This very page, already on a card — unless the card's name states another
+  // variant than the page's: that link was put there by mistake, and is taken
+  // off rather than kept up to date.
+  const stale: NamedItem[] = [];
   for (const row of rows) {
     if (sameListing(row.sourceUrl, incoming.sourceUrl)) return { item: row };
-    if ((row.retailers ?? []).some((r) => sameListing(r.url, incoming.sourceUrl))) return { item: row };
+    if (!(row.retailers ?? []).some((r) => sameListing(r.url, incoming.sourceUrl))) continue;
+    if (variantsDiffer(incoming.name, row.name)) stale.push(row);
+    else return { item: row };
   }
+  const found = (item: NamedItem): SameItemMatch => ({ item, ...(stale.length ? { stale } : {}) });
+  const missed = (miss: string): SameItemMatch => ({ item: null, miss, ...(stale.length ? { stale } : {}) });
 
   const unbranded = !incoming.brand.trim();
   const ourCodes = [...new Set([...articleCodes({ name: incoming.name }), ...(incoming.codes ?? [])])];
@@ -200,7 +227,7 @@ export function pickSameItemByName(
     pieces.push(row);
   }
   if (!pieces.length) {
-    return { item: null, miss: unbranded ? "no brand on the page, and no card whose name matches" : "no card of this model" };
+    return missed(unbranded ? "no brand on the page, and no card whose name matches" : "no card of this model");
   }
 
   const priced = pieces.filter((row) => {
@@ -208,17 +235,41 @@ export function pickSameItemByName(
     if (!(incoming.price > 0 && theirs > 0)) return true;
     return Math.max(incoming.price, theirs) / Math.min(incoming.price, theirs) <= MAX_PRICE_RATIO;
   });
-  if (!priced.length) return { item: null, miss: `price is more than ${MAX_PRICE_RATIO}× away from "${pieces[0].name}"` };
+  if (!priced.length) return missed(`price is more than ${MAX_PRICE_RATIO}× away from "${pieces[0].name}"`);
 
-  const elsewhere = priced.filter((row) => !storesOf(row).has(ourHost));
+  // A card whose name states another variant — "(Grey/Black)" beside the
+  // page's "(Black/White)", or "(Cheetah)" — is another thing, whatever the
+  // colour fields say.
+  const variants = priced.filter((row) => !variantsDiffer(incoming.name, row.name));
+  if (!variants.length) return missed(`in the catalogue only as ${priced.map((r) => `"${r.name}"`).join(", ")}`);
+
+  // The very same name. When it states its variant ("Yori Text Zip-up
+  // (black/collegiate)" on both stores) it is this card, even where one
+  // store's colour field reads the photo's grey and the other's its first
+  // swatch. When several cards share a name, the colour decides among them.
+  const sameName = variants.filter(
+    (row) => fullNameKey(row.name, [incoming.brand, row.brand ?? ""]) === fullNameKey(incoming.name, [incoming.brand, row.brand ?? ""]),
+  );
+  const ourVariant = nameVariant(incoming.name);
+  if (sameName.length === 1 && ourVariant) return found(sameName[0]);
+  const candidates = sameName.length ? sameName : variants;
+
+  const elsewhere = candidates.filter((row) => !storesOf(row).has(ourHost));
+
+  // No colour field on the page: the colour its name states counts as one.
+  let colours = incoming.colors;
+  let stated = incoming.coloursStated !== false && colours.length > 0;
+  if (!stated && ourVariant && colorWordsIn(ourVariant).length) {
+    colours = [ourVariant];
+    stated = true;
+  }
 
   // The page names no colour of its own: the model's first card takes the
   // link. The store's page is the model's page, whichever colour it opens on,
   // and a link on the model is what the admin asked for — not a skip.
-  const stated = incoming.coloursStated !== false && incoming.colors.length > 0;
   if (!stated) {
-    if (elsewhere.length) return { item: elsewhere[0] };
-    return { item: null, miss: `this store is already on "${priced[0].name}", and the page names no colour to tell which` };
+    if (elsewhere.length) return found(elsewhere[0]);
+    return missed(`this store is already on "${candidates[0].name}", and the page names no colour to tell which`);
   }
 
   // Otherwise the closest colour wins, rather than a tie ending in nothing: the
@@ -229,10 +280,10 @@ export function pickSameItemByName(
   const RANK: Record<string, number> = { same: 4, near: 3, partial: 2, unknown: 1, none: 1 };
   const words = (list?: string[] | null) =>
     new Set((list ?? []).join(" ").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean));
-  const ours = words(incoming.colors);
-  const scored = priced
+  const ours = words(colours);
+  const scored = candidates
     .map((row, index) => {
-      const rank = RANK[colourRelation(incoming.colors, row.colors)] ?? 0;
+      const rank = RANK[colourRelation(colours, row.colors)] ?? 0;
       const theirs = words(row.colors);
       const shared = [...ours].filter((w) => theirs.has(w)).length;
       const own = storesOf(row).has(ourHost);
@@ -242,10 +293,15 @@ export function pickSameItemByName(
     // same store is its other colourway.
     .filter((c) => c.rank > 0 && (!c.own || c.rank === RANK.same))
     .sort((a, b) => b.rank - a.rank || b.shared - a.shared || Number(a.own) - Number(b.own) || a.index - b.index);
-  if (scored.length) return { item: scored[0].row };
+  if (scored.length) return found(scored[0].row);
 
-  if (!elsewhere.length) return { item: null, miss: `this store is already on "${priced[0].name}" in ${priced.map(colourOf).join(", ")}` };
-  return { item: null, miss: `in the catalogue only in ${priced.map(colourOf).join(", ")}` };
+  // One card has this very name and its colour field says otherwise: a
+  // links-only run takes it — the store's page for this name is this card's
+  // page, and skipping it loses the link.
+  if (incoming.linksOnly && sameName.length === 1 && !storesOf(sameName[0]).has(ourHost)) return found(sameName[0]);
+
+  if (!elsewhere.length) return missed(`this store is already on "${candidates[0].name}" in ${candidates.map(colourOf).join(", ")}`);
+  return missed(`in the catalogue only in ${candidates.map(colourOf).join(", ")}`);
 }
 
 /**

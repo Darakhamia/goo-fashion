@@ -38,7 +38,7 @@ import {
 } from "./same-item";
 import { brandSearchWord, brandVocabulary, decideBrand } from "./brand-from-name";
 import { articleCodePatterns, articleCodes, modelWord, pieceName } from "./piece-name";
-import { listingKey, urlSpellings } from "./listing-url";
+import { listingKey, sameListing, urlSpellings } from "./listing-url";
 import { buildCatalogueIndex, type CatalogueIndex, type CataloguePiece } from "./catalogue-match";
 import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
 import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
@@ -124,6 +124,11 @@ async function loadKnownBrands(): Promise<string[]> {
   const brands = brandVocabulary(curated, catalogue);
   brandCache = { at: Date.now(), brands };
   return brands;
+}
+
+/** What the run's row says when a page's link was taken off another variant's card. */
+function unlinkedNote(names: string[]): string {
+  return `its link taken off ${names.map((n) => `"${n}"`).join(", ")} (another variant)`;
 }
 
 // ── The catalogue a links-only run looks for ──────────────────────────────────
@@ -436,7 +441,8 @@ async function findSameItemByName(incoming: {
   price: number;
   sourceUrl: string | null;
   mpn?: string;
-}): Promise<{ item: NamedItem | null; unread: string[]; miss?: string }> {
+  linksOnly?: boolean;
+}): Promise<{ item: NamedItem | null; unread: string[]; miss?: string; stale?: NamedItem[] }> {
   if (!incoming.sourceUrl) return { item: null, unread: [], miss: "no address to add as a store" };
   const codes = articleCodes({ name: "", mpn: incoming.mpn });
   try {
@@ -505,7 +511,12 @@ async function findSameItemByName(incoming: {
       })[]).map((row) => ({ ...toExisting(row), name: row.name ?? "", category: row.category }));
       const match = pickSameItemByName({ ...incoming, codes }, rows);
       const read = columns.split(",").map((c) => c.trim());
-      return { item: match.item, miss: match.miss, unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)) };
+      return {
+        item: match.item,
+        miss: match.miss,
+        stale: match.stale,
+        unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)),
+      };
     }
   } catch {
     /* no connection — an ordinary insert, as before */
@@ -977,6 +988,8 @@ export async function importParsedProduct(
       };
       // By code first — exact where a store prints one — then by name, brand
       // and colour, which is what most stores leave us.
+      /** Cards this page's link was taken off, for the run's row. */
+      const unlinked: string[] = [];
       let twin: ExistingItem | null = await findSameItem(incoming, sourceUrl);
       let mergedBy: ImportResult["mergedBy"] = twin ? "code" : undefined;
       let unread: string[] = [];
@@ -991,8 +1004,19 @@ export async function importParsedProduct(
           price: incoming.price,
           sourceUrl,
           mpn,
+          linksOnly: opts.linksOnly,
         });
         miss = byName.miss;
+        // A run before the name's variant was read may have put this page on
+        // a card of another variant — "(Black/White)" on "(Grey/Black)". Its
+        // link comes off that card; every other store there stays.
+        for (const card of byName.stale ?? []) {
+          const kept = (card.retailers ?? []).filter((r) => !sameListing(r.url, sourceUrl));
+          const { error } = await writeProductRow<{ id: string }>({ retailers: kept }, (row) =>
+            supabase!.from("products").update(row).eq("id", card.id).select("id").maybeSingle(),
+          );
+          if (!error) unlinked.push(card.name);
+        }
         if (byName.item) {
           twin = byName.item;
           unread = byName.unread;
@@ -1028,6 +1052,7 @@ export async function importParsedProduct(
           mergedInto: twinId,
           mergedBy,
           mergedFields: filled,
+          ...(unlinked.length ? { linkNote: unlinkedNote(unlinked) } : {}),
         };
       }
 
@@ -1038,7 +1063,7 @@ export async function importParsedProduct(
           updated: false,
           priceNote,
           brandNote,
-          skipped: `links only: ${miss ?? "not in the catalogue"}`,
+          skipped: `links only: ${miss ?? "not in the catalogue"}${unlinked.length ? ` · ${unlinkedNote(unlinked)}` : ""}`,
         };
       }
 
@@ -1046,6 +1071,7 @@ export async function importParsedProduct(
       if (error) throw new Error(error.message);
       productId = data?.id ?? null;
       if (miss) newCardNote = `new card — ${miss}`;
+      if (unlinked.length) newCardNote = [newCardNote, unlinkedNote(unlinked)].filter(Boolean).join(" · ");
     }
   } catch (err) {
     return {
