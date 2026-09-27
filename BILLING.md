@@ -226,6 +226,28 @@ decision.
    abandon the payment, the row drops out of renewal while Clerk keeps the old
    paid plan.
 
+Found in the security review of 2026-09-27 (`docs/CODE_REVIEW_2026-09.md`,
+«Блок 3»). Also not fixed: billing waits for the CEO.
+
+5. **Paid, but no plan.** The webhook writes the row `active` with this
+   invoice before it sets the plan in Clerk. If Clerk fails at that moment,
+   monobank's retry is taken for a duplicate: the plan stays `free`, no
+   `payment_success` is logged and no alert is sent.
+6. **Two months for one charge.** Extending the period is not tied to the
+   invoice. If the cron and the webhook process the same renewal at the same
+   time (or monobank delivers the webhook twice), the period is extended twice
+   and the payment is logged twice.
+7. **An error after a successful charge counts as a failed renewal.** In the
+   cron one `try` covers both the charge and the activation, so a Clerk error
+   after the money was taken marks the row `past_due` and sends a false
+   "renewal failed" alert; the late `success` webhook then extends it again.
+8. **Refunds and other invoices.** `reversed` is treated as a failed renewal,
+   not as lost access, and `failure`/`reversed` are applied to the row whatever
+   invoice they are for, ignoring `modifiedDate` order.
+9. **The saved card is the wallet's first**, not the one used for this payment.
+10. **A bad signature refetches the public key** every time, with our merchant
+    token and no cooldown.
+
 ## Files
 
 | Path | Purpose |
