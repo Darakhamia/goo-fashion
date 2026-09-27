@@ -21,14 +21,26 @@
  * while doing it. So the brand must be the same maker (or the page names none
  * and its name is a model on its own), the piece the same once reduced
  * (`piece-name.ts`) or the article code the same, the colour the one card of
- * that piece it fits, and the two prices within a factor of four.
+ * that piece it fits, and the two prices within a factor of four — unless the
+ * article code or the very name of a model says it is one thing
+ * (`sameModelName`).
  *
  * The merge itself only ever FILLS: a field the existing row has is left alone.
  * Two stores describe the same coat differently, and the row that arrived first
  * is the one an admin may already have edited.
  */
 import type { Retailer } from "@/lib/types";
-import { articleCodes, colourRelation, fullNameKey, nameVariant, samePiece, shareArticleCode, variantsDiffer } from "./piece-name";
+import {
+  articleCodes,
+  colourRelation,
+  fullNameKey,
+  nameVariant,
+  namesModelAlone,
+  pieceName,
+  samePiece,
+  shareArticleCode,
+  variantsDiffer,
+} from "./piece-name";
 import { brandsAgree, brandsFit } from "./brand-from-name";
 import { sameListing, sameStore, storeHost } from "./listing-url";
 import { colorWordsIn } from "@/lib/server/product-fields";
@@ -113,6 +125,30 @@ export interface NamedItem extends ExistingItem {
  * different things — a £90 cap and a £900 coat both called "Logo".
  */
 export const MAX_PRICE_RATIO = 4;
+
+/**
+ * The same name, and one that names a model by itself: "Jordan 4 Retro Toro
+ * Bravo (2026)" on StockX and "Air Jordan 4 Retro 'Toro Bravo' 2026" on the
+ * card. That is one thing at any price. The price test is for names anyone
+ * could use — a £90 cap and a £900 coat both called "Logo" — while a resale
+ * platform asks several times retail for a sought-after pair, and a card's own
+ * price can be a misreading. With the test applied, the StockX page made a
+ * second card, and in a links-only run was skipped.
+ */
+export function sameModelName(
+  a: { name: string; brand?: string | null },
+  b: { name: string; brand?: string | null },
+): boolean {
+  const brands = [a.brand ?? "", b.brand ?? ""].filter((x) => x.trim());
+  if (!brands.length || fullNameKey(a.name, brands) !== fullNameKey(b.name, brands)) return false;
+  return namesModelAlone(pieceName(a.name, brands));
+}
+
+/** Two prices close enough to be one item's at two stores — or unknown on either side. */
+function pricesAgree(a: number, b: number): boolean {
+  if (!(a > 0 && b > 0)) return true;
+  return Math.max(a, b) / Math.min(a, b) <= MAX_PRICE_RATIO;
+}
 
 /** Every store a card is bought from: its source page and its store links. */
 function storesOf(row: ExistingItem): Set<string> {
@@ -226,6 +262,8 @@ export function pickSameItemByName(
   const unbranded = !incoming.brand.trim();
   const ourCodes = [...new Set([...articleCodes({ name: incoming.name }), ...(incoming.codes ?? [])])];
   const pieces: NamedItem[] = [];
+  /** Rows the article code alone vouches for. */
+  const byCode = new Set<NamedItem>();
   for (const row of rows) {
     // One maker under both stores' spellings ("adidas" / "adidas Originals",
     // "Jordan" / "Nike"), or a card saved without a brand whose name spells
@@ -237,17 +275,21 @@ export function pickSameItemByName(
     const brands = [incoming.brand, row.brand ?? ""].filter((b) => b.trim());
     const sameCode = fit && shareArticleCode(ourCodes, articleCodes(row));
     if (!sameCode && !samePiece(brands, incoming, row, { strict: !fit })) continue;
+    if (sameCode) byCode.add(row);
     pieces.push(row);
   }
   if (!pieces.length) {
     return missed(unbranded ? "no brand on the page, and no card whose name matches" : "no card of this model");
   }
 
-  const priced = pieces.filter((row) => {
-    const theirs = typeof row.priceMin === "number" ? row.priceMin : 0;
-    if (!(incoming.price > 0 && theirs > 0)) return true;
-    return Math.max(incoming.price, theirs) / Math.min(incoming.price, theirs) <= MAX_PRICE_RATIO;
-  });
+  // Prices within reach of each other — unless the code or the very name of a
+  // model says it is this card (`sameModelName`).
+  const priced = pieces.filter(
+    (row) =>
+      pricesAgree(incoming.price, typeof row.priceMin === "number" ? row.priceMin : 0) ||
+      byCode.has(row) ||
+      sameModelName(incoming, row),
+  );
   if (!priced.length) return missed(`price is more than ${MAX_PRICE_RATIO}× away from "${pieces[0].name}"`);
 
   // A card whose name states another variant — "(Grey/Black)" beside the

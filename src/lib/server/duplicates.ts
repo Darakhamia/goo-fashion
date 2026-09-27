@@ -10,7 +10,8 @@
  *   by name   the same brand, the same piece once reduced, the same colours in
  *             any order — or some of them ("Grey" beside "grey/white/leather"),
  *             or none stated where the store has one card of the piece — no
- *             store in common, and prices within a factor of four. Anything
+ *             store in common, and prices within a factor of four unless
+ *             the very name of a model says it is one thing. Anything
  *             short of the same colour word counts only when a row has exactly
  *             one such candidate — a model made in two blacks is ambiguous,
  *             and a wrong merge sends a shopper to the other one.
@@ -22,7 +23,7 @@
 import type { Retailer } from "@/lib/types";
 import { colourRelation, modelWord, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
 import { brandsAgree, foldBrand, makerKey, makerNames } from "@/lib/server/parser/brand-from-name";
-import { isSameRetailer, MAX_PRICE_RATIO } from "@/lib/server/parser/same-item";
+import { isSameRetailer, MAX_PRICE_RATIO, sameModelName } from "@/lib/server/parser/same-item";
 import { bareHost } from "@/lib/url";
 
 export interface CatalogueRow {
@@ -149,7 +150,8 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
         if (!storesB.size || [...storesB].some((s) => storesA.has(s))) continue;
         const pa = a.priceMin ?? 0;
         const pb = b.priceMin ?? 0;
-        if (pa > 0 && pb > 0 && Math.max(pa, pb) / Math.min(pa, pb) > MAX_PRICE_RATIO) continue;
+        // As the importer: the very name of a model is one thing at any price.
+        if (pa > 0 && pb > 0 && Math.max(pa, pb) / Math.min(pa, pb) > MAX_PRICE_RATIO && !sameModelName(a, b)) continue;
         const store = primaryStore(b);
         const slot = perStore.get(store) ?? { exact: [], near: [], partial: [], unstated: [], all: [] };
         const relation = colourRelation(a.colors, b.colors);
