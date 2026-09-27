@@ -17,6 +17,14 @@ const MAX_DESCRIPTION_CHARS = 4_000;
 const MAX_SCREENSHOT_BASE64_CHARS = 5_000_000;
 // Same vision-capable model the rest of the OpenAI features use.
 const MODEL = "gpt-4o-mini";
+// The form sends these as short picks and a page address. Capped so they
+// cannot carry what the description cap keeps out of the prompt.
+const MAX_FIELD_CHARS = 500;
+// The Plane host has been unreachable (MIGRATION_RUNBOOK.md §1.9). Without a
+// ceiling, a hung connection held the request open after OpenAI was paid.
+const PLANE_TIMEOUT_MS = 10_000;
+const PLANE_ISSUES_URL =
+  "https://plane.goo-fashion.com/api/v1/workspaces/goo-fashion/projects/5daa7410-231b-434b-a220-f230079dbc35/issues/";
 
 interface StructuredResult {
   title: string;
@@ -24,6 +32,11 @@ interface StructuredResult {
   expected: string;
   actual: string;
   priority: string;
+}
+
+/** A short text field from the form, or "" — never a non-string. */
+function formField(value: unknown): string {
+  return typeof value === "string" ? value.slice(0, MAX_FIELD_CHARS) : "";
 }
 
 // Everything interpolated into the Plane issue body is user or model text.
@@ -36,6 +49,9 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+// Errors go to the browser as fixed text and to the server log in full: an
+// OpenAI or Plane error message can carry account details (an OpenAI 401 quotes
+// the masked key), and the model's raw reply is not the user's business.
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
@@ -56,8 +72,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { description, url, section, reporter, priority, screenshotBase64, screenshotMime } =
-      await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
+    const { description, screenshotBase64, screenshotMime } = body;
+    const url = formField(body.url);
+    const section = formField(body.section);
+    const reporter = formField(body.reporter);
+    const priority = formField(body.priority);
 
     if (!description) {
       return NextResponse.json({ error: "Description is required" }, { status: 400 });
@@ -123,7 +146,10 @@ Priority: ${priority}`;
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("report-bug raw AI response:", rawText);
-      return NextResponse.json({ error: "Failed to parse AI response", raw: rawText }, { status: 500 });
+      return NextResponse.json(
+        { error: "The report could not be processed. Try again." },
+        { status: 500 },
+      );
     }
 
     let structured: StructuredResult;
@@ -131,7 +157,10 @@ Priority: ${priority}`;
       structured = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
       console.error("JSON parse error:", parseErr, "raw:", jsonMatch[0]);
-      return NextResponse.json({ error: "Invalid JSON from AI" }, { status: 500 });
+      return NextResponse.json(
+        { error: "The report could not be processed. Try again." },
+        { status: 500 },
+      );
     }
     if (!Array.isArray(structured.steps)) structured.steps = [];
 
@@ -143,37 +172,51 @@ Priority: ${priority}`;
       : "";
     const descriptionHtml = `<p><b>Шаги:</b></p><ol>${stepsHtml}</ol><p><b>Ожидалось:</b> ${escapeHtml(structured.expected)}</p><p><b>Фактически:</b> ${escapeHtml(structured.actual)}</p><p><b>Репортер:</b> ${escapeHtml(reporter)}</p><p><b>URL:</b> ${escapeHtml(url || "не указан")}</p>${screenshotNote}`;
 
-    const planeRes = await fetch(
-      "https://plane.goo-fashion.com/api/v1/workspaces/goo-fashion/projects/5daa7410-231b-434b-a220-f230079dbc35/issues/",
-      {
-        method: "POST",
-        headers: {
-          "X-Api-Key": process.env.PLANE_API_KEY ?? "",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: structured.title,
-          description_html: descriptionHtml,
-          priority: structured.priority,
-        }),
+    // No Plane key on this deployment: there is nowhere to file the issue, so
+    // hand back the structured report instead of failing a request OpenAI has
+    // already been paid for. Whether the integration stays is the CEO's call.
+    const planeKey = process.env.PLANE_API_KEY;
+    if (!planeKey) {
+      console.warn("report-bug: PLANE_API_KEY is not set — report returned, not filed:", structured.title);
+      return NextResponse.json({ structured, filed: false });
+    }
+
+    const planeRes = await fetch(PLANE_ISSUES_URL, {
+      method: "POST",
+      headers: {
+        "X-Api-Key": planeKey,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        name: structured.title,
+        description_html: descriptionHtml,
+        priority: structured.priority,
+      }),
+      signal: AbortSignal.timeout(PLANE_TIMEOUT_MS),
+    });
 
     if (!planeRes.ok) {
-      const planeError = await planeRes.text();
+      const planeError = await planeRes.text().catch(() => "");
       console.error("Plane API error:", planeRes.status, planeError);
       return NextResponse.json(
-        { error: `Plane API error ${planeRes.status}`, details: planeError },
-        { status: 500 },
+        { error: "The report could not be filed. Try again later." },
+        { status: 502 },
       );
     }
 
-    const planeIssue = await planeRes.json();
-    return NextResponse.json({ structured, planeIssue });
+    // Only what identifies the issue — not Plane's whole record of it.
+    const planeIssue = (await planeRes.json().catch(() => null)) as
+      | { id?: unknown; sequence_id?: unknown }
+      | null;
+    return NextResponse.json({
+      structured,
+      filed: true,
+      planeIssue: { id: planeIssue?.id ?? null, sequence_id: planeIssue?.sequence_id ?? null },
+    });
   } catch (err) {
     console.error("report-bug unhandled error:", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Internal server error" },
+      { error: "The report could not be filed. Try again later." },
       { status: 500 },
     );
   }

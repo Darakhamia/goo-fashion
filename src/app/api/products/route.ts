@@ -1,15 +1,49 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getAllProducts, getProductsByIds, readAllProducts } from "@/lib/data/db";
+import { getProductsByIds, readAllProducts } from "@/lib/data/db";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
+import type { Product } from "@/lib/types";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
 
 /** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
 const MAX_IDS = 24;
+
+// The public catalogue, reused for a minute. Every call used to read and group
+// the whole products table, and its Cache-Control only helps behind a shared
+// cache, which this site does not have — the domain points straight at the
+// app. So a loop on this anonymous URL was a cheap way to load the database.
+// The list is grouped and shuffled as before; the shuffle is seeded, so the
+// same catalogue always came back in the same order and a cached copy answers
+// exactly what a fresh read would. An admin's edit shows here within the
+// minute (at once for a product created through POST below).
+const CATALOGUE_TTL_MS = 60_000;
+let catalogueCache: { at: number; value: Product[] } | null = null;
+/** In-flight read, so a burst of visitors makes one query rather than twenty. */
+let catalogueInFlight: Promise<Product[]> | null = null;
+
+function publicCatalogue(): Promise<Product[]> {
+  if (catalogueCache && Date.now() - catalogueCache.at < CATALOGUE_TTL_MS) {
+    return Promise.resolve(catalogueCache.value);
+  }
+  if (!catalogueInFlight) {
+    catalogueInFlight = readAllProducts()
+      .then(({ products, error }) => {
+        // A failed read answers with an empty catalogue, as it always has, but
+        // is not kept: the next visitor tries the database again.
+        if (error) console.error("[api/products] catalogue read failed:", error);
+        else catalogueCache = { at: Date.now(), value: products };
+        return products;
+      })
+      .finally(() => {
+        catalogueInFlight = null;
+      });
+  }
+  return catalogueInFlight;
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -48,7 +82,7 @@ export async function GET(req: Request) {
     return NextResponse.json(products, { headers: { "Cache-Control": "no-store" } });
   }
 
-  const products = await getAllProducts();
+  const products = await publicCatalogue();
   return NextResponse.json(products, {
     headers: {
       // Public catalog: CDN-cache 5 min, serve stale while revalidating —
@@ -90,6 +124,7 @@ export async function POST(req: Request) {
   });
 
   revalidatePath("/");
+  catalogueCache = null;
   return NextResponse.json(
     {
       ...dbToProduct({ ...created, bg_color: bgColor }),
