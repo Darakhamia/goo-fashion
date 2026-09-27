@@ -20,8 +20,8 @@
  * admin confirms every merge; nothing here writes.
  */
 import type { Retailer } from "@/lib/types";
-import { colourRelation, pieceName, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
-import { foldBrand } from "@/lib/server/parser/brand-from-name";
+import { colourRelation, modelWord, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
+import { brandSearchWord, brandsAgree, foldBrand } from "@/lib/server/parser/brand-from-name";
 
 /** Widest gap between two cards' prices for one item — as in `same-item.ts`. */
 const MAX_PRICE_RATIO = 3;
@@ -122,11 +122,15 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
   // row against every other one of its brand.
   const buckets = new Map<string, CatalogueRow[]>();
   for (const r of rows) {
-    const brand = foldBrand(r.brand);
+    // By the brand's first word and the model's own word, not the exact brand
+    // and name: "adidas" / "adidas Originals" and "Toro Bravo" / "Toro Bravo
+    // (2026)" are one piece, and an exact key put them in different buckets.
+    // `samePiece` below still decides every pair.
+    const brand = brandSearchWord(r.brand);
     if (!brand) continue;
-    const core = pieceName(r.name, r.brand, r.colors).core;
-    if (!core) continue;
-    const key = `${brand}|${core}`;
+    const model = modelWord(r.name, r.brand, r.colors);
+    if (!model) continue;
+    const key = `${brand}|${model}`;
     buckets.set(key, [...(buckets.get(key) ?? []), r]);
   }
 
@@ -148,7 +152,8 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
       const perStore = new Map<string, Slot>();
       for (const b of bucket) {
         if (a.id === b.id) continue;
-        if (!samePiece(a.brand, a, b)) continue;
+        if (!brandsAgree(a.brand, b.brand)) continue;
+        if (!samePiece([a.brand, b.brand], a, b)) continue;
         const storesB = storesOf(b);
         if (!storesB.size || [...storesB].some((s) => storesA.has(s))) continue;
         const pa = a.priceMin ?? 0;
