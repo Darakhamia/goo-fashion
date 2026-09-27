@@ -242,6 +242,10 @@ function CollectTab({
   // null = follow the saved default; a boolean = the admin overrode it for this run.
   const [useAiOverride, setUseAiOverride] = useState<boolean | null>(null);
   const [mirrorOverride, setMirrorOverride] = useState<boolean | null>(null);
+  // A second store's pages add their link and price to the cards we have, and
+  // create nothing: what the admin wants when the store is only another place
+  // to buy.
+  const [linksOnly, setLinksOnly] = useState(false);
 
   const [phase, setPhase] = useState<CrawlPhase>("idle");
   const [error, setError] = useState("");
@@ -312,7 +316,7 @@ function CollectTab({
         const res = await fetch("/api/admin/parser/crawl", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "batch", urls: slice, useAi, mirrorImages }),
+          body: JSON.stringify({ action: "batch", urls: slice, useAi, mirrorImages, linksOnly }),
         });
         const data = await res.json();
         if (data?.results) setResults((prev) => [...prev, ...(data.results as CrawlItemResult[])]);
@@ -380,10 +384,16 @@ function CollectTab({
               label={config?.openai.configured ? "Use AI for stores without structured data" : "AI unavailable — no OpenAI key"}
             />
             <Toggle
-              on={mirrorImages}
-              disabled={running}
+              on={mirrorImages && !linksOnly}
+              disabled={running || linksOnly}
               onChange={setMirrorOverride}
               label="Copy photos to our storage"
+            />
+            <Toggle
+              on={linksOnly}
+              disabled={running}
+              onChange={setLinksOnly}
+              label="Links only — add this store to pieces we already have, skip the rest"
             />
           </div>
         </div>
@@ -476,6 +486,14 @@ function CollectTab({
                   {r.reason && (
                     <span className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[220px] flex-shrink-0" title={r.reason}>
                       {r.reason}
+                    </span>
+                  )}
+                  {!r.reason && (r.merged || r.linkNote) && (
+                    <span
+                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[260px] flex-shrink-0"
+                      title={r.linkNote ?? "added as a store to an existing product"}
+                    >
+                      {r.linkNote ?? "added as a store to an existing product"}
                     </span>
                   )}
                   <a

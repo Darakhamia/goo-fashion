@@ -280,6 +280,9 @@ export async function POST(req: Request) {
   const mirrorImages =
     typeof body?.mirrorImages === "boolean" ? body.mirrorImages : aiSettings.downloadImages;
   const dryRun = body?.dryRun === true;
+  // Set by the collect screen, not the extension: the admin chooses there
+  // whether this store's pages make cards or only add links to ours.
+  const linksOnly = body?.linksOnly === true;
 
   let result: CrawlItemResult;
 
@@ -327,9 +330,11 @@ export async function POST(req: Request) {
       const imported = await importParsedProduct(
         product as unknown as Record<string, unknown>,
         product.sourceUrl || url,
-        { mirrorImages },
+        { mirrorImages, linksOnly },
       );
-      result = imported.ok
+      result = imported.skipped
+        ? { url, status: "skipped", reason: imported.skipped, name: product.name, usedAi }
+        : imported.ok
         ? {
             url,
             status: imported.updated ? "updated" : "imported",
@@ -348,6 +353,7 @@ export async function POST(req: Request) {
             mergedBy: imported.mergedBy,
             mergedFields: imported.mergedFields,
             ...(imported.droppedColumns?.length && { warning: droppedColumnsWarning(imported.droppedColumns) }),
+            linkNote: imported.linkNote,
           }
         : { url, status: "failed", reason: imported.error, name: product.name, usedAi };
     }

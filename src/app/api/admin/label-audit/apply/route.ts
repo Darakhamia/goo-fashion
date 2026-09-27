@@ -15,6 +15,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { subcategoryToValue } from "@/lib/categories";
+import { colorGroupNamesFor, colorToHex, repairColourLabels } from "@/lib/server/product-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +38,22 @@ export async function POST(req: Request) {
 
   const current = await supabase
     .from("products")
-    .select("id, name, category, subcategory, gender, color_group_ids")
+    .select("id, name, category, subcategory, gender, color_group_ids, colors")
     .eq("id", id)
     .limit(1);
   if (current.error) {
     return NextResponse.json({ error: current.error.message }, { status: 503 });
   }
   const product = (current.data ?? [])[0] as
-    | { id: string; name: string; category: string; subcategory: string | null; gender: string | null; color_group_ids: number[] | null }
+    | {
+        id: string;
+        name: string;
+        category: string;
+        subcategory: string | null;
+        gender: string | null;
+        color_group_ids: number[] | null;
+        colors: string[] | null;
+      }
     | undefined;
   if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 });
 
@@ -112,6 +121,34 @@ export async function POST(req: Request) {
     // colours, and the audit only ever reports a group as *missing*.
     patch.color_group_ids = [...existing, match.id];
     before.color_group_ids = existing;
+  } else if (field === "colour") {
+    // Recomputed here rather than taken from the request: the audit's
+    // suggestion is only confirmed, so a label edited since the check is not
+    // overwritten with a repair meant for what it used to say.
+    const repair = repairColourLabels(product.name, product.colors ?? []);
+    if (!repair) {
+      return NextResponse.json({ error: "Every colour on this piece is a colour already." }, { status: 409 });
+    }
+    const expected = repair.next.join(", ") || "(none)";
+    if (value !== expected) {
+      return NextResponse.json({ error: "The colour changed since the check. Re-check and try again." }, { status: 409 });
+    }
+    patch.colors = repair.next;
+    patch.color_hex = repair.next[0] ? colorToHex(repair.next[0]) : null;
+    before.colors = product.colors;
+    // The filter too, when the piece had none: the size never filed it anywhere.
+    const existing = product.color_group_ids ?? [];
+    if (!existing.length && repair.next.length) {
+      const wanted = colorGroupNamesFor(repair.next, "field").map((n) => n.toLowerCase());
+      const groups = await supabase.from("color_groups").select("id, name");
+      const ids = ((groups.data ?? []) as { id: number; name: string }[])
+        .filter((g) => wanted.includes(g.name.toLowerCase()))
+        .map((g) => g.id);
+      if (ids.length) {
+        patch.color_group_ids = ids;
+        before.color_group_ids = existing;
+      }
+    }
   } else {
     return NextResponse.json({ error: `Cannot apply a fix to "${field}".` }, { status: 400 });
   }

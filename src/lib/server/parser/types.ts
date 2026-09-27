@@ -337,6 +337,8 @@ export interface CrawlItemResult {
   mergedFields?: string[];
   /** Set when the product was saved without columns the database lacks (a migration not run). */
   warning?: string;
+  /** What a links-only page did to a card, when it was not a merge. */
+  linkNote?: string;
 }
 
 export const DEFAULT_FETCH_SETTINGS: ParserFetchSettings = {

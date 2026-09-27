@@ -7,6 +7,7 @@ import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/
 import { getAiSettings } from "@/lib/server/parser/configs";
 import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
 import { normalizeGtin } from "@/lib/server/product-fields";
+import { inferStyleKeywords } from "@/lib/taxonomy/styles";
 import {
   canRefreshOnly,
   groupUrls,
@@ -199,6 +200,9 @@ async function importGroup(
       category: repr.category,
       gender: repr.gender,
       description: repr.description || "",
+      // A feed names no style; the words of the name and description are the
+      // only evidence it carries, beside the brand's habit the pipeline adds.
+      styleKeywords: inferStyleKeywords(`${repr.name} ${repr.description || ""}`),
       material: repr.material,
       imageUrl: repr.imageUrl,
       images: repr.images?.length ? repr.images : (repr.imageUrl ? [repr.imageUrl] : []),

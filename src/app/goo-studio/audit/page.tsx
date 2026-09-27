@@ -10,7 +10,10 @@
  * Corrections are one product at a time, against visible evidence. A rule
  * disagreeing with a label means one of the two is wrong, and which one is a
  * judgement — so there is no "apply all" here, and there should not be. The
- * checks that are exact are marked as such; the rest are suggestions.
+ * checks that are exact are marked as such; the rest are suggestions. The one
+ * exception is a colour that is a size or a file name: that is never a matter
+ * of judgement, and an import can leave a whole store of them, so that section
+ * can be applied at once — still one checked write per product.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -56,7 +59,14 @@ function appliedKey(s: Suspect): string {
 }
 
 /** Section copy: what the check is, and how much it can be trusted. */
-const SECTIONS: { key: string; title: string; note: string; exact?: boolean }[] = [
+const SECTIONS: { key: string; title: string; note: string; exact?: boolean; bulk?: boolean }[] = [
+  {
+    key: "colour_label_not_a_colour",
+    title: "Colour that is not a colour",
+    note: "The colour label is a size or a file name — a size row built from swatches reads to the importer like the picked colour. Applying replaces it with the colourway the name ends with (“Mia Jacket - Beige/White”), or the colour the name mentions, or clears it.",
+    exact: true,
+    bulk: true,
+  },
   {
     key: "subcategory_not_in_tree",
     title: "Subcategory that no longer exists",
@@ -120,12 +130,12 @@ function sectionsToRender(report: AuditReport) {
   const known = new Set(SECTIONS.map((s) => s.key));
   const extra = Object.keys(report.suspects)
     .filter((key) => !known.has(key))
-    .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false }));
+    .map((key) => ({ key, title: fallbackTitle(key), note: "", exact: false, bulk: false }));
   return [...SECTIONS, ...extra];
 }
 
 /** Fields this page can write. Anything else is for the product editor. */
-const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group"]);
+const APPLIABLE = new Set(["category", "subcategory", "gender", "colour group", "colour"]);
 
 /** Findings listed per section; the rest are counted, and said to be. */
 const LIMIT = 300;
@@ -174,8 +184,8 @@ export default function AdminAuditPage() {
     void load();
   }, [load]);
 
-  const apply = async (s: Suspect) => {
-    setBusyKey(claimKey(s));
+  /** One checked write; the error text when it was refused. */
+  const applyOne = async (s: Suspect): Promise<string | null> => {
     try {
       const res = await fetch("/api/admin/label-audit/apply", {
         method: "POST",
@@ -183,20 +193,41 @@ export default function AdminAuditPage() {
         body: JSON.stringify({ id: s.id, field: s.field, value: s.suggested }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        showToast(json.error ?? "Could not apply.", "err");
-        return;
-      }
+      if (!res.ok) return json.error ?? "Could not apply.";
       // Struck through in place rather than removed: seeing what was just
       // changed is the point, and a list that reshuffles under the cursor is
       // hard to work through.
       setDone((prev) => new Set(prev).add(appliedKey(s)));
-      showToast(`${s.name.slice(0, 40)} → ${s.suggested}`);
+      return null;
     } catch {
-      showToast("Could not reach the server.", "err");
-    } finally {
-      setBusyKey(null);
+      return "Could not reach the server.";
     }
+  };
+
+  const apply = async (s: Suspect) => {
+    setBusyKey(claimKey(s));
+    const failed = await applyOne(s);
+    setBusyKey(null);
+    showToast(failed ?? `${s.name.slice(0, 40)} → ${s.suggested}`, failed ? "err" : "ok");
+  };
+
+  /** A whole exact section, one product after another. */
+  const applyAll = async (key: string, list: Suspect[]) => {
+    const todo = list.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s)));
+    if (!todo.length) return;
+    if (!confirm(`Apply ${todo.length} fix${todo.length === 1 ? "" : "es"} in this section? Each product is written separately.`)) return;
+    setBusyKey(`section:${key}`);
+    let fixed = 0;
+    let refused = 0;
+    for (const s of todo) {
+      if (await applyOne(s)) refused++;
+      else fixed++;
+    }
+    setBusyKey(null);
+    showToast(
+      refused ? `Fixed ${fixed}; ${refused} refused — re-check to see why` : `Fixed ${fixed}`,
+      refused ? "err" : "ok",
+    );
   };
 
   const claimBody = (s: Suspect) => ({
@@ -333,7 +364,7 @@ export default function AdminAuditPage() {
 
       <div className="flex flex-col gap-5">
         {report &&
-          sectionsToRender(report).map(({ key, title, note, exact }) => {
+          sectionsToRender(report).map(({ key, title, note, exact, bulk }) => {
             // Dismissed ones arrive with every run and are only shown or hidden here.
             const all = report.suspects[key] ?? [];
             const list = showDismissed ? all : all.filter((s) => !s.dismissed);
@@ -347,6 +378,7 @@ export default function AdminAuditPage() {
             if (showDismissed && dismissedTotal > dismissedShown) {
               cut.push(`showing ${dismissedShown} of ${dismissedTotal} dismissed`);
             }
+            const open = all.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s))).length;
             return (
               <section key={key} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
                 <header className="px-5 py-3.5 border-b border-[var(--border)]">
@@ -360,6 +392,15 @@ export default function AdminAuditPage() {
                       <span className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
                         exact
                       </span>
+                    )}
+                    {bulk && open > 0 && (
+                      <button
+                        onClick={() => applyAll(key, list)}
+                        disabled={busyKey !== null}
+                        className="ml-auto shrink-0 whitespace-nowrap bg-[var(--foreground)] text-[var(--background)] px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40"
+                      >
+                        {busyKey === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
+                      </button>
                     )}
                   </div>
                   {note && <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed max-w-3xl">{note}</p>}

@@ -32,7 +32,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { subcategoryToValue } from "@/lib/categories";
-import { matchCategory, inferGenderFromText } from "@/lib/server/product-fields";
+import { matchCategory, inferGenderFromText, repairColourLabels, whyNotAColour } from "@/lib/server/product-fields";
 import { loadLabelledProducts, makeKeyBuilders } from "@/lib/server/catalogue-labels";
 import {
   applyRules,
@@ -398,11 +398,33 @@ export async function GET(req: Request) {
     }
   }
 
+  // A colour label that is a size or a file name — exact, and nearly always an
+  // import's doing: a size row built from swatches reads as the picked colour
+  // ("Mia Jacket - Beige/White" stored as "XS").
+  const notAColour: Suspect[] = [];
+  for (const p of loaded) {
+    const repair = repairColourLabels(p.name, p.colors);
+    if (!repair) continue;
+    notAColour.push({
+      id: p.id,
+      name: p.name,
+      field: "colour",
+      stored: p.colors.join(", "),
+      suggested: repair.next.join(", ") || "(none)",
+      evidence: [
+        ...repair.bad.map(whyNotAColour),
+        repair.next.length ? `"${repair.next.join(", ")}" is what the name or the other labels say` : "the name names no colour, so the label is cleared",
+      ],
+      agreement: 1,
+    });
+  }
+
   const byConfidence = (a: Suspect, b: Suspect) =>
     b.agreement - a.agreement || a.name.localeCompare(b.name);
   const categoryList = [...categorySuspects.values()].sort(byConfidence);
 
   const found = {
+    colour_label_not_a_colour: notAColour.sort(byConfidence),
     subcategory_not_in_tree: orphaned,
     category_contradicts_subcategory: contradicting,
     filed_under_the_wrong_group: wrongPart.sort(byConfidence),
@@ -479,6 +501,7 @@ export async function GET(req: Request) {
     subcategory_disputed_by_name: "SUBCATEGORY DISPUTED BY THE NAME",
     gender_disputed_by_name: "GENDER DISPUTED BY THE NAME",
     colour_group_possibly_missing: "COLOUR GROUP POSSIBLY MISSING",
+    colour_label_not_a_colour: "COLOUR THAT IS NOT A COLOUR  (exact — a size or a file name)",
   };
 
   for (const [name, list] of Object.entries(sections)) {
