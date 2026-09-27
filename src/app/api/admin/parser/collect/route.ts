@@ -282,7 +282,7 @@ export async function POST(req: Request) {
   const dryRun = body?.dryRun === true;
   // Set by the collect screen, not the extension: the admin chooses there
   // whether this store's pages make cards or only add links to ours.
-  const linksOnly = body?.linksOnly === true;
+  const requestedLinksOnly = body?.linksOnly === true;
 
   let result: CrawlItemResult;
 
@@ -327,13 +327,27 @@ export async function POST(req: Request) {
     } else if (dryRun) {
       result = { url, status: "skipped", reason: "Dry run", name: product.name, usedAi };
     } else {
+      // A page with no photo at all is taken as links only whatever the mode:
+      // a card without a photo is not a card, but its price and address still
+      // make a "where to buy" line on the piece we already have.
+      const photoless = !product.imageUrl && !(product.images?.length ?? 0);
+      const linksOnly = requestedLinksOnly || photoless;
+      const photolessOnly = photoless && !requestedLinksOnly;
       const imported = await importParsedProduct(
         product as unknown as Record<string, unknown>,
         product.sourceUrl || url,
         { mirrorImages, linksOnly },
       );
       result = imported.skipped
-        ? { url, status: "skipped", reason: imported.skipped, name: product.name, usedAi }
+        ? {
+            url,
+            status: "skipped",
+            reason: photolessOnly
+              ? `no photos on the page — ${imported.skipped.replace(/^links only: /, "")}`
+              : imported.skipped,
+            name: product.name,
+            usedAi,
+          }
         : imported.ok
         ? {
             url,
