@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
-import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
 
 export const maxDuration = 60;
@@ -60,5 +60,7 @@ export async function POST(req: Request) {
     updated: result.updated,
     imagesMirrored: result.imagesMirrored ?? 0,
     imagesFailed: result.imagesFailed ?? 0,
+    // Saved, but without columns the database does not have yet.
+    ...(result.droppedColumns?.length && { warning: droppedColumnsWarning(result.droppedColumns) }),
   });
 }

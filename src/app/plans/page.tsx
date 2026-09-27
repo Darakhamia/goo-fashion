@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { planPriceLabel, PLAN_PRICE_UAH, type PlanId } from "@/lib/plans";
 
@@ -148,8 +148,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function PlansPage() {
+// Pro is highlighted unless the link says otherwise: the upgrade prompt sends
+// people to /plans?highlight=<plan> for the plan the feature actually needs.
+const DEFAULT_HIGHLIGHT = PLANS.find((p) => p.highlighted)?.id ?? "pro";
+
+function PlansContent({ highlightId }: { highlightId: string }) {
   const router = useRouter();
+  const plans = PLANS.map((p) => ({ ...p, highlighted: p.id === highlightId }));
 
   function handleSelectPlan(planId: string) {
     router.push(`/subscribe?plan=${planId}`);
@@ -180,7 +185,7 @@ export default function PlansPage() {
           viewport={{ once: true, margin: "-60px" }}
           variants={{ show: { transition: { staggerChildren: 0.1 } } }}
         >
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <motion.div
               key={plan.id}
               variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
@@ -194,7 +199,9 @@ export default function PlansPage() {
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute top-6 right-6">
-                  <span className="font-mono text-[8px] tracking-[0.18em] uppercase font-semibold text-[var(--foreground)] bg-[var(--background)] px-2.5 py-1 rounded-full">
+                  <span className={`font-mono text-[8px] tracking-[0.18em] uppercase font-semibold text-[var(--foreground)] bg-[var(--background)] px-2.5 py-1 rounded-full ${
+                    plan.highlighted ? "" : "border border-[var(--border)]"
+                  }`}>
                     {plan.badge}
                   </span>
                 </div>
@@ -277,10 +284,10 @@ export default function PlansPage() {
               {/* Column headers */}
               <div className="grid border-b border-[var(--border)]" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
                 <div className="bg-[var(--surface)] py-3.5 px-4" />
-                {PLANS.map((plan, i) => (
+                {plans.map((plan, i) => (
                   <div
                     key={plan.id}
-                    className={`py-3.5 px-4 ${plan.highlighted ? "bg-[var(--foreground)]" : "bg-[var(--surface)]"} ${i < PLANS.length - 1 ? "border-r border-[var(--border)]" : ""}`}
+                    className={`py-3.5 px-4 ${plan.highlighted ? "bg-[var(--foreground)]" : "bg-[var(--surface)]"} ${i < plans.length - 1 ? "border-r border-[var(--border)]" : ""}`}
                   >
                     <p className={`font-mono text-[10px] tracking-[0.16em] uppercase font-medium ${
                       plan.highlighted ? "text-[var(--background)]" : "text-[var(--foreground)]"
@@ -306,7 +313,7 @@ export default function PlansPage() {
                   {/* Values */}
                   {(["basic", "pro", "premium"] as const).map((planId, ci) => {
                     const val = row[planId];
-                    const isHighlighted = planId === "pro";
+                    const isHighlighted = planId === highlightId;
                     const baseBg = idx % 2 === 0 ? "bg-[var(--background)]" : "bg-[var(--surface)]";
                     return (
                       <div
@@ -371,5 +378,21 @@ export default function PlansPage() {
 
       </div>
     </div>
+  );
+}
+
+function PlansWithHighlight() {
+  const highlight = useSearchParams().get("highlight");
+  const highlightId = PLANS.find((p) => p.id === highlight)?.id ?? DEFAULT_HIGHLIGHT;
+  return <PlansContent highlightId={highlightId} />;
+}
+
+// useSearchParams needs a Suspense boundary. The fallback is the same page with
+// the default highlight, so the prerendered HTML still carries the full content.
+export default function PlansPage() {
+  return (
+    <Suspense fallback={<PlansContent highlightId={DEFAULT_HIGHLIGHT} />}>
+      <PlansWithHighlight />
+    </Suspense>
   );
 }

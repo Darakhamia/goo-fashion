@@ -232,14 +232,3 @@ export const COLOUR_PHRASES: [RegExp, Base][] = [
  */
 export const MULTICOLOUR_WORDS =
   /\b(?:multi[\s-]?colou?r(?:ed)?|multicolou?r(?:ed)?|multi|rainbow|tie[\s-]?dye(?:d)?|camo(?:uflage)?|kaleidoscope|patchwork|assorted)\b|многоцвет|разноцвет|мульти|камуфляж|різнокольор|багатокольор/i;
-
-export function colourTermCounts(): { safe: number; field: number; qualifier: number; stems: number; phrases: number } {
-  const alternatives = (list: [RegExp, Base][]) => list.reduce((n, [re]) => n + re.source.split("|").length, 0);
-  return {
-    safe: Object.keys(SAFE_COLOUR_WORDS).length,
-    field: Object.keys(FIELD_COLOUR_WORDS).length,
-    qualifier: Object.keys(QUALIFIER_COLOUR_WORDS).length,
-    stems: alternatives(COLOUR_STEMS) + alternatives(FIELD_COLOUR_STEMS) + alternatives(QUALIFIER_COLOUR_STEMS),
-    phrases: COLOUR_PHRASES.length,
-  };
-}

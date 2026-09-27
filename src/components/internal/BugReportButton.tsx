@@ -2,24 +2,30 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useSyncExternalStore } from "react";
+
+// The flag only changes through this component, so there is nothing to subscribe to.
+const subscribeNoop = () => () => {};
+const readStoredFlag = () => {
+  try {
+    return localStorage.getItem("internal") === "true";
+  } catch {
+    return false;
+  }
+};
 
 function BugButtonInner() {
   const params = useSearchParams();
-  const [show, setShow] = useState(false);
+  const fromUrl = params.get("internal") === "true";
+  // The server has no localStorage, so it (and hydration) reads the flag as off.
+  const fromStorage = useSyncExternalStore(subscribeNoop, readStoredFlag, () => false);
 
+  // Remember ?internal=true, so the button stays on across pages.
   useEffect(() => {
-    const fromUrl = params.get("internal") === "true";
-    const fromStorage = typeof window !== "undefined" && localStorage.getItem("internal") === "true";
-    if (fromUrl) {
-      localStorage.setItem("internal", "true");
-      setShow(true);
-    } else if (fromStorage) {
-      setShow(true);
-    }
-  }, [params]);
+    if (fromUrl) localStorage.setItem("internal", "true");
+  }, [fromUrl]);
 
-  if (!show) return null;
+  if (!fromUrl && !fromStorage) return null;
 
   return (
     <Link

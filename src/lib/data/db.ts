@@ -1,6 +1,11 @@
 /**
  * Server-side data access layer.
- * Uses Supabase when configured, falls back to static data.
+ *
+ * Reads Supabase. The demo data in ./products, ./outfits and ./blog is served
+ * only when Supabase is not configured at all (local development): on a
+ * configured database a failed or empty read returns nothing and logs, because
+ * demo looks with Unsplash photos and "#" store links are not something the
+ * live site may ever show as its own.
  */
 import type { BlogPost, ColorGroup, Outfit, OutfitItem, Product, ProductSwatch } from "@/lib/types";
 import { supabase, isSupabaseConfigured, type DbBlogPost, type DbOutfit, type DbProduct, type DbColorGroup, dbToColorGroup } from "@/lib/supabase";
@@ -155,7 +160,7 @@ export function productToDb(p: Partial<Product>) {
  * Columns that arrived with a migration and may not exist yet on a database
  * the code has been deployed ahead of.
  */
-const OPTIONAL_COLUMNS = [
+export const OPTIONAL_COLUMNS = [
   "subcategory",
   "color_group_ids",
   "crop_data",
@@ -198,6 +203,63 @@ export function writeProductRow<T>(
 /** Names the columns a save could not write, and why. */
 export function missingColumnWarning(dropped: string[]): string {
   return `Saved, but ${dropped.join(", ")} ${dropped.length > 1 ? "were" : "was"} not stored — the database is missing ${dropped.length > 1 ? "those columns" : "that column"}. Run the pending migration in supabase/migrations.`;
+}
+
+/**
+ * The product columns the site reads: everything dbToProduct maps, and not
+ * `embedding`. That one is a 1536-float vector per row, used only inside the
+ * semantic-search SQL function, and `select("*")` dragged it into every
+ * catalogue read just to throw it away.
+ */
+const PRODUCT_READ_COLUMNS = [
+  "id", "name", "brand", "category", "subcategory", "description", "image_url",
+  "images", "colors", "color_images", "sizes", "material", "retailers",
+  "price_min", "price_max", "currency", "is_new", "is_saved", "style_keywords",
+  "gender", "created_at", "variant_group_id", "color_hex", "is_group_primary",
+  "crop_data", "color_group_ids", "bg_color", "source_price", "source_currency",
+  "fx_rate", "fx_date", "gtin", "mpn", "sku",
+];
+
+/** Read columns a database a migration behind may lack; the rest are required. */
+const OPTIONAL_READ_COLUMNS = new Set<string>([...OPTIONAL_COLUMNS, "gender"]);
+
+/**
+ * Codes for "no such column": Postgres' own (what a select naming one returns)
+ * and PostgREST's schema-cache variant.
+ */
+const UNKNOWN_READ_COLUMN_CODES = new Set(["42703", "PGRST204"]);
+
+// Narrows for the life of the server instance once a column turns out to be
+// missing, so every later read doesn't pay for the same failed request first.
+let productReadColumns = PRODUCT_READ_COLUMNS;
+
+type ReadResult = { data: unknown; error: { code?: string; message: string } | null };
+
+/**
+ * Runs a product read with the explicit column list, dropping an optional
+ * column the database does not have yet and retrying — the read-side twin of
+ * writeProductRow. Without it, naming a column is riskier than `*`: one
+ * migration not yet run would take the whole catalogue down.
+ */
+async function selectProducts(
+  // Supabase query builders are thenable rather than real Promises.
+  run: (columns: string) => PromiseLike<ReadResult>,
+): Promise<ReadResult> {
+  for (;;) {
+    const result = await run(productReadColumns.join(","));
+    const { error } = result;
+    if (!error || !UNKNOWN_READ_COLUMN_CODES.has(error.code ?? "")) return result;
+
+    const missing = productReadColumns.find(
+      (c) => OPTIONAL_READ_COLUMNS.has(c) && new RegExp(`\\b${c}\\b`).test(error.message),
+    );
+    if (!missing) return result;
+
+    console.warn(
+      `[db] products.${missing} does not exist — reading without it. Run the pending migration in supabase/migrations.`,
+    );
+    productReadColumns = productReadColumns.filter((c) => c !== missing);
+  }
 }
 
 const DEFAULT_COLOR_GROUPS: ColorGroup[] = [
@@ -263,26 +325,39 @@ function toSwatch(p: Product): ProductSwatch {
  * – Products without a group are returned unchanged.
  */
 export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
-  if (!isSupabaseConfigured || !supabase) return staticProducts;
+  const { products, error } = await readAllProducts(skipGrouping);
+  if (error) console.error("[db] getAllProducts:", error);
+  return products;
+}
+
+/**
+ * getAllProducts that reports a failed read instead of answering with an empty
+ * catalogue — for the admin, where "the database is down" and "there are no
+ * products" must not look the same.
+ */
+export async function readAllProducts(
+  skipGrouping = false,
+): Promise<{ products: Product[]; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { products: staticProducts, error: null };
 
   const PAGE = 1000;
   const allData: DbProduct[] = [];
   let from = 0;
 
   while (true) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(from, from + PAGE - 1);
+    const { data, error } = await selectProducts((columns) =>
+      supabase!
+        .from("products")
+        .select(columns)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1),
+    );
 
-    if (error) {
-      console.error("[db] getAllProducts:", error.message);
-      return [];
-    }
+    if (error) return { products: [], error: error.message };
 
-    allData.push(...(data as DbProduct[]));
-    if (!data || data.length < PAGE) break;
+    const rows = (data ?? []) as DbProduct[];
+    allData.push(...rows);
+    if (rows.length < PAGE) break;
     from += PAGE;
   }
 
@@ -291,7 +366,7 @@ export async function getAllProducts(skipGrouping = false): Promise<Product[]> {
   // Admin view (skipGrouping=true) keeps the deterministic newest-first order from
   // the DB query so the table doesn't reshuffle on every refresh. The public catalog
   // stays shuffled for visual variety between visits.
-  return skipGrouping ? grouped : shuffleArray(grouped);
+  return { products: skipGrouping ? grouped : shuffleArray(grouped), error: null };
 }
 
 /**
@@ -345,39 +420,156 @@ export function groupVariants(all: Product[]): Product[] {
   return result;
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
+/**
+ * One product with its colour swatches, or undefined when there is none.
+ *
+ * `throwOnError` is for the cached product page: there a failed read must not
+ * pass for "no such product", or the 404 (or a card without its swatches)
+ * would be cached and served until the next revalidation.
+ */
+export async function getProductById(
+  id: string,
+  opts: { throwOnError?: boolean } = {},
+): Promise<Product | undefined> {
   if (!isSupabaseConfigured || !supabase) return undefined;
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (error || !data) return undefined;
+  const { data, error } = await selectProducts((columns) =>
+    supabase!.from("products").select(columns).eq("id", id).maybeSingle(),
+  );
+  if (error) {
+    console.error("[db] getProductById:", error.message);
+    if (opts.throwOnError) throw new Error(`Could not read product ${id}: ${error.message}`);
+    return undefined;
+  }
+  if (!data) return undefined;
   const product = dbToProduct(data as DbProduct);
 
   // If part of a variant group, fetch all siblings and attach as swatches
   if (product.variantGroupId) {
-    const { data: siblings } = await supabase
-      .from("products")
-      .select("*")
-      .eq("variant_group_id", product.variantGroupId);
-    if (siblings && siblings.length > 0) {
-      product.variants = (siblings as DbProduct[]).map(dbToProduct).map(toSwatch);
+    const groupId = product.variantGroupId;
+    const { data: siblings, error: siblingsError } = await selectProducts((columns) =>
+      supabase!.from("products").select(columns).eq("variant_group_id", groupId),
+    );
+    if (siblingsError && opts.throwOnError) {
+      throw new Error(`Could not read the colours of product ${id}: ${siblingsError.message}`);
+    }
+    const rows = (siblings ?? []) as DbProduct[];
+    if (rows.length > 0) {
+      product.variants = rows.map(dbToProduct).map(toSwatch);
     }
   }
 
   return product;
 }
 
-export async function getProductsByCategory(category: string): Promise<Product[]> {
-  if (!isSupabaseConfigured || !supabase) return [];
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("category", category)
-    .order("created_at", { ascending: false });
-  if (error) return [];
-  return shuffleArray(groupVariants((data as DbProduct[]).map(dbToProduct)));
+// PostgREST carries `.in()` filters in the URL; 200 UUIDs keep it well short
+// of the length proxies reject.
+const ID_BATCH = 200;
+
+/** Products by id, in no particular order, with the first failure reported. */
+async function readProductsByIds(ids: string[]): Promise<{ products: Product[]; error: string | null }> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return { products: [], error: null };
+  if (!isSupabaseConfigured || !supabase) {
+    const wanted = new Set(unique);
+    return { products: staticProducts.filter((p) => wanted.has(p.id)), error: null };
+  }
+
+  const products: Product[] = [];
+  for (let i = 0; i < unique.length; i += ID_BATCH) {
+    const batch = unique.slice(i, i + ID_BATCH);
+    const { data, error } = await selectProducts((columns) =>
+      supabase!.from("products").select(columns).in("id", batch),
+    );
+    if (error) return { products, error: error.message };
+    products.push(...((data ?? []) as DbProduct[]).map(dbToProduct));
+  }
+  return { products, error: null };
+}
+
+/** Id → product for the ids given; what outfits and looks hydrate against. */
+async function loadProductMap(ids: string[]): Promise<Map<string, Product>> {
+  const { products, error } = await readProductsByIds(ids);
+  if (error) console.error("[db] loadProductMap:", error);
+  return new Map(products.map((p) => [p.id, p]));
+}
+
+/**
+ * Just the products asked for, in the order asked for, ungrouped — a colour
+ * variant is a product in its own right. Ids no longer in the catalogue are
+ * left out. Replaces reading the whole catalogue to pick a handful from it.
+ */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  const { products, error } = await readProductsByIds(ids);
+  if (error) console.error("[db] getProductsByIds:", error);
+  const byId = new Map(products.map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
+}
+
+/**
+ * Swaps each grouped product for its group's primary, carrying a swatch for
+ * every colour — what groupVariants gives a product when the whole catalogue
+ * is loaded, for a handful of products that were read on their own.
+ */
+async function withFullVariantGroups(list: Product[]): Promise<Product[]> {
+  const groupIds = [...new Set(list.map((p) => p.variantGroupId).filter((g): g is string => Boolean(g)))];
+  if (groupIds.length === 0 || !isSupabaseConfigured || !supabase) return list;
+
+  const { data, error } = await selectProducts((columns) =>
+    supabase!.from("products").select(columns).in("variant_group_id", groupIds),
+  );
+  if (error) {
+    console.error("[db] withFullVariantGroups:", error.message);
+    return list;
+  }
+  const byGroup = new Map<string, Product>();
+  for (const p of groupVariants(((data ?? []) as DbProduct[]).map(dbToProduct))) {
+    if (p.variantGroupId) byGroup.set(p.variantGroupId, p);
+  }
+  return list.map((p) => (p.variantGroupId && byGroup.get(p.variantGroupId)) || p);
+}
+
+// How many of a category's newest products "You may also like" picks from.
+// Rows, not products: a piece imported in a dozen colours is a dozen rows that
+// groupVariants folds into one, so the pool is sized well past `limit`.
+const RELATED_POOL = 60;
+
+/**
+ * "You may also like" for a product page: others from the same category, never
+ * the product itself or another colour of it. Reads a small pool of the
+ * category's newest pieces instead of the whole catalogue.
+ */
+export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
+  const isSelf = (p: Product) =>
+    p.id === product.id || (!!product.variantGroupId && p.variantGroupId === product.variantGroupId);
+
+  if (!isSupabaseConfigured || !supabase) {
+    return staticProducts.filter((p) => p.category === product.category && !isSelf(p)).slice(0, limit);
+  }
+
+  const groupId = product.variantGroupId;
+  const { data, error } = await selectProducts((columns) => {
+    let query = supabase!
+      .from("products")
+      .select(columns)
+      .eq("category", product.category)
+      .neq("id", product.id);
+    // Its own colours are left out by the database, not after the read: a piece
+    // in two dozen colours would otherwise fill the whole pool with itself and
+    // leave nothing to suggest. `neq` alone would also drop every ungrouped row
+    // (NULL compares as unknown), hence the explicit NULL branch.
+    if (groupId) {
+      const quoted = `"${groupId.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+      query = query.or(`variant_group_id.is.null,variant_group_id.neq.${quoted}`);
+    }
+    return query.order("created_at", { ascending: false }).limit(RELATED_POOL);
+  });
+  if (error) {
+    console.error("[db] getRelatedProducts:", error.message);
+    return [];
+  }
+
+  const pool = groupVariants(((data ?? []) as DbProduct[]).map(dbToProduct)).filter((p) => !isSelf(p));
+  return withFullVariantGroups(shuffleArray(pool).slice(0, limit));
 }
 
 // ============================================================
@@ -448,44 +640,36 @@ export function outfitToDb(o: OutfitApiBody) {
   };
 }
 
+/** Every product id an outfit row names. */
+function outfitProductIds(rows: DbOutfit[]): string[] {
+  return rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id));
+}
+
 export async function getAllOutfits(): Promise<Outfit[]> {
-  if (!isSupabaseConfigured || !supabase) return staticOutfits;
+  const { outfits, error } = await readAllOutfits();
+  if (error) console.error("[db] getAllOutfits:", error);
+  return outfits;
+}
+
+/**
+ * getAllOutfits that reports a failed read, so an admin list can say the
+ * database failed instead of showing an empty table.
+ */
+export async function readAllOutfits(): Promise<{ outfits: Outfit[]; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { outfits: staticOutfits, error: null };
 
   const { data, error } = await supabase
     .from("outfits")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("[db] getAllOutfits:", error.message);
-    return staticOutfits;
-  }
+  if (error) return { outfits: [], error: error.message };
 
-  const rows = data as DbOutfit[];
-  if (rows.length === 0) return staticOutfits;
+  const rows = (data ?? []) as DbOutfit[];
+  if (rows.length === 0) return { outfits: [], error: null };
 
-  // Collect all product IDs referenced across all outfits
-  const productIds = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id)))];
-
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    // Fetch in batches of 200 to avoid URL-too-long errors with PostgREST .in() filters
-    const BATCH = 200;
-    for (let i = 0; i < productIds.length; i += BATCH) {
-      const batch = productIds.slice(i, i + BATCH);
-      const { data: prodData } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", batch);
-      if (prodData) {
-        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-          productMap.set(p.id, p);
-        }
-      }
-    }
-  }
-
-  return rows.map((r) => dbToOutfit(r, productMap));
+  const productMap = await loadProductMap(outfitProductIds(rows));
+  return { outfits: rows.map((r) => dbToOutfit(r, productMap)), error: null };
 }
 
 export async function createOutfit(
@@ -505,19 +689,7 @@ export async function createOutfit(
   }
 
   // Hydrate returned row
-  const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds);
-    if (prodData) {
-      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-        productMap.set(p.id, p);
-      }
-    }
-  }
+  const productMap = await loadProductMap(outfitProductIds([row as DbOutfit]));
 
   return { outfit: dbToOutfit(row as DbOutfit, productMap), error: null };
 }
@@ -540,19 +712,7 @@ export async function updateOutfit(
     return null;
   }
 
-  const productIds = (row.items ?? []).map((i: { product_id: string }) => i.product_id);
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds);
-    if (prodData) {
-      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-        productMap.set(p.id, p);
-      }
-    }
-  }
+  const productMap = await loadProductMap(outfitProductIds([row as DbOutfit]));
 
   return dbToOutfit(row as DbOutfit, productMap);
 }
@@ -566,29 +726,87 @@ export async function getOutfitById(id: string): Promise<Outfit | undefined> {
     .from("outfits")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    // Fall back to static data
-    return staticOutfits.find((o) => o.id === id);
+  // Not found is a 404 — never a demo outfit wearing the id that was asked for.
+  if (error) {
+    console.error("[db] getOutfitById:", error.message);
+    return undefined;
   }
+  if (!data) return undefined;
 
   const row = data as DbOutfit;
-  const productIds = (row.items ?? []).map((i) => i.product_id);
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    const { data: prodData } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", productIds);
-    if (prodData) {
-      for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-        productMap.set(p.id, p);
+  const productMap = await loadProductMap(outfitProductIds([row]));
+
+  return dbToOutfit(row, productMap);
+}
+
+/**
+ * Just the outfits asked for, in the order asked for; ids that match no outfit
+ * are left out. The outfit twin of getProductsByIds, for id lookups such as
+ * "Recently viewed" that would otherwise read every outfit to pick a handful.
+ */
+export async function getOutfitsByIds(ids: string[]): Promise<Outfit[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return [];
+
+  let outfits: Outfit[];
+  if (!isSupabaseConfigured || !supabase) {
+    outfits = staticOutfits.filter((o) => unique.includes(o.id));
+  } else {
+    outfits = [];
+    for (let i = 0; i < unique.length; i += ID_BATCH) {
+      const { data, error } = await supabase
+        .from("outfits")
+        .select("*")
+        .in("id", unique.slice(i, i + ID_BATCH));
+      if (error) {
+        console.error("[db] getOutfitsByIds:", error.message);
+        break;
       }
+      const rows = (data ?? []) as DbOutfit[];
+      const productMap = await loadProductMap(outfitProductIds(rows));
+      outfits.push(...rows.map((r) => dbToOutfit(r, productMap)));
     }
   }
 
-  return dbToOutfit(row, productMap);
+  const byId = new Map(outfits.map((o) => [o.id, o]));
+  return ids.map((id) => byId.get(id)).filter((o): o is Outfit => Boolean(o));
+}
+
+/**
+ * The newest outfits, at most `limit` of them — optionally only one occasion's,
+ * and without one given outfit. For rows that show a handful of outfits, which
+ * would otherwise read every outfit (and every product in them) to keep four.
+ */
+export async function getLatestOutfits(opts: {
+  limit: number;
+  occasion?: string;
+  excludeId?: string;
+}): Promise<Outfit[]> {
+  const { limit, occasion, excludeId } = opts;
+  if (limit <= 0) return [];
+  if (!isSupabaseConfigured || !supabase) {
+    return staticOutfits
+      .filter((o) => o.id !== excludeId && (occasion === undefined || o.occasion === occasion))
+      .slice(0, limit);
+  }
+
+  // `*` like the other outfit reads: `source` is optional in older databases,
+  // and naming a missing column fails the whole read.
+  let query = supabase.from("outfits").select("*");
+  if (occasion !== undefined) query = query.eq("occasion", occasion);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
+  if (error) {
+    console.error("[db] getLatestOutfits:", error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as DbOutfit[];
+  if (rows.length === 0) return [];
+  const productMap = await loadProductMap(outfitProductIds(rows));
+  return rows.map((r) => dbToOutfit(r, productMap));
 }
 
 /**
@@ -619,17 +837,40 @@ export interface SharedLook {
   styleKeywords: string[];
   savedAt: string | null;
   pieces: SharedLookPiece[];
+  /**
+   * No account stands behind it: a look shared while signed out, or one
+   * rebuilt from a ?d= link. Anyone can write one, so its page is kept out of
+   * search results, carries no text of its own (names and the total come from
+   * the catalogue) and shows only photos we can vouch for.
+   */
+  anonymous: boolean;
 }
+
+/** `user_looks.user_id` of a look shared without signing in. */
+export const ANONYMOUS_LOOK_OWNER = "anonymous";
 
 type RawLookPiece = {
   slot?: unknown;
   productId?: unknown;
+  variantId?: unknown;
   imageUrl?: unknown;
   name?: unknown;
 };
 
-/** Resolve raw look-piece refs against the catalog (brand, price, stores). */
-async function enrichSharedLookPieces(raw: unknown): Promise<SharedLookPiece[]> {
+/**
+ * Resolve raw look-piece refs against the catalog (brand, price, stores).
+ *
+ * `anonymous` is a look no account stands behind (see `SharedLook.anonymous`):
+ * its pieces are named by the catalogue, never by the payload, and a piece's
+ * own image URL is shown only when `isTrustedPiecePhoto` accepts it — it gets
+ * the piece's product and, when the piece names one, its colour variant; one it
+ * rejects is replaced by the catalogue photo.
+ */
+async function enrichSharedLookPieces(
+  raw: unknown,
+  anonymous: boolean,
+): Promise<SharedLookPiece[]> {
+  const trustImage = anonymous ? isTrustedPiecePhoto : undefined;
   const rawPieces = (Array.isArray(raw) ? raw : []).filter(
     (p): p is RawLookPiece => !!p && typeof p === "object"
   );
@@ -637,36 +878,30 @@ async function enrichSharedLookPieces(raw: unknown): Promise<SharedLookPiece[]> 
   const productIds = rawPieces
     .map((p) => (typeof p.productId === "string" ? p.productId : null))
     .filter((id): id is string => !!id);
+  // A colour variant is its own product row, with its own photos; only needed
+  // when those photos have to be checked.
+  const variantIds = trustImage
+    ? rawPieces
+        .map((p) => (typeof p.variantId === "string" ? p.variantId : null))
+        .filter((id): id is string => !!id)
+    : [];
 
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    if (isSupabaseConfigured && supabase) {
-      const { data: prodData } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", productIds);
-      if (prodData) {
-        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-          productMap.set(p.id, p);
-        }
-      }
-    } else {
-      for (const p of staticProducts) {
-        if (productIds.includes(p.id)) productMap.set(p.id, p);
-      }
-    }
-  }
+  const productMap = await loadProductMap([...productIds, ...variantIds]);
 
   return rawPieces.map((p) => {
     const productId = typeof p.productId === "string" ? p.productId : "";
     const product = productMap.get(productId);
+    const variant = typeof p.variantId === "string" ? productMap.get(p.variantId) : undefined;
     const slot = typeof p.slot === "string" ? p.slot : "";
+    const ownImage =
+      typeof p.imageUrl === "string" && p.imageUrl && (!trustImage || trustImage(p.imageUrl, [product, variant]))
+        ? p.imageUrl
+        : null;
     return {
       slot,
       productId,
-      name: (typeof p.name === "string" && p.name ? p.name : product?.name) ?? slot,
-      imageUrl:
-        (typeof p.imageUrl === "string" && p.imageUrl ? p.imageUrl : product?.imageUrl) ?? null,
+      name: (!anonymous && typeof p.name === "string" && p.name ? p.name : product?.name) ?? slot,
+      imageUrl: (ownImage || product?.imageUrl) ?? null,
       brand: product?.brand ?? null,
       priceMin: product?.priceMin ?? null,
       retailerCount: product?.retailers?.length ?? 0,
@@ -686,30 +921,104 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
 
   if (error || !data) return null;
 
-  const pieces = await enrichSharedLookPieces(data.pieces);
+  // A look shared while signed out was written by /api/looks/share for anyone
+  // who asked: it gets the same treatment as a ?d= link — no text of its own,
+  // and only photos we can vouch for.
+  const anonymous = data.user_id === ANONYMOUS_LOOK_OWNER;
+  const pieces = await enrichSharedLookPieces(data.pieces, anonymous);
 
   const generatedStyle =
     typeof data.generated_style === "string" ? data.generated_style : null;
+  const generatedImage: string | null = data.generated_image ?? null;
+
+  if (anonymous) {
+    return {
+      id: data.id,
+      name: null,
+      description: null,
+      generatedImage: generatedImage && isOwnStorageUrl(generatedImage) ? generatedImage : null,
+      generatedStyle,
+      totalPrice: catalogueTotal(pieces),
+      styleKeywords: [],
+      savedAt: data.saved_at ?? null,
+      pieces,
+      anonymous,
+    };
+  }
 
   return {
     id: data.id,
     name: data.look_name ?? null,
     description: data.look_description ?? null,
-    generatedImage: data.generated_image ?? null,
+    generatedImage,
     generatedStyle,
     totalPrice: data.total_price ?? null,
     styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
     savedAt: data.saved_at ?? null,
     pieces,
+    anonymous,
   };
+}
+
+/**
+ * What a look nobody signed for costs, from the catalogue: the sum of each
+ * piece's lowest price. The payload's own total is a number anyone could have
+ * typed, shown as "Total" on our domain.
+ */
+function catalogueTotal(pieces: SharedLookPiece[]): number | null {
+  const prices = pieces
+    .map((p) => p.priceMin)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  return prices.length ? prices.reduce((sum, n) => sum + n, 0) : null;
+}
+
+/**
+ * Whether a URL points into our own Supabase Storage, where generate-outfit
+ * persists look photos. Hosts shared with other tenants — any *.supabase.co
+ * project, replicate.delivery — don't count: anyone can put a picture there.
+ */
+export function isOwnStorageUrl(url: string): boolean {
+  const base = process.env.SUPABASE_URL;
+  if (!base) return false;
+  try {
+    const u = new URL(url);
+    return (u.protocol === "https:" || u.protocol === "http:") && u.host === new URL(base).host;
+  } catch {
+    return false;
+  }
+}
+
+/** Every photo the catalogue holds for a product, across its colours. */
+function productPhotos(product: Product): string[] {
+  return [
+    product.imageUrl,
+    ...(product.images ?? []),
+    ...Object.values(product.colorImages ?? {}).flat(),
+  ].filter(Boolean);
+}
+
+/**
+ * Whether a piece photo from a look nobody signed for may be shown on our
+ * domain: one from our own storage, or a catalogue photo of the piece's
+ * product (or of the colour variant it names).
+ */
+export function isTrustedPiecePhoto(url: string, products: (Product | undefined)[]): boolean {
+  return isOwnStorageUrl(url) || products.some((p) => !!p && productPhotos(p).includes(url));
 }
 
 /**
  * Fallback for share links that carry the look in the URL itself (?d=...).
  * Used when the look never reached the database (e.g. the write failed at
  * share time) — the link must still open the standard look page for any
- * recipient. The payload is untrusted URL input, so every field is validated
- * and images are restricted to http(s) URLs.
+ * recipient.
+ *
+ * The payload is untrusted and unsigned: anyone can mint a link that renders
+ * on our domain. So every field is validated, the page is noindex (see
+ * app/look/[id]), and neither text nor picture comes from the link itself: no
+ * name, description or style tags, piece names and the total from the
+ * catalogue, the generated photo only from our own storage, piece photos only
+ * when they are that product's (or its named colour variant's) catalogue
+ * photos. A payload naming no real product is refused.
  */
 export async function sharedLookFromShareData(
   id: string,
@@ -737,38 +1046,81 @@ export async function sharedLookFromShareData(
     .map((p: RawLookPiece) => ({
       slot: str(p?.slot, 40) ?? "",
       productId: str(p?.productId, 100) ?? "",
-      name: str(p?.name, 300) ?? undefined,
+      variantId: str(p?.variantId, 100) ?? undefined,
       imageUrl: httpUrl(p?.imageUrl) ?? undefined,
     }))
     .filter((p) => p.productId);
 
-  const pieces = await enrichSharedLookPieces(rawPieces);
-  if (pieces.length === 0) return null;
+  const pieces = await enrichSharedLookPieces(rawPieces, true);
+  if (!pieces.some((p) => p.productExists)) return null;
+
+  const generatedImage = httpUrl(data.generatedImage);
 
   return {
     id,
-    name: str(data.name, 200),
-    description: str(data.description, 2000),
-    generatedImage: httpUrl(data.generatedImage),
+    name: null,
+    description: null,
+    generatedImage: generatedImage && isOwnStorageUrl(generatedImage) ? generatedImage : null,
     generatedStyle: str(data.generatedStyle, 40),
-    totalPrice:
-      typeof data.totalPrice === "number" && Number.isFinite(data.totalPrice)
-        ? data.totalPrice
-        : null,
-    styleKeywords: Array.isArray(data.styleKeywords)
-      ? (data.styleKeywords as unknown[])
-          .filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 60)
-          .slice(0, 20)
-      : [],
+    totalPrice: catalogueTotal(pieces),
+    styleKeywords: [],
     savedAt: null,
     pieces,
+    anonymous: true,
   };
 }
 
-export async function getOutfitsByProductId(productIds: string | string[]): Promise<Outfit[]> {
-  const ids = Array.isArray(productIds) ? productIds : [productIds];
-  const all = await getAllOutfits();
-  return all.filter((outfit) => outfit.items.some((item) => ids.includes(item.product.id)));
+/**
+ * Outfits that include any of the given products, newest first — at most
+ * `limit` of them when one is given. Asks the database for exactly those
+ * outfits rather than loading every outfit and every product to filter here.
+ */
+export async function getOutfitsByProductId(
+  productIds: string | string[],
+  limit?: number,
+): Promise<Outfit[]> {
+  const ids = [...new Set(Array.isArray(productIds) ? productIds : [productIds])].filter(Boolean);
+  if (ids.length === 0) return [];
+
+  if (!isSupabaseConfigured || !supabase) {
+    const matches = staticOutfits.filter((outfit) =>
+      outfit.items.some((item) => ids.includes(item.product.id)),
+    );
+    return limit ? matches.slice(0, limit) : matches;
+  }
+
+  // `items` is a jsonb array of { product_id, role, … }; `@>` matches outfits
+  // whose array holds an element naming the product. One query per id — the
+  // page passes a product's colour variants, usually a handful.
+  const results = await Promise.all(
+    ids.map((id) => {
+      let query = supabase!
+        .from("outfits")
+        .select("*")
+        .contains("items", JSON.stringify([{ product_id: id }]))
+        .order("created_at", { ascending: false });
+      if (limit) query = query.limit(limit);
+      return query;
+    }),
+  );
+
+  const byId = new Map<string, DbOutfit>();
+  for (const { data, error } of results) {
+    if (error) {
+      console.error("[db] getOutfitsByProductId:", error.message);
+      continue;
+    }
+    for (const row of (data ?? []) as DbOutfit[]) byId.set(row.id, row);
+  }
+
+  let rows = [...byId.values()].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  if (limit) rows = rows.slice(0, limit);
+  if (rows.length === 0) return [];
+
+  const productMap = await loadProductMap(outfitProductIds(rows));
+  return rows.map((r) => dbToOutfit(r, productMap));
 }
 
 export async function toggleOutfitHomepageFeatured(
@@ -787,61 +1139,6 @@ export async function toggleOutfitHomepageFeatured(
   return true;
 }
 
-export async function getFeaturedOutfits(): Promise<Outfit[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    return staticOutfits.slice(0, 3);
-  }
-
-  const { data, error } = await supabase
-    .from("outfits")
-    .select("*")
-    .eq("is_homepage_featured", true)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[db] getFeaturedOutfits:", error.message);
-    return staticOutfits.slice(0, 3);
-  }
-
-  const rows = (data ?? []) as DbOutfit[];
-
-  // Fallback: if nothing is marked featured, return the 3 most recent outfits
-  if (rows.length === 0) {
-    const all = await getAllOutfits();
-    return all.slice(0, 3);
-  }
-
-  const productIds = [...new Set(rows.flatMap((r) => (r.items ?? []).map((i) => i.product_id)))];
-  const productMap = new Map<string, Product>();
-  if (productIds.length > 0) {
-    const BATCH = 200;
-    for (let i = 0; i < productIds.length; i += BATCH) {
-      const batch = productIds.slice(i, i + BATCH);
-      const { data: prodData } = await supabase
-        .from("products")
-        .select("*")
-        .in("id", batch);
-      if (prodData) {
-        for (const p of (prodData as DbProduct[]).map(dbToProduct)) {
-          productMap.set(p.id, p);
-        }
-      }
-    }
-  }
-
-  return rows.map((r) => dbToOutfit(r, productMap));
-}
-
-export async function deleteOutfit(id: string): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) return false;
-  const { error } = await supabase.from("outfits").delete().eq("id", id);
-  if (error) {
-    console.error("[db] deleteOutfit:", error.message);
-    return false;
-  }
-  return true;
-}
-
 // ─── Blog posts ─────────────────────────────────────────────────────────────
 
 export function dbToBlogPost(row: DbBlogPost): BlogPost {
@@ -851,7 +1148,9 @@ export function dbToBlogPost(row: DbBlogPost): BlogPost {
     title: row.title,
     excerpt: row.excerpt ?? "",
     body: row.body ?? "",
-    category: row.category ?? "General",
+    // A post saved with an empty category would render an empty pill linking
+    // to /blog?category= — it belongs in the default bucket instead.
+    category: row.category?.trim() || "General",
     coverImageUrl: row.cover_image_url ?? "",
     readTime: row.read_time ?? "5 min",
     authorName: row.author_name ?? "GOO",
@@ -871,7 +1170,9 @@ export function blogPostToDb(p: Partial<BlogPost>) {
     title: p.title ?? "",
     excerpt: p.excerpt ?? "",
     body: p.body ?? "",
-    category: p.category ?? "General",
+    // The category field sits under "Advanced options", so a post written
+    // without opening them arrives with "" rather than no category at all.
+    category: p.category?.trim() || "General",
     cover_image_url: p.coverImageUrl ?? "",
     read_time: p.readTime ?? "5 min",
     author_name: p.authorName ?? "GOO",
@@ -885,25 +1186,35 @@ export function blogPostToDb(p: Partial<BlogPost>) {
 }
 
 export async function getAllBlogPosts(opts: { publishedOnly?: boolean } = {}): Promise<BlogPost[]> {
+  const { posts, error } = await readAllBlogPosts(opts);
+  if (error) console.error("[db] getAllBlogPosts:", error);
+  return posts;
+}
+
+/**
+ * getAllBlogPosts that reports a failed read. The admin list (GET /api/blog) must
+ * show the failure: an empty list there invites writing posts that already
+ * exist, and the demo posts it used to get instead could not be edited or
+ * deleted at all.
+ */
+export async function readAllBlogPosts(
+  opts: { publishedOnly?: boolean } = {},
+): Promise<{ posts: BlogPost[]; error: string | null }> {
   const { publishedOnly = false } = opts;
   if (!isSupabaseConfigured || !supabase) {
-    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
+    return {
+      posts: publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts,
+      error: null,
+    };
   }
 
   let query = supabase.from("blog_posts").select("*").order("published_at", { ascending: false });
   if (publishedOnly) query = query.eq("is_published", true);
 
   const { data, error } = await query;
-  if (error) {
-    console.error("[db] getAllBlogPosts:", error.message);
-    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
-  }
+  if (error) return { posts: [], error: error.message };
 
-  const rows = (data ?? []) as DbBlogPost[];
-  if (rows.length === 0) {
-    return publishedOnly ? staticBlogPosts.filter((p) => p.isPublished) : staticBlogPosts;
-  }
-  return rows.map(dbToBlogPost);
+  return { posts: ((data ?? []) as DbBlogPost[]).map(dbToBlogPost), error: null };
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
@@ -915,9 +1226,11 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | undefi
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
-  if (error || !data) {
-    return staticBlogPosts.find((p) => p.slug === slug);
+  if (error) {
+    console.error("[db] getBlogPostBySlug:", error.message);
+    return undefined;
   }
+  if (!data) return undefined;
   return dbToBlogPost(data as DbBlogPost);
 }
 
@@ -939,6 +1252,19 @@ export async function createBlogPost(
   return { post: dbToBlogPost(row as DbBlogPost), error: null };
 }
 
+/**
+ * Whether a save carries a publish date different from the stored one. The
+ * editor's date field holds minutes, so seconds are not a difference.
+ */
+function publishDateSetByHand(incoming: unknown, stored: string | null): boolean {
+  if (typeof incoming !== "string" || !incoming) return false;
+  const a = Date.parse(incoming);
+  const b = stored ? Date.parse(stored) : NaN;
+  if (Number.isNaN(a)) return false;
+  if (Number.isNaN(b)) return true;
+  return Math.floor(a / 60_000) !== Math.floor(b / 60_000);
+}
+
 export async function updateBlogPost(
   id: string,
   data: ReturnType<typeof blogPostToDb>
@@ -946,9 +1272,32 @@ export async function updateBlogPost(
   if (!isSupabaseConfigured || !supabase) {
     return { post: null, error: "Database not configured." };
   }
+
+  // A draft going live is published now, not on the day it was first drafted
+  // — otherwise a week-old draft comes out backdated, below newer posts. Only
+  // when the admin left the date alone: the editor sends the stored date back
+  // on every save, so an unchanged value means "not set by hand".
+  let payload = data;
+  if (data.is_published === true) {
+    const { data: current, error: currentError } = await supabase
+      .from("blog_posts")
+      .select("is_published, published_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (currentError) {
+      console.error("[db] updateBlogPost (current state):", currentError.message);
+    } else if (
+      current &&
+      current.is_published === false &&
+      !publishDateSetByHand(data.published_at, current.published_at)
+    ) {
+      payload = { ...data, published_at: new Date().toISOString() };
+    }
+  }
+
   const { data: row, error } = await supabase
     .from("blog_posts")
-    .update(data)
+    .update(payload)
     .eq("id", id)
     .select()
     .single();
@@ -993,23 +1342,38 @@ function asStringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 }
 
-/** Raw product-id lists per step (used by the admin editor). */
+/** Raw product-id lists per step (used by the public homepage). */
 export async function getHomepageShowcaseIds(): Promise<HomepageShowcaseIds> {
-  if (!isSupabaseConfigured || !supabase) return emptyShowcaseIds();
-  const { data } = await supabase
+  const { ids, error } = await readHomepageShowcaseIds();
+  if (error) console.error("[db] getHomepageShowcaseIds:", error);
+  return ids;
+}
+
+/**
+ * The stored selection with a failed read reported, for the admin editor: a
+ * read that failed must not look like "nothing selected", or the next Save
+ * writes that empty selection over the real one.
+ */
+export async function readHomepageShowcaseIds(): Promise<{ ids: HomepageShowcaseIds; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { ids: emptyShowcaseIds(), error: null };
+  const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", SHOWCASE_KEY)
     .maybeSingle();
+  if (error) return { ids: emptyShowcaseIds(), error: error.message };
   const raw = (data as { value: string } | null)?.value;
-  if (!raw) return emptyShowcaseIds();
+  if (!raw) return { ids: emptyShowcaseIds(), error: null };
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const out = emptyShowcaseIds();
     for (const step of SHOWCASE_STEPS) out[step] = asStringArray(parsed[step]);
-    return out;
+    return { ids: out, error: null };
   } catch {
-    return emptyShowcaseIds();
+    // Unreadable is not a transient failure — there is nothing to protect
+    // from being overwritten, so the editor may start from empty.
+    console.error("[db] readHomepageShowcaseIds: stored value is not valid JSON");
+    return { ids: emptyShowcaseIds(), error: null };
   }
 }
 
@@ -1028,9 +1392,8 @@ export async function getHomepageShowcase(): Promise<HomepageShowcase> {
 
   const productById = new Map<string, ShowcaseItem>();
   if (productWanted.size > 0) {
-    const all = await getAllProducts(true);
-    for (const p of all) {
-      if (productWanted.has(p.id)) productById.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
+    for (const p of await getProductsByIds([...productWanted])) {
+      productById.set(p.id, { id: p.id, name: p.name, imageUrl: p.imageUrl });
     }
   }
 
@@ -1155,16 +1518,27 @@ function asExtraStores(value: unknown): ExtraStore[] {
   return out;
 }
 
-/** Raw selection (used by the admin editor). */
+/** Raw selection (used by the public homepage). */
 export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
-  if (!isSupabaseConfigured || !supabase) return emptyStylistIds();
-  const { data } = await supabase
+  const { ids, error } = await readHomepageStylistIds();
+  if (error) console.error("[db] getHomepageStylistIds:", error);
+  return ids;
+}
+
+/**
+ * The stored selection with a failed read reported, for the admin editor —
+ * see readHomepageShowcaseIds for why that matters.
+ */
+export async function readHomepageStylistIds(): Promise<{ ids: HomepageStylistIds; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { ids: emptyStylistIds(), error: null };
+  const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", STYLIST_KEY)
     .maybeSingle();
+  if (error) return { ids: emptyStylistIds(), error: error.message };
   const raw = (data as { value: string } | null)?.value;
-  if (!raw) return emptyStylistIds();
+  if (!raw) return { ids: emptyStylistIds(), error: null };
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     // `extraStores` is the current field; legacy `stores`/`brands` were string
@@ -1173,14 +1547,45 @@ export async function getHomepageStylistIds(): Promise<HomepageStylistIds> {
       parsed.extraStores ?? parsed.stores ?? parsed.brands
     ).slice(0, MAX_SHOWCASE_STORES);
     return {
-      chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
-      featuredProduct:
-        typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
-      extraStores,
+      ids: {
+        chatOutfits: asStringArray(parsed.chatOutfits).slice(0, MAX_CHAT_LOOKS),
+        featuredProduct:
+          typeof parsed.featuredProduct === "string" ? parsed.featuredProduct : null,
+        extraStores,
+      },
+      error: null,
     };
   } catch {
-    return emptyStylistIds();
+    console.error("[db] readHomepageStylistIds: stored value is not valid JSON");
+    return { ids: emptyStylistIds(), error: null };
   }
+}
+
+/**
+ * The stylist section's product when none is chosen: the newest product with a
+ * "where to buy" list, else the newest product — as the whole catalogue read
+ * newest-first would give, for the price of one or two single-row reads.
+ */
+async function getNewestProductWithRetailers(): Promise<Product | null> {
+  if (!isSupabaseConfigured || !supabase) {
+    return staticProducts.find((p) => p.retailers?.length > 0) ?? staticProducts[0] ?? null;
+  }
+  for (const withRetailers of [true, false]) {
+    const { data, error } = await selectProducts((columns) => {
+      let query = supabase!.from("products").select(columns);
+      // jsonb containment: an array holding at least one object — a non-empty
+      // retailers list.
+      if (withRetailers) query = query.contains("retailers", JSON.stringify([{}]));
+      return query.order("created_at", { ascending: false }).limit(1);
+    });
+    if (error) {
+      console.error("[db] getNewestProductWithRetailers:", error.message);
+      return null;
+    }
+    const row = ((data ?? []) as DbProduct[])[0];
+    if (row) return dbToProduct(row);
+  }
+  return null;
 }
 
 /**
@@ -1191,14 +1596,14 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
   const ids = await getHomepageStylistIds();
 
   // Chat looks: resolve configured outfits in order, then top up from the
-  // catalogue so there are always two cards in the preview.
-  const allOutfits = await getAllOutfits();
-  const chosen: Outfit[] = ids.chatOutfits
-    .map((id) => allOutfits.find((o) => o.id === id))
-    .filter((o): o is Outfit => Boolean(o));
-  for (const o of allOutfits) {
-    if (chosen.length >= MAX_CHAT_LOOKS) break;
-    if (!chosen.some((c) => c.id === o.id)) chosen.push(o);
+  // catalogue so there are always two cards in the preview. The newest few
+  // are enough to top up from: at most `chosen.length` of them are repeats.
+  const chosen: Outfit[] = await getOutfitsByIds(ids.chatOutfits);
+  if (chosen.length < MAX_CHAT_LOOKS) {
+    for (const o of await getLatestOutfits({ limit: MAX_CHAT_LOOKS + chosen.length })) {
+      if (chosen.length >= MAX_CHAT_LOOKS) break;
+      if (!chosen.some((c) => c.id === o.id)) chosen.push(o);
+    }
   }
   const chatLooks: StylistChatLook[] = chosen.slice(0, MAX_CHAT_LOOKS).map((o) => ({
     id: o.id,
@@ -1214,10 +1619,7 @@ export async function getHomepageStylist(): Promise<HomepageStylist> {
   if (ids.featuredProduct) {
     featuredProduct = (await getProductById(ids.featuredProduct)) ?? null;
   }
-  if (!featuredProduct) {
-    const all = await getAllProducts(true);
-    featuredProduct = all.find((p) => p.retailers?.length > 0) ?? all[0] ?? null;
-  }
+  if (!featuredProduct) featuredProduct = await getNewestProductWithRetailers();
 
   const retailerLogos = await getBrandLogos();
 

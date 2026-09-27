@@ -77,7 +77,3 @@ export function blogCategoryRank(name: string): number {
   const i = BLOG_CATEGORY_NAMES.indexOf(name);
   return i === -1 ? BLOG_CATEGORY_NAMES.length : i;
 }
-
-export function blogCategoryGroup(name: string): BlogCategoryGroup | null {
-  return BLOG_CATEGORIES.find((c) => c.name === name)?.group ?? null;
-}

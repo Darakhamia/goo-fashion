@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Image from "@/components/ui/Image";
 import OutfitCard from "@/components/outfit/OutfitCard";
@@ -10,7 +11,7 @@ import RecordRecentView from "@/components/RecordRecentView";
 import RecentlyViewed from "@/components/product/RecentlyViewed";
 import { ClampedHeading, ClampedDescription } from "@/components/ui/ClampedText";
 import Breadcrumbs, { type Crumb } from "@/components/ui/Breadcrumbs";
-import { getOutfitById, getAllOutfits } from "@/lib/data/db";
+import { getOutfitById, getLatestOutfits } from "@/lib/data/db";
 import Price from "@/components/ui/Price";
 import JsonLd from "@/components/seo/JsonLd";
 import { SITE_URL, absoluteUrl, buildOutfitSeo, outfitJsonLd, breadcrumbJsonLd } from "@/lib/seo";
@@ -19,9 +20,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// generateMetadata and the page both need the outfit; one request reads it once.
+const loadOutfit = cache((id: string) => getOutfitById(id));
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const outfit = await getOutfitById(id);
+  const outfit = await loadOutfit(id);
   if (!outfit) return {};
 
   // Derive a unique title/description from the outfit's own data so the
@@ -44,13 +48,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OutfitDetailPage({ params }: Props) {
   const { id } = await params;
-  const [outfit, allOutfits] = await Promise.all([getOutfitById(id), getAllOutfits()]);
+  const outfit = await loadOutfit(id);
 
   if (!outfit) notFound();
 
-  const relatedOutfits = allOutfits
-    .filter((o) => o.id !== outfit.id && o.occasion === outfit.occasion)
-    .slice(0, 4);
+  // The four newest of the same occasion — asked for as such, not picked out
+  // of every outfit on the site.
+  const relatedOutfits = await getLatestOutfits({
+    limit: 4,
+    occasion: outfit.occasion,
+    excludeId: outfit.id,
+  });
 
   const { heading, description: seoDescription } = buildOutfitSeo(outfit);
   // Home / Browse / Outfits / Occasion / AI / Name — the optional steps drop

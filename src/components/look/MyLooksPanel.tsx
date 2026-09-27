@@ -14,7 +14,7 @@ import { generationPieces } from "@/lib/look-generation";
 import { StylePicker, type GenerationStyle } from "@/components/look/StylePicker";
 import { StatusDot, BagIcon } from "@/components/look/CardBits";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
-import { products as staticProducts } from "@/lib/data/products";
+import { fetchProductsByIds } from "@/lib/products-by-ids";
 import { isProductAvailable } from "@/lib/availability";
 import { UpgradeModal, parseUpgradePrompt, type UpgradePrompt } from "@/components/upgrade/UpgradeModal";
 import {
@@ -502,7 +502,10 @@ function LookCard({
           pieces: look.pieces,
           totalPrice: look.totalPrice,
           styleKeywords: look.styleKeywords,
-          generatedImage: look.generatedImage,
+          // A hosted URL only, as in the link payload: the endpoint drops
+          // anything else (an old data-URL preview) rather than store it.
+          generatedImage:
+            look.generatedImage && /^https?:\/\//.test(look.generatedImage) ? look.generatedImage : null,
           generatedStyle: look.generatedStyle,
         }),
       })
@@ -1405,7 +1408,11 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
   const [namesNotStored, setNamesNotStored] = useState(false);
   // A 402 from /api/generate-outfit, raised by a card and shown once here.
   const [upgradePrompt, setUpgradePrompt] = useState<UpgradePrompt | null>(null);
-  const [allProducts, setAllProducts] = useState(staticProducts);
+  // The catalogue products the looks are made of, as they are loaded — the
+  // pieces' ids only, never the whole catalogue.
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  // Ids already asked for, so editing or deleting a look doesn't refetch them.
+  const requestedProductIds = useRef(new Set<string>());
   const [submissions, setSubmissions] = useState<LookSubmission[]>([]);
 
   // Load saved looks — from API when logged in, else from localStorage
@@ -1434,13 +1441,27 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
     return () => { cancelled = true; };
   }, [isLoaded, user]);
 
-  // Fetch full product list from API (includes Supabase products with UUID IDs)
+  // Fetch the products the looks' pieces name, by id. Looks arrive from the
+  // local cache and then from the account, so this re-runs with them and asks
+  // only for ids it hasn't asked for yet.
   useEffect(() => {
-    fetch("/api/products?raw=true")
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setAllProducts(d); })
-      .catch(() => {});
-  }, []);
+    const missing = [...new Set(myLooks.flatMap((l) => l.pieces.map((p) => p.productId)))].filter(
+      (id) => id && !requestedProductIds.current.has(id),
+    );
+    if (missing.length === 0) return;
+    for (const id of missing) requestedProductIds.current.add(id);
+    fetchProductsByIds(missing)
+      .then((found) => {
+        setAllProducts((prev) => {
+          const have = new Set(prev.map((p) => p.id));
+          return [...prev, ...found.filter((p) => !have.has(p.id))];
+        });
+      })
+      .catch(() => {
+        // Let the next change of looks ask for these again.
+        for (const id of missing) requestedProductIds.current.delete(id);
+      });
+  }, [myLooks]);
 
   const deleteLook = (id: string) => {
     setMyLooks((prev) => {

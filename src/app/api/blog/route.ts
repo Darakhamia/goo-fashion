@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { createBlogPost, getAllBlogPosts, blogPostToDb } from "@/lib/data/db";
+import { createBlogPost, readAllBlogPosts, blogPostToDb } from "@/lib/data/db";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  // ?all=true returns drafts too (admin list). Default: published-only.
-  const publishedOnly = url.searchParams.get("all") !== "true";
-  const posts = await getAllBlogPosts({ publishedOnly });
+// Admin list only — drafts included. The public /blog pages read posts through
+// db.ts on the server and never call this route.
+export async function GET() {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { posts, error } = await readAllBlogPosts();
+  if (error) {
+    return NextResponse.json({ error: `Could not load posts: ${error}` }, { status: 500 });
+  }
   return NextResponse.json(posts);
 }
 
@@ -35,6 +41,14 @@ export async function POST(req: Request) {
     const status = msg.includes("duplicate") || msg.includes("unique") ? 409 : 500;
     return NextResponse.json({ error: msg }, { status });
   }
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "blog.created",
+    target_id: post.id,
+    target_type: "post",
+    metadata: { title: post.title, slug: post.slug, isPublished: post.isPublished },
+  });
 
   revalidatePath("/blog");
   revalidatePath(`/blog/${post.slug}`);

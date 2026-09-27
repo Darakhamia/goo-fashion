@@ -28,7 +28,7 @@
  */
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
-import { getAllOutfits, getAllProducts } from "@/lib/data/db";
+import { getAllOutfits, getAllProducts, getProductsByIds } from "@/lib/data/db";
 import type { Product } from "@/lib/types";
 import { formatMetaPrice } from "@/lib/seo";
 import { CARD_MEDIA_TYPE } from "@/lib/server/card-image";
@@ -153,10 +153,12 @@ interface Selection {
   archiveLabel: string | null;
 }
 
-/** One job per product card, straight out of the products table. */
+/**
+ * One job per product card, straight out of the products table. A selection
+ * reads just the rows picked, in the order picked, not the whole catalogue.
+ */
 async function productJobs(ids: Set<string> | null): Promise<Selection> {
-  const all = await getAllProducts(true);
-  const wanted = ids ? all.filter((p) => ids.has(p.id)) : all;
+  const wanted = ids ? await getProductsByIds([...ids]) : await getAllProducts(true);
 
   const jobs: CardJob[] = [];
   const missing: string[] = [];

@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/billing/cron/renew",
-      "schedule": "0 9 * * *"
-    }
-  ]
-}

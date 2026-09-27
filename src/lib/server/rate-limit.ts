@@ -123,3 +123,21 @@ export async function checkNamedRateLimit(
 
   return runLimit(limiter, key || clientIp(req), requests);
 }
+
+// A page view sends one pageview beacon, up to five web-vitals and a few
+// events, so real browsing stays far below this; a script filling the tables
+// with junk does not.
+const ANALYTICS_REQUESTS_PER_MINUTE = 120;
+
+/**
+ * The one bucket shared by the public analytics beacons (pageview, web-vitals,
+ * event), counted per IP — they take no sign-in. Kept apart from the stylist's
+ * limiter so browsing cannot use up anyone's stylist allowance.
+ */
+export async function checkAnalyticsRateLimit(req: Request): Promise<RateLimitResult> {
+  return checkNamedRateLimit(req, {
+    name: "analytics",
+    requests: ANALYTICS_REQUESTS_PER_MINUTE,
+    window: "1 m",
+  });
+}

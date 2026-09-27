@@ -26,13 +26,19 @@ export async function POST(req: Request) {
     .replace("{{subject}}", subject ? `Email subject: ${subject}` : "")
     .replace("{{brief}}", brief ? `Brief / key points to cover: ${brief}` : "");
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.75,
-    max_tokens: 600,
-  });
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.75,
+      max_tokens: 600,
+    });
 
-  const body = completion.choices[0]?.message?.content?.trim() ?? "";
-  return NextResponse.json({ body });
+    const body = completion.choices[0]?.message?.content?.trim() ?? "";
+    if (!body) return NextResponse.json({ error: "The model returned an empty email body." }, { status: 502 });
+    return NextResponse.json({ body });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: `OpenAI request failed: ${message}` }, { status: 502 });
+  }
 }

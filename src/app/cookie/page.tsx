@@ -67,14 +67,6 @@ const SECTIONS = [
           </P>
         </div>
         <div>
-          <SubLabel>Essential — private preview</SubLabel>
-          <P>
-            During closed-preview periods a{" "}
-            <span className="font-mono text-xs text-[var(--foreground)]">goo_preview</span> cookie marks that
-            you have access. Outside preview periods this cookie is not set.
-          </P>
-        </div>
-        <div>
           <SubLabel>Analytics — PostHog (only with your consent)</SubLabel>
           <P>
             When product analytics is enabled, a banner asks for your consent before anything loads. Only
@@ -98,10 +90,6 @@ const SECTIONS = [
           Our own traffic measurement is cookieless. It uses a random session identifier kept in local storage
           for a rolling 30-minute session, and records pages viewed, referrer, coarse device class and country.
           It does not store your IP address or full browser signature.
-        </P>
-        <P>
-          We also use Vercel Analytics and Vercel Speed Insights, which measure traffic and performance without
-          setting any cookies.
         </P>
       </div>
     ),
@@ -232,7 +220,7 @@ export default function CookiePage() {
             <h1 className="text-5xl md:text-6xl font-black uppercase text-[var(--foreground)] mb-4">
               Cookie Policy
             </h1>
-            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: August 10, 2026</p>
+            <p className="text-sm text-[var(--foreground-subtle)]">Last updated: September 26, 2026</p>
           </div>
 
           {/* Intro */}

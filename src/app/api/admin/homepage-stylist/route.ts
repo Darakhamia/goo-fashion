@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
-import { getHomepageStylistIds, type HomepageStylistIds } from "@/lib/data/db";
+import { readHomepageStylistIds, type HomepageStylistIds } from "@/lib/data/db";
 import { isSupportedStore } from "@/lib/stores";
 
 const KEY = "homepage_stylist";
@@ -12,10 +12,17 @@ const MAX_CHAT_LOOKS = 2;
 const MAX_SHOWCASE_STORES = 6;
 
 // GET /api/admin/homepage-stylist → { chatOutfits: string[], featuredProduct: string|null }
+// A failed read is a 500, not an empty selection — see homepage-showcase.
 export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const ids = await getHomepageStylistIds();
+  const { ids, error } = await readHomepageStylistIds();
+  if (error) {
+    return NextResponse.json(
+      { error: `Could not read the saved stylist showcase: ${error}` },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   return NextResponse.json(ids, { headers: { "Cache-Control": "no-store" } });
 }
 

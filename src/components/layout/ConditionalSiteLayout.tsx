@@ -39,7 +39,6 @@ function SiteLayout({ children }: ConditionalSiteLayoutProps) {
   const isBarePage =
     pathname.startsWith("/goo-studio") ||
     isAuthPage ||
-    pathname === "/coming-soon" ||
     pathname === "/report";
 
   const isBuilder = pathname === "/builder";

@@ -12,16 +12,34 @@ interface Props {
   saving?: boolean;
 }
 
+// A 3:4 frame, like every frame the corner handles produce — see canvasAspect.
 const DEFAULT_CROP: CropData = {
-  x: 0.1,
+  x: 0.2,
   y: 0.1,
-  width: 0.8,
+  width: 0.6,
   height: 0.8,
   focalX: 0.5,
   focalY: 0.5,
 };
 
 const ASPECT_RATIO = 3 / 4; // карточка товара 3:4
+
+/**
+ * The canvas has the geometry the storefront card gives the photo.
+ *
+ * ProductCard draws a cropped piece by sizing a box to `1/width × 1/height` of
+ * its 3:4 image area and covering that box with the photo (`object-cover`,
+ * positioned at the focal point). The frame fractions are fractions of that
+ * box, so the canvas has to be the same box: aspect `(3/4) · (height/width)`,
+ * with the photo covering it the same way. A 3:4 frame makes it square.
+ *
+ * Showing the whole photo instead (`object-contain` in a fixed square) put a
+ * portrait photo's frame over a different part of it than the one a shopper
+ * sees.
+ */
+function canvasAspect(crop: CropData): number {
+  return (ASPECT_RATIO * crop.height) / crop.width;
+}
 
 export function ImageCropEditor({
   imageUrl,
@@ -164,7 +182,7 @@ export function ImageCropEditor({
       </div>
 
       {/* Легенда */}
-      <div className="flex items-center gap-4 text-[10px] text-[var(--foreground-subtle)]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[var(--foreground-subtle)]">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 border-2 border-white bg-transparent" />
           Рамка — перетащи
@@ -183,14 +201,15 @@ export function ImageCropEditor({
       <div
         ref={containerRef}
         className="relative select-none overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
-        style={{ aspectRatio: "1 / 1" }}
+        style={{ aspectRatio: String(canvasAspect(crop)) }}
       >
-        {/* Оригинальное изображение */}
+        {/* Изображение — так же, как его кладёт карточка */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={productName}
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ objectPosition: `${crop.focalX * 100}% ${crop.focalY * 100}%` }}
           draggable={false}
         />
 
@@ -237,7 +256,7 @@ export function ImageCropEditor({
           {(["nw", "ne", "sw", "se"] as const).map((corner) => (
             <div
               key={corner}
-              className={`absolute w-4 h-4 bg-white cursor-${corner}-resize touch-none z-10 ${
+              className={`absolute w-6 h-6 md:w-4 md:h-4 bg-white cursor-${corner}-resize touch-none z-10 ${
                 corner === "nw" ? "-top-1 -left-1" :
                 corner === "ne" ? "-top-1 -right-1" :
                 corner === "sw" ? "-bottom-1 -left-1" :
@@ -268,23 +287,28 @@ export function ImageCropEditor({
         {/* Предпросмотр в соотношении 3:4 */}
         <div className="flex flex-col gap-1 shrink-0">
           <span className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-[0.1em]">Preview 3:4</span>
+          {/* The same markup ProductCard's CroppedImage uses. */}
           <div
-            className="overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
+            className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
             style={{ width: 60, height: 80 }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt="preview"
+            <div
+              className="absolute"
               style={{
-                position: "relative",
                 width: `${100 / crop.width}%`,
                 height: `${100 / crop.height}%`,
                 top: `${(-crop.y / crop.height) * 100}%`,
                 left: `${(-crop.x / crop.width) * 100}%`,
-                objectFit: "cover",
               }}
-            />
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl}
+                alt="preview"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ objectPosition: `${crop.focalX * 100}% ${crop.focalY * 100}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -305,14 +329,14 @@ export function ImageCropEditor({
           type="button"
           onClick={() => onSave(crop)}
           disabled={saving}
-          className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40"
+          className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
         >
           {saving ? "Сохранение…" : "Сохранить кадрирование"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
         >
           Отмена
         </button>

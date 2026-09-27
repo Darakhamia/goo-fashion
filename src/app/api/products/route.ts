@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getAllProducts } from "@/lib/data/db";
+import { getAllProducts, getProductsByIds, readAllProducts } from "@/lib/data/db";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
 import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { storeBackgroundColor } from "@/lib/server/bg-color";
 
 /** Most a single ids= lookup will resolve, so one caller can't ask for the lot. */
@@ -14,32 +15,46 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
 
   // ids=a,b,c → just those products, in the order asked for. Used by the
-  // "Recently viewed" row, which holds ids and needs them back as products.
+  // "Recently viewed" row, the bag, and /saved, which hold ids and need them
+  // back as products. Reads only those rows, not the catalogue.
   const idsParam = searchParams.get("ids");
   if (idsParam) {
     const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean).slice(0, MAX_IDS);
     if (ids.length === 0) return NextResponse.json([]);
     // Ungrouped: a colour variant is a product in its own right and has its own
     // page, so grouping would fold away the very item that was viewed.
-    const all = await getAllProducts(true);
-    const byId = new Map(all.map((p) => [p.id, p]));
-    const picked = ids.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => Boolean(p));
+    const picked = await getProductsByIds(ids);
     return NextResponse.json(picked, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
   }
 
-  // raw=true → skip variant grouping (used by admin panel to show all products)
-  const raw = searchParams.get("raw") === "true";
-  const products = await getAllProducts(raw);
+  // raw=true → skip variant grouping. Only the admin panel asks for this, so it
+  // is admin-only (an uncached read of the whole catalogue), and a failed read
+  // is reported as one rather than as an empty catalogue.
+  if (searchParams.get("raw") === "true") {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    }
+    const { products, error } = await readAllProducts(true);
+    if (error) {
+      return NextResponse.json(
+        { error: `Could not load products: ${error}` },
+        { status: 500, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    // Admin view must always be fresh.
+    return NextResponse.json(products, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  const products = await getAllProducts();
   return NextResponse.json(products, {
-    headers: raw
-      ? { "Cache-Control": "no-store" } // admin view must always be fresh
-      : {
-          // Public catalog: CDN-cache 5 min, serve stale while revalidating —
-          // this fetch fires every time the stylist drawer opens.
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
+    headers: {
+      // Public catalog: CDN-cache 5 min, serve stale while revalidating —
+      // this fetch fires every time the stylist drawer opens.
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
   });
 }
 
@@ -65,6 +80,14 @@ export async function POST(req: Request) {
   const created = data as DbProduct;
   const bgColor =
     created.bg_color ?? (created.image_url ? await storeBackgroundColor(created.id, created.image_url) : null);
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.created",
+    target_id: created.id,
+    target_type: "product",
+    metadata: { name: created.name, brand: created.brand },
+  });
 
   revalidatePath("/");
   return NextResponse.json(

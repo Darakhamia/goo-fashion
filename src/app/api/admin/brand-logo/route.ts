@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 
 const BUCKET = "site-assets";
 
@@ -66,6 +67,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: dbErr.message }, { status: 500 });
   }
 
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "brands.logo_updated",
+    target_id: name,
+    target_type: "brand",
+    metadata: { name, logoUrl: publicUrl },
+  });
+
   revalidatePath("/");
   return NextResponse.json({ ok: true, name, logoUrl: publicUrl });
 }
@@ -83,6 +92,14 @@ export async function DELETE(req: Request) {
 
   const { error } = await supabase.from("brands").update({ logo_url: null }).eq("name", name);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "brands.logo_removed",
+    target_id: name,
+    target_type: "brand",
+    metadata: { name },
+  });
 
   revalidatePath("/");
   return NextResponse.json({ ok: true, name });

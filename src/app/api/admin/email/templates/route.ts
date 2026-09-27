@@ -12,26 +12,33 @@ export interface EmailTemplate {
   createdAt: string;
 }
 
-async function loadTemplates(): Promise<EmailTemplate[]> {
-  if (!isSupabaseConfigured || !supabase) return [];
-  const { data } = await supabase
+// Load failures are returned, not swallowed: saving on top of a failed or
+// unparsable read would overwrite every stored template with just the new one.
+async function loadTemplates(): Promise<{ templates: EmailTemplate[]; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { templates: [], error: "Supabase is not configured — templates cannot be stored." };
+  }
+  const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", SETTINGS_KEY)
     .maybeSingle();
-  if (!data?.value) return [];
+  if (error) return { templates: [], error: error.message };
+  if (!data?.value) return { templates: [], error: null };
   try {
-    return JSON.parse(data.value) as EmailTemplate[];
+    const parsed: unknown = JSON.parse(data.value);
+    return { templates: Array.isArray(parsed) ? (parsed as EmailTemplate[]) : [], error: null };
   } catch {
-    return [];
+    return { templates: [], error: "Stored templates are not valid JSON." };
   }
 }
 
-async function saveTemplates(templates: EmailTemplate[]): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) return;
-  await supabase
+async function saveTemplates(templates: EmailTemplate[]): Promise<string | null> {
+  if (!isSupabaseConfigured || !supabase) return "Supabase is not configured — templates cannot be stored.";
+  const { error } = await supabase
     .from("settings")
     .upsert({ key: SETTINGS_KEY, value: JSON.stringify(templates) }, { onConflict: "key" });
+  return error ? error.message : null;
 }
 
 // GET /api/admin/email/templates
@@ -39,7 +46,8 @@ export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const templates = await loadTemplates();
+  const { templates, error } = await loadTemplates();
+  if (error) return NextResponse.json({ error }, { status: 500 });
   return NextResponse.json(templates);
 }
 
@@ -53,7 +61,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name, subject, and body are required" }, { status: 400 });
   }
 
-  const templates = await loadTemplates();
+  const { templates, error: loadError } = await loadTemplates();
+  if (loadError) return NextResponse.json({ error: loadError }, { status: 500 });
   const newTemplate: EmailTemplate = {
     id: crypto.randomUUID(),
     name: name.trim(),
@@ -62,7 +71,8 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(),
   };
   templates.unshift(newTemplate);
-  await saveTemplates(templates);
+  const saveError = await saveTemplates(templates);
+  if (saveError) return NextResponse.json({ error: saveError }, { status: 500 });
   return NextResponse.json(newTemplate, { status: 201 });
 }
 
@@ -75,8 +85,10 @@ export async function DELETE(req: Request) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const templates = await loadTemplates();
+  const { templates, error: loadError } = await loadTemplates();
+  if (loadError) return NextResponse.json({ error: loadError }, { status: 500 });
   const filtered = templates.filter((t) => t.id !== id);
-  await saveTemplates(filtered);
+  const saveError = await saveTemplates(filtered);
+  if (saveError) return NextResponse.json({ error: saveError }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

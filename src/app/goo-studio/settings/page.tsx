@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
+import EmbeddingsCard from "./EmbeddingsCard";
+import { PRIMARY_BTN, SECONDARY_BTN, INPUT, Spinner, LoadingLine } from "./recipes";
 
 interface KeyStatus {
   configured: boolean;
@@ -58,6 +60,13 @@ const MAX_SHOWCASE_STORES = 6;
 
 type StylistPickerKind = "chat" | "featured" | "stores";
 
+/**
+ * Where a saved selection is in loading. Until it is "ready" the editor has no
+ * idea what is live, so Save stays off: saving the empty placeholder would
+ * wipe the homepage selection.
+ */
+type LoadState = "loading" | "ready" | "error";
+
 // ── Database schema check ────────────────────────────────────────────────────
 
 interface SchemaCheck {
@@ -73,6 +82,221 @@ interface SchemaReport {
   ok: boolean;
   checks: SchemaCheck[];
   missingMigrations: string[];
+}
+
+/** Both catalog loaders can fail; keep both messages rather than the last. */
+function appendMessage(prev: string, message: string): string {
+  return prev ? `${prev} ${message}` : message;
+}
+
+/** A saved selection that did not load: say so, keep Save off, offer a retry. */
+function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div>
+      <p className="text-[11px] text-red-500 leading-relaxed">{message}</p>
+      <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
+        Saving is off until the current selection loads, so the live homepage is not overwritten with an empty one.
+      </p>
+      <button onClick={onRetry} className={`mt-3 ${SECONDARY_BTN}`}>
+        Retry
+      </button>
+    </div>
+  );
+}
+
+/** A picked product/look as a small tile with a remove control. */
+function SelectedThumb({
+  id,
+  item,
+  fit,
+  onRemove,
+}: {
+  id: string;
+  item: PickerItem | undefined;
+  fit: "contain" | "cover";
+  onRemove: () => void;
+}) {
+  return (
+    <div
+      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+      title={item?.name ?? id}
+    >
+      {item?.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={item.name}
+          loading="lazy"
+          decoding="async"
+          className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"}`}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-[10px] text-[var(--foreground-subtle)] text-center px-1">
+          missing
+        </div>
+      )}
+      <button
+        onClick={onRemove}
+        // Revealed on hover where there is a pointer; touch screens have no
+        // hover, so there it is always shown, and large enough to tap.
+        className="absolute top-0.5 right-0.5 w-6 h-6 md:w-4 md:h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
+        aria-label={`Remove ${item?.name ?? "item"}`}
+      >
+        <svg width="7" height="7" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+          <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/** The dashed "+" tile that opens a picker. */
+function AddSlotButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
+      aria-label={label}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}
+
+interface PickerModalProps {
+  title: string;
+  /** What one item is called in the hint line: "product", "look", "store". */
+  noun: string;
+  items: PickerItem[];
+  selectedIds: string[];
+  max: number;
+  onPick: (id: string) => void;
+  onClose: () => void;
+  searchPlaceholder: string;
+  emptyText: string;
+  fit?: "contain" | "cover";
+  /** Pad the image inside its tile (store logos). */
+  padded?: boolean;
+  /** Shown in a tile with no image; defaults to the item's initials. */
+  noImageText?: string;
+}
+
+/**
+ * The one item picker every slot on this page opens. The search lives inside,
+ * so each opening starts with an empty query.
+ */
+function PickerModal({
+  title,
+  noun,
+  items,
+  selectedIds,
+  max,
+  onPick,
+  onClose,
+  searchPlaceholder,
+  emptyText,
+  fit = "contain",
+  padded = false,
+  noImageText,
+}: PickerModalProps) {
+  const [query, setQuery] = useState("");
+  // The panel has a search field; a selection dragged past its edge must not
+  // close it.
+  const backdrop = useBackdropDismiss(onClose);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? items.filter((p) => `${p.name} ${p.sub}`.toLowerCase().includes(q)) : items;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...backdrop}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
+          <div className="min-w-0">
+            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">{title}</p>
+            <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
+              {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-auto px-3 py-1.5 rounded-lg text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+          >
+            Done
+          </button>
+        </div>
+
+        <div className="px-5 py-3 border-b border-[var(--border)] shrink-0">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className={`w-full ${INPUT}`}
+          />
+        </div>
+
+        <div className="overflow-y-auto overscroll-contain p-4">
+          {items.length === 0 ? (
+            <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">{emptyText}</p>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {filtered.map((p) => {
+                const selected = selectedIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => onPick(p.id)}
+                    aria-pressed={selected}
+                    className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
+                      selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
+                    }`}
+                  >
+                    <div className="aspect-square bg-[var(--surface)] flex items-center justify-center">
+                      {p.imageUrl ? (
+                        // The catalogue can be hundreds of store-hosted photos:
+                        // load only the ones scrolled into view.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          loading="lazy"
+                          decoding="async"
+                          className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"} ${padded ? "p-3" : ""}`}
+                        />
+                      ) : (
+                        <span className="text-[13px] font-semibold text-[var(--foreground-subtle)]">
+                          {noImageText ?? p.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    {selected && (
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                        <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                          <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    )}
+                    <div className="px-2 py-1.5">
+                      <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
+                      <p className="text-[10px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -95,20 +319,25 @@ export default function SettingsPage() {
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState("");
 
-  // ── Homepage showcase state ───────────────────────────────────────────────
-  const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
+  // ── Catalog for previews and pickers ──────────────────────────────────────
   const [products, setProducts] = useState<PickerItem[]>([]);
   const [outfits, setOutfits] = useState<PickerItem[]>([]);
+  const [catalogError, setCatalogError] = useState("");
+
+  // ── Homepage showcase state ───────────────────────────────────────────────
+  const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
+  const [showcaseLoad, setShowcaseLoad] = useState<LoadState>("loading");
+  const [showcaseLoadError, setShowcaseLoadError] = useState("");
   const [pickerStep, setPickerStep] = useState<StepKey | null>(null);
-  const [pickerQuery, setPickerQuery] = useState("");
   const [showcaseSaving, setShowcaseSaving] = useState(false);
   const [showcaseOk, setShowcaseOk] = useState(false);
   const [showcaseError, setShowcaseError] = useState("");
 
   // ── AI Stylist showcase state ─────────────────────────────────────────────
   const [stylist, setStylist] = useState<StylistIds>(EMPTY_STYLIST);
+  const [stylistLoad, setStylistLoad] = useState<LoadState>("loading");
+  const [stylistLoadError, setStylistLoadError] = useState("");
   const [stylistPicker, setStylistPicker] = useState<StylistPickerKind | null>(null);
-  const [stylistQuery, setStylistQuery] = useState("");
   const [stylistSaving, setStylistSaving] = useState(false);
   const [stylistOk, setStylistOk] = useState(false);
   const [stylistError, setStylistError] = useState("");
@@ -117,11 +346,6 @@ export default function SettingsPage() {
   const [schema, setSchema] = useState<SchemaReport | null>(null);
   const [schemaError, setSchemaError] = useState("");
   const [schemaLoading, setSchemaLoading] = useState(false);
-
-  // Both pickers have a search field; a selection dragged past the panel must
-  // not close them.
-  const pickerBackdrop = useBackdropDismiss(() => setPickerStep(null));
-  const stylistBackdrop = useBackdropDismiss(() => setStylistPicker(null));
 
   useEffect(() => {
     loadShowcase();
@@ -155,10 +379,16 @@ export default function SettingsPage() {
   // ── Stylist loaders / handlers ────────────────────────────────────────────
 
   async function loadStylist() {
+    setStylistLoad("loading");
+    setStylistLoadError("");
     try {
-      const res = await fetch("/api/admin/homepage-stylist");
-      if (!res.ok) return;
-      const data = await res.json();
+      const res = await fetch("/api/admin/homepage-stylist", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStylistLoadError(data?.error || `Could not load the saved stylist showcase (${res.status}).`);
+        setStylistLoad("error");
+        return;
+      }
       // `extraStores` is current; legacy `stores`/`brands` were string[] names.
       const rawStores =
         data.extraStores ?? data.stores ?? data.brands ?? [];
@@ -187,7 +417,11 @@ export default function SettingsPage() {
         featuredProduct: typeof data.featuredProduct === "string" ? data.featuredProduct : null,
         extraStores,
       });
-    } catch { /* non-fatal */ }
+      setStylistLoad("ready");
+    } catch {
+      setStylistLoadError("Could not reach the server to load the saved stylist showcase.");
+      setStylistLoad("error");
+    }
   }
 
   function toggleChatOutfit(id: string) {
@@ -236,6 +470,7 @@ export default function SettingsPage() {
   }
 
   async function saveStylist() {
+    if (stylistLoad !== "ready") return;
     setStylistSaving(true);
     setStylistError("");
     setStylistOk(false);
@@ -267,23 +502,35 @@ export default function SettingsPage() {
   // ── Showcase loaders / handlers ───────────────────────────────────────────
 
   async function loadShowcase() {
+    setShowcaseLoad("loading");
+    setShowcaseLoadError("");
     try {
-      const res = await fetch("/api/admin/homepage-showcase");
-      if (!res.ok) return;
-      const data = await res.json();
+      const res = await fetch("/api/admin/homepage-showcase", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setShowcaseLoadError(data?.error || `Could not load the saved showcase (${res.status}).`);
+        setShowcaseLoad("error");
+        return;
+      }
       setShowcase({
         step1: Array.isArray(data.step1) ? data.step1 : [],
         step2: Array.isArray(data.step2) ? data.step2 : [],
         step3: Array.isArray(data.step3) ? data.step3 : [],
         step4: Array.isArray(data.step4) ? data.step4 : [],
       });
-    } catch { /* non-fatal */ }
+      setShowcaseLoad("ready");
+    } catch {
+      setShowcaseLoadError("Could not reach the server to load the saved showcase.");
+      setShowcaseLoad("error");
+    }
   }
 
+  // The catalog only feeds previews and pickers; a failure there does not risk
+  // the saved selection, but the tiles would all read "missing" — so say why.
   async function loadProducts() {
     try {
       const res = await fetch("/api/products?raw=true");
-      if (!res.ok) return;
+      if (!res.ok) { setCatalogError((prev) => appendMessage(prev, `Products did not load (${res.status}).`)); return; }
       const data = await res.json();
       if (Array.isArray(data)) {
         setProducts(
@@ -295,13 +542,15 @@ export default function SettingsPage() {
           }))
         );
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      setCatalogError((prev) => appendMessage(prev, "Products did not load (network error)."));
+    }
   }
 
   async function loadOutfits() {
     try {
       const res = await fetch("/api/outfits");
-      if (!res.ok) return;
+      if (!res.ok) { setCatalogError((prev) => appendMessage(prev, `Looks did not load (${res.status}).`)); return; }
       const data = await res.json();
       if (Array.isArray(data)) {
         setOutfits(
@@ -313,7 +562,9 @@ export default function SettingsPage() {
           }))
         );
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      setCatalogError((prev) => appendMessage(prev, "Looks did not load (network error)."));
+    }
   }
 
   // Which catalog backs a given step, and a lookup within it.
@@ -341,6 +592,7 @@ export default function SettingsPage() {
   }
 
   async function saveShowcase() {
+    if (showcaseLoad !== "ready") return;
     setShowcaseSaving(true);
     setShowcaseError("");
     setShowcaseOk(false);
@@ -366,11 +618,11 @@ export default function SettingsPage() {
   async function loadStatus() {
     setLoadError("");
     try {
-      const res = await fetch("/api/admin/settings?key=openai_api_key");
+      const res = await fetch("/api/admin/settings?key=openai_api_key", { cache: "no-store" });
       if (res.status === 401) { setUnauthorized(true); return; }
-      if (!res.ok) { setLoadError("Failed to load settings."); return; }
-      const data: KeyStatus = await res.json();
-      setStatus(data);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setLoadError(data?.error ? `Failed to load settings: ${data.error}` : "Failed to load settings."); return; }
+      setStatus(data as KeyStatus);
     } catch {
       setLoadError("Network error loading settings.");
     }
@@ -424,7 +676,11 @@ export default function SettingsPage() {
 
   // ── Clear key ─────────────────────────────────────────────────────────────
   async function clearKey() {
-    if (!confirm("Remove the stored API key? This will disable the AI Stylist for all users.")) return;
+    if (
+      !confirm(
+        "Remove the stored OpenAI API key?\n\nUntil a new key is added, these stop working: blog post generation, AI-written emails, AI extraction in the parser, bug reports, and the stylist's semantic search."
+      )
+    ) return;
     setClearing(true);
     setClearError("");
     setTestResult(null);
@@ -449,9 +705,7 @@ export default function SettingsPage() {
   if (unauthorized) {
     return (
       <div className="max-w-lg">
-        <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
-          Settings
-        </h1>
+        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
         <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
             Access denied. Your account is not in the admin allowlist.
@@ -464,20 +718,15 @@ export default function SettingsPage() {
     );
   }
 
-  const pickerMeta = pickerStep ? STEP_META.find((m) => m.key === pickerStep)! : null;
-  const pickerItems = pickerStep ? itemsForStep(pickerStep) : [];
-  const filteredItems = pickerQuery.trim()
-    ? pickerItems.filter((p) =>
-        `${p.name} ${p.sub}`.toLowerCase().includes(pickerQuery.trim().toLowerCase())
-      )
-    : pickerItems;
+  // The key can be typed in whenever it is not managed by the environment:
+  // straight away when there is none, after "Update" when there is one.
+  const editingKey =
+    status !== null && status.source !== "env" && (!status.configured || showInput);
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-sm tracking-[0.18em] uppercase font-medium text-[var(--foreground)] mb-1">
-        Settings
-      </h1>
-      <p className="text-xs text-[var(--foreground-muted)] mb-8">
+      <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
+      <p className="text-xs text-[var(--foreground-muted)] mt-1 mb-8">
         Configure the homepage showcase and API keys.
       </p>
 
@@ -499,17 +748,12 @@ export default function SettingsPage() {
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Optional columns the code writes to. A missing one is never an error — the row saves without it — so the feature it carries just stops working quietly.
+            Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
           </p>
         </div>
 
         <div className="px-5 py-4">
-          {schemaLoading && !schema && (
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin text-[var(--foreground-subtle)]" />
-              <p className="text-[11px] text-[var(--foreground-subtle)]">Checking…</p>
-            </div>
-          )}
+          {schemaLoading && !schema && <LoadingLine label="Checking…" />}
 
           {schemaError && <p className="text-[11px] text-red-500">{schemaError}</p>}
 
@@ -550,30 +794,37 @@ export default function SettingsPage() {
 
               {schema.missingMigrations.length > 0 && (
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-3 leading-relaxed">
-                  Run, in order, from <span className="font-mono">supabase/migrations/</span>:{" "}
+                  Run, in order (numbered files are in <span className="font-mono">supabase/migrations/</span>,{" "}
+                  <span className="font-mono">supabase-schema.sql</span> is at the repo root):{" "}
                   <span className="font-mono text-[var(--foreground)]">
                     {schema.missingMigrations.join(", ")}
                   </span>
                 </p>
               )}
-
-              <button
-                onClick={loadSchema}
-                disabled={schemaLoading}
-                className="mt-4 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
-              >
-                {schemaLoading ? "Checking…" : "Re-check"}
-              </button>
             </>
+          )}
+
+          {/* Re-check stays reachable after a failed check too — that is when
+              it is needed. */}
+          {(schema || schemaError) && (
+            <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${PRIMARY_BTN}`}>
+              {schemaLoading ? "Checking…" : "Re-check"}
+            </button>
           )}
         </div>
       </div>
+
+      {catalogError && (
+        <p className="text-[11px] text-red-500 mb-4 leading-relaxed">
+          {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
+        </p>
+      )}
 
       {/* ── Homepage showcase ── */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <rect x="1.5" y="2" width="11" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
               <path d="M1.5 5H12.5" stroke="currentColor" strokeWidth="1.1" />
             </svg>
@@ -588,70 +839,50 @@ export default function SettingsPage() {
         </div>
 
         <div className="px-5 py-4 space-y-5">
-          {STEP_META.map((meta) => (
+          {showcaseLoad === "loading" && <LoadingLine label="Loading the saved showcase…" />}
+          {showcaseLoad === "error" && (
+            <SelectionLoadFailed message={showcaseLoadError} onRetry={loadShowcase} />
+          )}
+          {showcaseLoad === "ready" && STEP_META.map((meta) => (
             <div key={meta.key}>
-              <div className="flex items-baseline gap-2 mb-2">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                 <span className="font-mono text-[10px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
                 <span className="text-[12px] font-medium text-[var(--foreground)]">{meta.title}</span>
                 <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {showcase[meta.key].map((id) => {
-                  const p = lookupItem(meta.key, id);
-                  return (
-                    <div
-                      key={id}
-                      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
-                      title={p?.name ?? id}
-                    >
-                      {p?.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)] text-center px-1">
-                          missing
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeItem(meta.key, id)}
-                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Remove"
-                      >
-                        <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
-                          <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
+                {showcase[meta.key].map((id) => (
+                  <SelectedThumb
+                    key={id}
+                    id={id}
+                    item={lookupItem(meta.key, id)}
+                    fit="contain"
+                    onRemove={() => removeItem(meta.key, id)}
+                  />
+                ))}
 
                 {showcase[meta.key].length < meta.max && (
-                  <button
-                    onClick={() => { setPickerStep(meta.key); setPickerQuery(""); }}
-                    className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
-                    aria-label={`Add product to ${meta.title}`}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                  </button>
+                  <AddSlotButton
+                    label={`Add product to ${meta.title}`}
+                    onClick={() => setPickerStep(meta.key)}
+                  />
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
           <button
             onClick={saveShowcase}
-            disabled={showcaseSaving}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            disabled={showcaseSaving || showcaseLoad !== "ready"}
+            className={PRIMARY_BTN}
           >
-            {showcaseSaving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {showcaseSaving && <Spinner />}
             {showcaseSaving ? "Saving…" : "Save showcase"}
           </button>
-          {showcaseOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
+          {showcaseOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
           {showcaseError && <p className="text-[11px] text-red-500">{showcaseError}</p>}
         </div>
       </div>
@@ -660,7 +891,7 @@ export default function SettingsPage() {
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <path d="M7 1.5l1.1 3 3.2.2-2.5 2 .8 3.1L7 8.3 4.4 9.8l.8-3.1-2.5-2 3.2-.2L7 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
             </svg>
             <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
@@ -675,198 +906,162 @@ export default function SettingsPage() {
         </div>
 
         <div className="px-5 py-4 space-y-5">
-          {/* Chat looks */}
-          <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
-              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
-                Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {stylist.chatOutfits.map((id) => {
-                const o = outfits.find((x) => x.id === id);
-                return (
-                  <div
-                    key={id}
-                    className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
-                    title={o?.name ?? id}
-                  >
-                    {o?.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={o.imageUrl} alt={o.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)]">missing</div>
-                    )}
-                    <button
-                      onClick={() => toggleChatOutfit(id)}
-                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Remove"
-                    >
-                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })}
-              {stylist.chatOutfits.length < MAX_CHAT_LOOKS && (
-                <button
-                  onClick={() => { setStylistPicker("chat"); setStylistQuery(""); }}
-                  className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
-                  aria-label="Add a chat look"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
+          {stylistLoad === "loading" && <LoadingLine label="Loading the saved stylist showcase…" />}
+          {stylistLoad === "error" && (
+            <SelectionLoadFailed message={stylistLoadError} onRetry={loadStylist} />
+          )}
+          {stylistLoad === "ready" && (
+            <>
+              {/* Chat looks */}
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                    Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {stylist.chatOutfits.map((id) => (
+                    <SelectedThumb
+                      key={id}
+                      id={id}
+                      item={outfits.find((x) => x.id === id)}
+                      fit="cover"
+                      onRemove={() => toggleChatOutfit(id)}
+                    />
+                  ))}
+                  {stylist.chatOutfits.length < MAX_CHAT_LOOKS && (
+                    <AddSlotButton label="Add a chat look" onClick={() => setStylistPicker("chat")} />
+                  )}
+                </div>
+              </div>
 
-          {/* Featured product */}
-          <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
-              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
-                Shown bottom-left with its retailers.
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {stylist.featuredProduct && (() => {
-                const p = products.find((x) => x.id === stylist.featuredProduct);
-                return (
-                  <div
-                    className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
-                    title={p?.name ?? stylist.featuredProduct!}
-                  >
-                    {p?.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--foreground-subtle)]">missing</div>
-                    )}
-                    <button
-                      onClick={() => setStylist((prev) => ({ ...prev, featuredProduct: null }))}
-                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Remove"
-                    >
-                      <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })()}
-              {!stylist.featuredProduct && (
-                <button
-                  onClick={() => { setStylistPicker("featured"); setStylistQuery(""); }}
-                  className="w-14 h-14 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center justify-center"
-                  aria-label="Add the featured product"
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
+              {/* Featured product */}
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                    Shown bottom-left with its retailers.
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {stylist.featuredProduct ? (
+                    <SelectedThumb
+                      id={stylist.featuredProduct}
+                      item={products.find((x) => x.id === stylist.featuredProduct)}
+                      fit="contain"
+                      onRemove={() => setFeaturedProduct(stylist.featuredProduct!)}
+                    />
+                  ) : (
+                    <AddSlotButton label="Add the featured product" onClick={() => setStylistPicker("featured")} />
+                  )}
+                </div>
+              </div>
 
-          {/* Stores shown in "Where to buy" */}
-          <div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
-              <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
-                Up to {MAX_SHOWCASE_STORES}
-              </span>
-            </div>
-            <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
-              The item’s own stores (and prices) always show automatically. Add extra stores here —
-              the logo and store link are pulled from the library; set an optional price tag for each.
-              Clicking a row opens that store’s link.
-            </p>
+              {/* Stores shown in "Where to buy" */}
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                    Up to {MAX_SHOWCASE_STORES}
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
+                  The item’s own stores (and prices) always show automatically. Add extra stores here —
+                  the logo and store link are pulled from the library; set an optional price tag for each.
+                  Clicking a row opens that store’s link.
+                </p>
 
-            <div className="flex flex-col gap-2">
-              {stylist.extraStores.map(({ name, price }) => {
-                const store = SUPPORTED_STORES.find(
-                  (x) => x.name.toLowerCase() === name.toLowerCase()
-                );
-                return (
-                  <div
-                    key={name}
-                    className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
-                  >
-                    <span className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
-                      {store ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={storeFaviconUrl(store.domain)} alt={name} className="w-full h-full object-contain p-1" />
-                      ) : (
-                        <span className="text-[9px] font-semibold text-[var(--foreground-subtle)]">
-                          {name.slice(0, 2).toUpperCase()}
+                <div className="flex flex-col gap-2">
+                  {stylist.extraStores.map(({ name, price }) => {
+                    const store = SUPPORTED_STORES.find(
+                      (x) => x.name.toLowerCase() === name.toLowerCase()
+                    );
+                    return (
+                      <div
+                        key={name}
+                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                      >
+                        <span className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
+                          {store ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={storeFaviconUrl(store.domain)}
+                              alt={name}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-contain p-1"
+                            />
+                          ) : (
+                            <span className="text-[10px] font-semibold text-[var(--foreground-subtle)]">
+                              {name.slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <span className="text-[12px] text-[var(--foreground)] flex-1 truncate" title={name}>{name}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-[11px] text-[var(--foreground-subtle)]">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={price}
-                        onChange={(e) => setShowcaseStorePrice(name, e.target.value)}
-                        placeholder="Price"
-                        className="w-20 bg-[var(--background)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-2 py-1 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] rounded transition-colors"
-                      />
-                    </div>
+                        <span className="text-[12px] text-[var(--foreground)] flex-1 truncate" title={name}>{name}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[11px] text-[var(--foreground-subtle)]">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={price}
+                            onChange={(e) => setShowcaseStorePrice(name, e.target.value)}
+                            placeholder="Price"
+                            aria-label={`Price at ${name}`}
+                            className={`w-24 ${INPUT}`}
+                          />
+                        </div>
+                        <button
+                          onClick={() => removeShowcaseStore(name)}
+                          className="w-5 h-5 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
+                          aria-label={`Remove ${name}`}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+                            <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {stylist.extraStores.length < MAX_SHOWCASE_STORES && (
                     <button
-                      onClick={() => removeShowcaseStore(name)}
-                      className="w-5 h-5 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
-                      aria-label="Remove"
+                      onClick={() => setStylistPicker("stores")}
+                      className="self-start h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+                      aria-label="Add a store"
                     >
-                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                       </svg>
+                      Add store
                     </button>
-                  </div>
-                );
-              })}
-              {stylist.extraStores.length < MAX_SHOWCASE_STORES && (
-                <button
-                  onClick={() => { setStylistPicker("stores"); setStylistQuery(""); }}
-                  className="self-start h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
-                  aria-label="Add a store"
-                >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
-                  Add store
-                </button>
-              )}
-            </div>
-          </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3">
+        <div className="px-5 py-3.5 border-t border-[var(--border)] flex flex-wrap items-center gap-3">
           <button
             onClick={saveStylist}
-            disabled={stylistSaving}
-            className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            disabled={stylistSaving || stylistLoad !== "ready"}
+            className={PRIMARY_BTN}
           >
-            {stylistSaving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+            {stylistSaving && <Spinner />}
             {stylistSaving ? "Saving…" : "Save stylist"}
           </button>
-          {stylistOk && <p className="text-[11px] text-green-600">Saved — changes go live on next homepage load.</p>}
+          {stylistOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
           {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
         </div>
       </div>
 
       {/* ── OpenAI section ── */}
-      <div className="border border-[var(--border)] bg-[var(--background)]">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
 
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <path
                 d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5C3.5 5.37 3.56 5.73 3.67 6.06C2.57 6.38 1.75 7.39 1.75 8.58C1.75 9.8 2.61 10.83 3.76 11.09C3.97 12.04 4.81 12.75 5.83 12.75C6.27 12.75 6.68 12.62 7 12.4C7.32 12.62 7.73 12.75 8.17 12.75C9.19 12.75 10.03 12.04 10.24 11.09C11.39 10.83 12.25 9.8 12.25 8.58C12.25 7.39 11.43 6.38 10.33 6.06C10.44 5.73 10.5 5.37 10.5 5C10.5 3.07 8.93 1.5 7 1.5Z"
                 stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"
@@ -877,7 +1072,9 @@ export default function SettingsPage() {
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-            Shared key used by the AI Stylist for all users. Key is stored server-side and never exposed to the browser.
+            Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
+            AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
+            runs on Replicate and does not use it. Stored server-side and never sent to the browser.
           </p>
         </div>
 
@@ -885,36 +1082,31 @@ export default function SettingsPage() {
         <div className="px-5 py-4">
 
           {/* Loading */}
-          {status === null && !loadError && (
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin text-[var(--foreground-subtle)]" />
-              <p className="text-[11px] text-[var(--foreground-subtle)]">Loading…</p>
-            </div>
-          )}
+          {status === null && !loadError && <LoadingLine label="Loading…" />}
 
           {/* Load error */}
           {loadError && (
-            <p className="text-[11px] text-red-500">{loadError}</p>
+            <div>
+              <p className="text-[11px] text-red-500">{loadError}</p>
+              <button onClick={loadStatus} className={`mt-3 ${SECONDARY_BTN}`}>
+                Retry
+              </button>
+            </div>
           )}
 
           {/* Not configured */}
-          {status && !status.configured && !showInput && (
-            <div>
+          {status && !status.configured && (
+            <div className="mb-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2 h-2 rounded-full bg-[var(--border-strong)]" />
                 <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
                   Not configured
                 </p>
               </div>
-              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed mb-3">
-                The AI Stylist is currently disabled. Add an OpenAI API key to enable it for all users.
+              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
+                Off until a key is added: blog post generation, AI-written emails, AI extraction in the parser,
+                bug reports and the stylist&apos;s semantic search.
               </p>
-              <button
-                onClick={() => setShowInput(true)}
-                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
-              >
-                Add API Key
-              </button>
             </div>
           )}
 
@@ -922,7 +1114,7 @@ export default function SettingsPage() {
           {status?.configured && status.source === "env" && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
                   Configured
                 </p>
@@ -941,7 +1133,7 @@ export default function SettingsPage() {
           {status?.configured && status.source === "database" && !showInput && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
                   Configured
                 </p>
@@ -953,52 +1145,55 @@ export default function SettingsPage() {
                 Stored in database. Raw key is never returned to the browser.
               </p>
               {saveOk && (
-                <p className="text-[11px] text-green-600 mb-3">Key saved successfully.</p>
+                <p className="text-[11px] text-emerald-500 mb-3">Key saved successfully.</p>
               )}
             </div>
           )}
 
           {/* Input form — add or update */}
-          {(showInput || (status && !status.configured)) && status !== null && status.source !== "env" && (
-            <div className={status?.configured ? "mt-0" : ""}>
+          {editingKey && (
+            <div>
               {status?.configured && (
                 <p className="text-[11px] text-[var(--foreground-muted)] mb-3">
                   Enter a new key to replace the current one.
                 </p>
               )}
-              <label className="block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2">
+              <label
+                htmlFor="openai-key-input"
+                className="block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2"
+              >
                 {status?.configured ? "New API Key" : "API Key"}
               </label>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type={showRaw ? "text" : "password"}
-                    value={inputKey}
-                    onChange={(e) => { setInputKey(e.target.value); setSaveError(""); }}
-                    placeholder="sk-proj-..."
-                    spellCheck={false}
-                    autoComplete="off"
-                    className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 pr-9 text-[12px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowRaw((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-                  >
-                    {showRaw ? (
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                        <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
-                        <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                        <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                      </svg>
-                    ) : (
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                        <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
-                        <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+              <div className="relative">
+                <input
+                  id="openai-key-input"
+                  type={showRaw ? "text" : "password"}
+                  value={inputKey}
+                  onChange={(e) => { setInputKey(e.target.value); setSaveError(""); }}
+                  placeholder="sk-proj-..."
+                  spellCheck={false}
+                  autoComplete="off"
+                  className={`w-full pr-10 md:pr-9 font-mono ${INPUT}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRaw((v) => !v)}
+                  aria-label={showRaw ? "Hide key" : "Show key"}
+                  className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  {showRaw ? (
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
+                      <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+                      <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
+                      <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+                    </svg>
+                  )}
+                </button>
               </div>
               {saveError && (
                 <p className="text-[11px] text-red-500 mt-2">{saveError}</p>
@@ -1008,8 +1203,8 @@ export default function SettingsPage() {
 
           {/* Test result */}
           {testResult === "ok" && (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-green-600">
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-500">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                 <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Key is valid — OpenAI API responded successfully
@@ -1017,7 +1212,7 @@ export default function SettingsPage() {
           )}
           {testResult === "fail" && (
             <div className="mt-3 flex items-start gap-2 text-[11px] text-red-500">
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
                 <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <span>{testError || "Key invalid or no quota"}</span>
@@ -1034,23 +1229,23 @@ export default function SettingsPage() {
         {status !== null && (
           <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-2 flex-wrap">
 
-            {/* Save button — only shown in input mode */}
-            {showInput && status.source !== "env" && (
+            {/* Save — whenever the key can be typed in */}
+            {editingKey && (
               <button
                 onClick={saveKey}
                 disabled={!inputKey.trim() || saving}
-                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className={PRIMARY_BTN}
               >
-                {saving && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+                {saving && <Spinner />}
                 {saving ? "Saving…" : "Save Key"}
               </button>
             )}
 
             {/* Cancel — only shown in update mode (key already configured) */}
-            {showInput && status.configured && (
+            {editingKey && status.configured && (
               <button
                 onClick={() => { setShowInput(false); setInputKey(""); setSaveError(""); }}
-                className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+                className={SECONDARY_BTN}
               >
                 Cancel
               </button>
@@ -1062,9 +1257,9 @@ export default function SettingsPage() {
                 <button
                   onClick={testKey}
                   disabled={testing}
-                  className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  className={SECONDARY_BTN}
                 >
-                  {testing && <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />}
+                  {testing && <Spinner />}
                   {testing ? "Testing…" : "Test Key"}
                 </button>
 
@@ -1072,7 +1267,7 @@ export default function SettingsPage() {
                 {status.source === "database" && (
                   <button
                     onClick={() => { setShowInput(true); setTestResult(null); }}
-                    className="px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors"
+                    className={SECONDARY_BTN}
                   >
                     Update
                   </button>
@@ -1085,7 +1280,7 @@ export default function SettingsPage() {
               <button
                 onClick={clearKey}
                 disabled={clearing}
-                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {clearing ? "Clearing…" : "Clear"}
               </button>
@@ -1094,206 +1289,70 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Schema note */}
-      <div className="mt-4 border border-[var(--border)] px-4 py-3">
-        <p className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-1.5">
-          Required Supabase schema
-        </p>
-        <pre className="font-mono text-[10px] text-[var(--foreground-muted)] whitespace-pre-wrap leading-relaxed">{`create table if not exists settings (
-  key        text primary key,
-  value      text not null,
-  updated_at timestamptz default now()
-);
-alter table settings enable row level security;`}</pre>
-        <p className="text-[10px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
-          No public access policy — the server reads this table using the service-role key only.
-          Run this SQL once in the Supabase SQL editor.
-        </p>
-      </div>
+      {/* ── Embeddings ── */}
+      <EmbeddingsCard />
 
-      {/* ── Product picker modal ── */}
-      {pickerStep && pickerMeta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...pickerBackdrop}>
-          <div
-            className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
-              <div>
-                <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-                  {pickerMeta.n} · {pickerMeta.title}
-                </p>
-                <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-                  {showcase[pickerStep].length}/{pickerMeta.max} selected · click a {pickerMeta.source === "outfits" ? "look" : "product"} to {pickerMeta.max === 1 ? "choose" : "toggle"}
-                </p>
-              </div>
-              <button
-                onClick={() => setPickerStep(null)}
-                className="ml-auto px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
-              >
-                Done
-              </button>
-            </div>
-
-            <div className="px-5 py-3 border-b border-[var(--border)]">
-              <input
-                value={pickerQuery}
-                onChange={(e) => setPickerQuery(e.target.value)}
-                placeholder={pickerMeta.source === "outfits" ? "Search looks by name…" : "Search by name or brand…"}
-                className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-              />
-            </div>
-
-            <div className="overflow-y-auto p-4">
-              {pickerItems.length === 0 ? (
-                <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
-                  {pickerMeta.source === "outfits" ? "No generated looks yet." : "No products found."}
-                </p>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {filteredItems.map((p) => {
-                    const selected = showcase[pickerStep].includes(p.id);
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => toggleItem(pickerStep, p.id)}
-                        className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
-                          selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                        }`}
-                      >
-                        <div className="aspect-square bg-[var(--surface)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
-                        </div>
-                        {selected && (
-                          <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
-                            <svg width="9" height="9" viewBox="0 0 11 11" fill="none">
-                              <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </span>
-                        )}
-                        <div className="px-2 py-1.5">
-                          <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
-                          <p className="text-[9px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Stylist picker modal ── */}
-      {stylistPicker && (() => {
-        const isChat = stylistPicker === "chat";
-        const isStores = stylistPicker === "stores";
-        const source: PickerItem[] = isChat
-          ? outfits
-          : isStores
-            ? SUPPORTED_STORES.map((s) => ({ id: s.name, name: s.name, imageUrl: storeFaviconUrl(s.domain), sub: "store" }))
-            : products;
-        const filtered = stylistQuery.trim()
-          ? source.filter((p) =>
-              `${p.name} ${p.sub}`.toLowerCase().includes(stylistQuery.trim().toLowerCase())
-            )
-          : source;
-        const selectedIds = isChat
-          ? stylist.chatOutfits
-          : isStores
-            ? stylist.extraStores.map((s) => s.name)
-            : stylist.featuredProduct ? [stylist.featuredProduct] : [];
-        const onPick = (id: string) =>
-          isChat ? toggleChatOutfit(id) : isStores ? toggleShowcaseStore(id) : setFeaturedProduct(id);
-        const count = isChat
-          ? stylist.chatOutfits.length
-          : isStores
-            ? stylist.extraStores.length
-            : stylist.featuredProduct ? 1 : 0;
-        const max = isChat ? MAX_CHAT_LOOKS : isStores ? MAX_SHOWCASE_STORES : 1;
-        const noun = isChat ? "look" : isStores ? "store" : "product";
+      {/* ── Pickers ── */}
+      {pickerStep && (() => {
+        const meta = STEP_META.find((m) => m.key === pickerStep)!;
+        const isLooks = meta.source === "outfits";
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...stylistBackdrop}>
-            <div
-              className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
-                <div>
-                  <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-                    {isChat ? "Chat looks" : isStores ? "Stores (Where to buy)" : "Featured product"}
-                  </p>
-                  <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-                    {count}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setStylistPicker(null)}
-                  className="ml-auto px-3 py-1.5 text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
-                >
-                  Done
-                </button>
-              </div>
-
-              <div className="px-5 py-3 border-b border-[var(--border)]">
-                <input
-                  value={stylistQuery}
-                  onChange={(e) => setStylistQuery(e.target.value)}
-                  placeholder={isChat ? "Search looks by name…" : isStores ? "Search stores…" : "Search by name or brand…"}
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[12px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors"
-                />
-              </div>
-
-              <div className="overflow-y-auto p-4">
-                {source.length === 0 ? (
-                  <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">
-                    {isChat ? "No outfits yet." : isStores ? "No stores available." : "No products found."}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {filtered.map((p) => {
-                      const selected = selectedIds.includes(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => onPick(p.id)}
-                          className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
-                            selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                          }`}
-                        >
-                          <div className="aspect-square bg-[var(--surface)] flex items-center justify-center">
-                            {p.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={p.imageUrl} alt={p.name} className={`w-full h-full ${isChat ? "object-cover" : "object-contain"} ${isStores ? "p-3" : ""}`} />
-                            ) : (
-                              <span className="text-[13px] font-semibold text-[var(--foreground-subtle)]">
-                                {isStores ? "No logo" : p.name.slice(0, 2).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          {selected && (
-                            <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
-                              <svg width="9" height="9" viewBox="0 0 11 11" fill="none">
-                                <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </span>
-                          )}
-                          <div className="px-2 py-1.5">
-                            <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
-                            <p className="text-[9px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <PickerModal
+            title={`${meta.n} · ${meta.title}`}
+            noun={isLooks ? "look" : "product"}
+            items={itemsForStep(pickerStep)}
+            selectedIds={showcase[pickerStep]}
+            max={meta.max}
+            onPick={(id) => toggleItem(pickerStep, id)}
+            onClose={() => setPickerStep(null)}
+            searchPlaceholder={isLooks ? "Search looks by name…" : "Search by name or brand…"}
+            emptyText={isLooks ? "No generated looks yet." : "No products found."}
+          />
         );
       })()}
+
+      {stylistPicker === "chat" && (
+        <PickerModal
+          title="Chat looks"
+          noun="look"
+          items={outfits}
+          selectedIds={stylist.chatOutfits}
+          max={MAX_CHAT_LOOKS}
+          onPick={toggleChatOutfit}
+          onClose={() => setStylistPicker(null)}
+          searchPlaceholder="Search looks by name…"
+          emptyText="No outfits yet."
+          fit="cover"
+        />
+      )}
+      {stylistPicker === "featured" && (
+        <PickerModal
+          title="Featured product"
+          noun="product"
+          items={products}
+          selectedIds={stylist.featuredProduct ? [stylist.featuredProduct] : []}
+          max={1}
+          onPick={setFeaturedProduct}
+          onClose={() => setStylistPicker(null)}
+          searchPlaceholder="Search by name or brand…"
+          emptyText="No products found."
+        />
+      )}
+      {stylistPicker === "stores" && (
+        <PickerModal
+          title="Stores (Where to buy)"
+          noun="store"
+          items={SUPPORTED_STORES.map((s) => ({ id: s.name, name: s.name, imageUrl: storeFaviconUrl(s.domain), sub: "store" }))}
+          selectedIds={stylist.extraStores.map((s) => s.name)}
+          max={MAX_SHOWCASE_STORES}
+          onPick={toggleShowcaseStore}
+          onClose={() => setStylistPicker(null)}
+          searchPlaceholder="Search stores…"
+          emptyText="No stores available."
+          padded
+          noImageText="No logo"
+        />
+      )}
     </div>
   );
 }

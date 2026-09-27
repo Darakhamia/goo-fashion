@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { checkAnalyticsRateLimit } from "@/lib/server/rate-limit";
+import { isUntrackedPath } from "@/lib/analytics/paths";
 
 const ALLOWED_METRICS = new Set(["LCP", "INP", "CLS", "FCP", "TTFB"]);
 
@@ -11,8 +13,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   if (!ALLOWED_METRICS.has(body.metric)) return NextResponse.json({ ok: true });
-  if (typeof body.path !== "string" || body.path.startsWith("/admin") || body.path.startsWith("/api/")) {
+  if (typeof body.path !== "string" || isUntrackedPath(body.path)) {
     return NextResponse.json({ ok: true });
+  }
+
+  const limit = await checkAnalyticsRateLimit(req);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { ok: false },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   await supabase.from("web_vitals").insert({

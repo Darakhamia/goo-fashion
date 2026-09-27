@@ -17,19 +17,11 @@
  */
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { logAdminAction } from "@/lib/server/audit";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isMissingTableLoose } from "@/lib/server/db-errors";
 
 export const dynamic = "force-dynamic";
-
-/** Postgres undefined_table, and PostgREST's "no such table in schema cache". */
-function isTableMissing(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false;
-  return (
-    error.code === "42P01" ||
-    error.code === "PGRST205" ||
-    !!error.message?.includes("does not exist")
-  );
-}
 
 function tableMissing() {
   return NextResponse.json(
@@ -77,9 +69,16 @@ export async function POST(req: Request) {
     .from("label_audit_dismissals")
     .upsert({ ...claim, dismissed_by: admin.userId }, { onConflict: "product_id,field,stored,suggested" });
   if (error) {
-    if (isTableMissing(error)) return tableMissing();
+    if (isMissingTableLoose(error)) return tableMissing();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.label_dismissed",
+    target_id: claim.product_id,
+    target_type: "product",
+    metadata: { field: claim.field, stored: claim.stored, suggested: claim.suggested },
+  });
   return NextResponse.json({ ok: true, dismissed: claim });
 }
 
@@ -101,8 +100,15 @@ export async function DELETE(req: Request) {
     .eq("stored", claim.stored)
     .eq("suggested", claim.suggested);
   if (error) {
-    if (isTableMissing(error)) return tableMissing();
+    if (isMissingTableLoose(error)) return tableMissing();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  await logAdminAction({
+    admin_id: admin.userId,
+    action: "products.label_restored",
+    target_id: claim.product_id,
+    target_type: "product",
+    metadata: { field: claim.field, stored: claim.stored, suggested: claim.suggested },
+  });
   return NextResponse.json({ ok: true, restored: claim });
 }

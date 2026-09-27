@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { storeFaviconUrl } from "@/lib/stores";
 
 type StoreGender = "" | "men" | "women" | "unisex";
@@ -27,6 +27,10 @@ interface Report {
   discovered: DiscoveredDomain[];
   discoverError: string | null;
   scanLimit: number;
+  /** Products the catalogue scan read. */
+  scanned?: number;
+  /** The scan stopped at scanLimit before the end of the catalogue. */
+  scanTruncated?: boolean;
   /** Migration 018 has not been run here. */
   tableMissing?: boolean;
   setupHint?: string | null;
@@ -34,6 +38,12 @@ interface Report {
 }
 
 const EMPTY_DRAFT = { domain: "", name: "", isOfficial: false, defaultGender: "" as StoreGender, note: "" };
+
+/** The key a typed domain is saved under — mirrors normalizeDomain in lib/server/retailer-domains. */
+function domainKey(value: string): string {
+  const host = value.trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, "").split(/[/?#]/)[0];
+  return host.replace(/^www\./, "").replace(/\.$/, "");
+}
 
 /** What each setting means, in the words of the store's own navigation. */
 const GENDER_OPTIONS: { value: StoreGender; label: string }[] = [
@@ -87,6 +97,11 @@ export default function RetailersPage() {
 
   const [busyDomain, setBusyDomain] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState("");
+  /** A row action (Apply, Delete) that failed — red, apart from the grey result line. */
+  const [actionError, setActionError] = useState("");
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +131,13 @@ export default function RetailersPage() {
     setFormError("");
   };
 
+  /** The editor sits above both tables; a row button that fills it brings it into view. */
+  const revealEditor = () => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    editorRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    nameInputRef.current?.focus({ preventScroll: true });
+  };
+
   const startEdit = (rule: RetailerRule) => {
     setEditingDomain(rule.domain);
     setDraft({
@@ -126,9 +148,19 @@ export default function RetailersPage() {
       note: rule.note ?? "",
     });
     setFormError("");
+    revealEditor();
   };
 
+  // A new rule typed for a domain that already has one would silently replace
+  // it (the save is an upsert), so it is named before that happens.
+  const existingRule = editingDomain
+    ? undefined
+    : report?.rules.find((r) => r.domain === domainKey(draft.domain));
+
   const save = async () => {
+    if (existingRule && !confirm(
+      `${existingRule.domain} already has a rule ("${existingRule.name}"). Replace its name, official flag, gender and note?`,
+    )) return;
     setSaving(true);
     setFormError("");
     try {
@@ -155,17 +187,33 @@ export default function RetailersPage() {
   const remove = async (domain: string) => {
     if (!confirm(`Delete the rule for ${domain}? Products already imported keep the names they have.`)) return;
     setBusyDomain(domain);
+    setActionError("");
     try {
-      await fetch(`/api/admin/retailer-domains?domain=${encodeURIComponent(domain)}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/retailer-domains?domain=${encodeURIComponent(domain)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setActionError(`${domain}: ${json?.error || `delete failed (${res.status})`}`);
+        return;
+      }
       if (editingDomain === domain) { setEditingDomain(null); setDraft(EMPTY_DRAFT); }
       await load();
+    } catch {
+      setActionError(`${domain}: could not reach the server.`);
     } finally {
       setBusyDomain(null);
     }
   };
 
+  /**
+   * Products a rule covers: its own domain plus every subdomain the server
+   * assigns to it (`ruledBy`) — the same set Apply rewrites. A product linking
+   * to two of those hosts counts once per host.
+   */
+  const ruleProductCount = (domain: string) =>
+    (report?.discovered ?? []).reduce((n, d) => (d.ruledBy === domain ? n + d.productCount : n), 0);
+
   const applyToExisting = async (rule: RetailerRule) => {
-    const affected = report?.discovered.find((d) => d.domain === rule.domain)?.productCount;
+    const affected = ruleProductCount(rule.domain);
     const scope = affected ? `${affected} product${affected === 1 ? "" : "s"}` : "existing products";
     if (!confirm(
       `Rewrite the store name on ${scope} linking to ${rule.domain} to "${rule.name}"?\n\n` +
@@ -174,25 +222,30 @@ export default function RetailersPage() {
 
     setBusyDomain(rule.domain);
     setApplyResult("");
+    setActionError("");
     try {
       const res = await fetch("/api/admin/retailer-domains/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: rule.domain }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setApplyResult(json?.error || `Apply failed (${res.status})`);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json) {
+        setActionError(`${rule.domain}: ${json?.error || `apply failed (${res.status})`}`);
         return;
       }
       setApplyResult(
         `${rule.domain}: updated ${json.updated} product${json.updated === 1 ? "" : "s"}` +
-        (json.failed ? `, ${json.failed} failed` : "") +
-        (json.scanned >= json.scanLimit ? ` (scanned the first ${json.scanLimit})` : ""),
+        (json.truncated ? ` (scanned the first ${json.scanned})` : ""),
       );
+      if (json.failed) {
+        setActionError(
+          `${rule.domain}: ${json.failed} product${json.failed === 1 ? "" : "s"} could not be updated — run Apply again.`,
+        );
+      }
       await load();
     } catch {
-      setApplyResult("Could not reach the server.");
+      setActionError(`${rule.domain}: could not reach the server.`);
     } finally {
       setBusyDomain(null);
     }
@@ -223,7 +276,7 @@ export default function RetailersPage() {
       )}
 
       {/* ── Editor ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6 p-5">
+      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6 p-5 scroll-mt-6">
         <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
           {editingDomain ? `Edit ${editingDomain}` : "New rule"}
         </p>
@@ -248,6 +301,7 @@ export default function RetailersPage() {
             </label>
             <input
               id="rd-name"
+              ref={nameInputRef}
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Farfetch"
@@ -298,6 +352,16 @@ export default function RetailersPage() {
           <span className="text-sm text-[var(--foreground)]">This domain is the brand&apos;s official store</span>
         </label>
 
+        {existingRule && (
+          <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-amber-500 leading-relaxed">
+              {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
+              that rule&apos;s name, official flag, gender and note.
+            </p>
+            <button onClick={() => startEdit(existingRule)} className={GHOST}>Edit that rule</button>
+          </div>
+        )}
+
         {formError && <p className="text-[11px] text-red-500 mt-3">{formError}</p>}
 
         <div className="flex items-center gap-2 mt-4">
@@ -318,12 +382,15 @@ export default function RetailersPage() {
       {applyResult && (
         <p className="text-[11px] text-[var(--foreground-muted)] mt-4">{applyResult}</p>
       )}
+      {actionError && (
+        <p role="alert" className="text-[11px] text-red-500 mt-4">{actionError}</p>
+      )}
 
       {loadError && <p className="text-[11px] text-red-500 mt-6">{loadError}</p>}
 
       {/* ── Rules ── */}
       <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-8 mb-3">
-        Rules {report ? `(${report.rules.length})` : ""}
+        Rules {report && !(report.rulesError && !report.rules.length) ? `(${report.rules.length})` : ""}
       </p>
       <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
         <table className="w-full">
@@ -339,13 +406,19 @@ export default function RetailersPage() {
           <tbody>
             {loading && !report ? (
               <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</td></tr>
-            ) : !report?.rules.length ? (
+            ) : !report || (report.rulesError && !report.rules.length) ? (
+              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                Could not load the rules.
+              </td></tr>
+            ) : !report.rules.length ? (
               <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                 No rules yet. Add one above, or pick a domain from the list below.
               </td></tr>
             ) : (
               report.rules.map((rule) => {
-                const found = report.discovered.find((d) => d.domain === rule.domain);
+                const count = ruleProductCount(rule.domain);
+                // A failed scan says nothing about this rule — Apply scans for itself.
+                const scanFailed = !!report.discoverError;
                 return (
                   <tr key={rule.domain} className="border-b border-[var(--border)] last:border-b-0">
                     <td className="px-4 py-3">
@@ -366,7 +439,7 @@ export default function RetailersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-[var(--foreground-muted)]">
-                      {found ? `${found.productCount}` : "—"}
+                      {scanFailed ? "?" : count ? `${count}` : "—"}
                     </td>
                     <td className="px-4 py-3 text-[13px] text-[var(--foreground-muted)]">{rule.note || "—"}</td>
                     <td className="px-4 py-3">
@@ -374,10 +447,12 @@ export default function RetailersPage() {
                         <button onClick={() => startEdit(rule)} className={GHOST}>Edit</button>
                         <button
                           onClick={() => applyToExisting(rule)}
-                          disabled={busyDomain === rule.domain || !found}
-                          title={found
-                            ? `Rewrite this name on the ${found.productCount} products already linking to ${rule.domain}`
-                            : "No products in the catalogue link to this domain"}
+                          disabled={busyDomain === rule.domain || (!count && !scanFailed)}
+                          title={count
+                            ? `Rewrite this name on the ${count} products already linking to ${rule.domain} or its subdomains`
+                            : scanFailed
+                              ? `Rewrite this name on the products already linking to ${rule.domain} or its subdomains`
+                              : "No products in the catalogue link to this domain"}
                           className={GHOST}
                         >
                           {busyDomain === rule.domain ? "Working…" : "Apply to existing"}
@@ -401,12 +476,16 @@ export default function RetailersPage() {
 
       {/* ── Domains the catalogue actually uses ── */}
       <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-8 mb-1">
-        Domains without a rule {report ? `(${unruled.length})` : ""}
+        Domains without a rule {report && !report.discoverError ? `(${unruled.length})` : ""}
       </p>
       <p className="text-[11px] text-[var(--foreground-muted)] mb-3 leading-relaxed">
         Taken from the products themselves, with the names those links currently show — the wrong
         name is usually how you recognise the row.
-        {report && ` Scanned up to ${report.scanLimit} products.`}
+        {report && !report.discoverError && report.scanned !== undefined && (
+          report.scanTruncated
+            ? ` Scanned the first ${report.scanned} products only — domains used further on are missing.`
+            : ` Scanned all ${report.scanned} products.`
+        )}
       </p>
 
       {report?.discoverError && (
@@ -427,6 +506,10 @@ export default function RetailersPage() {
           <tbody>
             {loading && !report ? (
               <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</td></tr>
+            ) : !report || report.discoverError ? (
+              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
+                Could not load the catalogue&apos;s domains.
+              </td></tr>
             ) : !unruled.length ? (
               <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                 {report?.discovered.length ? "Every domain in the catalogue has a rule." : "No product links found."}
@@ -448,7 +531,10 @@ export default function RetailersPage() {
                     {d.officialCount || "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => startNew(d.domain, d.currentNames[0] ?? "")} className={GHOST}>
+                    <button
+                      onClick={() => { startNew(d.domain, d.currentNames[0] ?? ""); revealEditor(); }}
+                      className={GHOST}
+                    >
                       Add rule
                     </button>
                   </td>

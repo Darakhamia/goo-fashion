@@ -68,8 +68,11 @@ function SectionH2({
 export default async function HomePage() {
   const { allOutfits, showcase, stylist } = await getData();
 
-  // Outfit examples: up to 9 so carousel has 3 full pages
-  const carouselOutfits = allOutfits.slice(0, 9);
+  // Outfit examples: up to 9 so carousel has 3 full pages. The outfits an admin
+  // starred ("Feature on homepage" in the studio) when there are any, newest
+  // first; otherwise the newest outfits.
+  const featuredOutfits = allOutfits.filter((o) => o.isHomepageFeatured);
+  const carouselOutfits = (featuredOutfits.length > 0 ? featuredOutfits : allOutfits).slice(0, 9);
 
   return (
     <>

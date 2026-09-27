@@ -7,11 +7,11 @@ import {
   domainFromUrl,
   loadRetailerRules,
   normalizeDomain,
+  RETAILER_SCAN_MAX,
+  scanProductRetailers,
 } from "@/lib/server/retailer-domains";
 
 export const dynamic = "force-dynamic";
-
-const SCAN_LIMIT = 5000;
 
 interface StoredRetailer {
   name?: unknown;
@@ -47,16 +47,19 @@ export async function POST(req: Request) {
   const rule = rules.get(domain);
   if (!rule) return NextResponse.json({ error: `No rule for ${domain}` }, { status: 404 });
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, retailers")
-    .limit(SCAN_LIMIT);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let scan: Awaited<ReturnType<typeof scanProductRetailers>>;
+  try {
+    scan = await scanProductRetailers();
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not read products" },
+      { status: 500 },
+    );
+  }
 
   const updates: { id: string; retailers: StoredRetailer[] }[] = [];
 
-  for (const row of data ?? []) {
-    const { id, retailers } = row as { id: string; retailers?: unknown };
+  for (const { id, retailers } of scan.rows) {
     if (!Array.isArray(retailers)) continue;
 
     let changed = false;
@@ -112,7 +115,8 @@ export async function POST(req: Request) {
     matched: updates.length,
     updated,
     failed: failures.length,
-    scanLimit: SCAN_LIMIT,
-    scanned: (data ?? []).length,
+    scanLimit: RETAILER_SCAN_MAX,
+    scanned: scan.rows.length,
+    truncated: scan.truncated,
   });
 }

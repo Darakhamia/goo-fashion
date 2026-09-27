@@ -326,11 +326,11 @@ function AccountTab({
   user,
   clerkUser,
 }: {
-  user: { name: string; email: string; plan: PlanId; avatar?: string; joinedAt: string } | null;
+  user: { name: string; email: string; plan: PlanId; joinedAt: string } | null;
   clerkUser: ReturnType<typeof useUser>["user"];
 }) {
   const { logout } = useAuth();
-  const { preference, setPreference, theme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const { currency, setCurrency, formatPrice } = useCurrency();
 
   return (

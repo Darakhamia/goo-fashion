@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { checkAnalyticsRateLimit } from "@/lib/server/rate-limit";
+import { isUntrackedPath } from "@/lib/analytics/paths";
 
 const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|localhost)/;
 
@@ -40,8 +42,18 @@ export async function POST(req: Request) {
   }
 
   // Skip obvious noise — admin/API paths should never reach here, but guard anyway.
-  if (body.path.startsWith("/admin") || body.path.startsWith("/api/")) {
+  if (isUntrackedPath(body.path)) {
     return NextResponse.json({ ok: true });
+  }
+
+  // Unauthenticated writes into the database: capped per IP, and before the
+  // country lookup so a flood cannot spend that either.
+  const limit = await checkAnalyticsRateLimit(req);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { ok: false },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
   }
 
   let userId: string | null = null;

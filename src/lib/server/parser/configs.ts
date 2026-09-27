@@ -151,12 +151,3 @@ export function matchSiteConfig(url: string, configs: ParserSiteConfig[]): Parse
   }
   return null;
 }
-
-/** Merge a per-site fetch override on top of the global fetch settings. */
-export function effectiveFetchSettings(
-  base: ParserFetchSettings,
-  config?: ParserSiteConfig | null,
-): ParserFetchSettings {
-  if (!config?.fetch) return base;
-  return { ...base, ...config.fetch };
-}

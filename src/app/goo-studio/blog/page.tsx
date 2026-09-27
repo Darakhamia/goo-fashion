@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "@/components/ui/Image";
 import type { BlogPost } from "@/lib/types";
-import { estimateReadTime } from "@/lib/blog-render";
+import { estimateReadTime, slugify } from "@/lib/blog-render";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 
 interface BlogFormState {
@@ -46,14 +46,15 @@ const inputCls =
 const labelCls =
   "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
 
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 90);
+/**
+ * ISO timestamp → the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in
+ * the admin's own time zone. Slicing toISOString() gave UTC, which the input
+ * then read back as local time — every save shifted the date by the offset.
+ */
+function toLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function formatDate(iso: string): string {
@@ -78,6 +79,8 @@ export default function AdminBlogPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const [autoSlug, setAutoSlug] = useState(true);
   const [autoReadTime, setAutoReadTime] = useState(true);
@@ -93,10 +96,22 @@ export default function AdminBlogPage() {
   const [aiError, setAiError] = useState("");
 
   useEffect(() => {
-    fetch("/api/blog?all=true")
-      .then((r) => r.json())
-      .then((data) => setPosts(Array.isArray(data) ? data : []))
-      .catch(() => setPosts([]))
+    fetch("/api/blog")
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+          setLoadError(data?.error ?? `Could not load posts (HTTP ${r.status}).`);
+          return;
+        }
+        // A 200 that is not a list (e.g. an expired session answered with the
+        // sign-in page) is a failed load too, not an empty blog.
+        if (!Array.isArray(data)) {
+          setLoadError("Could not load posts: unexpected response. Reload the page.");
+          return;
+        }
+        setPosts(data);
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "Network error."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -126,9 +141,7 @@ export default function AdminBlogPage() {
       metaDescription: post.metaDescription ?? "",
       ogImage: post.ogImage ?? "",
       isPublished: post.isPublished,
-      publishedAt: post.publishedAt
-        ? new Date(post.publishedAt).toISOString().slice(0, 16)
-        : "",
+      publishedAt: post.publishedAt ? toLocalInputValue(post.publishedAt) : "",
     });
     setAutoSlug(false);
     setAutoReadTime(false);
@@ -173,12 +186,22 @@ export default function AdminBlogPage() {
     setSaving(true);
     setSaveError("");
 
+    // The field holds local time without a zone, which new Date() reads as
+    // local — so this is the admin's intended moment. A date left untouched
+    // goes back exactly as stored (seconds included), not rounded to the minute.
+    const storedPublishedAt = editingId
+      ? posts.find((p) => p.id === editingId)?.publishedAt
+      : undefined;
+    const publishedAt = !form.publishedAt
+      ? undefined
+      : storedPublishedAt && toLocalInputValue(storedPublishedAt) === form.publishedAt
+      ? storedPublishedAt
+      : new Date(form.publishedAt).toISOString();
+
     const body = {
       ...form,
       slug: finalSlug,
-      publishedAt: form.publishedAt
-        ? new Date(form.publishedAt).toISOString()
-        : undefined,
+      publishedAt,
     };
 
     try {
@@ -213,11 +236,19 @@ export default function AdminBlogPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this post? This cannot be undone.")) return;
     setDeleteId(id);
+    setDeleteError("");
     try {
       const res = await fetch(`/api/blog/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setPosts((prev) => prev.filter((p) => p.id !== id));
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setDeleteError(`Could not delete the post: ${err.error ?? `HTTP ${res.status}`}`);
+        return;
       }
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      setDeleteError(
+        `Could not delete the post: ${e instanceof Error ? e.message : "network error"}`
+      );
     } finally {
       setDeleteId(null);
     }
@@ -254,6 +285,9 @@ export default function AdminBlogPage() {
       setEditingId(null);
       setForm({
         ...defaultForm,
+        // Unreviewed AI text opens as a draft: the main button reads "Save
+        // draft", and going live is a deliberate flip of the toggle.
+        isPublished: false,
         title: data.title ?? "",
         slug: data.slug ?? "",
         excerpt: data.excerpt ?? "",
@@ -289,7 +323,7 @@ export default function AdminBlogPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
             Blog
@@ -340,22 +374,39 @@ export default function AdminBlogPage() {
         />
       </div>
 
+      {(loadError || deleteError) && (
+        <div className="mb-4 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 flex items-start justify-between gap-4">
+          <p className="text-xs text-red-500 leading-relaxed">{loadError || deleteError}</p>
+          {!loadError && (
+            <button
+              onClick={() => setDeleteError("")}
+              className="text-red-500 hover:opacity-70 transition-opacity shrink-0"
+              aria-label="Dismiss"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       <div
-        className="border border-[var(--border)] overflow-x-auto"
+        className="rounded-xl border border-[var(--border)] overflow-x-auto"
         style={{ background: "var(--background)" }}
       >
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[var(--border)]">
+            <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
               {["Cover", "Title", "Slug", "Category", "Status", "Published", "Actions"].map(
                 (h, i) => (
                   <th
                     key={h}
                     className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
                       i === 6 ? " text-right" : ""
-                    }${i >= 3 && i <= 5 ? " hidden lg:table-cell" : ""}${
-                      i === 2 ? " hidden md:table-cell" : ""
+                    }${i === 3 || i === 5 ? " hidden lg:table-cell" : ""}${
+                      i === 2 || i === 4 ? " hidden md:table-cell" : ""
                     }`}
                   >
                     {h}
@@ -380,7 +431,11 @@ export default function AdminBlogPage() {
                   colSpan={7}
                   className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]"
                 >
-                  No posts yet. Click &quot;New Post&quot; to create one.
+                  {loadError
+                    ? "Posts could not be loaded."
+                    : posts.length > 0
+                    ? <>Nothing matches &ldquo;{searchQuery}&rdquo;.</>
+                    : <>No posts yet. Click &quot;New Post&quot; to create one.</>}
                 </td>
               </tr>
             ) : (
@@ -390,7 +445,7 @@ export default function AdminBlogPage() {
                   className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="relative w-12 h-12 overflow-hidden flex-shrink-0 bg-[var(--surface)]">
+                    <div className="relative w-12 h-12 overflow-hidden flex-shrink-0 rounded-lg bg-[var(--surface)]">
                       {post.coverImageUrl && (
                         <Image
                           src={post.coverImageUrl}
@@ -406,6 +461,13 @@ export default function AdminBlogPage() {
                     <span className="text-sm text-[var(--foreground)]">
                       {post.title}
                     </span>
+                    {/* The Status column starts at md — below it, a draft is
+                        marked here so a phone still tells it from a live post. */}
+                    {!post.isPublished && (
+                      <span className="md:hidden block w-fit mt-1 text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 rounded-full border text-[var(--foreground-subtle)] border-[var(--border)]">
+                        Draft
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <span className="font-mono text-[11px] text-[var(--foreground-muted)]">
@@ -414,16 +476,16 @@ export default function AdminBlogPage() {
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     {post.category ? (
-                      <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5">
+                      <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
                         {post.category}
                       </span>
                     ) : (
                       <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
+                  <td className="px-4 py-3 hidden md:table-cell">
                     <span
-                      className={`text-[10px] tracking-[0.1em] uppercase px-2 py-0.5 border ${
+                      className={`text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 rounded-full border ${
                         post.isPublished
                           ? "text-[var(--foreground)] border-[var(--foreground)]"
                           : "text-[var(--foreground-subtle)] border-[var(--border)]"
@@ -443,7 +505,7 @@ export default function AdminBlogPage() {
                         href={`/blog/${post.slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
+                        className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1"
                         aria-label="View"
                         title="Open public page"
                       >
@@ -498,7 +560,10 @@ export default function AdminBlogPage() {
       {showAiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div
-            className="rounded-2xl border border-[var(--border)] w-full max-w-md"
+            role="dialog"
+            aria-modal="true"
+            aria-label="AI Draft"
+            className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
             style={{ background: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
@@ -510,9 +575,13 @@ export default function AdminBlogPage() {
                     : "Announce a release in GOO's own name"}
                 </p>
               </div>
+              {/* Locked while generating, like Cancel: a reply landing after the
+                  modal closed would overwrite whatever post is open by then. */}
               <button
                 onClick={() => setShowAiModal(false)}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                disabled={aiLoading}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -613,24 +682,27 @@ export default function AdminBlogPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div
-            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingId ? "Edit Post" : "New Post"}
+            className="rounded-2xl border border-[var(--border)] w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden"
             style={{ background: "var(--background)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-              <div>
+            <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-[var(--border)] shrink-0">
+              <div className="min-w-0">
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {editingId ? "Edit Post" : "New Post"}
                 </h2>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono">
+                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono break-all">
                   /blog/{previewSlug}
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                className="flex items-center justify-center shrink-0 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 aria-label="Close"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -645,7 +717,7 @@ export default function AdminBlogPage() {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto" style={{ maxHeight: "75vh" }}>
+            <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {/* Title */}
               <div>
                 <label className={labelCls}>Title *</label>
@@ -726,14 +798,16 @@ export default function AdminBlogPage() {
               <div className="flex items-center gap-3 py-1">
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={form.isPublished}
+                  aria-label="Published"
                   onClick={() => setForm((f) => ({ ...f, isPublished: !f.isPublished }))}
-                  className={`relative inline-flex h-6 w-11 items-center transition-colors ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
                     form.isPublished ? "bg-[var(--foreground)]" : "bg-[var(--border)]"
                   }`}
-                  aria-pressed={form.isPublished}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform bg-[var(--background)] transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-[var(--background)] transition-transform ${
                       form.isPublished ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
@@ -914,7 +988,7 @@ export default function AdminBlogPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3">
+            <div className="px-6 py-4 border-t border-[var(--border)] flex gap-3 shrink-0">
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}

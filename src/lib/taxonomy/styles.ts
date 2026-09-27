@@ -38,6 +38,7 @@
  */
 import type { StyleKeyword } from "@/lib/types";
 import { STYLE_KEYWORD_LIST } from "@/lib/style-keywords";
+import { escapeRegExp, isCyrillic, normalize } from "@/lib/text";
 
 type Term = string | RegExp;
 
@@ -182,16 +183,8 @@ export const STYLE_TERMS: Record<StyleKeyword, readonly Term[]> = {
 
 // ── Matching ─────────────────────────────────────────────────────────────────
 
-/** Lowercase, "ё" → "е", every run of non-letters/digits one space, padded. */
-function normalize(text: string): string {
-  return ` ${(text ?? "").toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
-}
-
-const isCyrillic = (s: string) => /[Ѐ-ӿ]/.test(s);
-
 function compileWordTerm(raw: string): string {
   const cyrillic = isCyrillic(raw);
-  const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const words: { text: string; exact: boolean }[] = [];
   for (const token of raw.toLowerCase().replace(/ё/g, "е").split(/\s+/).filter(Boolean)) {
@@ -205,7 +198,7 @@ function compileWordTerm(raw: string): string {
   }
 
   const pattern = words.map(({ text, exact }, i) => {
-    const word = escape(text);
+    const word = escapeRegExp(text);
     if (cyrillic) return exact ? word : `${word}\\p{L}*`;
     return i === words.length - 1 && !exact ? `${word}(?:e?s)?` : word;
   });
@@ -248,16 +241,4 @@ export function inferStyleKeywords(text: string, max = 3): StyleKeyword[] {
   const found = new Set(Object.keys(styleEvidence(text)) as StyleKeyword[]);
   if (!found.size) return [];
   return STYLE_KEYWORD_LIST.filter((k) => found.has(k)).slice(0, max);
-}
-
-export function styleTermCounts(): { styles: number; english: number; cyrillic: number; patterns: number } {
-  let english = 0, cyrillic = 0, patterns = 0;
-  for (const terms of Object.values(STYLE_TERMS)) {
-    for (const term of terms) {
-      if (term instanceof RegExp) patterns++;
-      else if (isCyrillic(term)) cyrillic++;
-      else english++;
-    }
-  }
-  return { styles: Object.keys(STYLE_TERMS).length, english, cyrillic, patterns };
 }

@@ -169,6 +169,11 @@ const colourOf = (row: NamedItem) => (row.colors ?? []).filter(Boolean).join("/"
  * the very colour it has: that is the store's same page moved (a collection
  * path, a tracking tag). In any other colour it is the store's other listing —
  * a colourway — and gets a card of its own.
+ *
+ * "This store" is the host of the page, unless the caller names the store: a
+ * feed's links all go through the affiliate network's host (every Awin
+ * merchant is awin1.com), so for a feed the host would call every merchant the
+ * same store — and a second merchant could never join the product.
  */
 export function pickSameItemByName(
   incoming: {
@@ -183,6 +188,8 @@ export function pickSameItemByName(
     sourceUrl: string | null;
     /** Article codes the page carries outside its name: the maker's part number. */
     codes?: string[];
+    /** The store's name when the caller resolved it (a feed's merchant); compared by name instead of host. */
+    store?: string | null;
     /**
      * A links-only run: the page makes no card, so a name identical to the one
      * card that has it takes the link even when the two colour fields disagree
@@ -194,6 +201,12 @@ export function pickSameItemByName(
   rows: NamedItem[],
 ): SameItemMatch {
   const ourHost = storeHost(incoming.sourceUrl);
+  const ourStore = incoming.store?.trim().toLowerCase() ?? "";
+  /** Whether a card already sells through this store. */
+  const isOwn = (row: NamedItem) =>
+    ourStore
+      ? (row.retailers ?? []).some((r) => r.name?.trim().toLowerCase() === ourStore)
+      : storesOf(row).has(ourHost);
   // Without an address there is no place to buy to add.
   if (!ourHost) return { item: null, miss: "no address to add as a store" };
 
@@ -254,7 +267,7 @@ export function pickSameItemByName(
   if (sameName.length === 1 && ourVariant) return found(sameName[0]);
   const candidates = sameName.length ? sameName : variants;
 
-  const elsewhere = candidates.filter((row) => !storesOf(row).has(ourHost));
+  const elsewhere = candidates.filter((row) => !isOwn(row));
 
   // No colour field on the page: the colour its name states counts as one.
   let colours = incoming.colors;
@@ -286,7 +299,7 @@ export function pickSameItemByName(
       const rank = RANK[colourRelation(colours, row.colors)] ?? 0;
       const theirs = words(row.colors);
       const shared = [...ours].filter((w) => theirs.has(w)).length;
-      const own = storesOf(row).has(ourHost);
+      const own = isOwn(row);
       return { row, rank, shared, own, index };
     })
     // This store's own card only in its very colour: anything looser from the
@@ -298,10 +311,20 @@ export function pickSameItemByName(
   // One card has this very name and its colour field says otherwise: a
   // links-only run takes it — the store's page for this name is this card's
   // page, and skipping it loses the link.
-  if (incoming.linksOnly && sameName.length === 1 && !storesOf(sameName[0]).has(ourHost)) return found(sameName[0]);
+  if (incoming.linksOnly && sameName.length === 1 && !isOwn(sameName[0])) return found(sameName[0]);
 
   if (!elsewhere.length) return missed(`this store is already on "${candidates[0].name}" in ${candidates.map(colourOf).join(", ")}`);
   return missed(`in the catalogue only in ${candidates.map(colourOf).join(", ")}`);
+}
+
+/**
+ * One merchant of a feed. A feed's links all go through the affiliate
+ * network's host (every Awin merchant is awin1.com), so the host cannot tell
+ * two merchants apart: the same link, or else the merchant's name, does.
+ */
+function sameMerchant(r: Retailer, entry: Retailer): boolean {
+  if (sameListing(r.url, entry.url)) return true;
+  return !!r.name && !!entry.name && r.name.trim().toLowerCase() === entry.name.trim().toLowerCase();
 }
 
 /**
@@ -314,9 +337,22 @@ export function pickSameItemByName(
  * shop twice. A name decides only for an entry with no address. Two sites
  * sharing a name — `nike.com` and `nike.ua`, both "Nike" — are two stores, and
  * adding the second used to replace the first's link.
+ *
+ * `byName` is for a feed's entries, whose links share the affiliate network's
+ * host: there the link or the merchant's name decides (`sameMerchant`).
  */
-export function withRetailer(existing: Retailer[] | null | undefined, entry: Retailer): Retailer[] {
+export function withRetailer(
+  existing: Retailer[] | null | undefined,
+  entry: Retailer,
+  opts: { byName?: boolean } = {},
+): Retailer[] {
   const list = Array.isArray(existing) ? [...existing] : [];
+  if (opts.byName) {
+    const at = list.findIndex((r) => sameMerchant(r, entry));
+    if (at >= 0) list[at] = entry;
+    else list.push(entry);
+    return list.slice(0, 20);
+  }
   let index = list.findIndex((r) => sameListing(r.url, entry.url));
   if (index < 0) index = list.findIndex((r) => sameStore(r.url, entry.url));
   if (index < 0) {
@@ -330,7 +366,8 @@ export function withRetailer(existing: Retailer[] | null | undefined, entry: Ret
 }
 
 /** Is this entry the same store as `entry` — by address, or by name where either has none? */
-export function isSameRetailer(r: Retailer, entry: Retailer): boolean {
+export function isSameRetailer(r: Retailer, entry: Retailer, opts: { byName?: boolean } = {}): boolean {
+  if (opts.byName) return sameMerchant(r, entry);
   if (r.url && entry.url) return sameStore(r.url, entry.url);
   return !!r.name && !!entry.name && r.name.toLowerCase() === entry.name.toLowerCase();
 }
@@ -354,13 +391,13 @@ export interface MergeResult {
 export function mergePatch(
   row: ExistingItem,
   incoming: IncomingItem,
-  opts: { linksOnly?: boolean } = {},
+  opts: { linksOnly?: boolean; byName?: boolean } = {},
 ): MergeResult {
   const patch: Record<string, unknown> = {};
   const filled: string[] = [];
 
   if (incoming.retailer) {
-    patch.retailers = withRetailer(row.retailers, incoming.retailer);
+    patch.retailers = withRetailer(row.retailers, incoming.retailer, { byName: opts.byName });
     filled.push("retailer");
   }
 

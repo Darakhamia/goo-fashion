@@ -18,7 +18,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { discoverProductUrls } from "@/lib/server/parser/crawl";
-import { importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
+import { droppedColumnsWarning, importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
 import { orderForLinksOnly } from "@/lib/server/parser/catalogue-match";
 import {
   getFetchSettings,
@@ -58,7 +58,6 @@ export async function POST(req: Request) {
     const result = await discoverProductUrls(url, {
       fetchSettings,
       fetchApiKey: keyInfo.key,
-      siteConfigs,
       // A links-only run looks through as much of the store as it can reach and
       // opens only what looks like ours, so it is not cut at `limit` here.
       limit: linksOnly ? 2_000 : limit,
@@ -160,6 +159,7 @@ export async function POST(req: Request) {
         mergedBy: imported.mergedBy,
         mergedFields: imported.mergedFields,
         linkNote: imported.linkNote,
+        ...(imported.droppedColumns?.length && { warning: droppedColumnsWarning(imported.droppedColumns) }),
       });
     } catch (err) {
       results.push({

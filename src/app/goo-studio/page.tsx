@@ -5,13 +5,17 @@ import Image from "@/components/ui/Image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+type HealthItem = { ok: boolean; detail: string };
+
+// Metrics are null when their query failed: the card shows "—" and no growth
+// pill instead of a zero that looks real.
 interface StatsPayload {
   generatedAt: string;
   summary: {
-    products: { total: number; thisMonth: number; growthPct: number };
-    outfits:  { total: number; thisMonth: number; growthPct: number; aiGenerated: number };
-    users:    { total: number; thisMonth: number; growthPct: number; activeWeek: number };
-    brands:   { total: number };
+    products: { total: number | null; thisMonth: number | null; growthPct: number | null };
+    outfits:  { total: number | null; growthPct: number | null; aiGenerated: number | null };
+    users:    { total: number | null; growthPct: number | null; activeWeek: number | null };
+    brands:   { total: number | null };
   };
   recent: {
     products: { id: string; name: string; brand?: string; image_url?: string; created_at: string }[];
@@ -24,21 +28,36 @@ interface StatsPayload {
       imageUrl: string;
       createdAt: number;
       plan: string;
-      isAdmin: boolean;
     }[];
   };
   health: {
-    supabase: { ok: boolean; detail: string };
-    clerk:    { ok: boolean; detail: string };
-    openai:   { ok: boolean; detail: string };
-    replicate:{ ok: boolean; detail: string };
+    supabase:  HealthItem;
+    clerk:     HealthItem;
+    openai:    HealthItem;
+    replicate: HealthItem;
+    monobank:  HealthItem;
+    resend:    HealthItem;
   };
 }
 
-function fmtDelta(pct: number): { label: string; positive: boolean } {
+const HEALTH_LABELS: Record<keyof StatsPayload["health"], string> = {
+  supabase:  "Supabase",
+  clerk:     "Clerk",
+  openai:    "OpenAI",
+  replicate: "Replicate",
+  monobank:  "Monobank",
+  resend:    "Resend",
+};
+
+function fmtDelta(pct: number | null): { label: string; positive: boolean } | null {
+  if (pct === null) return null;
   if (pct === 0) return { label: "Flat vs last month", positive: true };
   const sign = pct > 0 ? "+" : "";
   return { label: `${sign}${pct}% vs last month`, positive: pct >= 0 };
+}
+
+function fmtCount(n: number | null): string {
+  return n === null ? "—" : n.toLocaleString();
 }
 
 function fmtRelative(ts: number | string): string {
@@ -96,37 +115,64 @@ export default function AdminDashboardPage() {
 
   useEffect(() => { load(); }, []);
 
-  const statCards = data ? [
-    {
-      label: "Products",
-      value: data.summary.products.total.toLocaleString(),
-      delta: fmtDelta(data.summary.products.growthPct),
-      sub: `+${data.summary.products.thisMonth} this month`,
-    },
-    {
-      label: "Outfits",
-      value: data.summary.outfits.total.toLocaleString(),
-      delta: fmtDelta(data.summary.outfits.growthPct),
-      sub: `${data.summary.outfits.aiGenerated} AI-generated`,
-    },
-    {
-      label: "Users",
-      value: data.summary.users.total.toLocaleString(),
-      delta: fmtDelta(data.summary.users.growthPct),
-      sub: `${data.summary.users.activeWeek} active this week`,
-    },
-    {
-      label: "Brands",
-      value: data.summary.brands.total.toLocaleString(),
-      delta: { label: "Catalog coverage", positive: true },
-      sub: `${data.summary.products.total > 0 ? Math.round(data.summary.products.total / Math.max(data.summary.brands.total, 1)) : 0} avg products/brand`,
-    },
-  ] : [];
+  const statCards = data ? (() => {
+    const { products, outfits, users, brands } = data.summary;
+    return [
+      {
+        label: "Products",
+        value: fmtCount(products.total),
+        delta: fmtDelta(products.growthPct),
+        sub: products.thisMonth === null ? "—" : `+${products.thisMonth} this month`,
+      },
+      {
+        label: "Outfits",
+        value: fmtCount(outfits.total),
+        delta: fmtDelta(outfits.growthPct),
+        sub: `${fmtCount(outfits.aiGenerated)} AI-generated`,
+      },
+      {
+        label: "Users",
+        value: fmtCount(users.total),
+        delta: fmtDelta(users.growthPct),
+        sub: `${fmtCount(users.activeWeek)} active this week`,
+      },
+      {
+        label: "Brands",
+        value: fmtCount(brands.total),
+        delta: null,
+        sub: products.total !== null && brands.total
+          ? `${Math.round(products.total / brands.total)} avg products/brand`
+          : "—",
+      },
+    ];
+  })() : [];
+
+  // First load failed: show the error with a retry instead of skeletons that
+  // look like an endless load.
+  if (error && !data) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
+          <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">Live data could not be loaded.</p>
+        </div>
+        <div className="border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
+          <span className="min-w-0 break-words">{error}</span>
+          <button
+            onClick={load}
+            className="shrink-0 text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
@@ -144,7 +190,7 @@ export default function AdminDashboardPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 border border-red-500/40 bg-red-500/5 text-red-600 text-xs px-4 py-3 rounded-xl">
+        <div className="mb-6 border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl">
           {error}
         </div>
       )}
@@ -162,7 +208,7 @@ export default function AdminDashboardPage() {
             <motion.div
               key={c?.label ?? i}
               variants={fadeUp}
-              className="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
+              className="rounded-2xl border border-[var(--border)] p-4 md:p-6 min-w-0 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
               style={{ background: "var(--background)" }}
             >
               {/* Color accent strip */}
@@ -172,22 +218,25 @@ export default function AdminDashboardPage() {
                   {c?.label ?? "—"}
                 </span>
               </div>
-              <p className="font-display text-3xl font-light text-[var(--foreground)] mb-3">
+              <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-3 break-words">
                 {c?.value ?? "—"}
               </p>
               {/* Delta pill */}
               <div className="mb-1">
-                {c ? (
-                  <span className={`inline-flex items-center text-[9px] tracking-[0.1em] uppercase font-medium px-2 py-1 rounded-full ${
-                    c.delta.positive
-                      ? "bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
-                      : "bg-red-500/12 text-red-500 border border-red-500/20"
-                  }`}>
+                {!c ? (
+                  <span className="inline-block h-5 w-24 rounded-full bg-[var(--border)] animate-pulse" />
+                ) : c.delta ? (
+                  <span
+                    title="Month to date vs the same days of last month"
+                    className={`inline-flex items-center text-[9px] tracking-[0.1em] uppercase font-medium px-2 py-1 rounded-full ${
+                      c.delta.positive
+                        ? "bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
+                        : "bg-red-500/12 text-red-500 border border-red-500/20"
+                    }`}
+                  >
                     {c.delta.label}
                   </span>
-                ) : (
-                  <span className="inline-block h-5 w-24 rounded-full bg-[var(--border)] animate-pulse" />
-                )}
+                ) : null}
               </div>
               <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-1">
                 {c?.sub ?? " "}
@@ -200,8 +249,8 @@ export default function AdminDashboardPage() {
       {/* Service health */}
       <div className="mb-10">
         <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">System Health</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {data && (["supabase", "clerk", "openai", "replicate"] as const).map((k) => {
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {data && (Object.keys(HEALTH_LABELS) as (keyof StatsPayload["health"])[]).map((k) => {
             const h = data.health[k];
             return (
               <div
@@ -215,14 +264,14 @@ export default function AdminDashboardPage() {
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)] capitalize">{k}</p>
+                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
                   <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
                 </div>
               </div>
             );
           })}
-          {!data && Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--background)" }} />
+          {!data && Object.keys(HEALTH_LABELS).map((k) => (
+            <div key={k} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--background)" }} />
           ))}
         </div>
       </div>
@@ -233,7 +282,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Signups</h2>
-            <Link href="/goo-studio/users" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -278,7 +327,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Outfits</h2>
-            <Link href="/goo-studio/outfits" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -309,12 +358,12 @@ export default function AdminDashboardPage() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Products</h2>
-          <Link href="/goo-studio/products" className="text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
             View all →
           </Link>
         </div>
 
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
@@ -350,30 +399,6 @@ export default function AdminDashboardPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div>
-        <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">Quick Actions</h2>
-        <div className="flex gap-3 flex-wrap">
-          {[
-            { href: "/goo-studio/products", label: "Add Product" },
-            { href: "/goo-studio/outfits",  label: "Add Outfit" },
-            { href: "/goo-studio/users",    label: "Manage Users" },
-            { href: "/goo-studio/settings", label: "Settings" },
-          ].map((a) => (
-            <Link
-              key={a.href}
-              href={a.href}
-              className="inline-flex items-center gap-2 border border-[var(--border)] rounded-xl px-5 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] hover:border-[var(--foreground-muted)] hover:shadow-sm transition-colors duration-200"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
-              {a.label}
-            </Link>
-          ))}
         </div>
       </div>
     </div>

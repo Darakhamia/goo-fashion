@@ -11,8 +11,6 @@ import OutfitCollage from "./OutfitCollage";
 
 interface OutfitCardProps {
   outfit: Outfit;
-  size?: "default" | "large";
-  compact?: boolean;
 }
 
 function PeopleIcon() {
@@ -26,14 +24,14 @@ function PeopleIcon() {
   );
 }
 
-export default function OutfitCard({ outfit, size = "default", compact = false }: OutfitCardProps) {
+export default function OutfitCard({ outfit }: OutfitCardProps) {
   const { isOutfitLiked, toggleOutfitLike } = useLikes();
   const { isLoggedIn, login } = useAuth();
   const { formatPrice } = useCurrency();
   const liked = isOutfitLiked(outfit.id);
 
   const handleLike = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     toggleOutfitLike(outfit.id);
   };
 
@@ -102,16 +100,14 @@ export default function OutfitCard({ outfit, size = "default", compact = false }
       </button>
 
       {/* Info */}
-      {!compact && (
-        <Link href={`/outfit/${outfit.id}`} className="block px-5 pt-4 pb-5">
-          <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
-            {outfit.name}
-          </h3>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
-            {formatPrice(outfit.totalPriceMin, outfit.currency)}–{formatPrice(outfit.totalPriceMax, outfit.currency)}
-          </p>
-        </Link>
-      )}
+      <Link href={`/outfit/${outfit.id}`} className="block px-5 pt-4 pb-5">
+        <h3 className="text-[15px] font-semibold text-[var(--foreground)] truncate leading-snug">
+          {outfit.name}
+        </h3>
+        <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
+          {formatPrice(outfit.totalPriceMin, outfit.currency)}–{formatPrice(outfit.totalPriceMax, outfit.currency)}
+        </p>
+      </Link>
     </motion.div>
   );
 }

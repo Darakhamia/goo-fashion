@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -8,8 +8,8 @@ import { useLikes } from "@/lib/context/likes-context";
 import { useCurrency } from "@/lib/context/currency-context";
 import { useCart } from "@/lib/context/cart-context";
 import { toCartItem } from "@/lib/cart-item";
-import { products as staticProducts } from "@/lib/data/products";
-import type { Outfit } from "@/lib/types";
+import { fetchProductsByIds } from "@/lib/products-by-ids";
+import type { Outfit, Product } from "@/lib/types";
 import { isProductAvailable } from "@/lib/availability";
 import ProductCard from "@/components/product/ProductCard";
 import { StatusDot, BagIcon } from "@/components/look/CardBits";
@@ -129,7 +129,10 @@ function SavedInner() {
   // mounts; the panel replaces it with the reconciled number once it has one.
   const [looksCount, setLooksCount] = useState(0);
   const [allOutfits, setAllOutfits] = useState<Outfit[]>([]);
-  const [allProducts, setAllProducts] = useState(staticProducts);
+  // The liked pieces, as they are loaded — never the whole catalogue.
+  const [likedProductData, setLikedProductData] = useState<Product[]>([]);
+  // Ids already asked for, so unliking one doesn't refetch the rest.
+  const requestedProductIds = useRef(new Set<string>());
 
   // The builder's "View" links and the save confirmation land here with
   // ?tab=looks to show the look just made. Read through useSearchParams rather
@@ -167,16 +170,30 @@ function SavedInner() {
       .catch(() => {});
   }, []);
 
-  // Fetch full product list from API (includes Supabase products with UUID IDs)
+  // Fetch just the liked pieces by id. Likes arrive asynchronously (and change
+  // on sign-in), so this re-runs with them and asks only for ids it hasn't yet.
   useEffect(() => {
-    fetch("/api/products?raw=true")
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d)) setAllProducts(d); })
-      .catch(() => {});
-  }, []);
+    const missing = likedProducts.filter((id) => !requestedProductIds.current.has(id));
+    if (missing.length === 0) return;
+    for (const id of missing) requestedProductIds.current.add(id);
+    fetchProductsByIds(missing)
+      .then((found) => {
+        setLikedProductData((prev) => {
+          const have = new Set(prev.map((p) => p.id));
+          return [...prev, ...found.filter((p) => !have.has(p.id))];
+        });
+      })
+      .catch(() => {
+        // Let the next change of likes ask for these again.
+        for (const id of missing) requestedProductIds.current.delete(id);
+      });
+  }, [likedProducts]);
 
   const savedOutfits = allOutfits.filter((o) => likedOutfits.includes(o.id));
-  const savedProducts = allProducts.filter((p) => likedProducts.includes(p.id));
+  // Newest first, the order the full catalogue used to hand them over in.
+  const savedProducts = likedProductData
+    .filter((p) => likedProducts.includes(p.id))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 
   // Counts mirror what's actually rendered: a liked id whose product/outfit is
   // no longer in the catalog isn't shown, so it must not inflate the tab count.

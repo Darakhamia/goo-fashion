@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
-import { getHomepageShowcaseIds, type HomepageShowcaseIds } from "@/lib/data/db";
+import { readHomepageShowcaseIds, type HomepageShowcaseIds } from "@/lib/data/db";
 
 const KEY = "homepage_showcase";
 const STEPS = ["step1", "step2", "step3", "step4"] as const;
@@ -12,10 +12,18 @@ const STEPS = ["step1", "step2", "step3", "step4"] as const;
 const MAX_PER_STEP = 6;
 
 // GET /api/admin/homepage-showcase → { step1: string[], … }
+// A failed read is a 500, not an empty selection: the editor saves whatever it
+// was given, so "nothing selected" would be written over the live showcase.
 export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const ids = await getHomepageShowcaseIds();
+  const { ids, error } = await readHomepageShowcaseIds();
+  if (error) {
+    return NextResponse.json(
+      { error: `Could not read the saved showcase: ${error}` },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   return NextResponse.json(ids, { headers: { "Cache-Control": "no-store" } });
 }
 

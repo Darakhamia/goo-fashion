@@ -53,14 +53,6 @@ export type Occasion =
   | "formal"
   | "weekend";
 
-export type BodyType =
-  | "slim"
-  | "athletic"
-  | "average"
-  | "curvy"
-  | "petite"
-  | "tall";
-
 export type StyleKeyword =
   | "minimal"
   | "streetwear"
@@ -87,22 +79,6 @@ export interface Retailer {
   rating?: number;
   /** Number of reviews backing the rating */
   reviewCount?: number;
-}
-
-export interface PricePoint {
-  date: string;       // ISO date YYYY-MM-DD
-  price: number;
-  retailerName?: string;
-}
-
-export interface ProductReview {
-  id: string;
-  productId: string;
-  userId: string;
-  userName: string;
-  rating: number;     // 1–5
-  text: string;
-  createdAt: string;
 }
 
 /**
@@ -244,31 +220,6 @@ export interface Outfit {
   createdAt?: string;
 }
 
-export interface UserProfile {
-  bodyType: BodyType;
-  styleKeywords: StyleKeyword[];
-  preferredColors: string[];
-  budget: {
-    min: number;
-    max: number;
-  };
-  occasions: Occasion[];
-  savedOutfits: string[];
-  savedProducts: string[];
-  plan: "free" | "basic" | "pro" | "premium";
-}
-
-export interface Plan {
-  id: "free" | "basic" | "pro" | "premium";
-  name: string;
-  price: number;
-  currency: string;
-  billingCycle: "monthly" | "yearly";
-  features: string[];
-  aiOutfitsPerMonth: number | "unlimited";
-  highlighted: boolean;
-}
-
 export interface BlogPost {
   id: string;
   slug: string;
@@ -286,16 +237,4 @@ export interface BlogPost {
   publishedAt: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface FilterState {
-  category?: Category;
-  occasion?: Occasion;
-  priceMin?: number;
-  priceMax?: number;
-  brands?: Brand[];
-  styleKeywords?: StyleKeyword[];
-  sortBy?: "relevance" | "price-asc" | "price-desc" | "newest";
-  /** Base color group IDs selected in the color filter */
-  colorGroupIds?: number[];
 }

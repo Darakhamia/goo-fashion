@@ -28,11 +28,13 @@ export default function ProductCard({ product, showBrand = true, initialVariant 
   const liked = isProductLiked(product.id);
 
   const handleLike = () => {
-    if (!isLoggedIn) { login("", ""); return; }
+    if (!isLoggedIn) { login(); return; }
     toggleProductLike(product.id);
   };
 
-  const [activeVariant, setActiveVariant] = useState<ProductSwatch | null>(initialVariant);
+  // The colour this card stands for. Nothing on the card switches it, so it is
+  // simply the one the grid asked for.
+  const activeVariant = initialVariant;
 
   const currentId = activeVariant ? activeVariant.id : product.id;
   const inCart = isInCart(currentId);

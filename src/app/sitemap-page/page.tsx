@@ -26,6 +26,8 @@ const SITE_SECTIONS = [
     links: [
       { href: "/privacy", label: "Privacy Policy" },
       { href: "/terms", label: "Terms of Service" },
+      { href: "/cookie", label: "Cookie Policy" },
+      { href: "/refund", label: "Refund Policy" },
     ],
   },
 ];

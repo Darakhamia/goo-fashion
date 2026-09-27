@@ -13,13 +13,12 @@ import {
   MISSING_TABLE_MESSAGE,
   normalizeDomain,
   parseStoreGender,
+  RETAILER_SCAN_MAX,
+  scanProductRetailers,
   type RetailerRule,
 } from "@/lib/server/retailer-domains";
 
 export const dynamic = "force-dynamic";
-
-/** Ceiling on the catalogue scan behind the "domains in use" list. */
-const SCAN_LIMIT = 5000;
 
 interface StoredRetailer {
   name?: unknown;
@@ -48,17 +47,15 @@ interface DiscoveredDomain {
  * names those links currently show — the wrong name is the thing to recognise
  * the row by.
  */
-async function discoverDomains(rules: Map<string, RetailerRule>): Promise<DiscoveredDomain[]> {
-  const { data, error } = await supabase!
-    .from("products")
-    .select("retailers")
-    .limit(SCAN_LIMIT);
-  if (error) throw new Error(error.message);
+async function discoverDomains(
+  rules: Map<string, RetailerRule>,
+): Promise<{ domains: DiscoveredDomain[]; scanned: number; truncated: boolean }> {
+  const { rows, truncated } = await scanProductRetailers();
 
   const byDomain = new Map<string, { products: number; names: Map<string, number>; official: number }>();
 
-  for (const row of data ?? []) {
-    const retailers = (row as { retailers?: unknown }).retailers;
+  for (const row of rows) {
+    const retailers = row.retailers;
     if (!Array.isArray(retailers)) continue;
     // Per product, not per link: two links to the same shop are one product.
     const seen = new Set<string>();
@@ -83,7 +80,7 @@ async function discoverDomains(rules: Map<string, RetailerRule>): Promise<Discov
   const ruleFor = (domain: string) =>
     domainCandidates(domain).find((c) => rules.has(c));
 
-  return [...byDomain.entries()]
+  const domains = [...byDomain.entries()]
     .map(([domain, b]) => ({
       domain,
       productCount: b.products,
@@ -95,13 +92,24 @@ async function discoverDomains(rules: Map<string, RetailerRule>): Promise<Discov
       ruledBy: ruleFor(domain),
     }))
     .sort((a, z) => z.productCount - a.productCount);
+  return { domains, scanned: rows.length, truncated };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isSupabaseConfigured || !supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+
+  // `?rulesOnly=1`: just the rules, for pages that only need store names (the
+  // Store suggestions on Products). Skips the catalogue scan below, which reads
+  // every product's retailers page by page.
+  if (new URL(req.url).searchParams.get("rulesOnly") === "1") {
+    const rules = await loadRetailerRules();
+    return NextResponse.json({
+      rules: [...rules.values()].sort((a, z) => a.domain.localeCompare(z.domain)),
+    });
   }
 
   // Probe the table directly. `loadRetailerRules` treats an unreachable table
@@ -114,9 +122,11 @@ export async function GET() {
   const rules = tableMissing ? new Map<string, RetailerRule>() : await loadRetailerRules(true);
 
   let discovered: DiscoveredDomain[] = [];
+  let scanned = 0;
+  let scanTruncated = false;
   let discoverError: string | null = null;
   try {
-    discovered = await discoverDomains(rules);
+    ({ domains: discovered, scanned, truncated: scanTruncated } = await discoverDomains(rules));
   } catch (err) {
     // The rules are the point of the page; the catalogue scan is a convenience.
     // Losing the scan must not take the editor down with it.
@@ -127,7 +137,9 @@ export async function GET() {
     rules: [...rules.values()].sort((a, z) => a.domain.localeCompare(z.domain)),
     discovered,
     discoverError,
-    scanLimit: SCAN_LIMIT,
+    scanLimit: RETAILER_SCAN_MAX,
+    scanned,
+    scanTruncated,
     tableMissing,
     setupHint: tableMissing ? MISSING_TABLE_MESSAGE : null,
     // Anything else wrong with the table is worth surfacing too, rather than

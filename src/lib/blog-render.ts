@@ -58,6 +58,21 @@ export function renderBlogBody(raw: string | null | undefined): string {
 }
 
 /**
+ * URL slug for a blog post: lowercase ASCII words joined by hyphens, capped at
+ * 90 chars. The one copy shared by the admin editor and the AI draft route, so
+ * a hand-typed slug and a generated one follow the same rules.
+ */
+export function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 90);
+}
+
+/**
  * Estimate reading time at ~200 WPM, rounded up to whole minutes.
  * Strips HTML tags first so tag noise doesn't inflate the count.
  */

@@ -1,27 +1,13 @@
-@import "tailwindcss";
+/* Scan only src/ for class names (the path is relative to this file). The
+   default scans the whole repo, so class-like strings from docs, probes and
+   datasets ended up in the production CSS. */
+@import "tailwindcss" source("../");
 
-/* Semantic tokens for shadcn-compatible components — map to project CSS vars */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--border-strong);
-  --color-primary: var(--foreground);
-  --color-primary-foreground: var(--background);
-  --color-secondary: var(--surface);
-  --color-secondary-foreground: var(--foreground);
-  --color-muted: var(--surface);
-  --color-muted-foreground: var(--foreground-muted);
-  --color-accent: var(--surface);
-  --color-accent-foreground: var(--foreground);
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-
   /* Кривые доступны и как Tailwind-утилиты: ease-out, ease-in-out, ease-drawer */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer: var(--ease-drawer);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
@@ -29,15 +15,6 @@
   --font-body:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
   --font-display: var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
   --font-mono:    var(--font-inter-tight), "Inter Tight", system-ui, sans-serif;
-
-  /* Light mode colors */
-  --background: #F4F2EE;
-  --surface: #FFFFFF;
-  --foreground: #0A0A0A;
-  --foreground-muted: #6B6B6B;
-  --foreground-subtle: #A8A8A8;
-  --border: #E8E6E0;
-  --border-strong: #C0BEB8;
 
   /* ── Движение ───────────────────────────────────────────────────────────
      Кривые названы, а не вписываются руками. До этого в проекте жили четыре
@@ -49,12 +26,30 @@
      Длительности: интерфейс живёт под 300 мс; drawer и модалки — до 500. */
   --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer: var(--ease-drawer);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   --dur-press:   160ms;
   --dur-fast:    150ms;
   --dur-base:    200ms;
   --dur-slow:    260ms;
+}
+
+/* Colour tokens. goo-studio has a theme switch of its own, independent of the
+   site theme on <html>: its root carries .admin-theme-light or
+   .admin-theme-dark, and the tokens declared there override the ones every
+   admin element would otherwise inherit from <html>. The light block has to
+   stay before the dark one — :root and .dark tie on specificity, so on <html>
+   the later rule wins. */
+:root,
+.admin-theme-light {
+  /* Light mode colors */
+  --background: #F4F2EE;
+  --surface: #FFFFFF;
+  --foreground: #0A0A0A;
+  --foreground-muted: #6B6B6B;
+  --foreground-subtle: #A8A8A8;
+  --border: #E8E6E0;
+  --border-strong: #C0BEB8;
 
   /* Pre-computed semi-transparent variants (avoids Tailwind v4 opacity modifier issues with CSS vars) */
   --bg-overlay-90: rgba(244, 242, 238, 0.90);
@@ -66,7 +61,8 @@
   --fg-on-dark-80: rgba(244, 242, 238, 0.80);
 }
 
-.dark {
+.dark,
+.admin-theme-dark {
   --background: #0A0A0A;
   --surface: #141414;
   --foreground: #F0EEE8;
@@ -83,6 +79,46 @@
   --fg-on-dark-60: rgba(10, 10, 10, 0.60);
   --fg-on-dark-70: rgba(10, 10, 10, 0.70);
   --fg-on-dark-80: rgba(10, 10, 10, 0.80);
+}
+
+/* Native controls inside goo-studio (select popups, date pickers, scrollbars)
+   follow the admin theme rather than the browser default. */
+.admin-theme-light {
+  color-scheme: light;
+}
+.admin-theme-dark {
+  color-scheme: dark;
+}
+
+/* goo-studio on phones. Below md every button, select and text field is at
+   least 40px tall, and an icon-only button (the ones carrying an aria-label)
+   40px wide as well: the smallest comfortable touch target. The rule lives in
+   the base layer, so a utility on the element (`min-h-0`) still wins where a
+   control has to stay small; overlay buttons positioned over an image and
+   switches keep their own size. */
+@layer base {
+  @media (width < 48rem) {
+    :where(.admin-theme-light, .admin-theme-dark)
+      :where(
+        button:not(.absolute, [role="switch"]),
+        select,
+        input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"])
+      ) {
+      min-height: 40px;
+    }
+    :where(.admin-theme-light, .admin-theme-dark) :where(button[aria-label]:not(.absolute, [role="switch"])) {
+      min-width: 40px;
+    }
+  }
+}
+
+/* iOS Safari zooms the page into any field whose text is smaller than 16px
+   and leaves it zoomed. Unlayered on purpose: it has to beat the `text-xs` /
+   `text-sm` utilities the admin fields carry. */
+@media (width < 48rem) {
+  :where(.admin-theme-light, .admin-theme-dark) :where(input, select, textarea) {
+    font-size: 16px;
+  }
 }
 
 html {
@@ -335,17 +371,6 @@ summary:not(.no-press):not([class*="active:scale"]):active {
   }
 }
 
-/* Marquee animation */
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-@keyframes marquee-vertical {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
-}
-
 /* Slide in from right (filter drawer) */
 @keyframes slideInRight {
   from {
@@ -395,28 +420,6 @@ summary:not(.no-press):not([class*="active:scale"]):active {
 @keyframes overlayIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-/* Product card slideshow — slide right→left */
-@keyframes cardSlideInFromRight {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
-}
-
-@keyframes cardSlideOutToLeft {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-100%); }
-}
-
-/* Product card slideshow — slide left→right (return to first image) */
-@keyframes cardSlideInFromLeft {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
-}
-
-@keyframes cardSlideOutToRight {
-  from { transform: translateX(0); }
-  to   { transform: translateX(100%); }
 }
 
 @keyframes shimmer-sweep {

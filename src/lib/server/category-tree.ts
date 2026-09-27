@@ -2,20 +2,27 @@
  * Reads the category tree out of the database.
  *
  * The tables arrived with migration 011. Until it runs — and whenever the
- * database is unreachable — this hands back the tree hardcoded in
- * `src/lib/categories.ts`, so the storefront keeps its filters either way and
- * the admin panel can say which of the two it is showing.
+ * database is unreachable or the tree is empty — this hands back the tree
+ * hardcoded in `src/lib/categories.ts`, so the storefront keeps its filters
+ * either way and the admin panel can say which of the two it is showing, and
+ * why.
  */
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DEFAULT_CATEGORY_GROUPS, type CategoryGroup, type CategoryItem } from "@/lib/categories";
+import { isMissingTable } from "@/lib/server/db-errors";
 
 export type TreeSource = "db" | "default";
 
 export interface CategoryTree {
   groups: CategoryGroup[];
   source: TreeSource;
-  /** Why the default is being served, when it is. */
-  reason?: "no-database" | "tables-missing";
+  /**
+   * Why the default is being served, when it is. `tables-empty` is a tree an
+   * admin emptied out: still the database's, and still editable.
+   */
+  reason?: "no-database" | "tables-missing" | "tables-empty" | "read-failed";
+  /** The database's own words, when `reason` is `read-failed`. */
+  detail?: string;
 }
 
 type GroupRow = { id: string; label: string; sort_order: number };
@@ -39,9 +46,10 @@ const SUB_COLUMNS_LEGACY = "id, group_id, label, value, sort_order";
  * the entire category tree.
  */
 async function selectSubcategories() {
-  const full = await supabase!.from("category_subcategories").select(SUB_COLUMNS).order("sort_order");
+  // `id` breaks ties, so two rows with one sort_order keep a stable order.
+  const full = await supabase!.from("category_subcategories").select(SUB_COLUMNS).order("sort_order").order("id");
   if (!full.error) return full;
-  return supabase!.from("category_subcategories").select(SUB_COLUMNS_LEGACY).order("sort_order");
+  return supabase!.from("category_subcategories").select(SUB_COLUMNS_LEGACY).order("sort_order").order("id");
 }
 
 export async function loadCategoryTree(): Promise<CategoryTree> {
@@ -50,22 +58,29 @@ export async function loadCategoryTree(): Promise<CategoryTree> {
   }
 
   const [groupsRes, subsRes] = await Promise.all([
-    supabase.from("category_groups").select("id, label, sort_order").order("sort_order"),
+    supabase.from("category_groups").select("id, label, sort_order").order("sort_order").order("id"),
     selectSubcategories(),
   ]);
 
   // Either table missing means the migration has not run; a half-created tree
-  // is not worth rendering, so fall back as a whole.
-  if (groupsRes.error || subsRes.error) {
-    return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "tables-missing" };
+  // is not worth rendering, so fall back as a whole. Any other error — an
+  // outage, a timeout — falls back too, but says so: it is not the same as
+  // the tables being absent.
+  const readError = groupsRes.error ?? subsRes.error;
+  if (readError) {
+    if (isMissingTable(readError)) {
+      return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "tables-missing" };
+    }
+    console.error("[category-tree] read failed:", readError.message);
+    return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "read-failed", detail: readError.message };
   }
 
   const groupRows = (groupsRes.data ?? []) as GroupRow[];
   // An empty table is a tree an admin emptied out, not a broken one — but a
-  // storefront with no filters at all is never what they meant, so treat it
-  // like a missing table and keep the default visible.
+  // storefront with no filters at all is never what they meant, so the default
+  // stays visible. The admin editor is told the truth (`/api/categories`).
   if (groupRows.length === 0) {
-    return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "tables-missing" };
+    return { groups: DEFAULT_CATEGORY_GROUPS, source: "default", reason: "tables-empty" };
   }
 
   const subRows = (subsRes.data ?? []) as SubRow[];

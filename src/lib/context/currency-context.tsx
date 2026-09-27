@@ -7,26 +7,12 @@ import {
   useEffect,
   useState,
 } from "react";
+import { CURRENCIES, withCurrencySymbol, type CurrencyCode } from "@/lib/currency";
 
 // ── Supported currencies ───────────────────────────────────────────────────
-export type CurrencyCode = "USD" | "EUR" | "GBP" | "UAH" | "CZK" | "JPY" | "TRY";
-
-export interface CurrencyInfo {
-  code: CurrencyCode;
-  symbol: string;
-  position: "prefix" | "suffix";
-  name: string;
-}
-
-export const CURRENCIES: CurrencyInfo[] = [
-  { code: "USD", symbol: "$",  position: "prefix", name: "US Dollar" },
-  { code: "EUR", symbol: "€",  position: "suffix", name: "Euro" },
-  { code: "GBP", symbol: "£",  position: "prefix", name: "Pound" },
-  { code: "UAH", symbol: "₴",  position: "suffix", name: "Hryvnia" },
-  { code: "CZK", symbol: "Kč", position: "suffix", name: "Koruna" },
-  { code: "JPY", symbol: "¥",  position: "prefix", name: "Yen" },
-  { code: "TRY", symbol: "₺",  position: "suffix", name: "Lira" },
-];
+// The table lives in lib/currency, where the server's meta prices read it too;
+// re-exported for the components that import it from here.
+export { CURRENCIES, type CurrencyCode, type CurrencyInfo } from "@/lib/currency";
 
 // ── Format helper ──────────────────────────────────────────────────────────
 // amount     – price in sourceCurrency (default "USD")
@@ -52,9 +38,7 @@ export function applyFormat(
   const rate = currency === "USD" ? 1 : (rates[currency] ?? 1);
   const value = Math.round(usdAmount * rate);
   const numStr = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
-  return info.position === "prefix"
-    ? `${info.symbol}${numStr}`
-    : `${numStr} ${info.symbol}`;
+  return withCurrencySymbol(numStr, info);
 }
 
 // ── Cache keys ─────────────────────────────────────────────────────────────
@@ -83,7 +67,6 @@ interface CurrencyContextValue {
    * wrong for writing a catalogue price, which is where ₴4 000 becomes $4 000.
    */
   canConvert: (sourceCurrency: string) => boolean;
-  ratesLoading: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
@@ -92,14 +75,12 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   formatPrice:   (n) => `$${n.toLocaleString()}`,
   convertToUsd:  (n) => n,
   canConvert:    (c) => c.toUpperCase() === "USD",
-  ratesLoading:  false,
 });
 
 // ── Provider ───────────────────────────────────────────────────────────────
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>("USD");
   const [rates, setRates]           = useState<Record<string, number>>(FALLBACK_RATES);
-  const [ratesLoading, setRatesLoading] = useState(false);
 
   // Restore saved currency preference
   useEffect(() => {
@@ -125,7 +106,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         }
       } catch { /* ignore stale cache */ }
 
-      setRatesLoading(true);
       try {
         const res = await fetch("/api/exchange-rates");
         if (!res.ok) throw new Error("rate fetch failed");
@@ -134,8 +114,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() } satisfies RateCache));
       } catch {
         setRates(FALLBACK_RATES);
-      } finally {
-        setRatesLoading(false);
       }
     };
     load();
@@ -172,7 +150,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, canConvert, ratesLoading }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertToUsd, canConvert }}>
       {children}
     </CurrencyContext.Provider>
   );

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "@/components/ui/Image";
-import { outfits as staticOutfits } from "@/lib/data/outfits";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
@@ -60,6 +59,13 @@ const CATEGORIES: { value: Category | "all"; label: string }[] = [
   { value: "accessories", label: "Accessories" },
 ];
 const ROLES: OutfitRole[] = ["hero", "secondary", "accent"];
+/** Most pieces an outfit takes — as many as the collage on the site can draw. */
+const MAX_ITEMS = 6;
+/**
+ * Most products the picker draws at once. The catalogue runs to thousands of
+ * rows with an image each; past this the search is the way to narrow it.
+ */
+const PICKER_LIMIT = 60;
 
 const defaultForm: OutfitFormState = {
   name: "",
@@ -84,6 +90,8 @@ export default function AdminOutfitsPage() {
 
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Why the list did not load — shown in place of the table's rows. */
+  const [outfitsError, setOutfitsError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OutfitFormState>(defaultForm);
@@ -98,7 +106,8 @@ export default function AdminOutfitsPage() {
   const [saveError, setSaveError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState("");
+  /** The last row action that failed — a delete or a homepage star. */
+  const [actionError, setActionError] = useState("");
   /** Ticked rows, by outfit id — what the toolbar's buttons act on. */
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -109,9 +118,13 @@ export default function AdminOutfitsPage() {
   const [uploadError, setUploadError] = useState("");
 
   const [pendingLooks, setPendingLooks] = useState<PendingLook[]>([]);
-  const [loadingPending, setLoadingPending] = useState(false);
+  // True from the start: the queue loads with the page, not with its tab.
+  const [loadingPending, setLoadingPending] = useState(true);
+  const [pendingError, setPendingError] = useState("");
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [selectedLook, setSelectedLook] = useState<PendingLook | null>(null);
+  /** Why the last Approve or Reject failed, shown inside the review modal. */
+  const [moderationError, setModerationError] = useState("");
 
   /**
    * The moderator's version of the submission.
@@ -142,6 +155,7 @@ export default function AdminOutfitsPage() {
         : "all",
       styleKeywords: normalizeStyleKeywords(look.style_keywords),
     });
+    setModerationError("");
     setSelectedLook(look);
   };
 
@@ -154,30 +168,57 @@ export default function AdminOutfitsPage() {
     }));
   };
 
-  // Load outfits on mount
-  useEffect(() => {
-    fetch("/api/outfits")
-      .then((r) => r.json())
-      .then((data) => {
-        setOutfits(Array.isArray(data) ? data : staticOutfits);
-      })
-      .catch(() => setOutfits(staticOutfits))
-      .finally(() => setLoading(false));
+  /**
+   * The outfits table, straight from the database. A failed read says so
+   * rather than falling back to the demo looks, which the table would show as
+   * real ones that can be neither edited nor deleted.
+   */
+  const loadOutfits = useCallback(async () => {
+    try {
+      const res = await fetch("/api/outfits");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data)) {
+        setOutfitsError(data?.error ?? `Outfits did not load (${res.status}).`);
+        return;
+      }
+      setOutfits(data);
+      setOutfitsError("");
+    } catch {
+      setOutfitsError("Outfits did not load (network error).");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Load pending looks when switching to pending tab
+  /**
+   * The moderation queue. Read once with the page, so the Pending tab can show
+   * its count before anyone opens it, and again each time the tab is opened.
+   */
+  const loadPending = useCallback(async () => {
+    try {
+      const res = await fetch("/api/looks/pending");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data)) {
+        setPendingError(data?.error ?? `The queue did not load (${res.status}).`);
+        return;
+      }
+      setPendingLooks(data);
+      setPendingError("");
+    } catch {
+      setPendingError("The queue did not load (network error).");
+    } finally {
+      setLoadingPending(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (adminTab !== "pending") return;
-    setLoadingPending(true);
-    fetch("/api/looks/pending")
-      .then((r) => r.json())
-      .then((data) => setPendingLooks(Array.isArray(data) ? data : []))
-      .catch(() => setPendingLooks([]))
-      .finally(() => setLoadingPending(false));
-  }, [adminTab]);
+    loadOutfits();
+    loadPending();
+  }, [loadOutfits, loadPending]);
 
   const handleApproveLook = async (id: string) => {
     setApprovingId(id);
+    setModerationError("");
     try {
       const res = await fetch("/api/looks/approve", {
         method: "POST",
@@ -195,27 +236,48 @@ export default function AdminOutfitsPage() {
           },
         }),
       });
-      if (res.ok) {
-        setPendingLooks((prev) => prev.filter((l) => l.id !== id));
-        setSelectedLook(null);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setModerationError(err.error ?? `Approval failed (${res.status}).`);
+        // 404/409: someone else already approved or rejected it — bring the
+        // queue and the table up to date behind the modal.
+        if (res.status === 404 || res.status === 409) {
+          loadPending();
+          loadOutfits();
+        }
+        return;
       }
+      setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+      setSelectedLook(null);
+      // The new outfit is built on the server, so read the list again rather
+      // than make one up here.
+      loadOutfits();
+    } catch {
+      setModerationError("Approval failed (network error).");
     } finally {
       setApprovingId(null);
     }
   };
 
   const handleRejectLook = async (id: string) => {
+    if (!confirm("Reject this look? It leaves the queue and will not be published.")) return;
     setApprovingId(id);
+    setModerationError("");
     try {
       const res = await fetch("/api/looks/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      if (res.ok) {
-        setPendingLooks((prev) => prev.filter((l) => l.id !== id));
-        setSelectedLook(null);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setModerationError(err.error ?? `Rejection failed (${res.status}).`);
+        return;
       }
+      setPendingLooks((prev) => prev.filter((l) => l.id !== id));
+      setSelectedLook(null);
+    } catch {
+      setModerationError("Rejection failed (network error).");
     } finally {
       setApprovingId(null);
     }
@@ -315,14 +377,11 @@ export default function AdminOutfitsPage() {
         body: JSON.stringify(body),
       });
 
+      // Any failure keeps the editor open with the reason: the outfit is only
+      // in the table once the database has it.
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        // If DB not configured (501), save locally
-        if (res.status === 501) {
-          saveLocally(body);
-        } else {
-          setSaveError(err.error ?? "Failed to save.");
-        }
+        setSaveError(err.error ?? `Failed to save (${res.status}).`);
         return;
       }
 
@@ -334,46 +393,10 @@ export default function AdminOutfitsPage() {
       }
       closeModal();
     } catch {
-      // Network error — save locally
-      saveLocally(body);
+      setSaveError("Network error — the outfit was not saved.");
     } finally {
       setSaving(false);
     }
-  };
-
-  const saveLocally = (body: typeof defaultForm & { items: { productId: string; role: OutfitRole; selectedColor?: string }[]; totalPriceMin: number; totalPriceMax: number; currency: string }) => {
-    const hydratedItems = body.items.map((i) => {
-      const p = products.find((p) => p.id === i.productId);
-      return p ? { product: p, role: i.role, selectedColor: i.selectedColor } : null;
-    }).filter(Boolean) as SelectedItem[];
-
-    if (editingId) {
-      setOutfits((prev) =>
-        prev.map((o) =>
-          o.id === editingId
-            ? { ...o, ...body, items: hydratedItems, totalPriceMin: body.totalPriceMin, totalPriceMax: body.totalPriceMax }
-            : o
-        )
-      );
-    } else {
-      const newOutfit: Outfit = {
-        id: `o-${Date.now()}`,
-        name: body.name,
-        occasion: body.occasion,
-        season: body.season,
-        description: body.description,
-        imageUrl: body.imageUrl || "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=90",
-        items: hydratedItems,
-        totalPriceMin: body.totalPriceMin,
-        totalPriceMax: body.totalPriceMax,
-        currency: "USD",
-        styleKeywords: body.styleKeywords,
-        isAIGenerated: body.isAIGenerated,
-        isSaved: false,
-      };
-      setOutfits((prev) => [newOutfit, ...prev]);
-    }
-    closeModal();
   };
 
   // ── Rows in the table, and the ones ticked ─────────────────────────────────
@@ -471,7 +494,7 @@ export default function AdminOutfitsPage() {
     if (!confirm(`Delete ${ids.length} selected outfit${ids.length > 1 ? "s" : ""}?`)) return;
 
     setBulkDeleting(true);
-    setDeleteError("");
+    setActionError("");
     const deleted: string[] = [];
     const failed: string[] = [];
     // One at a time: the delete endpoint takes a single id, and firing thirty at
@@ -479,7 +502,7 @@ export default function AdminOutfitsPage() {
     for (const id of ids) {
       try {
         const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
-        if (res.ok || res.status === 501) deleted.push(id);
+        if (res.ok) deleted.push(id);
         else failed.push(id);
       } catch {
         failed.push(id);
@@ -488,13 +511,14 @@ export default function AdminOutfitsPage() {
     setOutfits((prev) => prev.filter((o) => !deleted.includes(o.id)));
     deselect(deleted);
     if (failed.length) {
-      setDeleteError(`${failed.length} of ${ids.length} could not be deleted. They are still selected.`);
+      setActionError(`${failed.length} of ${ids.length} could not be deleted. They are still selected.`);
     }
     setBulkDeleting(false);
   };
 
   const handleToggleFeatured = async (outfit: Outfit) => {
     setFeaturingId(outfit.id);
+    setActionError("");
     const next = !outfit.isHomepageFeatured;
     try {
       const res = await fetch(`/api/outfits/${outfit.id}`, {
@@ -502,31 +526,38 @@ export default function AdminOutfitsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isHomepageFeatured: next }),
       });
-      if (res.ok || res.status === 501) {
+      if (res.ok) {
         setOutfits((prev) =>
           prev.map((o) => (o.id === outfit.id ? { ...o, isHomepageFeatured: next } : o))
         );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setActionError(err.error ?? `Could not update the homepage flag (${res.status}).`);
       }
+    } catch {
+      setActionError("Could not update the homepage flag (network error).");
     } finally {
       setFeaturingId(null);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (outfit: Outfit) => {
+    if (!confirm(`Delete "${outfit.name}"? This cannot be undone.`)) return;
+    const id = outfit.id;
     setDeleteId(id);
-    setDeleteError("");
+    setActionError("");
+    // The row goes only once the server says the outfit is gone.
     try {
       const res = await fetch(`/api/outfits/${id}`, { method: "DELETE" });
-      if (res.ok || res.status === 501) {
+      if (res.ok) {
         setOutfits((prev) => prev.filter((o) => o.id !== id));
         deselect([id]);
       } else {
         const err = await res.json().catch(() => ({}));
-        setDeleteError(err.error ?? "Failed to delete outfit.");
+        setActionError(err.error ?? `Failed to delete outfit (${res.status}).`);
       }
     } catch {
-      setOutfits((prev) => prev.filter((o) => o.id !== id));
-      deselect([id]);
+      setActionError("Failed to delete outfit (network error).");
     } finally {
       setDeleteId(null);
     }
@@ -536,6 +567,7 @@ export default function AdminOutfitsPage() {
     setSelectedItems((prev) => {
       const exists = prev.find((i) => i.product.id === product.id);
       if (exists) return prev.filter((i) => i.product.id !== product.id);
+      if (prev.length >= MAX_ITEMS) return prev;
       const role: OutfitRole =
         prev.length === 0 ? "hero" : prev.length === 1 ? "secondary" : "accent";
       return [...prev, { product, role }];
@@ -567,24 +599,30 @@ export default function AdminOutfitsPage() {
     }));
   };
 
-  // Filtered products for the picker
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      !productSearch ||
-      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.brand.toLowerCase().includes(productSearch.toLowerCase());
-    const matchesCategory = productCategory === "all" || p.category === productCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Filtered products for the picker. Memoised so typing in the outfit's own
+  // fields does not re-filter the whole catalogue on every key.
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.toLowerCase();
+    return products.filter((p) => {
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q);
+      const matchesCategory = productCategory === "all" || p.category === productCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, productSearch, productCategory]);
+  const shownProducts = useMemo(() => filteredProducts.slice(0, PICKER_LIMIT), [filteredProducts]);
+  const atItemLimit = selectedItems.length >= MAX_ITEMS;
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Outfits</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-            {loading ? "Loading..." : `${outfits.length} total · ${filteredOutfits.length} shown`}
+            {loading ? "Loading..." : outfitsError ? "Not loaded" : `${outfits.length} total · ${filteredOutfits.length} shown`}
           </p>
         </div>
         {adminTab === "outfits" && (
@@ -620,7 +658,10 @@ export default function AdminOutfitsPage() {
         {(["outfits", "pending"] as const).map((t) => (
           <button
             key={t}
-            onClick={() => setAdminTab(t)}
+            onClick={() => {
+              setAdminTab(t);
+              if (t === "pending") loadPending();
+            }}
             className={`px-5 py-3 text-xs tracking-[0.12em] uppercase font-medium border-b-2 -mb-px transition-colors ${
               adminTab === t
                 ? "border-[var(--foreground)] text-[var(--foreground)]"
@@ -644,9 +685,23 @@ export default function AdminOutfitsPage() {
       {/* ── Pending looks tab ── */}
       {adminTab === "pending" && (
         <div>
+          {pendingError && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+              <span>{pendingError}</span>
+              <button
+                onClick={() => {
+                  setLoadingPending(true);
+                  loadPending();
+                }}
+                className="ml-4 underline underline-offset-4 opacity-80 hover:opacity-100 transition-opacity"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {loadingPending ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">Loading…</p>
-          ) : pendingLooks.length === 0 ? (
+          ) : pendingError && pendingLooks.length === 0 ? null : pendingLooks.length === 0 ? (
             <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
           ) : (
             <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
@@ -667,7 +722,7 @@ export default function AdminOutfitsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       {look.generated_style && (
-                        <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 rounded-md">
+                        <span className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
                           {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
                         </span>
                       )}
@@ -703,15 +758,17 @@ export default function AdminOutfitsPage() {
           {...lookBackdrop}
         >
           <div
-            className="bg-[var(--background)] w-full max-w-3xl flex flex-col border border-[var(--border)] rounded-2xl overflow-hidden"
-            style={{ maxHeight: "90vh" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Review submitted look"
+            className="bg-[var(--background)] w-full max-w-3xl max-h-[90dvh] flex flex-col border border-[var(--border)] rounded-2xl overflow-y-auto md:overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                 {selectedLook.generated_style && (
-                  <span className="font-mono text-[8px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 rounded-md">
+                  <span className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
                     {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On You" : "AI"}
                   </span>
                 )}
@@ -726,6 +783,7 @@ export default function AdminOutfitsPage() {
               </div>
               <button
                 onClick={() => setSelectedLook(null)}
+                aria-label="Close"
                 className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -734,10 +792,11 @@ export default function AdminOutfitsPage() {
               </button>
             </div>
 
-            {/* Body: image left, pieces right */}
-            <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* Body: image left, pieces right; stacked on phones, where the
+                whole dialog scrolls instead of each column. */}
+            <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
               {/* Generated image */}
-              <div className="w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
+              <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--surface)] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedLook.generated_image}
@@ -747,7 +806,7 @@ export default function AdminOutfitsPage() {
               </div>
 
               {/* Pieces list */}
-              <div className="flex-1 flex flex-col border-l border-[var(--border)] overflow-y-auto divide-y divide-[var(--border)]">
+              <div className="flex-1 flex flex-col border-t md:border-t-0 md:border-l border-[var(--border)] md:overflow-y-auto divide-y divide-[var(--border)]">
                 {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
                   <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
                     <div className="w-12 h-12 shrink-0 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden">
@@ -756,12 +815,12 @@ export default function AdminOutfitsPage() {
                         <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className="font-mono text-[8px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
+                          <span className="font-mono text-[10px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-[8px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{piece.slot}</p>
+                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{piece.slot}</p>
                       <p className="text-xs text-[var(--foreground)] truncate">{piece.name ?? "—"}</p>
                     </div>
                   </div>
@@ -777,7 +836,7 @@ export default function AdminOutfitsPage() {
                 Prefilled from the submission, so approving unchanged publishes
                 exactly what the shopper wrote; empty means the approval
                 endpoint keeps its own fallback rather than publishing blanks. */}
-            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 max-h-[38vh] overflow-y-auto">
+            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
               <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-3">
                 Publish as
               </p>
@@ -788,7 +847,7 @@ export default function AdminOutfitsPage() {
                 onChange={(e) => setModeration((m) => ({ ...m, name: e.target.value }))}
                 placeholder="Community Look"
                 maxLength={120}
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors mb-3"
+                className={`${inputCls} mb-3`}
               />
 
               <textarea
@@ -797,21 +856,21 @@ export default function AdminOutfitsPage() {
                 placeholder="Description shown on the outfit page"
                 rows={3}
                 maxLength={2000}
-                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] outline-none focus:border-[var(--border-strong)] transition-colors resize-none mb-3"
+                className={`${inputCls} resize-none mb-3`}
               />
 
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <select
                   value={moderation.occasion}
                   onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
-                  className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] outline-none focus:border-[var(--border-strong)] transition-colors capitalize"
+                  className={`${selectCls} flex-1 capitalize`}
                 >
                   {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
                 <select
                   value={moderation.season}
                   onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
-                  className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-base md:text-[13px] text-[var(--foreground)] outline-none focus:border-[var(--border-strong)] transition-colors capitalize"
+                  className={`${selectCls} flex-1 capitalize`}
                 >
                   {SEASONS.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
@@ -839,21 +898,28 @@ export default function AdminOutfitsPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 px-5 py-4 border-t border-[var(--border)] shrink-0">
-              <button
-                onClick={() => handleApproveLook(selectedLook.id)}
-                disabled={approvingId === selectedLook.id}
-                className="flex-1 h-10 text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
-              >
-                {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
-              </button>
-              <button
-                onClick={() => handleRejectLook(selectedLook.id)}
-                disabled={approvingId === selectedLook.id}
-                className="flex-1 h-10 text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
-              >
-                Reject
-              </button>
+            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
+              {moderationError && (
+                <p className="mb-3 rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+                  {moderationError}
+                </p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleApproveLook(selectedLook.id)}
+                  disabled={approvingId === selectedLook.id}
+                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+                >
+                  {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
+                </button>
+                <button
+                  onClick={() => handleRejectLook(selectedLook.id)}
+                  disabled={approvingId === selectedLook.id}
+                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-red-400 hover:text-red-400 disabled:opacity-40 transition-colors"
+                >
+                  Reject
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -862,11 +928,15 @@ export default function AdminOutfitsPage() {
       {/* ── Outfits tab ── */}
       {adminTab === "outfits" && (
         <>
-      {/* Delete error */}
-      {deleteError && (
-        <div className="mb-4 flex items-center justify-between border border-red-300 bg-red-50 px-4 py-2.5 text-xs text-red-600">
-          <span>{deleteError}</span>
-          <button onClick={() => setDeleteError("")} className="ml-4 text-red-400 hover:text-red-600 transition-colors">
+      {/* Row action error */}
+      {actionError && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-red-400/30 bg-red-400/15 px-4 py-2.5 text-xs text-red-500">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError("")}
+            aria-label="Dismiss"
+            className="ml-4 opacity-60 hover:opacity-100 transition-opacity"
+          >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
@@ -909,7 +979,7 @@ export default function AdminOutfitsPage() {
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="mb-3 flex items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
+        <div className="mb-3 flex flex-wrap items-center gap-3 border border-[var(--border)] rounded-xl px-4 py-2.5 bg-[var(--surface)]">
           <span className="text-xs text-[var(--foreground)]">{selectedIds.size} selected</span>
           <button
             onClick={handleBulkDelete}
@@ -956,7 +1026,7 @@ export default function AdminOutfitsPage() {
                   key={h}
                   className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
                     i === 8 ? " text-right" : ""
-                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}${i === 7 ? " hidden md:table-cell" : ""}`}
+                  }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
                 >
                   {h}
                 </th>
@@ -968,6 +1038,21 @@ export default function AdminOutfitsPage() {
               <tr>
                 <td colSpan={10} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
                   Loading...
+                </td>
+              </tr>
+            ) : outfitsError ? (
+              <tr>
+                <td colSpan={10} className="px-4 py-12 text-center text-sm text-red-500">
+                  {outfitsError}{" "}
+                  <button
+                    onClick={() => {
+                      setLoading(true);
+                      loadOutfits();
+                    }}
+                    className="underline underline-offset-4 opacity-80 hover:opacity-100 transition-opacity"
+                  >
+                    Retry
+                  </button>
                 </td>
               </tr>
             ) : filteredOutfits.length === 0 ? (
@@ -1050,8 +1135,8 @@ export default function AdminOutfitsPage() {
                       </span>
                     </div>
                   </td>
-                  {/* Price */}
-                  <td className="px-4 py-3">
+                  {/* Price — hidden below lg together with its header */}
+                  <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-sm text-[var(--foreground)]">
                       ${outfit.totalPriceMin}–${outfit.totalPriceMax}
                     </span>
@@ -1062,7 +1147,7 @@ export default function AdminOutfitsPage() {
                       {outfit.styleKeywords.slice(0, 2).map((kw) => (
                         <span
                           key={kw}
-                          className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-1.5 py-0.5 leading-none rounded-md"
+                          className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 leading-none rounded-full"
                         >
                           {kw}
                         </span>
@@ -1070,7 +1155,7 @@ export default function AdminOutfitsPage() {
                     </div>
                   </td>
                   {/* Homepage featured */}
-                  <td className="px-4 py-3 hidden md:table-cell">
+                  <td className="px-4 py-3">
                     <button
                       onClick={() => handleToggleFeatured(outfit)}
                       disabled={featuringId === outfit.id}
@@ -1079,8 +1164,8 @@ export default function AdminOutfitsPage() {
                       aria-label="Toggle homepage featured"
                     >
                       {outfit.isHomepageFeatured ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" fill="#f59e0b" stroke="#f59e0b" strokeWidth="1" strokeLinejoin="round" />
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-amber-500">
+                          <path d="M8 1L9.85 5.55L15 6.18L11.5 9.55L12.42 14.69L8 12.17L3.58 14.69L4.5 9.55L1 6.18L6.15 5.55L8 1Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
                         </svg>
                       ) : (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--foreground-subtle)] hover:text-amber-400">
@@ -1107,13 +1192,21 @@ export default function AdminOutfitsPage() {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(outfit.id)}
+                        onClick={() => handleDelete(outfit)}
                         disabled={deleteId === outfit.id}
-                        className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors p-1 disabled:opacity-40"
+                        className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors p-1 disabled:opacity-40"
                         aria-label="Delete"
+                        title="Delete outfit"
                       >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M2.5 2.5L11.5 11.5M11.5 2.5L2.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                        {/* A bin, not a cross: the cross on this page means "close". */}
+                        <svg width="14" height="14" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path
+                            d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -1127,9 +1220,14 @@ export default function AdminOutfitsPage() {
 
       {/* ── MODAL ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-50 flex items-center lg:items-start justify-center bg-black/60 overflow-y-auto p-4 lg:py-6">
+          {/* Below lg the dialog scrolls inside itself; from lg the overlay
+              scrolls and each column keeps its own scroll. */}
           <div
-            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingId ? "Edit outfit" : "New outfit"}
+            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
             style={{ background: "var(--background)" }}
           >
             {/* Modal header */}
@@ -1139,6 +1237,7 @@ export default function AdminOutfitsPage() {
               </h2>
               <button
                 onClick={closeModal}
+                aria-label="Close"
                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -1148,7 +1247,7 @@ export default function AdminOutfitsPage() {
             </div>
 
             {/* Modal body: two columns */}
-            <div className="flex flex-col lg:flex-row min-h-0">
+            <div className="flex flex-col lg:flex-row lg:min-h-0">
 
               {/* ── LEFT: Product picker ── */}
               <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
@@ -1170,10 +1269,11 @@ export default function AdminOutfitsPage() {
                       <button
                         key={value}
                         onClick={() => setProductCategory(value)}
-                        className={`text-[9px] uppercase tracking-[0.1em] px-2.5 py-1 border transition-colors ${
+                        aria-pressed={productCategory === value}
+                        className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                           productCategory === value
-                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                         }`}
                       >
                         {label}
@@ -1183,23 +1283,27 @@ export default function AdminOutfitsPage() {
                 </div>
 
                 {/* Product grid */}
-                <div className="overflow-y-auto flex-1 p-4" style={{ maxHeight: "420px" }}>
+                <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
                   {loadingProducts ? (
                     <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading products...</p>
                   ) : filteredProducts.length === 0 ? (
                     <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">No products found.</p>
                   ) : (
+                    <>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {filteredProducts.map((product) => {
+                      {shownProducts.map((product) => {
                         const isSelected = selectedItems.some((i) => i.product.id === product.id);
+                        const blocked = !isSelected && atItemLimit;
                         return (
                           <button
                             key={product.id}
                             onClick={() => toggleItem(product)}
-                            className={`text-left border transition-colors group relative ${
+                            disabled={blocked}
+                            title={blocked ? `An outfit takes up to ${MAX_ITEMS} items` : undefined}
+                            className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
                               isSelected
                                 ? "border-[var(--foreground)] bg-[var(--surface)]"
-                                : "border-[var(--border)] hover:border-[var(--foreground)]"
+                                : "border-[var(--border)] hover:border-[var(--foreground)] disabled:hover:border-[var(--border)]"
                             }`}
                           >
                             {/* Product image */}
@@ -1213,7 +1317,7 @@ export default function AdminOutfitsPage() {
                               />
                               {/* Selected overlay */}
                               {isSelected && (
-                                <div className="absolute inset-0 bg-[var(--foreground)]/20 flex items-center justify-center">
+                                <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
                                   <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                                       <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1232,21 +1336,27 @@ export default function AdminOutfitsPage() {
                         );
                       })}
                     </div>
+                    {filteredProducts.length > shownProducts.length && (
+                      <p className="text-xs text-[var(--foreground-subtle)] text-center pt-4">
+                        Showing {shownProducts.length} of {filteredProducts.length} — refine the search or pick a category to find the rest.
+                      </p>
+                    )}
+                    </>
                   )}
                 </div>
               </div>
 
               {/* ── RIGHT: Outfit composer ── */}
-              <div className="lg:w-[45%] flex flex-col overflow-y-auto" style={{ maxHeight: "600px" }}>
+              <div className="lg:w-[45%] flex flex-col lg:overflow-y-auto lg:max-h-[600px]">
                 <div className="px-5 py-4 flex flex-col gap-4">
 
                   {/* Selected items */}
                   <div>
                     <p className={labelCls}>
-                      Selected items ({selectedItems.length}/4)
+                      Selected items ({selectedItems.length}/{MAX_ITEMS})
                     </p>
                     {selectedItems.length === 0 ? (
-                      <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] px-3 py-4 text-center">
+                      <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] rounded-xl px-3 py-4 text-center">
                         Click products on the left to add them
                       </p>
                     ) : (
@@ -1261,10 +1371,10 @@ export default function AdminOutfitsPage() {
                           return (
                           <div
                             key={item.product.id}
-                            className="flex flex-col gap-2 border border-[var(--border)] p-2"
+                            className="flex flex-col gap-2 border border-[var(--border)] rounded-xl p-2"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden">
+                              <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden rounded-lg">
                                 <Image
                                   src={thumbSrc}
                                   alt={item.product.name}
@@ -1281,7 +1391,7 @@ export default function AdminOutfitsPage() {
                               <select
                                 value={item.role}
                                 onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                                className="text-[10px] uppercase tracking-[0.08em] border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                                className="text-[10px] uppercase tracking-[0.08em] rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
                               >
                                 {ROLES.map((r) => (
                                   <option key={r} value={r}>{r}</option>
@@ -1290,6 +1400,7 @@ export default function AdminOutfitsPage() {
                               {/* Remove */}
                               <button
                                 onClick={() => removeItem(item.product.id)}
+                                aria-label={`Remove ${item.product.name}`}
                                 className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 p-1"
                               >
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -1308,7 +1419,7 @@ export default function AdminOutfitsPage() {
                                       key={color}
                                       title={color}
                                       onClick={() => setSelectedColor(item.product.id, color)}
-                                      className={`relative w-6 h-6 overflow-hidden border transition-colors ${
+                                      className={`relative w-10 h-10 md:w-6 md:h-6 rounded-full overflow-hidden border transition-colors ${
                                         isActive
                                           ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
                                           : "border-[var(--border)] hover:border-[var(--foreground)]"
@@ -1323,7 +1434,7 @@ export default function AdminOutfitsPage() {
                                           sizes="24px"
                                         />
                                       ) : (
-                                        <span className="text-[7px] leading-none text-[var(--foreground-subtle)] capitalize px-0.5 truncate block mt-1">{color[0]}</span>
+                                        <span className="flex w-full h-full items-center justify-center text-[10px] leading-none text-[var(--foreground-subtle)] uppercase">{color[0]}</span>
                                       )}
                                     </button>
                                   );
@@ -1358,7 +1469,7 @@ export default function AdminOutfitsPage() {
                   </div>
 
                   {/* Occasion + Season */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Occasion</label>
                       <select
@@ -1406,10 +1517,11 @@ export default function AdminOutfitsPage() {
                           key={kw}
                           type="button"
                           onClick={() => toggleKeyword(kw)}
-                          className={`text-[9px] uppercase tracking-[0.1em] px-2 py-1 border transition-colors ${
+                          aria-pressed={form.styleKeywords.includes(kw)}
+                          className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
                             form.styleKeywords.includes(kw)
-                              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-                              : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]"
+                              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                           }`}
                         >
                           {kw}
@@ -1424,7 +1536,7 @@ export default function AdminOutfitsPage() {
 
                     {/* Preview */}
                     {form.imageUrl ? (
-                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden bg-[var(--surface)]">
+                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--surface)]">
                         <Image
                           src={form.imageUrl}
                           alt="Cover preview"
@@ -1436,17 +1548,18 @@ export default function AdminOutfitsPage() {
                         <button
                           type="button"
                           onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
-                          className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
+                          className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
                           title="Remove image"
+                          aria-label="Remove image"
                         >
                           ×
                         </button>
                       </div>
                     ) : (
-                      <label className={`block cursor-pointer border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                      <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp,image/avif"
                           className="sr-only"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
@@ -1464,7 +1577,7 @@ export default function AdminOutfitsPage() {
                                 <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                               </svg>
                               <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
-                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP · max 10 MB</span>
+                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
                             </>
                           )}
                         </div>
