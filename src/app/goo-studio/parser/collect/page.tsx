@@ -80,6 +80,25 @@ const MODES = [
  */
 const MODE_KEY = "goo-collect-mode";
 
+function saveMode(linksOnly: boolean) {
+  try {
+    window.localStorage.setItem(MODE_KEY, linksOnly ? "links" : "cards");
+  } catch {
+    /* storage blocked — the choice holds for this tab only */
+  }
+}
+
+/**
+ * The mode the extension asked for, when it asked. Its popup has a "Links
+ * only" box of its own, and the box the admin ticked for this run beats the
+ * mode this tab remembers. `linkOnly` is how extension 1.0.5 spelled it.
+ */
+function modeFromExtension(payload: Record<string, unknown>): boolean | undefined {
+  if (typeof payload.linksOnly === "boolean") return payload.linksOnly;
+  if (typeof payload.linkOnly === "boolean") return payload.linkOnly;
+  return undefined;
+}
+
 /** What a links-only run's plan found among the store's pages. */
 interface LinkSearch {
   cards: number;
@@ -108,10 +127,11 @@ export default function CollectPage() {
   const [notice, setNotice] = useState("");
   /**
    * Whether this run makes cards or only adds this store to the cards we have.
-   * Chosen here rather than in the extension: this tab makes every plan and
-   * import call, so the choice travels with them and the extension needs no
-   * change. Mirrored in a ref for the same reason as Stop below, and kept in
-   * the browser (`MODE_KEY`) so a tab the extension opens runs in it too.
+   * Chosen here, or in the extension's popup when it sends a choice with the
+   * run (`modeFromExtension`) — this tab makes every plan and import call, so
+   * the choice travels with them either way. Mirrored in a ref for the same
+   * reason as Stop below, and kept in the browser (`MODE_KEY`) so a tab the
+   * extension opens runs in it too.
    */
   const [linksOnly, setLinksOnly] = useState(false);
   const linksOnlyRef = useRef(false);
@@ -204,6 +224,12 @@ export default function CollectPage() {
           const target = typeof payload.url === "string" ? payload.url : "";
           setStore(target);
           try {
+            const asked = modeFromExtension(payload);
+            if (asked !== undefined && asked !== linksOnlyRef.current) {
+              linksOnlyRef.current = asked;
+              setLinksOnly(asked);
+              saveMode(asked);
+            }
             const data = await callApi({ action: "plan", ...payload, linksOnly: linksOnlyRef.current });
             const urls = Array.isArray(data.urls) ? (data.urls as string[]) : [];
             setPlanned((n) => n + urls.length);
@@ -237,7 +263,7 @@ export default function CollectPage() {
               action: "ingest",
               ...payload,
               titles: titlesRef.current,
-              linksOnly: linksOnlyRef.current,
+              linksOnly: modeFromExtension(payload) ?? linksOnlyRef.current,
             });
             const result = data.result as CrawlItemResult | undefined;
             if (result) setResults((prev) => [...prev, result]);
@@ -280,11 +306,7 @@ export default function CollectPage() {
   function chooseMode(value: boolean) {
     linksOnlyRef.current = value;
     setLinksOnly(value);
-    try {
-      window.localStorage.setItem(MODE_KEY, value ? "links" : "cards");
-    } catch {
-      /* storage blocked — the choice holds for this tab only */
-    }
+    saveMode(value);
   }
 
   function stop() {
