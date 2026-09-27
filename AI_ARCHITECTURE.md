@@ -37,9 +37,9 @@ Anthropic SDK удалён из зависимостей в сентябре 202
 вызывает. Карточка «AI Stylist showcase» в Settings (`/api/admin/homepage-stylist`)
 выбирает товары для витрины на главной и к чату не относится.
 
-В репозитории ещё есть мёртвые AI-файлы. Среди них страница `goo-studio/image-tools` с роутом
-удаления фона через Replicate и датасет `training/goo-stylist-dataset.jsonl`. Они
-ждут удаления с разрешения CEO и частью продукта не являются.
+Мёртвые AI-файлы — страница `goo-studio/image-tools` с роутом удаления фона через
+Replicate и датасет `training/goo-stylist-dataset.jsonl` — удалены 2026-09-27 с
+разрешения CEO (коммит `7898c3f`). Частью продукта они не были.
 
 ---
 

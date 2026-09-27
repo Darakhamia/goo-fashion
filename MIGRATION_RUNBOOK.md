@@ -15,6 +15,10 @@
 `/api/health` (этап 7, п.1), новые миграции 023 и 024 (этап 6.5), итоговый
 чеклист (§7). Прошёл ли уже переезд и что из чеклиста сделано — уточнить у CEO.
 
+**Обновлено 27.09.2026.** Деплоя этого репозитория на Vercel больше нет (подтвердил
+CEO), `vercel.json` удалён; удалены и мёртвые `/api/unlock` и `/api/nike`. Пункты
+чеклистов про Vercel закрыты этим ответом.
+
 ---
 
 ## 1. Что выяснилось до начала работ
@@ -35,6 +39,8 @@ curl -I https://goo-fashion.com -> HTTP/2 200, x-powered-by: Next.js,
 `src/proxy.ts` («behind Vercel's proxy»), `vercel.json` с cron-расписанием и
 записи аудита от 7 августа про «переменные окружения Vercel». Опираться на эти
 файлы при миграции нельзя — они описывают прошлый хостинг.
+(Обновление 27.09.2026: `README.md` и `BILLING.md` с тех пор переписаны под Coolify,
+`vercel.json` удалён.)
 
 ### 1.2. GOO Fashion работает на self-hosted Supabase — он переезжает вместе с ним **[проверено]**
 
@@ -182,6 +188,10 @@ Plane заново, либо убрать интеграцию.
    п.5, подробно — `BILLING.md`). Работает ли cron сейчас, видно без SQL:
    `/goo-studio/subscriptions` → карточка «Renewal cron» и плашка вверху страницы,
    если последнего прогона нет или он был 36 ч назад и раньше.
+   Обновление 27.09.2026: деплоя в Vercel нет (подтвердил CEO), `vercel.json`
+   удалён — вариант (б) отпал. Заведена ли задача в Coolify, неизвестно; по словам
+   CEO, подписки сейчас, похоже, не работают вообще — нужен отдельный разбор
+   (`docs/CODE_REVIEW_2026-09.md`, «Что открыто»).
 4. **`NEXT_PUBLIC_SITE_URL`.** В `.env.example` стоит `https://www.goo-fashion.com`,
    а `src/proxy.ts` отвечает на www редиректом 308 на апекс. Из этой переменной
    строится `webHookUrl` для monobank (`checkout/route.ts:53`). Если в проде
@@ -297,7 +307,7 @@ docker inspect <goo-app> --format '{{json .Mounts}}' | jq
       обязательно перенести как есть** (§этап 6)
 - [ ] репозиторий, ветка и способ сборки приложения в Coolify (nixpacks? Dockerfile?)
 - [ ] есть ли scheduled task на `/api/billing/cron/renew`
-- [ ] жив ли проект этого репозитория в Vercel (проверяет David в своей учётке)
+- [x] жив ли проект этого репозитория в Vercel — нет (CEO, 27.09.2026), `vercel.json` удалён
 - [ ] прогнаны ли на проде миграции 023 и 024 (как проверить — этап 6.5)
 
 ### Этап 2 — заказ сервера
@@ -485,23 +495,22 @@ docker exec <supabase-db> psql -U postgres -c "SELECT to_regclass('public.settin
    **Не переносить** — код их не читает:
    `DATABASE_URL` (§1.3); `ANTHROPIC_API_KEY` (SDK удалён в сентябре 2026);
    `NEXT_PUBLIC_SUPER_ADMIN_USER_ID` (права супер-админа теперь приходят с сервера
-   из `SUPER_ADMIN_USER_ID`); `BYPASS_KEY` (только `/api/unlock` — остаток снятой
-   заглушки coming-soon: ставит cookie, который код больше нигде не читает; ждёт
-   удаления); `RAPIDAPI_NIKE_KEY` (только
-   мёртвый `/api/nike`).
+   из `SUPER_ADMIN_USER_ID`); `BYPASS_KEY` (читал только `/api/unlock` — остаток снятой
+   заглушки coming-soon, роут удалён 27.09.2026); `RAPIDAPI_NIKE_KEY` (читал только
+   мёртвый `/api/nike`, удалён 27.09.2026).
 3. Persistent volumes приложения — нет (§1.4). Пункт пропускается.
 4. Memory limits: приложению — 1 GiB, постгресу Supabase — 2 GiB, остальным
    контейнерам стека — по 256–512 MiB. Это ровно то, чего не хватало старому
    серверу: OOM-killer выбирает самый жирный процесс, а не виновника.
 5. **Завести Scheduled Task автопродления** (Coolify → приложение → Scheduled
-   Tasks). В `vercel.json` cron объявлен для платформы, которой здесь нет, — на
-   Coolify этот файл ничего не запускает. Подробности и разбор ответов — в
+   Tasks). Других планировщиков нет: деплоя на Vercel больше нет, `vercel.json`
+   удалён 27.09.2026. Подробности и разбор ответов — в
    `BILLING.md`, раздел «Renewal cron on Coolify».
 
    | Поле | Значение |
    |---|---|
    | Name | `billing-renew` |
-   | Frequency | `0 9 * * *` — раз в сутки (09:00 UTC, как было в `vercel.json`; проверить часовой пояс сервера в Coolify) |
+   | Frequency | `0 9 * * *` — раз в сутки (09:00 UTC, как было в удалённом `vercel.json`; проверить часовой пояс сервера в Coolify) |
    | Command | `curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"` |
 
    Команда выполняется внутри контейнера приложения: вызов идёт на localhost,
@@ -510,7 +519,7 @@ docker exec <supabase-db> psql -U postgres -c "SELECT to_regclass('public.settin
 
    Правила:
    - **Один планировщик.** На старом сервере задачу отключить в момент
-     переключения, деплой в Vercel (если жив, §2.3) — выключить. Два прогона в
+     переключения; деплоя в Vercel нет (подтверждено 27.09.2026). Два прогона в
      сутки могут списать с карты дважды: платёж, который monobank оставил в
      `processing`, в строке подписки не отмечается, и второй прогон спишет снова.
    - **Проверка после первого прогона:** в логе задачи в Coolify — код 0 и JSON
@@ -616,7 +625,7 @@ rsync -avz --ignore-existing \
 - [ ] Приватная сеть, attach обоих серверов
 - [ ] Hetzner Cloud Firewall на новом сервере
 - [ ] Выгрузка переменных окружения и ключей Supabase из Coolify UI
-- [ ] Ответ: жив ли деплой этого репозитория в Vercel (§2.3)
+- [x] Ответ: жив ли деплой этого репозитория в Vercel — нет (CEO, 27.09.2026)
 - [ ] Прогон миграций 023 и 024 на базе (этап 6.5)
 - [ ] Scheduled Task автопродления и healthcheck в новом Coolify (этап 7, п.1 и п.5)
 - [ ] Понижение TTL и переключение трёх A-записей
@@ -653,7 +662,7 @@ rsync -avz --ignore-existing \
       мёртвые (`DATABASE_URL`, `ANTHROPIC_API_KEY` и др.) не заведены
 - [ ] Healthcheck `/api/health` включён, деплой проходит его
 - [ ] Scheduled Task на `/api/billing/cron/renew` заведён, старый (Coolify на
-      старом сервере, Vercel) отключён; после первого прогона карточка «Renewal
+      старом сервере) отключён (Vercel-деплоя нет с 27.09.2026); после первого прогона карточка «Renewal
       cron» на `/goo-studio/subscriptions` зелёная
 - [ ] Memory limits выставлены
 - [ ] Проверено до переключения (curl --resolve / hosts)

@@ -39,12 +39,12 @@
 | Команда | Что делает |
 |---|---|
 | `npm run dev` | dev-сервер |
-| `npm run lint` | ESLint по всему репозиторию. В CI пока не блокирует: на master есть старые ошибки |
+| `npm run lint` | ESLint по всему репозиторию. Ошибок ноль (с 2026-09-27), в CI шаг блокирующий; предупреждения прогон не валят |
 | `npx tsc --noEmit` | проверка типов |
 | `npm run build` | продакшен-сборка (`next build`) |
 | `npm run start` | запуск собранного приложения на `0.0.0.0:$PORT` (по умолчанию 3000) |
 
-Автотестов в репозитории нет. Перед коммитом прогоняйте `npx tsc --noEmit` и `npm run build`: CI делает то же самое.
+Автотестов в репозитории нет. Перед коммитом прогоняйте `npm run lint`, `npx tsc --noEmit` и `npm run build`: CI делает то же самое.
 
 ## Структура
 
@@ -54,13 +54,13 @@
 | `src/app/goo-studio/` | админка: товары, образы, импорт, парсер, бренды, блог, рассылки, пользователи, подписки, аналитика, журнал действий. Руководство — `docs/ADMIN.md` |
 | `src/app/api/` | API-роуты: публичные (`products`, `outfits`, `stylist`, `generate-outfit`, `billing`, `analytics` и др.) и `api/admin/*` для админки |
 | `src/proxy.ts` | proxy Next 16 (бывший middleware): редирект 308 с `www.` на домен без `www`, доступ к `/goo-studio` (только админы), `/profile`, `/saved` (только после входа) |
-| `src/components/` | компоненты интерфейса. Кнопки собираются по рецептам `DESIGN_SYSTEM.md`, `components/ui/button.tsx` не использовать |
+| `src/components/` | компоненты интерфейса. Общего компонента кнопки нет: кнопки собираются по рецептам `DESIGN_SYSTEM.md` (§5.3, в админке §9) |
 | `src/lib/` | общий код: тарифы (`plans.ts`), SEO (`seo.ts`), клиент Supabase (`supabase.ts`), слой данных (`data/db.ts`: демо-данные отдаются только без Supabase), контексты, таксономия |
 | `src/lib/server/` | только серверный код: проверка админа, monobank, подписки, оповещения по оплате, rate-limit, AI-клиенты, журнал действий админов, зеркалирование фото товаров |
 | `src/lib/server/parser/` | парсер товаров и общий конвейер импорта (`import-product.ts`): через него идут парсер, обход каталога, расширение и CSV |
 | `extension/` | расширение Chrome «Goo Collect»: собирает каталог магазина через браузер админа, когда магазин не пускает сервер |
 | `supabase/migrations/` | пронумерованные SQL-миграции |
-| `supabase-schema.sql`, `supabase-migration-*.sql` | базовая схема и ранние миграции (подписки, события оплаты, лайки и сохранённые образы, цветовые группы, логотипы брендов) |
+| `supabase-schema.sql`, `supabase-migration-*.sql` | базовая схема и ранние миграции (подписки, события оплаты, лайки и сохранённые образы, логотипы брендов); цветовые группы — `supabase/migrations/021_color_groups.sql` |
 | `scripts/` | `migration-smoke.sh` (smoke-проверка сайта и Supabase при переезде сервера), вспомогательные Python-скрипты для картинок |
 
 ## Деплой
@@ -69,10 +69,10 @@
 - **Сборка.** Coolify собирает через nixpacks по `nixpacks.toml`: `npm ci --no-audit --no-fund`, затем `npm run build` и `npm run start`. Там же ограничение памяти сборки (`NODE_OPTIONS=--max-old-space-size=3072`). `NPM_CONFIG_PRODUCTION=false` вместе с `.npmrc` ставит devDependencies, без которых `next build` не соберётся. В комментариях этих файлов платформа названа Railway, это устарело.
 - **Healthcheck.** Для него предназначен `GET /api/health`: отвечает 200 без обращения к базе и внешним сервисам. Включён ли healthcheck в Coolify на проде — уточнить у CEO (в `MIGRATION_RUNBOOK.md` это пункт чеклиста).
 - **Переменные окружения** задаются в Coolify, список — `.env.example`. Переменные `NEXT_PUBLIC_*` вшиваются в сборку, поэтому они должны быть доступны и при сборке, а не только при запуске. То же нужно `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`: `next build` пререндерит главную, sitemap и блог по данным из базы, и без них в эти страницы попадёт демо-каталог (до первой перегенерации ISR).
-- **Cron автопродления подписок.** `vercel.json` на проде не работает. Продление запускает Scheduled Task в Coolify: раз в день `GET /api/billing/cron/renew` с заголовком `Authorization: Bearer $CRON_SECRET`. Подробности и проверка — в `BILLING.md`. Заведена ли задача на проде, нужно уточнить у CEO.
+- **Cron автопродления подписок.** Деплоя на Vercel больше нет (подтвердил CEO 2026-09-27), `vercel.json` удалён. Продление запускает только Scheduled Task в Coolify: раз в день `GET /api/billing/cron/renew` с заголовком `Authorization: Bearer $CRON_SECRET`. Подробности и проверка — в `BILLING.md`. Заведена ли задача на проде, неизвестно; по словам CEO, подписки сейчас, похоже, не работают вообще — нужен отдельный разбор (`docs/CODE_REVIEW_2026-09.md`, «Что открыто»).
 - **Миграции базы** при деплое не запускаются. SQL-файлы применяются вручную в SQL-редакторе Supabase (или через `psql`). Каких колонок из поздних миграций не хватает в живой базе, показывает карточка Database schema в `/goo-studio/settings` (она проверяет список необязательных колонок, а не всю схему).
 - **Как запускается деплой** (автоматически по push в `master` или вручную из Coolify), в репозитории не записано. Уточнить у CEO.
-- **CI** — `.github/workflows/ci.yml`, срабатывает на push в `master` и на pull request: `npm ci`, затем lint (не блокирует), `npx tsc --noEmit` и `npm run build`.
+- **CI** — `.github/workflows/ci.yml`, срабатывает на push в `master` и на pull request: `npm ci`, затем lint, `npx tsc --noEmit` и `npm run build`; все три шага блокирующие.
 
 ## Документация
 

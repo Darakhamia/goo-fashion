@@ -4,7 +4,9 @@ Real subscription billing for the paid plans (Basic / Pro / Premium), with
 **monthly auto-renewal**. Replaces the old demo "upgrade instantly" flow.
 
 Checked against the code on 2026-09-26. Production runs on Coolify (own server,
-nixpacks build), not on Vercel.
+nixpacks build). The old Vercel deployment is gone (confirmed by the CEO on
+2026-09-27) and `vercel.json` was deleted, so the Coolify Scheduled Task below is
+the only thing that can run renewals.
 
 ## How it works
 
@@ -56,16 +58,17 @@ nixpacks build), not on Vercel.
    - Optional: `MONOBANK_API_BASE`, `BILLING_USD_UAH_RATE`;
      `MONOBANK_PRICE_BASIC` / `_PRO` / `_PREMIUM` (hryvnia) — see the currency
      note above before setting them.
-3. **Create the Coolify Scheduled Task** — see the next section. `vercel.json`
-   also declares this cron, but that file only works on Vercel; on Coolify it
-   does nothing.
+3. **Create the Coolify Scheduled Task** — see the next section. There is no
+   other scheduler: `vercel.json` was deleted on 2026-09-27.
 4. The webhook URL is registered automatically per-invoice (`webHookUrl`), so no
    manual webhook config is needed in the monobank dashboard.
 
 ## Renewal cron on Coolify
 
-Whether this task already exists on production cannot be seen from the code —
-confirm with the CEO (or check the Renewal cron card, below).
+Whether this task already exists on production cannot be seen from the code and
+is still unknown (check the Renewal cron card, below). On 2026-09-27 the CEO
+reported that subscriptions seem not to work at all right now; a dedicated
+investigation is pending (`docs/CODE_REVIEW_2026-09.md`, «Что открыто»).
 
 Coolify → the app → **Scheduled Tasks** → add:
 
@@ -92,9 +95,9 @@ node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/billing/cron/r
 Rules:
 - **Once a day, one scheduler.** A charge that monobank leaves in
   `processing`/`hold` is not written to the row, so a second run before the
-  webhook arrives charges the same card again. For the same reason make sure no
-  old Vercel deployment of this repo is still running the `vercel.json` cron
-  (whether one is still alive — confirm with the CEO).
+  webhook arrives charges the same card again. The old Vercel deployment and its
+  `vercel.json` cron are confirmed gone (2026-09-27), so the only way to get two
+  schedulers is a second Coolify task (or an outside cron) calling this endpoint.
 - A manual run from outside is the same call:
   `curl -fsS -H "Authorization: Bearer <CRON_SECRET>" https://goo-fashion.com/api/billing/cron/renew`.
   It charges every due subscription for real.
@@ -241,4 +244,3 @@ decision.
 | `src/app/api/admin/users/[id]/route.ts` | Admin: delete user (auto-renew off first), change plan |
 | `supabase-migration-subscriptions.sql` | `subscriptions` table |
 | `supabase-migration-billing-events.sql` | `billing_events` table |
-| `vercel.json` | Cron declaration for Vercel only — not used in production |

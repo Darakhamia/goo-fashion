@@ -6,7 +6,7 @@
 
 | # | Блок | Статус |
 |---|---|---|
-| 1 | Мёртвый код и мусор во всём репозитории | исправлено; удаление файлов ждёт разрешения CEO |
+| 1 | Мёртвый код и мусор во всём репозитории | исправлено, мёртвые файлы удалены 2026-09-27 |
 | 2 | Админка: каждая страница — работоспособность, дубли, дизайн, скорость | исправлено, плюс мобильная версия |
 | 3 | API и безопасность серверной части | впереди (заметная часть закрыта по ходу: см. «Итоги») |
 | 4 | Публичный сайт: страницы, компоненты, вес и скорость | впереди |
@@ -42,7 +42,7 @@ CEO принял рекомендации ревью («начать чинит�
 
 ## Итоги исправлений (2026-09-26)
 
-Всё — в ветке `claude/elegant-pascal-z9vtak`, PR Darakhamia/goo-fashion#879. После каждого шага: `tsc` чисто, `next build` зелёный, CI зелёный. Линтер: 3 ошибки, и все в мёртвых файлах, ждущих удаления (`coming-soon/FeatureCarousel.tsx`, `ProductReviews.tsx`, `parallax-floating.tsx`); после удаления будет 0 и в CI можно снять `continue-on-error` у шага lint.
+Всё — в ветке `claude/elegant-pascal-z9vtak`, PR Darakhamia/goo-fashion#879. После каждого шага: `tsc` чисто, `next build` зелёный, CI зелёный. Линтер на 2026-09-26: 3 ошибки, все в мёртвых файлах (`coming-soon/FeatureCarousel.tsx`, `ProductReviews.tsx`, `parallax-floating.tsx`). 2026-09-27 эти файлы удалены (`7898c3f`): `eslint` — 0 ошибок, `continue-on-error` у шага lint в `.github/workflows/ci.yml` снят, линт в CI снова блокирующий.
 
 ### Как делали
 
@@ -82,20 +82,21 @@ CEO принял рекомендации ревью («начать чинит�
 | `dc0bf44` | Утечка начала токена Replicate и ошибок стилиста; кривая `--ease-drawer` |
 | `3d5f73d`, `f57e69e`, `e3f4ec2` | Документация |
 | `fbf7d08` | graphify: граф перестроен, CLI ставится при старте сессии |
+| `7898c3f` | 2026-09-27, с разрешения CEO: удалены мёртвые файлы, роуты и мусор, которые ревью нашло целиком мёртвыми (список — `git show --stat 7898c3f`), а также `vercel.json`; пакеты `lucide-react`, `@radix-ui/react-slot`, `class-variance-authority`, `clsx`, `tailwind-merge`; типы `PricePoint`, `ProductReview`. `eslint` — 0 ошибок, lint в CI снова блокирующий |
 
 ### Что открыто
 
-**Ждёт разрешения CEO — удаление файлов.** Автоматическая проверка безопасности среды дважды заблокировала удаление, несмотря на «делай». Всё ниже проверено grep'ом: живых ссылок нет. Удалять одним коммитом, затем убрать `pathname === "/coming-soon"` из `ConditionalSiteLayout.tsx`, типы `PricePoint`/`ProductReview` из `src/lib/types.ts`, пакеты `lucide-react`, `@radix-ui/react-slot`, `class-variance-authority`, `clsx`, `tailwind-merge` и строку про `button.tsx` из `CLAUDE.md`/`DESIGN_SYSTEM.md`.
+**Удаление мёртвых файлов — сделано 2026-09-27** с разрешения CEO, коммит `7898c3f` (полный список файлов — `git show --stat 7898c3f`; вместе с ними удалён `vercel.json`).
 
-- компоненты: `src/components/ui/button.tsx`, `src/components/blocks/` (hero-section-1), `src/components/ui/animated-group.tsx`, `src/components/home/{FeaturesBento,HeroProductCycle,AIStylistChat,HowItWorksGrid}.tsx`, `src/components/outfit/OutfitCarousel.tsx`, `src/components/product/{ProductGallery,PriceHistoryChart,ProductReviews}.tsx`, `src/components/ui/{parallax-floating,HeroBackground,SectionLabel}.tsx`, `src/hooks/`, `src/lib/utils.ts`;
-- роуты и страницы: `src/lib/services/` + `src/app/api/nike/`, `src/app/api/admin/hero-image/`, `src/app/goo-studio/image-tools/` + `src/app/api/admin/image-tools/`, `src/app/coming-soon/`, `src/app/api/unlock/`, `src/app/api/waitlist/`, `src/app/logo.png/`, `src/app/api/products/[id]/{price-history,reviews}/`, `src/app/api/products/bulk/`, `src/app/api/admin/email/preview/`;
-- мусор: `.twprobe/`, `training/`, `supabase-migration-color-groups.sql`, `public/{file,globe,next,vercel,window}.svg`, `public/cs/{.gitkeep,hoodie-card,icon-price,icon-stylist,hoodie,jeans,sneakers,outfit}.png`, `graphify-out/2026-08-07/`;
-- по желанию: `vercel.json` (на Coolify не работает; если деплой на Vercel ещё жив — сначала выключить его cron, иначе два планировщика могут списать дважды).
-
-**Вопросы CEO — деньги:**
-1. Заведён ли в Coolify Scheduled Task для `/api/billing/cron/renew` и задан ли `CRON_SECRET`. Пока нет — автопродление не работает. Страница Subscriptions теперь показывает это сама.
-2. Жив ли ещё деплой этого репозитория на Vercel (его cron из `vercel.json` плюс задача в Coolify = риск двойного списания).
-3. `MONOBANK_PRICE_*` читаются только на сервере: если на проде они заданы, `/plans`, `/subscribe`, `/profile` и окно апгрейда показывают цены по умолчанию (399/999/1799), а списывается значение из переменных.
+**Вопросы CEO — деньги** (ответы CEO 2026-09-27):
+1. **Деплоя на Vercel больше нет** — подтвердил CEO. `vercel.json` удалён в `7898c3f`; риска двойного списания от второго планировщика нет.
+2. **Подписки, по словам CEO, «вроде в принципе не работают».** Заведён ли в Coolify Scheduled Task для `/api/billing/cron/renew`, неизвестно. Нужен отдельный разбор; что проверить:
+   - `CRON_SECRET` в окружении приложения в Coolify и сама Scheduled Task (`GET /api/billing/cron/renew` раз в день с `Authorization: Bearer $CRON_SECRET`, `BILLING.md` → «Renewal cron on Coolify»); карточка «Renewal cron» на `/goo-studio/subscriptions`;
+   - доходит ли вебхук monobank: адрес строится из `NEXT_PUBLIC_SITE_URL`, он должен быть apex `https://goo-fashion.com` без `www` (с `www` уведомление уходит на 308-редирект);
+   - таблицы `subscriptions` и `billing_events` в живой базе и применены ли их миграции (`supabase-migration-subscriptions.sql`, `supabase-migration-billing-events.sql`);
+   - сам путь оплаты: `/subscribe` → `POST /api/billing/checkout` → monobank → `/api/billing/webhook` (`MONOBANK_TOKEN` задан? счёт создаётся? план в Clerk обновляется?);
+   - известные пробелы из `BILLING.md` («Known gaps»).
+3. `MONOBANK_PRICE_*` — заданы ли на проде, неизвестно, разобраться позже. Они читаются только на сервере: если заданы, `/plans`, `/subscribe`, `/profile` и окно апгрейда показывают цены по умолчанию (399/999/1799), а списывается значение из переменных.
 4. Пробелы биллинга из `BILLING.md` («Known gaps»): past_due не списывается повторно и сохраняет платный план; отменённая подписка не теряет план после конца периода; брошенный апгрейд оставляет строку pending.
 
 **Вопросы CEO — остальное:** модель цены (две миграции 019); хостинг-провайдер и страна для раздела 6 Privacy Policy; обложки блога с чужих сайтов; чистка хранилища от файлов-сирот; удалять ли неиспользуемую таблицу `import_jobs`; настроен ли в Clerk session token с public metadata (иначе флаг isAdmin из Users → Access не пускает в админку); канон контурной кнопки и тоста в админке; допустим ли 9px.
@@ -109,6 +110,8 @@ CEO принял рекомендации ревью («начать чинит�
 ## Полный список находок
 
 Обозначения: 🔴 high · 🟠 medium · ⚪ low. Действие: delete / fix / simplify / merge / ask-ceo.
+
+Список — снимок находок на 2026-09-26, для истории. Что из него сделано — в «Итогах исправлений» выше; все находки `dead-file` / `dead-route` / `unused-dep` из раздела «Мёртвые файлы и компоненты» закрыты, сами файлы и пакеты удалены 2026-09-27 (`7898c3f`).
 
 ### Мёртвые файлы и компоненты (22)
 

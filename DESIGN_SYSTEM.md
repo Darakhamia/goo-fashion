@@ -4,7 +4,7 @@
 
 Все правила выведены из фактического кода со ссылками вида `файл:строка`. Если у чего-то канонического примера в коде нет — здесь так и написано, а не придумано.
 
-> **Сверено с кодом 2026-09-26**, после UX-правок 2026-09-12 и код-ревью сентября 2026 (`docs/CODE_REVIEW_2026-09.md`). Разделы 1, 6, 9, 10 и 11 перепроверены целиком. В разделах 2–8 исправлены найденные устаревшие утверждения (кольцо фокуса, токены и классы движения, `dark:`, Poppins, мёртвые источники рецептов) и обновлены ссылки на `ProductCard`, `OutfitCard`, `Navigation`, модалки и скримы, но остальные номера строк и часть счётчиков там сняты ещё 2026-08-20 и местами сдвинулись: `saved/page.tsx` с тех пор разнесён на `saved/page.tsx` и `src/components/look/MyLooksPanel.tsx`, шаг выбора стиля билдера переехал в `src/components/look/StylePicker.tsx`, `builder`, `browse` и `ProductClient` переписывались. Ищи рецепт по фрагменту класса, а не по номеру строки.
+> **Сверено с кодом 2026-09-26**, после UX-правок 2026-09-12 и код-ревью сентября 2026 (`docs/CODE_REVIEW_2026-09.md`); 2026-09-27 упоминания мёртвых файлов переведены в прошедшее время — они удалены коммитом `7898c3f`. Разделы 1, 6, 9, 10 и 11 перепроверены целиком. В разделах 2–8 исправлены найденные устаревшие утверждения (кольцо фокуса, токены и классы движения, `dark:`, Poppins, мёртвые источники рецептов) и обновлены ссылки на `ProductCard`, `OutfitCard`, `Navigation`, модалки и скримы, но остальные номера строк и часть счётчиков там сняты ещё 2026-08-20 и местами сдвинулись: `saved/page.tsx` с тех пор разнесён на `saved/page.tsx` и `src/components/look/MyLooksPanel.tsx`, шаг выбора стиля билдера переехал в `src/components/look/StylePicker.tsx`, `builder`, `browse` и `ProductClient` переписывались. Ищи рецепт по фрагменту класса, а не по номеру строки.
 
 Характер дизайна: editorial-минимализм. Тёплый светлый фон (`#F4F2EE`) и почти чёрный тёмный (`#0A0A0A`), **тёмная тема — по умолчанию**, один шрифт (Inter Tight), монохром без акцентного цвета, крупные плотно-трекованные заголовки и мелкие uppercase-подписи, глубина выражается границей в 1px, а не тенью.
 
@@ -33,7 +33,7 @@
 
 Токены движения (`--ease-*`, `--dur-*`) лежат в отдельном блоке `:root` выше, вместе со шрифтами (`globals.css:13-35`, движение — `:19-34`), и описаны в разделе 7. В админке они не переобъявляются.
 
-Блок `@theme inline` (`globals.css:6-11`) теперь держит только кривые движения `--ease-out` / `--ease-in-out` / `--ease-drawer`, из которых Tailwind делает утилиты `ease-out`, `ease-in-out`, `ease-drawer`. shadcn-имена `--color-background`, `--color-muted-foreground` и остальные `--color-*` удалены при ревью 2026-09. Классы `bg-background`, `text-muted-foreground`, `bg-primary`, `bg-accent` и подобные остались только в двух мёртвых файлах, `src/components/ui/button.tsx` и `src/components/blocks/hero-section-1.tsx` (оба ждут удаления, раздел 6), и больше ни во что не компилируются. Не используй их.
+Блок `@theme inline` (`globals.css:6-11`) теперь держит только кривые движения `--ease-out` / `--ease-in-out` / `--ease-drawer`, из которых Tailwind делает утилиты `ease-out`, `ease-in-out`, `ease-drawer`. shadcn-имена `--color-background`, `--color-muted-foreground` и остальные `--color-*` удалены при ревью 2026-09. Классы `bg-background`, `text-muted-foreground`, `bg-primary`, `bg-accent` и подобные жили только в двух мёртвых файлах, `src/components/ui/button.tsx` и `src/components/blocks/hero-section-1.tsx`; оба удалены 2026-09-27 (раздел 6), в `src/` этих классов больше нет, и ни во что они не компилируются. Не используй их.
 
 ### Жёсткое правило цвета
 
@@ -89,7 +89,7 @@ style={{ background: "#0a0a0a", color: "rgba(255,255,255,0.6)" }}
 
 Следствие: **класс `font-mono` — визуальный no-op.** Он встречается в `src/` около 180 раз (`MobileBottomNav.tsx`, `plans/page.tsx`, `StylePicker.tsx` и т.д.) и не даёт никакого контраста. Не добавляй `font-mono` ради «технического» вида — он ничего не делает. Существующие использования читай как семантический маркер, не как шрифт.
 
-Отдельно: `var(--font-poppins)` применяется инлайновым `style` в четырёх живых местах — вордмарк в хедере (`Navigation.tsx:171`, weight 800), вордмарк формы входа (`AuthForm.tsx:294`), крупная «404» на `not-found.tsx:8` и вордмарк GOO на `error.tsx:21` — плюс в мёртвом `/coming-soon`. Для нового UI Poppins не берём.
+Отдельно: `var(--font-poppins)` применяется инлайновым `style` в четырёх местах — вордмарк в хедере (`Navigation.tsx:171`, weight 800), вордмарк формы входа (`AuthForm.tsx:294`), крупная «404» на `not-found.tsx:8` и вордмарк GOO на `error.tsx:21` (пятое, мёртвая `/coming-soon`, удалено 2026-09-27). Для нового UI Poppins не берём.
 
 ### Базовый текст
 
@@ -138,7 +138,7 @@ body {
 }
 ```
 
-Честно: **`.label` не применён нигде** — поиск `className="label"` по `src/` даёт ноль. Компонент `src/components/ui/SectionLabel.tsx`, кодирующий тот же рецепт, тоже никем не импортируется (мёртв, ждёт удаления). Все ~129 eyebrow написаны руками, и половина из них берёт `--foreground-subtle`, а не `--foreground-muted` из утилиты (66 против 56 на 2026-09-26; на публичном сайте почти все — `--foreground-subtle`, `--foreground-muted` дают в основном шапки таблиц админки). То есть утилита и реальность расходятся по цвету — это открытый вопрос, а не решённый.
+Честно: **`.label` не применён нигде** — поиск `className="label"` по `src/` даёт ноль. Компонент `src/components/ui/SectionLabel.tsx`, кодировавший тот же рецепт, никем не импортировался и удалён 2026-09-27. Все ~129 eyebrow написаны руками, и половина из них берёт `--foreground-subtle`, а не `--foreground-muted` из утилиты (66 против 56 на 2026-09-26; на публичном сайте почти все — `--foreground-subtle`, `--foreground-muted` дают в основном шапки таблиц админки). То есть утилита и реальность расходятся по цвету — это открытый вопрос, а не решённый.
 
 Для нового кода: пиши eyebrow строкой `text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]` — это фактическое большинство. Не изобретай новый tracking.
 
@@ -167,7 +167,7 @@ body {
 
 Источники: `Navigation.tsx:133`, `Footer.tsx:27`, `product/[id]/page.tsx:74`, `saved/page.tsx:208`, `profile/page.tsx:185`, `about/page.tsx:11`, `blog/page.tsx:57` — около 20 файлов.
 
-`max-w-7xl` в живом коде **не встречается ни разу** (единственное вхождение — `hero-section-1.tsx:79`, мёртвый файл). `max-w-2xl/3xl/4xl/5xl/6xl` — только внутренние меры текста (например, `privacy/page.tsx:168`: `pt-16 md:pt-24 pb-32 max-w-2xl`), никогда не внешний контейнер.
+`max-w-7xl` в коде **не встречается ни разу** (единственное вхождение было в мёртвом `hero-section-1.tsx:79`, удалён 2026-09-27). `max-w-2xl/3xl/4xl/5xl/6xl` — только внутренние меры текста (например, `privacy/page.tsx:168`: `pt-16 md:pt-24 pb-32 max-w-2xl`), никогда не внешний контейнер.
 
 Главная страница использует более узкую внутреннюю меру: `max-w-[1280px] mx-auto px-6 md:px-12` (`page.tsx:119`, `HowItWorksSection.tsx:222`, `AIStylistShowcase.tsx:545`).
 
@@ -180,7 +180,7 @@ body {
 - Начало контента списковой страницы: `pt-12 md:pt-16` (`saved/page.tsx:209`).
 - Начало контента детальной страницы после хлебных крошек: `mt-8 md:mt-12` (`ProductClient.tsx:125`).
 - Секция под фолдом: `mt-20 md:mt-28` (`ProductClient.tsx:497`).
-- Секция с данными, отбитая линейкой: `mt-16 border-t border-[var(--border)] pt-10`. Оба источника рецепта, `PriceHistoryChart.tsx:52` и `ProductReviews.tsx:123`, после ревью 2026-09 сняты со страницы товара и ждут удаления; живого примера рецепта сейчас нет.
+- Секция с данными, отбитая линейкой: `mt-16 border-t border-[var(--border)] pt-10`. Оба источника рецепта, `PriceHistoryChart.tsx:52` и `ProductReviews.tsx:123`, после ревью 2026-09 сняты со страницы товара и удалены 2026-09-27; живого примера рецепта сейчас нет.
 - Полноширинная секция контентной страницы: `border-t border-[var(--border)]` + `py-20 md:py-28` (`about/page.tsx:58-60`).
 - Футер: `mt-16 md:mt-32`, `py-10 md:py-24` (`Footer.tsx:26-27`).
 - Сетка карточек: `gap-4` — везде.
@@ -264,7 +264,7 @@ style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
 | `rounded-full` | — | Пилюли, чипы, круглые иконки, бейджи-счётчики | ~330 использований |
 | `rounded-[28px]` | 28 | Полноширинная showcase-панель главной | `AIStylistShowcase.tsx:560` |
 
-`rounded-md` встречается 10 раз (4 — в мёртвых `ui/button.tsx` и `OutfitCarousel.tsx`, остальные — оверлей-бейджи в `saved/page.tsx:68`, `MyLooksPanel.tsx:716,1037` и три элемента админки: плашка плана и миниатюра на дашборде, бейдж «Admin» в меню, см. раздел 11) и не является частью языка — это остатки shadcn. Не использовать.
+`rounded-md` встречается 6 раз — оверлей-бейджи в `saved/page.tsx:68`, `MyLooksPanel.tsx:716,1037` и три элемента админки: плашка плана и миниатюра на дашборде, бейдж «Admin» в меню (см. раздел 11); ещё 4 вхождения были в мёртвых `ui/button.tsx` и `OutfitCarousel.tsx`, удалённых 2026-09-27. Он не является частью языка — это остатки shadcn. Не использовать.
 
 Единственный конфликт в коде: `ProductCard` — `rounded-xl` (`ProductCard.tsx:80`), `OutfitCard` — `rounded-2xl` (`OutfitCard.tsx:40`). Они лежат в одних и тех же сетках. Канон — `rounded-xl` (обёртка ячейки грида везде `rounded-xl`: `browse/page.tsx:1331,1351`, `ProductClient.tsx:553,574`, `RecentlyViewed.tsx:74`), `OutfitCard` — отклонение.
 
@@ -622,22 +622,22 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 
 ## 6. Кнопки: особый случай
 
-**Статус файла:** `src/components/ui/button.tsx` помечен к удалению по итогам код-ревью 2026-09 (`docs/CODE_REVIEW_2026-09.md`, раздел «Мёртвые файлы»: удалить одним коммитом вместе с `blocks/hero-section-1.tsx`, иначе упадёт `tsc`). Удаление ждёт разрешения CEO. Пока файл лежит в репозитории, правило ниже действует без исключений.
+**Статус:** shadcn-кнопка `src/components/ui/button.tsx` и её единственный импортёр `src/components/blocks/hero-section-1.tsx` удалены 2026-09-27 по итогам код-ревью 2026-09, с разрешения CEO (коммит `7898c3f`, `docs/CODE_REVIEW_2026-09.md`). Вместе с ними ушли пакеты `@radix-ui/react-slot` и `class-variance-authority`. Общего компонента кнопки в проекте нет. Ниже — история, почему файл не стал основой системы.
 
-Факты, а не мнение:
+Каким он был (история, до 2026-09-27):
 
-- `src/components/ui/button.tsx` — shadcn-примитив с `cva`: 6 вариантов × 4 размера, базовый класс `rounded-md text-sm` (`button.tsx:8`). Его собственный `focus-visible`-ring больше не единственный в проекте: с 2026-09-12 есть глобальное кольцо `:focus-visible` (раздел 5.12).
-- Импортирует его **ровно один файл** во всём `src/`: `src/components/blocks/hero-section-1.tsx:6`.
-- Этот файл, в свою очередь, **не импортирует никто** — поиск `components/blocks` по `src/` даёт ноль.
-- Значит, `<Button>` не рендерится нигде. Ноль живых использований против **~510 сырых `<button>` в 61 файле**.
-- Его варианты не совпадают с реальным языком: `rounded-md` — 10 использований в проекте против ~290 `rounded-xl` и ~330 `rounded-full`; `text-sm` / `h-10` вообще не соответствуют uppercase-tracked рецептам.
-- Его семантические классы (`bg-primary`, `bg-accent`, `border-input` и т.д.) после удаления `--color-*` из `@theme inline` (раздел 1) ни во что не компилируются: даже если импортировать `<Button>`, он отрисуется без фона и цвета.
+- `src/components/ui/button.tsx` — shadcn-примитив с `cva`: 6 вариантов × 4 размера, базовый класс `rounded-md text-sm` (`button.tsx:8`). Кольцо фокуса в проекте даёт не он, а глобальное правило `:focus-visible` (с 2026-09-12, раздел 5.12).
+- Импортировал его **ровно один файл** во всём `src/`: `src/components/blocks/hero-section-1.tsx:6`.
+- Этот файл, в свою очередь, **не импортировал никто**.
+- Значит, `<Button>` не рендерился нигде. Ноль живых использований против **~510 сырых `<button>` в 61 файле** (счёт 2026-09-26).
+- Его варианты не совпадали с реальным языком: `rounded-md` — 10 использований в проекте на тот момент против ~290 `rounded-xl` и ~330 `rounded-full`; `text-sm` / `h-10` вообще не соответствовали uppercase-tracked рецептам.
+- Его семантические классы (`bg-primary`, `bg-accent`, `border-input` и т.д.) после удаления `--color-*` из `@theme inline` (раздел 1) ни во что не компилировались: импортированный `<Button>` отрисовался бы без фона и цвета.
 
-Дополнительно `hero-section-1.tsx` экспортирует имя `HeroSection`, совпадающее с живым `src/components/home/HeroSection.tsx:8`, и вместе с `button.tsx` это единственные носители shadcn-семантических классов (`bg-muted`, `text-muted-foreground` и т.п.). Он выглядит как дизайн-система, но не отгружается. Тоже ждёт удаления.
+`hero-section-1.tsx` экспортировал имя `HeroSection`, совпадавшее с живым `src/components/home/HeroSection.tsx:8`, и вместе с `button.tsx` был единственным носителем shadcn-семантических классов (`bg-muted`, `text-muted-foreground` и т.п.). Оба выглядели как дизайн-система, но не отгружались.
 
 ### Одно правило для новых кнопок
 
-**Пока `src/components/ui/button.tsx` существует — не импортируй его. Собирай кнопку из рецептов раздела 5.3, дословно копируя один из четырёх вариантов (primary / secondary / ghost / icon) и меняя только текст и обработчик.** В админке — рецепты раздела 9. Если рецепт не подходит — это повод обсудить расширение системы, а не написать одиннадцатый вариант инлайном. После удаления файла правило «не импортировать» теряет предмет, а правило «собирать по рецептам» остаётся.
+**Собирай кнопку из рецептов раздела 5.3, дословно копируя один из четырёх вариантов (primary / secondary / ghost / icon) и меняя только текст и обработчик.** В админке — рецепты раздела 9. Не заводи общий примитив кнопки со своими вариантами в обход рецептов (именно так появился и умер `button.tsx`). Если рецепт не подходит — это повод обсудить расширение системы, а не написать одиннадцатый вариант инлайном.
 
 ---
 
@@ -655,7 +655,7 @@ className="absolute -top-1 -right-1 w-4 h-4 rounded-full
 
 Сырых `cubic-bezier(...)` в правилах `globals.css` больше нет — только в объявлениях токенов. Утилита Tailwind `ease-out` тоже теперь даёт `--ease-out` проекта, а не стандартную кривую Tailwind.
 
-В JS (framer-motion) живёт прежняя кривая `[0.25, 0.46, 0.45, 0.94]`: локальный `const EASE` в `AIStylistShowcase.tsx:20`, `OutfitExamplesCarousel.tsx:8` (и в мёртвом `FeaturesBento.tsx:14`) плюс инлайном в `FadeInView.tsx`, `OutfitCard.tsx`, `HeroSection.tsx`, `AuthForm.tsx`, `about`, `plans`, `browse` (и в мёртвых `AIStylistChat.tsx`, `HowItWorksGrid.tsx`). Общего JS-модуля motion-токенов нет, и JS-кривая не совпадает с CSS-токеном `--ease-out`. Для нового framer-кода бери ту же `[0.25, 0.46, 0.45, 0.94]`, что у соседей, — выбор единой кривой для CSS и JS не сделан.
+В JS (framer-motion) живёт прежняя кривая `[0.25, 0.46, 0.45, 0.94]`: локальный `const EASE` в `AIStylistShowcase.tsx:20`, `OutfitExamplesCarousel.tsx:8` плюс инлайном в `FadeInView.tsx`, `OutfitCard.tsx`, `HeroSection.tsx`, `AuthForm.tsx`, `about`, `plans`, `browse` (ещё три копии жили в мёртвых `FeaturesBento.tsx`, `AIStylistChat.tsx`, `HowItWorksGrid.tsx`, удалённых 2026-09-27). Общего JS-модуля motion-токенов нет, и JS-кривая не совпадает с CSS-токеном `--ease-out`. Для нового framer-кода бери ту же `[0.25, 0.46, 0.45, 0.94]`, что у соседей, — выбор единой кривой для CSS и JS не сделан.
 
 ### Длительности
 
@@ -735,7 +735,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 // src/components/ui/FadeInView.tsx:17-20
 ```
 
-**Правило:** для карточек товаров/образов — spring из `ProductCard`; для контентных секций — `FadeInView`. Локальные копии `FadeCard` (`AIStylistShowcase.tsx:22` и в мёртвом `FeaturesBento.tsx:22`) — дубликаты `FadeInView` с разошедшимися значениями, не копируй их.
+**Правило:** для карточек товаров/образов — spring из `ProductCard`; для контентных секций — `FadeInView`. Локальная копия `FadeCard` (`AIStylistShowcase.tsx:22`; вторая была в мёртвом `FeaturesBento.tsx`, удалён 2026-09-27) — дубликат `FadeInView` с разошедшимися значениями, не копируй её.
 
 Другие spring, реально применяемые: `{ stiffness: 400, damping: 35 }` — пилюля таба (`saved/page.tsx:229-231`); `{ stiffness: 380-500, damping: 38-42, mass: 0.8 }` — drawer и сегментированный переключатель.
 
@@ -782,7 +782,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 
 - Дальше состояние примиряет `ThemeProvider` (`src/lib/context/theme-context.tsx:61-71`), ключ хранения — `goo-theme`.
 - Тема переключается **каскадом CSS**, а не JS. Компоненты, которые ветвятся на `useTheme()` и подставляют инлайновые стили (`Navigation.tsx:99-110`, `MobileBottomNav.tsx:13,92`), — исключение, а не образец. Единственный оправданный императивный случай — подмена растрового ассета, который нельзя переключить переменной.
-- **Tailwind-вариант `dark:` к теме сайта не подключён.** В `globals.css` нет `@custom-variant dark`, поэтому на Tailwind v4 `dark:` срабатывает по системной настройке ОС (`@media (prefers-color-scheme: dark)`), а не по классу `.dark` на `<html>` и не по теме админки. Пользователь со светлой ОС и тёмной темой сайта (а это умолчание) `dark:`-стилей не увидит. Не используй `dark:` — тематизируй через токены. В живом коде `dark:` сейчас нет; остался только в мёртвых `PriceHistoryChart.tsx` и `blocks/hero-section-1.tsx`.
+- **Tailwind-вариант `dark:` к теме сайта не подключён.** В `globals.css` нет `@custom-variant dark`, поэтому на Tailwind v4 `dark:` срабатывает по системной настройке ОС (`@media (prefers-color-scheme: dark)`), а не по классу `.dark` на `<html>` и не по теме админки. Пользователь со светлой ОС и тёмной темой сайта (а это умолчание) `dark:`-стилей не увидит. Не используй `dark:` — тематизируй через токены. В коде `dark:`-классов сейчас нет (последние жили в мёртвых `PriceHistoryChart.tsx` и `blocks/hero-section-1.tsx`, удалённых 2026-09-27).
 
 ### Правило
 
@@ -794,7 +794,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 
 `src/app/goo-studio/**` — **отдельный диалект на том же токенном слое**, а не дрейф. Это сознательное решение, его надо уважать.
 
-Что общего: цвет только через те же CSS-переменные. Во всех 20 живых страницах админки (плюс мёртвая `image-tools`, ждёт удаления) ноль `text-gray-*` / `bg-neutral-*` / `border-zinc-*` и ноль `dark:`.
+Что общего: цвет только через те же CSS-переменные. Во всех 20 страницах админки (мёртвая `image-tools` удалена 2026-09-27) ноль `text-gray-*` / `bg-neutral-*` / `border-zinc-*` и ноль `dark:`.
 
 ### Тема админки
 
@@ -875,13 +875,13 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 6. Размер текста — bracket-px по шкале раздела 2; ничего меньше 10px.
 7. Uppercase-подпись — `tracking-[0.18em]` (или `0.14em` для навигации/CTA). Новых значений tracking не введено.
 8. Контейнер — `max-w-[1440px] mx-auto px-6 md:px-12` (или `max-w-[1280px]` на главной), с шагом `md:` для паддинга.
-9. Кнопка собрана из одного из четырёх рецептов 5.3 (в админке — из рецептов раздела 9). `src/components/ui/button.tsx` не импортирован: файл помечен к удалению и ждёт разрешения CEO, но пока он лежит в репозитории, запрет действует.
+9. Кнопка собрана из одного из четырёх рецептов 5.3 (в админке — из рецептов раздела 9), а не из нового общего примитива со своими вариантами (раздел 6).
 10. Карточка товара/образа — импортирован `ProductCard` / `OutfitCard`, а не переписана разметка.
 11. Анимация — либо spring `{ type:'spring', bounce:0.2, duration:0.8 }` (карточки), либо `FadeInView` (секции), в framer easing `[0.25,0.46,0.45,0.94]`. В CSS кривая и длительность берутся токенами `var(--ease-out)` / `var(--ease-in-out)` и `var(--dur-*)`, а не литералами. Длительность из набора 150/200/300/500 (в CSS — токены `--dur-*`, раздел 7). Появление и уход хромы — через `.ov-*` + `useOverlayPresence` (раздел 7).
 12. Непрерывная анимация имеет собственную проверку `prefers-reduced-motion`.
 13. Интерактивный элемент имеет `aria-label` / `aria-expanded` / `aria-pressed` там, где смысл не читается из текста; модальный слой — `role="dialog" aria-modal="true"`.
 14. Если поставил `outline-none` — рядом стоит видимая замена фокуса: `outline-none` отключает общее кольцо `:focus-visible` (раздел 5.12). Если замены нет — не ставь `outline-none`.
-15. Ничего не скопировано из мёртвого кода с конкурирующим языком. Все эти файлы помечены к удалению по код-ревью 2026-09 и ждут разрешения CEO: `src/components/ui/button.tsx`, `src/components/blocks/hero-section-1.tsx`, `src/components/ui/animated-group.tsx`, `src/components/ui/parallax-floating.tsx`, `HeroBackground.tsx`, `SectionLabel.tsx`, `ProductGallery.tsx`, `ProductReviews.tsx`, `PriceHistoryChart.tsx`, `OutfitCarousel.tsx`, `FeaturesBento.tsx`, `HowItWorksGrid.tsx`, `AIStylistChat.tsx`, `HeroProductCycle.tsx`, `src/app/coming-soon/` (с `FeatureCarousel.tsx`), `src/app/goo-studio/image-tools/`.
+15. Ничего не восстановлено и не скопировано из мёртвого кода с конкурирующим языком. Эти файлы удалены 2026-09-27 по код-ревью 2026-09 (коммит `7898c3f`) и в истории git остаются только как пример того, чего не делать: `src/components/ui/button.tsx`, `src/components/blocks/hero-section-1.tsx`, `src/components/ui/animated-group.tsx`, `src/components/ui/parallax-floating.tsx`, `HeroBackground.tsx`, `SectionLabel.tsx`, `ProductGallery.tsx`, `ProductReviews.tsx`, `PriceHistoryChart.tsx`, `OutfitCarousel.tsx`, `FeaturesBento.tsx`, `HowItWorksGrid.tsx`, `AIStylistChat.tsx`, `HeroProductCycle.tsx`, `src/app/coming-soon/` (с `FeatureCarousel.tsx`), `src/app/goo-studio/image-tools/`.
 16. Элемент админки открыт на ширине 375px и прошёл мобильные правила раздела 9 (цель касания 40px, поле без своего размера шрифта ниже `md`, hover-only элемент виден на тач-экране, таблица прокручивается в своём контейнере, модалка помещается в экран) и проверен в обеих темах админки, в том числе светлая админка при тёмной теме сайта.
 
 ---
@@ -896,8 +896,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 - **✓ исправлено (UX-правка 2026-09-12)** — исправлено коммитами `fea1b2f` / `ca206c4` по `docs/UX_REVIEW_2026-09.md`.
 - **✓ исправлено (до 2026-09)** — уже было исправлено к моменту, когда этот файл попал в репозиторий (2026-08-20).
 - **◐ частично** — часть строки исправлена, остаток описан.
-- **актуально** — расхождение в коде есть. У таких строк в первой колонке уже **текущие** номера строк (2026-09-26); у исправленных и мёртвых — исходные, для истории.
-- **компонент мёртв, ждёт удаления** — файл никто не импортирует (для страниц `/coming-soon` и `goo-studio/image-tools` — маршрут остался, но из интерфейса на него не ведут), он помечен к удалению по код-ревью 2026-09 и ждёт разрешения CEO. Чинить в нём нечего.
+- **актуально** — расхождение в коде есть. У таких строк в первой колонке уже **текущие** номера строк (2026-09-26); у исправленных и удалённых — исходные, для истории.
+- **✓ файл удалён (ревью 2026-09)** — файл был мёртв (его никто не импортировал; страницы `/coming-soon` и `goo-studio/image-tools` были недостижимы из интерфейса) и удалён 2026-09-27 с разрешения CEO (коммит `7898c3f`). Строка оставлена для истории.
 
 Сортировка внутри таблиц: high → medium → low.
 
@@ -907,10 +907,10 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 |---|---|---|---|
 | `src/components/home/AIStylistShowcase.tsx:547` | Ниже `lg` карточка `bg-transparent border-0`, но Intro внутри безусловно белый (`text-white`, `white/40`, `white/55`, тайлы `border-white/10 bg-white/[0.03]`) — на телефоне в светлой теме весь блок белым по `#F4F2EE`, практически невидим | Оставить тёмную подложку на всех ширинах (`bg-[#0A0A0A] border border-white/10`) либо сделать типографику Intro тематической | ✓ исправлено (UX-правка 2026-09-12): тёмная подложка на всех ширинах |
 | `src/components/ui/etheral-shadow.tsx:42` (и `:67`) | Блобы `rgba(0,0,0,0.14)` и зерно `rgba(0,0,0,0.045)` без ветки темы, а компонент смонтирован на `bg-[var(--background)]` (`HeroSection.tsx:19,23`), который по умолчанию `#0A0A0A` — чёрное по чёрному, при этом анимации крутятся | Цвет блоба и зерна из токенов: `var(--fg-overlay-08)` / `var(--fg-overlay-05)` | ✓ исправлено (UX-правка 2026-09-12): `etheral-shadow.tsx:42,66` на токенах |
-| `src/components/outfit/OutfitCarousel.tsx:107` | CTA «VIEW OUTFIT» вне фото собран из `border-white/30 text-white/60 bg-black/60`; в светлой теме — тёмная пилюля с контрастом ~2.5:1 на кремовом фоне | `border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]` | ✓ исправлено (UX-правка 2026-09-12); сам компонент мёртв, ждёт удаления |
+| `src/components/outfit/OutfitCarousel.tsx:107` | CTA «VIEW OUTFIT» вне фото собран из `border-white/30 text-white/60 bg-black/60`; в светлой теме — тёмная пилюля с контрастом ~2.5:1 на кремовом фоне | `border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]` | ✓ исправлено (UX-правка 2026-09-12); затем ✓ файл удалён (ревью 2026-09) |
 | `src/app/builder/page.tsx:2710` | Primary «Show results» в мобильном фильтр-листе — `bg-white text-black`; в светлой теме белая кнопка на почти белом фоне | `bg-[var(--foreground)] text-[var(--background)] hover:opacity-90` | ✓ исправлено (UX-правка 2026-09-12): `builder/page.tsx:2769` |
 | `src/app/browse/page.tsx:656` (и `:670`) | Кольцо невыбранного чекбокса категории — `rgba(255,255,255,0.2)`; в светлой теме на `#F4F2EE` невидимо | `borderColor: checked ? "var(--foreground)" : "var(--border-strong)"` | ✓ исправлено (UX-правка 2026-09-12) |
-| `src/components/product/ProductReviews.tsx:199` + системно | `outline-none` без замены; во всём `src/` ни одного рабочего `:focus-visible`; клавиатурная навигация по PDP, browse, builder не индицируется | Глобальное правило в `globals.css`: `:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }` | ✓ исправлено (UX-правка 2026-09-12): правило `globals.css:216-220`. `ProductReviews.tsx` снят со страницы товара при ревью 2026-09 — компонент мёртв, ждёт удаления |
+| `src/components/product/ProductReviews.tsx:199` + системно | `outline-none` без замены; во всём `src/` ни одного рабочего `:focus-visible`; клавиатурная навигация по PDP, browse, builder не индицируется | Глобальное правило в `globals.css`: `:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }` | ✓ исправлено (UX-правка 2026-09-12): правило `globals.css:216-220`. `ProductReviews.tsx` снят со страницы товара при ревью 2026-09 — ✓ файл удалён (ревью 2026-09) |
 | `src/app/goo-studio/layout.tsx:231` | Админка переопределяет тёмную тему инлайновым объектом из семи хексов вместо класса, теряя `--fg-overlay-*`, `--bg-overlay-*`, `--fg-on-dark-*` | Переключать класс на корне админки, чтобы применялся весь набор токенов | ✓ исправлено (ревью 2026-09): классы `.admin-theme-light` / `.admin-theme-dark` и токены в `globals.css:43-82`, раздел 9 |
 | `src/app/goo-studio/products/page.tsx:1390` (также `:587,592,1658,2359,2627-2628`) | `dark:`-варианты внутри админки не следуют теме админки — баннеры рендерят тёмное оформление в светлом хроме и не реагируют на переключатель | Рецепт админки без `dark:`: `bg-amber-400/15 text-amber-500 border border-amber-400/30` | ✓ исправлено (ревью 2026-09): `dark:` в админке ноль |
 | `src/app/goo-studio/analytics/Charts.tsx:256` | Ссылка на `--foreground-rgb`, которой нет нигде в репозитории; все столбцы воронки кроме первого рисуются чёрным | `background: "var(--foreground)"` + убывающая `opacity` на элементе | ✓ исправлено (UX-правка 2026-09-12): `Charts.tsx:270-271` |
@@ -925,15 +925,15 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/components/layout/ConditionalSiteLayout.tsx:63` (и `:77`) | Зазор под нижнюю навигацию задан дважды — на `<main>` и на обёртке футера; на мобильном добавляет ~72px пустоты перед футером | Оставить только на последнем элементе потока | актуально |
 | `src/components/layout/Footer.tsx:89` (и мобильный `:38`) | Вордмарк в футере — Inter Tight `font-black tracking-[0.2em]`, в хедере — Poppins 800 / 22px / `tracking-[0.18em]` (`Navigation.tsx:171`) | Общий `<Wordmark>` по рецепту хедера | актуально |
 | `src/app/page.tsx:42` | `.label` не применён нигде, каждый eyebrow объявляет свои значения; здесь — `text-[11px] tracking-[0.22em]` | Привести `.label` к реальному намерению и применить, либо стандартизовать строку | актуально |
-| `src/app/globals.css:339` | `.label` мёртв; цвет утилиты (`--foreground-muted`) расходится с фактическим использованием (больше eyebrow на `--foreground-subtle`) | Сначала решить вопрос цвета, потом либо принять утилиту, либо удалить | актуально; `SectionLabel.tsx` — компонент мёртв, ждёт удаления |
-| `src/components/home/AIStylistShowcase.tsx:22` | Копия fade-обёртки (`FadeInView` y=20/0.45, здесь y=28/0.5; третья копия — в мёртвом `FeaturesBento.tsx:22`) | Импортировать `FadeInView`, удалить локальные `FadeCard` | актуально |
+| `src/app/globals.css:339` | `.label` мёртв; цвет утилиты (`--foreground-muted`) расходится с фактическим использованием (больше eyebrow на `--foreground-subtle`) | Сначала решить вопрос цвета, потом либо принять утилиту, либо удалить | актуально; `SectionLabel.tsx` — ✓ файл удалён (ревью 2026-09) |
+| `src/components/home/AIStylistShowcase.tsx:22` | Копия fade-обёртки (`FadeInView` y=20/0.45, здесь y=28/0.5; третья копия была в мёртвом `FeaturesBento.tsx:22`, удалён 2026-09-27) | Импортировать `FadeInView`, удалить локальные `FadeCard` | актуально |
 | `src/app/browse/page.tsx:1332` (и `:1352`) | Обёртка грида повторяет анимацию, которую карточка уже играет сама (`ProductCard.tsx:81-84`) — два независимых определения на одно появление | Оставить каскад на родителе, анимацию — на карточке | актуально |
 | `src/app/browse/page.tsx:944` | Модальный drawer без `role="dialog"`, `aria-modal`, `aria-label`; во всём файле ноль `aria-` | `role="dialog" aria-modal="true" aria-label="Filters"` + `aria-expanded` на заголовках фасетов | актуально |
 | `src/app/browse/page.tsx:612` (также `529,541,560,697,730,771,836,948`) | Девять заголовков фасетов с инлайновым `textShadow: 0 0 14px rgba(255,255,255,0.4)` — эффект только для тёмной темы | Убрать `textShadow` либо завести тематический токен | актуально |
 | `src/app/builder/page.tsx:908` (также `873,897,994,1028,1068,1138,2492`) | То же самое, восемь заголовков в фильтр-панели билдера | Обычный eyebrow-рецепт без тени | актуально |
 | `src/app/browse/page.tsx:566` (также `582,593,624,645-647,662,676,714,758,805,815,821,846`) | Приглушённый текст = `text-[var(--foreground)]` + разные шаги `opacity` (40/50/55/60) вместо `--foreground-muted`, который в этом же файле используется 17 раз | Одна пара: `--foreground` / `--foreground-muted` | актуально |
 | `src/app/browse/page.tsx:92` | Три несовместимых рецепта чипа на одном экране (9px/`--foreground` в `ActiveChip`, 10-11px/`--border`, 12px/`--border-strong`) | Один масштаб чипа, `--border-strong` в покое | актуально |
-| `src/components/product/PriceHistoryChart.tsx:167` (и `:199`) | Ось Y и метки хардкодят `$`, тултип использует `formatPrice` | `{formatPrice(tick)}` | компонент мёртв, ждёт удаления: фейковый график снят со страницы товара при ревью 2026-09 |
+| `src/components/product/PriceHistoryChart.tsx:167` (и `:199`) | Ось Y и метки хардкодят `$`, тултип использует `formatPrice` | `{formatPrice(tick)}` | ✓ файл удалён (ревью 2026-09): фейковый график снят со страницы товара, затем файл удалён |
 | `src/components/product/ProductClient.tsx:248` | Eyebrow в одном файле написан вручную много раз с разными tracking: `0.2em` здесь, рядом `0.12`/`0.14`/`0.16`/`0.18em` | Один рецепт eyebrow | актуально |
 | `src/components/outfit/OutfitCard.tsx:40` (и `:44`) | `rounded-2xl` + tween 0.35s против канона `rounded-xl` + spring с блюром (`ProductCard.tsx:80-84`); карточки стоят в одних сетках | Привести к рецепту `ProductCard` | актуально |
 | `src/components/look/MyLooksPanel.tsx:618` (также `:1107`, `builder/page.tsx:2035`, `:2314`, `saved/page.tsx:59`) | Алгоритм коллажа переписан несколько раз вместо `OutfitCollage`; копии разошлись, один и тот же образ рисуется по-разному (`saved/page.tsx:59` — упрощённая сетка 2×2 на 4 вещи) | Один параметризованный `OutfitCollage` | актуально; копии из `saved/page.tsx:455,861` переехали в `MyLooksPanel.tsx` |
@@ -949,8 +949,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/components/upgrade/UpgradeModal.tsx:49` | Модалка без `backdrop-blur`, без анимации появления и без кнопки закрытия | `backdrop-blur-sm` + анимация и крестик | ✓ исправлено (UX-правка 2026-09-12): `.ov-scrim` / `.ov-panel`, крестик, Escape, `role="dialog"` (`UpgradeModal.tsx:76-97`) |
 | `src/app/report/page.tsx:306` | Подпись «max 10MB», при этом `processFile` отклоняет всё больше 3.5MB (`:63-64`) | «optional · max 3.5MB» | актуально |
 | `src/app/not-found.tsx:15` (и `error.tsx:28`) | `var(--muted-foreground)` не определена нигде — всегда срабатывал литерал `rgba(128,128,128,0.9)` | `text-[var(--foreground-muted)]` | ✓ исправлено (UX-правка 2026-09-12). Рядом появилось новое расхождение — модификатор `/20` на переменной, см. «Новые расхождения» |
-| `src/components/ui/button.tsx:8` / `:42` | Мёртвый примитив: единственный импортёр — `blocks/hero-section-1.tsx:6`, который сам никем не импортируется | Удалить вместе с `hero-section-1.tsx` либо перекроить варианты под реальные рецепты и внедрить | компонент мёртв, ждёт удаления (решение CEO); пока файл есть — не импортировать (раздел 6) |
-| `src/components/blocks/hero-section-1.tsx:30` / `:84` | Мёртвый шаблонный файл: экспортирует имя `HeroSection`, конфликтующее с живым; единственный носитель shadcn-классов, сырой палитры `zinc`, градиента `#9B99FE→#2BC8B7`, `<img>` на внешние CDN | Удалить | компонент мёртв, ждёт удаления |
+| `src/components/ui/button.tsx:8` / `:42` | Мёртвый примитив: единственный импортёр — `blocks/hero-section-1.tsx:6`, который сам никем не импортируется | Удалить вместе с `hero-section-1.tsx` либо перекроить варианты под реальные рецепты и внедрить | ✓ файл удалён (ревью 2026-09) вместе с `hero-section-1.tsx` (раздел 6) |
+| `src/components/blocks/hero-section-1.tsx:30` / `:84` | Мёртвый шаблонный файл: экспортирует имя `HeroSection`, конфликтующее с живым; единственный носитель shadcn-классов, сырой палитры `zinc`, градиента `#9B99FE→#2BC8B7`, `<img>` на внешние CDN | Удалить | ✓ файл удалён (ревью 2026-09) |
 | `src/app/blog/[slug]/page.tsx:99` | Чип категории на странице поста без `rounded-full` | Добавить `rounded-full` | ✓ исправлено (до 2026-09): `blog/[slug]/page.tsx:117` |
 | `src/app/blog/[slug]/page.tsx:165` | Карточки постов на странице поста — `gap-px` hairline без границ и радиуса | Привести к рецепту листинга | ✓ исправлено (до 2026-09): `gap-4` + `rounded-xl border` (`:183-193`, `:220-225`) |
 | `src/app/goo-studio/analytics/page.tsx:219` (и др.) | Внутри одного файла карточки одной семантики то `rounded-xl`, то без радиуса | `rounded-xl border border-[var(--border)]` | ✓ исправлено (ревью 2026-09) |
@@ -976,18 +976,18 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/components/home/AIStylistShowcase.tsx:590` | Контейнер `px-6` без шага `md:px-12`, в отличие от всех соседних секций | `px-6 md:px-12` | актуально |
 | `src/components/home/HowItWorksSection.tsx:224` | Рецепт H2 скопирован вместо `SectionH2`, базовый шаг 26px вместо 30px (цвет `text-white` здесь корректен — секция на `#050505`) | Экспортировать `SectionH2` с вариантом `onDark` | актуально |
 | `src/components/home/HowItWorksSection.tsx:36` (и `:40`) | Комментарий утверждает идентичность с кнопкой лайка карточки, но размер `w-8 h-8 bg-black/85` против `w-9 h-9 md:w-7 md:h-7 bg-black/80` (`ProductCard.tsx:161`) | Совместить размер или убрать утверждение из комментария | актуально |
-| `src/components/home/FeaturesBento.tsx:236` (и `:354`) | Единый CTA «в билдер» в трёх радиусах и двух весах | Один радиус кнопки | компонент мёртв, ждёт удаления |
-| `src/components/home/FeaturesBento.tsx:203` | Четыре геометрии точек-пейджера | Один `<Dots>` с `tone` | компонент мёртв, ждёт удаления |
-| `src/components/home/FeaturesBento.tsx:57` / `:249` | `FeaturesBento`, `HowItWorksGrid`, `AIStylistChat`, `HeroProductCycle` — мёртвый код с конкурирующим языком | Удалить | компонент мёртв, ждёт удаления (все четыре файла) |
+| `src/components/home/FeaturesBento.tsx:236` (и `:354`) | Единый CTA «в билдер» в трёх радиусах и двух весах | Один радиус кнопки | ✓ файл удалён (ревью 2026-09) |
+| `src/components/home/FeaturesBento.tsx:203` | Четыре геометрии точек-пейджера | Один `<Dots>` с `tone` | ✓ файл удалён (ревью 2026-09) |
+| `src/components/home/FeaturesBento.tsx:57` / `:249` | `FeaturesBento`, `HowItWorksGrid`, `AIStylistChat`, `HeroProductCycle` — мёртвый код с конкурирующим языком | Удалить | ✓ файл удалён (ревью 2026-09) (все четыре файла) |
 | `src/app/browse/page.tsx:1311` (и `:1299`) | Скелетон инвертирует поверхности карточки: оболочка `--background`, блоки `--surface`, тогда как загруженная карточка — `--surface` | Оболочка `--surface`, блоки `--fg-overlay-05` | актуально |
 | `src/app/browse/page.tsx:1331` | Обёртка `rounded-xl` вокруг `rounded-2xl` `OutfitCard` — hover-тень обрезается по меньшему радиусу | Снять радиус/фон с обёртки | актуально |
 | `src/app/browse/page.tsx:1409` | Активная страница пагинации `rounded-lg`, тогда как все прочие выбранные контролы — `rounded-full` пилюли | `rounded-full` | актуально |
 | `src/app/browse/page.tsx:893` (и `:1368`) | Две outline-кнопки одного класса разного масштаба и радиуса: «Clear filters» `rounded-lg py-2` 10px bold против «Show more» `rounded-full px-6 py-3 text-xs` | Один outline-рецепт | актуально |
-| `src/components/ui/SectionLabel.tsx:23` | Мёртвый компонент, дублирующий `.label` с другим цветовым токеном | Удалить или применить `.label` | компонент мёртв, ждёт удаления |
+| `src/components/ui/SectionLabel.tsx:23` | Мёртвый компонент, дублирующий `.label` с другим цветовым токеном | Удалить или применить `.label` | ✓ файл удалён (ревью 2026-09) |
 | `src/components/ui/ClampedText.tsx:161` | Вуаль клампа уходит в `--background`, но компонент используется и внутри `--surface`-панелей — виден переход | Цвет вуали параметром | актуально |
-| `src/components/product/ProductGallery.tsx:80` | Мёртвый файл со старым языком | Удалить | компонент мёртв, ждёт удаления |
-| `src/components/product/PriceHistoryChart.tsx:230` | Тултип и скелетон без радиуса | `rounded-lg` / `rounded-xl` | компонент мёртв, ждёт удаления |
-| `src/components/product/ProductReviews.tsx:168` | «Load more» и кнопка отправки различаются шкалой подписи и паддингом; обе без радиуса | Привести к outline-рецепту PDP | компонент мёртв, ждёт удаления |
+| `src/components/product/ProductGallery.tsx:80` | Мёртвый файл со старым языком | Удалить | ✓ файл удалён (ревью 2026-09) |
+| `src/components/product/PriceHistoryChart.tsx:230` | Тултип и скелетон без радиуса | `rounded-lg` / `rounded-xl` | ✓ файл удалён (ревью 2026-09) |
+| `src/components/product/ProductReviews.tsx:168` | «Load more» и кнопка отправки различаются шкалой подписи и паддингом; обе без радиуса | Привести к outline-рецепту PDP | ✓ файл удалён (ревью 2026-09) |
 | `src/components/product/ProductClient.tsx:210` (и `setTimeout` `:78-81`, `:88`) | Магические 260ms в трёх местах, единственная произвольная длительность в классах | Именованная константа, лучше `duration-300` | актуально; в CSS то же значение теперь токен `--dur-slow` (`globals.css:34`) |
 | `src/app/builder/page.tsx:1911` | `bg-[var(--foreground)]/70` — модификатор непрозрачности на переменной вопреки договорённости `globals.css:54` (технически на Tailwind v4 работает) | Предвычисленный токен или `opacity-70` на элементе | актуально |
 | `src/app/builder/page.tsx:1902` | `var(--surface-hover, var(--surface))` — токен `--surface-hover` не определён нигде, hover нулевой | `hover:bg-[var(--fg-overlay-05)]` | ✓ исправлено (UX-правка 2026-09-12) |
@@ -999,13 +999,13 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/plans/page.tsx:218` | Разделитель `border-current/10` — единственная граница вне токенного набора | Ветвление на `--fg-on-dark-60`/`--border` | актуально |
 | `src/app/subscribe/page.tsx:11` | `PLAN_COPY` дословно дублирует массивы `features` из `plans/page.tsx:20,37,55`; обе страницы дублируют то, чем владеет `lib/plans.ts` | Один экспорт в `src/lib/plans.ts` | актуально |
 | `src/components/auth/AuthForm.tsx:125` | Primary Clerk-кнопки `text-xs`, тогда как CTA воронки на `/subscribe` — `text-[10px]` | `text-[10px]` | актуально |
-| `src/app/coming-soon/page.tsx:56` | Инлайновый `<style>` переобъявляет `fadeUp`/`fadeIn`, `dotPulse` определён дважды с разной начальной непрозрачностью | Один `dotPulse` | компонент мёртв, ждёт удаления (страница и `FeatureCarousel.tsx`; гейт «coming soon» снят при ревью 2026-09) |
+| `src/app/coming-soon/page.tsx:56` | Инлайновый `<style>` переобъявляет `fadeUp`/`fadeIn`, `dotPulse` определён дважды с разной начальной непрозрачностью | Один `dotPulse` | ✓ файл удалён (ревью 2026-09) (страница и `FeatureCarousel.tsx`; гейт «coming soon» снят при ревью 2026-09) |
 | `src/app/sitemap-page/page.tsx:95` (и `:111`) | Outline-CTA без `rounded-xl`, в отличие от `about/page.tsx` (локально согласуется с hairline-сеткой страницы) | `rounded-xl` | актуально |
 | `src/components/stylist/StylistDrawer.tsx:899` (и `:908`) | Ширина карточки задана инлайновым `style={{ width: 72 }}`, а изображение в соседней ветке — классом `w-[72px]` (`:870`) | Класс в обеих ветках | актуально |
 | `src/components/stylist/StylistPersonalizationModal.tsx:288` (и `:296`) | Две кнопки одного футера имеют `disabled:opacity-30` и `-40` | `disabled:opacity-40 disabled:cursor-not-allowed` | актуально |
-| `src/components/ui/parallax-floating.tsx:29` | Мёртвый код и единственный потребитель `src/hooks/use-mouse-position-ref` | Удалить оба | компонент мёртв, ждёт удаления |
-| `src/components/ui/HeroBackground.tsx:10` | Мёртвый код; читает тему императивно через `useTheme()` | Удалить | компонент мёртв, ждёт удаления |
-| `src/components/ui/animated-group.tsx:140` | Достижим только через мёртвый `hero-section-1.tsx`; свой набор пресетов анимаций, расходящийся с каноном | Удалить вместе с `hero-section-1.tsx` | компонент мёртв, ждёт удаления |
+| `src/components/ui/parallax-floating.tsx:29` | Мёртвый код и единственный потребитель `src/hooks/use-mouse-position-ref` | Удалить оба | ✓ файл удалён (ревью 2026-09) (оба) |
+| `src/components/ui/HeroBackground.tsx:10` | Мёртвый код; читает тему императивно через `useTheme()` | Удалить | ✓ файл удалён (ревью 2026-09) |
+| `src/components/ui/animated-group.tsx:140` | Достижим только через мёртвый `hero-section-1.tsx`; свой набор пресетов анимаций, расходящийся с каноном | Удалить вместе с `hero-section-1.tsx` | ✓ файл удалён (ревью 2026-09) |
 | `src/app/blog/page.tsx:61` | Eyebrow с `tracking-[0.22em]` вместо доминирующих `0.18em` | `tracking-[0.18em]` | ✓ исправлено (до 2026-09): `blog/page.tsx:27`, листинг теперь в `components/blog/JournalFeed.tsx` |
 | `src/app/privacy/page.tsx:401` | `font-mono` как типографический сигнал при том, что `--font-mono` разрешается в Inter Tight (~180 вхождений в `src/` — визуальный no-op) | Либо реальный моноширинный стек в `globals.css`, либо убрать класс | актуально (на `privacy` осталось одно вхождение) |
 | `src/app/goo-studio/analytics/page.tsx:159` | Тот же баннер ошибки со скруглением на одной странице админки и без — на соседней | Добавить `rounded-xl` | ✓ исправлено (ревью 2026-09): `analytics/page.tsx:180`, `goo-studio/page.tsx:159,193` |
