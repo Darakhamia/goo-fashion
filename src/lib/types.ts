@@ -81,22 +81,6 @@ export interface Retailer {
   reviewCount?: number;
 }
 
-export interface PricePoint {
-  date: string;       // ISO date YYYY-MM-DD
-  price: number;
-  retailerName?: string;
-}
-
-export interface ProductReview {
-  id: string;
-  productId: string;
-  userId: string;
-  userName: string;
-  rating: number;     // 1–5
-  text: string;
-  createdAt: string;
-}
-
 /**
  * Lightweight swatch used in the catalog card when a product has color variants.
  * Each swatch represents one product linked via variantGroupId.

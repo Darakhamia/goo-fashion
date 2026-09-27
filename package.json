@@ -10,14 +10,10 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.0",
-    "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.98.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
-    "lucide-react": "^1.16.0",
     "next": "16.1.6",
     "openai": "^6.25.0",
     "posthog-js": "^1.384.1",
@@ -28,7 +24,6 @@
     "resend": "^6.12.2",
     "sanitize-html": "^2.17.4",
     "sharp": "^0.34.5",
-    "tailwind-merge": "^3.6.0",
     "web-vitals": "^5.2.0"
   },
   "engines": {
