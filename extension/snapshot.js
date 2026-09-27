@@ -123,6 +123,39 @@
   }
 
   /**
+   * Parts of a page whose pictures are never this product's: the other
+   * products (recommendation rails, listing cards — `OTHER_PRODUCTS` below),
+   * the site's own furniture, the cart drawer, and the colour swatches, which
+   * are small photos of the OTHER colourways. Every one of them sat on the same
+   * CDN as the gallery, named in the same house style, and reached the card.
+   */
+  const NOT_THIS_PRODUCT = [
+    "header", "footer", "nav", '[role="navigation"]', '[role="banner"]', '[role="contentinfo"]',
+    '[class*="mega-menu" i]', '[class*="megamenu" i]', '[class*="cart-drawer" i]', '[id*="cart-drawer" i]',
+    '[class*="minicart" i]', '[class*="mini-cart" i]', '[class*="swatch" i]', '[class*="announcement" i]',
+  ].join(",");
+
+  /** A picture smaller than this on both sides is an icon, a badge or a swatch. */
+  const MIN_PHOTO_PX = 64;
+
+  /** Is this `<img>` (or `<source>`) part of the product's own gallery, as far as the page shows? */
+  function ownImage(el) {
+    try {
+      if (el.closest(OTHER_PRODUCTS) || el.closest(NOT_THIS_PRODUCT)) return false;
+    } catch {
+      // A selector this browser cannot parse: keep the picture rather than lose the gallery.
+    }
+    if (el.tagName === "IMG") {
+      // The file's own size once loaded, else the size the page lays it out at.
+      // Zero is "not known yet" — a lazy slide — and never a reason to drop it.
+      const w = el.naturalWidth || el.width;
+      const h = el.naturalHeight || el.height;
+      if (w && h && w < MIN_PHOTO_PX && h < MIN_PHOTO_PX) return false;
+    }
+    return true;
+  }
+
+  /**
    * Every address on the page that could be a photo of this product.
    *
    * Deliberately greedy: it costs a few hundred strings, and the server rejects
@@ -146,6 +179,7 @@
     // `currentSrc` first: on a responsive image it is the rendition the browser
     // actually chose and loaded, which no attribute in the markup states.
     for (const img of document.images) {
+      if (!ownImage(img)) continue;
       add(img.currentSrc);
       add(img.getAttribute("src"));
       addSrcset(img.getAttribute("srcset"));
@@ -159,6 +193,7 @@
     }
 
     for (const source of document.querySelectorAll("picture source")) {
+      if (!ownImage(source)) continue;
       addSrcset(source.getAttribute("srcset"));
       addSrcset(source.getAttribute("data-srcset"));
     }
@@ -298,6 +333,19 @@
     '[class*="grid-product" i]', '[class*="product-tile" i]', '[class*="product-grid" i]', '[class*="products-grid" i]',
   ].join(",");
 
+  /**
+   * The size row. Themes build it from the same swatch component as the colour
+   * row, so "swatch" in a class says nothing about which it is — and the picked
+   * size went out as the picked colour ("XS" on Hoodrich's Mia Jacket). Its own
+   * words say size, or its heading does ("Size", "Size: XS").
+   */
+  const SIZE_WORD = /(?:^|[-_\s])(?:sizes?|размер|розмір|taille|grö(?:ß|ss)e|talla|taglia)(?:$|[-_\s:])/i;
+  function isSizeControl(el, words) {
+    if (words.some((w) => w && SIZE_WORD.test(w))) return true;
+    const heading = (el.innerText || el.textContent || "").trim().slice(0, 40);
+    return /^(?:sizes?|размер|розмір|taille|größe|talla|taglia)\b/i.test(heading);
+  }
+
   /** Elements whose own attributes say they are the colour control. */
   function colorContainers() {
     const out = [];
@@ -316,6 +364,7 @@
         (w) => w && (COLOR_HINT.test(w) || /swatch/i.test(w)) && !NOT_A_COLOR_CONTROL.test(w),
       );
       if (!says) continue;
+      if (isSizeControl(el, words)) continue;
       if (el.getElementsByTagName("*").length > MAX_CONTROL_ELEMENTS) continue;
       try {
         if (el.closest(OTHER_PRODUCTS)) continue;
@@ -343,6 +392,10 @@
     if (/\.(?:jpe?g|png|webp|gif|avif|svg|bmp|tiff?|heic)(?:[?#].*)?$/i.test(value)) return "";
     if (/:\/\/|^\/|^www\./i.test(value)) return "";
     if (value.includes("_") || value.startsWith("#")) return "";
+    // A size is never a colour, whatever control it was read from.
+    if (/^(?:xx?xs|xs|s|m|l|xl|xxl|xxxl|[2-6]xl)(?:\s?[/–—-]\s?(?:xx?xs|xs|s|m|l|xl|xxl|xxxl|[2-6]xl))*$/i.test(value)) return "";
+    if (/^(?:(?:eu|uk|us|fr|it|de|jp)\s?)?\d{1,2}(?:[.,]5)?(?:\s?(?:eu|uk|us|fr|it|de|jp))?$/i.test(value)) return "";
+    if (/^(?:one[\s-]?size|onesize|os|free[\s-]?size)$/i.test(value)) return "";
     if (!/\s/.test(value) && /\d.*\d/.test(value)) return "";
     return value;
   }

@@ -10,7 +10,7 @@
  *   by name   the same brand, the same piece once reduced, the same colours in
  *             any order — or some of them ("Grey" beside "grey/white/leather"),
  *             or none stated where the store has one card of the piece — no
- *             store in common, and prices within a factor of three. Anything
+ *             store in common, and prices within a factor of four. Anything
  *             short of the same colour word counts only when a row has exactly
  *             one such candidate — a model made in two blacks is ambiguous,
  *             and a wrong merge sends a shopper to the other one.
@@ -20,12 +20,10 @@
  * admin confirms every merge; nothing here writes.
  */
 import type { Retailer } from "@/lib/types";
-import { colourRelation, pieceName, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
-import { foldBrand } from "@/lib/server/parser/brand-from-name";
+import { colourRelation, modelWord, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
+import { brandsAgree, foldBrand, makerKey, makerNames } from "@/lib/server/parser/brand-from-name";
+import { isSameRetailer, MAX_PRICE_RATIO } from "@/lib/server/parser/same-item";
 import { bareHost } from "@/lib/url";
-
-/** Widest gap between two cards' prices for one item — as in `same-item.ts`. */
-const MAX_PRICE_RATIO = 3;
 
 export interface CatalogueRow {
   id: string;
@@ -115,11 +113,15 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
   // row against every other one of its brand.
   const buckets = new Map<string, CatalogueRow[]>();
   for (const r of rows) {
-    const brand = foldBrand(r.brand);
+    // By the maker and the model's own word, not the exact brand and name:
+    // "adidas" / "adidas Originals", "Jordan" / "Nike" and "Toro Bravo" /
+    // "Toro Bravo (2026)" are one piece, and an exact key put them in
+    // different buckets. `samePiece` below still decides every pair.
+    const brand = makerKey(r.brand);
     if (!brand) continue;
-    const core = pieceName(r.name, r.brand, r.colors).core;
-    if (!core) continue;
-    const key = `${brand}|${core}`;
+    const model = modelWord(r.name, makerNames(r.brand), r.colors);
+    if (!model) continue;
+    const key = `${brand}|${model}`;
     buckets.set(key, [...(buckets.get(key) ?? []), r]);
   }
 
@@ -141,7 +143,8 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
       const perStore = new Map<string, Slot>();
       for (const b of bucket) {
         if (a.id === b.id) continue;
-        if (!samePiece(a.brand, a, b)) continue;
+        if (!brandsAgree(a.brand, b.brand)) continue;
+        if (!samePiece([a.brand, b.brand], a, b)) continue;
         const storesB = storesOf(b);
         if (!storesB.size || [...storesB].some((s) => storesA.has(s))) continue;
         const pa = a.priceMin ?? 0;
@@ -317,11 +320,9 @@ export function mergeCardsPatch(keep: DbRow, others: DbRow[]): { patch: DbRow; f
   const retailers: Retailer[] = Array.isArray(keep.retailers) ? [...(keep.retailers as Retailer[])] : [];
   for (const other of others) {
     for (const entry of Array.isArray(other.retailers) ? (other.retailers as Retailer[]) : []) {
-      const known = retailers.some(
-        (r) =>
-          (r.url && entry.url && r.url === entry.url) ||
-          (r.name && entry.name && r.name.toLowerCase() === entry.name.toLowerCase()),
-      );
+      // The same store by address — never by name alone, or `nike.ua`'s link
+      // was dropped from a card that had `nike.com`'s, both called "Nike".
+      const known = retailers.some((r) => isSameRetailer(r, entry));
       if (!known && retailers.length < 20) {
         retailers.push(entry);
         filled.add("stores");

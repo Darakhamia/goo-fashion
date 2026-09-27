@@ -27,7 +27,9 @@ import {
   type VariantCandidate,
 } from "./variant-group";
 import {
+  gtinSpellings,
   isSameItem,
+  isSameRetailer,
   mergePatch,
   pickSameItemByName,
   withRetailer,
@@ -35,7 +37,9 @@ import {
   type IncomingItem,
   type NamedItem,
 } from "./same-item";
-import { brandVocabulary, decideBrand } from "./brand-from-name";
+import { brandSearchWord, brandVocabulary, decideBrand } from "./brand-from-name";
+import { articleCodePatterns, articleCodes, modelWord, pieceName } from "./piece-name";
+import { listingKey, urlSpellings } from "./listing-url";
 import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
 import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
@@ -301,36 +305,35 @@ function toExisting(row: MergeRow): ExistingItem {
 /**
  * The product this page is a second listing of, if we already have it.
  *
- * Asked by code only — GTIN, or the maker's part number together with the brand.
- * Returns null on any database complaint, including the one a database without
- * migration 020 makes, so a catalogue that has not run it keeps importing
- * exactly as it did before: a second row rather than a second link.
+ * Asked by code only — GTIN in any of its paddings, or the maker's part number
+ * however it is punctuated, within one maker (`isSameItem`). Returns null on
+ * any database complaint, including the one a database without migration 020
+ * makes, so a catalogue that has not run it keeps importing exactly as it did
+ * before: a second row rather than a second link.
  */
 async function findSameItem(incoming: IncomingItem, sourceUrl: string | null): Promise<ExistingItem | null> {
   try {
     const queries: PromiseLike<{ data: unknown; error: unknown }>[] = [];
-    if (incoming.gtin) {
-      queries.push(supabase!.from("products").select(MERGE_COLUMNS).eq("gtin", incoming.gtin).limit(5));
+    const gtins = gtinSpellings(incoming.gtin);
+    if (gtins.length) {
+      queries.push(supabase!.from("products").select(MERGE_COLUMNS).in("gtin", gtins).limit(5));
     }
     if (incoming.mpn && incoming.brand) {
-      queries.push(
-        supabase!
-          .from("products")
-          .select(MERGE_COLUMNS)
-          .eq("mpn", incoming.mpn)
-          .eq("brand", incoming.brand)
-          .limit(5),
-      );
+      const pattern = incoming.mpn.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).map(escapeLike).join("%");
+      if (pattern) {
+        queries.push(supabase!.from("products").select(MERGE_COLUMNS).ilike("mpn", pattern).limit(50));
+      }
     }
     if (!queries.length) return null;
 
+    const ours = listingKey(sourceUrl);
     for (const query of queries) {
       const { data, error } = await query;
       if (error || !Array.isArray(data)) continue;
       for (const row of data as MergeRow[]) {
         // A row we are re-importing is an update, not a merge; that path has
         // already run by the time this is asked.
-        if (sourceUrl && row.source_url === sourceUrl) continue;
+        if (ours && listingKey(row.source_url) === ours) continue;
         const existing = toExisting(row);
         if (isSameItem(incoming, existing)) return existing;
       }
@@ -377,22 +380,75 @@ async function findSameItemByName(incoming: {
   sourceUrl: string | null;
   /** A feed's merchant, when the caller named it — see `pickSameItemByName`. */
   store?: string | null;
+  mpn?: string;
 }): Promise<{ item: NamedItem | null; unread: string[]; miss?: string }> {
-  if (!incoming.brand) return { item: null, unread: [], miss: "no brand to match by" };
   if (!incoming.sourceUrl) return { item: null, unread: [], miss: "no address to add as a store" };
+  const codes = articleCodes({ name: "", mpn: incoming.mpn });
   try {
-    for (const columns of NAME_MATCH_COLUMNS) {
-      const { data, error } = await supabase!
-        .from("products")
-        .select(columns)
-        .ilike("brand", escapeLike(incoming.brand))
-        .limit(BRAND_ROWS);
-      if (error) continue;
-      const rows: NamedItem[] = ((data ?? []) as unknown as (MergeRow & {
+    // Read by the brand's first word, not its whole spelling: "adidas" and
+    // "adidas Originals", "Carhartt" and "Carhartt WIP" are one maker, and an
+    // exact match never showed a card to the other spelling. And read twice:
+    // once narrowed by the model's own word, because a brand with more cards
+    // than one read returns hid the very card this page belongs to.
+    //
+    // And a third read by the model's word alone, whatever the brand column
+    // says: a card saved before its brand was read has none, and a page whose
+    // brand was not read has none either. `brandsFit` then asks the names.
+    //
+    // And by what needs no brand or long word at all: the card that already
+    // carries this page as a store link; the reduced name's words in order
+    // ("Кросівки Air Max 90" finds "Nike Air Max 90"); the article code, in
+    // the card's part number or its name.
+    const word = brandSearchWord(incoming.brand);
+    const model = modelWord(incoming.name, incoming.brand, incoming.colors);
+    const tokens = pieceName(incoming.name, incoming.brand, incoming.colors).full.split(" ").filter(Boolean);
+    const ordered = tokens.length >= 2 || tokens.some((t) => /\d/.test(t)) ? tokens.slice(0, 5).map(escapeLike).join("%") : "";
+    const codePatterns = [...articleCodePatterns(incoming.name), ...articleCodePatterns(incoming.mpn ?? "")].slice(0, 2);
+    const linkedAs = [...new Set([incoming.sourceUrl, `https://${listingKey(incoming.sourceUrl)}`])];
+    for (const [pass, columns] of NAME_MATCH_COLUMNS.entries()) {
+      const products = () => supabase!.from("products").select(columns);
+      // Reads a database may refuse without the catalogue being unreadable —
+      // a JSON containment filter, the code columns — are asked apart, and
+      // their refusal only means they found nothing.
+      const optional = [
+        ...linkedAs.map((url) => products().filter("retailers", "cs", JSON.stringify([{ url }])).limit(5)),
+        // The code columns exist only with migration 020, the first column list.
+        ...(pass === 0 ? codePatterns.map((code) => products().ilike("mpn", code).limit(50)) : []),
+      ];
+      const reads = [
+        ...(word && model
+          ? [products().ilike("brand", `%${escapeLike(word)}%`).ilike("name", `%${escapeLike(model)}%`).limit(BRAND_ROWS)]
+          : []),
+        ...(word ? [products().ilike("brand", `%${escapeLike(word)}%`).limit(BRAND_ROWS)] : []),
+        ...(model ? [products().ilike("name", `%${escapeLike(model)}%`).limit(BRAND_ROWS)] : []),
+        ...(ordered ? [products().ilike("name", `%${ordered}%`).limit(BRAND_ROWS)] : []),
+        ...codePatterns.map((code) => products().ilike("name", `%${code}%`).limit(50)),
+      ];
+      const seen = new Map<string, unknown>();
+      let failed = false;
+      for (const read of reads) {
+        const { data, error } = await read;
+        if (error) {
+          failed = true;
+          break;
+        }
+        for (const row of (data ?? []) as unknown as { id: string }[]) {
+          if (!seen.has(row.id)) seen.set(row.id, row);
+        }
+      }
+      if (failed) continue;
+      for (const read of optional) {
+        const { data, error } = await read;
+        if (error) continue;
+        for (const row of (data ?? []) as unknown as { id: string }[]) {
+          if (!seen.has(row.id)) seen.set(row.id, row);
+        }
+      }
+      const rows: NamedItem[] = ([...seen.values()] as (MergeRow & {
         name: string | null;
         category: string | null;
       })[]).map((row) => ({ ...toExisting(row), name: row.name ?? "", category: row.category }));
-      const match = pickSameItemByName(incoming, rows);
+      const match = pickSameItemByName({ ...incoming, codes }, rows);
       const read = columns.split(",").map((c) => c.trim());
       return { item: match.item, miss: match.miss, unread: FILL_ONLY_COLUMNS.filter((c) => !read.includes(c)) };
     }
@@ -420,11 +476,17 @@ async function keepOtherStores(
   existing: Product["retailers"],
   ours: Product["retailers"],
   sourceUrl: string | null,
+  /** A feed's entries: told apart by the merchant's name, not the link's host. */
+  byName = false,
 ): Promise<Record<string, unknown>> {
   if (!ours.length) return dbRow;
+  // Which of our entries an existing one is. A page's store is told apart by
+  // address, not by name: `nike.com` and `nike.ua` are two stores that both
+  // call themselves Nike. A feed's links all share the affiliate host, so
+  // there the merchant's name decides.
   const oursIndex = (r: Product["retailers"][number]) =>
-    ours.findIndex((o) => r.url === o.url || r.name?.toLowerCase() === o.name.toLowerCase());
-  const others = existing.filter((r) => r?.url && r.url !== sourceUrl && oursIndex(r) < 0);
+    ours.findIndex((o) => isSameRetailer(r, o, { byName }));
+  const others = existing.filter((r) => r && (!sourceUrl || r.url !== sourceUrl) && oursIndex(r) < 0);
   if (!others.length) return dbRow;
 
   // One place per store of ours, the first it held. The old CSV import wrote an
@@ -440,12 +502,12 @@ async function keepOtherStores(
   });
   const row: Record<string, unknown> = {
     ...dbRow,
-    retailers: ours.reduce((list, entry) => withRetailer(list, entry), kept),
+    retailers: ours.reduce((list, entry) => withRetailer(list, entry, { byName }), kept),
   };
   if (row.currency !== "USD") return row;
 
   const theirs = (
-    await Promise.all(others.map((r) => toUsd(Number(r.price) || 0, r.currency || "USD")))
+    await Promise.all(others.filter((r) => r.url).map((r) => toUsd(Number(r.price) || 0, r.currency || "USD")))
   )
     .map((c) => c?.usd ?? 0)
     .filter((n) => n > 0);
@@ -724,7 +786,7 @@ export async function importParsedProduct(
             delete row[column];
           }
         }
-        const next = await keepOtherStores(row, current, ours, sourceUrl);
+        const next = await keepOtherStores(row, current, ours, sourceUrl, !!opts.retailers);
         // A price the product cannot compare (no dollar rate), or one from a
         // store that has sold out, is not written over another source's price.
         if (joinedOther && (currency !== "USD" || ours.every((r) => r.availability === "sold out"))) {
@@ -951,14 +1013,22 @@ export async function importParsedProduct(
   let productId: string | null = null;
   let updated = false;
   let droppedColumns: string[] = [];
+  /** Why a new card was made rather than a link added, for the run's row. */
+  let newCardNote: string | undefined;
   try {
     let existingId: string | null = null;
     let existingRetailers: Product["retailers"] = [];
     let existingStyled = false;
     let existingGendered = false;
     if (sourceUrl) {
+      // Every spelling of this page's address: collected once as `…/am90` and
+      // again as `www.…/am90/?srsltid=…`, it is still the card it made.
       const { data: existing } = await supabase
-        .from("products").select("id, retailers, style_keywords, gender").eq("source_url", sourceUrl).maybeSingle();
+        .from("products")
+        .select("id, retailers, style_keywords, gender")
+        .in("source_url", urlSpellings(sourceUrl))
+        .limit(1)
+        .maybeSingle();
       const found = existing as {
         id: string;
         retailers: Product["retailers"] | null;
@@ -978,7 +1048,7 @@ export async function importParsedProduct(
       // Duplicates screen is where the two become one.
       const id = existingId;
       const patch: Record<string, unknown> = retailers[0]
-        ? { retailers: withRetailer(existingRetailers, retailers[0]) }
+        ? { retailers: withRetailer(existingRetailers, retailers[0], { byName: !!opts.retailers }) }
         : {};
       if (Object.keys(patch).length) {
         const { error } = await writeProductRow<{ id: string }>(patch, (r) =>
@@ -998,7 +1068,7 @@ export async function importParsedProduct(
 
     if (existingId) {
       const id = existingId;
-      const row = await keepOtherStores(dbRow, existingRetailers, retailers, sourceUrl);
+      const row = await keepOtherStores(dbRow, existingRetailers, retailers, sourceUrl, !!opts.retailers);
       // Style and gender are the editor's to decide. Re-collecting a page used to
       // write whatever the importer guessed over them — an empty style list
       // included — so a store collected twice lost its hand-set tags. They are
@@ -1034,8 +1104,9 @@ export async function importParsedProduct(
         mpn: product.mpn,
         sku: product.sku,
         // Dollars or nothing: a price left in a currency with no rate would
-        // widen a dollar range with a hryvnia number.
-        price: currency === "USD" ? price : 0,
+        // widen a dollar range with a hryvnia number — and so would one the
+        // page never named a currency for, "4200" taken as dollars.
+        price: currency === "USD" && sourceCurrency ? price : 0,
         retailer: retailers[0],
         material: product.material,
         description: product.description,
@@ -1060,6 +1131,7 @@ export async function importParsedProduct(
           price: incoming.price,
           sourceUrl,
           store: opts.retailers?.[0]?.name,
+          mpn,
         });
         miss = byName.miss;
         if (byName.item) {
@@ -1071,13 +1143,13 @@ export async function importParsedProduct(
 
       if (twin) {
         const twinId = twin.id;
-        const merged = mergePatch(twin, incoming, { linksOnly: opts.linksOnly });
+        const merged = mergePatch(twin, incoming, { linksOnly: opts.linksOnly, byName: !!opts.retailers });
         const patch = merged.patch;
         // A feed selling the piece through several stores brings them all.
         if (retailers.length > 1 && Array.isArray(patch.retailers)) {
           patch.retailers = retailers
             .slice(1)
-            .reduce((list, entry) => withRetailer(list, entry), patch.retailers as Product["retailers"]);
+            .reduce((list, entry) => withRetailer(list, entry, { byName: true }), patch.retailers as Product["retailers"]);
         }
         for (const column of unread) delete patch[column];
         const filled = merged.filled.filter((f) => !unread.includes(f));
@@ -1122,6 +1194,7 @@ export async function importParsedProduct(
       if (error) throw new Error(error.message);
       productId = data?.id ?? null;
       droppedColumns = dropped;
+      if (miss) newCardNote = `new card — ${miss}`;
     }
   } catch (err) {
     return {
@@ -1173,5 +1246,6 @@ export async function importParsedProduct(
     styleNote,
     variantsLinked,
     ...(droppedColumns.length ? { droppedColumns } : {}),
+    ...(newCardNote ? { linkNote: newCardNote } : {}),
   };
 }

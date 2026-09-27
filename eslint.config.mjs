@@ -33,6 +33,23 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // The extension is plain browser script with no type checker behind it, so a
+  // name used and never defined only shows up when an admin clicks the button:
+  // 1.0.7 shipped a popup whose Start threw "note is not a function". The
+  // TypeScript preset switches `no-undef` off; for these files it is the check.
+  {
+    files: ["extension/**/*.js"],
+    languageOptions: {
+      globals: Object.fromEntries(
+        [
+          "chrome", "window", "document", "location", "navigator", "console", "fetch", "URL",
+          "AbortController", "setTimeout", "clearTimeout", "setInterval", "clearInterval",
+          "getComputedStyle", "Node", "Element", "HTMLElement", "NodeFilter", "crypto",
+        ].map((name) => [name, "readonly"]),
+      ),
+    },
+    rules: { "no-undef": "error" },
+  },
   // Catalog photos are hosted on the retailers' CDNs, which rate-limit Next's
   // image optimizer and answer 429 — the product then renders as alt text.
   // @/components/ui/Image decides per host whether the optimizer may be used;
