@@ -3,6 +3,17 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkNamedRateLimit } from "@/lib/server/rate-limit";
 import {
+  asFiniteNumber,
+  asHttpUrl,
+  asSavedAt,
+  asTrimmedString,
+  MAX_LOOK_DESCRIPTION_LENGTH,
+  MAX_LOOK_NAME_LENGTH,
+  sanitizeLookPieces,
+  sanitizeStyleKeywords,
+  type LookPiece,
+} from "@/lib/server/look-input";
+import {
   ANONYMOUS_LOOK_OWNER,
   getProductsByIds,
   isOwnStorageUrl,
@@ -38,56 +49,17 @@ import {
 // A look shared while signed out has nobody behind it, so its piece photos are
 // held to the ?d= link's rule: our own storage or that product's catalogue
 // photos only. Its page is not indexed either (see app/look/[id]).
-const MAX_PIECES = 12;
+//
+// The field rules (piece count, string caps, http(s)-only images) are shared
+// with the account's saved looks and the moderation queue: lib/server/look-input.
 const SHARES_PER_HOUR = 30;
-const MAX_URL_LENGTH = 2000;
-
-type RawPiece = {
-  slot?: unknown;
-  productId?: unknown;
-  variantId?: unknown;
-  imageUrl?: unknown;
-  name?: unknown;
-};
-
-function asTrimmedString(v: unknown, maxLen: number): string | null {
-  if (typeof v !== "string") return null;
-  const s = v.trim();
-  if (!s || s.length > maxLen) return null;
-  return s;
-}
-
-/** A hosted http(s) image link, or null — never a data: or other URI. */
-function asHttpUrl(v: unknown): string | null {
-  const s = asTrimmedString(v, MAX_URL_LENGTH);
-  return s && /^https?:\/\//i.test(s) ? s : null;
-}
-
-function sanitizePieces(raw: unknown): Array<Record<string, unknown>> | null {
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_PIECES) return null;
-  const pieces: Array<Record<string, unknown>> = [];
-  for (const item of raw as RawPiece[]) {
-    const slot = asTrimmedString(item?.slot, 40);
-    const productId = asTrimmedString(item?.productId, 100);
-    if (!slot || !productId) return null;
-    const piece: Record<string, unknown> = { slot, productId };
-    const variantId = asTrimmedString(item?.variantId, 100);
-    if (variantId) piece.variantId = variantId;
-    const imageUrl = asHttpUrl(item?.imageUrl);
-    if (imageUrl) piece.imageUrl = imageUrl;
-    const name = asTrimmedString(item?.name, 300);
-    if (name) piece.name = name;
-    pieces.push(piece);
-  }
-  return pieces;
-}
 
 /**
  * For a signed-out share: keep a piece's photo only when it is on our storage
  * or is a catalogue photo of that product (or of the colour variant it names).
  * A dropped photo is not a failure — the look page shows the catalogue photo.
  */
-async function dropUntrustedPiecePhotos(pieces: Array<Record<string, unknown>>): Promise<void> {
+async function dropUntrustedPiecePhotos(pieces: LookPiece[]): Promise<void> {
   const withPhoto = pieces.filter(
     (p) => typeof p.imageUrl === "string" && !isOwnStorageUrl(p.imageUrl),
   );
@@ -137,7 +109,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const requestedId = asTrimmedString(body?.id, 100);
-  const pieces = sanitizePieces(body?.pieces);
+  const pieces = sanitizeLookPieces(body?.pieces);
   if (!requestedId || !pieces) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
@@ -149,27 +121,17 @@ export async function POST(req: Request) {
 
   if (!userId) await dropUntrustedPiecePhotos(pieces);
 
-  const name = asTrimmedString(body?.name, 200);
-  const description = asTrimmedString(body?.description, 2000);
+  const name = asTrimmedString(body?.name, MAX_LOOK_NAME_LENGTH);
+  const description = asTrimmedString(body?.description, MAX_LOOK_DESCRIPTION_LENGTH);
   // Generated photos are persisted to storage and shared by URL. A data URL,
   // or a link to anywhere but our storage, is dropped rather than failing the
   // share: the look page falls back to a collage of the pieces.
   const hostedImage = asHttpUrl(body?.generatedImage);
   const generatedImage = hostedImage && isOwnStorageUrl(hostedImage) ? hostedImage : null;
   const generatedStyle = asTrimmedString(body?.generatedStyle, 40);
-  const styleKeywords = Array.isArray(body?.styleKeywords)
-    ? (body.styleKeywords as unknown[])
-        .filter((k): k is string => typeof k === "string" && k.length > 0 && k.length <= 60)
-        .slice(0, 20)
-    : [];
-  const totalPrice =
-    typeof body?.totalPrice === "number" && Number.isFinite(body.totalPrice)
-      ? body.totalPrice
-      : null;
-  const savedAtMs = Date.parse(typeof body?.savedAt === "string" ? body.savedAt : "");
-  const savedAt = Number.isNaN(savedAtMs)
-    ? new Date().toISOString()
-    : new Date(savedAtMs).toISOString();
+  const styleKeywords = sanitizeStyleKeywords(body?.styleKeywords);
+  const totalPrice = asFiniteNumber(body?.totalPrice);
+  const savedAt = asSavedAt(body?.savedAt);
 
   const contentColumns = {
     saved_at: savedAt,

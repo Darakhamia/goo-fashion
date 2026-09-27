@@ -27,7 +27,7 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import { subcategoryToValue } from "@/lib/categories";
 import { STYLE_KEYWORDS } from "@/lib/style-keywords";
-import { mergeUnique, nextName } from "@/lib/server/bulk-edit";
+import { mergeUnique, nextName, previousValues } from "@/lib/server/bulk-edit";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,8 @@ type Row = {
   name: string;
   color_group_ids: number[] | null;
   style_keywords: string[] | null;
+  /** Whatever else was read for the audit entry's previous values. */
+  [column: string]: unknown;
 };
 
 function uniqueStrings(raw: unknown): string[] {
@@ -147,19 +149,40 @@ export async function PATCH(req: Request) {
   let updated = 0;
   const failures: { id: string; error: string }[] = [];
 
+  // Every column this edit may write. Each is read before the write, so the
+  // audit entry records what the changed products held and a mistaken bulk
+  // edit can be put back.
+  const written = [
+    ...new Set([
+      ...Object.keys(shared),
+      ...(addStyles ? ["style_keywords"] : []),
+      ...(addGroups ? ["color_group_ids"] : []),
+      ...(touchesName ? ["name"] : []),
+    ]),
+  ];
+  const changed: Row[] = [];
+
   if (!perRow) {
-    // Nothing depends on a product's current value, so one statement does it.
+    // Nothing depends on a product's current value, so one statement does it;
+    // the read before it is only for the audit entry.
+    const { data: current, error: readError } = await supabase
+      .from("products")
+      .select(["id", ...written].join(", "))
+      .in("id", ids);
+    if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
     const { data, error } = await supabase.from("products").update(shared).in("id", ids).select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     updated = (data ?? []).length;
+    const hit = new Set((data ?? []).map((r) => r.id as string));
+    changed.push(...((current ?? []) as unknown as Row[]).filter((r) => hit.has(r.id)));
   } else {
     const { data, error } = await supabase
       .from("products")
-      .select("id, name, color_group_ids, style_keywords")
+      .select([...new Set(["id", "name", "color_group_ids", "style_keywords", ...written])].join(", "))
       .in("id", ids);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    for (const row of (data ?? []) as Row[]) {
+    for (const row of (data ?? []) as unknown as Row[]) {
       const patch: Record<string, unknown> = { ...shared };
 
       if (addStyles) patch.style_keywords = mergeUnique(row.style_keywords, addStyles);
@@ -172,7 +195,10 @@ export async function PATCH(req: Request) {
       if (!Object.keys(patch).length) continue;
       const { error: writeError } = await supabase.from("products").update(patch).eq("id", row.id);
       if (writeError) failures.push({ id: row.id, error: writeError.message });
-      else updated++;
+      else {
+        updated++;
+        changed.push(row);
+      }
     }
   }
 
@@ -180,7 +206,15 @@ export async function PATCH(req: Request) {
     admin_id: admin.userId,
     action: "products.bulk_edited",
     target_type: "products",
-    metadata: { count: ids.length, updated, set: shared, add: body.add ?? null, name: body.name ?? null },
+    metadata: {
+      count: ids.length,
+      updated,
+      set: shared,
+      add: body.add ?? null,
+      name: body.name ?? null,
+      previous: previousValues(changed, written),
+      previousTotal: changed.length,
+    },
   });
 
   revalidatePath("/browse");

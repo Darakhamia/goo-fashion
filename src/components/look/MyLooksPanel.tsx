@@ -1498,9 +1498,15 @@ export function MyLooksPanel({ onCountChange }: { onCountChange?: (count: number
         // one of them the edit lives on this device and nowhere else, and the
         // person who just typed it is entitled to know that.
         if (look) {
-          void pushLook(look).then(({ dropped }) => {
+          void pushLook(look).then(({ dropped, id: storedId }) => {
             if (dropped.includes("look_name") || dropped.includes("look_description")) {
               setNamesNotStored(true);
+            }
+            // The account refused the id as someone else's and the look went
+            // up under a new one (see pushLook); follow it, or the next edit
+            // would push the old id and store the look twice.
+            if (storedId !== id) {
+              setMyLooks((cur) => cur.map((l) => (l.id === id ? { ...l, id: storedId } : l)));
             }
           });
         }

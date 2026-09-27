@@ -5,6 +5,8 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { uploadGeneratedImage } from "@/lib/storage";
 import { getPrompt } from "@/lib/server/get-prompt";
 import { isBlockedResolvedHost, validateTargetUrl } from "@/lib/server/parser/fetch";
+import { readCappedBytes } from "@/lib/server/read-capped";
+import { requireAdmin } from "@/lib/server/admin-auth";
 import {
   DEFAULT_IMAGE_FIDELITY,
   DEFAULT_IMAGE_MANNEQUIN,
@@ -104,6 +106,12 @@ async function fetchCheckingRedirects(
   return null;
 }
 
+/** Longest the image model is waited for before the prediction is cancelled. */
+const IMAGE_TIMEOUT_MS = 120_000;
+
+/** Largest reference photo read; the whole body is sent on as a data URI. */
+const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;
+
 async function fetchBuffer(
   url: string,
   headers: Record<string, string>,
@@ -111,18 +119,21 @@ async function fetchBuffer(
 ): Promise<{ buf: Buffer; contentType: string } | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // The timer runs until the body is read, not just the headers: a host that
+  // answers at once and then drips a byte a minute would otherwise hold the
+  // request open, fourteen times over. The body is counted as it streams, so an
+  // endless or gzip-bombed one stops at the cap instead of filling memory.
   try {
     const res = await fetchCheckingRedirects(url, { signal: controller.signal, headers });
-    clearTimeout(timer);
     if (!res || !res.ok) return null;
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength > 8 * 1024 * 1024) return null;
+    const buf = await readCappedBytes(res, MAX_REFERENCE_BYTES);
     return { buf, contentType };
   } catch {
-    clearTimeout(timer);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -164,6 +175,42 @@ async function fetchAsDataUri(
   }
 
   return { ok: false, url, reason: "all fetch attempts failed" };
+}
+
+/** The model takes at most 14 reference images; more pieces than that is not a look. */
+const MAX_PIECES = 14;
+/** Longest a piece's text field may be once it is written into the prompt. */
+const MAX_FIELD = 120;
+
+/** A string from the request body, trimmed to the field cap; anything else is dropped. */
+function field(value: unknown): string | undefined {
+  return typeof value === "string" ? value.slice(0, MAX_FIELD) : undefined;
+}
+
+/**
+ * The pieces as the prompt and the reference fetch will use them.
+ *
+ * They come from the client and every one is written into the image prompt, so
+ * both their number and the length of each field are capped here — a request
+ * of a thousand pieces with long names would otherwise become a prompt of any
+ * size, and a thousand downloads.
+ */
+function sanitizePieces(raw: unknown[]): SlotProduct[] {
+  return raw.slice(0, MAX_PIECES).map((item) => {
+    const p = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    // Only the first colour is ever written into the prompt.
+    const firstColor = Array.isArray(p.colors) ? field(p.colors[0]) : undefined;
+    return {
+      slot: field(p.slot) ?? "",
+      name: field(p.name) ?? "",
+      brand: field(p.brand) ?? "",
+      category: field(p.category) ?? "",
+      material: field(p.material),
+      colors: firstColor ? [firstColor] : undefined,
+      colorName: field(p.colorName),
+      imageUrl: typeof p.imageUrl === "string" ? p.imageUrl : undefined,
+    };
+  });
 }
 
 function buildItemsList(pieces: SlotProduct[]): string {
@@ -215,7 +262,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No pieces provided." }, { status: 400 });
   }
 
-  const pieces = body.pieces as SlotProduct[];
+  const pieces = sanitizePieces(body.pieces);
   const style: Style =
     body.style === "flatlay" ? "flatlay" : body.style === "tryon" ? "tryon" : "mannequin";
 
@@ -286,6 +333,10 @@ export async function POST(req: Request) {
         resolution: "1K",
         output_format: "jpg",
       },
+      // When Replicate is queueing, or the builder tab is closed, stop waiting
+      // and let the SDK cancel the prediction instead of polling for minutes.
+      // After an abort it returns no image, which is answered below.
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(IMAGE_TIMEOUT_MS)]),
     });
 
     const imageUrl = Array.isArray(output)
@@ -354,7 +405,10 @@ export async function POST(req: Request) {
       // loading within the hour. Saving a look with one of these is what leaves
       // a card with a broken image days later.
       persisted,
-      prompt,
+      // The prompt is built from the admin-edited templates in Settings. No
+      // page reads it; it stays in the response for an admin checking what the
+      // model was sent, and is nobody else's to see.
+      ...((await requireAdmin().catch(() => null)) ? { prompt } : {}),
       model: "nano-banana-2",
       style,
       referencesUsed: imageInput.length,
@@ -362,11 +416,13 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Generation failed.";
-    // Log the details here; the response used to carry the first characters
-    // of the Replicate token, which no client should see.
+    // Log the details here, and only here. The response used to carry the
+    // first characters of the Replicate token, and then Replicate's own error
+    // text — the API path, the model, our account's spend-limit or billing
+    // state — which the builder showed word for word to any subscriber.
     console.error("[generate-outfit] generation failed:", msg);
     return NextResponse.json(
-      { error: msg, failedUrls },
+      { error: "Image generation failed. Try again in a moment.", failedUrls },
       { status: 500 }
     );
   }

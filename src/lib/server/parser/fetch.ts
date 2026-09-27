@@ -10,7 +10,19 @@
  */
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { BodyTooLargeError, readCappedBytes, readCappedText } from "@/lib/server/read-capped";
 import type { ParserFetchSettings, FetchProvider } from "./types";
+
+/**
+ * Ceilings on a body we read. fetch decodes gzip and brotli as it goes, so a
+ * small answer can unpack to gigabytes inside the one Node process the whole
+ * site runs in. A page stops at 10 MB: a Shopify collection page with its
+ * inline JSON already runs to 6.5 MB (allbirds.com, September 2026). A sitemap
+ * or a storefront's JSON page lists a whole catalogue, so those callers pass
+ * the 20 MB ceiling instead.
+ */
+export const MAX_HTML_BYTES = 10 * 1024 * 1024;
+export const MAX_CATALOGUE_BYTES = 20 * 1024 * 1024;
 
 // Realistic, current desktop User-Agent strings per impersonation profile.
 const IMPERSONATE_UA: Record<string, string> = {
@@ -159,7 +171,7 @@ async function warmUpOrigin(target: string, settings: ParserFetchSettings): Prom
     return;
   }
   if (origin === target) return; // The front page IS what was refused.
-  await requestOnce(origin, browserHeaders(settings.impersonate), settings, origin).catch(() => undefined);
+  await requestOnce(origin, browserHeaders(settings.impersonate), settings, origin, MAX_HTML_BYTES).catch(() => undefined);
 }
 
 /**
@@ -245,8 +257,9 @@ function isBlockedIPv6(h: string): boolean {
 
 /**
  * Block direct fetches to internal / loopback / link-local addresses (SSRF
- * defence). Only applied in `direct` mode — provider modes fetch from their own
- * infrastructure, not ours.
+ * defence). Applied to a `direct` target and to the `custom` endpoint, the two
+ * addresses our own server dials — the named providers fetch the store from
+ * their own infrastructure, not ours.
  *
  * The name is normalised first, since one internal address has many
  * spellings: `new URL()` keeps an IPv6 literal in brackets ("[::1]") and a
@@ -335,6 +348,83 @@ export async function assertPublicUrl(raw: string): Promise<void> {
   }
 }
 
+/** Ports a store is served on; "" is the scheme's own default. */
+const STORE_PORTS = new Set(["", "80", "443"]);
+
+/**
+ * Why the parser may not dial `raw` itself, or null when it may: the
+ * `assertPublicUrl` rules and, for a store, its port.
+ *
+ * The port rule is for `direct` only. A shop answers on 80 or 443, while
+ * `:8000`, `:3000` or `:5432` behind a public-looking name is one of our own
+ * services reached through a name that points back at us. The custom endpoint
+ * is the admin's own scraping service and may well listen on 8443.
+ */
+async function refusalFor(raw: string, storePortsOnly: boolean): Promise<string | null> {
+  const valid = validateTargetUrl(raw, "direct");
+  if ("error" in valid) return valid.error;
+  if (storePortsOnly && !STORE_PORTS.has(valid.url.port)) {
+    return `Refusing to fetch port ${valid.url.port} directly: a store is served on 80 or 443`;
+  }
+  // A name that does not resolve is refused here too — say so, since a typo in
+  // a pasted URL is the likelier reason.
+  if (await isBlockedResolvedHost(valid.url.hostname)) {
+    return "Refusing to fetch a host that does not resolve or resolves to a private/internal address";
+  }
+  return null;
+}
+
+/** Redirect hops followed per fetch; a store uses one or two (https, www, a locale). */
+const MAX_REDIRECTS = 5;
+
+/** The statuses `redirect: "follow"` follows. */
+const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * GET an address our server dials itself, following redirects by hand.
+ *
+ * `redirect: "follow"` checks nothing past the first URL, so a public store
+ * answering "302 → http://10.0.1.5:8000/" was followed into our own network.
+ * Here every hop, the first included, passes `refusalFor` before it is
+ * dialled, the chain stops after MAX_REDIRECTS, and the body of each hop left
+ * behind is cancelled to free its socket. The one signal covers the whole
+ * chain, as it did the single fetch.
+ *
+ * `direct` reads and fills the cookie jar on every hop, under the host of that
+ * hop — so a soft wall that sets its cookie on a 302 back to the same page now
+ * gets it back. The custom endpoint is not a store and gets no cookies.
+ */
+async function fetchCheckingHops(
+  start: string,
+  headers: Record<string, string> | undefined,
+  signal: AbortSignal,
+  mode: "direct" | "custom",
+): Promise<Response> {
+  const direct = mode === "direct";
+  let current = start;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const refused = await refusalFor(current, direct);
+    if (refused) throw new Error(direct ? refused : `Custom endpoint: ${refused}`);
+    const cookie = direct && headers ? cookieHeaderFor(current) : "";
+    const res = await fetch(current, {
+      method: "GET",
+      redirect: "manual",
+      signal,
+      headers: cookie && headers ? { ...headers, Cookie: cookie } : headers,
+    });
+    if (direct) rememberCookies(current, res);
+    const location = REDIRECT_STATUS.has(res.status) ? res.headers.get("location") : null;
+    if (!location) return res;
+    res.body?.cancel().catch(() => undefined);
+    try {
+      current = new URL(location, current).toString();
+    } catch {
+      throw new Error("Redirected to an address that is not a URL");
+    }
+  }
+  throw new Error(`Too many redirects (more than ${MAX_REDIRECTS})`);
+}
+
 /** Build the upstream URL for a scraping provider. */
 function buildProviderUrl(
   provider: FetchProvider,
@@ -377,12 +467,14 @@ export interface FetchResult {
 
 /**
  * Fetch a product page's HTML using the configured strategy.
- * `apiKey` is required for every non-direct provider.
+ * `apiKey` is required for every non-direct provider. A body over `maxBytes`
+ * fails this fetch with the reason, and only this one.
  */
 export async function fetchHtml(
   target: string,
   settings: ParserFetchSettings,
   apiKey: string,
+  maxBytes: number = MAX_HTML_BYTES,
 ): Promise<FetchResult> {
   const valid = validateTargetUrl(target, settings.provider);
   if ("error" in valid) {
@@ -429,7 +521,7 @@ export async function fetchHtml(
   // ceiling on how long it may live.
   let attempt = 0;
   for (;;) {
-    const result = await requestOnce(requestUrl, directHeaders, settings, target);
+    const result = await requestOnce(requestUrl, directHeaders, settings, target, maxBytes);
     if (result.ok || attempt >= 1) return result;
     attempt++;
 
@@ -483,26 +575,32 @@ async function requestOnce(
   headers: Record<string, string> | undefined,
   settings: ParserFetchSettings,
   target: string,
+  maxBytes: number,
 ): Promise<FetchResult & { retryAfterMs?: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1_000, settings.timeoutMs));
   const direct = settings.provider === "direct";
   try {
-    const cookie = direct && headers ? cookieHeaderFor(target) : "";
-    const res = await fetch(requestUrl, {
-      method: "GET",
-      redirect: "follow",
-      signal: controller.signal,
-      // Browser headers only matter for `direct`; providers set their own.
-      headers: cookie && headers ? { ...headers, Cookie: cookie } : headers,
-    });
-    if (direct) rememberCookies(target, res);
-    const html = await res.text();
+    // Browser headers only matter for `direct`; providers set their own. The
+    // named scraping services are fixed hosts of their own; a store and the
+    // admin's custom endpoint are addresses anyone could have typed, so our
+    // server checks every hop before dialling them.
+    const res =
+      direct || settings.provider === "custom"
+        ? await fetchCheckingHops(requestUrl, headers, controller.signal, direct ? "direct" : "custom")
+        : await fetch(requestUrl, { method: "GET", redirect: "follow", signal: controller.signal, headers });
     // Only a direct fetch can report a meaningful final URL. In provider mode
     // `res.url` is the SCRAPING SERVICE's endpoint, and using it would resolve
     // every relative link and image against the provider's domain instead of the
     // store's — so the target URL stands.
     const finalUrl = settings.provider === "direct" ? res.url || target : target;
+    let html: string;
+    try {
+      html = await readCappedText(res, maxBytes);
+    } catch (err) {
+      if (!(err instanceof BodyTooLargeError)) throw err;
+      return { ok: false, status: res.status, html: "", finalUrl, error: err.message };
+    }
     return {
       ok: res.ok,
       status: res.status,
@@ -560,19 +658,17 @@ export async function fetchBinary(
       ...browserHeaders(settings.impersonate),
       Accept: "application/xml,text/xml,application/gzip,*/*;q=0.8",
     };
-    const cookie = cookieHeaderFor(target);
-    if (cookie) headers.Cookie = cookie;
-    const res = await fetch(target, {
-      method: "GET",
-      redirect: "follow",
-      signal: controller.signal,
-      headers,
-    });
-    rememberCookies(target, res);
+    const res = await fetchCheckingHops(target, headers, controller.signal, "direct");
     if (!res.ok) {
+      res.body?.cancel().catch(() => undefined);
       return { ok: false, status: res.status, bytes: null, error: `Upstream responded ${res.status}` };
     }
-    return { ok: true, status: res.status, bytes: new Uint8Array(await res.arrayBuffer()) };
+    try {
+      return { ok: true, status: res.status, bytes: await readCappedBytes(res, MAX_CATALOGUE_BYTES) };
+    } catch (err) {
+      if (!(err instanceof BodyTooLargeError)) throw err;
+      return { ok: false, status: res.status, bytes: null, error: err.message };
+    }
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
     return {

@@ -17,7 +17,7 @@
  * inside a serverless function that will be killed at its `maxDuration`.
  */
 import { fetchHtml } from "./fetch";
-import { extractProductLinks, looksLikeProductPath } from "./extract";
+import { extractProductLinks, looksLikeProductPath, openingTags, lastHref } from "./extract";
 import { EXTENSION_ADVICE } from "./parse-page";
 import { discoverStorefront } from "./storefront";
 import { discoverFromSitemap, type SitemapResult } from "./sitemap";
@@ -74,11 +74,26 @@ function findNextPage(html: string, currentUrl: string, visited: Set<string>): s
     }
   };
 
-  // <link rel="next" href> / <a rel="next" href>
-  const relNext = html.match(/<(?:link|a)\b[^>]*\brel=["'][^"']*\bnext\b[^"']*["'][^>]*\bhref=["']([^"']+)["']/i)
-    ?? html.match(/<(?:link|a)\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["'][^"']*\bnext\b[^"']*["']/i);
+  // <link rel="next" href> / <a rel="next" href> — read tag by tag (see
+  // `openingTags`): one regex spanning the tag with two `[^>]*` runs was cubic
+  // on a page of unclosed `<a rel="next"`. A tag with `rel` before `href`
+  // anywhere on the page still wins over one written the other way round.
+  let relThenHref: string | null = null;
+  let hrefThenRel: string | null = null;
+  for (const attrs of openingTags(html, "link|a")) {
+    const rel = [...attrs.matchAll(/\brel=["']([^"']*)["']/gi)].find((r) => /\bnext\b/i.test(r[1]));
+    if (!rel) continue;
+    const relEnd = rel.index + rel[0].length;
+    const after = lastHref(attrs.slice(relEnd), /\bhref=["']([^"']+)["']/gi);
+    if (after) {
+      relThenHref = after;
+      break;
+    }
+    hrefThenRel ??= lastHref(attrs.slice(0, rel.index), /\bhref=["']([^"']+)["']/gi);
+  }
+  const relNext = relThenHref ?? hrefThenRel;
   if (relNext) {
-    const u = abs(relNext[1]);
+    const u = abs(relNext);
     if (u) return u;
   }
 
@@ -90,14 +105,13 @@ function findNextPage(html: string, currentUrl: string, visited: Set<string>): s
   } catch { /* keep 1 */ }
 
   const candidates: { url: string; page: number }[] = [];
-  const anchorRe = /<a\b[^>]*\bhref=["']([^"'#]+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = anchorRe.exec(html))) {
-    const pageMatch = m[1].match(/[?&](?:page|p|pageNumber)=(\d+)/i);
-    if (!pageMatch) continue;
+  for (const attrs of openingTags(html, "a")) {
+    const href = lastHref(attrs, /\bhref=["']([^"'#]+)["']/gi);
+    const pageMatch = href?.match(/[?&](?:page|p|pageNumber)=(\d+)/i);
+    if (!href || !pageMatch) continue;
     const page = Number(pageMatch[1]);
     if (!Number.isFinite(page) || page <= currentPage) continue;
-    const u = abs(m[1]);
+    const u = abs(href);
     if (u) candidates.push({ url: u, page });
   }
   candidates.sort((a, b) => a.page - b.page);
@@ -136,7 +150,7 @@ const HARD_BLOCK_SIGNATURES = [
 const SOFT_BLOCK_SIGNATURES = [/perimeterx|px-captcha/i, /datadome/i, /\bcaptcha\b/i];
 
 function countAnchors(html: string): number {
-  return (html.match(/<a\b[^>]*\bhref=/gi) ?? []).length;
+  return openingTags(html, "a").filter((attrs) => /\bhref=/i.test(attrs)).length;
 }
 
 /**

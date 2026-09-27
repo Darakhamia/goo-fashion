@@ -477,13 +477,16 @@ export function StylistDrawer({
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (Array.isArray(data?.messages) && data.messages.length > 0) {
-          // Hydrate suggestions from products list
+          // Hydrate suggestions from products list. They are stored as ids; an
+          // entry that is still a whole product (a row saved before that) is
+          // matched by its id the same way.
           const hydrated: ChatMessage[] = data.messages.map((m: ChatMessage) => {
             if (m.role === "assistant" && Array.isArray(m.suggestions)) {
               return {
                 ...m,
-                suggestions: (m.suggestions as unknown as string[])
-                  .map((id: string) => products.find(p => p.id === id))
+                suggestions: (m.suggestions as unknown as (string | { id?: string })[])
+                  .map((entry) => (typeof entry === "string" ? entry : entry?.id))
+                  .map((id) => products.find(p => p.id === id))
                   .filter((p): p is Product => p != null),
               };
             }
@@ -496,9 +499,19 @@ export function StylistDrawer({
       .catch(() => setView("chat"));
   };
 
-  // Persist history after each AI reply
+  // Persist history after each AI reply. Suggestions go as product ids — the
+  // load above looks them up again — and only the last 100 messages, which is
+  // all the server keeps: whole products made a long chat outgrow its limit.
   const saveHistory = (messages: ChatMessage[]) => {
-    const toSave = messages.filter(m => m.id !== "welcome" && !m.isError);
+    const toSave = messages
+      .filter(m => m.id !== "welcome" && !m.isError)
+      .slice(-100)
+      .map(({ id, role, text, suggestions }) => ({
+        id,
+        role,
+        text,
+        ...(suggestions?.length && { suggestions: suggestions.map(p => p.id) }),
+      }));
     if (toSave.length === 0) return;
     fetch("/api/stylist/chat/history", {
       method: "POST",

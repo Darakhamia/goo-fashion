@@ -239,7 +239,7 @@ export default function AdminBrandsPage() {
       <input
         ref={logoInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

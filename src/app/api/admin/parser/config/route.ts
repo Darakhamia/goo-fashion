@@ -132,10 +132,22 @@ export async function POST(req: Request) {
   }
 
   const errors: string[] = [];
+  const audit: Record<string, unknown> = { fields: Object.keys(body) };
 
   if ("fetchSettings" in body) {
-    const { error } = await saveFetchSettings(sanitizeFetchSettings(body.fetchSettings));
+    const before = await getFetchSettings();
+    const next = sanitizeFetchSettings(body.fetchSettings);
+    const { error } = await saveFetchSettings(next);
     if (error) errors.push(error);
+    // Provider and endpoint decide where our server sends every request and the
+    // provider key with it (`{key}` in a custom template), so a change to
+    // either is kept with both values, not just the name of the field.
+    if (before.provider !== next.provider) {
+      audit.provider = { from: before.provider, to: next.provider };
+    }
+    if (before.endpoint !== next.endpoint) {
+      audit.endpoint = { from: before.endpoint, to: next.endpoint };
+    }
   }
 
   if ("fetchKey" in body && typeof body.fetchKey === "string") {
@@ -168,7 +180,7 @@ export async function POST(req: Request) {
       admin_email: adminUser.emailAddresses[0]?.emailAddress,
       action: "parser.config_updated",
       target_type: "parser",
-      metadata: { fields: Object.keys(body) },
+      metadata: audit,
     });
   } catch { /* non-critical */ }
 

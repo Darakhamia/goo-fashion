@@ -13,6 +13,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { MAX_PRODUCT_IMAGES } from "@/lib/server/product-fields";
 import { assertPublicUrl } from "@/lib/server/parser/fetch";
+import { readCappedBytes, sniffRasterImage } from "@/lib/server/read-capped";
 
 export const PRODUCT_IMAGES_BUCKET = "product-images";
 
@@ -100,6 +101,11 @@ async function assertFetchable(url: string): Promise<void> {
  * past CDN hotlink protection. Rejects non-image responses and anything over the
  * size cap.
  *
+ * Only raster bytes come back, and `contentType` is what the bytes are rather
+ * than what the server called them. The copy is stored in a public bucket on
+ * our own site, where an SVG or HTML answer labelled "image/*" would be a page
+ * that runs script — so the upload and its extension follow the bytes.
+ *
  * Redirects are followed by hand, so every hop passes the same address check as
  * the first URL — otherwise a public URL answering "302 → http://169.254.169.254/"
  * would walk straight past it. The timeout covers the whole chain.
@@ -123,7 +129,8 @@ export async function fetchImageBuffer(
   const headers = {
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    // No image/svg+xml: an SVG is refused below, so it is not asked for either.
+    Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
     Referer: referer,
     "Sec-Fetch-Dest": "image",
@@ -147,13 +154,19 @@ export async function fetchImageBuffer(
   }
   if (!res) throw new Error("Too many redirects");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const contentType = res.headers.get("content-type") ?? "image/jpeg";
-  if (!contentType.toLowerCase().startsWith("image/")) {
-    throw new Error(`Not an image (${contentType})`);
+  const declaredType = res.headers.get("content-type") ?? "image/jpeg";
+  if (!declaredType.toLowerCase().startsWith("image/")) {
+    res.body?.cancel().catch(() => undefined);
+    throw new Error(`Not an image (${declaredType})`);
   }
-  const buffer = Buffer.from(await res.arrayBuffer());
+  // Counted while it streams: fetch decodes gzip on the fly, so a small body can
+  // expand past any size by the time arrayBuffer() would have let us look.
+  const buffer = await readCappedBytes(res, MAX_IMAGE_BYTES);
   if (buffer.byteLength === 0) throw new Error("Empty response");
-  if (buffer.byteLength > MAX_IMAGE_BYTES) throw new Error("Image exceeds size limit");
+  // Worded apart from "Not an image": the backdrop sampler reads that phrase as
+  // "this endpoint never serves images" and stops asking it for the whole process.
+  const contentType = sniffRasterImage(buffer);
+  if (!contentType) throw new Error("Unsupported image format (not JPEG, PNG, WebP, GIF or AVIF)");
   return { buffer, contentType };
 }
 

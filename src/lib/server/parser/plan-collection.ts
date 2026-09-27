@@ -33,8 +33,24 @@ import { extractProductLinks, looksLikeProductPath, isNonProductPath, partitionP
  */
 function pageStatesOneProduct(html: string): boolean {
   if (partitionProducts(html).standaloneCount === 1) return true;
-  return /<meta[^>]+property=["']og:type["'][^>]+content=["'](?:og:)?product["']/i.test(html) ||
-    /<meta[^>]+content=["'](?:og:)?product["'][^>]+property=["']og:type["']/i.test(html);
+  // `<meta[^>]+property="og:type"[^>]+content="product"`, either way round,
+  // tested a tag at a time: as regexes over the page they were quadratic, each
+  // `<meta` with no `>` after it running `[^>]+` to the end and backing off.
+  // `/<meta[^>]*/gi` can neither fail nor back off, and each match is one whole
+  // tag, `<meta`s written inside it included. The first of either attribute
+  // after `<meta` and one character leaves the most room for the other.
+  const type = /property=["']og:type["']/gi;
+  const product = /content=["'](?:og:)?product["']/gi;
+  const inOrder = (tag: string, first: RegExp, then: RegExp): boolean => {
+    first.lastIndex = 6;
+    if (!first.exec(tag)) return false;
+    then.lastIndex = first.lastIndex + 1;
+    return then.test(tag);
+  };
+  for (const t of html.matchAll(/<meta[^>]*/gi)) {
+    if (inOrder(t[0], type, product) || inOrder(t[0], product, type)) return true;
+  }
+  return false;
 }
 import {
   locations as sitemapLocations,

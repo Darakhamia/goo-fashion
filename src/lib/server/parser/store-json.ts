@@ -13,7 +13,7 @@
  * product. Without it, a hundred-product collect on a Squarespace store would
  * spend a hundred pointless requests looking for Shopify.
  */
-import { fetchHtml } from "./fetch";
+import { fetchHtml, MAX_CATALOGUE_BYTES } from "./fetch";
 import type { ParserFetchSettings, RawExtract } from "./types";
 
 export type StorefrontPlatform = "shopify" | "woocommerce" | "squarespace";
@@ -85,7 +85,9 @@ export async function getStoreJson(
   settings: ParserFetchSettings,
   apiKey: string,
 ): Promise<StoreJsonResult> {
-  const res = await fetchHtml(url, probeSettings(settings), apiKey);
+  // A page of 250 Shopify products, descriptions and all, runs past a single
+  // page's ceiling, so the JSON gets the catalogue one.
+  const res = await fetchHtml(url, probeSettings(settings), apiKey, MAX_CATALOGUE_BYTES);
   const bytes = res.html?.length ?? 0;
   if (!res.html) return { json: null, status: res.status, bytes };
   const body = res.html.trimStart();

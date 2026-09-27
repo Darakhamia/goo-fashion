@@ -4,6 +4,7 @@ import { clerkClient, type User } from "@clerk/nextjs/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { buildHtml, buildPlainText, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
+import { scanUsers } from "../users/user-list";
 
 // A large audience is sent in many batches; give the loop room to finish.
 export const maxDuration = 300;
@@ -181,6 +182,13 @@ export async function POST(req: Request) {
   });
 }
 
+// The Email page asks for the audience counts every time it opens. Counting
+// walks Clerk 500 users per call, on the same rate-limit budget sign-in uses,
+// so the counts are kept a few minutes: they label the audience options, and
+// the send itself still reads every recipient fresh.
+const COUNTS_TTL_MS = 5 * 60 * 1000;
+let countsCache: { at: number; counts: Record<string, number>; partial: boolean } | null = null;
+
 // GET /api/admin/email — return config status + audience counts
 export async function GET() {
   const admin = await requireAdmin();
@@ -191,18 +199,29 @@ export async function GET() {
 
   // Audience counts from Clerk. On failure report countsError instead of
   // zeros, so the page can say the audience is unknown rather than empty.
-  let counts: Record<string, number> | null = null;
   let countsError: string | undefined;
-  try {
-    const users = await listAllUsers();
-    counts = { all: users.length, free: 0, basic: 0, pro: 0, premium: 0 };
-    for (const u of users) {
-      const plan = planOf(u);
-      counts[plan] = (counts[plan] ?? 0) + 1;
+  if (!countsCache || Date.now() - countsCache.at >= COUNTS_TTL_MS) {
+    try {
+      // Capped like the Users page's counts: past SCAN_CAP users, "all" is
+      // Clerk's own total and the plan counts cover the newest SCAN_CAP only.
+      const scan = await scanUsers();
+      const counts: Record<string, number> = { all: scan.totalCount, free: 0, basic: 0, pro: 0, premium: 0 };
+      for (const u of scan.users) {
+        const plan = planOf(u);
+        counts[plan] = (counts[plan] ?? 0) + 1;
+      }
+      countsCache = { at: Date.now(), counts, partial: scan.truncated };
+    } catch (e) {
+      countsError = e instanceof Error ? e.message : String(e);
     }
-  } catch (e) {
-    countsError = e instanceof Error ? e.message : String(e);
   }
 
-  return NextResponse.json({ configured, fromAddress, counts, countsError });
+  const known = countsError ? null : countsCache;
+  return NextResponse.json({
+    configured,
+    fromAddress,
+    counts: known?.counts ?? null,
+    countsPartial: known?.partial ?? false,
+    countsError,
+  });
 }

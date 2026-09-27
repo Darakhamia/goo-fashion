@@ -929,14 +929,21 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
 
   const generatedStyle =
     typeof data.generated_style === "string" ? data.generated_style : null;
-  const generatedImage: string | null = data.generated_image ?? null;
+  // The hero photo, and the page's og:image, only from our own storage — for
+  // every row, not just anonymous ones. A signed-in row is written by
+  // /api/user/looks, whose users are anyone with an email address and which
+  // takes any http(s) link, so a picture from elsewhere would be published
+  // under our name. A photo that is not ours falls back to the collage.
+  const storedImage: unknown = data.generated_image;
+  const generatedImage: string | null =
+    typeof storedImage === "string" && isOwnStorageUrl(storedImage) ? storedImage : null;
 
   if (anonymous) {
     return {
       id: data.id,
       name: null,
       description: null,
-      generatedImage: generatedImage && isOwnStorageUrl(generatedImage) ? generatedImage : null,
+      generatedImage,
       generatedStyle,
       totalPrice: catalogueTotal(pieces),
       styleKeywords: [],

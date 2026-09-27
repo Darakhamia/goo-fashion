@@ -106,6 +106,16 @@ export async function PATCH(
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
 
+  // Only super admin can grant or revoke admin access. Checked before any
+  // write, so a refused request changes nothing: a name sent alongside isAdmin
+  // used to be saved and logged, and then the caller got a 403.
+  if ("isAdmin" in body && !isSuperAdminId(admin.userId)) {
+    return NextResponse.json(
+      { error: "Only super admin can grant or revoke admin access." },
+      { status: 403 }
+    );
+  }
+
   try {
     const cc = await clerkClient();
 
@@ -133,14 +143,6 @@ export async function PATCH(
           lastName: body.lastName,
         },
       });
-    }
-
-    // Only super admin can grant or revoke admin access
-    if ("isAdmin" in body && !isSuperAdminId(admin.userId)) {
-      return NextResponse.json(
-        { error: "Only super admin can grant or revoke admin access." },
-        { status: 403 }
-      );
     }
 
     // publicMetadata fields (plan, isAdmin) → updateUserMetadata (merge with existing)
@@ -213,10 +215,29 @@ export async function PATCH(
       }
     }
 
-    // Lock / unlock
+    // Lock / unlock. No button in the studio sends this, which is exactly why
+    // it is logged like a ban: a lock sent straight to the API must still
+    // show up in Activity.
     if (typeof body.locked === "boolean") {
-      if (body.locked) await cc.users.lockUser(id);
-      else              await cc.users.unlockUser(id);
+      if (body.locked) {
+        await cc.users.lockUser(id);
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: "user.locked",
+          target_id: id,
+          target_type: "user",
+        });
+      } else {
+        await cc.users.unlockUser(id);
+        void logAdminAction({
+          admin_id: admin.userId,
+          admin_email: adminEmail,
+          action: "user.unlocked",
+          target_id: id,
+          target_type: "user",
+        });
+      }
     }
 
     const updated = await cc.users.getUser(id);

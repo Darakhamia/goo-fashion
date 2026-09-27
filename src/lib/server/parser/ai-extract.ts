@@ -17,12 +17,42 @@
 import OpenAI from "openai";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import type { RawExtract } from "./types";
+import { elements } from "./extract";
 
 /** Cheap, fast, and good at reading messy markup. */
 const MODEL = "gpt-4o-mini";
 
 /** Upper bound on the page slice we send (roughly 25k tokens of HTML). */
 const MAX_HTML_CHARS = 90_000;
+
+/** `text` with each of `spans` (in order, not overlapping) replaced by a space. */
+function cutOut(text: string, spans: { start: number; end: number }[]): string {
+  let out = "";
+  let pos = 0;
+  for (const { start, end } of spans) {
+    out += `${text.slice(pos, start)} `;
+    pos = end;
+  }
+  return out + text.slice(pos);
+}
+
+/**
+ * Every `<!-- … -->`, as `/<!--[\s\S]*?-->/g` finds them. A comment with no
+ * `-->` after it ends the search: no later one has an end either.
+ */
+function comments(text: string): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  let pos = 0;
+  for (;;) {
+    const start = text.indexOf("<!--", pos);
+    if (start < 0) break;
+    const close = text.indexOf("-->", start + 4);
+    if (close < 0) break;
+    out.push({ start, end: close + 3 });
+    pos = close + 3;
+  }
+  return out;
+}
 
 /**
  * Strip a page down to the parts that can carry product facts.
@@ -37,21 +67,18 @@ export function condenseHtml(html: string, maxChars = MAX_HTML_CHARS): string {
   // Keep JSON-LD out of the strip below — it is the densest source of truth and
   // is tiny; if it were parseable we would not be here, but partial/broken
   // blocks still help the model.
-  const jsonLd: string[] = [];
-  s = s.replace(
-    /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
-    (_m, body: string) => {
-      if (jsonLd.length < 3) jsonLd.push(String(body).slice(0, 4_000));
-      return " ";
-    },
-  );
+  //
+  // Elements and comments are found by `elements` and by search rather than by
+  // `<script\b[^>]*>[\s\S]*?<\/script>`-shaped regexes, which over markup the
+  // store controls were quadratic: every opening with no closing after it
+  // scanned to the end of the page.
+  const ld = elements(s, "script", /type=["']application\/ld\+json["']/i);
+  const jsonLd = ld.slice(0, 3).map((e) => e.body.slice(0, 4_000));
+  s = cutOut(s, ld);
+  for (const name of ["script", "style", "noscript", "svg"]) s = cutOut(s, elements(s, name));
+  s = cutOut(s, comments(s));
 
   s = s
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
     // data: URIs (inline base64 images) — megabytes of noise
     .replace(/(?:src|href)\s*=\s*(["'])data:[^"']*\1/gi, " ")
     // Collapse attributes we never need, keeping src/alt/content/href/itemprop.

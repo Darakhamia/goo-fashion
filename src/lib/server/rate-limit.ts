@@ -47,7 +47,12 @@ export interface RateLimitResult {
   limit: number | null;
 }
 
-// Prefer x-forwarded-for for real client IP behind proxies / Vercel edge
+// The client IP is the left-most X-Forwarded-For entry. Production runs on
+// Coolify behind Traefik, and that entry is the real client only because
+// Traefik does not trust client-sent X-Forwarded-For: it drops the header and
+// writes the socket address. If an entrypoint ever sets
+// `forwardedHeaders.insecure` or a broad `trustedIPs`, a client picks its own
+// key and every IP-keyed limit here stops counting.
 function clientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
   return forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";

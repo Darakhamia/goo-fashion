@@ -18,7 +18,7 @@
  * sitemaps out of an index.
  */
 import { gunzipSync } from "node:zlib";
-import { fetchHtml, fetchBinary } from "./fetch";
+import { fetchHtml, fetchBinary, MAX_CATALOGUE_BYTES } from "./fetch";
 import { looksLikeProductPath, isNonProductPath } from "./extract";
 import { parseRobots } from "./robots";
 import type { ParserFetchSettings } from "./types";
@@ -81,11 +81,20 @@ export function locations(xml: string): string[] {
  */
 export function titles(xml: string): Map<string, string> {
   const out = new Map<string, string>();
-  const entry = /<url>([\s\S]*?)<\/url>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = entry.exec(xml))) {
-    const loc = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/i.exec(m[1])?.[1];
-    const title = /<image:title>\s*(?:<!\[CDATA\[)?([^<\]]*)/i.exec(m[1])?.[1];
+  // Each `<url>…</url>` as `/<url>([\s\S]*?)<\/url>/gi` finds them, by search:
+  // over a document the store controls that lazy scan ran to the end once for
+  // every `<url>` with no `</url>` after it. When one has none, neither has any
+  // `<url>` after it, and the entries end there.
+  const open = /<url>/gi;
+  const close = /<\/url>/gi;
+  while (open.exec(xml)) {
+    close.lastIndex = open.lastIndex;
+    const end = close.exec(xml);
+    if (!end) break;
+    const entry = xml.slice(open.lastIndex, end.index);
+    open.lastIndex = close.lastIndex;
+    const loc = /<loc>\s*(?:<!\[CDATA\[\s*)?([^<\s\]]+)/i.exec(entry)?.[1];
+    const title = /<image:title>\s*(?:<!\[CDATA\[)?([^<\]]*)/i.exec(entry)?.[1];
     if (!loc || !title?.trim()) continue;
     out.set(
       loc.replace(/&amp;/g, "&"),
@@ -99,10 +108,21 @@ export function titles(xml: string): Map<string, string> {
   return out;
 }
 
+/**
+ * The most an unzipped sitemap may grow to: the protocol's own limit for one
+ * uncompressed file. A gzip of zeros unpacks a thousandfold, and without a
+ * ceiling a 20 MB download would become 20 GB in the one process the site runs in.
+ */
+const MAX_UNZIPPED_BYTES = 50 * 1024 * 1024;
+
 /** Gzip announces itself in its first two bytes, whatever the URL ends with. */
 function textFromBytes(bytes: Uint8Array): string | null {
   try {
-    const body = bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes) : bytes;
+    // Past the ceiling gunzipSync throws, and this one document reads as unreadable.
+    const body =
+      bytes[0] === 0x1f && bytes[1] === 0x8b
+        ? gunzipSync(bytes, { maxOutputLength: MAX_UNZIPPED_BYTES })
+        : bytes;
     return Buffer.from(body).toString("utf8");
   } catch {
     return null;
@@ -154,7 +174,8 @@ async function getText(
     const res = await fetchBinary(url, settings);
     return res.ok && res.bytes ? textFromBytes(res.bytes) : null;
   }
-  const res = await fetchHtml(url, settings, apiKey);
+  // A sitemap lists a whole catalogue and runs past a page's ceiling.
+  const res = await fetchHtml(url, settings, apiKey, MAX_CATALOGUE_BYTES);
   return res.ok && res.html ? res.html : null;
 }
 

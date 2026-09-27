@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { getOpenAIKey } from "@/lib/server/get-openai-key";
 import { getPrompt } from "@/lib/server/get-prompt";
 import { slugify } from "@/lib/blog-render";
+import { assertPublicUrl, validateTargetUrl } from "@/lib/server/parser/fetch";
+import { readCappedText } from "@/lib/server/read-capped";
 import {
   DEFAULT_BLOG_SYSTEM_PROMPT,
   DEFAULT_BLOG_USER_PROMPT,
@@ -20,45 +22,47 @@ const BRIEF_MAX = 4000;
  */
 const MAX_COMPLETION_TOKENS = 3000;
 
+/** Redirect hops followed for an article URL; each one passes the address check. */
+const MAX_REDIRECTS = 5;
+
 /**
- * SSRF guard: only allow public http(s) URLs — reject internal hostnames and
- * private/link-local IP ranges so the server can't be used to probe
- * infrastructure (cloud metadata endpoints, internal services).
+ * Most of an article page that is read. Only 6,000 characters of text are kept
+ * anyway; the cap is what stops a huge or gzip-bombed body from filling the
+ * memory of the one process the whole site runs in.
  */
-function isAllowedExternalUrl(raw: string): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+const MAX_PAGE_BYTES = 2 * 1024 * 1024;
 
-  const host = parsed.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) return false;
-  // IPv6 literals (URL keeps brackets in hostname for them)
-  if (host.startsWith("[")) return false;
-  // Private / loopback / link-local IPv4 ranges
-  if (
-    /^127\./.test(host) ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    host === "0.0.0.0"
-  ) {
-    return false;
-  }
-  return true;
-}
-
+/**
+ * Fetch the article page an admin pasted, following redirects by hand.
+ *
+ * The server makes this request and the page text comes back in the draft, so
+ * every address it dials — the first and each redirect hop — must be public and
+ * resolve only to public addresses. Otherwise a pasted link, or a public page
+ * answering "302 → http://kong:8000/", reads our own network into the editor
+ * (and into OpenAI). The timeout covers the whole chain, body included.
+ */
 async function fetchPageText(url: string): Promise<{ text: string; ogImage?: string }> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; GOO-Bot/1.0)" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
-  const html = await res.text();
+  const signal = AbortSignal.timeout(10_000);
+  let current = url;
+  let res: Response | null = null;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    await assertPublicUrl(current);
+    const r = await fetch(current, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; GOO-Bot/1.0)" },
+      signal,
+      redirect: "manual",
+    });
+    const location = r.status >= 300 && r.status < 400 ? r.headers.get("location") : null;
+    if (!location) {
+      res = r;
+      break;
+    }
+    r.body?.cancel().catch(() => undefined); // free the socket of the hop left behind
+    current = new URL(location, current).toString();
+  }
+  if (!res) throw new Error("Too many redirects");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await readCappedText(res, MAX_PAGE_BYTES);
 
   // Extract og:image
   const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
@@ -99,7 +103,9 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (hasUrl && !isAllowedExternalUrl(url)) {
+    // Spelling only, so a typo or a literal internal address gets a useful
+    // answer at once. What the name resolves to is checked when it is fetched.
+    if (hasUrl && "error" in validateTargetUrl(url, "direct")) {
       return NextResponse.json({ error: "url must be a public http(s) address" }, { status: 400 });
     }
     if (hasBrief) {
@@ -123,8 +129,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 503 });
     }
 
-    // Only the URL mode reaches out to the network.
-    const scraped = hasUrl ? await fetchPageText(url) : { text: "", ogImage: undefined };
+    // Only the URL mode reaches out to the network. Every way that can fail —
+    // a refused address or redirect, a closed port, an error status, a timeout —
+    // gets the same answer: telling them apart would let this form map which
+    // internal ports are open. The detail goes to the server log.
+    let scraped: { text: string; ogImage?: string } = { text: "" };
+    if (hasUrl) {
+      try {
+        scraped = await fetchPageText(url);
+      } catch (err) {
+        console.error("[generate-post] could not fetch the page:", url, err);
+        return NextResponse.json({ error: "Could not fetch the page" }, { status: 502 });
+      }
+    }
     const ogImage = scraped.ogImage;
 
     // 60s cap so a stuck completion can't hold the serverless function open

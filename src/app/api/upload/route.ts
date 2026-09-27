@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { sniffRasterImage } from "@/lib/server/read-capped";
 
 const BUCKET = "outfit-images";
 
 // Raster formats only, each with the extension it is stored under. SVG is
 // left out on purpose: it is a document that can carry script, and this
 // bucket is public. The extension comes from the type, not the file name, so
-// a picture cannot land in the bucket as `.html`.
+// a picture cannot land in the bucket as `.html`. Keyed by the type the
+// bytes turn out to be (`sniffRasterImage`), not the one the browser sent.
 const ALLOWED_TYPES = new Map<string, string>([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
@@ -40,16 +42,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const ext = ALLOWED_TYPES.get(file.type);
-  if (!ext) {
+  if (file.size > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 400 });
+  }
+
+  // The type is read from the bytes. `file.type` is the browser's guess from
+  // the file name, so SVG saved as `.png` would arrive as image/png.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const type = sniffRasterImage(buffer);
+  const ext = type ? ALLOWED_TYPES.get(type) : undefined;
+  if (!type || !ext) {
     return NextResponse.json(
       { error: "File must be a JPEG, PNG, WebP or AVIF image" },
       { status: 400 },
     );
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 400 });
   }
 
   // Create bucket if it doesn't exist yet
@@ -63,11 +69,9 @@ export async function POST(req: Request) {
 
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-
   const { error: uploadErr } = await supabase.storage
     .from(BUCKET)
-    .upload(filename, buffer, { contentType: file.type, upsert: false });
+    .upload(filename, buffer, { contentType: type, upsert: false });
 
   if (uploadErr) {
     return NextResponse.json({ error: uploadErr.message }, { status: 500 });

@@ -12,6 +12,7 @@
 import type { ParserSiteConfig, RawExtract, ParserRuleField, PageEvidence } from "./types";
 import { harvestGalleryImages } from "./gallery";
 import { chooseColour } from "./colour-choice";
+import { MAX_HTML_BYTES } from "./fetch";
 import {
   canonicalColor,
   extractCurrencyFromDisplay,
@@ -28,6 +29,17 @@ import {
 
 // ── HTML entity decoding (the handful that show up in product copy) ───────────
 
+/**
+ * The character a numeric reference names, as a browser reads it. A number past
+ * U+10FFFF made `String.fromCodePoint` throw, so one `&#9999999;` on a store's
+ * page failed the whole extraction; NUL and a lone surrogate would decode, and
+ * then Postgres refuses the text. Browsers show U+FFFD for all three.
+ */
+function fromCodeReference(code: number): string {
+  const valid = code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+  return valid ? String.fromCodePoint(code) : "\uFFFD";
+}
+
 export function decodeEntities(input: string): string {
   if (!input) return "";
   return input
@@ -39,35 +51,72 @@ export function decodeEntities(input: string): string {
     .replace(/&nbsp;/g, " ")
     .replace(/&euro;/g, "€")
     .replace(/&pound;/g, "£")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&#(\d+);/g, (_, n) => fromCodeReference(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => fromCodeReference(parseInt(n, 16)))
     .trim();
 }
 
 export function stripTags(input: string): string {
   return decodeEntities(
-    (input ?? "")
-      .replace(/<[^>]*>/g, " ")
+    replaceTags(input ?? "", " ")
       .replace(/\s+/g, " ")
       .replace(/\s+([.,;:!?])/g, "$1"),
   );
+}
+
+/**
+ * `text.replace(/<[^>]*>/g, by)`, read once.
+ *
+ * Over text the store controls — a JSON-LD description, a product's
+ * `body_html`, a page title — that regex is quadratic when a `<` has no `>`
+ * after it: `[^>]*` runs to the end and backs off, once for every such `<`, and
+ * 120 KB of `<` held the event loop for ten seconds. No match can end past the
+ * last `>`, so the regex runs only up to it, where every `<` finds its `>` at
+ * the first try; the rest is kept as it was. Same replacements, linear time.
+ */
+function replaceTags(text: string, by: string): string {
+  const end = text.lastIndexOf(">") + 1;
+  return text.slice(0, end).replace(/<[^>]*>/g, by) + text.slice(end);
 }
 
 // ── Meta tags ─────────────────────────────────────────────────────────────────
 
 type MetaMap = Map<string, string>;
 
+/**
+ * Every `<meta …>` tag, as `/<meta\b[^>]*>/gi` matches them, run only up to the
+ * page's last `>` for the reason `replaceTags` gives: past it no tag closes,
+ * and each `<meta` there cost a scan to the end of the page.
+ */
+function metaTags(html: string): string[] {
+  return html.slice(0, html.lastIndexOf(">") + 1).match(/<meta\b[^>]*>/gi) ?? [];
+}
+
+/**
+ * A tag's quoted attributes, names lowercased; of two with one name, the last.
+ *
+ * The second alternative swallows a run of name characters that starts no
+ * attribute. Without it the regex tried that run again from each of its
+ * characters — every try ending at the run's end and failing there alike — so
+ * one long unquoted word in a tag was quadratic: 120 KB of it took nineteen
+ * seconds. The digits and dashes in front let a name still start where it
+ * always did, at the run's first letter, `_` or `:`.
+ */
+function tagAttributes(tag: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const attrRe = /[0-9-]*([a-zA-Z_:][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')|[\w:-]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = attrRe.exec(tag))) {
+    if (m[1]) attrs[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
+  }
+  return attrs;
+}
+
 /** Parse every <meta> tag into a { property|name → content } map. */
 function parseMetaTags(html: string): MetaMap {
   const map: MetaMap = new Map();
-  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
-  for (const tag of tags) {
-    const attrs: Record<string, string> = {};
-    const attrRe = /([a-zA-Z_:][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-    let m: RegExpExecArray | null;
-    while ((m = attrRe.exec(tag))) {
-      attrs[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
-    }
+  for (const tag of metaTags(html)) {
+    const attrs = tagAttributes(tag);
     const key = (attrs.property || attrs.name || attrs.itemprop || "").toLowerCase();
     const content = attrs.content;
     if (key && content && !map.has(key)) map.set(key, content);
@@ -78,12 +127,8 @@ function parseMetaTags(html: string): MetaMap {
 /** All values for a repeatable meta key (e.g. multiple og:image). */
 function allMeta(html: string, key: string): string[] {
   const out: string[] = [];
-  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
-  for (const tag of tags) {
-    const attrs: Record<string, string> = {};
-    const attrRe = /([a-zA-Z_:][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-    let m: RegExpExecArray | null;
-    while ((m = attrRe.exec(tag))) attrs[m[1].toLowerCase()] = m[2] ?? m[3] ?? "";
+  for (const tag of metaTags(html)) {
+    const attrs = tagAttributes(tag);
     const k = (attrs.property || attrs.name || "").toLowerCase();
     if (k === key.toLowerCase() && attrs.content) out.push(attrs.content);
   }
@@ -95,12 +140,52 @@ function allMeta(html: string, key: string): string[] {
 type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
 type JsonObject = { [k: string]: JsonValue };
 
+/**
+ * Every `<name …>…</name>` element whose opening tag's attributes `accept`
+ * (not global) passes, in document order — what
+ * `/<name\b[^>]*>([\s\S]*?)<\/name>/gi` matches, with `accept` tested on the
+ * `[^>]*`: where it starts and ends, its attributes and its body.
+ *
+ * Walked, not backtracked. That regex over markup the store controls is
+ * quadratic: each `<name` with no `>`, or no `</name>`, after it scans to the
+ * end of the page before the next opening is tried, and 120 KB of `<script `
+ * took one and a half seconds. Here an opening costs one search for its `>` and
+ * one for its closing tag, and a search that finds nothing ends the walk: every
+ * later opening would look for the same thing further along. A tag `accept`
+ * turns down is stepped over whole — an opening written inside its attributes
+ * sees a tail of the same attributes and would be turned down too.
+ */
+export function elements(
+  html: string,
+  name: string,
+  accept?: RegExp,
+): { start: number; end: number; attrs: string; body: string }[] {
+  const open = new RegExp(`<${name}\\b`, "gi");
+  const close = new RegExp(`</${name}>`, "gi");
+  const out: { start: number; end: number; attrs: string; body: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = open.exec(html))) {
+    const from = m.index + m[0].length;
+    const gt = html.indexOf(">", from);
+    if (gt < 0) break;
+    const attrs = html.slice(from, gt);
+    if (accept && !accept.test(attrs)) {
+      open.lastIndex = gt + 1;
+      continue;
+    }
+    close.lastIndex = gt + 1;
+    const c = close.exec(html);
+    if (!c) break;
+    out.push({ start: m.index, end: close.lastIndex, attrs, body: html.slice(gt + 1, c.index) });
+    open.lastIndex = close.lastIndex;
+  }
+  return out;
+}
+
 function parseJsonLdBlocks(html: string): JsonObject[] {
   const blocks: JsonObject[] = [];
-  const re = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) {
-    const raw = m[1].trim();
+  for (const { body } of elements(html, "script", /type=["']application\/ld\+json["']/i)) {
+    const raw = body.trim();
     if (!raw) continue;
     try {
       const parsed = JSON.parse(raw) as JsonValue;
@@ -815,21 +900,21 @@ function fromMeta(html: string): Partial<RawExtract> {
  */
 function fromHeading(html: string): { h1?: string; h1s: string[]; title?: string } {
   const strip = (frag: string) =>
-    decodeEntities(frag.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+    decodeEntities(replaceTags(frag, " ")).replace(/\s+/g, " ").trim();
 
   // Every non-empty h1, in order. A header logo is sometimes marked up as one:
   // usually image-only, so it strips to nothing — but on some stores it is the
   // store's name in text ("mowalola"), and taking the first h1 named a leather
   // jacket after the shop. The caller skips the ones that are the store.
   const h1s: string[] = [];
-  for (const m of html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)) {
-    const text = strip(m[1] ?? "");
+  for (const { body } of elements(html, "h1")) {
+    const text = strip(body);
     if (text && text.length <= 200) h1s.push(text);
     if (h1s.length >= 5) break;
   }
 
-  const tm = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-  const title = tm ? strip(tm[1] ?? "") : undefined;
+  const tm = elements(html, "title")[0];
+  const title = tm ? strip(tm.body) : undefined;
 
   return { h1: h1s[0], h1s, title: title || undefined };
 }
@@ -848,9 +933,7 @@ const HOST_NOISE = new Set([
 function storeNames(html: string, baseUrl?: string): Set<string> {
   const key = (v: string) => v.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
   const names = new Set<string>();
-  const site =
-    html.match(/<meta[^>]+property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i)?.[1];
+  const site = siteName(html);
   if (site) names.add(key(decodeEntities(site)));
   try {
     if (baseUrl) {
@@ -866,36 +949,161 @@ function storeNames(html: string, baseUrl?: string): Set<string> {
 }
 
 /**
+ * The value of the last `content="…"` in one tag that starts at or after
+ * `from` and that `accept` takes, given where the value's closing quote ends —
+ * the one a regex's greedy `[^>]*content=["']([^"']+)["']` reaches first,
+ * backing off from the tag's end. `tag` is the tag's text from its `<` up to
+ * its `>`, found at `at` in `html`; `opener` (global) matches `content=` and
+ * the opening quote. As in that regex, a value is read on to its closing
+ * quote even past the `>`, and one that is empty or never closes is skipped.
+ */
+function lastContent(
+  html: string,
+  tag: string,
+  at: number,
+  from: number,
+  opener: RegExp,
+  accept: (end: number) => boolean = () => true,
+): string | undefined {
+  const starts: number[] = [];
+  opener.lastIndex = from;
+  let m: RegExpExecArray | null;
+  while ((m = opener.exec(tag))) starts.push(at + m.index + m[0].length);
+  const quote = /["']/g;
+  for (let k = starts.length - 1; k >= 0; k--) {
+    quote.lastIndex = starts[k];
+    const q = quote.exec(html);
+    if (q && q.index > starts[k] && accept(q.index + 1)) return html.slice(starts[k], q.index);
+  }
+  return undefined;
+}
+
+/**
+ * The page's `og:site_name`: what
+ * `/<meta[^>]+property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i`
+ * finds, or failing that the same with `content` first — read a tag at a time.
+ *
+ * Over markup the store controls those regexes were quadratic: each `<meta`
+ * with no `>` after it ran `[^>]+` to the end of the page and backed off, and
+ * 120 KB of `<meta ` took over two seconds. A global `<meta[^>]*` can neither
+ * fail nor back off, and each of its matches is one tag with every `<meta`
+ * written inside it — which could only have matched where the whole tag does.
+ */
+function siteName(html: string): string | undefined {
+  const property = /property=["']og:site_name["']/gi;
+  for (const t of html.matchAll(/<meta[^>]*/gi)) {
+    // `[^>]+`: at least one character between `<meta` and the property.
+    property.lastIndex = 6;
+    const value =
+      property.exec(t[0]) && lastContent(html, t[0], t.index, property.lastIndex, /content=["']/gi);
+    if (value) return value;
+  }
+  for (const t of html.matchAll(/<meta[^>]*/gi)) {
+    const tagEnd = t.index + t[0].length;
+    let lastProperty = -1;
+    property.lastIndex = 0;
+    let p: RegExpExecArray | null;
+    while ((p = property.exec(t[0]))) lastProperty = t.index + p.index;
+    const value = lastContent(html, t[0], t.index, 6, /content=["']/gi, (end) => {
+      if (end <= tagEnd) return lastProperty >= end;
+      // The value ran past the tag's `>`, and `[^>]*` goes on to the next one.
+      const gt = html.indexOf(">", end);
+      return /property=["']og:site_name["']/i.test(html.slice(end, gt < 0 ? html.length : gt));
+    });
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/**
  * The language the page declares for itself: `<html lang>`, then `og:locale`,
  * then a `Content-Language` meta. Used only to guess the currency of a price
  * that no source on the page names (see `currencyFromLocale`).
  */
 function pageLanguage(html: string): string | undefined {
-  const htmlTag = html.match(/<html\b[^>]*?\blang\s*=\s*["']?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?)/i);
-  if (htmlTag) return htmlTag[1];
+  // Tag by tag, as in `siteName`: a lazy `<html\b[^>]*?\blang…` over the page
+  // ran to the end of it for every `<html` with no `>` after it.
+  for (const t of html.matchAll(/<html\b[^>]*/gi)) {
+    const lang = t[0].match(/\blang\s*=\s*["']?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?)/i);
+    if (lang) return lang[1];
+  }
   const meta = parseMetaTags(html);
   const value = meta.get("og:locale") || meta.get("content-language");
   const tag = value?.trim().match(/^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})?/);
   return tag ? tag[0] : undefined;
 }
 
+/**
+ * What the two regexes microdata was read with found, read a tag at a time:
+ *
+ *   <[^>]*itemprop="name"[^>]*\bcontent="…"               the first tag with a content
+ *   <([a-z0-9]+)[^>]*itemprop="name"[^>]*>([\s\S]*?)</\1>   or the first element's text
+ *
+ * Both were quadratic over markup the store controls — 30 KB of
+ * `<div itemprop="price" ` held the event loop for nineteen seconds, per
+ * property name — because every `<` restarted a `[^>]*` that ran to the next
+ * `>` and backed off through it. The tags are found once, by a global
+ * `<[^>]*`, which can neither fail nor back off, and only those that carry an
+ * `itemprop` are read again. The second regex could still start at a `<name` written inside a
+ * tag (a commented-out `<!-- <span itemprop=…>` reads that way), so those
+ * openings are tried too, and a closing tag is looked up in an index of them
+ * rather than searched for from each opening.
+ */
 function fromMicrodata(html: string): Partial<RawExtract> {
+  const tags: { at: number; text: string }[] = [];
+  for (const t of html.matchAll(/<[^>]*/g)) {
+    if (/itemprop=/i.test(t[0])) tags.push({ at: t.index, text: t[0] });
+  }
+
+  // Where each `</name>` sits, by lowercased name, in document order.
+  let closings: Map<string, number[]> | undefined;
+  const closingAfter = (name: string, from: number): number => {
+    if (!closings) {
+      closings = new Map();
+      for (const c of html.matchAll(/<\/([a-z0-9]+)>/gi)) {
+        const key = c[1].toLowerCase();
+        const list = closings.get(key);
+        if (list) list.push(c.index);
+        else closings.set(key, [c.index]);
+      }
+    }
+    const list = closings.get(name.toLowerCase()) ?? [];
+    let lo = 0;
+    let hi = list.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid] < from) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo < list.length ? list[lo] : -1;
+  };
+
   const prop = (name: string): string | undefined => {
+    const itemprop = new RegExp(`itemprop=["']${name}["']`, "gi");
     // <span itemprop="price" content="49.99"> or text content
-    const contentRe = new RegExp(
-      `<[^>]*itemprop=["']${name}["'][^>]*\\bcontent=["']([^"']+)["']`,
-      "i",
-    );
-    const cm = html.match(contentRe);
-    if (cm) return decodeEntities(cm[1]);
-    const textRe = new RegExp(
-      `<([a-z0-9]+)[^>]*itemprop=["']${name}["'][^>]*>([\\s\\S]*?)<\\/\\1>`,
-      "i",
-    );
-    const tm = html.match(textRe);
-    if (tm) {
-      const v = stripTags(tm[2]);
-      if (v) return v;
+    for (const { at, text } of tags) {
+      itemprop.lastIndex = 0;
+      const first = itemprop.exec(text);
+      const value = first && lastContent(html, text, at, itemprop.lastIndex, /\bcontent=["']/gi);
+      if (value) return decodeEntities(value);
+    }
+    // Failing that, the text of the first element that has one.
+    for (const { at, text } of tags) {
+      const gt = at + text.length;
+      if (html[gt] !== ">") continue;
+      let lastItemprop = -1;
+      itemprop.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = itemprop.exec(text))) lastItemprop = m.index;
+      if (lastItemprop < 0) continue;
+      // Every `<name` before the last itemprop, and every name the regex would
+      // back off to: `<div` is also `<di` and `<d`, with the rest in `[^>]*`.
+      for (const open of text.slice(0, lastItemprop).matchAll(/<([a-z0-9]+)/gi)) {
+        for (let k = open[1].length; k >= 1; k--) {
+          const close = closingAfter(open[1].slice(0, k), gt + 1);
+          if (close >= 0) return stripTags(html.slice(gt + 1, close)) || undefined;
+        }
+      }
     }
     return undefined;
   };
@@ -1316,6 +1524,55 @@ export function isNonProductPath(pathname: string): boolean {
 }
 
 /**
+ * How much of a page the tag scans below read: the parser's own page ceiling.
+ * A server fetch stops there anyway; this holds for markup from anywhere else.
+ */
+const MAX_TAG_SCAN_CHARS = MAX_HTML_BYTES;
+
+/** How much of one tag is read for its attributes — far more than a real tag carries. */
+const MAX_TAG_CHARS = 4_000;
+
+/**
+ * The attribute text of every opening tag called `name` (a regex alternation,
+ * "a" or "link|a"), in document order: `<a class="x" href="/p">` gives
+ * ` class="x" href="/p"`.
+ *
+ * Walked, not backtracked. `/<a\b[^>]*\bhref=…/` over markup the store
+ * controls is quadratic: every `<a` with no `>` after it runs `[^>]*` to the
+ * end of the page and backs off a character at a time, so 120 KB of `<a ` held
+ * the event loop the whole site shares for four seconds. Here a tag is cut at
+ * its own `>` by one `indexOf` and the search resumes past it, so the page is
+ * read once, and the attribute regexes that follow run over one tag at a time.
+ */
+export function openingTags(html: string, name: string): string[] {
+  const text = html.length > MAX_TAG_SCAN_CHARS ? html.slice(0, MAX_TAG_SCAN_CHARS) : html;
+  const open = new RegExp(`<(?:${name})\\b`, "gi");
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = open.exec(text))) {
+    const from = m.index + m[0].length;
+    const close = text.indexOf(">", from);
+    out.push(text.slice(from, Math.min(close < 0 ? text.length : close, from + MAX_TAG_CHARS)));
+    // No `>` anywhere after this: the rest of the page is this one open tag.
+    if (close < 0) break;
+    open.lastIndex = close + 1;
+  }
+  return out;
+}
+
+/**
+ * The last `href` among a tag's attributes that `re` (global) accepts. A tag
+ * carrying two (`href` and a `data-href`) has always given the last one — the
+ * greedy regex this scan replaced backed off from the tag's end — and the links
+ * a listing yields should not move because the way it is read did.
+ */
+export function lastHref(attrs: string, re: RegExp): string | null {
+  let href: string | null = null;
+  for (const m of attrs.matchAll(re)) href = m[1];
+  return href;
+}
+
+/**
  * Discover product-page URLs on a listing page. Combines schema.org ItemList
  * URLs with same-host anchors that look like product links — used to "parse
  * each" when the listing doesn't embed full product data.
@@ -1336,11 +1593,11 @@ export function extractProductLinks(html: string, baseUrl: string, max = 60): st
   }
 
   // 2. Anchors that look like product pages on the same host.
-  const anchorRe = /<a\b[^>]*\bhref=["']([^"'#]+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = anchorRe.exec(html))) {
+  for (const attrs of openingTags(html, "a")) {
+    const href = lastHref(attrs, /\bhref=["']([^"'#]+)["']/gi);
+    if (!href) continue;
     let abs: URL;
-    try { abs = new URL(m[1], baseUrl); } catch { continue; }
+    try { abs = new URL(href, baseUrl); } catch { continue; }
     if (abs.protocol !== "http:" && abs.protocol !== "https:") continue;
     if (host && abs.hostname.replace(/^www\./, "") !== host) continue;
     if (!looksLikeProductPath(abs.pathname)) continue;
