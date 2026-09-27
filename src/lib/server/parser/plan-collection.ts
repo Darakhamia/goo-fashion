@@ -38,12 +38,14 @@ function pageStatesOneProduct(html: string): boolean {
 }
 import {
   locations as sitemapLocations,
+  titles as sitemapTitles,
   isIndex as isSitemapIndex,
   namesProducts,
   rankChild,
   CANDIDATES as SITEMAP_CANDIDATES,
 } from "./sitemap";
 import { parseRobots, isUrlAllowed, type RobotsRules } from "./robots";
+import { orderForLinksOnly, type CatalogueIndex } from "./catalogue-match";
 
 /**
  * The floor under the store's own Crawl-delay.
@@ -82,6 +84,12 @@ export interface CollectionPlanInput {
   seen?: string[];
   /** How many product addresses the admin asked for, in total. */
   limit: number;
+  /**
+   * The catalogue, for a links-only run: its pages are then opened in the
+   * order of how likely each is to be a piece we have, and a page whose
+   * address names something else is not opened (`catalogue-match.ts`).
+   */
+  catalogue?: CatalogueIndex;
 }
 
 export interface CollectionPlan {
@@ -109,6 +117,12 @@ export interface CollectionPlan {
   locsSeen: number;
   /** Sitemap documents read this call. */
   sitemapsRead: number;
+  /**
+   * A links-only run's search, over every address known so far: how many name
+   * a piece we have, how many name nothing, how many are already on a card,
+   * and how many name something else and are left alone.
+   */
+  links?: { cards: number; matched: number; unnamed: number; linked: number; other: number };
 }
 
 /** The store's host, without `www.`, or "" when the URL is unusable. */
@@ -179,8 +193,9 @@ export function planCollection(input: CollectionPlanInput): CollectionPlan {
   const seen = new Set((input.seen ?? []).map(canonical));
   const read = new Set(docs.map((d) => d.url));
 
-  const candidates: string[] = [];
+  let candidates: string[] = [];
   const fetchNext: string[] = [];
+  const titles = new Map<string, string>();
   let locsSeen = 0;
 
   // ── Sitemaps the browser already pulled down ───────────────────────────────
@@ -194,6 +209,7 @@ export function planCollection(input: CollectionPlanInput): CollectionPlan {
     }
     locsSeen += sitemapLocations(doc.xml).length;
     candidates.push(...productsFromSitemap(doc, host));
+    if (input.catalogue) for (const [loc, title] of sitemapTitles(doc.xml)) titles.set(canonical(loc), title);
   }
 
   // ── The page the admin pointed at ──────────────────────────────────────────
@@ -213,8 +229,31 @@ export function planCollection(input: CollectionPlanInput): CollectionPlan {
     }
     return !!input.html && pageStatesOneProduct(input.html);
   })();
+  if (input.html) {
+    // A links-only run reads every link on the page, not the first `limit`:
+    // the ones worth opening are sorted out below, and may be anywhere on it.
+    candidates.push(...extractProductLinks(input.html, input.startUrl, input.catalogue ? 2_000 : limit));
+  }
+
+  // ── A links-only run: our pieces first, what is not ours left alone ────────
+  let links: CollectionPlan["links"];
+  if (input.catalogue) {
+    const order = orderForLinksOnly(
+      candidates.map(canonical).filter((u) => hostOf(u) === host),
+      input.catalogue,
+      (u) => titles.get(u),
+    );
+    candidates = order.urls;
+    links = {
+      cards: input.catalogue.size,
+      matched: order.matched,
+      unnamed: order.unnamed,
+      linked: order.linked,
+      other: order.other,
+    };
+  }
+  // The page the admin pasted, when it is a product, is opened whatever it is.
   if (isSingleProduct) candidates.unshift(canonical(input.startUrl));
-  if (input.html) candidates.push(...extractProductLinks(input.html, input.startUrl, limit));
 
   // ── Sitemaps robots.txt named, for the round after this one ────────────────
   for (const sm of rules.sitemaps) {
@@ -272,5 +311,6 @@ export function planCollection(input: CollectionPlanInput): CollectionPlan {
     },
     locsSeen,
     sitemapsRead: docs.length,
+    ...(links ? { links } : {}),
   };
 }

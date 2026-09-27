@@ -39,6 +39,7 @@ import {
 import { brandSearchWord, brandVocabulary, decideBrand } from "./brand-from-name";
 import { articleCodePatterns, articleCodes, modelWord, pieceName } from "./piece-name";
 import { listingKey, urlSpellings } from "./listing-url";
+import { buildCatalogueIndex, type CatalogueIndex, type CataloguePiece } from "./catalogue-match";
 import { loadRetailerRules, resolveRetailer, storeDefaultGender } from "@/lib/server/retailer-domains";
 import { loadCatalogueProfile, proposeGender, proposeStyles } from "@/lib/server/catalogue-profile";
 import { mirrorProductImages } from "@/lib/server/storage/product-images";
@@ -123,6 +124,64 @@ async function loadKnownBrands(): Promise<string[]> {
   const brands = brandVocabulary(curated, catalogue);
   brandCache = { at: Date.now(), brands };
   return brands;
+}
+
+// ── The catalogue a links-only run looks for ──────────────────────────────────
+// Every card's name, brand, colour, part number and pages, read once a minute
+// at most: a collect run plans a round every few dozen pages, and the cards it
+// looks for change when a run adds a link, not between two of its rounds.
+
+const CATALOGUE_TTL_MS = 60_000;
+const CATALOGUE_PAGE = 1_000;
+const CATALOGUE_MAX = 20_000;
+let catalogueCache: { at: number; index: CatalogueIndex } | null = null;
+
+/**
+ * Null when the catalogue could not be read at all — the run then opens the
+ * store's pages in its own order, as before, rather than none of them.
+ */
+export async function loadCatalogueIndex(): Promise<CatalogueIndex | null> {
+  if (catalogueCache && Date.now() - catalogueCache.at < CATALOGUE_TTL_MS) return catalogueCache.index;
+  if (!isSupabaseConfigured || !supabase) return null;
+  // The part number exists only with migration 020; without it, the rest.
+  for (const columns of ["name, brand, colors, mpn, source_url, retailers", "name, brand, colors, source_url, retailers"]) {
+    const rows: CataloguePiece[] = [];
+    let failed = false;
+    for (let from = 0; from < CATALOGUE_MAX; from += CATALOGUE_PAGE) {
+      const { data, error } = await supabase
+        .from("products")
+        .select(columns)
+        .order("id")
+        .range(from, from + CATALOGUE_PAGE - 1);
+      if (error) {
+        failed = true;
+        break;
+      }
+      const batch = (data ?? []) as unknown as {
+        name: string | null;
+        brand: string | null;
+        colors: string[] | null;
+        mpn?: string | null;
+        source_url: string | null;
+        retailers: { url?: string }[] | null;
+      }[];
+      for (const r of batch) {
+        rows.push({
+          name: r.name ?? "",
+          brand: r.brand,
+          colors: r.colors,
+          mpn: r.mpn,
+          urls: [r.source_url, ...(Array.isArray(r.retailers) ? r.retailers.map((x) => x?.url) : [])],
+        });
+      }
+      if (batch.length < CATALOGUE_PAGE) break;
+    }
+    if (failed) continue;
+    const index = buildCatalogueIndex(rows);
+    catalogueCache = { at: Date.now(), index };
+    return index;
+  }
+  return null;
 }
 
 // ── Colour variants ───────────────────────────────────────────────────────────

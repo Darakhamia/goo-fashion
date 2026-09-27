@@ -31,7 +31,7 @@ import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { parsePage } from "@/lib/server/parser/parse-page";
 import { loadCategoryTree } from "@/lib/server/category-tree";
-import { importParsedProduct } from "@/lib/server/parser/import-product";
+import { importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
 import { COLOUR_ORIGINS, type ColourOrigin } from "@/lib/server/parser/colour-choice";
 import { isShopifyProduct } from "@/lib/server/parser/shopify";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
@@ -172,6 +172,11 @@ export async function POST(req: Request) {
       .filter((u: unknown): u is string => typeof u === "string")
       .slice(0, MAX_SEEN);
 
+    // A links-only run looks for the pieces we have among the store's pages
+    // rather than opening them in the store's order. Without a readable
+    // catalogue it opens them in that order, as before, and says so.
+    const catalogue = body?.linksOnly === true ? await loadCatalogueIndex() : undefined;
+
     const plan = planCollection({
       startUrl: url,
       html: html || undefined,
@@ -179,9 +184,14 @@ export async function POST(req: Request) {
       sitemaps,
       seen,
       limit: Number(body?.limit) || 60,
+      catalogue: catalogue ?? undefined,
     });
 
-    return NextResponse.json({ ok: true, ...plan });
+    return NextResponse.json({
+      ok: true,
+      ...plan,
+      ...(catalogue === null ? { linksNote: "the catalogue could not be read — pages are opened in the store's order" } : {}),
+    });
   }
 
   // ── ingest ─────────────────────────────────────────────────────────────────

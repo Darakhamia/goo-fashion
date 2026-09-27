@@ -291,6 +291,14 @@ function numberedModel(full: string): boolean {
   return full.split(" ").some((t) => /\d{3}/.test(t) && !/^(?:19|20)\d\d$/.test(t));
 }
 
+/**
+ * Does a reduced name point at one maker's model without the brand beside it?
+ * "air max 90" and "bullet hole" do; "classic logo" and "emerson" alone do not.
+ */
+export function namesModelAlone(p: PieceName): boolean {
+  return distinctive(p) || numberedModel(p.full);
+}
+
 export interface PieceRow {
   name: string;
   colors?: string[] | null;
