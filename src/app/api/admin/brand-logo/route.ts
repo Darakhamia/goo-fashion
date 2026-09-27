@@ -3,8 +3,18 @@ import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
+import { sniffRasterImage } from "@/lib/server/read-capped";
 
 const BUCKET = "site-assets";
+
+/** File extension for each raster type `sniffRasterImage` recognises. */
+const EXTENSION = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/avif": "avif",
+} as const;
 
 function slug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "brand";
@@ -33,6 +43,19 @@ export async function POST(req: Request) {
   if (!file.type.startsWith("image/")) return NextResponse.json({ error: "Must be an image" }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "Max 5 MB" }, { status: 400 });
 
+  // The type, and the extension with it, come from the bytes rather than from
+  // the browser's label or the file name. The bucket is public on a domain that
+  // is same-site with ours, and an SVG served from there is a page that runs
+  // script — so SVG is refused even though a logo is often drawn as one.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const contentType = sniffRasterImage(buffer);
+  if (!contentType) {
+    return NextResponse.json(
+      { error: "The logo must be a JPEG, PNG, WebP, GIF or AVIF image (SVG is not accepted)" },
+      { status: 400 }
+    );
+  }
+
   // Ensure bucket exists
   const { data: buckets } = await supabase.storage.listBuckets();
   if (!buckets?.find((b) => b.name === BUCKET)) {
@@ -42,13 +65,11 @@ export async function POST(req: Request) {
     }
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
-  const filename = `brand-${slug(name)}-${Date.now()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const filename = `brand-${slug(name)}-${Date.now()}.${EXTENSION[contentType]}`;
 
   const { error: uploadErr } = await supabase.storage
     .from(BUCKET)
-    .upload(filename, buffer, { contentType: file.type, upsert: true });
+    .upload(filename, buffer, { contentType, upsert: true });
   if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 });
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename);

@@ -296,6 +296,13 @@ export async function* packCards(
   const draw = (job: CardJob) => withHostSlot(hostOf(job.url), () => drawOne(job));
 
   for await (const result of mapOrdered(jobs, WINDOW, draw)) {
+    // Checked first, not only after a card is packed: a CDN that black-holes
+    // every request yields nothing but failures, which never reach the check
+    // below, and one export would hold sockets open for hours.
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      report.truncated = "ran out of time before the whole selection was fetched";
+      break;
+    }
     if (!result.ok) {
       report.failures.push(`${result.job.label} — ${result.reason}`);
       continue;

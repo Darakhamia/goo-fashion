@@ -63,7 +63,12 @@ export function sniffRasterImage(bytes: Uint8Array): "image/jpeg" | "image/png" 
   if (bytes.length >= 8 && at(0) === 0x89 && ascii(1, "PNG") && at(4) === 0x0d && at(5) === 0x0a) return "image/png";
   if (bytes.length >= 6 && (ascii(0, "GIF87a") || ascii(0, "GIF89a"))) return "image/gif";
   if (bytes.length >= 12 && ascii(0, "RIFF") && ascii(8, "WEBP")) return "image/webp";
-  // ISO-BMFF: a box size, then "ftyp", then the brand — avif, or avis for a sequence.
-  if (bytes.length >= 12 && ascii(4, "ftyp") && (ascii(8, "avif") || ascii(8, "avis"))) return "image/avif";
+  // ISO-BMFF: a box size, then "ftyp", the major brand, a version and the
+  // compatible brands. Some encoders put "mif1" first and list avif after it.
+  if (bytes.length >= 12 && ascii(4, "ftyp")) {
+    const boxEnd = Math.min(bytes.length, ((at(0) << 24) | (at(1) << 16) | (at(2) << 8) | at(3)) >>> 0);
+    const brands = [8, ...Array.from({ length: Math.min(64, Math.max(0, Math.floor((boxEnd - 16) / 4))) }, (_, i) => 16 + i * 4)];
+    if (brands.some((i) => ascii(i, "avif") || ascii(i, "avis"))) return "image/avif";
+  }
   return null;
 }

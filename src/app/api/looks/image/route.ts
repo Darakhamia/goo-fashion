@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkNamedRateLimit } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,24 +18,57 @@ export const runtime = "nodejs";
  * then saves it from a blob, which is what the admin card export already does.
  */
 
-/** Only ever fetch from the places our own generated photos live. */
-function allowedHosts(): string[] {
-  const hosts = ["replicate.delivery"];
+/** Where Storage serves public objects — the only thing on our Supabase host a look photo can be. */
+const PUBLIC_OBJECTS = "/storage/v1/object/public/";
+
+/**
+ * Downloads per IP per minute. The route takes no sign-in, and a person saves
+ * a photo now and then; a script walking a list of URLs through it does not.
+ */
+const DOWNLOADS_PER_MINUTE = 60;
+
+/**
+ * The one answer for anything that goes wrong. Separate texts for "could not
+ * connect", "answered 404" and "not an image" told a caller which ports and
+ * paths answer on the hosts behind the allow-list; the usual real cause is a
+ * Replicate URL that has expired, about an hour after it was made.
+ */
+const UNAVAILABLE = "Could not download the photo — it may no longer be available.";
+
+const fail = (status: number) => NextResponse.json({ error: UNAVAILABLE }, { status });
+
+/** Our own Supabase URL(s): where generated photos are persisted. */
+function supabaseUrls(): URL[] {
+  const urls: URL[] = [];
   for (const value of [process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL]) {
     if (!value) continue;
     try {
-      hosts.push(new URL(value).hostname);
+      urls.push(new URL(value));
     } catch {
       // A malformed env var must not take the route down with it.
     }
   }
-  return hosts;
+  return urls;
 }
 
+/**
+ * Only ever fetch from the places our own generated photos live: Replicate's
+ * delivery CDN, and the public objects of our own Storage.
+ *
+ * https on its default port only. The Supabase host is our own server, so any
+ * other port on it would be a way to reach services the edge firewall never
+ * exposes; and on that host only the public-object path is a photo at all.
+ */
 function isAllowed(target: URL): boolean {
-  if (target.protocol !== "https:" && target.protocol !== "http:") return false;
+  const publicObject = target.pathname.startsWith(PUBLIC_OBJECTS);
+  // Storage at exactly the configured origin — in local development that is
+  // plain http on its own port, which the rule below would refuse.
+  if (supabaseUrls().some((u) => u.origin === target.origin)) return publicObject;
+  if (target.protocol !== "https:" || target.port !== "") return false;
   const host = target.hostname.toLowerCase();
-  return allowedHosts().some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+  const on = (allowed: string) => host === allowed || host.endsWith(`.${allowed}`);
+  if (on("replicate.delivery")) return true;
+  return supabaseUrls().some((u) => on(u.hostname)) && publicObject;
 }
 
 /** A filename the operating system will accept, derived from the URL's path. */
@@ -46,22 +80,31 @@ function filenameFor(target: URL): string {
 }
 
 export async function GET(req: Request) {
+  const limit = await checkNamedRateLimit(req, {
+    name: "look-image",
+    requests: DOWNLOADS_PER_MINUTE,
+    window: "1 m",
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many downloads. Try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
+
   const raw = new URL(req.url).searchParams.get("url") ?? "";
-  if (!raw) return NextResponse.json({ error: "Missing url" }, { status: 400 });
 
   let target: URL;
   try {
     target = new URL(raw);
   } catch {
-    return NextResponse.json({ error: "Not a URL" }, { status: 400 });
+    return fail(400);
   }
 
   // An unrestricted fetcher would let anyone use the server to reach hosts the
   // browser cannot, including addresses inside our own network. The allow-list
   // is what keeps this a download button rather than a proxy.
-  if (!isAllowed(target)) {
-    return NextResponse.json({ error: "That image is not on a known host" }, { status: 400 });
-  }
+  if (!isAllowed(target)) return fail(400);
 
   let upstream: Response;
   try {
@@ -69,23 +112,17 @@ export async function GET(req: Request) {
       headers: { Accept: "image/*" },
       signal: AbortSignal.timeout(20_000),
       cache: "no-store",
+      // A redirect would take the request off the allow-list it just passed.
+      redirect: "error",
     });
   } catch {
-    return NextResponse.json({ error: "Could not fetch the image" }, { status: 502 });
-  }
-
-  if (!upstream.ok || !upstream.body) {
-    // The usual cause is a Replicate URL that has expired — about an hour after
-    // it was made — so say that rather than a bare status code.
-    return NextResponse.json(
-      { error: `The image is no longer available (${upstream.status}).` },
-      { status: 502 },
-    );
+    return fail(502);
   }
 
   const type = upstream.headers.get("content-type") ?? "";
-  if (!type.startsWith("image/")) {
-    return NextResponse.json({ error: "That link is not an image" }, { status: 400 });
+  if (!upstream.ok || !upstream.body || !type.startsWith("image/")) {
+    upstream.body?.cancel().catch(() => undefined);
+    return fail(502);
   }
 
   const length = upstream.headers.get("content-length");
