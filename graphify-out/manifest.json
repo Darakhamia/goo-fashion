@@ -234,9 +234,9 @@
     "semantic_hash": "5e1e63d180cbc4cf69fe7b0b087be1e0"
   },
   "src/app/api/billing/cron/renew/route.ts": {
-    "mtime": 1790434587.980709,
-    "seen": 1790439155.3369384,
-    "ast_hash": "0b360610defbcd20ed2baf1adc9c08df",
+    "mtime": 1790532815.910519,
+    "seen": 1790532852.457323,
+    "ast_hash": "5621273d81c6dbc782d201e4d76017c3",
     "semantic_hash": ""
   },
   "src/app/api/billing/status/route.ts": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/subscriptions/page.tsx": {
-    "mtime": 1790433391.4212227,
-    "seen": 1790439155.3370585,
-    "ast_hash": "239c7423234afb83ddebe05fcb824a15",
+    "mtime": 1790532815.910264,
+    "seen": 1790532852.4594858,
+    "ast_hash": "bb42fe7f136fdb5eb29dff92dd9e44dd",
     "semantic_hash": ""
   },
   "src/app/goo-studio/users/page.tsx": {
@@ -1062,9 +1062,9 @@
     "semantic_hash": ""
   },
   "src/proxy.ts": {
-    "mtime": 1790427207.4210167,
-    "seen": 1790439155.337331,
-    "ast_hash": "c4259793b6bbd4b7593b1fa06c9fca4e",
+    "mtime": 1790532815.9107578,
+    "seen": 1790532852.4642618,
+    "ast_hash": "f455ef6057f5cce18d79a08b7e23e376",
     "semantic_hash": ""
   },
   "supabase-migration-billing-events.sql": {
@@ -1316,9 +1316,9 @@
     "semantic_hash": ""
   },
   "AI_ARCHITECTURE.md": {
-    "mtime": 1790439129.810699,
-    "seen": 1790439155.3373768,
-    "ast_hash": "0e69775081692a4d851d7cb864f82072",
+    "mtime": 1790532423.5136623,
+    "seen": 1790532852.4646032,
+    "ast_hash": "b0d6d15195ca350fd982028f332aa7dc",
     "semantic_hash": ""
   },
   "AUDIT_DEV_PLAN.md": {
@@ -1328,21 +1328,21 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1790531972.9192019,
-    "seen": 1790532269.6318007,
-    "ast_hash": "170c9f328ceb739ad67a494a93c68d3e",
+    "mtime": 1790532682.8301165,
+    "seen": 1790532852.4646244,
+    "ast_hash": "e6f437f2f09e80778d80bd976762f14c",
     "semantic_hash": ""
   },
   "BILLING.md": {
-    "mtime": 1790434296.4291978,
-    "seen": 1790439155.3373828,
-    "ast_hash": "100cc3c4ce0e2e7e33a107fa418f28bc",
+    "mtime": 1790532487.1340053,
+    "seen": 1790532852.4646256,
+    "ast_hash": "e241548c430ede5d8a4491d2c8f21a49",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1790439238.692124,
-    "seen": 1790459478.3896413,
-    "ast_hash": "5d00df45f19dde015785e8d5f136cce5",
+    "mtime": 1790532278.8818402,
+    "seen": 1790532852.4646268,
+    "ast_hash": "4024aaab5740992b256bbd94e2335b47",
     "semantic_hash": ""
   },
   "PARSER.md": {
@@ -1352,9 +1352,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1790433957.2011893,
-    "seen": 1790439155.337391,
-    "ast_hash": "d8dc27409cd965843bbab4a1bdd957e2",
+    "mtime": 1790532447.6571786,
+    "seen": 1790532852.4646509,
+    "ast_hash": "9bd5c17f5df8274a63169a4b5010c59a",
     "semantic_hash": ""
   },
   "public/cs/hoodie-card-black.png": {
@@ -2036,27 +2036,27 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1790439115.8541105,
-    "seen": 1790439155.337386,
-    "ast_hash": "edb7010fd37490a15ac78d3a7130fb05",
+    "mtime": 1790532396.7285635,
+    "seen": 1790532852.4646277,
+    "ast_hash": "edcba520e5d46793d9286e6136dd2b9b",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
-    "mtime": 1790434285.1651976,
-    "seen": 1790439155.3373876,
-    "ast_hash": "fb465c70ee453a34ff4c6c6299250b1b",
+    "mtime": 1790532526.3766484,
+    "seen": 1790532852.4646285,
+    "ast_hash": "e608cada694d0594c890ac006e43d348",
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1790435163.15322,
-    "seen": 1790439155.3373919,
-    "ast_hash": "a978f3c705fea126a3a44aaa07ba6bef",
+    "mtime": 1790532413.655829,
+    "seen": 1790532852.4646525,
+    "ast_hash": "3eb19913d85bc3c5690e03ca5562f6bd",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
-    "mtime": 1790439278.8488476,
-    "seen": 1790459478.3899698,
-    "ast_hash": "f3c320737e8fbc8f79909a7fe43cc5fd",
+    "mtime": 1790532671.4955661,
+    "seen": 1790532852.4646535,
+    "ast_hash": "3faa0197652e55ef28d761826519c579",
     "semantic_hash": ""
   },
   "docs/UX_REVIEW_2026-09.md": {
