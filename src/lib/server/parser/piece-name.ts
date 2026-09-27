@@ -193,6 +193,62 @@ export function pieceName(name: string, brand: string | string[], colors: string
 }
 
 /**
+ * A word as a comparison should read it: one spelling for "grey". Not a base
+ * colour — "Navy" and "Blue" are two colourways a store sells side by side.
+ */
+function wordKey(word: string): string {
+  return word === "gray" ? "grey" : word;
+}
+
+/**
+ * The variant a name spells out for itself — "(Black/White)", "(Cheetah)",
+ * "- Washed Black" — as sorted words, or "" when it names none.
+ *
+ * A store that sells each colourway of a model as its own product often puts
+ * the colourway in the name and nowhere else. `pieceName` rightly drops those
+ * words to find the model, but then "Yori Sport Text Zip-up (Black/White)" and
+ * "(Grey/Black)" were one piece, and with no colour field on the page the
+ * first card of the model took the link. Two names that each state a variant,
+ * and state different ones, are two things. A year or who it is for is not a
+ * variant: "(2026)", "(Men's)".
+ */
+export function nameVariant(name: string): string {
+  const text = foldBrand(cleanName(name ?? "")).trim();
+  const tail = /\(([^()]+)\)\s*$/u.exec(text)?.[1] ?? /\s[-–—]\s+([^-–—]+)$/u.exec(text)?.[1];
+  if (!tail) return "";
+  const words = tail
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w && /\p{L}/u.test(w) && !FILLER.has(w) && !/^\p{L}$/u.test(w));
+  if (!words.length || words.length > 4) return "";
+  return [...new Set(words.map(wordKey))].sort().join(" ");
+}
+
+/** Do two names each state a variant, and different ones? */
+export function variantsDiffer(a: string, b: string): boolean {
+  const x = nameVariant(a);
+  const y = nameVariant(b);
+  return !!x && !!y && x !== y;
+}
+
+/**
+ * A name as a whole, for "the very same name": folded, the maker's spellings
+ * and the words that say who it is for taken out, "gray" as "grey",
+ * punctuation gone. Unlike `pieceName` it keeps the colour and the variant —
+ * "Yori Text Zip-up (black/collegiate)" is not "Yori Text Zip-up".
+ */
+export function fullNameKey(name: string, brand: string | string[]): string {
+  let text = foldBrand(cleanName(name ?? ""));
+  const brands = (Array.isArray(brand) ? brand : [brand]).map((v) => foldBrand(v ?? "")).filter(Boolean);
+  const spellings = [...new Set(brands.flatMap((b) => [...(BRAND_LINES[b] ?? []), b]))].sort((p, q) => q.length - p.length);
+  for (const b of spellings) text = text.replace(phrase(b), " ");
+  return text
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w && !FILLER.has(w) && !/^\p{L}$/u.test(w))
+    .map(wordKey)
+    .join(" ");
+}
+
+/**
  * The article codes a row carries: in its name, and the maker's part number.
  * Never the store's SKU — two retailers use one SKU string for two things.
  */
