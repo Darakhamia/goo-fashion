@@ -307,6 +307,33 @@ export function extractCurrencyFromDisplay(raw: string): string {
   return "";
 }
 
+// ── The price in a rendered price text ───────────────────────────────────────
+// The collect extension sends the price as the shopper reads it, and a size
+// picker that prices every size is where that reading went wrong: a tile reads
+// "18" with "$215" under it, and "18\n$" — the size — arrived as the price and
+// was stored as $18. `parsePrice` keeps every digit it is given, so the one
+// price is picked out first: an amount grouped as money is ("4 000",
+// "1.299,00") with a currency marker right beside it on the same line, and a
+// marker that has an amount after it belongs to that amount ("18 $120" is
+// $120). The extension reads the same way since 1.0.11; this also covers the
+// versions before it.
+
+const PRICE_SPACE = "[ \\u00A0\\u202F\\u2009]";
+const PRICE_AMOUNT = `\\d{1,3}(?:(?:${PRICE_SPACE}|[.,'’])\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?`;
+const PRICE_MARKER =
+  `(?:(?<![A-Za-z])(?:US|CA|C|AU|A|NZ|HK|SG|S|R)${PRICE_SPACE}?)?\\$|[€£₴₽¥₺₹₩₪]|zł|Kč|грн|руб|CHF|\\b(?:USD|EUR|GBP|UAH|RUB|PLN|CZK|SEK|NOK|DKK|CAD|AUD|JPY|CNY|TRY)\\b`;
+const PRICE_IN_TEXT = new RegExp(
+  `(?:${PRICE_MARKER})${PRICE_SPACE}*(?:${PRICE_AMOUNT})` +
+    `|(?<![\\d.,])(?:${PRICE_AMOUNT})${PRICE_SPACE}*(?:${PRICE_MARKER})(?!${PRICE_SPACE}*\\d)`,
+  "i",
+);
+
+/** The first price in a rendered text, its marker included ("$215", "4 000 ₴"), or "" when there is none. */
+export function priceInDisplay(raw: string): string {
+  const match = String(raw ?? "").match(PRICE_IN_TEXT);
+  return match ? match[0].trim() : "";
+}
+
 // ── The currency a store charges in, when no price says it ───────────────────
 // Last resort, and a better one than the one it replaces. A page whose markup
 // carries a bare "4000" and whose rendered price the extension could not read
