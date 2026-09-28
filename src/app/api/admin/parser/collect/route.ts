@@ -24,7 +24,7 @@
  * extension is a key under the doormat. It talks to the collect screen instead,
  * which calls this with the admin's ordinary session.
  */
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
@@ -36,6 +36,7 @@ import { COLOUR_ORIGINS, type ColourOrigin } from "@/lib/server/parser/colour-ch
 import { isShopifyProduct } from "@/lib/server/parser/shopify";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
+import { measurePendingBackdrops } from "@/lib/server/bg-color";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -392,6 +393,9 @@ export async function POST(req: Request) {
   if (result.status === "imported" || result.status === "updated") {
     revalidatePath("/goo-studio/products");
     revalidatePath("/");
+    // Cards still without a measured backdrop, a few at a time, after the
+    // answer has gone: nothing is slowed and no button has to be pressed.
+    after(() => measurePendingBackdrops());
     try {
       const cc = await clerkClient();
       const adminUser = await cc.users.getUser(admin.userId);

@@ -416,6 +416,111 @@ export async function storeBackgroundColor(productId: string, url: string): Prom
   }
 }
 
+// ── The unmeasured queue, worked through without anyone asking ────────────────
+// A card is measured when it is created, but not every card gets there: a
+// photo replaced in the editor is cleared for re-measuring, and a photo the
+// import could not download (a CDN's 429, a slow link) is left for later. Those
+// waited for the admin's "Photo backdrops" button, so a new card sat in a white
+// frame until someone noticed. Now each import and each edit ends by measuring
+// a few of the waiting cards in the background, and the queue drains by itself.
+// The button stays for a full re-check and its undo; these runs are not logged
+// as one, exactly like the measurement made at import.
+
+/** Cards measured per background pass: seconds of work on our own storage. */
+const SWEEP_BATCH = 12;
+/** Waiting cards read per pass, so a few that cannot be downloaded never block the rest. */
+const SWEEP_WINDOW = 100;
+/** Least time between two passes: a collect run imports a page every couple of seconds. */
+const SWEEP_EVERY_MS = 20_000;
+/** How long a photo that could not be downloaded is left alone before it is tried again. */
+const RETRY_AFTER_MS = 30 * 60_000;
+/** How long to stay quiet after the database said it has no `bg_color` column. */
+const NOT_MIGRATED_PAUSE_MS = 60 * 60_000;
+
+let sweeping: Promise<number> | null = null;
+let lastSweepAt = 0;
+let pausedUntil = 0;
+const retryAt = new Map<string, number>();
+
+/**
+ * Measure a few cards that have never been measured, newest first. One pass at
+ * a time per server, at most one every `SWEEP_EVERY_MS`. Never throws; returns
+ * how many cards it gave a colour (or 'none').
+ */
+export function measurePendingBackdrops(opts: { force?: boolean } = {}): Promise<number> {
+  const now = Date.now();
+  if (sweeping) return sweeping;
+  if (now < pausedUntil || (!opts.force && now - lastSweepAt < SWEEP_EVERY_MS)) return Promise.resolve(0);
+  lastSweepAt = now;
+  sweeping = sweep().finally(() => {
+    sweeping = null;
+  });
+  return sweeping;
+}
+
+async function sweep(): Promise<number> {
+  try {
+    const { supabase, isSupabaseConfigured } = await import("@/lib/supabase");
+    if (!isSupabaseConfigured || !supabase) return 0;
+
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, image_url, images")
+      .is("bg_color", null)
+      .order("created_at", { ascending: false })
+      .limit(SWEEP_WINDOW);
+    if (error) {
+      // Migration 015 not run: nothing to measure into, and nothing to retry soon.
+      if (/bg_color/.test(error.message ?? "")) pausedUntil = Date.now() + NOT_MIGRATED_PAUSE_MS;
+      return 0;
+    }
+
+    const now = Date.now();
+    for (const [id, at] of retryAt) if (at <= now) retryAt.delete(id);
+    const rows = ((data ?? []) as { id: string; image_url: string | null; images: string[] | null }[])
+      .filter((row) => !retryAt.has(row.id))
+      .slice(0, SWEEP_BATCH);
+
+    const jobs = rows.map((row) => {
+      const url = urlToSample(row);
+      let host = `unusable:${row.id}`;
+      try {
+        host = new URL(url).host;
+      } catch {
+        /* no usable address — a lane of its own, failing at once */
+      }
+      return { id: row.id, url, host, own: !!url && isAlreadyMirrored(url) };
+    });
+
+    let stored = 0;
+    await pooledByHost(jobs, async ({ id, url }) => {
+      const { color, outcome } = await sampleBackgroundColor(url);
+      if (outcome === "unavailable") {
+        retryAt.set(id, Date.now() + RETRY_AFTER_MS);
+        return;
+      }
+      const { error: writeError } = await supabase
+        .from("products")
+        .update({ bg_color: color ?? DECLINED })
+        .eq("id", id)
+        .is("bg_color", null);
+      if (!writeError) stored++;
+    });
+    if (stored) {
+      // As the batch job does, so the storefront shows the new frames now.
+      try {
+        const { revalidatePath } = await import("next/cache");
+        for (const path of ["/browse", "/builder"]) revalidatePath(path);
+      } catch {
+        /* outside a request — the pages refresh on their own schedule */
+      }
+    }
+    return stored;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Download one photo and measure its backdrop.
  */

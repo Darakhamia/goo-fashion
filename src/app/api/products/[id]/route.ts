@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { productToDb, dbToProduct, writeProductRow, missingColumnWarning } from "@/lib/data/db";
@@ -6,6 +6,7 @@ import type { DbProduct } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { isMissingTableLoose } from "@/lib/server/db-errors";
+import { storeBackgroundColor, urlToSample } from "@/lib/server/bg-color";
 
 const noDb = () =>
   NextResponse.json(
@@ -26,8 +27,9 @@ export async function PUT(
 
   // A replaced photo invalidates the backdrop measured off the old one, and the
   // new photo's colour cannot be measured without downloading it — which does
-  // not belong in a save. Clearing it puts the row back in the sampling job's
-  // queue, and the box falls back to white until then.
+  // not belong in a save. It is cleared here and measured again once the save
+  // has answered (below), so the admin never has to run the batch for it.
+  let photoReplaced = false;
   if (row.image_url && !("bg_color" in row)) {
     const { data: before } = await supabase
       .from("products")
@@ -37,6 +39,7 @@ export async function PUT(
     const previous = (before ?? [])[0] as { image_url: string | null } | undefined;
     if (previous && previous.image_url !== row.image_url) {
       (row as Record<string, unknown>).bg_color = null;
+      photoReplaced = true;
     }
   }
 
@@ -45,6 +48,16 @@ export async function PUT(
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const saved = data as DbProduct;
+  if (photoReplaced) {
+    after(async () => {
+      if (!(await storeBackgroundColor(id, urlToSample(saved)))) return;
+      try {
+        revalidatePath(`/product/${id}`);
+      } catch {
+        /* the page refreshes on its own schedule */
+      }
+    });
+  }
   await logAdminAction({
     admin_id: admin.userId,
     action: "products.updated",
