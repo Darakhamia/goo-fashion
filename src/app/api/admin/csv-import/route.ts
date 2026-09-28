@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { logAdminAction } from "@/lib/server/audit";
 import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
+import { measurePendingBackdrops } from "@/lib/server/bg-color";
 import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
 import { normalizeGtin } from "@/lib/server/product-fields";
 import { inferStyleKeywords } from "@/lib/taxonomy/styles";
@@ -285,6 +286,9 @@ export async function PUT(req: Request) {
 
   if (created || updated || merged) {
     revalidatePath("/");
+    // Cards still without a measured backdrop, a few at a time, after the
+    // answer has gone: nothing is slowed and no button has to be pressed.
+    after(() => measurePendingBackdrops());
     // One entry per batch (up to MAX_IMPORT_GROUPS products), not per product.
     void logAdminAction({
       admin_id: admin.userId,

@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { clerkClient } from "@clerk/nextjs/server";
 import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
+import { measurePendingBackdrops } from "@/lib/server/bg-color";
 
 export const maxDuration = 60;
 
@@ -53,6 +54,9 @@ export async function POST(req: Request) {
 
   revalidatePath("/goo-studio/products");
   revalidatePath("/");
+  // Cards still without a measured backdrop, a few at a time, after the
+  // answer has gone: nothing is slowed and no button has to be pressed.
+  after(() => measurePendingBackdrops());
 
   return NextResponse.json({
     ok: true,

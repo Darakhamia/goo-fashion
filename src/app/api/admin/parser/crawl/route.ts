@@ -10,7 +10,7 @@
  * Keeping the loop on the client means live progress, a Stop button that works,
  * and no request that runs past `maxDuration`.
  */
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
@@ -20,6 +20,7 @@ import { loadCategoryTree } from "@/lib/server/category-tree";
 import { discoverProductUrls } from "@/lib/server/parser/crawl";
 import { droppedColumnsWarning, importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
 import { orderForLinksOnly } from "@/lib/server/parser/catalogue-match";
+import { measurePendingBackdrops } from "@/lib/server/bg-color";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -176,6 +177,9 @@ export async function POST(req: Request) {
   if (imported || updated) {
     revalidatePath("/goo-studio/products");
     revalidatePath("/");
+    // Cards still without a measured backdrop, a few at a time, after the
+    // answer has gone: nothing is slowed and no button has to be pressed.
+    after(() => measurePendingBackdrops());
     try {
       const cc = await clerkClient();
       const adminUser = await cc.users.getUser(admin.userId);
