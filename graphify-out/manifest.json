@@ -978,9 +978,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/extract.ts": {
-    "mtime": 1790535020.985569,
-    "seen": 1790584792.0043263,
-    "ast_hash": "2bbfb624c64e16dbf288d0e2c2614f2b",
+    "mtime": 1790612009.076142,
+    "seen": 1790612188.6557827,
+    "ast_hash": "69f187cad0aad0d6edc01944b8a209b3",
     "semantic_hash": ""
   },
   "src/lib/server/parser/fetch.ts": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/product-fields.ts": {
-    "mtime": 1790535020.9874637,
-    "seen": 1790584792.0043414,
-    "ast_hash": "953016fd9d3c3cdd0f6adf8a75c072ed",
+    "mtime": 1790612009.076142,
+    "seen": 1790612188.6564877,
+    "ast_hash": "d84cb505215d2b3ef0838a1ecd42548e",
     "semantic_hash": ""
   },
   "src/lib/server/prompt-defaults.ts": {
@@ -1328,9 +1328,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1790535202.6053681,
-    "seen": 1790584792.0043747,
-    "ast_hash": "a9fb653d74e9ec433d14ce35474cf664",
+    "mtime": 1790584810.722357,
+    "seen": 1790612188.6576352,
+    "ast_hash": "f8d0570bb551e1a91292e5e1c55e656d",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1412,9 +1412,9 @@
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1790529497.0753148,
-    "seen": 1790584792.0040915,
-    "ast_hash": "323234b64c97b6c2829f1045a8968cea",
+    "mtime": 1790612009.076142,
+    "seen": 1790612188.6468246,
+    "ast_hash": "7ee3a2767d0e998117cf3aa008ca54d9",
     "semantic_hash": ""
   },
   "extension/popup.js": {
@@ -1424,9 +1424,9 @@
     "semantic_hash": ""
   },
   "extension/snapshot.js": {
-    "mtime": 1790520816.7408068,
-    "seen": 1790584792.0040941,
-    "ast_hash": "a428381c2ef7c3e264929a1ed67c0398",
+    "mtime": 1790612009.0767057,
+    "seen": 1790612188.646854,
+    "ast_hash": "6ffd1d7fcfc5d2b0aee0c8055da6b5f2",
     "semantic_hash": ""
   },
   "scripts/migration-smoke.sh": {
