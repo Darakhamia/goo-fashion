@@ -533,7 +533,9 @@ Relative image URLs are resolved; results are deduped. On top of that:
 - **Subcategory** is resolved against the admin's category tree (from the name,
   then the breadcrumbs) and written only when the tree has such a label.
 - **Style keywords** are inferred from the name, description, material,
-  subcategory and breadcrumbs.
+  subcategory and breadcrumbs: the words that name one of the five styles
+  (casual, minimal, classic, streetwear, sporty) and the words that say what the
+  piece is for ("for the office" classic, "hiking" sporty, "for walks" casual).
 
 ### Colour
 
@@ -787,8 +789,12 @@ In order:
    colour words, else the photo (a studio shot only, `bg-color.ts`).
 7. **Gender and style**, when the page said nothing: the store's default gender
    rule, then the brand's and the store's habit in the catalogue
-   (`catalogue-profile.ts`); style tags are proposed from the page's words and the
-   brand's history.
+   (`catalogue-profile.ts`). Style: the description leads, the brand fills in —
+   two styles or more from the words are the answer, one gets the brand's style
+   beside it, none leaves the brand's alone. The brand's style comes from the
+   built-in list (`taxonomy/brand-styles.ts`: Adidas sporty, Gucci classic),
+   else from how the editor tags that brand, else — for a new brand — from the
+   store's habit.
 8. **Write.**
    - A row with this `source_url` exists → it is updated (see the table).
    - None → is this the same item another store already sold us? By GTIN, or

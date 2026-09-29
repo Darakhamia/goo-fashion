@@ -1477,8 +1477,9 @@ export default function AdminProductsPage() {
       const ok = window.confirm(
         `Reset styles on ${would.products} of ${dry.scanned.products} products` +
         (would.outfits ? ` and clear them on ${would.outfits} outfits` : "") + `?\n\n` +
-        `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty, ` +
-        `read from their name, description and material; a product whose words name none is left without a style.\n\n` +
+        `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty: ` +
+        `from their description first, and from the brand where the description says little ` +
+        `(Adidas sporty, Gucci classic). A product with neither is left without a style.\n\n` +
         `Products per style after the reset:\n${after}\n\n` +
         (removed ? `Tags removed: ${removed}\n\n` : "") +
         `This can be undone.`,
@@ -1958,7 +1959,7 @@ export default function AdminProductsPage() {
           <button
             onClick={handleResetStyles}
             disabled={restyling || !canWrite}
-            title={canWrite ? "Remove every style tag and give products only the five basic styles, read from their own words" : "Requires Supabase"}
+            title={canWrite ? "Remove every style tag and give products only the five basic styles: from the description first, then the brand" : "Requires Supabase"}
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {restyling ? "Restyling…" : "Reset styles"}

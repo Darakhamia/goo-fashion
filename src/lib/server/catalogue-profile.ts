@@ -2,21 +2,27 @@
  * What the editor's own labelling says about a brand and a store — the part of
  * a product's style and gender that its page does not say.
  *
- * Style. A brand builds its catalogue around a manner: nearly everything VLONE
- * or Gallery Dept. makes is filed streetwear. Words on the page mostly miss
- * this — measured on the live catalogue, keyword styles agreed with the editor
- * 44% of the time, below always answering "streetwear" (88%). So a style is
- * proposed from three signals, and each is used only as far as the catalogue
- * shows it works:
+ * Style, in the order the CEO set on 2026-09-29: the description decides, the
+ * brand fills in.
  *
- *   brand     the styles the editor gave most of this brand's pieces;
- *   store     for a brand with no such history — a new one — the styles the
- *             editor gave most pieces bought from the same store;
- *   words     the style dictionary, per style, only where its tags have agreed
- *             with the editor's often enough (sporty did at 87%, minimal at 6%).
+ *   words     what the style dictionary reads in the piece's own name and
+ *             description — which manner it names and what it is *for*
+ *             (`taxonomy/styles`). Always used, and never outvoted;
+ *   brand     the one style the brand stands for: the built-in list first
+ *             (Adidas sporty, Gucci classic — `taxonomy/brand-styles`), then,
+ *             for a brand not on it, the style the editor gave most of its
+ *             pieces;
+ *   store     for a brand with neither — a new one — the style the editor gave
+ *             most pieces bought from the same store.
  *
- * A fourth, colour — a dark-toned piece is "dark" — went with the dark style
- * when the vocabulary was cut to five basic styles (2026-09-29).
+ * Mixed so the brand never outweighs the page: words naming two styles or
+ * more are the answer; words naming one get the brand's style beside it; no
+ * words, and the brand's style stands alone.
+ *
+ * (Until 2026-09-29 the words counted only per style where the catalogue had
+ * shown them to agree with the editor, the brand's habit could outrank them,
+ * and a dark-toned piece was filed "dark". The vocabulary was cut to five
+ * styles that day and the order above replaced the calibration.)
  *
  * Gender. A store's site says "Men" and "Women", or "All" and "Women", and what
  * "All" means is the brand's convention: men's at one, unisex at the next. The
@@ -28,8 +34,8 @@
  * report can build it from one part of the catalogue and score it on another.
  */
 import type { Gender, StyleKeyword } from "@/lib/types";
-import { STYLE_KEYWORD_LIST, isStyleKeyword } from "@/lib/style-keywords";
-import { inferStyleKeywords } from "@/lib/taxonomy/styles";
+import { STYLE_KEYWORD_LIST, isStyleKeyword, normalizeStyleKeywords } from "@/lib/style-keywords";
+import { brandStyle } from "@/lib/taxonomy/brand-styles";
 import { genderFromPage } from "@/lib/taxonomy/gender";
 import { domainCandidates, domainFromUrl } from "@/lib/server/retailer-domains";
 import { loadLabelledProducts, type LabelledProduct } from "@/lib/server/catalogue-labels";
@@ -42,12 +48,6 @@ export const BRAND_MIN_PIECES = 3;
 export const STORE_STYLE_MIN = 5;
 /** A style is the brand's when at least this share of its pieces carry it. */
 export const BRAND_STYLE_SHARE = 0.6;
-/** A signal is trusted when at least this share of its tags agreed with the editor… */
-export const SIGNAL_MIN_PRECISION = 0.7;
-/** …over at least this many tags. */
-export const SIGNAL_MIN_TAGS = 5;
-/** Below this many style-tagged products nothing can be calibrated: the words are used as they are. */
-export const CALIBRATION_MIN_PRODUCTS = 50;
 /** A gender is a brand's or store's convention at this share of its silent pieces. */
 export const GENDER_SHARE = 0.8;
 export const BRAND_GENDER_MIN = 3;
@@ -62,11 +62,6 @@ export interface Tally {
   counts: Record<string, number>;
 }
 
-interface Agreement {
-  tagged: number;
-  right: number;
-}
-
 export interface CatalogueProfile {
   /** Products carrying at least one style tag. */
   styled: number;
@@ -76,8 +71,6 @@ export interface CatalogueProfile {
   /** Gender the editor chose for pieces whose page stated none. */
   brandGender: Map<string, Tally>;
   storeGender: Map<string, Tally>;
-  /** Per style: how often the dictionary's tag was the editor's too. */
-  keywordStyles: Map<StyleKeyword, Agreement>;
 }
 
 export interface ProfileInput {
@@ -113,9 +106,6 @@ function dominant(t: Tally | undefined, minShare: number, minN: number): { value
   return best;
 }
 
-const precise = (a: Agreement | undefined) =>
-  !!a && a.tagged >= SIGNAL_MIN_TAGS && a.right / a.tagged >= SIGNAL_MIN_PRECISION;
-
 /** Where the piece was bought, as the store settings key it. */
 export function storeKey(sourceUrl: string | null | undefined): string {
   return sourceUrl ? domainFromUrl(sourceUrl) : "";
@@ -133,7 +123,6 @@ export function buildCatalogueProfile(rows: LabelledProduct[]): CatalogueProfile
   const storeStyles = new Map<string, Tally>();
   const brandGender = new Map<string, Tally>();
   const storeGender = new Map<string, Tally>();
-  const keywordStyles = new Map<StyleKeyword, Agreement>(STYLE_KEYWORD_LIST.map((s) => [s, { tagged: 0, right: 0 }]));
   let styled = 0;
 
   for (const r of rows) {
@@ -154,12 +143,6 @@ export function buildCatalogueProfile(rows: LabelledProduct[]): CatalogueProfile
         for (const s of styles) st.counts[s] = (st.counts[s] ?? 0) + 1;
         storeStyles.set(store, st);
       }
-
-      for (const s of inferStyleKeywords(`${r.name} ${r.description}`, STYLE_KEYWORD_LIST.length)) {
-        const a = keywordStyles.get(s)!;
-        a.tagged++;
-        if (styles.includes(s)) a.right++;
-      }
     }
 
     if (r.gender && !pageStatesGender(r)) {
@@ -168,7 +151,7 @@ export function buildCatalogueProfile(rows: LabelledProduct[]): CatalogueProfile
     }
   }
 
-  return { styled, brandStyles, storeStyles, brandGender, storeGender, keywordStyles };
+  return { styled, brandStyles, storeStyles, brandGender, storeGender };
 }
 
 // ── Proposing ────────────────────────────────────────────────────────────────
@@ -181,13 +164,18 @@ export interface StyleProposal {
   missing?: string;
 }
 
+/** The one style a tally leans to: the largest share, if it reaches `BRAND_STYLE_SHARE`. */
+function leaning(t: Tally | undefined, minN: number): { style: StyleKeyword; share: number } | undefined {
+  const top = dominant(t, BRAND_STYLE_SHARE, minN);
+  return top && isStyleKeyword(top.value) ? { style: top.value, share: top.share } : undefined;
+}
+
 /**
- * The styles to file a piece under.
+ * The styles to file a piece under: the description's, then the brand's (see
+ * the header for the order and how they mix).
  *
- * `keywordStyles` are what the style dictionary read off the page. They are
- * used only per style, where the catalogue shows that style's words agree with
- * the editor — and unfiltered only while there are too few tagged products to
- * tell.
+ * `keywordStyles` are what the style dictionary read off the page — its name,
+ * description, material and the label it was filed under.
  */
 export function proposeStyles(
   piece: {
@@ -198,68 +186,55 @@ export function proposeStyles(
   },
   profile: CatalogueProfile,
 ): StyleProposal {
-  const candidates = new Map<StyleKeyword, { confidence: number; reason: string }>();
-  const offer = (style: StyleKeyword, confidence: number, reason: string) => {
-    const had = candidates.get(style);
-    if (!had || confidence > had.confidence) candidates.set(style, { confidence, reason });
-  };
   const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const words = normalizeStyleKeywords(piece.keywordStyles).slice(0, MAX_STYLES);
 
+  // The brand's style: the list, then the editor's habit for this brand, then
+  // — for a brand with neither — the store's.
+  let brand: { style: StyleKeyword; reason: string } | undefined;
+  const listed = brandStyle(piece.brand);
   const brandTally = profile.brandStyles.get(brandKey(piece.brand));
-  const brandKnown = !!brandTally && brandTally.n >= BRAND_MIN_PIECES;
-  if (brandKnown) {
-    for (const [style, count] of Object.entries(brandTally.counts)) {
-      const s = count / brandTally.n;
-      if (s >= BRAND_STYLE_SHARE && isStyleKeyword(style)) {
-        offer(style, s, `${style}: ${pct(s)} of ${piece.brand}'s ${brandTally.n} pieces`);
-      }
-    }
-  }
-
-  // A brand the editor has not styled yet is read through the store it came
-  // from: a boutique carries brands in one manner, as a brand makes pieces in
-  // one. Only for a brand with no history of its own, which is more specific.
   let storeTally: Tally | undefined;
   let storeName = storeKey(piece.sourceUrl);
-  if (!brandKnown) {
-    for (const candidate of domainCandidates(storeKey(piece.sourceUrl))) {
-      const tally = profile.storeStyles.get(candidate);
-      if (!tally) continue;
-      storeTally = tally;
-      storeName = candidate;
-      break;
-    }
-    if (storeTally && storeTally.n >= STORE_STYLE_MIN) {
-      for (const [style, count] of Object.entries(storeTally.counts)) {
-        const s = count / storeTally.n;
-        if (s >= BRAND_STYLE_SHARE && isStyleKeyword(style)) {
-          offer(style, s, `${style}: ${pct(s)} of ${storeTally.n} styled pieces from ${storeName}`);
-        }
+  if (listed) {
+    brand = { style: listed.style, reason: `${listed.style}: ${listed.entry} is a ${listed.style} brand` };
+  } else {
+    const habit = leaning(brandTally, BRAND_MIN_PIECES);
+    if (habit) {
+      brand = { style: habit.style, reason: `${habit.style}: ${pct(habit.share)} of ${piece.brand}'s ${brandTally!.n} pieces` };
+    } else if (!brandTally || brandTally.n < BRAND_MIN_PIECES) {
+      // A brand the editor has not styled yet is read through the store it
+      // came from: a boutique carries brands in one manner, as a brand makes
+      // pieces in one.
+      for (const candidate of domainCandidates(storeKey(piece.sourceUrl))) {
+        const tally = profile.storeStyles.get(candidate);
+        if (!tally) continue;
+        storeTally = tally;
+        storeName = candidate;
+        break;
+      }
+      const store = leaning(storeTally, STORE_STYLE_MIN);
+      if (store) {
+        brand = { style: store.style, reason: `${store.style}: ${pct(store.share)} of ${storeTally!.n} styled pieces from ${storeName}` };
       }
     }
   }
 
-  const calibrated = profile.styled >= CALIBRATION_MIN_PRODUCTS;
-  for (const style of piece.keywordStyles) {
-    if (!calibrated) {
-      offer(style, 0.5, `${style}: from the page's words`);
-      continue;
-    }
-    const a = profile.keywordStyles.get(style);
-    if (precise(a)) offer(style, a!.right / a!.tagged, `${style}: from the page's words (right ${pct(a!.right / a!.tagged)} of the time)`);
+  const reasons = words.map((s) => `${s}: from the description`);
+  const kept = new Set<StyleKeyword>(words);
+  // Two styles or more from the words are the answer; one gets the brand's
+  // beside it; none leaves the brand's alone.
+  if (brand && words.length < 2 && !kept.has(brand.style)) {
+    kept.add(brand.style);
+    reasons.push(brand.reason);
   }
 
-  const kept = [...candidates.entries()]
-    .sort((a, b) => b[1].confidence - a[1].confidence)
-    .slice(0, MAX_STYLES);
-  const keptStyles = new Set(kept.map(([s]) => s));
-  if (!kept.length) {
+  if (!kept.size) {
     // Said on the run's row, because "no style" otherwise reads as a fault.
-    // Nearly always it is a brand the editor has not styled yet.
-    const brandSays = brandKnown
-      ? `${piece.brand}'s ${brandTally!.n} styled pieces share no style`
-      : `${piece.brand || "the brand"} has ${brandTally?.n ?? 0} styled pieces (${BRAND_MIN_PIECES} needed)`;
-    const storeSays = brandKnown
+    const brandSays = brandTally && brandTally.n >= BRAND_MIN_PIECES
+      ? `${piece.brand}'s ${brandTally.n} styled pieces share no style`
+      : `${piece.brand || "the brand"} is not in the brand list and has ${brandTally?.n ?? 0} styled pieces (${BRAND_MIN_PIECES} needed)`;
+    const storeSays = brandTally && brandTally.n >= BRAND_MIN_PIECES
       ? ""
       : storeTally && storeTally.n >= STORE_STYLE_MIN
         ? `, ${storeName}'s pieces share no style`
@@ -267,13 +242,10 @@ export function proposeStyles(
     return {
       styles: [],
       reasons: [],
-      missing: `no style: ${brandSays}${storeSays}, and the page's words named none that has proved reliable`,
+      missing: `no style: the description names none, ${brandSays}${storeSays}`,
     };
   }
-  return {
-    styles: STYLE_KEYWORD_LIST.filter((s) => keptStyles.has(s)),
-    reasons: kept.map(([, c]) => c.reason),
-  };
+  return { styles: STYLE_KEYWORD_LIST.filter((s) => kept.has(s)), reasons };
 }
 
 export interface GenderProposal {

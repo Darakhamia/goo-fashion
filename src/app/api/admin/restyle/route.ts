@@ -6,11 +6,14 @@
  * catalogue were to go with it, the ones still in the vocabulary included, so
  * that products carry only basic styles given afresh. This is that job:
  *
- *   - every product's tags are replaced by what the style dictionary reads off
- *     its own name, description, material and subcategory — the importer's
- *     reading (`inferStyleKeywords`). A product whose words name none of the
- *     five is left with no style rather than a guess: the editor fills it in,
- *     one by one or with Edit N;
+ *   - every product's tags are replaced by the importer's rule
+ *     (`proposeStyles`): what the style dictionary reads in its own name,
+ *     description, material and subcategory leads, and the style its brand
+ *     stands for fills in — beside a single style from the words, or alone
+ *     when the words name none. Only the built-in brand list speaks for the
+ *     brand here, not the catalogue's habits: those are learned from the very
+ *     tags this run replaces. A product with neither is left with no style
+ *     rather than a guess: the editor fills it in, one by one or with Edit N;
  *   - every curated look (`outfits`) loses its tags. A look's style is the
  *     editor's call, and the old one was made in a vocabulary that no longer
  *     exists.
@@ -32,6 +35,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { STYLE_KEYWORD_LIST } from "@/lib/style-keywords";
 import { inferStyleKeywords } from "@/lib/taxonomy/styles";
+import { buildCatalogueProfile, proposeStyles } from "@/lib/server/catalogue-profile";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -40,6 +44,7 @@ type Table = "products" | "outfits";
 type ProductRow = {
   id: string;
   name: string;
+  brand: string | null;
   description: string | null;
   material: string | null;
   subcategory: string | null;
@@ -109,7 +114,7 @@ async function run(apply: boolean, adminId: string) {
   let outfits: OutfitRow[];
   try {
     [products, outfits] = await Promise.all([
-      fetchAll<ProductRow>("products", "id, name, description, material, subcategory, style_keywords"),
+      fetchAll<ProductRow>("products", "id, name, brand, description, material, subcategory, style_keywords"),
       fetchAll<OutfitRow>("outfits", "id, style_keywords"),
     ]);
   } catch (e) {
@@ -124,9 +129,17 @@ async function run(apply: boolean, adminId: string) {
   // Old tags taken off, per tag — the dropped styles and the basic ones alike.
   const removed: Record<string, number> = {};
 
+  // No catalogue habits: an empty profile leaves the words and the brand list.
+  const noHabits = buildCatalogueProfile([]);
   for (const p of products) {
     const from = p.style_keywords ?? [];
-    const to = inferStyleKeywords([p.name, p.description ?? "", p.material ?? "", p.subcategory ?? ""].join(" "));
+    const to = proposeStyles(
+      {
+        brand: p.brand ?? "",
+        keywordStyles: inferStyleKeywords([p.name, p.description ?? "", p.material ?? "", p.subcategory ?? ""].join(" ")),
+      },
+      noHabits,
+    ).styles;
     if (to.length) for (const s of to) after[s]++;
     else unstyled++;
     if (sameTags(from, to)) continue;
