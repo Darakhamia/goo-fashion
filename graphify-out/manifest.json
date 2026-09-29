@@ -978,9 +978,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/extract.ts": {
-    "mtime": 1790695274.7730532,
-    "seen": 1790696222.4336557,
-    "ast_hash": "69f187cad0aad0d6edc01944b8a209b3",
+    "mtime": 1790709969.326061,
+    "seen": 1790710211.342245,
+    "ast_hash": "0cc786e94ab2547b649720ec652f2452",
     "semantic_hash": ""
   },
   "src/lib/server/parser/fetch.ts": {
@@ -1328,9 +1328,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1790698413.948749,
-    "seen": 1790698442.7932389,
-    "ast_hash": "9fe10de63ddb1d9f6d7896406ac843c7",
+    "mtime": 1790710153.58313,
+    "seen": 1790710211.3440845,
+    "ast_hash": "adccf0804a311a20362cec348aa1ffc2",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1400,9 +1400,9 @@
     "semantic_hash": ""
   },
   "extension/background.js": {
-    "mtime": 1790695274.5487328,
-    "seen": 1790696222.4302242,
-    "ast_hash": "5a06c5e2a1f8c273527b4983477af440",
+    "mtime": 1790709969.325948,
+    "seen": 1790710211.3335452,
+    "ast_hash": "5274358d2a9e709c652f066939351a05",
     "semantic_hash": ""
   },
   "extension/bridge.js": {
@@ -1412,9 +1412,9 @@
     "semantic_hash": ""
   },
   "extension/manifest.json": {
-    "mtime": 1790695274.5490532,
-    "seen": 1790696222.4302287,
-    "ast_hash": "7ee3a2767d0e998117cf3aa008ca54d9",
+    "mtime": 1790709969.3260264,
+    "seen": 1790710211.3335757,
+    "ast_hash": "d3ed517f67f091154ec0eb89f6325010",
     "semantic_hash": ""
   },
   "extension/popup.js": {
@@ -1424,9 +1424,9 @@
     "semantic_hash": ""
   },
   "extension/snapshot.js": {
-    "mtime": 1790695274.5490532,
-    "seen": 1790696222.4302328,
-    "ast_hash": "6ffd1d7fcfc5d2b0aee0c8055da6b5f2",
+    "mtime": 1790709969.326061,
+    "seen": 1790710211.333615,
+    "ast_hash": "2e8754f3e3918cd22a79c10004b7c49f",
     "semantic_hash": ""
   },
   "scripts/migration-smoke.sh": {
@@ -1472,9 +1472,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/collect/route.ts": {
-    "mtime": 1790695274.7090533,
-    "seen": 1790696222.4304478,
-    "ast_hash": "3fbdf0a855d0d09df5559ff0439cd93f",
+    "mtime": 1790709969.326061,
+    "seen": 1790710211.3345683,
+    "ast_hash": "1357010a8e493f3329f147c10172595c",
     "semantic_hash": ""
   },
   "src/app/api/admin/parser/crawl/route.ts": {
@@ -2171,6 +2171,12 @@
     "mtime": 1790698106.1447306,
     "seen": 1790698442.7921915,
     "ast_hash": "9f3689e9caea279154309453b5ca42dd",
+    "semantic_hash": ""
+  },
+  "src/lib/server/parser/page-guards.ts": {
+    "mtime": 1790709969.3264532,
+    "seen": 1790710211.3423972,
+    "ast_hash": "06b86bd4be045b4efd6680da79080938",
     "semantic_hash": ""
   }
 }
