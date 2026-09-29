@@ -988,9 +988,9 @@ export async function importParsedProduct(
   // ── Gender and style: what the page does not say ────────────────────────────
   // A page names its gender or it doesn't; when it doesn't, the store's own
   // convention decides (the admin's setting, then the brand's and the store's
-  // habit in the catalogue). Style is mostly the brand's manner, which no page
-  // spells out. Both are learned from the editor's own labelling — see
-  // `catalogue-profile.ts` for what is trusted and why.
+  // habit in the catalogue). Style: the description decides and the brand
+  // fills in — the built-in brand list, then the brand's and the store's habit.
+  // See `catalogue-profile.ts` for the order and how the two mix.
   const profile = await loadCatalogueProfile();
   let gender = statedGender;
   let genderNote: string | undefined;

@@ -439,7 +439,7 @@ export async function GET(req: Request) {
   lines.push("  tagged = products the importer gave this style; right = of those, the editor agrees;");
   lines.push("  editor = products the editor gave it. Low precision means the words mislead here.");
   lines.push("");
-  lines.push("STYLE BY STYLE  (what the importer now writes: brand + store + checked words; out-of-fold)");
+  lines.push("STYLE BY STYLE  (what the importer now writes: description, then brand list / brand / store; out-of-fold)");
   lines.push(`  ${"style".padEnd(14)} ${"tagged".padStart(7)} ${"right".padStart(6)} ${"editor".padStart(7)} ${"precision".padStart(10)} ${"recall".padStart(7)}`);
   for (const s of styleByStyleCombined) {
     lines.push(`  ${s.style.padEnd(14)} ${String(s.proposed).padStart(7)} ${String(s.right).padStart(6)} ${String(s.editor).padStart(7)} ${(s.proposed ? pct(s.precision) : "—").padStart(10)} ${pct(s.recall).padStart(7)}`);

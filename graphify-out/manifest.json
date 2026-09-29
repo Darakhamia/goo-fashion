@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/products/page.tsx": {
-    "mtime": 1790696117.480965,
-    "seen": 1790696222.4314601,
-    "ast_hash": "47442f783a3c14a0dbacf6f86464b2b1",
+    "mtime": 1790698197.9381115,
+    "seen": 1790698442.7843778,
+    "ast_hash": "07b42cdd635adb03854c7b53ef3c472b",
     "semantic_hash": ""
   },
   "src/app/goo-studio/prompts/page.tsx": {
@@ -1328,9 +1328,9 @@
     "semantic_hash": ""
   },
   "AUDIT_PLAN_BRIEF.md": {
-    "mtime": 1790696213.5546656,
-    "seen": 1790696222.4344404,
-    "ast_hash": "be5dfc8359122c705e1a8d8a8b945bec",
+    "mtime": 1790698413.948749,
+    "seen": 1790698442.7932389,
+    "ast_hash": "9fe10de63ddb1d9f6d7896406ac843c7",
     "semantic_hash": ""
   },
   "BILLING.md": {
@@ -1346,9 +1346,9 @@
     "semantic_hash": ""
   },
   "PARSER.md": {
-    "mtime": 1790695274.5410533,
-    "seen": 1790696222.4344475,
-    "ast_hash": "42318a748d37937b9be9f05af293972e",
+    "mtime": 1790698351.015963,
+    "seen": 1790698442.793435,
+    "ast_hash": "09b6254b3db5f8be8a638876a0055402",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1448,9 +1448,9 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/field-mining/route.ts": {
-    "mtime": 1790695694.241224,
-    "seen": 1790696222.4303935,
-    "ast_hash": "72bd9972b9ff2b43ada68a0debf2ff94",
+    "mtime": 1790698351.017295,
+    "seen": 1790698442.7789001,
+    "ast_hash": "ef41decc60435b35c3e20ba2e3072b0c",
     "semantic_hash": ""
   },
   "src/app/api/admin/label-audit/apply/route.ts": {
@@ -1802,9 +1802,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-profile.ts": {
-    "mtime": 1790695673.4127495,
-    "seen": 1790696222.4334645,
-    "ast_hash": "2794f82ce1ad1c5f42b87897b5c3dd18",
+    "mtime": 1790698179.9599383,
+    "seen": 1790698442.7898812,
+    "ast_hash": "5373d46251e5094ca35ca7252c436d6b",
     "semantic_hash": ""
   },
   "src/lib/server/db-errors.ts": {
@@ -1868,9 +1868,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/parser/import-product.ts": {
-    "mtime": 1790695688.8062916,
-    "seen": 1790696222.4336605,
-    "ast_hash": "8f7bbceef67def286935b430859c0e65",
+    "mtime": 1790698362.985569,
+    "seen": 1790698442.7908566,
+    "ast_hash": "f7b3e83b38291a079b1b472b7c0f104e",
     "semantic_hash": ""
   },
   "src/lib/server/parser/parse-page.ts": {
@@ -2000,9 +2000,9 @@
     "semantic_hash": ""
   },
   "src/lib/taxonomy/styles.ts": {
-    "mtime": 1790695629.0720615,
-    "seen": 1790696222.4340537,
-    "ast_hash": "6531df74a3a22488a5d66d95821461f6",
+    "mtime": 1790698327.080746,
+    "seen": 1790698442.7923625,
+    "ast_hash": "d6cb1e9fa89273231272cfa1220da349",
     "semantic_hash": ""
   },
   "src/lib/text.ts": {
@@ -2048,9 +2048,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1790696135.8053405,
-    "seen": 1790696222.4344501,
-    "ast_hash": "282af3814bcad8bc0e35792ed9c15b6e",
+    "mtime": 1790698351.016795,
+    "seen": 1790698442.7934706,
+    "ast_hash": "0ba3822d8d1ea408504d58c7f31666c4",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2162,9 +2162,15 @@
     "semantic_hash": ""
   },
   "src/app/api/admin/restyle/route.ts": {
-    "mtime": 1790695907.0355358,
-    "seen": 1790696222.4305894,
-    "ast_hash": "70c712f5a28fd2de0ed9b134dee11681",
+    "mtime": 1790698197.9367363,
+    "seen": 1790698442.7799723,
+    "ast_hash": "44a41beddd094be42957984b82efd573",
+    "semantic_hash": ""
+  },
+  "src/lib/taxonomy/brand-styles.ts": {
+    "mtime": 1790698106.1447306,
+    "seen": 1790698442.7921915,
+    "ast_hash": "9f3689e9caea279154309453b5ca42dd",
     "semantic_hash": ""
   }
 }

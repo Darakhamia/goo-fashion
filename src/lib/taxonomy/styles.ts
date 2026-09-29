@@ -14,6 +14,12 @@
  * their words with them; a cargo pant or a lace blouse is simply not read as
  * any style now, rather than being forced into one of the five.
  *
+ * This reading is the first word on a piece's style: the CEO's rule is that
+ * the description decides and the brand only fills in (`taxonomy/brand-styles`,
+ * combined in `proposeStyles`). So besides the words that name a manner, each
+ * style carries the words that say what the piece is *for* — the office or a
+ * wedding is classic, a hike or a run sporty, a walk or the weekend casual.
+ *
  * Deliberately narrow. A style tag is a soft signal (a filter, a hint to the
  * stylist), so a missing one costs little and a wrong one teaches the stylist
  * something false about the piece. Words that name a garment rather than a
@@ -53,13 +59,18 @@ export const STYLE_TERMS: Record<StyleKeyword, readonly Term[]> = {
     "casual", "casualwear", "casual wear", "everyday", "everyday wear", "daywear", "day wear",
     "off duty", "laid back", "easygoing", "easy going", "weekend", "leisure", "leisurewear",
     "lounge", "loungewear", "lounge wear", "relaxed style", "relaxed look",
-    "кэжуал", "кежуал", "повседневн", "на каждый день", "на выходн", "для отдыха",
-    "расслабленн стил", "домашн одежд",
-    "повсякденн", "на кожен день", "на вихідн", "для відпочинку",
+    // what the piece is for
+    "for every day", "day to day", "daily wear", "everyday use", "for walks", "for a walk", "city walk",
+    "downtime",
+    "кэжуал", "кежуал", "повседневн", "повседневк", "на каждый день", "на выходн", "для отдыха",
+    "расслабленн стил", "домашн одежд", "для прогулок", "на прогулк",
+    "повсякденн", "на кожен день", "на щодень", "на вихідн", "для відпочинку", "для прогулянок",
   ],
   minimal: [
+    // Not "essentials": it is a line's name far more often than a manner
+    // (adidas Essentials, Fear of God Essentials, a shop's Essentials page).
     "minimal", "minimalist", "minimalism", "minimalistic", "understated", "clean line", "clean lines",
-    "essential", "essentials", "pared back", "sleek", "no logo", "logo free", "logoless", "unbranded",
+    "pared back", "sleek", "no logo", "logo free", "logoless", "unbranded",
     "monochrome", "monochromatic", "streamlined", "scandi", "scandinavian", "japandi",
     "capsule wardrobe", "unadorned", "stripped back", "clean design", "clean silhouette",
     "minimal design", "quiet design", "without logo",
@@ -72,7 +83,14 @@ export const STYLE_TERMS: Record<StyleKeyword, readonly Term[]> = {
     "trench", "loafer", "double breasted", "single breasted", "pocket square", "cufflink",
     "chesterfield", "sophisticated", "formal", "formalwear", "black tie", "tuxedo",
     "dinner jacket", "savile row", "bespoke", "made to measure", "old money", "quiet luxury",
-    "gentleman", "gentlemen", "evening wear", "eveningwear", "wardrobe staple",
+    "gentleman", "gentlemen", "evening wear", "eveningwear", "wardrobe staple", "sport coat", "sports coat",
+    // what the piece is for: the office, a meeting, an occasion. Not bare
+    // "business" — shop pages say "ships in 3 business days".
+    "office", "office wear", "business casual", "business attire", "business wear", "business meeting",
+    "for business", "boardroom", "job interview", "wedding", "wedding guest", "ceremony", "cocktail",
+    "gala", "special occasion", "occasion wear", "dress shirt", "dress shoe", "suiting",
+    "офис", "собеседован", "свадьб", "торжеств", "церемон", "коктейльн", "выпускн",
+    "офіс", "співбесід", "весілл", "урочист",
     "классическ", "классика!", "вне времени", "элегантн", "изысканн", "утонченн", "строг стил", "делов", "двубортн", "однобортн", "тренч", "лофер", "смокинг", "вечерн",
     "олд мани", "тихая роскош", "тихой роскош",
     "класичн", "класика!", "елегантн", "вишукан", "ділов", "двобортн", "смокінг", "вечірн",
@@ -86,7 +104,8 @@ export const STYLE_TERMS: Record<StyleKeyword, readonly Term[]> = {
     "вуличн стил", "вуличн мод", "графіті",
   ],
   sporty: [
-    "sport", "sporty", "sportswear", "sports wear", "athletic", "athleisure", "performance",
+    // A sport coat is a tailored jacket, not sportswear (it is classic).
+    /(?<= )sports?(?= )(?! coats? )/u, "sporty", "sportswear", "sports wear", "athletic", "athleisure", "performance",
     "running", "training", "track suit", "tracksuit", "track top",
     "track jacket", "track pant", "track trouser", "activewear", "active wear", "gym", "workout",
     "basketball", "football", "soccer", "tennis", "golf", "yoga", "pilates", "jogging", "jogger",
@@ -95,9 +114,13 @@ export const STYLE_TERMS: Record<StyleKeyword, readonly Term[]> = {
     "team kit", "matchday", "fitness", "crossfit", "hiit", "trail running", "ski", "skiing",
     "snowboard", "snowboarding", "swim training", "baseball", "volleyball", "badminton", "boxing",
     "martial art", "retro sport",
+    // what the piece is for: an activity outdoors
+    "hiking", "trekking", "climbing", "mountaineering", "surf", "surfing", "outdoor sport",
     "спорт", "спортивн", "атлетич", "атлетическ", "бегов", "для бега", "тренировоч", "фитнес", "пилатес", "баскетбол", "футбольн", "теннисн", "волейбол", "велосипедн",
     "велосипедк", "лыжн", "сноуборд", "для зала", "спорткостюм", "олимпийк", "компрессион", "йога!", "йоги!", "йогу!", "для йоги", "бокса!", "для бокса",
     "біг!", "бігов", "тренуван", "фітнес", "тенісн", "лижн",
+    "треккинг", "трекинг", "походн", "для поход", "альпиниз", "скалолаз", "серфинг",
+    "похідн", "для походів", "серфінг",
   ],
 };
 
