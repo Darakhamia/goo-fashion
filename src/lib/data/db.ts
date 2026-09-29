@@ -15,6 +15,7 @@ import { blogPosts as staticBlogPosts } from "./blog";
 import { storeNameFromUrl, isOfficialStore } from "@/lib/server/product-fields";
 import { findSupportedStore, storeFaviconUrl, storeHomepageUrl, type SupportedStore } from "@/lib/stores";
 import { writeRowDroppingUnknown, type WriteError } from "@/lib/server/write-row";
+import { normalizeStyleKeywords } from "@/lib/style-keywords";
 
 // Older imports stored the *brand* as the store name (so "Where to buy" rows
 // read e.g. "Supreme" instead of "Farfetch"). Correct those at read time:
@@ -91,7 +92,7 @@ export function dbToProduct(row: DbProduct): Product {
     currency: row.currency ?? "USD",
     isNew: (row.is_new ?? false) && isWithinLastWeek(row.created_at),
     isSaved: row.is_saved ?? false,
-    styleKeywords: (row.style_keywords ?? []) as Product["styleKeywords"],
+    styleKeywords: normalizeStyleKeywords(row.style_keywords),
     gender: (row.gender ?? undefined) as Product["gender"],
     variantGroupId: row.variant_group_id ?? undefined,
     colorHex: row.color_hex ?? undefined,
@@ -598,7 +599,7 @@ function dbToOutfit(row: DbOutfit, productMap: Map<string, Product>): Outfit {
     totalPriceMin: row.total_price_min,
     totalPriceMax: row.total_price_max,
     currency: row.currency ?? "USD",
-    styleKeywords: (row.style_keywords ?? []) as Outfit["styleKeywords"],
+    styleKeywords: normalizeStyleKeywords(row.style_keywords),
     isAIGenerated: row.is_ai_generated ?? false,
     isSaved: row.is_saved ?? false,
     season: (row.season ?? "all") as Outfit["season"],
@@ -953,7 +954,7 @@ export async function getUserLookById(id: string): Promise<SharedLook | null> {
     generatedImage,
     generatedStyle,
     totalPrice: data.total_price ?? null,
-    styleKeywords: Array.isArray(data.style_keywords) ? data.style_keywords : [],
+    styleKeywords: normalizeStyleKeywords(data.style_keywords),
     savedAt: data.saved_at ?? null,
     pieces,
     anonymous,

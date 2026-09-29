@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { writeRowDroppingUnknown } from "@/lib/server/write-row";
+import { normalizeStyleKeywords } from "@/lib/style-keywords";
 
 export async function GET() {
   const { userId } = await auth();
@@ -27,7 +28,7 @@ export async function GET() {
     description: r.look_description ?? undefined,
     pieces: r.pieces,
     totalPrice: r.total_price,
-    styleKeywords: r.style_keywords,
+    styleKeywords: normalizeStyleKeywords(r.style_keywords),
     generatedImage: r.generated_image,
     generatedStyle: r.generated_style,
   }));

@@ -620,6 +620,7 @@ export default function AdminProductsPage() {
     });
 
   const [recategorizing, setRecategorizing] = useState(false);
+  const [restyling, setRestyling] = useState(false);
   const [sampling, setSampling] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -1449,6 +1450,88 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Takes every style tag off the catalogue and gives products only the five
+  // basic styles, read afresh from their own words; curated looks lose theirs.
+  // Dry run first, the admin confirms the numbers, then it writes — and the
+  // run is recorded, so Undo styles puts the old tags back.
+  const handleResetStyles = async () => {
+    setRestyling(true);
+    try {
+      const dryRes = await fetch("/api/admin/restyle", { cache: "no-store" });
+      const dry = await dryRes.json();
+      if (!dryRes.ok) { showToast(dry.error || "Style reset failed", "err"); return; }
+
+      const would = dry.wouldChange as { products: number; outfits: number };
+      if (!would.products && !would.outfits) {
+        showToast("Nothing to change — every product already has only its basic styles");
+        return;
+      }
+
+      const after = Object.entries(dry.after as Record<string, number>)
+        .map(([style, n]) => `  ${style === "none" ? "no style" : style}: ${n}`)
+        .join("\n");
+      const removed = Object.entries(dry.removed as Record<string, number>)
+        .sort((a, b) => b[1] - a[1])
+        .map(([style, n]) => `${style} ${n}`)
+        .join(", ");
+      const ok = window.confirm(
+        `Reset styles on ${would.products} of ${dry.scanned.products} products` +
+        (would.outfits ? ` and clear them on ${would.outfits} outfits` : "") + `?\n\n` +
+        `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty, ` +
+        `read from their name, description and material; a product whose words name none is left without a style.\n\n` +
+        `Products per style after the reset:\n${after}\n\n` +
+        (removed ? `Tags removed: ${removed}\n\n` : "") +
+        `This can be undone.`,
+      );
+      if (!ok) return;
+
+      const applyRes = await fetch("/api/admin/restyle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apply: true }),
+      });
+      const applied = await applyRes.json();
+      if (!applyRes.ok) { showToast(applied.error || "Apply failed", "err"); return; }
+      const failed = (applied.failures ?? []).length;
+      showToast(
+        applied.undoable
+          ? `Reset styles on ${applied.applied}${failed ? ` · ${failed} failed` : ""} · use Undo styles to revert`
+          : `Reset styles on ${applied.applied} — NOT recorded, so it cannot be undone`,
+        applied.undoable && !failed ? "ok" : "err",
+      );
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Style reset failed", "err");
+    } finally {
+      setRestyling(false);
+    }
+  };
+
+  /** Puts back the tags the last style reset replaced. */
+  const handleUndoResetStyles = async () => {
+    if (!confirm("Undo the last style reset?\n\nProducts and outfits whose styles were edited since are left as they are.")) return;
+    setRestyling(true);
+    try {
+      const res = await fetch("/api/admin/restyle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ undo: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error || "Nothing to undo", "err"); return; }
+      showToast(
+        json.changedSince
+          ? `Restored ${json.restored} · ${json.changedSince} changed since and left alone`
+          : `Restored styles on ${json.restored}`,
+      );
+      await fetchProducts();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Undo failed", "err");
+    } finally {
+      setRestyling(false);
+    }
+  };
+
   /**
    * Measures the backdrop each product photo was shot on, so cards can pad with
    * that instead of with white.
@@ -1871,6 +1954,22 @@ export default function AdminProductsPage() {
             className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo fix
+          </button>
+          <button
+            onClick={handleResetStyles}
+            disabled={restyling || !canWrite}
+            title={canWrite ? "Remove every style tag and give products only the five basic styles, read from their own words" : "Requires Supabase"}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {restyling ? "Restyling…" : "Reset styles"}
+          </button>
+          <button
+            onClick={handleUndoResetStyles}
+            disabled={restyling || !canWrite}
+            title={canWrite ? "Put back the tags the last style reset replaced" : "Requires Supabase"}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Undo styles
           </button>
           {/* Reads the colour each photo was shot on, so cards stop framing
               off-white photos in a white box. Works on the selection when there

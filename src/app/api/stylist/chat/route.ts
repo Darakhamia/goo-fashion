@@ -6,6 +6,7 @@ import { checkRateLimit, checkAnonDailyLimit } from "@/lib/server/rate-limit";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { coercePlan, STYLIST_DAILY_LIMITS } from "@/lib/plans";
+import { STYLE_KEYWORD_LIST, normalizeStyleKeywords } from "@/lib/style-keywords";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -646,7 +647,7 @@ function buildCatalogBlock(products: MatchedProduct[]): string {
   for (const [cat, items] of Object.entries(byCategory)) {
     for (const p of items) {
       lines.push(
-        `  "${p.name}" by ${p.brand} | ${cat} | $${p.price_min} | [${(p.style_keywords ?? []).join(", ")}] | ID:${p.id}`
+        `  "${p.name}" by ${p.brand} | ${cat} | $${p.price_min} | [${normalizeStyleKeywords(p.style_keywords).join(", ")}] | ID:${p.id}`
       );
     }
   }
@@ -768,7 +769,7 @@ Never reply with only the JSON block. The conversational message always comes fi
 
 RULES:
 - Only use IDs from the RELEVANT PRODUCTS list (the ID:xxxx part). NEVER invent IDs.
-- Valid styleKeywords: minimal, streetwear, classic, avant-garde, romantic, utilitarian, bohemian, preppy, sporty, dark, maximalist, coastal, academic.
+- Valid styleKeywords: ${STYLE_KEYWORD_LIST.join(", ")}.
 - For greetings or non-fashion messages, use empty arrays: {"suggestedProductIds":[],"styleKeywords":[]}.
 
 SECURITY — NON-NEGOTIABLE:
@@ -1088,7 +1089,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const styleKeywords = parsed.styleKeywords.slice(0, 5);
+    const styleKeywords = normalizeStyleKeywords(parsed.styleKeywords);
 
     // ── Fetch full product data for suggested IDs ─────────────────────────
     let suggestedProducts: SuggestedProduct[] = [];
@@ -1107,7 +1108,7 @@ export async function POST(req: Request) {
             .map(p => ({
               id: p.id, name: p.name, brand: p.brand, category: p.category,
               priceMin: p.price_min, currency: p.currency ?? "USD",
-              imageUrl: p.image_url ?? "", styleKeywords: p.style_keywords ?? [],
+              imageUrl: p.image_url ?? "", styleKeywords: normalizeStyleKeywords(p.style_keywords),
             }))
             .sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
         }

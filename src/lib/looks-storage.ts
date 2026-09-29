@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizeStyleKeywords } from "@/lib/style-keywords";
+
 // ── Saved builder look ────────────────────────────────────────────────────────
 export interface SavedLook {
   id: string;
@@ -39,7 +41,10 @@ export function loadLocalLooks(): SavedLook[] {
   if (!isBrowser()) return [];
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // A look saved before the style vocabulary was cut still carries the
+    // dropped styles in this browser; they are not styles any more.
+    return (parsed as SavedLook[]).map((l) => ({ ...l, styleKeywords: normalizeStyleKeywords(l.styleKeywords) }));
   } catch {
     return [];
   }

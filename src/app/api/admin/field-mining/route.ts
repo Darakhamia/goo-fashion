@@ -186,7 +186,7 @@ export async function GET(req: Request) {
     .filter((m) => m.got.length)
     .slice(0, 40);
 
-  // ── Style and gender from the brand, the store and the colour ────────────────
+  // ── Style and gender from the brand and the store ────────────────────────────
   // What the importer now does beyond the page's words (`catalogue-profile.ts`).
   // Everything it knows is learned from the editor's own labels, so it is never
   // scored on a product it learned from: the score lines use a profile built
@@ -207,16 +207,14 @@ export async function GET(req: Request) {
   const outOfFold = (r: Row) => foldProfiles[foldOf(r.id)];
 
   const brandOnlyStyles = (r: Row, profile: CatalogueProfile) =>
-    proposeStyles({ brand: r.brand, keywordStyles: [], colors: [], colorGroups: [] }, profile).styles;
+    proposeStyles({ brand: r.brand, keywordStyles: [] }, profile).styles;
   const storeOnlyStyles = (r: Row, profile: CatalogueProfile) =>
-    proposeStyles({ brand: "", keywordStyles: [], colors: [], colorGroups: [], sourceUrl: r.sourceUrl }, profile).styles;
+    proposeStyles({ brand: "", keywordStyles: [], sourceUrl: r.sourceUrl }, profile).styles;
   const combinedStyles = (r: Row, profile: CatalogueProfile) =>
     proposeStyles(
       {
         brand: r.brand,
         keywordStyles: (importerRead(r).styleKeywords ?? []).filter(isStyleKeyword),
-        colors: r.colors,
-        colorGroups: r.colorGroups,
         sourceUrl: r.sourceUrl,
       },
       profile,
@@ -271,7 +269,6 @@ export async function GET(req: Request) {
     s.answered++;
     if (got.gender === r.gender) s.right++;
   }
-  const darkTone = buildCatalogueProfile(loaded).darkTone;
 
   // A catalogue leaning hard on one brand mines that brand's vocabulary rather
   // than the language of clothes, so the concentration belongs in the report.
@@ -355,7 +352,6 @@ export async function GET(req: Request) {
     style_by_style: styleByStyle,
     style_by_style_combined: styleByStyleCombined,
     style_false_tags: styleFalseTags,
-    dark_tone: darkTone,
     gender_sources: { ...genderSources, unanswered: genderUnanswered },
     rules: {
       counts: {
@@ -443,15 +439,11 @@ export async function GET(req: Request) {
   lines.push("  tagged = products the importer gave this style; right = of those, the editor agrees;");
   lines.push("  editor = products the editor gave it. Low precision means the words mislead here.");
   lines.push("");
-  lines.push("STYLE BY STYLE  (what the importer now writes: brand + checked words + colour; out-of-fold)");
+  lines.push("STYLE BY STYLE  (what the importer now writes: brand + store + checked words; out-of-fold)");
   lines.push(`  ${"style".padEnd(14)} ${"tagged".padStart(7)} ${"right".padStart(6)} ${"editor".padStart(7)} ${"precision".padStart(10)} ${"recall".padStart(7)}`);
   for (const s of styleByStyleCombined) {
     lines.push(`  ${s.style.padEnd(14)} ${String(s.proposed).padStart(7)} ${String(s.right).padStart(6)} ${String(s.editor).padStart(7)} ${(s.proposed ? pct(s.precision) : "—").padStart(10)} ${pct(s.recall).padStart(7)}`);
   }
-  lines.push("");
-  lines.push("DARK-TONED PIECES  (black or a dark shade, nothing light)");
-  lines.push(`  all:                 ${darkTone.all.tagged} pieces, filed dark ${darkTone.all.right} (${darkTone.all.tagged ? pct(darkTone.all.right / darkTone.all.tagged) : "—"})`);
-  lines.push(`  brands that use dark: ${darkTone.inDarkBrands.tagged} pieces, filed dark ${darkTone.inDarkBrands.right} (${darkTone.inDarkBrands.tagged ? pct(darkTone.inDarkBrands.right / darkTone.inDarkBrands.tagged) : "—"})`);
   lines.push("");
   lines.push("GENDER — WHERE EACH ANSWER CAME FROM  (out-of-fold, whole catalogue)");
   for (const [source, v] of Object.entries(genderSources)) {

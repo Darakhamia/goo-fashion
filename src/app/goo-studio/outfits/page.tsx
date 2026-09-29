@@ -202,7 +202,9 @@ export default function AdminOutfitsPage() {
         setPendingError(data?.error ?? `The queue did not load (${res.status}).`);
         return;
       }
-      setPendingLooks(data);
+      setPendingLooks(
+        (data as PendingLook[]).map((l) => ({ ...l, style_keywords: normalizeStyleKeywords(l.style_keywords) })),
+      );
       setPendingError("");
     } catch {
       setPendingError("The queue did not load (network error).");

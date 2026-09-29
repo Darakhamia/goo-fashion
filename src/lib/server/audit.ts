@@ -26,6 +26,8 @@ export type AdminAction =
   | "products.bulk_deleted"
   | "products.recategorized"
   | "products.recategorize_undone"
+  | "products.styles_reset"
+  | "products.styles_reset_undone"
   | "products.label_fixed"
   | "products.label_dismissed"
   | "products.label_restored"

@@ -154,15 +154,16 @@
 
 **Кнопки в шапке:**
 - **Fix categories** — переклассифицирует товары без подкатегории. Сначала идёт сухой прогон, и диалог показывает, что и куда поменяется и что защищено. Разложенное руками не трогается. **Undo fix** откатывает последний прогон; товары, изменённые после него, остаются как есть.
+- **Reset styles** — снимает с каталога все теги стиля (и выбывшие, и оставшиеся) и заново ставит товарам только пять базовых стилей — casual, minimal, classic, streetwear, sporty — по словам из названия, описания и материала. Товар, в словах которого ни один стиль не назван, остаётся без стиля: его размечают руками или через Edit N. У образов (Outfits) теги стиля очищаются. Сначала сухой прогон: диалог показывает, сколько товаров получит каждый стиль, сколько останется без стиля и какие теги снимутся. **Undo styles** откатывает последний прогон; товары и образы, чей стиль правили после него, остаются как есть. Луки покупателей не переписываются — выбывшие стили на них просто не показываются.
 - **Photo backdrops** — измеряет цвет фона фото, чтобы карточка добивалась этим цветом, а не белым. Сначала пробный замер 40 фото без сохранения, затем подтверждение и прогон: по выделению или по всем ещё не измеренным товарам. **Undo backdrops** откатывает последний прогон. Нужна миграция `015_product_bg_color.sql`.
   - **Нажимать не обязательно.** Новая карточка измеряется при создании, заменённое в редакторе фото — сразу после сохранения, а всё, что осталось неизмеренным (фото не скачалось, старые карточки), сервер сам добирает в фоне по 12 штук после каждого сбора и импорта (не чаще раза в 20 секунд; недоступное фото пробует снова через 30 минут). Кнопка остаётся для полной перепроверки и отката. Фото без ровного фона (модель на улице, кадр в край) получают «none» и остаются в белой рамке — это решение замера, кнопка его не меняет.
 - **Download cards** — карточки картинками одним ZIP: выделенные, а если выделения нет — всё, что показывает фильтр.
 
 Внимание:
-- С подтверждением работают удаление (одного и массовое), Edit N, Fix categories, Undo fix, Photo backdrops, Undo backdrops и разгруппировка вариантов.
+- С подтверждением работают удаление (одного и массовое), Edit N, Fix categories, Undo fix, Reset styles, Undo styles, Photo backdrops, Undo backdrops и разгруппировка вариантов.
 - Товар, который входит в образ, не удаляется: сервер отвечает 409 и называет образы. При массовом удалении такие строки остаются выделенными.
 - Если в БД нет какой-то колонки (не прогнана миграция), товар сохраняется без неё, и тост об этом говорит. Какие миграции не хватает, показывает Settings → Database schema.
-- Журнал: `products.created`, `products.updated` (правка, кадрирование, группы вариантов), `products.deleted` (массовое удаление пишет по записи на товар), `products.bulk_edited`, `products.recategorized`, `products.recategorize_undone`, `products.bg_color_sampled`, `products.bg_color_undone`.
+- Журнал: `products.created`, `products.updated` (правка, кадрирование, группы вариантов), `products.deleted` (массовое удаление пишет по записи на товар), `products.bulk_edited`, `products.recategorized`, `products.recategorize_undone`, `products.styles_reset`, `products.styles_reset_undone`, `products.bg_color_sampled`, `products.bg_color_undone`.
 
 ### Outfits — `/goo-studio/outfits`
 
@@ -428,6 +429,7 @@
 | Products | `products.created` / `products.updated` / `products.deleted` | Created / Edited / Deleted product | форма товара, кадрирование, группы вариантов, удаление |
 | | `products.bulk_edited` | Bulk-edited products | Edit N |
 | | `products.recategorized` / `products.recategorize_undone` | Recategorized products / Undid recategorize | Fix categories / Undo fix |
+| | `products.styles_reset` / `products.styles_reset_undone` | Reset styles / Undid style reset | Reset styles / Undo styles |
 | | `products.label_fixed` / `products.label_dismissed` / `products.label_restored` | Fixed labels / Dismissed / Restored label suggestion | Audit |
 | | `products.bg_color_sampled` / `products.bg_color_undone` | Sampled / Undid backgrounds | Photo backdrops / Undo backdrops |
 | | `products.duplicates_merged` / `products.duplicates_dismissed` | Merged / Dismissed duplicates | Duplicates |

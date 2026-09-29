@@ -53,7 +53,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: true,
-    styleKeywords: ["minimal", "avant-garde"],
+    styleKeywords: ["minimal"],
   },
   {
     id: "p-003",
@@ -132,7 +132,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: false,
-    styleKeywords: ["minimal", "classic", "avant-garde"],
+    styleKeywords: ["minimal", "classic"],
   },
   {
     id: "p-006",
@@ -184,7 +184,7 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["avant-garde", "minimal"],
+    styleKeywords: ["minimal"],
   },
   {
     id: "p-008",
@@ -231,7 +231,7 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["romantic", "minimal"],
+    styleKeywords: ["minimal"],
   },
   {
     id: "p-010",
@@ -275,7 +275,7 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["streetwear", "utilitarian"],
+    styleKeywords: ["casual", "streetwear"],
   },
   {
     id: "p-012",
@@ -364,7 +364,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: false,
-    styleKeywords: ["streetwear", "dark"],
+    styleKeywords: ["streetwear"],
   },
   {
     id: "p-016",
@@ -430,7 +430,7 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["romantic", "classic"],
+    styleKeywords: ["classic"],
   },
   {
     id: "p-019",
@@ -475,7 +475,7 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["romantic", "minimal"],
+    styleKeywords: ["minimal"],
   },
   {
     id: "p-021",
@@ -498,7 +498,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: false,
-    styleKeywords: ["minimal", "utilitarian"],
+    styleKeywords: ["casual", "minimal"],
   },
   {
     id: "p-022",
@@ -521,7 +521,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: false,
-    styleKeywords: ["classic", "romantic"],
+    styleKeywords: ["classic"],
   },
   {
     id: "p-023",
@@ -544,7 +544,7 @@ export const products: Product[] = [
     ],
     isNew: false,
     isSaved: false,
-    styleKeywords: ["streetwear", "utilitarian"],
+    styleKeywords: ["casual", "streetwear"],
   },
   {
     id: "p-024",
@@ -566,6 +566,6 @@ export const products: Product[] = [
     ],
     isNew: true,
     isSaved: false,
-    styleKeywords: ["minimal", "avant-garde"],
+    styleKeywords: ["minimal"],
   },
 ];

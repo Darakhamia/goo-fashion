@@ -10,23 +10,22 @@
  * `satisfies` is what makes this the single source rather than merely the fifth
  * copy: the list cannot drift from the `StyleKeyword` union without failing to
  * compile.
+ *
+ * Five basic styles, by the CEO's decision of 2026-09-29. The catalogue used to
+ * carry thirteen (avant-garde, romantic, utilitarian, bohemian, preppy, dark,
+ * maximalist, coastal, academic besides these); they were dropped everywhere,
+ * and the products' tags re-read from scratch with "Reset styles" in the
+ * studio. A stored tag outside this list is not a style any more: readers pass
+ * stored tags through `normalizeStyleKeywords`, which drops it.
  */
 import type { StyleKeyword } from "@/lib/types";
 
 export const STYLE_KEYWORDS = [
+  "casual",
   "minimal",
-  "streetwear",
   "classic",
-  "avant-garde",
-  "romantic",
-  "utilitarian",
-  "bohemian",
-  "preppy",
+  "streetwear",
   "sporty",
-  "dark",
-  "maximalist",
-  "coastal",
-  "academic",
 ] as const satisfies readonly StyleKeyword[];
 
 /** Mutable copy, for the many `.map()` call sites that expect a plain array. */
