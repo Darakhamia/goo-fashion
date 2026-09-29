@@ -15,7 +15,7 @@ import { useScrollLock } from "@/lib/hooks/useScrollLock";
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
 
-const STYLE_FILTERS = ["Casual", "Sport", "Streetwear", "Classic", "Smart Casual", "Outdoor", "Home", "Premium"] as const;
+const STYLE_FILTERS = ["Casual", "Minimal", "Classic", "Streetwear", "Sporty"] as const;
 type StyleFilter = typeof STYLE_FILTERS[number];
 
 const OCCASIONS: Occasion[] = [

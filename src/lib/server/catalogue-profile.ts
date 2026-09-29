@@ -3,20 +3,20 @@
  * a product's style and gender that its page does not say.
  *
  * Style. A brand builds its catalogue around a manner: nearly everything VLONE
- * or Gallery Dept. makes is filed streetwear, and a black piece from a brand
- * that leans dark is usually filed dark. Words on the page mostly miss this —
- * measured on the live catalogue, keyword styles agreed with the editor 44% of
- * the time, below always answering "streetwear" (88%). So a style is proposed
- * from three signals, and each is used only as far as the catalogue shows it
- * works:
+ * or Gallery Dept. makes is filed streetwear. Words on the page mostly miss
+ * this — measured on the live catalogue, keyword styles agreed with the editor
+ * 44% of the time, below always answering "streetwear" (88%). So a style is
+ * proposed from three signals, and each is used only as far as the catalogue
+ * shows it works:
  *
  *   brand     the styles the editor gave most of this brand's pieces;
  *   store     for a brand with no such history — a new one — the styles the
  *             editor gave most pieces bought from the same store;
  *   words     the style dictionary, per style, only where its tags have agreed
- *             with the editor's often enough (sporty did at 87%, minimal at 6%);
- *   colour    a dark-toned piece is "dark" — overall, or only within brands the
- *             editor ever calls dark, whichever the catalogue bears out.
+ *             with the editor's often enough (sporty did at 87%, minimal at 6%).
+ *
+ * A fourth, colour — a dark-toned piece is "dark" — went with the dark style
+ * when the vocabulary was cut to five basic styles (2026-09-29).
  *
  * Gender. A store's site says "Men" and "Women", or "All" and "Women", and what
  * "All" means is the brand's convention: men's at one, unisex at the next. The
@@ -48,8 +48,6 @@ export const SIGNAL_MIN_PRECISION = 0.7;
 export const SIGNAL_MIN_TAGS = 5;
 /** Below this many style-tagged products nothing can be calibrated: the words are used as they are. */
 export const CALIBRATION_MIN_PRODUCTS = 50;
-/** A brand "uses dark" when this share of its pieces are filed dark. */
-export const DARK_BRAND_SHARE = 0.2;
 /** A gender is a brand's or store's convention at this share of its silent pieces. */
 export const GENDER_SHARE = 0.8;
 export const BRAND_GENDER_MIN = 3;
@@ -80,16 +78,12 @@ export interface CatalogueProfile {
   storeGender: Map<string, Tally>;
   /** Per style: how often the dictionary's tag was the editor's too. */
   keywordStyles: Map<StyleKeyword, Agreement>;
-  /** Dark-toned pieces called dark: over the catalogue, and within brands that use dark. */
-  darkTone: { all: Agreement; inDarkBrands: Agreement };
 }
 
 export interface ProfileInput {
   brand: string;
   name: string;
   description: string;
-  colors: string[];
-  colorGroups: string[];
   sourceUrl: string | null;
 }
 
@@ -108,8 +102,6 @@ const add = (map: Map<string, Tally>, key: string, value: string) => {
   map.set(key, t);
 };
 
-const share = (t: Tally | undefined, value: string) => (t && t.n ? (t.counts[value] ?? 0) / t.n : 0);
-
 /** The value holding at least `min` of a tally, if any does. */
 function dominant(t: Tally | undefined, minShare: number, minN: number): { value: string; share: number } | undefined {
   if (!t || t.n < minN) return undefined;
@@ -123,22 +115,6 @@ function dominant(t: Tally | undefined, minShare: number, minN: number): { value
 
 const precise = (a: Agreement | undefined) =>
   !!a && a.tagged >= SIGNAL_MIN_TAGS && a.right / a.tagged >= SIGNAL_MIN_PRECISION;
-
-/**
- * Words that make a colour a dark, sombre one. "Charcoal", "anthracite", "dark
- * navy", "washed black", "тёмно-серый".
- */
-const DARK_WORDS =
-  /\b(?:black|noir|dark|deep|charcoal|anthracite|anthra|graphite|onyx|jet|coal|ink|midnight|oxblood|obsidian|raven|soot)\b|ч[её]рн|чорн|т[её]мн|угольн|вугільн|графит|графіт|антрацит/i;
-/** Groups that make a piece light whatever else it is: "Black/White" is not a dark piece. */
-const LIGHT_GROUPS = new Set(["White", "Beige", "Yellow", "Pink", "Orange"]);
-
-/** Is this piece dark-toned — black, or a dark shade, with nothing light in it? */
-export function isDarkTone(colors: string[], colorGroups: string[]): boolean {
-  if (colorGroups.some((g) => LIGHT_GROUPS.has(g))) return false;
-  if (colorGroups.includes("Black")) return true;
-  return colors.some((c) => DARK_WORDS.test(c ?? ""));
-}
 
 /** Where the piece was bought, as the store settings key it. */
 export function storeKey(sourceUrl: string | null | undefined): string {
@@ -192,21 +168,7 @@ export function buildCatalogueProfile(rows: LabelledProduct[]): CatalogueProfile
     }
   }
 
-  // Dark tone, measured after the brand tallies exist: "within dark brands" needs them.
-  const all: Agreement = { tagged: 0, right: 0 };
-  const inDarkBrands: Agreement = { tagged: 0, right: 0 };
-  for (const r of rows) {
-    if (!r.styleKeywords.length || !isDarkTone(r.colors, r.colorGroups)) continue;
-    const dark = r.styleKeywords.includes("dark");
-    all.tagged++;
-    if (dark) all.right++;
-    if (share(brandStyles.get(brandKey(r.brand)), "dark") >= DARK_BRAND_SHARE) {
-      inDarkBrands.tagged++;
-      if (dark) inDarkBrands.right++;
-    }
-  }
-
-  return { styled, brandStyles, storeStyles, brandGender, storeGender, keywordStyles, darkTone: { all, inDarkBrands } };
+  return { styled, brandStyles, storeStyles, brandGender, storeGender, keywordStyles };
 }
 
 // ── Proposing ────────────────────────────────────────────────────────────────
@@ -231,8 +193,6 @@ export function proposeStyles(
   piece: {
     brand: string;
     keywordStyles: StyleKeyword[];
-    colors: string[];
-    colorGroups: string[];
     /** The page's address: the store whose habits speak for a brand with none. */
     sourceUrl?: string | null;
   },
@@ -287,16 +247,6 @@ export function proposeStyles(
     }
     const a = profile.keywordStyles.get(style);
     if (precise(a)) offer(style, a!.right / a!.tagged, `${style}: from the page's words (right ${pct(a!.right / a!.tagged)} of the time)`);
-  }
-
-  if (isDarkTone(piece.colors, piece.colorGroups)) {
-    const { all, inDarkBrands } = profile.darkTone;
-    if (precise(all)) {
-      offer("dark", all.right / all.tagged, `dark: a dark-toned piece (${pct(all.right / all.tagged)} of them are)`);
-    } else if (precise(inDarkBrands) && share(brandTally, "dark") >= DARK_BRAND_SHARE) {
-      offer("dark", inDarkBrands.right / inDarkBrands.tagged,
-        `dark: a dark-toned piece from a brand that uses dark (${pct(inDarkBrands.right / inDarkBrands.tagged)} of them are)`);
-    }
   }
 
   const kept = [...candidates.entries()]

@@ -1013,7 +1013,7 @@ export async function importParsedProduct(
     }
   }
   const styleProposal = proposeStyles(
-    { brand, keywordStyles: normalizeStyleKeywords(p.styleKeywords), colors, colorGroups: groupNames, sourceUrl },
+    { brand, keywordStyles: normalizeStyleKeywords(p.styleKeywords), sourceUrl },
     profile,
   );
   let styleNote = styleProposal.styles.length

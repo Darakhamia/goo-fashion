@@ -54,19 +54,11 @@ export type Occasion =
   | "weekend";
 
 export type StyleKeyword =
+  | "casual"
   | "minimal"
-  | "streetwear"
   | "classic"
-  | "avant-garde"
-  | "romantic"
-  | "utilitarian"
-  | "bohemian"
-  | "preppy"
-  | "sporty"
-  | "dark"
-  | "maximalist"
-  | "coastal"
-  | "academic";
+  | "streetwear"
+  | "sporty";
 
 export interface Retailer {
   name: string;
