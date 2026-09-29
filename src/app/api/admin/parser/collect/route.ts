@@ -34,6 +34,7 @@ import { loadCategoryTree } from "@/lib/server/category-tree";
 import { droppedColumnsWarning, importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
 import { COLOUR_ORIGINS, type ColourOrigin } from "@/lib/server/parser/colour-choice";
 import { isShopifyProduct } from "@/lib/server/parser/shopify";
+import { notAProductPage } from "@/lib/server/parser/page-guards";
 import { planCollection, type FetchedSitemap } from "@/lib/server/parser/plan-collection";
 import { commonTitleSuffix } from "@/lib/server/product-fields";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
@@ -212,6 +213,16 @@ export async function POST(req: Request) {
       },
       { status: 413 },
     );
+  }
+
+  // Not the product at all: a bot check shown in its place, or the category a
+  // sold-out piece was redirected to. Either came in as a piece named "Access
+  // Denied" or "Women's Dresses" with a shelf of photos. `finalUrl` is where
+  // the tab ended up (extension 1.0.12); older versions send the markup only.
+  const notProduct = notAProductPage({ url, finalUrl: str(body?.finalUrl).slice(0, MAX_IMAGE_URL), html });
+  if (notProduct) {
+    const skipped: CrawlItemResult = { url, status: "skipped", reason: notProduct };
+    return NextResponse.json({ ok: true, result: skipped });
   }
 
   // What the page showed that its stripped markup no longer says. Both are
