@@ -25,6 +25,7 @@ export interface BrowseContext {
   brands?: string[];
   occasions?: string[];
   gender?: string;
+  styles?: string[];
   priceLabel?: string;
   visibleCount?: number;
 }

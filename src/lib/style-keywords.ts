@@ -47,5 +47,26 @@ export function normalizeStyleKeywords(values: unknown): StyleKeyword[] {
   return STYLE_KEYWORD_LIST.filter((k) => wanted.has(k));
 }
 
+/** A style as a shopper reads it: "streetwear" → "Streetwear". */
+export function styleLabel(style: string): string {
+  return style.charAt(0).toUpperCase() + style.slice(1);
+}
+
+/**
+ * Does a piece belong under the styles a shopper picked? Any one of them is
+ * enough — picking Minimal and Classic shows both. A piece with no style
+ * answers to none: a filter that let untagged pieces through would show
+ * everything that has not been labelled yet under every style.
+ */
+export function matchesStyles(pieceStyles: readonly string[] | undefined, chosen: readonly StyleKeyword[]): boolean {
+  if (!chosen.length) return true;
+  return (pieceStyles ?? []).some((s) => (chosen as readonly string[]).includes(s));
+}
+
+/** Styles named in a `?style=` link: one or several, comma-separated, any case. */
+export function stylesFromParam(value: string | null): StyleKeyword[] {
+  return normalizeStyleKeywords((value ?? "").toLowerCase());
+}
+
 // Reading a style off a product's own words lives in `lib/taxonomy/styles`,
 // next to the other dictionaries the importer reads pages with.

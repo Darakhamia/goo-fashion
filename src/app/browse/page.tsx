@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import OutfitCard from "@/components/outfit/OutfitCard";
 import ProductCard from "@/components/product/ProductCard";
-import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch } from "@/lib/types";
+import type { ColorGroup, Gender, Occasion, Outfit, Product, ProductSwatch, StyleKeyword } from "@/lib/types";
+import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel, stylesFromParam } from "@/lib/style-keywords";
 import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { StylistDrawer } from "@/components/stylist/StylistDrawer";
@@ -14,9 +15,6 @@ import { useScrollLock } from "@/lib/hooks/useScrollLock";
 
 type View = "outfits" | "pieces";
 type SortOption = "featured" | "price-asc" | "price-desc" | "newest";
-
-const STYLE_FILTERS = ["Casual", "Minimal", "Classic", "Streetwear", "Sporty"] as const;
-type StyleFilter = typeof STYLE_FILTERS[number];
 
 const OCCASIONS: Occasion[] = [
   "casual", "work", "evening", "formal", "weekend", "sport",
@@ -209,7 +207,10 @@ export default function BrowsePage() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [selectedColorGroupIds, setSelectedColorGroupIds] = useState<number[]>([]);
   const [aiOnly, setAiOnly] = useState(false);
-  const [selectedStyle, setSelectedStyle] = useState<StyleFilter | null>(null);
+  // Styles, for pieces and outfits alike: the same five tags the catalogue
+  // files both under. Any one picked is enough.
+  const [selectedStyles, setSelectedStyles] = useState<StyleKeyword[]>([]);
+  const [styleOpen, setStyleOpen] = useState(false);
   // A ?color= link names a colour group, but the groups arrive from the API —
   // hold the name until they do, then resolve it to an id.
   const [pendingColorName, setPendingColorName] = useState<string | null>(null);
@@ -257,8 +258,8 @@ export default function BrowsePage() {
 
     if (params.get("ai") === "1") setAiOnly(true);
 
-    const style = params.get("style");
-    if (style && (STYLE_FILTERS as readonly string[]).includes(style)) setSelectedStyle(style as StyleFilter);
+    const styles = stylesFromParam(params.get("style"));
+    if (styles.length) setSelectedStyles(styles);
 
     // Colours are stored as groups; the link carries the group's name.
     const color = params.get("color");
@@ -306,6 +307,9 @@ export default function BrowsePage() {
       p.includes(o) ? p.filter((x) => x !== o) : [...p, o]
     );
 
+  const toggleStyle = (s: StyleKeyword) =>
+    setSelectedStyles((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
+
   const toggleColorGroup = (id: number) =>
     setSelectedColorGroupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
@@ -318,7 +322,7 @@ export default function BrowsePage() {
     (maxPrice !== null ? 1 : 0) +
     (aiOnly ? 1 : 0) +
     (likedOnly ? 1 : 0) +
-    (selectedStyle !== null ? 1 : 0);
+    selectedStyles.length;
 
   const clearAll = () => {
     setSelectedBrands([]);
@@ -331,7 +335,7 @@ export default function BrowsePage() {
     setAiOnly(false);
     setLikedOnly(false);
     setSearchQuery("");
-    setSelectedStyle(null);
+    setSelectedStyles([]);
   };
 
   /* Filtered data */
@@ -365,6 +369,7 @@ export default function BrowsePage() {
           !selectedColorGroupIds.length ||
           (p.colorGroupIds ?? []).some((id) => selectedColorGroupIds.includes(id))
       )
+      .filter((p) => matchesStyles(p.styleKeywords, selectedStyles))
       .filter(
         (p) =>
           !q ||
@@ -380,7 +385,7 @@ export default function BrowsePage() {
     else if (sort === "newest")
       r = [...r].sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
     return r;
-  }, [products, selectedBrands, selectedSubcategories, subcatToValue, categoryGroups, selectedGender, maxPrice, selectedColorGroupIds, searchQuery, sort, likedOnly, likedProducts]);
+  }, [products, selectedBrands, selectedSubcategories, subcatToValue, categoryGroups, selectedGender, maxPrice, selectedColorGroupIds, selectedStyles, searchQuery, sort, likedOnly, likedProducts]);
 
   const filteredOutfits = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -395,14 +400,14 @@ export default function BrowsePage() {
         (o) =>
           maxPrice === null || o.totalPriceMin <= maxPrice
       )
-      .filter((o) => {
-        if (!selectedStyle) return true;
-        const s = selectedStyle.toLowerCase();
-        return (
-          o.occasion.toLowerCase() === s ||
-          o.styleKeywords.some((k) => k.toLowerCase().includes(s))
-        );
-      })
+      .filter(
+        (o) =>
+          !selectedStyles.length ||
+          // "casual" is an occasion as well as a style, and an outfit filed
+          // under it answers to either.
+          selectedStyles.includes(o.occasion.toLowerCase() as StyleKeyword) ||
+          matchesStyles(o.styleKeywords, selectedStyles)
+      )
       .filter(
         (o) =>
           !q ||
@@ -416,7 +421,7 @@ export default function BrowsePage() {
     else if (sort === "price-desc")
       r = [...r].sort((a, b) => b.totalPriceMax - a.totalPriceMax);
     return r;
-  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, selectedStyle, searchQuery, sort]);
+  }, [catalogOutfits, selectedOccasions, aiOnly, maxPrice, selectedStyles, searchQuery, sort]);
 
   // When color filters are active, expand each product into one entry per matching
   // color variant. This lets a single product appear as multiple cards when multiple
@@ -475,7 +480,7 @@ export default function BrowsePage() {
   // Reset to page 1 whenever filters/sort/view change. Done while rendering
   // (React's "adjust state when inputs change" pattern) rather than in an
   // effect; the inputs are compared the way effect dependencies would be.
-  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyle];
+  const pageResetInputs = [sort, view, searchQuery, selectedBrands, selectedSubcategories, selectedOccasions, selectedGender, maxPrice, selectedColorGroupIds, aiOnly, selectedStyles];
   const [prevPageResetInputs, setPrevPageResetInputs] = useState(pageResetInputs);
   if (pageResetInputs.some((v, i) => !Object.is(v, prevPageResetInputs[i]))) {
     setPrevPageResetInputs(pageResetInputs);
@@ -505,12 +510,60 @@ export default function BrowsePage() {
     brands: selectedBrands.length ? selectedBrands : undefined,
     occasions: selectedOccasions.length ? (selectedOccasions as string[]) : undefined,
     gender: selectedGender ?? undefined,
+    styles: selectedStyles.length ? (selectedStyles as string[]) : undefined,
     priceLabel: maxPrice !== null ? `<$${maxPrice.toLocaleString()}` : undefined,
     visibleCount: count,
-  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedOccasions, selectedGender, maxPrice, count]);
+  }), [view, searchQuery, selectedSubcategories, selectedBrands, selectedOccasions, selectedGender, selectedStyles, maxPrice, count]);
 
   const filteredBrandsForSearch = BRANDS.filter(
     (b) => !brandSearch || b.toLowerCase().includes(brandSearch.toLowerCase())
+  );
+
+  /* Style — the same section in both views */
+  const renderStyleFilter = () => (
+    <div className="border-b border-[var(--border)] px-5 py-4">
+      <button
+        onClick={() => setStyleOpen(v => !v)}
+        aria-expanded={styleOpen}
+        className="w-full flex items-center justify-between group"
+      >
+        <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+          Style{selectedStyles.length > 0 && <span className="ml-2 text-[10px] font-semibold opacity-60 normal-case">— {selectedStyles.length === 1 ? styleLabel(selectedStyles[0]) : `${selectedStyles.length} selected`}</span>}
+        </p>
+        <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${styleOpen ? "rotate-180" : ""}`}>
+          <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {styleOpen && (
+        <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setSelectedStyles([])}
+            className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+          >
+            <span className={`text-[14px] font-bold ${selectedStyles.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+            {selectedStyles.length === 0 && (
+              <svg width="12" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}
+          </button>
+          {STYLE_KEYWORD_LIST.map((st) => {
+            const isChk = selectedStyles.includes(st);
+            return (
+              <button
+                key={st}
+                onClick={() => toggleStyle(st)}
+                aria-pressed={isChk}
+                className="w-full flex items-center justify-between px-4 py-3.5 border-t border-[var(--border)] transition-colors hover:bg-[var(--surface)]"
+              >
+                <span className={`text-[14px] font-bold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{styleLabel(st)}</span>
+                <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                  {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 
   /* Sidebar filter content — matches builder style exactly */
@@ -600,6 +653,7 @@ export default function BrowsePage() {
               </div>
             )}
           </div>
+          {renderStyleFilter()}
         </>
       ) : (
         <>
@@ -688,6 +742,7 @@ export default function BrowsePage() {
             </div>
             )}
           </div>
+          {renderStyleFilter()}
           {/* GENDER */}
           <div className="border-b border-[var(--border)] px-5 py-4">
             <button
@@ -1065,7 +1120,7 @@ export default function BrowsePage() {
                             setView(v);
                             setSelectedBrands([]); setSelectedSubcategories([]); setSelectedOccasions([]);
                             setSelectedColorGroupIds([]); setAiOnly(false); setMaxPrice(null);
-                            setSearchQuery(""); setSearchOpen(false); setSelectedStyle(null);
+                            setSearchQuery(""); setSearchOpen(false); setSelectedStyles([]);
                             const url = new URL(window.location.href); url.searchParams.set("view", v);
                             window.history.replaceState({}, "", url.toString());
                           }
@@ -1266,18 +1321,18 @@ export default function BrowsePage() {
                     <ActiveChip label="AI Only" onRemove={() => setAiOnly(false)} />
                   </motion.div>
                 )}
-                {selectedStyle && (
+                {selectedStyles.map((st) => (
                   <motion.div
-                    key="style"
+                    key={`style-${st}`}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.85 }}
                     transition={{ duration: 0.15 }}
                     layout
                   >
-                    <ActiveChip label={selectedStyle} onRemove={() => setSelectedStyle(null)} />
+                    <ActiveChip label={styleLabel(st)} onRemove={() => toggleStyle(st)} />
                   </motion.div>
-                )}
+                ))}
                 </AnimatePresence>
               </div>
             )}
