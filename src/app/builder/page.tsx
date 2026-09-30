@@ -21,6 +21,7 @@ import { loadLocalLooks, saveLocalLooks, pushLook, syncLooks, newLookId, type Sa
 import { subcategoryToValue, resolveSubcategory } from "@/lib/categories";
 import { photoBackdrop } from "@/lib/image";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
+import { STYLE_KEYWORD_LIST, matchesStyles, styleLabel } from "@/lib/style-keywords";
 
 // ── Slot definitions ─────────────────────────────────────────────────────────
 
@@ -212,13 +213,18 @@ export default function BuilderPage() {
   const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedGender, setSelectedGender] = useState<Gender | null>(null);
+  // The catalogue filter's styles — not the look's own, which `styleKeywords`
+  // below gathers from the pieces picked.
+  const [filterStyles, setFilterStyles] = useState<StyleKeyword[]>([]);
+  const toggleFilterStyle = (s: StyleKeyword) =>
+    setFilterStyles(prev => (prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]));
   const [brandSearch, setBrandSearch] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "new-in" | "price-asc" | "price-desc">("featured");
   const [sortDropOpen, setSortDropOpen] = useState(false);
   const sortDropRef = useRef<HTMLDivElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "price", "brand", "color", "gender", "sort"]));
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(["category", "style", "price", "brand", "color", "gender", "sort"]));
   const [catalogPreviews, setCatalogPreviews] = useState<Record<string, string>>({});
   const [catalogColorPreviews, setCatalogColorPreviews] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
@@ -489,6 +495,10 @@ export default function BuilderPage() {
       list = list.filter(p => !p.gender || p.gender === selectedGender || p.gender === "unisex");
     }
 
+    if (filterStyles.length > 0) {
+      list = list.filter(p => matchesStyles(p.styleKeywords, filterStyles));
+    }
+
     if (sortBy === "price-asc") {
       list = [...list].sort((a, b) => a.priceMin - b.priceMin);
     } else if (sortBy === "price-desc") {
@@ -507,7 +517,7 @@ export default function BuilderPage() {
     return list;
     // categoryTree and availableColors both arrive from the network after the
     // first paint, so the list has to recompute when they do.
-  }, [catalogCategory, selectedSubcategories, categoryTree, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, availableColors, selectedGender, sortBy, shuffleSeed]);
+  }, [catalogCategory, selectedSubcategories, categoryTree, products, search, likedOnly, likedProducts, maxPrice, selectedBrands, selectedColors, availableColors, selectedGender, filterStyles, sortBy, shuffleSeed]);
 
   const expandedCatalogItems = useMemo((): CatalogItem[] => {
     if (!selectedColors.length) {
@@ -537,8 +547,8 @@ export default function BuilderPage() {
     return items;
   }, [catalogProducts, selectedColors, availableColors]);
 
-  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || sortBy !== "featured" || likedOnly || catalogCategory !== null || selectedSubcategories.length > 0;
-  const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
+  const hasActiveFilters = maxPrice !== null || selectedBrands.length > 0 || selectedColors.length > 0 || selectedGender !== null || filterStyles.length > 0 || sortBy !== "featured" || likedOnly || catalogCategory !== null || selectedSubcategories.length > 0;
+  const activeFilterCount = (maxPrice !== null ? 1 : 0) + selectedBrands.length + selectedColors.length + (selectedGender !== null ? 1 : 0) + filterStyles.length + (sortBy !== "featured" ? 1 : 0) + (likedOnly ? 1 : 0);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -635,6 +645,7 @@ export default function BuilderPage() {
     setSelectedBrands([]);
     setSelectedColors([]);
     setSelectedGender(null);
+    setFilterStyles([]);
     setBrandSearch("");
     setSortBy("featured");
     setLikedOnly(false);
@@ -982,6 +993,49 @@ export default function BuilderPage() {
                             </>
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* STYLE */}
+              <div className="border-b border-[var(--border)] px-5 py-4">
+                <button onClick={() => toggleSection("style")} aria-expanded={!collapsedSections.has("style")} className="w-full flex items-center justify-between group">
+                  <p className="text-[13px] tracking-[0.15em] uppercase font-black text-[var(--foreground)] group-hover:opacity-80 transition-opacity" style={{ textShadow: "0 0 14px rgba(255,255,255,0.4)" }}>
+                    Style{filterStyles.length > 0 && <span className="ml-2 text-[9px] font-semibold opacity-60 normal-case">— {filterStyles.length === 1 ? styleLabel(filterStyles[0]) : `${filterStyles.length} selected`}</span>}
+                  </p>
+                  <svg width="11" height="11" viewBox="0 0 9 9" fill="none" className={`text-[var(--foreground)] transition-transform duration-200 ${collapsedSections.has("style") ? "" : "rotate-180"}`}>
+                    <path d="M1.5 3L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {!collapsedSections.has("style") && (
+                  <div className="mt-3 border border-[var(--border)] rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setFilterStyles([])}
+                      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <span className={`text-[14px] font-bold ${filterStyles.length === 0 ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>All</span>
+                      {filterStyles.length === 0 && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                    {STYLE_KEYWORD_LIST.map(st => {
+                      const isChk = filterStyles.includes(st);
+                      return (
+                        <button
+                          key={st}
+                          onClick={() => toggleFilterStyle(st)}
+                          aria-pressed={isChk}
+                          className="w-full flex items-center justify-between px-4 py-3.5 border-t border-[var(--border)] hover:bg-[var(--surface)] transition-colors"
+                        >
+                          <span className={`text-[14px] font-bold ${isChk ? "text-[var(--foreground)]" : "text-[var(--foreground)] opacity-50"}`}>{styleLabel(st)}</span>
+                          <div className="shrink-0 flex items-center justify-center border-2 transition-colors" style={{ width: 20, height: 20, borderRadius: "50%", background: isChk ? "var(--foreground)" : "transparent", borderColor: isChk ? "var(--foreground)" : "var(--border-strong)" }}>
+                            {isChk && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--background)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -2668,6 +2722,40 @@ export default function BuilderPage() {
                       {g === null ? "All" : g.charAt(0).toUpperCase() + g.slice(1)}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Style */}
+              <div className="mb-7">
+                <p className="text-[11px] tracking-[0.12em] uppercase font-medium text-[var(--foreground-muted)] mb-3">Style</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterStyles([])}
+                    className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
+                      filterStyles.length === 0
+                        ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    All
+                  </button>
+                  {STYLE_KEYWORD_LIST.map(st => {
+                    const isChk = filterStyles.includes(st);
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => toggleFilterStyle(st)}
+                        aria-pressed={isChk}
+                        className={`px-4 py-2 rounded-full border text-[13px] font-medium transition-[color,background-color,border-color,transform] active:scale-95 ${
+                          isChk
+                            ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+                            : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        {styleLabel(st)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

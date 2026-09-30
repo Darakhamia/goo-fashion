@@ -47,6 +47,7 @@ interface BrowseContext {
   brands?: string[];
   occasions?: string[];
   gender?: string;
+  styles?: string[];
   priceLabel?: string;
   visibleCount?: number;
 }
@@ -164,6 +165,11 @@ function sanitizeBrowseContext(raw: unknown): BrowseContext | undefined {
     categories: sanitizeStringList(b.categories, 10, 32),
     brands: sanitizeStringList(b.brands, 10, 48),
     gender: sanitizeForPrompt(b.gender, 24) || undefined,
+    // Only the catalogue's own styles: the list goes into the prompt.
+    styles: (() => {
+      const styles = normalizeStyleKeywords(b.styles);
+      return styles.length ? styles : undefined;
+    })(),
     priceLabel: sanitizeForPrompt(b.priceLabel, 32) || undefined,
   };
 }
@@ -684,6 +690,7 @@ function buildBrowseContext(ctx: BrowseContext): string {
   if (ctx.categories?.length) filters.push(`Categories: ${ctx.categories.slice(0, 10).join(", ")}`);
   if (ctx.brands?.length) filters.push(`Brands: ${ctx.brands.slice(0, 10).join(", ")}`);
   if (ctx.gender) filters.push(`Gender: ${ctx.gender}`);
+  if (ctx.styles?.length) filters.push(`Styles: ${ctx.styles.join(", ")}`);
   if (ctx.priceLabel) filters.push(`Price: ${ctx.priceLabel}`);
   lines.push(filters.length > 0 ? `Active filters: ${filters.join(" · ")}` : "No filters active.");
   lines.push("Help the user discover items or suggest complementary pieces.");
