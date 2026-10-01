@@ -444,8 +444,12 @@ export function samePiece(
  *
  * The same piece; or, with no category or garment against it, a reduced name
  * that starts with the same model word, or that is the start of the other.
+ *
+ * `brand` is every spelling of the maker the two rows use, as in `samePiece`:
+ * with one, "Carhartt WIP Detroit Jacket" filed under "Carhartt" kept a "wip"
+ * the other card's name never had, and one jacket read as two models.
  */
-export function sameModelFamily(brand: string, a: PieceRow, b: PieceRow): boolean {
+export function sameModelFamily(brand: string | string[], a: PieceRow, b: PieceRow): boolean {
   if (samePiece(brand, a, b)) return true;
   if (!categoriesAgree(a.category, b.category)) return false;
   if (garmentTypesConflict(a.name, b.name)) return false;

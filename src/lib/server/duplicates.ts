@@ -10,11 +10,11 @@
  *   by name   the same brand, the same piece once reduced, the same colours in
  *             any order — or some of them ("Grey" beside "grey/white/leather"),
  *             or none stated where the store has one card of the piece — no
- *             store in common, and prices within a factor of four unless
- *             the very name of a model says it is one thing. Anything
- *             short of the same colour word counts only when a row has exactly
- *             one such candidate — a model made in two blacks is ambiguous,
- *             and a wrong merge sends a shopper to the other one.
+ *             store in common, at any price (one item sells at several: a
+ *             sale, a resale platform). Anything short of the same colour word
+ *             counts only when a row has exactly one such candidate — a model
+ *             made in two blacks is ambiguous, and a wrong merge sends a
+ *             shopper to the other one.
  *
  * Pairs join into groups, and each group suggests the card to keep: the one on
  * the brand's own store, then the one with most stores, then the oldest. The
@@ -23,7 +23,8 @@
 import type { Retailer } from "@/lib/types";
 import { colourRelation, modelWord, sameModelFamily, samePiece } from "@/lib/server/parser/piece-name";
 import { brandsAgree, foldBrand, makerKey, makerNames } from "@/lib/server/parser/brand-from-name";
-import { isSameRetailer, MAX_PRICE_RATIO, sameModelName } from "@/lib/server/parser/same-item";
+import { isSameRetailer } from "@/lib/server/parser/same-item";
+import { isColorSiblingByName } from "@/lib/server/parser/variant-group";
 import { bareHost } from "@/lib/url";
 
 export interface CatalogueRow {
@@ -148,10 +149,6 @@ export function findDuplicateGroups(rows: CatalogueRow[], dismissed: Set<string>
         if (!samePiece([a.brand, b.brand], a, b)) continue;
         const storesB = storesOf(b);
         if (!storesB.size || [...storesB].some((s) => storesA.has(s))) continue;
-        const pa = a.priceMin ?? 0;
-        const pb = b.priceMin ?? 0;
-        // As the importer: the very name of a model is one thing at any price.
-        if (pa > 0 && pb > 0 && Math.max(pa, pb) / Math.min(pa, pb) > MAX_PRICE_RATIO && !sameModelName(a, b)) continue;
         const store = primaryStore(b);
         const slot = perStore.get(store) ?? { exact: [], near: [], partial: [], unstated: [], all: [] };
         const relation = colourRelation(a.colors, b.colors);
@@ -233,7 +230,7 @@ export function modelFamilies(members: GroupMember[]): string[][] {
       const a = members[i];
       const b = members[j];
       if (find(a.id) === find(b.id)) continue;
-      if (sameModelFamily(a.brand || b.brand, a, b)) parent.set(find(a.id), find(b.id));
+      if (sameModelFamily([a.brand, b.brand].filter((x) => x.trim()), a, b)) parent.set(find(a.id), find(b.id));
     }
   }
   const families = new Map<string, string[]>();
@@ -295,6 +292,101 @@ export function splitPlan(
     for (const m of cards) writes.push({ id: m.id, variant_group_id: group, is_group_primary: m.id === primary.id });
   }
   return writes;
+}
+
+// ── One model's colours shown as separate cards ──────────────────────────────
+
+/** A catalogue row with its colour group, for the colour grouping finder. */
+export interface ColourwayRow extends CatalogueRow {
+  variantGroupId: string | null;
+  isGroupPrimary: boolean;
+}
+
+export interface ColourwayProposal {
+  /** The card to lead the group when none of the groups it joins has a lead. */
+  leadId: string;
+  /** The cards found to be one piece in different colours, the lead first. */
+  ids: string[];
+}
+
+/**
+ * One model's colourways sitting as separate cards, or in separate colour
+ * groups — what imports left before they could recognise the piece under
+ * another store's spelling of the brand, at another price, or collected from
+ * another site. The test is the importer's own (`isColorSiblingByName`): the
+ * same maker, the same piece once reduced, different colours. Cards already in
+ * one group together are not proposed again, and neither is a pair the admin
+ * said is not one model.
+ */
+export function findUngroupedColourways(
+  rows: ColourwayRow[],
+  dismissed: Set<string> = new Set(),
+): ColourwayProposal[] {
+  const parent = new Map(rows.map((r) => [r.id, r.id]));
+  const find = (id: string): string => {
+    let root = id;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    parent.set(id, root);
+    return root;
+  };
+
+  // A colour group's cards start as one: grouping brings the whole group
+  // along (`joinColourGroup`), so the proposal shows every card it will join —
+  // and two proposals touching one group are one proposal.
+  const firstOfGroup = new Map<string, string>();
+  for (const r of rows) {
+    if (!r.variantGroupId) continue;
+    const first = firstOfGroup.get(r.variantGroupId);
+    if (first) parent.set(find(r.id), find(first));
+    else firstOfGroup.set(r.variantGroupId, r.id);
+  }
+
+  // Compared within a maker-and-model bucket, as the duplicate finder does:
+  // the name test only ever says yes to rows that share the model's word.
+  const buckets = new Map<string, ColourwayRow[]>();
+  for (const r of rows) {
+    const brand = makerKey(r.brand);
+    if (!brand) continue;
+    const model = modelWord(r.name, makerNames(r.brand), r.colors);
+    if (!model) continue;
+    const key = `${brand}|${model}`;
+    buckets.set(key, [...(buckets.get(key) ?? []), r]);
+  }
+  for (const bucket of buckets.values()) {
+    for (let i = 0; i < bucket.length; i++) {
+      for (let j = i + 1; j < bucket.length; j++) {
+        const a = bucket[i];
+        const b = bucket[j];
+        if (find(a.id) === find(b.id) || dismissed.has(pairKey(a.id, b.id))) continue;
+        if (isColorSiblingByName(a, b)) parent.set(find(a.id), find(b.id));
+      }
+    }
+  }
+
+  const components = new Map<string, ColourwayRow[]>();
+  for (const r of rows) {
+    const root = find(r.id);
+    const list = components.get(root);
+    if (list) list.push(r);
+    else components.set(root, [r]);
+  }
+  const groupSize = new Map<string, number>();
+  for (const r of rows) if (r.variantGroupId) groupSize.set(r.variantGroupId, (groupSize.get(r.variantGroupId) ?? 0) + 1);
+  /** How large a group this card leads; 0 when it leads none. */
+  const leads = (r: ColourwayRow) => (r.isGroupPrimary && r.variantGroupId ? groupSize.get(r.variantGroupId) ?? 0 : 0);
+
+  const out: ColourwayProposal[] = [];
+  for (const cards of components.values()) {
+    if (cards.length < 2) continue;
+    // Already one group, or one group and nothing else: nothing to do.
+    const units = new Set(cards.map((c) => c.variantGroupId ?? c.id));
+    if (units.size < 2) continue;
+    // The lead: a card already leading the largest group, else the card the
+    // duplicate finder would keep — the brand's own store, most stores, oldest.
+    const sorted = [...cards].sort((a, b) => leads(b) - leads(a) || keeperRank(a, b));
+    out.push({ leadId: sorted[0].id, ids: sorted.map((c) => c.id) });
+  }
+  return out.sort((a, b) => b.ids.length - a.ids.length || a.leadId.localeCompare(b.leadId));
 }
 
 // ── Merging ──────────────────────────────────────────────────────────────────

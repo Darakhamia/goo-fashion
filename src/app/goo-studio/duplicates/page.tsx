@@ -2,7 +2,9 @@
 
 /**
  * Duplicates — the same item held as more than one card, and one click to make
- * it one card with every place to buy it.
+ * it one card with every place to buy it. Beside it, two colour-group repairs:
+ * one model's colours sitting as separate cards (group them), and a colour
+ * group holding several models (split it).
  *
  * The finder applies the importer's own same-item test to the whole catalogue
  * (`lib/server/duplicates.ts`): the cards a collect run would have merged had
@@ -35,6 +37,8 @@ interface Card {
   priceMin: number;
   sourceUrl: string | null;
   createdAt: string | null;
+  /** Cards in its colour group, itself included; 0 when it is in none. */
+  groupSize?: number;
   stores: Store[];
 }
 
@@ -50,12 +54,23 @@ interface MixedGroup {
   families: Card[][];
 }
 
+/** One model's colours held as separate cards (or separate colour groups). */
+interface Colourway {
+  /** Leads the group when none of the groups it joins has a lead. */
+  leadId: string;
+  products: Card[];
+}
+
 interface Report {
   scanned: number;
   dismissalsAvailable: boolean;
   groups: Group[];
   mixedGroups?: MixedGroup[];
+  colourways?: Colourway[];
 }
+
+/** Proposals sent per "Group all" request — the route's own limit. */
+const GROUP_BATCH = 50;
 
 const REASON_LABEL: Record<Reason, string> = {
   gtin: "Same barcode",
@@ -245,6 +260,89 @@ function GroupCard({
   );
 }
 
+/** One model's colours shown as separate cards, and the grouping that makes them one product. */
+function ColourwayCard({
+  proposal,
+  busy,
+  onGroup,
+  onDismiss,
+}: {
+  proposal: Colourway;
+  busy: boolean;
+  onGroup: () => void;
+  onDismiss: () => void;
+}) {
+  const first = proposal.products[0];
+  const colours = [...new Set(proposal.products.map((p) => p.color || "no colour"))];
+  return (
+    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+      <header className="px-5 py-3.5 border-b border-[var(--border)]">
+        <h2 className="text-sm text-[var(--foreground)] truncate">
+          {first.brand} · {first.name}
+        </h2>
+        <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+          {proposal.products.length} cards · {colours.join(", ")}
+        </p>
+      </header>
+      <ul>
+        {proposal.products.map((p) => {
+          const store = p.stores[0] ?? { name: bareHost(p.sourceUrl), url: p.sourceUrl ?? "", price: p.priceMin, currency: "USD", isOfficial: false };
+          return (
+            <li key={p.id} className="px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-center gap-3 md:gap-4 min-w-0">
+              {p.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.image} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
+              ) : (
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    href={`/product/${p.id}`}
+                    target="_blank"
+                    className="text-sm text-[var(--foreground)] hover:underline underline-offset-2 truncate"
+                  >
+                    {p.name}
+                  </Link>
+                  {p.id === proposal.leadId && (
+                    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-[var(--surface)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                      Shown first
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5 truncate">
+                  {[
+                    p.color || "no colour",
+                    store.name || bareHost(store.url),
+                    money(store.price, store.currency),
+                    p.groupSize && p.groupSize > 1 ? `already grouped with ${p.groupSize - 1}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <footer className="px-5 py-3.5 border-t border-[var(--border)] flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed max-w-md">
+          Grouping shows these as one product with a swatch per colour, each colour keeping its own price and
+          stores. A card already in a colour group brings the rest of its group. Nothing is deleted.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={onDismiss} disabled={busy} title="Remember these cards as different models" className={GHOST}>
+            Not one model
+          </button>
+          <button onClick={onGroup} disabled={busy} className={PRIMARY}>
+            {busy ? "Working…" : "Group as colours"}
+          </button>
+        </div>
+      </footer>
+    </section>
+  );
+}
+
 /** A colour group whose members are different models, and the split that fixes it. */
 function MixedGroupCard({
   group,
@@ -320,6 +418,8 @@ export default function DuplicatesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyGroup, setBusyGroup] = useState<string | null>(null);
+  /** "Group all" under way: how many proposals are done out of how many. */
+  const [groupingAll, setGroupingAll] = useState<{ done: number; total: number } | null>(null);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -397,6 +497,58 @@ export default function DuplicatesPage() {
     setReport((r) => (r ? { ...r, mixedGroups: (r.mixedGroups ?? []).filter((g) => g.groupId !== group.groupId) } : r));
   };
 
+  const removeColourways = (leadIds: Set<string>) =>
+    setReport((r) => (r ? { ...r, colourways: (r.colourways ?? []).filter((c) => !leadIds.has(c.leadId)) } : r));
+
+  const groupColours = async (proposal: Colourway) => {
+    const json = await post(proposal.leadId, {
+      action: "group",
+      groups: [{ ids: proposal.products.map((p) => p.id), leadId: proposal.leadId }],
+    });
+    if (!json) return;
+    setToast({ type: "ok", msg: `Grouped ${proposal.products.length} cards as colours of one product` });
+    removeColourways(new Set([proposal.leadId]));
+  };
+
+  const groupAllColours = async () => {
+    const all = report?.colourways ?? [];
+    if (!all.length) return;
+    if (!confirm(`Group all ${all.length} as colours of one product each?\n\nEach becomes one card with a swatch per colour. Nothing is deleted, and any group can be split again later.`)) return;
+    setGroupingAll({ done: 0, total: all.length });
+    const grouped = new Set<string>();
+    let failed = 0;
+    for (let i = 0; i < all.length; i += GROUP_BATCH) {
+      const batch = all.slice(i, i + GROUP_BATCH);
+      const json = await post("__all__", {
+        action: "group",
+        groups: batch.map((c) => ({ ids: c.products.map((p) => p.id), leadId: c.leadId })),
+      });
+      if (!json) {
+        failed += batch.length;
+      } else {
+        for (const g of (json.grouped as { leadId: string }[] | undefined) ?? []) grouped.add(g.leadId);
+        failed += ((json.failed as unknown[] | undefined) ?? []).length;
+      }
+      setGroupingAll({ done: Math.min(i + GROUP_BATCH, all.length), total: all.length });
+    }
+    setGroupingAll(null);
+    removeColourways(grouped);
+    setToast(
+      failed
+        ? { type: "err", msg: `Grouped ${grouped.size}, ${failed} could not be grouped — re-scan and try again` }
+        : { type: "ok", msg: `Grouped ${grouped.size} product${grouped.size === 1 ? "" : "s"}' colours` },
+    );
+  };
+
+  const dismissColours = async (proposal: Colourway) => {
+    const ids = proposal.products.map((p) => p.id);
+    if (!confirm(`Remember these ${ids.length} cards as different models?\n\nThey won't be proposed as colours of one product again.`)) return;
+    const json = await post(proposal.leadId, { action: "dismiss", kind: "colourway", ids });
+    if (!json) return;
+    setToast({ type: "ok", msg: "Marked as different models — won't be suggested again" });
+    removeColourways(new Set([proposal.leadId]));
+  };
+
   const dismiss = async (group: Group, ids: string[], against: string[]) => {
     const line = (id: string) => {
       const p = group.products.find((x) => x.id === id);
@@ -465,7 +617,7 @@ export default function DuplicatesPage() {
       )}
 
       {report && (report.mixedGroups?.length ?? 0) > 0 && (
-        <div className="mb-4">
+        <div className="mb-10">
           <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-1">
             Colour groups mixing different models ({report.mixedGroups!.length})
           </h2>
@@ -478,15 +630,53 @@ export default function DuplicatesPage() {
               <MixedGroupCard
                 key={group.groupId}
                 group={group}
-                busy={busyGroup === group.groupId}
+                busy={busyGroup === group.groupId || !!groupingAll}
                 onSplit={(keepIds) => split(group, keepIds)}
               />
             ))}
           </div>
-          <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-10">
-            The same item held twice
-          </h2>
         </div>
+      )}
+
+      {report && (report.colourways?.length ?? 0) > 0 && (
+        <div className="mb-10">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
+            <div className="min-w-0 max-w-2xl">
+              <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-1">
+                One model&apos;s colours shown as separate cards ({report.colourways!.length})
+              </h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+                The same piece of one brand in different colours, held as separate cards or separate colour groups —
+                usually collected from different stores, under another spelling of the brand or at another price.
+                Grouping makes each one product with a swatch per colour.
+              </p>
+            </div>
+            <button
+              onClick={() => groupAllColours()}
+              disabled={!!groupingAll || !!busyGroup}
+              className={`${PRIMARY} shrink-0 whitespace-nowrap`}
+            >
+              {groupingAll ? `Grouping ${groupingAll.done}/${groupingAll.total}…` : `Group all (${report.colourways!.length})`}
+            </button>
+          </div>
+          <div className="flex flex-col gap-5">
+            {report.colourways!.map((proposal) => (
+              <ColourwayCard
+                key={proposal.leadId}
+                proposal={proposal}
+                busy={busyGroup === proposal.leadId || !!groupingAll}
+                onGroup={() => groupColours(proposal)}
+                onDismiss={() => dismissColours(proposal)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {report && ((report.mixedGroups?.length ?? 0) > 0 || (report.colourways?.length ?? 0) > 0) && (
+        <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
+          The same item held twice
+        </h2>
       )}
 
       {report && report.groups.length === 0 && (
@@ -503,7 +693,7 @@ export default function DuplicatesPage() {
           <GroupCard
             key={group.keepId}
             group={group}
-            busy={busyGroup === group.keepId}
+            busy={busyGroup === group.keepId || !!groupingAll}
             onMerge={(keepId, mergeIds) => merge(group, keepId, mergeIds)}
             onDismiss={(ids, against) => dismiss(group, ids, against)}
           />
@@ -513,8 +703,8 @@ export default function DuplicatesPage() {
       {report && report.groups.length > 0 && (
         <p className="text-[11px] text-[var(--foreground-muted)] mt-6 leading-relaxed max-w-2xl">
           Two cards are proposed when they share a barcode or maker&apos;s code, or when they are the same model of one
-          brand in the same colours, sold by different stores at comparable prices — the test a collect run uses before
-          it adds a second store to a card. A model made in two similar colourways at one store is left out: it cannot
+          brand in the same colours, sold by different stores at any price — the test a collect run uses before it adds
+          a second store to a card. A model made in two similar colourways at one store is left out: it cannot
           be told which one the other store sells.
         </p>
       )}

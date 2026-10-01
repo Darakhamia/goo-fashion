@@ -156,6 +156,7 @@ export async function POST(req: Request) {
         name: product.name,
         usedAi,
         imagesMirrored: imported.imagesMirrored ?? 0,
+        variantsLinked: imported.variantsLinked ?? 0,
         merged: !!imported.mergedInto,
         mergedBy: imported.mergedBy,
         mergedFields: imported.mergedFields,

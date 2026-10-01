@@ -4,8 +4,14 @@
  *   GET                             → the groups the finder proposes
  *   POST { action: "merge",   keepId, mergeIds }
  *                                   → one card with every store, the others gone
- *   POST { action: "dismiss", ids, against? }
- *                                   → "not the same item": never proposed again
+ *   POST { action: "dismiss", ids, against?, kind? }
+ *                                   → "not the same item" (or, with kind
+ *                                     "colourway", "not one model"): never
+ *                                     proposed again
+ *   POST { action: "split",   groupId, keepIds }
+ *                                   → a colour group of several models taken apart
+ *   POST { action: "group",   groups: [{ ids, leadId }] }
+ *                                   → one model's colours made one colour group
  *
  * The finder is `lib/server/duplicates.ts` — the importer's own same-item test,
  * run over the whole catalogue. A merge moves everything that points at the
@@ -20,14 +26,17 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { logAdminAction } from "@/lib/server/audit";
 import { writeProductRow } from "@/lib/data/db";
+import { joinColourGroup } from "@/lib/server/colour-group";
 import {
   findDuplicateGroups,
   findMixedColourGroups,
+  findUngroupedColourways,
   mergeCardsPatch,
   pairKey,
   repointItems,
   splitPlan,
   type CatalogueRow,
+  type ColourwayRow,
   type GroupMember,
 } from "@/lib/server/duplicates";
 import type { Retailer } from "@/lib/types";
@@ -61,7 +70,9 @@ function toGroupMember(r: ProductRow): GroupMember | null {
 
 /** Where "not the same item" is remembered: the label audit's dismissals (migration 012). */
 const DISMISSALS = "label_audit_dismissals";
-const DISMISS_FIELD = "duplicate";
+/** The `field` a dismissal is filed under: the same item twice, or one model's colours. */
+const DISMISS_FIELDS = { duplicate: "duplicate", colourway: "colourway" } as const;
+type DismissKind = keyof typeof DISMISS_FIELDS;
 
 type ProductRow = Record<string, unknown> & { id: string };
 
@@ -85,13 +96,17 @@ async function loadCatalogue(): Promise<ProductRow[] | { error: string }> {
   return { error: "Could not read products" };
 }
 
-async function loadDismissed(): Promise<{ pairs: Set<string>; available: boolean }> {
-  const { data, error } = await supabase!.from(DISMISSALS).select("product_id, stored").eq("field", DISMISS_FIELD);
-  if (error) return { pairs: new Set(), available: !isMissingTableLoose(error) };
-  return {
-    pairs: new Set(((data ?? []) as { product_id: string; stored: string }[]).map((d) => pairKey(d.product_id, d.stored))),
-    available: true,
-  };
+async function loadDismissed(): Promise<{ pairs: Record<DismissKind, Set<string>>; available: boolean }> {
+  const pairs: Record<DismissKind, Set<string>> = { duplicate: new Set(), colourway: new Set() };
+  const { data, error } = await supabase!
+    .from(DISMISSALS)
+    .select("product_id, stored, field")
+    .in("field", Object.values(DISMISS_FIELDS));
+  if (error) return { pairs, available: !isMissingTableLoose(error) };
+  for (const d of (data ?? []) as { product_id: string; stored: string; field: string }[]) {
+    pairs[d.field === DISMISS_FIELDS.colourway ? "colourway" : "duplicate"].add(pairKey(d.product_id, d.stored));
+  }
+  return { pairs, available: true };
 }
 
 function toCatalogueRow(r: ProductRow): CatalogueRow {
@@ -122,9 +137,23 @@ export async function GET() {
   if ("error" in loaded) return NextResponse.json({ error: `Could not read products: ${loaded.error}` }, { status: 503 });
 
   const rows = loaded.map(toCatalogueRow);
-  const groups = findDuplicateGroups(rows, dismissed.pairs);
+  const groups = findDuplicateGroups(rows, dismissed.pairs.duplicate);
   const mixed = findMixedColourGroups(loaded.map(toGroupMember).filter((m): m is GroupMember => !!m));
+  const colourways = findUngroupedColourways(
+    loaded.map((r, i): ColourwayRow => ({
+      ...rows[i],
+      variantGroupId: typeof r.variant_group_id === "string" && r.variant_group_id ? r.variant_group_id : null,
+      isGroupPrimary: r.is_group_primary === true,
+    })),
+    dismissed.pairs.colourway,
+  );
   const byId = new Map(loaded.map((r) => [String(r.id), r]));
+  const groupSizes = new Map<string, number>();
+  for (const r of loaded) {
+    if (typeof r.variant_group_id === "string" && r.variant_group_id) {
+      groupSizes.set(r.variant_group_id, (groupSizes.get(r.variant_group_id) ?? 0) + 1);
+    }
+  }
   const card = (id: string) => {
     const r = byId.get(id)!;
     const images = Array.isArray(r.images) ? (r.images as string[]) : [];
@@ -138,6 +167,8 @@ export async function GET() {
       priceMin: Number(r.price_min) || 0,
       sourceUrl: (r.source_url as string | null) ?? null,
       createdAt: (r.created_at as string | null) ?? null,
+      // How many cards its colour group holds, itself included; 0 when it is in none.
+      groupSize: typeof r.variant_group_id === "string" ? groupSizes.get(r.variant_group_id) ?? 0 : 0,
       stores: (Array.isArray(r.retailers) ? (r.retailers as Retailer[]) : []).map((s) => ({
         name: s.name,
         url: s.url,
@@ -151,6 +182,10 @@ export async function GET() {
   return NextResponse.json({
     scanned: rows.length,
     dismissalsAvailable: dismissed.available,
+    colourways: colourways.map((c) => ({
+      leadId: c.leadId,
+      products: c.ids.map((id) => card(id)),
+    })),
     mixedGroups: mixed.map((g) => ({
       groupId: g.groupId,
       families: g.families.map((ids) => ids.map((id) => card(id))),
@@ -357,6 +392,43 @@ async function split(adminId: string, groupId: string, keepIds: Set<string>) {
   return NextResponse.json({ ok: true, movedOut: movedOut.length });
 }
 
+// ── Group colours ────────────────────────────────────────────────────────────
+
+/** Proposals per request: each is a few reads and writes, well inside the time limit. */
+const MAX_GROUPS_PER_CALL = 50;
+
+/**
+ * Makes each proposal one colour group: its cards, and every card of the
+ * groups they are already in (`joinColourGroup`). Nothing is deleted; a group
+ * that fails is reported and the rest go ahead.
+ */
+async function group(adminId: string, proposals: { ids: string[]; leadId: string }[]) {
+  const done: { leadId: string; groupId: string; cards: number }[] = [];
+  const failed: { leadId: string; error: string }[] = [];
+  for (const p of proposals) {
+    const result = await joinColourGroup(p.ids, p.leadId);
+    if ("error" in result) failed.push({ leadId: p.leadId, error: result.error });
+    else done.push({ leadId: p.leadId, groupId: result.groupId, cards: p.ids.length });
+  }
+  if (done.length) {
+    await logAdminAction({
+      admin_id: adminId,
+      action: "products.colourways_grouped",
+      target_type: "product",
+      target_id: done[0].leadId,
+      metadata: {
+        groups: done.map((d) => ({ ...d, ids: proposals.find((p) => p.leadId === d.leadId)?.ids ?? [] })),
+        ...(failed.length ? { failed } : {}),
+      },
+    });
+    revalidatePath("/");
+  }
+  if (!done.length && failed.length) {
+    return NextResponse.json({ error: failed[0].error, failed }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, grouped: done, failed });
+}
+
 // ── Dismiss ──────────────────────────────────────────────────────────────────
 
 /**
@@ -365,7 +437,7 @@ async function split(adminId: string, groupId: string, keepIds: Set<string>) {
  * against the ones kept together — so the rest of the group stays a proposal.
  * Without it, every pair among `ids` is.
  */
-async function dismiss(adminId: string, ids: string[], against: string[]) {
+async function dismiss(adminId: string, ids: string[], against: string[], kind: DismissKind) {
   const pairs = new Map<string, [string, string]>();
   const add = (x: string, y: string) => {
     if (x === y) return;
@@ -379,7 +451,7 @@ async function dismiss(adminId: string, ids: string[], against: string[]) {
   }
   const rows = [...pairs.values()].map(([a, b]) => ({
     product_id: a,
-    field: DISMISS_FIELD,
+    field: DISMISS_FIELDS[kind],
     stored: b,
     suggested: "",
     dismissed_by: adminId,
@@ -389,14 +461,14 @@ async function dismiss(adminId: string, ids: string[], against: string[]) {
     .upsert(rows, { onConflict: "product_id,field,stored,suggested", ignoreDuplicates: true });
   if (isMissingTableLoose(error)) {
     return NextResponse.json(
-      { error: "Remembering \"not duplicates\" needs supabase/migrations/012_label_audit_dismissals.sql — run it, then try again." },
+      { error: "Remembering this needs supabase/migrations/012_label_audit_dismissals.sql — run it, then try again." },
       { status: 503 },
     );
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   await logAdminAction({
     admin_id: adminId,
-    action: "products.duplicates_dismissed",
+    action: kind === "colourway" ? "products.colourways_dismissed" : "products.duplicates_dismissed",
     target_type: "product",
     target_id: ids[0],
     metadata: against.length ? { ids, against } : { ids },
@@ -432,7 +504,19 @@ export async function POST(req: Request) {
     if (against.length ? !ids.length : ids.length < 2) {
       return NextResponse.json({ error: "At least two ids are required" }, { status: 400 });
     }
-    return dismiss(admin.userId, ids, against);
+    return dismiss(admin.userId, ids, against, body?.kind === "colourway" ? "colourway" : "duplicate");
+  }
+  if (body?.action === "group") {
+    const proposals = (Array.isArray(body?.groups) ? body.groups : [])
+      .slice(0, MAX_GROUPS_PER_CALL)
+      .map((g: { ids?: unknown; leadId?: unknown }) => {
+        const ids = [...new Set(clean(g?.ids))].slice(0, 50);
+        const leadId = String(g?.leadId ?? "").trim();
+        return { ids, leadId };
+      })
+      .filter((g: { ids: string[]; leadId: string }) => g.ids.length >= 2 && g.ids.includes(g.leadId));
+    if (!proposals.length) return NextResponse.json({ error: "groups of at least two ids, with their leadId, are required" }, { status: 400 });
+    return group(admin.userId, proposals);
   }
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

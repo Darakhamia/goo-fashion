@@ -58,6 +58,8 @@ const ACTION_LABELS: Record<AdminAction, string> = {
   "products.duplicates_merged":    "Merged duplicates",
   "products.duplicates_dismissed": "Dismissed duplicates",
   "products.colour_group_split":   "Split a colour group",
+  "products.colourways_grouped":   "Grouped colours",
+  "products.colourways_dismissed": "Dismissed colour grouping",
   "outfits.created":         "Created outfit",
   "outfits.updated":         "Edited outfit",
   "outfits.deleted":         "Deleted outfit",

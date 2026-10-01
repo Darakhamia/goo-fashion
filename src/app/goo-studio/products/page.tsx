@@ -10,6 +10,7 @@ import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/Down
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
 import { storeFaviconUrl } from "@/lib/stores";
+import { bareHost, pastedUrl } from "@/lib/url";
 
 const fmtPrice = (n: number) => `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
 
@@ -369,11 +370,14 @@ function RetailerList({
   retailers,
   onChange,
   storeLibrary = [],
+  storeRules = [],
 }: {
   retailers: RetailerForm[];
   onChange: (r: RetailerForm[]) => void;
   /** Stores (name + logo) from the admin library, used to pick a real store. */
   storeLibrary?: { name: string; logoUrl: string | null }[];
+  /** The Retailers page's rules, domain → store name, for naming a pasted link's store. */
+  storeRules?: { domain: string; name: string }[];
 }) {
   const add = () =>
     onChange([...retailers, { name: "", url: "", price: "", currency: "USD", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
@@ -385,6 +389,19 @@ function RetailerList({
   // admin sees which logo will appear on the storefront.
   const logoFor = (name: string): string | null =>
     storeLibrary.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase())?.logoUrl ?? null;
+
+  // A pasted link as the storefront's "Buy" button needs it: the address out
+  // of share text, a scheme when the address bar left it off, an ad click's
+  // tracking gone (`pastedUrl`). An empty store name is taken from the
+  // domain's rule, as an import would name it.
+  const tidyUrl = (i: number) => {
+    const r = retailers[i];
+    const url = pastedUrl(r.url);
+    if (!url) return;
+    const host = bareHost(url);
+    const rule = r.name.trim() ? undefined : storeRules.find((x) => host === x.domain || host.endsWith(`.${x.domain}`));
+    if (url !== r.url || rule) set(i, { url, ...(rule ? { name: rule.name } : {}) });
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -467,6 +484,7 @@ function RetailerList({
               type="url"
               value={r.url}
               onChange={(e) => set(i, { url: e.target.value })}
+              onBlur={() => tidyUrl(i)}
               placeholder="https://zara.com/product/…"
               className={inputCls}
             />
@@ -599,6 +617,7 @@ export default function AdminProductsPage() {
   // the retailer editor so each "Where to buy" listing is a real store with its
   // logo, not free text.
   const [storeLibrary, setStoreLibrary] = useState<{ name: string; logoUrl: string | null }[]>([]);
+  const [storeRules, setStoreRules] = useState<{ domain: string; name: string }[]>([]);
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   const [addingBrand, setAddingBrand] = useState(false);
   const brandInputRef = useRef<HTMLInputElement>(null);
@@ -767,6 +786,11 @@ export default function AdminProductsPage() {
         }
       }
       const rules = (retailerDomains?.rules ?? []) as { domain: string; name: string }[];
+      setStoreRules(
+        rules
+          .filter((r) => r.domain && r.name?.trim())
+          .map((r) => ({ domain: r.domain.trim().toLowerCase().replace(/^www\./, ""), name: r.name.trim() })),
+      );
       for (const r of rules) {
         const key = r.name?.trim().toLowerCase();
         if (!key) continue;
@@ -3131,6 +3155,7 @@ export default function AdminProductsPage() {
                         <RetailerList
                           retailers={form.retailers}
                           storeLibrary={storeLibrary}
+                          storeRules={storeRules}
                           onChange={(r) => setForm((f) => withRetailerPrices({ ...f, retailers: r }))}
                         />
                       </div>

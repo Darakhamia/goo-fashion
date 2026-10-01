@@ -13,6 +13,7 @@ import type {
 } from "@/lib/server/parser/types";
 import type { Category, Gender } from "@/lib/types";
 import { bookmarkletHref, readPastedPage } from "@/lib/parser-bookmarklet";
+import { pastedUrl } from "@/lib/url";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,43 @@ interface ParseResponse {
 }
 
 type Tab = "collect" | "parse" | "recipes" | "fetch";
+
+/** What one import did, as `/api/admin/parser/import` reports it. */
+interface ImportOutcome {
+  productId: string | null;
+  updated: boolean;
+  /** The card this page joined as another store, when it did not make one. */
+  mergedInto?: string;
+  mergedBy?: "code" | "name";
+  /** Colours of the same piece it was grouped with. */
+  variantsLinked?: number;
+  /** Why a new card was made rather than a store added. */
+  linkNote?: string;
+  priceNote?: string;
+  warning?: string;
+}
+
+/** The import's outcome in a few words. */
+function importHeadline(o: ImportOutcome): string {
+  if (o.mergedInto) return "Added as a store to an existing product";
+  return o.updated ? "Updated existing product" : "Product created";
+}
+
+/** What else the admin should know: colours grouped, why a new card, the price. */
+function importDetails(o: ImportOutcome): string {
+  const colours = o.variantsLinked
+    ? `grouped with ${o.variantsLinked} other colour${o.variantsLinked === 1 ? "" : "s"}`
+    : "";
+  const how = o.mergedInto && o.mergedBy === "name" ? "recognised by name and colour" : "";
+  return [how, colours, o.linkNote ?? "", o.priceNote ?? ""].filter(Boolean).join(" · ");
+}
+
+/** A collected page's note beyond its status: the card it joined, the colours it was grouped with. */
+function crawlRowNote(r: CrawlItemResult): string {
+  const joined = r.linkNote ?? (r.merged ? "added as a store to an existing product" : "");
+  const colours = r.variantsLinked ? `grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}` : "";
+  return [joined, colours].filter(Boolean).join(" · ");
+}
 
 // ── Tiny styled primitives (goo-studio recipes, DESIGN_SYSTEM.md §9) ─────────
 
@@ -488,12 +526,12 @@ function CollectTab({
                       {r.reason}
                     </span>
                   )}
-                  {!r.reason && (r.merged || r.linkNote) && (
+                  {!r.reason && crawlRowNote(r) && (
                     <span
                       className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[260px] flex-shrink-0"
-                      title={r.linkNote ?? "added as a store to an existing product"}
+                      title={crawlRowNote(r)}
                     >
-                      {r.linkNote ?? "added as a store to an existing product"}
+                      {crawlRowNote(r)}
                     </span>
                   )}
                   <a
@@ -605,11 +643,19 @@ function ParseTab({
 
   async function runParse(pasted?: { url?: string; html: string }) {
     if (busy) return;
-    const target = (pasted?.url || url).trim();
-    if (!target) return;
+    const given = (pasted?.url || url).trim();
+    if (!given) return;
+    // The address in what was pasted — share text, no scheme, an ad click's
+    // tracking — shown in the field, so the admin sees the link the card keeps.
+    const target = pastedUrl(given);
+    if (!target) {
+      setError("That is not a link to a page. Paste the product page's address, e.g. https://www.store.com/product/…");
+      setHint("");
+      return;
+    }
     setParsing(true); setError(""); setHint(""); setDiag(null); setLinkResult(null);
     setProducts([]); setLinks([]); setSelected(new Set()); setIsListing(false);
-    if (pasted?.url && pasted.url !== url) setUrl(pasted.url);
+    if (target !== url) setUrl(target);
     try {
       const data = await callParse(target, pasted?.html);
       setDiag(data.diagnostics ?? null);
@@ -900,7 +946,7 @@ function SingleProductEditor({
   onChange: (patch: Partial<ParsedProduct>) => void;
 }) {
   const [importing, setImporting] = useState(false);
-  const [imported, setImported] = useState<{ updated: boolean; warning?: string } | null>(null);
+  const [imported, setImported] = useState<ImportOutcome | null>(null);
   const [error, setError] = useState("");
   const set = <K extends keyof ParsedProduct>(k: K, v: ParsedProduct[K]) =>
     onChange({ [k]: v } as Partial<ParsedProduct>);
@@ -915,7 +961,7 @@ function SingleProductEditor({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) { setError(data.error ?? "Import failed"); return; }
-      setImported({ updated: data.updated, warning: typeof data.warning === "string" ? data.warning : undefined });
+      setImported(data as ImportOutcome);
     } catch {
       setError("Network error");
     } finally {
@@ -1020,12 +1066,20 @@ function SingleProductEditor({
         </button>
         {error && <span className="text-[12px] text-red-500">{error}</span>}
         {imported && (
-          <span className="text-[12px] text-emerald-500 flex items-center gap-2">
-            {imported.updated ? "Updated existing product" : "Product created"}
-            <a href="/goo-studio/products" className="underline hover:no-underline">View products →</a>
+          <span className="text-[12px] text-emerald-500 flex items-center gap-2 flex-wrap">
+            {importHeadline(imported)}
+            {imported.productId && (
+              <a href={`/product/${imported.productId}`} target="_blank" rel="noreferrer" className="underline hover:no-underline">
+                Open product →
+              </a>
+            )}
+            <a href="/goo-studio/products" className="underline hover:no-underline">All products →</a>
           </span>
         )}
-        {imported?.warning && <p className={`${warnBoxCls} basis-full`}>{imported.warning}</p>}
+        {imported && importDetails(imported) && (
+          <p className="text-[11px] text-[var(--foreground-muted)] basis-full leading-relaxed">{importDetails(imported)}</p>
+        )}
+        {typeof imported?.warning === "string" && <p className={`${warnBoxCls} basis-full`}>{imported.warning}</p>}
       </div>
     </div>
   );
@@ -1050,13 +1104,21 @@ function ProductGrid({
 }) {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [result, setResult] = useState<{ ok: number; failed: number; warnings: string[] } | null>(null);
+  const [result, setResult] = useState<{
+    ok: number;
+    failed: number;
+    /** Pages that joined a card we already had, as another store. */
+    joined: number;
+    /** Pages grouped with other colours of their piece. */
+    grouped: number;
+    warnings: string[];
+  } | null>(null);
 
   async function importSelected() {
     const idxs = [...selected];
     if (!idxs.length) return;
     setImporting(true); setResult(null); setProgress({ done: 0, total: idxs.length });
-    let ok = 0, failed = 0;
+    let ok = 0, failed = 0, joined = 0, grouped = 0;
     const warnings = new Set<string>();
     for (let i = 0; i < idxs.length; i++) {
       const product = products[idxs[i]];
@@ -1067,12 +1129,16 @@ function ProductGrid({
           body: JSON.stringify({ product, sourceUrl: product.sourceUrl }),
         });
         const data = await res.json();
-        if (res.ok && data.ok) ok++; else failed++;
+        if (res.ok && data.ok) {
+          ok++;
+          if (data.mergedInto) joined++;
+          if (data.variantsLinked) grouped++;
+        } else failed++;
         if (typeof data.warning === "string") warnings.add(data.warning);
       } catch { failed++; }
       setProgress({ done: i + 1, total: idxs.length });
     }
-    setResult({ ok, failed, warnings: [...warnings] });
+    setResult({ ok, failed, joined, grouped, warnings: [...warnings] });
     setImporting(false);
   }
 
@@ -1088,7 +1154,10 @@ function ProductGrid({
           {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
           {result && (
             <span className="text-[11px] text-emerald-500">
-              Imported {result.ok}{result.failed ? ` · ${result.failed} failed` : ""}
+              Imported {result.ok}
+              {result.joined ? ` · ${result.joined} added as stores to existing products` : ""}
+              {result.grouped ? ` · ${result.grouped} grouped with other colours` : ""}
+              {result.failed ? ` · ${result.failed} failed` : ""}
               <a href="/goo-studio/products" className="underline hover:no-underline ml-2">View →</a>
             </span>
           )}
