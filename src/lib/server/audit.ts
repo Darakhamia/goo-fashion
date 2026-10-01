@@ -37,6 +37,8 @@ export type AdminAction =
   | "products.duplicates_merged"
   | "products.duplicates_dismissed"
   | "products.colour_group_split"
+  | "products.colourways_grouped"
+  | "products.colourways_dismissed"
   | "outfits.created"
   | "outfits.updated"
   | "outfits.deleted"

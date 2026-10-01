@@ -20,12 +20,8 @@ import {
 } from "@/lib/server/product-fields";
 import { toUsd } from "@/lib/server/fx";
 import { normalizeStyleKeywords } from "@/lib/style-keywords";
-import {
-  chooseGroup,
-  isColorSiblingByName,
-  sameModelFamily,
-  type VariantCandidate,
-} from "./variant-group";
+import { isColorSiblingByName, sameModelFamily, type VariantCandidate } from "./variant-group";
+import { joinColourGroup } from "@/lib/server/colour-group";
 import {
   gtinSpellings,
   isSameItem,
@@ -196,11 +192,12 @@ export async function loadCatalogueIndex(): Promise<CatalogueIndex | null> {
 // the CSV import a batch of feed rows — so grouping has to happen against the
 // rows already in the table. Two signals, judged in `variant-group.ts`: the
 // addresses the page's own colour row links to (the CSV import passes the feed
-// links of the piece's other colours the same way), and — only when the store
-// switches colours with script instead of links — brand and base name.
+// links of the piece's other colours the same way), and brand and name — the
+// only one that reaches the same piece collected from another store.
 
 interface VariantRow {
   id: string;
+  brand: string | null;
   name: string | null;
   colors: string[] | null;
   category: string | null;
@@ -211,6 +208,7 @@ interface VariantRow {
 function toCandidate(row: VariantRow): VariantCandidate {
   return {
     id: row.id,
+    brand: row.brand,
     name: row.name ?? "",
     colors: row.colors ?? [],
     category: row.category,
@@ -219,7 +217,7 @@ function toCandidate(row: VariantRow): VariantCandidate {
   };
 }
 
-const VARIANT_COLUMNS = "id, name, colors, category, variant_group_id, is_group_primary";
+const VARIANT_COLUMNS = "id, brand, name, colors, category, variant_group_id, is_group_primary";
 
 /**
  * Rows of one brand read for a name comparison. Generous: the comparison runs
@@ -232,6 +230,56 @@ const BRAND_ROWS = 500;
 /** PostgREST pattern metacharacters, so a product named "50% Wool" cannot match everything. */
 function escapeLike(value: string): string {
   return value.replace(/[%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * The reads that find a piece's cards by name, as `ilike` patterns on the
+ * brand and the name columns — one list for both questions asked of a page
+ * (another store's listing of it, and its other colours), so they see the same
+ * cards.
+ *
+ * By the brand's first word, not its whole spelling: "adidas" and "adidas
+ * Originals", "Carhartt" and "Carhartt WIP" are one maker, and an exact match
+ * never showed a card to the other spelling. Narrowed by the model's own word
+ * as well, because a brand with more cards than one read returns hid the very
+ * card the page belongs to. By the model's word alone, whatever the brand
+ * column says: a card saved before its brand was read has none, and a page
+ * whose brand was not read has none either. And by the reduced name's words in
+ * order ("Кросівки Air Max 90" finds "Nike Air Max 90").
+ */
+function nameLookups(brand: string, name: string, colors: string[]): { brand?: string; name?: string }[] {
+  const word = brandSearchWord(brand);
+  const model = modelWord(name, brand, colors);
+  const tokens = pieceName(name, brand, colors).full.split(" ").filter(Boolean);
+  const ordered = tokens.length >= 2 || tokens.some((t) => /\d/.test(t)) ? tokens.slice(0, 5).map(escapeLike).join("%") : "";
+  return [
+    ...(word && model ? [{ brand: `%${escapeLike(word)}%`, name: `%${escapeLike(model)}%` }] : []),
+    ...(word ? [{ brand: `%${escapeLike(word)}%` }] : []),
+    ...(model ? [{ name: `%${escapeLike(model)}%` }] : []),
+    ...(ordered ? [{ name: `%${ordered}%` }] : []),
+  ];
+}
+
+/**
+ * Every spelling of these addresses (`urlSpellings`), in slices short enough
+ * for one `.in()` filter each: a store's colour row links `/p/x` where the card
+ * was saved as `www…/p/x/`, and an exact match missed it.
+ */
+function spellingSlices(urls: string[]): string[][] {
+  const slices: string[][] = [];
+  let slice: string[] = [];
+  let length = 0;
+  for (const spelling of new Set(urls.flatMap((u) => urlSpellings(u)))) {
+    if (slice.length && (slice.length >= 40 || length + spelling.length > 4000)) {
+      slices.push(slice);
+      slice = [];
+      length = 0;
+    }
+    slice.push(spelling);
+    length += spelling.length;
+  }
+  if (slice.length) slices.push(slice);
+  return slices;
 }
 
 /**
@@ -256,39 +304,39 @@ async function linkColorVariants(input: {
 
   try {
     if (input.variantUrls.length) {
-      const { data } = await supabase!
-        .from("products")
-        .select(VARIANT_COLUMNS)
-        .in("source_url", input.variantUrls.slice(0, 20));
       // The page's own colour row, checked once: a link is a colourway only
       // if it can be one. A "you may also like" grid with swatches on its
       // cards read as the colour row, and other jackets joined this one.
       const ours = { name: input.name, colors: input.colors, category: input.category };
-      for (const row of (data ?? []) as VariantRow[]) {
-        if (row.id === input.productId) continue;
-        const candidate = toCandidate(row);
-        if (sameModelFamily(input.brand, ours, candidate)) siblings.set(row.id, candidate);
+      for (const slice of spellingSlices(input.variantUrls.slice(0, 20))) {
+        const { data, error } = await supabase!.from("products").select(VARIANT_COLUMNS).in("source_url", slice);
+        if (error) continue;
+        for (const row of (data ?? []) as unknown as VariantRow[]) {
+          if (row.id === input.productId) continue;
+          const candidate = toCandidate(row);
+          const brands = [input.brand, candidate.brand ?? ""].filter((b) => b.trim());
+          if (sameModelFamily(brands, ours, candidate)) siblings.set(row.id, candidate);
+        }
       }
     }
 
-    // Only when the page named no siblings: a store that links its colourways
-    // has already given the exact answer, and the name test is the guess.
-    if (!siblings.size && input.brand) {
-      // The brand compared without case, so "NIKE" from one store and "Nike"
-      // from another are one brand's rows.
-      const { data } = await supabase!
-        .from("products")
-        .select(VARIANT_COLUMNS)
-        .ilike("brand", escapeLike(input.brand))
-        .limit(BRAND_ROWS);
-      const ours = {
-        brand: input.brand,
-        name: input.name,
-        colors: input.colors,
-        category: input.category,
-      };
-      for (const row of (data ?? []) as VariantRow[]) {
-        if (row.id === input.productId) continue;
+    // By name, on every import: the colour row only ever names this store's
+    // colourways, and the same piece collected from another site — under its
+    // own spelling of the brand, at its own price — is found by name alone.
+    const ours = {
+      brand: input.brand,
+      name: input.name,
+      colors: input.colors,
+      category: input.category,
+    };
+    for (const lookup of nameLookups(input.brand, input.name, input.colors)) {
+      let query = supabase!.from("products").select(VARIANT_COLUMNS);
+      if (lookup.brand) query = query.ilike("brand", lookup.brand);
+      if (lookup.name) query = query.ilike("name", lookup.name);
+      const { data, error } = await query.limit(BRAND_ROWS);
+      if (error) continue;
+      for (const row of (data ?? []) as unknown as VariantRow[]) {
+        if (row.id === input.productId || siblings.has(row.id)) continue;
         const candidate = toCandidate(row);
         if (isColorSiblingByName(ours, candidate)) siblings.set(row.id, candidate);
       }
@@ -299,25 +347,8 @@ async function linkColorVariants(input: {
     // will find this row by its address and form the group then.
     if (!siblings.size) return 0;
 
-    const list = [...siblings.values()];
-    const { groupId, hasPrimary } = chooseGroup(list);
-    const group = groupId ?? crypto.randomUUID();
-
-    const orphans = list.filter((s) => !s.variantGroupId).map((s) => s.id);
-    if (orphans.length) {
-      await supabase!
-        .from("products")
-        .update({ variant_group_id: group })
-        .in("id", orphans.slice(0, 20));
-    }
-
-    const { error } = await supabase!
-      .from("products")
-      .update({ variant_group_id: group, is_group_primary: !hasPrimary })
-      .eq("id", input.productId);
-    if (error) return 0;
-
-    return list.length;
+    const joined = await joinColourGroup([input.productId, ...siblings.keys()], input.productId);
+    return "error" in joined ? 0 : siblings.size;
   } catch {
     return 0;
   }
@@ -450,24 +481,11 @@ async function findSameItemByName(incoming: {
   if (!incoming.sourceUrl) return { item: null, unread: [], miss: "no address to add as a store" };
   const codes = articleCodes({ name: "", mpn: incoming.mpn });
   try {
-    // Read by the brand's first word, not its whole spelling: "adidas" and
-    // "adidas Originals", "Carhartt" and "Carhartt WIP" are one maker, and an
-    // exact match never showed a card to the other spelling. And read twice:
-    // once narrowed by the model's own word, because a brand with more cards
-    // than one read returns hid the very card this page belongs to.
-    //
-    // And a third read by the model's word alone, whatever the brand column
-    // says: a card saved before its brand was read has none, and a page whose
-    // brand was not read has none either. `brandsFit` then asks the names.
-    //
-    // And by what needs no brand or long word at all: the card that already
-    // carries this page as a store link; the reduced name's words in order
-    // ("Кросівки Air Max 90" finds "Nike Air Max 90"); the article code, in
-    // the card's part number or its name.
-    const word = brandSearchWord(incoming.brand);
-    const model = modelWord(incoming.name, incoming.brand, incoming.colors);
-    const tokens = pieceName(incoming.name, incoming.brand, incoming.colors).full.split(" ").filter(Boolean);
-    const ordered = tokens.length >= 2 || tokens.some((t) => /\d/.test(t)) ? tokens.slice(0, 5).map(escapeLike).join("%") : "";
+    // The piece's cards by brand and name (`nameLookups`); `brandsFit` then
+    // asks the names. And by what needs no brand or long word at all: the
+    // card that already carries this page as a store link; the article code,
+    // in the card's part number or its name.
+    const lookups = nameLookups(incoming.brand, incoming.name, incoming.colors);
     const codePatterns = [...articleCodePatterns(incoming.name), ...articleCodePatterns(incoming.mpn ?? "")].slice(0, 2);
     const linkedAs = [...new Set([incoming.sourceUrl, `https://${listingKey(incoming.sourceUrl)}`])];
     for (const [pass, columns] of NAME_MATCH_COLUMNS.entries()) {
@@ -481,12 +499,12 @@ async function findSameItemByName(incoming: {
         ...(pass === 0 ? codePatterns.map((code) => products().ilike("mpn", code).limit(50)) : []),
       ];
       const reads = [
-        ...(word && model
-          ? [products().ilike("brand", `%${escapeLike(word)}%`).ilike("name", `%${escapeLike(model)}%`).limit(BRAND_ROWS)]
-          : []),
-        ...(word ? [products().ilike("brand", `%${escapeLike(word)}%`).limit(BRAND_ROWS)] : []),
-        ...(model ? [products().ilike("name", `%${escapeLike(model)}%`).limit(BRAND_ROWS)] : []),
-        ...(ordered ? [products().ilike("name", `%${ordered}%`).limit(BRAND_ROWS)] : []),
+        ...lookups.map((lookup) => {
+          let query = products();
+          if (lookup.brand) query = query.ilike("brand", lookup.brand);
+          if (lookup.name) query = query.ilike("name", lookup.name);
+          return query.limit(BRAND_ROWS);
+        }),
         ...codePatterns.map((code) => products().ilike("name", `%${code}%`).limit(50)),
       ];
       const seen = new Map<string, unknown>();

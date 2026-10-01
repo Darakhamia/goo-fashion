@@ -746,6 +746,26 @@ product** writes one product through `POST /api/admin/parser/import`, deduped by
 unsaved-columns warning if there is one, and writes a `parser.product_imported`
 entry to the admin action log.
 
+**What can be pasted.** The field takes whatever was copied, and
+`pastedUrl()` (`src/lib/url.ts`, the screen and `/parser/parse` both) reads the
+address out of it: the first http(s) link in share text ("Look at this on ZARA:
+https://…"), an address without a scheme (`www.zara.com/…` → `https://…`),
+trailing punctuation dropped, and ad-click tracking taken off — `utm_*`,
+`srsltid`, `gclid`, `fbclid`, `igshid` and the like, so the card's "where to
+buy" link does not carry someone else's campaign. A store's own parameters
+(`?color=`, `?v1=`) and an affiliate's (`ref`, `aff_id`) stay. The field shows
+the address actually used; text with no address in it is refused with a
+message. The product form's **Store URL** field tidies a pasted link the same
+way when it loses focus, and names an unnamed store from its domain rule.
+
+**What the import says.** The result line names the outcome — *Product
+created*, *Updated existing product*, or *Added as a store to an existing
+product* (the page was another store's listing of a card we had) — with a link
+to the product, and under it the colours it was grouped with, why it got a
+card of its own rather than joining one, and what the price became. A listing
+grid's bulk import counts the same: imported, added as stores, grouped with
+other colours, failed.
+
 ### Listing / category pages
 
 Paste a category or search URL and the parser pulls **every** product it can:
@@ -798,16 +818,29 @@ In order:
 8. **Write.**
    - A row with this `source_url` exists → it is updated (see the table).
    - None → is this the same item another store already sold us? By GTIN, or
-     brand + MPN; otherwise by brand + the same piece name + the same colour at a
-     price within ×3 (`same-item.ts`, `piece-name.ts`). If so, the page **joins**
-     that product: a new retailer entry, and only empty fields filled
-     (`merged`).
+     brand + MPN; otherwise by the same maker (any spelling of the brand) + the
+     same piece name + the same colour, **at any price** (`same-item.ts`,
+     `piece-name.ts`): one item sells at several prices — a sale, a resale
+     platform — and a price test split it into two cards. Only a match where
+     one side names no brand must also be priced within ×4. If so, the page
+     **joins** that product: a new retailer entry, the price range widened, and
+     only empty fields filled (`merged`).
    - Otherwise a new row is inserted.
 9. **After the write** (an insert or an update — not after a merge, and not on
    the refresh path): the photo backdrop colour is sampled (`bg_color`), and
    the row is grouped with its other colourways (`variant_group_id`) — by the
-   sibling URLs the page or feed named, else by brand + the same piece name in a
-   different colour (`variant-group.ts`).
+   sibling URLs the page or feed named (every spelling of each address), and,
+   on every import, by the same maker + the same piece name in a different
+   colour (`variant-group.ts`). The maker is matched under any spelling the
+   stores use ("adidas" / "adidas Originals", "Carhartt" / "Carhartt WIP",
+   Jordan / Nike, a card saved without a brand whose name carries it), the
+   cards are read the same way the same-item search reads them, and the price
+   never enters it — one colourway often costs more than another. Every colour
+   group the found cards already sit in is folded into one, keeping the lead
+   card of the group that has one (`planColourGroup`, written by
+   `lib/server/colour-group.ts`), so a piece collected from two stores ends up
+   as one card with all its colours. Cards imported before this can be grouped
+   from **Duplicates → One model's colours shown as separate cards**.
 
 #### Re-import: `replace` vs `refresh`
 
@@ -892,6 +925,9 @@ budget.
 
 ```
 src/lib/server/product-fields.ts            ← shared field normalisers (CSV + URL)
+src/lib/server/colour-group.ts              ← writes a colour group, folding the groups its cards were in
+src/lib/server/duplicates.ts                ← catalogue-wide finders: duplicates, mixed groups, ungrouped colours
+src/lib/url.ts                              ← pastedUrl: the address in pasted text, click tracking off
 src/lib/server/storage/product-images.ts    ← download + mirror photos to our bucket
 src/lib/server/parser/
 ├── types.ts                                ← config, PageEvidence, result types
@@ -915,7 +951,7 @@ src/lib/server/parser/
 ├── import-product.ts                       ← importParsedProduct: one product → catalogue row
 ├── brand-from-name.ts                      ← brand read off the product name
 ├── piece-name.ts                           ← name reduced to the piece, for grouping and merging
-├── variant-group.ts                        ← same piece, other colour → one variant group
+├── variant-group.ts                        ← same piece, other colour → one variant group (and its write plan)
 └── same-item.ts                            ← same item, other store → one product, two retailers
 src/app/api/admin/parser/
 ├── config/route.ts                         ← GET/POST fetch settings, key, recipes, AI

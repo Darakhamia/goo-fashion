@@ -20,10 +20,13 @@
  * product that sends a shopper to something else, and it reads as correct
  * while doing it. So the brand must be the same maker (or the page names none
  * and its name is a model on its own), the piece the same once reduced
- * (`piece-name.ts`) or the article code the same, the colour the one card of
- * that piece it fits, and the two prices within a factor of four — unless the
- * article code or the very name of a model says it is one thing
- * (`sameModelName`).
+ * (`piece-name.ts`) or the article code the same, and the colour the one card
+ * of that piece it fits. The price does not decide it: one item sells at
+ * several prices — a sale, a resale platform, a store whose currency was read
+ * wrong — and a price test split one item into two cards. Only where one side
+ * names no brand, so the name alone vouches, must the two prices be within a
+ * factor of four — unless the article code or the very name of a model says it
+ * is one thing (`sameModelName`).
  *
  * The merge itself only ever FILLS: a field the existing row has is left alone.
  * Two stores describe the same coat differently, and the row that arrived first
@@ -120,11 +123,12 @@ export interface NamedItem extends ExistingItem {
 }
 
 /**
- * Widest gap between two stores' prices for one item. A sale takes a price to
- * half and sometimes to a third; past that, two rows under one name are two
+ * Widest gap between two stores' prices for one item, asked only of a match no
+ * brand vouches for (one side names none). A sale takes a price to half and
+ * sometimes to a third; past that, two unbranded rows under one name are two
  * different things — a £90 cap and a £900 coat both called "Logo".
  */
-export const MAX_PRICE_RATIO = 4;
+const MAX_PRICE_RATIO = 4;
 
 /**
  * The same name, and one that names a model by itself: "Jordan 4 Retro Toro
@@ -179,8 +183,8 @@ const colourOf = (row: NamedItem) => (row.colors ?? []).filter(Boolean).join("/"
  * very page — as its own source or as a store link, however the address is
  * spelled — is this page's card, whatever its name has since become. Otherwise,
  * among rows of the same maker it takes the same piece (`samePiece`, or the
- * same article code), at a comparable price, and then decides by colour among
- * that piece's cards:
+ * same article code) at any price — a comparable one only where a side names
+ * no brand — and then decides by colour among that piece's cards:
  *
  *   - the same colour word wins outright;
  *   - the same colours in other words ("Core Black" beside "Black"), and then
@@ -264,6 +268,8 @@ export function pickSameItemByName(
   const pieces: NamedItem[] = [];
   /** Rows the article code alone vouches for. */
   const byCode = new Set<NamedItem>();
+  /** Rows whose brand is this page's maker. */
+  const branded = new Set<NamedItem>();
   for (const row of rows) {
     // One maker under both stores' spellings ("adidas" / "adidas Originals",
     // "Jordan" / "Nike"), or a card saved without a brand whose name spells
@@ -276,16 +282,19 @@ export function pickSameItemByName(
     const sameCode = fit && shareArticleCode(ourCodes, articleCodes(row));
     if (!sameCode && !samePiece(brands, incoming, row, { strict: !fit })) continue;
     if (sameCode) byCode.add(row);
+    if (fit) branded.add(row);
     pieces.push(row);
   }
   if (!pieces.length) {
     return missed(unbranded ? "no brand on the page, and no card whose name matches" : "no card of this model");
   }
 
-  // Prices within reach of each other — unless the code or the very name of a
-  // model says it is this card (`sameModelName`).
+  // One maker's same piece is this card at any price. Where a side names no
+  // brand, the prices must be within reach of each other — unless the code or
+  // the very name of a model says it is this card (`sameModelName`).
   const priced = pieces.filter(
     (row) =>
+      branded.has(row) ||
       pricesAgree(incoming.price, typeof row.priceMin === "number" ? row.priceMin : 0) ||
       byCode.has(row) ||
       sameModelName(incoming, row),

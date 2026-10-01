@@ -46,6 +46,8 @@ export async function POST(req: Request) {
       metadata: {
         sourceUrl: body?.sourceUrl ?? null,
         updated: result.updated,
+        ...(result.mergedInto && { mergedInto: result.mergedInto }),
+        variantsLinked: result.variantsLinked ?? 0,
         name: String(p.name ?? ""),
         imagesMirrored: result.imagesMirrored ?? 0,
       },
@@ -64,6 +66,13 @@ export async function POST(req: Request) {
     updated: result.updated,
     imagesMirrored: result.imagesMirrored ?? 0,
     imagesFailed: result.imagesFailed ?? 0,
+    // What became of the page, for the screen to say: a store added to a card
+    // we already had, the colours it was grouped with, why it got a card of
+    // its own, what the price became.
+    ...(result.mergedInto && { mergedInto: result.mergedInto, mergedBy: result.mergedBy }),
+    variantsLinked: result.variantsLinked ?? 0,
+    ...(result.linkNote && { linkNote: result.linkNote }),
+    ...(result.priceNote && { priceNote: result.priceNote }),
     // Saved, but without columns the database does not have yet.
     ...(result.droppedColumns?.length && { warning: droppedColumnsWarning(result.droppedColumns) }),
   });

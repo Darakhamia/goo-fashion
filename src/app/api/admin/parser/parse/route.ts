@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { parsePage } from "@/lib/server/parser/parse-page";
+import { pastedUrl } from "@/lib/url";
 import { loadCategoryTree } from "@/lib/server/category-tree";
 import {
   getFetchSettings,
@@ -30,8 +31,17 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const url = typeof body?.url === "string" ? body.url.trim() : "";
-  if (!url) return NextResponse.json({ error: "url is required" }, { status: 400 });
+  const given = typeof body?.url === "string" ? body.url.trim() : "";
+  if (!given) return NextResponse.json({ error: "url is required" }, { status: 400 });
+  // The address in what was pasted: share text around it, no scheme, an ad
+  // click's tracking — the same reading the screen gives it (`pastedUrl`).
+  const url = pastedUrl(given);
+  if (!url) {
+    return NextResponse.json(
+      { ok: false, error: "That is not a link to a page. Paste the product page's address, e.g. https://www.store.com/product/…", products: [], links: [], isListing: false },
+      { status: 400 },
+    );
+  }
 
   const html = typeof body?.html === "string" ? body.html : "";
   if (html.length > MAX_PASTED_HTML) {
