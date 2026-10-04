@@ -6,6 +6,7 @@ import { logAdminAction } from "@/lib/server/audit";
 import { droppedColumnsWarning, importParsedProduct } from "@/lib/server/parser/import-product";
 import { getAiSettings } from "@/lib/server/parser/configs";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
+import { checkPendingProducts } from "@/lib/server/catalogue-check/store";
 import { loadRetailerRules, resolveRetailer, type RetailerRule } from "@/lib/server/retailer-domains";
 import { normalizeGtin } from "@/lib/server/product-fields";
 import { inferStyleKeywords } from "@/lib/taxonomy/styles";
@@ -289,6 +290,8 @@ export async function PUT(req: Request) {
     // Cards still without a measured backdrop, a few at a time, after the
     // answer has gone: nothing is slowed and no button has to be pressed.
     after(() => measurePendingBackdrops());
+    // New cards have never been checked, so the sweep finds them by itself.
+    after(() => checkPendingProducts());
     // One entry per batch (up to MAX_IMPORT_GROUPS products), not per product.
     void logAdminAction({
       admin_id: admin.userId,

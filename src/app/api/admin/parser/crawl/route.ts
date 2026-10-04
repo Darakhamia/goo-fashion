@@ -21,6 +21,7 @@ import { discoverProductUrls } from "@/lib/server/parser/crawl";
 import { droppedColumnsWarning, importParsedProduct, loadCatalogueIndex } from "@/lib/server/parser/import-product";
 import { orderForLinksOnly } from "@/lib/server/parser/catalogue-match";
 import { measurePendingBackdrops } from "@/lib/server/bg-color";
+import { checkPendingProducts } from "@/lib/server/catalogue-check/store";
 import {
   getFetchSettings,
   getFetchApiKey,
@@ -181,6 +182,8 @@ export async function POST(req: Request) {
     // Cards still without a measured backdrop, a few at a time, after the
     // answer has gone: nothing is slowed and no button has to be pressed.
     after(() => measurePendingBackdrops());
+    // And the AI check reads the records it just wrote, under its monthly cap.
+    after(() => checkPendingProducts({ ids: results.map((r) => r.productId) }));
     try {
       const cc = await clerkClient();
       const adminUser = await cc.users.getUser(admin.userId);

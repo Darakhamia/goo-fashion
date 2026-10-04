@@ -890,6 +890,19 @@ Formerly `/goo-studio/brightdata` (a permanent redirect remains in
 Batches are sent one after another with progress and **Stop**; photos follow the
 same "Copy product photos" setting.
 
+### After the import: the AI check
+
+Every route above (`collect`, `crawl`, `parser/import`, `csv-import`) ends with
+`after(() => checkPendingProducts(...))`. Once the answer has gone, a cheap OpenAI
+model reads the imported record whole — next to the catalogue's brand spellings
+and category tree — and fixes what contradicts it: the store's name stored as the
+brand, a size or a file name stored as the colour, a price block stored as the
+material, a hoodie filed under Sneakers. The model never writes to the database:
+the server writes only what the record itself backs, journals every change and
+can undo it. Admin screen: **Goo Studio → AI check** (`/goo-studio/catalogue-check`);
+design and safeguards in `AI_ARCHITECTURE.md` §8.1. Needs migration
+`025_catalogue_check.sql`; until it runs, nothing happens.
+
 ---
 
 ## Storage & schema

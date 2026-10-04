@@ -36,7 +36,7 @@ export function foldBrand(value: string): string {
  * A brand as two stores both spell it: folded, "&" read as "and", and a
  * leading "The" dropped — "The North Face" and "North Face" are one maker.
  */
-function brandWords(value: string): string {
+export function brandWords(value: string): string {
   return foldBrand(value)
     .replace(/&/g, " and ")
     // "Levi's" is "Levis", "Off-White" is "Off White".
@@ -133,6 +133,16 @@ export function makerKey(value: string): string {
 export function makerNames(value: string): string[] {
   const maker = makerOf(brandWords(value));
   return maker === undefined ? [value] : [value, ...MAKERS[maker]];
+}
+
+/** True for a value a `brand` field can carry that names no brand: "Unknown", "Other", "Без бренда". */
+export function isNotABrand(value: string): boolean {
+  return NOT_A_BRAND.has(foldBrand(value));
+}
+
+/** Is this brand spelled, as whole words, inside `text`? */
+export function brandSpelledIn(text: string, brand: string): boolean {
+  return positionIn(text, brand) >= 0;
 }
 
 /** Letters and digits only, for comparing a brand to the labels of a host. */

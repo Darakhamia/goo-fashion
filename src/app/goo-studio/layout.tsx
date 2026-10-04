@@ -113,6 +113,16 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    href: "/goo-studio/catalogue-check",
+    label: "AI check",
+    category: "catalog",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2L9.3 6.7L14 8L9.3 9.3L8 14L6.7 9.3L2 8L6.7 6.7L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/goo-studio/categories",
     label: "Categories",
     category: "catalog",
