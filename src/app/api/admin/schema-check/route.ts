@@ -99,6 +99,24 @@ const OTHER_CHECKS: readonly Check[] = [
     migration: "022_retailer_default_gender.sql",
     breaks: "A store's \"unmarked pieces are for…\" setting cannot be saved, and imports ignore it.",
   },
+  {
+    table: "products",
+    column: "catalogue_fingerprint",
+    migration: "025_catalogue_check.sql",
+    breaks: "The AI check does not run at all: neither after imports nor from the AI check page.",
+  },
+  {
+    table: "catalogue_check_fixes",
+    column: "after",
+    migration: "025_catalogue_check.sql",
+    breaks: "The AI check has nowhere to record its fixes, so it does not run.",
+  },
+  {
+    table: "catalogue_check_runs",
+    column: "cost_usd",
+    migration: "025_catalogue_check.sql",
+    breaks: "The AI check's spend is not recorded, and its monthly cap cannot be enforced.",
+  },
 ];
 
 /**

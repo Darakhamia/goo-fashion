@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/server/admin-auth";
 import { logAdminAction } from "@/lib/server/audit";
 import { isMissingTableLoose } from "@/lib/server/db-errors";
 import { storeBackgroundColor, urlToSample } from "@/lib/server/bg-color";
+import { markReviewed } from "@/lib/server/catalogue-check/store";
 
 const noDb = () =>
   NextResponse.json(
@@ -58,6 +59,8 @@ export async function PUT(
       }
     });
   }
+  // A person's edit stands: the AI check does not re-read a record to argue with it.
+  after(() => markReviewed(id));
   await logAdminAction({
     admin_id: admin.userId,
     action: "products.updated",
