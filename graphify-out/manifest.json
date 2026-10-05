@@ -1340,9 +1340,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1791116406.8821719,
-    "seen": 1791204377.7780724,
-    "ast_hash": "4024aaab5740992b256bbd94e2335b47",
+    "mtime": 1791204849.2531307,
+    "seen": 1791204905.0059683,
+    "ast_hash": "67b1201212d34e1c6a12c3d8e2c0e616",
     "semantic_hash": ""
   },
   "PARSER.md": {
@@ -2048,9 +2048,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1791199674.7831855,
-    "seen": 1791204377.7780778,
-    "ast_hash": "878bba9c1ccafe79a5ae1ad26773e760",
+    "mtime": 1791204754.9897566,
+    "seen": 1791204905.0060575,
+    "ast_hash": "10856fcb1eacee8246480e80b59b9358",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2210,9 +2210,9 @@
     "semantic_hash": ""
   },
   "src/lib/server/catalogue-check/store.ts": {
-    "mtime": 1791199674.8076856,
-    "seen": 1791204377.7779891,
-    "ast_hash": "c62c04a4d7f7b7227aedbec1916ecf7d",
+    "mtime": 1791204739.2834866,
+    "seen": 1791204905.0032527,
+    "ast_hash": "4792cb22544fed3ad95e0f9a827fbefe",
     "semantic_hash": ""
   },
   "scripts/admin-screens/clerk-stub.tsx": {
@@ -2270,15 +2270,15 @@
     "semantic_hash": ""
   },
   "docs/ADMIN_DESIGN.md": {
-    "mtime": 1791203400.395407,
-    "seen": 1791204377.7780795,
-    "ast_hash": "eaa5d6c6541a6e8fc77947ef0a6bc1d0",
+    "mtime": 1791204849.252558,
+    "seen": 1791204905.0060594,
+    "ast_hash": "3268483109b423f67f1ed37e24e4c2d3",
     "semantic_hash": ""
   },
   "docs/ADMIN_ROADMAP.md": {
-    "mtime": 1791203523.7824972,
-    "seen": 1791204377.7781136,
-    "ast_hash": "f8841e4d774e0e78013c4d4dccba16e8",
+    "mtime": 1791204849.2515156,
+    "seen": 1791204905.006061,
+    "ast_hash": "6183c775887c11603f4c6a48c15d48c4",
     "semantic_hash": ""
   },
   "docs/ADMIN_UX_REVIEW_2026-10.md": {
