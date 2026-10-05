@@ -16,7 +16,7 @@ import { useT } from "@/app/goo-studio/_i18n";
  *   if (!(await confirm({ title: "Delete Valentino?", body: "Its 14 products go with it.",
  *     confirmLabel: "Delete brand", tone: "danger" }))) return;
  *
- * ConfirmProvider sits inside the admin root in goo-studio/layout.tsx, so the
+ * ConfirmProvider sits inside the admin root in goo-studio/_ui/AdminShell.tsx, so the
  * dialog takes the admin theme. One dialog at a time: asking again while one
  * is open answers the open one "no". Line breaks ("\n") in a string body are
  * kept.
@@ -37,7 +37,7 @@ const ConfirmContext = createContext<Confirm | null>(null);
 
 export function useConfirm(): Confirm {
   const confirm = useContext(ConfirmContext);
-  if (!confirm) throw new Error("useConfirm() needs ConfirmProvider (goo-studio/layout.tsx)");
+  if (!confirm) throw new Error("useConfirm() needs ConfirmProvider (goo-studio/_ui/AdminShell.tsx)");
   return confirm;
 }
 

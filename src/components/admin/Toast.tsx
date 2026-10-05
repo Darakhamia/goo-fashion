@@ -15,7 +15,7 @@ import { useT } from "@/app/goo-studio/_i18n";
  * Success goes after 5 s, errors after 8 s — they are the ones worth reading.
  * The timer pauses while the pointer or focus is on the toast. A new toast
  * replaces the one on screen, so a burst of saves shows the latest result.
- * ToastProvider sits inside the admin root in goo-studio/layout.tsx.
+ * ToastProvider sits inside the admin root in goo-studio/_ui/AdminShell.tsx.
  */
 
 type Tone = "ok" | "err" | "info";
@@ -29,7 +29,7 @@ const ToastContext = createContext<ToastApi | null>(null);
 
 export function useToast(): ToastApi {
   const api = useContext(ToastContext);
-  if (!api) throw new Error("useToast() needs ToastProvider (goo-studio/layout.tsx)");
+  if (!api) throw new Error("useToast() needs ToastProvider (goo-studio/_ui/AdminShell.tsx)");
   return api;
 }
 
