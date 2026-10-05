@@ -5,14 +5,14 @@ import type { ReactNode } from "react";
 
 /*
  * The two page layouts of goo-studio (GS4-5). A page never sets its own root
- * width; it picks one of these. The shell caps every page at 1600px.
+ * width; it picks one of these. Both take the whole window — no cap on wide
+ * screens (CEO, 2026-10-05).
  *
- * - "list" — tables and boards: the full width.
- * - "form" — settings and editors: a column of at most 960px, which fits a
- *   FormSection's 240px title beside its fields (the Settings mockup), with an
- *   optional section menu on the left (`nav`, 200px) and a side column on the
- *   right (`aside`, 320px: a preview, a summary). Both go under the column on
- *   narrow screens.
+ * - "list" — tables and boards.
+ * - "form" — settings and editors: the column of FormSections (a 240px title
+ *   beside its fields, the Settings mockup), with an optional section menu on
+ *   the left (`nav`, 200px) and a side column on the right (`aside`, 320px: a
+ *   preview, a summary). Both go under the column on narrow screens.
  */
 
 export function AdminPage({
@@ -29,16 +29,16 @@ export function AdminPage({
   if (layout === "list") return <div className="min-w-0">{children}</div>;
   const cols = nav
     ? aside
-      ? "lg:grid-cols-[200px_minmax(0,960px)] 2xl:grid-cols-[200px_minmax(0,960px)_320px]"
-      : "lg:grid-cols-[200px_minmax(0,960px)]"
+      ? "lg:grid-cols-[200px_minmax(0,1fr)] 2xl:grid-cols-[200px_minmax(0,1fr)_320px]"
+      : "lg:grid-cols-[200px_minmax(0,1fr)]"
     : aside
-      ? "xl:grid-cols-[minmax(0,960px)_320px]"
+      ? "xl:grid-cols-[minmax(0,1fr)_320px]"
       : "";
   return (
     <div className={`grid gap-6 lg:gap-8 items-start ${cols}`}>
       {/* The section menu from lg; on a phone the sections are one scroll. */}
       {nav && <div className="hidden lg:block min-w-0 lg:sticky lg:top-4">{nav}</div>}
-      <div className="min-w-0 max-w-[960px]">{children}</div>
+      <div className="min-w-0">{children}</div>
       {aside && <div className={`min-w-0 ${nav ? "lg:col-start-2 2xl:col-start-auto" : ""}`}>{aside}</div>}
     </div>
   );

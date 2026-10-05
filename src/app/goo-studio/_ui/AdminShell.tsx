@@ -871,10 +871,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <main className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-8">
           <ConfirmProvider>
             <ToastProvider>
-              {/* Every page stops at 1600px; a page picks its own layout inside
-                  with AdminPage (GS4-5), never a root max-w-*. */}
+              {/* Every page takes the whole window (CEO, 2026-10-05): no cap
+                  here, and a page picks its layout with AdminPage (GS4-5),
+                  never a root max-w-*. */}
               <PinnedActionSlot.Provider value={pinnedSlot}>
-                <div className="max-w-[1600px]">{children}</div>
+                <div className="min-w-0">{children}</div>
               </PinnedActionSlot.Provider>
               {/* After the content and sticky to the bottom: the pinned button
                   covers rows only while there are more below it to scroll to. */}
