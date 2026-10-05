@@ -21,8 +21,9 @@ type NavItem = {
 const NAV_CATEGORIES = [
   { key: "overview", label: "Overview" },
   { key: "catalog", label: "Catalog" },
+  { key: "quality", label: "Quality" },
+  { key: "imports", label: "Import" },
   { key: "content", label: "Content" },
-  { key: "imports", label: "Imports" },
   { key: "users", label: "Users" },
   { key: "data", label: "Data" },
   { key: "system", label: "System" },
@@ -92,7 +93,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio/audit",
     label: "Audit",
-    category: "catalog",
+    category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.2" />
@@ -104,7 +105,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio/duplicates",
     label: "Duplicates",
-    category: "catalog",
+    category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="4.5" width="7.5" height="9.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
@@ -115,7 +116,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio/catalogue-check",
     label: "AI check",
-    category: "catalog",
+    category: "quality",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M8 2L9.3 6.7L14 8L9.3 9.3L8 14L6.7 9.3L2 8L6.7 6.7L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -240,7 +241,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio/prompts",
     label: "Prompts",
-    category: "system",
+    category: "content",
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 4H14M2 7H10M2 10H12M2 13H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -250,7 +251,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/goo-studio/activity",
     label: "Activity",
-    category: "data",
+    category: "system",
     superAdminOnly: true,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
