@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { Fragment, useState, useEffect, useMemo, useRef } from "react";
 import type { EmailTemplate } from "@/app/api/admin/email/templates/route";
 import { buildHtml, footerKindFor, parseEmailList, textToHtml } from "@/lib/email-render";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn, BTN_ICON } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, FIELD_LABEL, INPUT } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
+import type { Key, Vars } from "@/app/goo-studio/_i18n";
 import { AdminPage } from "@/components/admin/AdminPage";
+import { EmptyState } from "@/components/admin/DataTable";
+import { FilterChips } from "@/components/admin/FilterBar";
+import { FormPanel, FormSection } from "@/components/admin/FormSection";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { Modal } from "@/components/admin/Modal";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 type Audience = "all" | "free" | "basic" | "pro" | "premium" | "custom";
 
@@ -26,41 +33,56 @@ interface SendResult {
   testOnly?: boolean;
 }
 
-// Only "custom" shows its description — the other cards show a recipient count.
-const AUDIENCE_OPTIONS: { value: Audience; label: string; desc?: string }[] = [
-  { value: "all",     label: "All users" },
-  { value: "free",    label: "Free plan" },
-  { value: "basic",   label: "Basic plan" },
-  { value: "pro",     label: "Pro plan" },
-  { value: "premium", label: "Premium plan" },
-  { value: "custom",  label: "Custom emails", desc: "Paste email addresses below" },
+/**
+ * A message to show: the server's own words as they came, or a dictionary key.
+ * The loads run once, so what they set is kept as a key and still follows the
+ * admin language after a switch.
+ */
+type Msg = string | { key: Key; vars?: Vars };
+
+// The audience chips; every one but "custom" shows its recipient count.
+const AUDIENCE_OPTIONS: { value: Audience; label: Key }[] = [
+  { value: "all",     label: "email.audience.all" },
+  { value: "free",    label: "plan.free" },
+  { value: "basic",   label: "plan.basic" },
+  { value: "pro",     label: "plan.pro" },
+  { value: "premium", label: "plan.premium" },
+  { value: "custom",  label: "email.audience.custom" },
 ];
 
-const FORMAT_HELP: { input: string; output: string }[] = [
-  { input: "# Heading",     output: "Email title (H1)" },
-  { input: "## Subheading", output: "Section heading (H2)" },
-  { input: "Plain text",    output: "Paragraph" },
-  { input: "- Item",        output: "Bulleted list" },
-  { input: "**bold**",      output: "Bold text" },
-  { input: "*italic*",      output: "Italic text" },
-  { input: "`code`",        output: "Inline code" },
-  { input: "(empty line)",  output: "Space between paragraphs" },
+const FORMAT_HELP: { input: Key; output: Key }[] = [
+  { input: "email.format.h1.in",     output: "email.format.h1.out" },
+  { input: "email.format.h2.in",     output: "email.format.h2.out" },
+  { input: "email.format.text.in",   output: "email.format.text.out" },
+  { input: "email.format.list.in",   output: "email.format.list.out" },
+  { input: "email.format.bold.in",   output: "email.format.bold.out" },
+  { input: "email.format.italic.in", output: "email.format.italic.out" },
+  { input: "email.format.code.in",   output: "email.format.code.out" },
+  { input: "email.format.blank.in",  output: "email.format.blank.out" },
 ];
 
-const inputCls = "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]";
-const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
-// Titles of the compose blocks (Audience, Subject, Body).
-const sectionCls = "block text-[13px] font-medium text-[var(--foreground)] mb-2";
+const fieldCls = `${INPUT} w-full`;
 
-// Admin status recipe (DESIGN_SYSTEM.md §9)
-const statusOk   = "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]";
-const statusWarn = "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]";
-const statusErr  = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]";
+// Banners follow the admin's banner recipe (DESIGN_SYSTEM.md §9).
+const bannerErr = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]";
+const bannerWarn = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[13px] text-[var(--warn)]";
+const bannerOk = "rounded-xl border border-[var(--ok-line)] bg-[var(--ok-bg)] px-4 py-3 text-[13px] text-[var(--ok)]";
+
+const SPINNER = <span aria-hidden="true" className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />;
+
+const CLOSE_ICON = (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
 
 export default function AdminEmailPage() {
+  const t = useT();
+  const say = (m: Msg) => (typeof m === "string" ? m : t(m.key, m.vars));
   const confirm = useConfirm();
+  const formatHelp = useHelp("email-format");
   const [status, setStatus] = useState<StatusData | null>(null);
-  const [statusError, setStatusError] = useState("");
+  const [statusError, setStatusError] = useState<Msg | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   const [audience, setAudience] = useState<Audience>("all");
@@ -68,13 +90,11 @@ export default function AdminEmailPage() {
   const [body, setBody] = useState("");
   const [customEmails, setCustomEmails] = useState("");
   const [showPreview, setShowPreview] = useState(false);
-  const [showFormatHelp, setShowFormatHelp] = useState(false);
 
   const [sending, setSending] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
   const [sendError, setSendError] = useState("");
-  const [confirmSend, setConfirmSend] = useState(false);
 
   // AI writing
   const [showAiModal, setShowAiModal] = useState(false);
@@ -85,7 +105,7 @@ export default function AdminEmailPage() {
   // Templates
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [templatesError, setTemplatesError] = useState("");
+  const [templatesError, setTemplatesError] = useState<Msg | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -100,9 +120,9 @@ export default function AdminEmailPage() {
         const res = await fetch("/api/admin/email");
         const data = await res.json().catch(() => null);
         if (res.ok && data) setStatus(data as StatusData);
-        else setStatusError(data?.error ?? `Request failed (HTTP ${res.status}).`);
+        else setStatusError(data?.error ?? { key: "email.requestFailed", vars: { status: res.status } });
       } catch {
-        setStatusError("Network error.");
+        setStatusError({ key: "common.networkError" });
       } finally {
         setLoadingStatus(false);
       }
@@ -115,9 +135,9 @@ export default function AdminEmailPage() {
         const res = await fetch("/api/admin/email/templates");
         const data = await res.json().catch(() => null);
         if (res.ok && Array.isArray(data)) setTemplates(data);
-        else setTemplatesError(data?.error ?? `Request failed (HTTP ${res.status}).`);
+        else setTemplatesError(data?.error ?? { key: "email.requestFailed", vars: { status: res.status } });
       } catch {
-        setTemplatesError("Network error.");
+        setTemplatesError({ key: "common.networkError" });
       } finally {
         setLoadingTemplates(false);
       }
@@ -134,9 +154,9 @@ export default function AdminEmailPage() {
   // Rendered in the browser with the same helpers the send route uses.
   const previewHtml = useMemo(
     () => (showPreview
-      ? buildHtml(subject.trim() || "(no subject)", textToHtml(body.trim()), footerKindFor(audience))
+      ? buildHtml(subject.trim() || t("email.preview.noSubject"), textToHtml(body.trim()), footerKindFor(audience))
       : ""),
-    [showPreview, subject, body, audience]
+    [showPreview, subject, body, audience, t]
   );
 
   const sendEmail = async (testOnly: boolean) => {
@@ -163,19 +183,25 @@ export default function AdminEmailPage() {
         // possibly after some batches had already gone out.
         setSendError(
           data?.error ??
-            `Request failed (HTTP ${res.status}).${testOnly ? "" : " Some emails may already have gone out — check the Resend dashboard before sending again."}`
+            [t("email.requestFailed", { status: res.status }), ...(testOnly ? [] : [t("email.send.maybeSent")])].join(" ")
         );
       }
     } catch {
-      setSendError(
-        testOnly
-          ? "Network error — the test email may not have been sent."
-          : "Network error — the request was interrupted. Some emails may already have gone out — check the Resend dashboard before sending again."
-      );
+      setSendError(testOnly ? t("email.send.networkTest") : t("email.send.networkAll"));
     } finally {
       if (testOnly) setTestSending(false); else setSending(false);
-      setConfirmSend(false);
     }
+  };
+
+  // A broadcast cannot be called back, so it is asked for once more.
+  const handleSend = async () => {
+    if (!(await confirm({
+      title: t("email.confirm.title", { count: recipientCount }),
+      body: t("email.confirm.body", { subject: subject.trim() }),
+      confirmLabel: t("email.confirm.action"),
+      tone: "danger",
+    }))) return;
+    await sendEmail(false);
   };
 
   const handleAiWrite = async () => {
@@ -188,27 +214,27 @@ export default function AdminEmailPage() {
         body: JSON.stringify({ subject: subject.trim(), brief: aiBrief.trim() }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data) { setAiWriteError(data?.error ?? `Request failed (HTTP ${res.status}).`); return; }
+      if (!res.ok || !data) { setAiWriteError(data?.error ?? t("email.requestFailed", { status: res.status })); return; }
       setBody(data.body ?? "");
       setShowAiModal(false);
       setAiBrief("");
     } catch {
-      setAiWriteError("Network error.");
+      setAiWriteError(t("common.networkError"));
     } finally {
       setAiWriting(false);
     }
   };
 
-  const handleLoadTemplate = async (t: EmailTemplate) => {
+  const handleLoadTemplate = async (tpl: EmailTemplate) => {
     const hasDraft = subject.trim() || body.trim();
-    const isSame = subject === t.subject && body === t.body;
+    const isSame = subject === tpl.subject && body === tpl.body;
     if (hasDraft && !isSame && !(await confirm({
-      title: `Replace the current subject and body with "${t.name}"?`,
-      confirmLabel: "Replace draft",
+      title: t("email.templates.replaceTitle", { name: tpl.name }),
+      confirmLabel: t("email.templates.replaceAction"),
       tone: "danger",
     }))) return;
-    setSubject(t.subject);
-    setBody(t.body);
+    setSubject(tpl.subject);
+    setBody(tpl.body);
     setShowPreview(false);
     setResult(null);
     setSendError("");
@@ -232,10 +258,10 @@ export default function AdminEmailPage() {
         setShowSaveModal(false);
         setTemplateName("");
       } else {
-        setSaveTemplateError(data?.error ?? `Request failed (HTTP ${res.status}).`);
+        setSaveTemplateError(data?.error ?? t("email.requestFailed", { status: res.status }));
       }
     } catch {
-      setSaveTemplateError("Network error.");
+      setSaveTemplateError(t("common.networkError"));
     } finally {
       savingTemplateRef.current = false;
       setSavingTemplate(false);
@@ -244,22 +270,22 @@ export default function AdminEmailPage() {
 
   const handleDeleteTemplate = async (id: string) => {
     if (!(await confirm({
-      title: "Delete this template?",
-      confirmLabel: "Delete template",
+      title: t("email.templates.deleteTitle", { name: templates.find((x) => x.id === id)?.name ?? "" }),
+      confirmLabel: t("email.templates.delete"),
       tone: "danger",
     }))) return;
     setDeletingId(id);
-    setTemplatesError("");
+    setTemplatesError(null);
     try {
       const res = await fetch(`/api/admin/email/templates?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (res.ok) {
-        setTemplates((prev) => prev.filter((t) => t.id !== id));
+        setTemplates((prev) => prev.filter((x) => x.id !== id));
       } else {
         const data = await res.json().catch(() => null);
-        setTemplatesError(`Delete failed: ${data?.error ?? `HTTP ${res.status}`}`);
+        setTemplatesError({ key: "email.templates.deleteFailed", vars: { error: data?.error ?? `HTTP ${res.status}` } });
       }
     } catch {
-      setTemplatesError("Delete failed: network error.");
+      setTemplatesError({ key: "email.templates.deleteNetwork" });
     } finally {
       setDeletingId(null);
     }
@@ -271,399 +297,354 @@ export default function AdminEmailPage() {
 
   const failedBatches = result?.errors?.length ?? 0;
 
-  return (
-    <AdminPage layout="form">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Email</h1>
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          Broadcast to your users via Resend — each recipient gets an individual copy
-        </p>
+  // ── Right column: templates ──
+  const templatesPanel = (
+    <section
+      aria-labelledby="email-templates-title"
+      className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]"
+    >
+      <div className="flex items-center gap-2 pl-4 pr-2 py-2.5 border-b border-[var(--border)]">
+        <h2 id="email-templates-title" className="flex-1 text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
+          {t("email.templates.title")}
+        </h2>
+        <button
+          type="button"
+          onClick={() => { setTemplateName(""); setSaveTemplateError(""); setShowSaveModal(true); }}
+          disabled={!subject.trim() || !body.trim()}
+          title={t("email.templates.saveCurrentHint")}
+          className={btn("ghost")}
+        >
+          {t("email.templates.saveCurrent")}
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
+      {templatesError && (
+        <p role="alert" className="px-4 py-3 border-b border-[var(--border)] text-[12px] leading-[18px] text-[var(--err)] break-words">
+          {say(templatesError)}
+        </p>
+      )}
 
-        {/* ── Left: compose ── */}
-        <div className="space-y-8">
+      {loadingTemplates ? (
+        <p className="px-4 py-6 text-center text-[13px] text-[var(--foreground-subtle)]">{t("common.loading")}</p>
+      ) : templates.length === 0 ? (
+        !templatesError && (
+          <EmptyState
+            text={t("email.templates.empty")}
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6.5h16v11H4z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M4 7l8 6 8-6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+              </svg>
+            }
+          />
+        )
+      ) : (
+        <ul>
+          {templates.map((tpl, i) => (
+            <li
+              key={tpl.id}
+              className={`group flex items-start justify-between gap-2 px-4 py-3 hover:bg-[var(--fg-overlay-05)] transition-colors ${i > 0 ? "border-t border-[var(--border)]" : ""}`}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] leading-5 font-medium text-[var(--foreground)] truncate" title={tpl.name}>{tpl.name}</p>
+                <p className="text-[12px] leading-[18px] text-[var(--foreground-muted)] truncate" title={tpl.subject}>{tpl.subject}</p>
+              </div>
+              {/* Revealed on hover where there is a pointer; always shown on
+                  touch screens, which have no hover, and while focused. */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
+                <button
+                  onClick={() => handleLoadTemplate(tpl)}
+                  title={t("email.templates.load")}
+                  aria-label={t("email.templates.loadNamed", { name: tpl.name })}
+                  className={BTN_ICON}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleDeleteTemplate(tpl.id)}
+                  disabled={deletingId === tpl.id}
+                  title={t("email.templates.delete")}
+                  aria-label={t("email.templates.deleteNamed", { name: tpl.name })}
+                  className={BTN_ICON}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 
-          {/* Status banner */}
+  return (
+    <div>
+      <PageHeader
+        title={t("nav.email")}
+        subtitle={
+          loadingStatus
+            ? t("common.loading")
+            : status?.configured
+              ? t("email.subtitle.from", { from: status.fromAddress })
+              : t("email.subtitle")
+        }
+      />
+
+      <AdminPage layout="form" aside={templatesPanel}>
+        <div className="flex flex-col gap-4">
+          {/* Status: only what stops a send is shown; a working setup is the header's line. */}
           {!loadingStatus && statusError && (
-            <div className={`rounded-xl px-5 py-4 text-xs ${statusErr}`}>
-              <span className="font-medium">Couldn&apos;t load email settings.</span> {statusError}
+            <div role="alert" className={bannerErr}>
+              <span className="font-medium">{t("email.loadFailed")}</span> {say(statusError)}
             </div>
           )}
-          {!loadingStatus && status && (
-            <div className={`rounded-xl flex items-start gap-4 px-5 py-4 text-xs ${
-              status.configured
-                ? "border border-[var(--border)] bg-[var(--surface)]"
-                : statusWarn
-            }`}>
-              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${status.configured ? "bg-[var(--ok)]" : "bg-[var(--warn)]"}`} />
-              <div className="flex-1 min-w-0">
-                {status.configured ? (
-                  <p className="text-[var(--foreground-muted)]">
-                    Sending from <span className="text-[var(--foreground)] font-medium">{status.fromAddress}</span> via Resend
-                    <span className="ml-2 text-[var(--foreground-subtle)]">· each recipient sent individually</span>
-                  </p>
-                ) : (
-                  <p>
-                    <span className="font-medium">Resend not configured.</span>{" "}
-                    Add <code className="bg-[var(--background)] px-1">RESEND_API_KEY</code> to your environment variables.
-                  </p>
-                )}
-              </div>
+          {!loadingStatus && status && !status.configured && (
+            <div className={bannerWarn}>
+              <span className="font-medium">{t("email.notConfigured")}</span> {t("email.notConfiguredHint")}{" "}
+              <code className="font-mono">{"RESEND_API_KEY"}</code>
             </div>
           )}
 
-          {/* Audience selector */}
-          <div>
-            <label className={sectionCls}>Audience</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AUDIENCE_OPTIONS.map((opt) => {
-                const count = opt.value === "custom" ? null : status?.counts?.[opt.value];
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => { setAudience(opt.value); setResult(null); setSendError(""); }}
-                    className={`text-left px-4 py-3 rounded-xl border transition-colors ${
-                      audience === opt.value
-                        ? "border-[var(--foreground)] bg-[var(--background)]"
-                        : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--surface)]"
-                    }`}
-                  >
-                    <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">{opt.label}</p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)]">
-                      {opt.desc ?? (count != null
-                        ? `${count} recipient${count !== 1 ? "s" : ""}`
-                        : loadingStatus ? "…" : "Count unavailable")}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {status?.countsError && (
-              <p className={`mt-3 rounded-lg px-3 py-2 text-xs ${statusErr}`}>
-                Couldn&apos;t load the audience from Clerk: {status.countsError}. Reload the page to retry — Custom emails still work.
-              </p>
-            )}
-
-            {audience === "custom" && (
-              <div className="mt-3">
-                <textarea
-                  value={customEmails}
-                  onChange={(e) => setCustomEmails(e.target.value)}
-                  placeholder="Paste email addresses, comma or newline separated"
-                  rows={4}
-                  className={`${inputCls} resize-none font-mono`}
-                />
-                {(customParsed.emails.length > 0 || customParsed.skipped > 0) && (
-                  <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
-                    {customParsed.emails.length} valid address{customParsed.emails.length !== 1 ? "es" : ""}
-                    {customParsed.skipped > 0 && ` · ${customParsed.skipped} skipped (invalid or duplicate)`}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Compose */}
-          <div className="space-y-4">
-            <div>
-              <label className={sectionCls}>Subject</label>
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. New features in GOO this month"
-                className={inputCls}
+          <FormPanel>
+            {/* Audience */}
+            <FormSection id="audience" title={t("email.audience")} description={t("email.audience.hint")}>
+              <FilterChips
+                label={t("email.audience")}
+                value={audience}
+                options={AUDIENCE_OPTIONS.map((opt) => ({
+                  value: opt.value,
+                  label: t(opt.label),
+                  count: opt.value === "custom" ? undefined : status?.counts?.[opt.value],
+                }))}
+                onChange={(v) => { setAudience(v as Audience); setResult(null); setSendError(""); }}
               />
-            </div>
 
-            <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <label className="text-[13px] font-medium text-[var(--foreground)]">
-                  Body
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* The "?" guide says the same on phones, where this line does not fit. */}
-                  <span className="hidden sm:inline text-[12px] text-[var(--foreground-subtle)]">
-                    Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic*
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowFormatHelp((v) => !v)}
-                    aria-expanded={showFormatHelp}
-                    aria-label="Formatting help"
-                    title="Formatting help"
-                    className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[11px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
-                  >
-                    ?
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
-                    className={btn("secondary")}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1" />
-                      <path d="M3.5 5C3.5 4.17 4.17 3.5 5 3.5C5.83 3.5 6.5 4.17 6.5 5C6.5 5.83 5.83 6.5 5 6.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                      <circle cx="5" cy="5" r="0.8" fill="currentColor" />
-                    </svg>
-                    AI Write
-                  </button>
-                </div>
-              </div>
-
-              {/* Format guide — behind the "?" toggle */}
-              {showFormatHelp && (
-                <div className="mb-2 rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
-                  <div className="px-3 py-2 flex items-center justify-between">
-                    <p className="text-[13px] font-medium text-[var(--foreground)]">Formatting</p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)]">You type → the email shows</p>
-                  </div>
-                  {FORMAT_HELP.map(({ input, output }) => (
-                    <div key={input} className="grid grid-cols-[1fr_1fr] px-3 py-1.5 gap-4">
-                      <code className="text-[11px] text-[var(--foreground-muted)] font-mono">{input}</code>
-                      <span className="text-[11px] text-[var(--foreground-subtle)]">{output}</span>
-                    </div>
-                  ))}
-                </div>
+              {status?.countsError && (
+                <p role="alert" className={bannerErr}>
+                  {t("email.countsFailed", { error: status.countsError })}
+                </p>
               )}
 
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={"# Hello from GOO\n\nWrite your message here. Supports basic markdown.\n\n## What's new\n\n- Feature one\n- Feature two"}
-                rows={12}
-                className={`${inputCls} resize-y font-mono leading-relaxed`}
-              />
-            </div>
-          </div>
-
-          {/* Preview toggle */}
-          <div>
-            <button
-              onClick={() => setShowPreview((v) => !v)}
-              disabled={!showPreview && (!subject.trim() || !body.trim())}
-              className={btn("secondary")}
-            >
-              {showPreview ? "Hide preview" : "Show email preview"}
-            </button>
-
-            {showPreview && previewHtml && (
-              <div className="mt-4 rounded-xl border border-[var(--border)] overflow-hidden">
-                <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--background)] flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
-                  <span className="ml-2 text-[12px] text-[var(--foreground-subtle)]">Email preview</span>
+              {audience === "custom" && (
+                <div>
+                  <textarea
+                    value={customEmails}
+                    onChange={(e) => setCustomEmails(e.target.value)}
+                    aria-label={t("email.custom.label")}
+                    placeholder={t("email.custom.placeholder")}
+                    rows={4}
+                    className={`${fieldCls} resize-none font-mono`}
+                  />
+                  {(customParsed.emails.length > 0 || customParsed.skipped > 0) && (
+                    <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
+                      {[
+                        t("email.custom.valid", { count: customParsed.emails.length }),
+                        ...(customParsed.skipped > 0 ? [t("email.custom.skipped", { count: customParsed.skipped })] : []),
+                      ].join(" · ")}
+                    </p>
+                  )}
                 </div>
-                <iframe
-                  srcDoc={previewHtml}
-                  title="Email preview"
-                  className="w-full"
-                  style={{ height: 600, border: "none" }}
+              )}
+            </FormSection>
+
+            {/* Message */}
+            <FormSection
+              id="message"
+              title={t("email.message")}
+              description={t("email.message.hint")}
+              extra={<HelpButton help={formatHelp} label={t("email.format.help")} />}
+            >
+              {/* Format guide — behind the "?" */}
+              <HelpPanel help={formatHelp}>
+                <p className="flex flex-wrap justify-between gap-x-4">
+                  <span className="font-medium text-[var(--foreground)]">{t("email.format.title")}</span>
+                  <span>{t("email.format.caption")}</span>
+                </p>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {FORMAT_HELP.map(({ input, output }) => (
+                    <Fragment key={input}>
+                      <dt>
+                        <code className="font-mono text-[12px] text-[var(--foreground)]">{t(input)}</code>
+                      </dt>
+                      <dd className="text-[12px]">{t(output)}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+              </HelpPanel>
+
+              <div>
+                <label htmlFor="email-subject" className={FIELD_LABEL}>{t("email.subject")}</label>
+                <input
+                  id="email-subject"
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder={t("email.subject.placeholder")}
+                  className={fieldCls}
                 />
               </div>
-            )}
-          </div>
 
-          {/* Send controls */}
-          <div className="flex flex-wrap items-center gap-4 pt-2">
-            <button
-              onClick={() => sendEmail(true)}
-              disabled={!canSend || testSending || sending}
-              className={btn("secondary")}
-            >
-              {testSending ? (
-                <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending test…</>
-              ) : "Send test to me"}
-            </button>
+              <div>
+                <label htmlFor="email-body" className={FIELD_LABEL}>{t("email.body")}</label>
+                <textarea
+                  id="email-body"
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder={t("email.body.placeholder")}
+                  rows={12}
+                  className={`${fieldCls} resize-y font-mono leading-relaxed`}
+                />
+              </div>
 
-            {!confirmSend ? (
-              <button
-                onClick={() => setConfirmSend(true)}
-                disabled={!canSend || testSending || sending || recipientCount === 0}
-                className={btn("primary")}
-              >
-                Send to {recipientCount > 0 ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""}` : "audience"}
-              </button>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs text-[var(--foreground-muted)]">
-                  Send to <strong className="text-[var(--foreground)]">{recipientCount}</strong> {recipientCount === 1 ? "person" : "people"}?
-                </span>
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={() => sendEmail(false)}
-                  disabled={sending}
+                  type="button"
+                  onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
+                  className={btn("secondary")}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2" />
+                  </svg>
+                  {t("email.aiWrite")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview((v) => !v)}
+                  disabled={!showPreview && (!subject.trim() || !body.trim())}
+                  aria-expanded={showPreview}
+                  className={btn("secondary")}
+                >
+                  {showPreview ? t("email.preview.hide") : t("email.preview.show")}
+                </button>
+              </div>
+
+              {showPreview && previewHtml && (
+                <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+                  <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--background)] flex items-center gap-2">
+                    <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
+                    <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
+                    <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
+                    <span className="ml-2 text-[12px] text-[var(--foreground-subtle)]">{t("email.preview.title")}</span>
+                  </div>
+                  <iframe
+                    srcDoc={previewHtml}
+                    title={t("email.preview.title")}
+                    className="w-full"
+                    style={{ height: 600, border: "none" }}
+                  />
+                </div>
+              )}
+            </FormSection>
+
+            {/* Send */}
+            <div className="flex flex-col gap-3 p-4 md:px-6">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="flex-[1_1_260px] text-[12px] leading-[18px] text-[var(--foreground-muted)]">
+                  {t("email.send.note")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => sendEmail(true)}
+                  disabled={!canSend || testSending || sending}
+                  className={btn("secondary")}
+                >
+                  {testSending ? <>{SPINNER}{t("email.send.testing")}</> : t("email.send.test")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSend()}
+                  disabled={!canSend || testSending || sending || recipientCount === 0}
                   className={btn("primary")}
                 >
-                  {sending ? (
-                    <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending…</>
-                  ) : "Confirm send"}
-                </button>
-                <button
-                  onClick={() => setConfirmSend(false)}
-                  disabled={sending}
-                  className={btn("ghost")}
-                >
-                  Cancel
+                  {sending
+                    ? <>{SPINNER}{t("email.send.sending")}</>
+                    : recipientCount > 0
+                      ? t("email.send.to", { count: recipientCount })
+                      : t("email.send.toAudience")}
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* Result */}
-          {sendError && (
-            <div className={`rounded-xl px-5 py-4 text-sm ${statusErr}`}>
-              <p className="font-medium">Send failed.</p>
-              <p className="text-xs mt-1">{sendError}</p>
-            </div>
-          )}
-          {result && (
-            <div className={`rounded-xl px-5 py-4 text-sm ${result.ok ? statusOk : statusErr}`}>
-              {result.ok ? (
-                <p>
-                  {result.testOnly
-                    ? `Test email sent to your address.`
-                    : `Sent to ${result.sent} of ${result.total} recipient${result.total !== 1 ? "s" : ""} individually — addresses not visible to each other.`}
-                </p>
-              ) : (
-                <div>
-                  <p className="font-medium mb-1">
-                    {result.testOnly
-                      ? "Test email was not sent."
-                      : `Sent ${result.sent} of ${result.total} — ${failedBatches} batch${failedBatches !== 1 ? "es" : ""} failed.`}
-                  </p>
-                  {result.errors?.map((err, i) => (
-                    <p key={i} className="text-xs mt-1">{err}</p>
-                  ))}
+              {/* Result */}
+              {sendError && (
+                <div role="alert" className={bannerErr}>
+                  <p className="font-medium">{t("email.send.failed")}</p>
+                  <p className="text-xs mt-1 break-words">{sendError}</p>
+                </div>
+              )}
+              {result && (
+                <div role={result.ok ? "status" : "alert"} className={result.ok ? bannerOk : bannerErr}>
+                  {result.ok ? (
+                    <p>
+                      {result.testOnly
+                        ? t("email.result.test")
+                        : t("email.result.sent", { count: result.total, sent: result.sent, total: result.total })}
+                    </p>
+                  ) : (
+                    <div>
+                      <p className="font-medium mb-1">
+                        {result.testOnly
+                          ? t("email.result.testFailed")
+                          : t("email.result.partial", { count: failedBatches, sent: result.sent, total: result.total })}
+                      </p>
+                      {result.errors?.map((err, i) => (
+                        <p key={i} className="text-xs mt-1 break-words">{err}</p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </FormPanel>
         </div>
-
-        {/* ── Right: templates ── */}
-        <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
-              Templates
-            </h2>
-            <button
-              onClick={() => { setTemplateName(""); setSaveTemplateError(""); setShowSaveModal(true); }}
-              disabled={!subject.trim() || !body.trim()}
-              title="Save current draft as template"
-              aria-label="Save current draft as template"
-              className={BTN_ICON}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-
-          {templatesError && (
-            <p className={`mx-4 my-3 rounded-lg px-3 py-2 text-[11px] ${statusErr}`}>{templatesError}</p>
-          )}
-
-          <div className="divide-y divide-[var(--border)]">
-            {loadingTemplates ? (
-              <div className="px-4 py-6 text-center text-[11px] text-[var(--foreground-subtle)] animate-pulse">
-                Loading…
-              </div>
-            ) : templates.length === 0 ? (
-              !templatesError && (
-                <div className="px-4 py-8 text-center">
-                  <p className="text-[11px] text-[var(--foreground-subtle)]">No templates yet.</p>
-                  <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
-                    Fill in a subject + body above, then click + to save.
-                  </p>
-                </div>
-              )
-            ) : (
-              templates.map((t) => (
-                <div key={t.id} className="px-4 py-3 group hover:bg-[var(--background)] transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-[var(--foreground)] truncate">{t.name}</p>
-                      <p className="text-[12px] text-[var(--foreground-muted)] truncate mt-0.5">{t.subject}</p>
-                    </div>
-                    {/* Revealed on hover where there is a pointer; always shown on
-                        touch screens, which have no hover, and while focused. */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={() => handleLoadTemplate(t)}
-                        title="Load into editor"
-                        aria-label={`Load template ${t.name} into the editor`}
-                        className={BTN_ICON}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 6H10M7 3L10 6L7 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(t.id)}
-                        disabled={deletingId === t.id}
-                        title="Delete template"
-                        aria-label={`Delete template ${t.name}`}
-                        className={BTN_ICON}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      </AdminPage>
 
       {/* AI Write modal */}
       {showAiModal && (
         <Modal
           onClose={() => setShowAiModal(false)}
-          label="Write with AI"
+          label={t("email.ai.title")}
           panelClassName="rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto"
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
             <div>
-              <h2 className="font-display text-lg font-light text-[var(--foreground)]">Write with AI</h2>
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                Describe what to write — AI generates the email body
-              </p>
+              <h2 className="font-display text-lg font-light text-[var(--foreground)]">{t("email.ai.title")}</h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{t("email.ai.subtitle")}</p>
             </div>
-            <button onClick={() => setShowAiModal(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
+            <button
+              onClick={() => setShowAiModal(false)}
+              aria-label={t("common.close")}
+              title={t("common.close")}
+              className={`${BTN_ICON} shrink-0`}
+            >
+              {CLOSE_ICON}
             </button>
           </div>
           <div className="px-5 py-4 space-y-3">
             {subject && (
               <div className="text-[12px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]">
-                Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
+                {t("email.preview.subjectLine")} <span className="text-[var(--foreground-muted)]">{subject}</span>
               </div>
             )}
             <div>
-              <label className={labelCls}>Brief — what should the email say?</label>
+              <label htmlFor="email-ai-brief" className={FIELD_LABEL}>{t("email.ai.brief")}</label>
               <textarea
+                id="email-ai-brief"
                 value={aiBrief}
                 onChange={(e) => setAiBrief(e.target.value)}
-                placeholder={"e.g. Announce new summer collection, mention free shipping this week, include styling tips for hot weather"}
+                placeholder={t("email.ai.briefPlaceholder")}
                 rows={4}
-                className={`${inputCls} resize-none`}
+                className={`${fieldCls} resize-none`}
                 autoFocus
                 disabled={aiWriting}
               />
             </div>
-            {aiWriteError && <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>{aiWriteError}</p>}
+            {aiWriteError && <p role="alert" className="text-xs text-[var(--err)] break-words">{aiWriteError}</p>}
             {aiWriting && (
-              <p className="text-xs text-[var(--foreground-muted)] animate-pulse">Writing your email…</p>
+              <p role="status" className="text-xs text-[var(--foreground-muted)] animate-pulse">{t("email.ai.writing")}</p>
             )}
           </div>
           <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
@@ -673,15 +654,15 @@ export default function AdminEmailPage() {
               className={`${btn("primary")} flex-1`}
             >
               {aiWriting
-                ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
-                : "Generate body"}
+                ? <>{SPINNER}{t("email.ai.writingShort")}</>
+                : t("email.ai.generate")}
             </button>
             <button
               onClick={() => setShowAiModal(false)}
               disabled={aiWriting}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>
@@ -691,40 +672,42 @@ export default function AdminEmailPage() {
       {showSaveModal && (
         <Modal
           onClose={() => setShowSaveModal(false)}
-          label="Save template"
+          label={t("email.templates.saveTemplate")}
           panelClassName="rounded-2xl w-full max-w-sm max-h-[90dvh] overflow-y-auto"
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-            <h2 className="font-display text-lg font-light text-[var(--foreground)]">Save template</h2>
+            <h2 className="font-display text-lg font-light text-[var(--foreground)]">{t("email.templates.saveTemplate")}</h2>
             <button
               onClick={() => setShowSaveModal(false)}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
               className={BTN_ICON}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
+              {CLOSE_ICON}
             </button>
           </div>
           <div className="px-5 py-4 space-y-3">
             <div>
-              <label className={labelCls}>Template name</label>
+              <label htmlFor="email-template-name" className={FIELD_LABEL}>{t("email.templates.name")}</label>
               <input
+                id="email-template-name"
                 type="text"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) handleSaveTemplate(); }}
-                placeholder="e.g. Monthly newsletter"
-                className={inputCls}
+                placeholder={t("email.templates.namePlaceholder")}
+                className={fieldCls}
                 autoFocus
               />
             </div>
             <div className="text-[12px] text-[var(--foreground-subtle)] space-y-0.5">
-              <p><span className="text-[var(--foreground-muted)]">Subject:</span> {subject}</p>
-              <p><span className="text-[var(--foreground-muted)]">Body:</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
+              <p><span className="text-[var(--foreground-muted)]">{t("email.preview.subjectLine")}</span> {subject}</p>
+              <p><span className="text-[var(--foreground-muted)]">{t("email.preview.bodyLine")}</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
             </div>
             {saveTemplateError && (
-              <p className={`rounded-lg px-3 py-2 text-xs ${statusErr}`}>Couldn&apos;t save the template: {saveTemplateError}</p>
+              <p role="alert" className="text-xs text-[var(--err)] break-words">
+                {t("email.templates.saveFailed", { error: saveTemplateError })}
+              </p>
             )}
           </div>
           <div className="px-5 py-4 border-t border-[var(--border)] flex gap-3">
@@ -733,17 +716,17 @@ export default function AdminEmailPage() {
               disabled={!templateName.trim() || savingTemplate}
               className={`${btn("primary")} flex-1`}
             >
-              {savingTemplate ? "Saving…" : "Save template"}
+              {savingTemplate ? t("common.saving") : t("email.templates.saveTemplate")}
             </button>
             <button
               onClick={() => setShowSaveModal(false)}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>
       )}
-    </AdminPage>
+    </div>
   );
 }
