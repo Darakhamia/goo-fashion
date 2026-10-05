@@ -5,7 +5,6 @@ import Image from "@/components/ui/Image";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
-import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
@@ -18,6 +17,7 @@ import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Tabs, tabPanel } from "@/components/admin/Tabs";
+import { Modal } from "@/components/admin/Modal";
 
 interface PendingLook {
   id: string;
@@ -128,8 +128,6 @@ export default function AdminOutfitsPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const cards = useDownloadCards("outfits");
-  // A selection dragged out of the editor must not close it — see the hook.
-  const lookBackdrop = useBackdropDismiss(() => setSelectedLook(null));
   const [adminTab, setAdminTab] = useState<"outfits" | "pending">("outfits");
 
   const [outfits, setOutfits] = useState<Outfit[]>([]);
@@ -926,176 +924,169 @@ export default function AdminOutfitsPage() {
 
       {/* ── Pending look detail modal ── */}
       {selectedLook && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          {...lookBackdrop}
+        <Modal
+          onClose={() => setSelectedLook(null)}
+          label="Review submitted look"
+          panelClassName="w-full max-w-3xl max-h-[90dvh] flex flex-col rounded-2xl overflow-y-auto md:overflow-hidden"
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Review submitted look"
-            className="bg-[var(--surface)] w-full max-w-3xl max-h-[90dvh] flex flex-col border border-[var(--border)] rounded-2xl overflow-y-auto md:overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-                {selectedLook.generated_style && (
-                  <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
-                    {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On you" : "AI"}
-                  </span>
-                )}
-                {selectedLook.total_price != null && (
-                  <p className="text-sm font-medium text-[var(--foreground)]">{f.money(selectedLook.total_price)}</p>
-                )}
-                {selectedLook.style_keywords.length > 0 && (
-                  <p className="font-mono text-[12px] capitalize text-[var(--foreground-muted)]">
-                    {selectedLook.style_keywords.slice(0, 3).join(" · ")}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedLook(null)}
-                aria-label="Close"
-                className={BTN_ICON}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Body: image left, pieces right; stacked on phones, where the
-                whole dialog scrolls instead of each column. */}
-            <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
-              {/* Generated image */}
-              <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedLook.generated_image}
-                  alt="Generated look"
-                  className="w-full h-full object-cover object-top"
-                />
-              </div>
-
-              {/* Pieces list */}
-              <div className="flex-1 flex flex-col border-t md:border-t-0 md:border-l border-[var(--border)] md:overflow-y-auto divide-y divide-[var(--border)]">
-                {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
-                  <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
-                    <div className="w-12 h-12 shrink-0 bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
-                      {piece.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="font-mono text-[11px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-[12px] text-[var(--foreground-muted)] mb-0.5 capitalize">{piece.slot}</p>
-                      <p className="text-xs text-[var(--foreground)] truncate">{piece.name ?? "—"}</p>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="flex items-center justify-center flex-1 py-12">
-                    <p className="text-xs text-[var(--foreground-subtle)]">No pieces</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* What the catalogue will show.
-                Prefilled from the submission, so approving unchanged publishes
-                exactly what the shopper wrote; empty means the approval
-                endpoint keeps its own fallback rather than publishing blanks. */}
-            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
-              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-                Publish as
-              </p>
-
-              <input
-                type="text"
-                value={moderation.name}
-                onChange={(e) => setModeration((m) => ({ ...m, name: e.target.value }))}
-                placeholder="Community Look"
-                maxLength={120}
-                className={`${inputCls} mb-3`}
-              />
-
-              <textarea
-                value={moderation.description}
-                onChange={(e) => setModeration((m) => ({ ...m, description: e.target.value }))}
-                placeholder="Description shown on the outfit page"
-                rows={3}
-                maxLength={2000}
-                className={`${inputCls} resize-none mb-3`}
-              />
-
-              <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                <select
-                  value={moderation.occasion}
-                  onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
-                  className={`${selectCls} flex-1 capitalize`}
-                >
-                  {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <select
-                  value={moderation.season}
-                  onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
-                  className={`${selectCls} flex-1 capitalize`}
-                >
-                  {SEASONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                {STYLE_KEYWORDS.map((kw) => {
-                  const on = moderation.styleKeywords.includes(kw);
-                  return (
-                    <button
-                      key={kw}
-                      onClick={() => toggleModerationStyle(kw)}
-                      aria-pressed={on}
-                      className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                        on
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {styleLabel(kw)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
-              {moderationError && (
-                <p className="mb-3 rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
-                  {moderationError}
+          {/* Modal header */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+              {selectedLook.generated_style && (
+                <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
+                  {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On you" : "AI"}
+                </span>
+              )}
+              {selectedLook.total_price != null && (
+                <p className="text-sm font-medium text-[var(--foreground)]">{f.money(selectedLook.total_price)}</p>
+              )}
+              {selectedLook.style_keywords.length > 0 && (
+                <p className="font-mono text-[12px] capitalize text-[var(--foreground-muted)]">
+                  {selectedLook.style_keywords.slice(0, 3).join(" · ")}
                 </p>
               )}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleApproveLook(selectedLook.id)}
-                  disabled={approvingId === selectedLook.id}
-                  className={`${btn("primary")} flex-1`}
-                >
-                  {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
-                </button>
-                <button
-                  onClick={() => handleRejectLook(selectedLook.id)}
-                  disabled={approvingId === selectedLook.id}
-                  className={`${btn("danger")} flex-1`}
-                >
-                  Reject
-                </button>
-              </div>
+            </div>
+            <button
+              onClick={() => setSelectedLook(null)}
+              aria-label="Close"
+              className={BTN_ICON}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Body: image left, pieces right; stacked on phones, where the
+              whole dialog scrolls instead of each column. */}
+          <div className="flex flex-col md:flex-row shrink-0 md:shrink md:min-h-0 md:flex-1 md:overflow-hidden">
+            {/* Generated image */}
+            <div className="w-full h-72 md:h-auto md:w-[55%] shrink-0 bg-[var(--background)] overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedLook.generated_image}
+                alt="Generated look"
+                className="w-full h-full object-cover object-top"
+              />
+            </div>
+
+            {/* Pieces list */}
+            <div className="flex-1 flex flex-col border-t md:border-t-0 md:border-l border-[var(--border)] md:overflow-y-auto divide-y divide-[var(--border)]">
+              {selectedLook.pieces.length > 0 ? selectedLook.pieces.map((piece) => (
+                <div key={piece.slot} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-12 h-12 shrink-0 bg-[var(--background)] rounded-xl border border-[var(--border)] overflow-hidden">
+                    {piece.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-mono text-[11px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-[12px] text-[var(--foreground-muted)] mb-0.5 capitalize">{piece.slot}</p>
+                    <p className="text-xs text-[var(--foreground)] truncate">{piece.name ?? "—"}</p>
+                  </div>
+                </div>
+              )) : (
+                <div className="flex items-center justify-center flex-1 py-12">
+                  <p className="text-xs text-[var(--foreground-subtle)]">No pieces</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+
+          {/* What the catalogue will show.
+              Prefilled from the submission, so approving unchanged publishes
+              exactly what the shopper wrote; empty means the approval
+              endpoint keeps its own fallback rather than publishing blanks. */}
+          <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
+            <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
+              Publish as
+            </p>
+
+            <input
+              type="text"
+              value={moderation.name}
+              onChange={(e) => setModeration((m) => ({ ...m, name: e.target.value }))}
+              placeholder="Community Look"
+              maxLength={120}
+              className={`${inputCls} mb-3`}
+            />
+
+            <textarea
+              value={moderation.description}
+              onChange={(e) => setModeration((m) => ({ ...m, description: e.target.value }))}
+              placeholder="Description shown on the outfit page"
+              rows={3}
+              maxLength={2000}
+              className={`${inputCls} resize-none mb-3`}
+            />
+
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <select
+                value={moderation.occasion}
+                onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
+                className={`${selectCls} flex-1 capitalize`}
+              >
+                {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select
+                value={moderation.season}
+                onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
+                className={`${selectCls} flex-1 capitalize`}
+              >
+                {SEASONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {STYLE_KEYWORDS.map((kw) => {
+                const on = moderation.styleKeywords.includes(kw);
+                return (
+                  <button
+                    key={kw}
+                    onClick={() => toggleModerationStyle(kw)}
+                    aria-pressed={on}
+                    className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
+                      on
+                        ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
+                        : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {styleLabel(kw)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="px-5 py-4 border-t border-[var(--border)] shrink-0">
+            {moderationError && (
+              <p className="mb-3 rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
+                {moderationError}
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleApproveLook(selectedLook.id)}
+                disabled={approvingId === selectedLook.id}
+                className={`${btn("primary")} flex-1`}
+              >
+                {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
+              </button>
+              <button
+                onClick={() => handleRejectLook(selectedLook.id)}
+                disabled={approvingId === selectedLook.id}
+                className={`${btn("danger")} flex-1`}
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* ── Outfits tab ── */}
@@ -1235,424 +1226,422 @@ export default function AdminOutfitsPage() {
 
       {/* ── MODAL ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center lg:items-start justify-center bg-black/60 overflow-y-auto p-4 lg:py-6">
+        <Modal
+          onClose={closeModal}
+          label={editingId ? "Edit outfit" : "New outfit"}
+          panelClassName="rounded-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
+          scrimClassName="flex items-center lg:items-start justify-center overflow-y-auto p-4 lg:py-6"
+          closeOnScrim={false}
+        >
           {/* Below lg the dialog scrolls inside itself; from lg the overlay
               scrolls and each column keeps its own scroll. */}
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={editingId ? "Edit outfit" : "New outfit"}
-            className="rounded-2xl border border-[var(--border)] w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
-            style={{ background: "var(--surface)" }}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingId ? "Edit Outfit" : "New Outfit"}
-              </h2>
-              <button
-                onClick={closeModal}
-                aria-label="Close"
-                className={BTN_ICON}
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
+          {/* Modal header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+            <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+              {editingId ? "Edit Outfit" : "New Outfit"}
+            </h2>
+            <button
+              onClick={closeModal}
+              aria-label="Close"
+              className={BTN_ICON}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Modal body: two columns */}
+          <div className="flex flex-col lg:flex-row lg:min-h-0">
+
+            {/* ── LEFT: Product picker ── */}
+            <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
+              <div className="px-5 py-4 border-b border-[var(--border)]">
+                <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
+                  Products — select items for this outfit
+                </p>
+                {/* Search */}
+                <input
+                  type="search"
+                  placeholder="Search by name or brand..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className={inputCls}
+                />
+                {/* Category filter */}
+                <div className="flex gap-1.5 mt-2.5 flex-wrap">
+                  {CATEGORIES.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setProductCategory(value)}
+                      aria-pressed={productCategory === value}
+                      className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
+                        productCategory === value
+                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
+                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Product grid */}
+              <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
+                {loadingProducts ? (
+                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading products...</p>
+                ) : filteredProducts.length === 0 ? (
+                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">No products found.</p>
+                ) : (
+                  <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {shownProducts.map((product) => {
+                      const isSelected = selectedItems.some((i) => i.product.id === product.id);
+                      const blocked = !isSelected && atItemLimit;
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => toggleItem(product)}
+                          disabled={blocked}
+                          title={blocked ? `An outfit takes up to ${MAX_ITEMS} items` : undefined}
+                          className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
+                            isSelected
+                              ? "border-[var(--foreground)] bg-[var(--background)]"
+                              : "border-[var(--border)] hover:border-[var(--foreground)] disabled:hover:border-[var(--border)]"
+                          }`}
+                        >
+                          {/* Product image */}
+                          <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--background)]">
+                            <Image
+                              src={product.imageUrl}
+                              alt={product.name}
+                              fill
+                              className="object-cover transition-transform group-hover:scale-105"
+                              sizes="(max-width: 640px) 45vw, 160px"
+                            />
+                            {/* Selected overlay */}
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                    <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Product info */}
+                          <div className="p-2">
+                            <p className="text-[12px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                            <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
+                            <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{f.money(product.priceMin)}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {filteredProducts.length > shownProducts.length && (
+                    <p className="text-xs text-[var(--foreground-subtle)] text-center pt-4">
+                      Showing {shownProducts.length} of {filteredProducts.length} — refine the search or pick a category to find the rest.
+                    </p>
+                  )}
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Modal body: two columns */}
-            <div className="flex flex-col lg:flex-row lg:min-h-0">
+            {/* ── RIGHT: Outfit composer ── */}
+            <div className="lg:w-[45%] flex flex-col lg:overflow-y-auto lg:max-h-[600px]">
+              <div className="px-5 py-4 flex flex-col gap-4">
 
-              {/* ── LEFT: Product picker ── */}
-              <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
-                <div className="px-5 py-4 border-b border-[var(--border)]">
-                  <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-                    Products — select items for this outfit
+                {/* Selected items */}
+                <div>
+                  <p className={labelCls}>
+                    Selected items ({selectedItems.length}/{MAX_ITEMS})
                   </p>
-                  {/* Search */}
+                  {selectedItems.length === 0 ? (
+                    <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] rounded-xl px-3 py-4 text-center">
+                      Click products on the left to add them
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {selectedItems.map((item) => {
+                        const colorKeys = Object.keys(item.product.colorImages ?? {});
+                        const activeColor = item.selectedColor ?? colorKeys[0];
+                        const thumbSrc =
+                          activeColor && item.product.colorImages?.[activeColor]?.[0]
+                            ? item.product.colorImages[activeColor][0]
+                            : item.product.imageUrl;
+                        return (
+                        <div
+                          key={item.product.id}
+                          className="flex flex-col gap-2 border border-[var(--border)] rounded-xl p-2"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden rounded-lg">
+                              <Image
+                                src={thumbSrc}
+                                alt={item.product.name}
+                                fill
+                                className="object-cover"
+                                sizes="40px"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
+                              <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · {f.money(item.product.priceMin)}</p>
+                            </div>
+                            {/* Role */}
+                            <select
+                              value={item.role}
+                              onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
+                              className="text-[12px] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                            >
+                              {ROLES.map((r) => (
+                                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                              ))}
+                            </select>
+                            {/* Remove */}
+                            <button
+                              onClick={() => removeItem(item.product.id)}
+                              aria-label={`Remove ${item.product.name}`}
+                              className={`${BTN_ICON} shrink-0`}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          </div>
+                          {/* Colour swatches (only for products with multiple colours) */}
+                          {colorKeys.length > 1 && (
+                            <div className="flex items-center gap-1.5 px-1 flex-wrap">
+                              {colorKeys.map((color) => {
+                                const previewImg = item.product.colorImages![color]?.[0];
+                                const isActive = (item.selectedColor ?? colorKeys[0]) === color;
+                                return (
+                                  <button
+                                    key={color}
+                                    title={color}
+                                    onClick={() => setSelectedColor(item.product.id, color)}
+                                    className={`relative w-10 h-10 md:w-6 md:h-6 rounded-full overflow-hidden border transition-colors ${
+                                      isActive
+                                        ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
+                                        : "border-[var(--border)] hover:border-[var(--foreground)]"
+                                    }`}
+                                  >
+                                    {previewImg ? (
+                                      <Image
+                                        src={previewImg}
+                                        alt={color}
+                                        fill
+                                        className="object-cover"
+                                        sizes="24px"
+                                      />
+                                    ) : (
+                                      <span className="flex w-full h-full items-center justify-center text-[11px] leading-none text-[var(--foreground-subtle)]">{color.charAt(0).toUpperCase()}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                              <span className="text-[12px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
+                            </div>
+                          )}
+                        </div>
+                        );
+                      })}
+                      {/* Price total */}
+                      <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
+                        <span className="text-[12px] text-[var(--foreground-muted)]">Total</span>
+                        <span className="text-sm text-[var(--foreground)]">
+                          {f.moneyRange(priceMin, priceMax)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className={labelCls}>Name *</label>
                   <input
-                    type="search"
-                    placeholder="Search by name or brand..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Outfit name"
                     className={inputCls}
                   />
-                  {/* Category filter */}
-                  <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                    {CATEGORIES.map(({ value, label }) => (
+                </div>
+
+                {/* Occasion + Season */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Occasion</label>
+                    <select
+                      value={form.occasion}
+                      onChange={(e) => setForm((f) => ({ ...f, occasion: e.target.value as Occasion }))}
+                      className={selectCls}
+                    >
+                      {OCCASIONS.map((o) => (
+                        <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Season</label>
+                    <select
+                      value={form.season}
+                      onChange={(e) => setForm((f) => ({ ...f, season: e.target.value as Season }))}
+                      className={selectCls}
+                    >
+                      {SEASONS.map((s) => (
+                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className={labelCls}>Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Describe the outfit..."
+                    rows={2}
+                    className={`${inputCls} resize-none`}
+                  />
+                </div>
+
+                {/* Style keywords */}
+                <div>
+                  <label className={labelCls}>Style keywords</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STYLE_KEYWORDS.map((kw) => (
                       <button
-                        key={value}
-                        onClick={() => setProductCategory(value)}
-                        aria-pressed={productCategory === value}
+                        key={kw}
+                        type="button"
+                        onClick={() => toggleKeyword(kw)}
+                        aria-pressed={form.styleKeywords.includes(kw)}
                         className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                          productCategory === value
+                          form.styleKeywords.includes(kw)
                             ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                             : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                         }`}
                       >
-                        {label}
+                        {styleLabel(kw)}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Product grid */}
-                <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
-                  {loadingProducts ? (
-                    <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading products...</p>
-                  ) : filteredProducts.length === 0 ? (
-                    <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">No products found.</p>
-                  ) : (
-                    <>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {shownProducts.map((product) => {
-                        const isSelected = selectedItems.some((i) => i.product.id === product.id);
-                        const blocked = !isSelected && atItemLimit;
-                        return (
-                          <button
-                            key={product.id}
-                            onClick={() => toggleItem(product)}
-                            disabled={blocked}
-                            title={blocked ? `An outfit takes up to ${MAX_ITEMS} items` : undefined}
-                            className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
-                              isSelected
-                                ? "border-[var(--foreground)] bg-[var(--background)]"
-                                : "border-[var(--border)] hover:border-[var(--foreground)] disabled:hover:border-[var(--border)]"
-                            }`}
-                          >
-                            {/* Product image */}
-                            <div className="relative w-full aspect-[3/4] overflow-hidden bg-[var(--background)]">
-                              <Image
-                                src={product.imageUrl}
-                                alt={product.name}
-                                fill
-                                className="object-cover transition-transform group-hover:scale-105"
-                                sizes="(max-width: 640px) 45vw, 160px"
-                              />
-                              {/* Selected overlay */}
-                              {isSelected && (
-                                <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
-                                  <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            {/* Product info */}
-                            <div className="p-2">
-                              <p className="text-[12px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
-                              <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                              <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{f.money(product.priceMin)}</p>
-                            </div>
-                          </button>
-                        );
-                      })}
+                {/* Cover image upload */}
+                <div>
+                  <label className={labelCls}>Cover image</label>
+
+                  {/* Preview */}
+                  {form.imageUrl ? (
+                    <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--background)]">
+                      <Image
+                        src={form.imageUrl}
+                        alt="Cover preview"
+                        fill
+                        className="object-cover"
+                        sizes="400px"
+                        unoptimized={form.imageUrl.startsWith("blob:")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                        className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
+                        title="Remove image"
+                        aria-label="Remove image"
+                      >
+                        ×
+                      </button>
                     </div>
-                    {filteredProducts.length > shownProducts.length && (
-                      <p className="text-xs text-[var(--foreground-subtle)] text-center pt-4">
-                        Showing {shownProducts.length} of {filteredProducts.length} — refine the search or pick a category to find the rest.
-                      </p>
-                    )}
-                    </>
+                  ) : (
+                    <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleImageUpload(f);
+                          e.target.value = "";
+                        }}
+                      />
+                      <div className="flex flex-col items-center gap-1.5">
+                        {uploading ? (
+                          <span className="text-xs text-[var(--foreground-muted)]">Uploading…</span>
+                        ) : (
+                          <>
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--foreground-subtle)]">
+                              <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                            </svg>
+                            <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
+                            <span className="text-[12px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
                   )}
+
+                  {uploadError && (
+                    <p className="text-[12px] text-[var(--err)] mb-1.5">{uploadError}</p>
+                  )}
+
+                  {/* Manual URL fallback */}
+                  <input
+                    type="url"
+                    value={form.imageUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="Or paste image URL…"
+                    className={inputCls}
+                  />
                 </div>
+
+                {/* AI Generated */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isAIGenerated"
+                    checked={form.isAIGenerated}
+                    onChange={(e) => setForm((f) => ({ ...f, isAIGenerated: e.target.checked }))}
+                    className="w-3.5 h-3.5 accent-[var(--foreground)]"
+                  />
+                  <label htmlFor="isAIGenerated" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
+                    AI generated outfit
+                  </label>
+                </div>
+
+                {/* Error */}
+                {saveError && (
+                  <p className="text-xs text-[var(--err)]">{saveError}</p>
+                )}
               </div>
 
-              {/* ── RIGHT: Outfit composer ── */}
-              <div className="lg:w-[45%] flex flex-col lg:overflow-y-auto lg:max-h-[600px]">
-                <div className="px-5 py-4 flex flex-col gap-4">
-
-                  {/* Selected items */}
-                  <div>
-                    <p className={labelCls}>
-                      Selected items ({selectedItems.length}/{MAX_ITEMS})
-                    </p>
-                    {selectedItems.length === 0 ? (
-                      <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] rounded-xl px-3 py-4 text-center">
-                        Click products on the left to add them
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {selectedItems.map((item) => {
-                          const colorKeys = Object.keys(item.product.colorImages ?? {});
-                          const activeColor = item.selectedColor ?? colorKeys[0];
-                          const thumbSrc =
-                            activeColor && item.product.colorImages?.[activeColor]?.[0]
-                              ? item.product.colorImages[activeColor][0]
-                              : item.product.imageUrl;
-                          return (
-                          <div
-                            key={item.product.id}
-                            className="flex flex-col gap-2 border border-[var(--border)] rounded-xl p-2"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="relative w-10 h-12 flex-shrink-0 overflow-hidden rounded-lg">
-                                <Image
-                                  src={thumbSrc}
-                                  alt={item.product.name}
-                                  fill
-                                  className="object-cover"
-                                  sizes="40px"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                                <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · {f.money(item.product.priceMin)}</p>
-                              </div>
-                              {/* Role */}
-                              <select
-                                value={item.role}
-                                onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                                className="text-[12px] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
-                              >
-                                {ROLES.map((r) => (
-                                  <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                                ))}
-                              </select>
-                              {/* Remove */}
-                              <button
-                                onClick={() => removeItem(item.product.id)}
-                                aria-label={`Remove ${item.product.name}`}
-                                className={`${BTN_ICON} shrink-0`}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                  <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            </div>
-                            {/* Colour swatches (only for products with multiple colours) */}
-                            {colorKeys.length > 1 && (
-                              <div className="flex items-center gap-1.5 px-1 flex-wrap">
-                                {colorKeys.map((color) => {
-                                  const previewImg = item.product.colorImages![color]?.[0];
-                                  const isActive = (item.selectedColor ?? colorKeys[0]) === color;
-                                  return (
-                                    <button
-                                      key={color}
-                                      title={color}
-                                      onClick={() => setSelectedColor(item.product.id, color)}
-                                      className={`relative w-10 h-10 md:w-6 md:h-6 rounded-full overflow-hidden border transition-colors ${
-                                        isActive
-                                          ? "border-[var(--foreground)] ring-1 ring-[var(--foreground)]"
-                                          : "border-[var(--border)] hover:border-[var(--foreground)]"
-                                      }`}
-                                    >
-                                      {previewImg ? (
-                                        <Image
-                                          src={previewImg}
-                                          alt={color}
-                                          fill
-                                          className="object-cover"
-                                          sizes="24px"
-                                        />
-                                      ) : (
-                                        <span className="flex w-full h-full items-center justify-center text-[11px] leading-none text-[var(--foreground-subtle)]">{color.charAt(0).toUpperCase()}</span>
-                                      )}
-                                    </button>
-                                  );
-                                })}
-                                <span className="text-[12px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
-                              </div>
-                            )}
-                          </div>
-                          );
-                        })}
-                        {/* Price total */}
-                        <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
-                          <span className="text-[12px] text-[var(--foreground-muted)]">Total</span>
-                          <span className="text-sm text-[var(--foreground)]">
-                            {f.moneyRange(priceMin, priceMax)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Name */}
-                  <div>
-                    <label className={labelCls}>Name *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      placeholder="Outfit name"
-                      className={inputCls}
-                    />
-                  </div>
-
-                  {/* Occasion + Season */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Occasion</label>
-                      <select
-                        value={form.occasion}
-                        onChange={(e) => setForm((f) => ({ ...f, occasion: e.target.value as Occasion }))}
-                        className={selectCls}
-                      >
-                        {OCCASIONS.map((o) => (
-                          <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Season</label>
-                      <select
-                        value={form.season}
-                        onChange={(e) => setForm((f) => ({ ...f, season: e.target.value as Season }))}
-                        className={selectCls}
-                      >
-                        {SEASONS.map((s) => (
-                          <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className={labelCls}>Description</label>
-                    <textarea
-                      value={form.description}
-                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                      placeholder="Describe the outfit..."
-                      rows={2}
-                      className={`${inputCls} resize-none`}
-                    />
-                  </div>
-
-                  {/* Style keywords */}
-                  <div>
-                    <label className={labelCls}>Style keywords</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {STYLE_KEYWORDS.map((kw) => (
-                        <button
-                          key={kw}
-                          type="button"
-                          onClick={() => toggleKeyword(kw)}
-                          aria-pressed={form.styleKeywords.includes(kw)}
-                          className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                            form.styleKeywords.includes(kw)
-                              ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                              : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                          }`}
-                        >
-                          {styleLabel(kw)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Cover image upload */}
-                  <div>
-                    <label className={labelCls}>Cover image</label>
-
-                    {/* Preview */}
-                    {form.imageUrl ? (
-                      <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--background)]">
-                        <Image
-                          src={form.imageUrl}
-                          alt="Cover preview"
-                          fill
-                          className="object-cover"
-                          sizes="400px"
-                          unoptimized={form.imageUrl.startsWith("blob:")}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
-                          className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
-                          title="Remove image"
-                          aria-label="Remove image"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : (
-                      <label className={`block cursor-pointer rounded-xl border border-dashed border-[var(--border)] hover:border-[var(--foreground)] transition-colors text-center py-8 mb-2 ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/avif"
-                          className="sr-only"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleImageUpload(f);
-                            e.target.value = "";
-                          }}
-                        />
-                        <div className="flex flex-col items-center gap-1.5">
-                          {uploading ? (
-                            <span className="text-xs text-[var(--foreground-muted)]">Uploading…</span>
-                          ) : (
-                            <>
-                              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--foreground-subtle)]">
-                                <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                              </svg>
-                              <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
-                              <span className="text-[12px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
-                            </>
-                          )}
-                        </div>
-                      </label>
-                    )}
-
-                    {uploadError && (
-                      <p className="text-[12px] text-[var(--err)] mb-1.5">{uploadError}</p>
-                    )}
-
-                    {/* Manual URL fallback */}
-                    <input
-                      type="url"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                      placeholder="Or paste image URL…"
-                      className={inputCls}
-                    />
-                  </div>
-
-                  {/* AI Generated */}
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="isAIGenerated"
-                      checked={form.isAIGenerated}
-                      onChange={(e) => setForm((f) => ({ ...f, isAIGenerated: e.target.checked }))}
-                      className="w-3.5 h-3.5 accent-[var(--foreground)]"
-                    />
-                    <label htmlFor="isAIGenerated" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                      AI generated outfit
-                    </label>
-                  </div>
-
-                  {/* Error */}
-                  {saveError && (
-                    <p className="text-xs text-[var(--err)]">{saveError}</p>
-                  )}
-                </div>
-
-                {/* Modal footer */}
-                <div className="mt-auto px-5 py-4 border-t border-[var(--border)] flex gap-3">
-                  <button
-                    onClick={handleSave}
-                    disabled={!form.name.trim() || saving}
-                    className={`${btn("primary")} flex-1`}
-                  >
-                    {saving ? "Saving..." : editingId ? "Save changes" : "Create outfit"}
-                  </button>
-                  <button
-                    onClick={closeModal}
-                    className={btn("ghost")}
-                  >
-                    Cancel
-                  </button>
-                </div>
+              {/* Modal footer */}
+              <div className="mt-auto px-5 py-4 border-t border-[var(--border)] flex gap-3">
+                <button
+                  onClick={handleSave}
+                  disabled={!form.name.trim() || saving}
+                  className={`${btn("primary")} flex-1`}
+                >
+                  {saving ? "Saving..." : editingId ? "Save changes" : "Create outfit"}
+                </button>
+                <button
+                  onClick={closeModal}
+                  className={btn("ghost")}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

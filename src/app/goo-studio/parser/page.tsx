@@ -996,6 +996,8 @@ function SingleProductEditor({
                 <button
                   key={img}
                   onClick={() => set("imageUrl", img)}
+                  aria-label={`Use image ${product.images.indexOf(img) + 1} as the main one`}
+                  aria-pressed={img === product.imageUrl}
                   className={`w-8 h-10 rounded-lg overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1285,12 +1287,13 @@ function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
   );
 }
 
+/** A label and its one field. The label wraps the field, so it names it for screen readers and a click on it focuses it. */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className={labelCls}>{label}</label>
+    <label className="block">
+      <span className={labelCls}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

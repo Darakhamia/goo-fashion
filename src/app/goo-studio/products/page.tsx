@@ -12,7 +12,6 @@ import { DataTable, EmptyState, Thumb, type Column } from "@/components/admin/Da
 import { ActiveFilters, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
-import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
 import { storeFaviconUrl } from "@/lib/stores";
 import { bareHost, pastedUrl } from "@/lib/url";
@@ -20,6 +19,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key } from "@/app/goo-studio/_i18n";
+import { Modal } from "@/components/admin/Modal";
 
 // Sort options shown in the admin toolbar dropdown. Each maps to a (key, direction) pair
 // that drives the same sortKey/sortDir state used by the clickable column headers.
@@ -1866,7 +1866,6 @@ export default function AdminProductsPage() {
   const rangeAnchor = useRef<string | null>(null);
 
   // A selection dragged out of the bulk-edit form must not close it.
-  const bulkBackdrop = useBackdropDismiss(() => setBulkOpen(false));
 
   const toggleSelect = (id: string, extendRange = false) => {
     // Read the anchor here, not inside the updater. React runs the updater at
@@ -2314,163 +2313,161 @@ export default function AdminProductsPage() {
 
       {/* Bulk edit modal */}
       {bulkOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" {...bulkBackdrop}>
-          <div
-            className="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl border border-[var(--border)] shadow-xl"
-            style={{ background: "var(--surface)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
-              <div className="min-w-0">
-                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                  Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
-                </h2>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                  Anything left blank is not touched.
-                </p>
-              </div>
-              <button onClick={() => setBulkOpen(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
+        <Modal
+          onClose={() => setBulkOpen(false)}
+          label="Edit fields"
+          panelClassName="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl shadow-xl"
+        >
+          <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
+              </h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                Anything left blank is not touched.
+              </p>
             </div>
+            <button onClick={() => setBulkOpen(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
 
-            <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
-              {/* Brand + gender */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Brand</label>
-                  <input
-                    list="bulk-brands"
-                    value={bulk.brand}
-                    onChange={(e) => setBulk((b) => ({ ...b, brand: e.target.value }))}
-                    placeholder="Leave blank to keep"
-                    className={inputCls}
-                  />
-                  <datalist id="bulk-brands">
-                    {brandsInCatalogue.map((b) => <option key={b} value={b} />)}
-                  </datalist>
-                </div>
-                <div>
-                  <label className={labelCls}>Gender</label>
-                  <select value={bulk.gender} onChange={(e) => setBulk((b) => ({ ...b, gender: e.target.value }))} className={selectCls}>
-                    <option value="">Keep as is</option>
-                    <option value="women">Women</option>
-                    <option value="men">Men</option>
-                    <option value="unisex">Unisex</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Subcategory — sets the category with it */}
+          <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
+            {/* Brand + gender */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Subcategory</label>
-                <select
-                  value={bulk.subcategory}
-                  onChange={(e) => setBulk((b) => ({ ...b, subcategory: e.target.value }))}
-                  className={selectCls}
-                >
+                <label className={labelCls}>Brand</label>
+                <input
+                  list="bulk-brands"
+                  value={bulk.brand}
+                  onChange={(e) => setBulk((b) => ({ ...b, brand: e.target.value }))}
+                  placeholder="Leave blank to keep"
+                  className={inputCls}
+                />
+                <datalist id="bulk-brands">
+                  {brandsInCatalogue.map((b) => <option key={b} value={b} />)}
+                </datalist>
+              </div>
+              <div>
+                <label className={labelCls}>Gender</label>
+                <select value={bulk.gender} onChange={(e) => setBulk((b) => ({ ...b, gender: e.target.value }))} className={selectCls}>
                   <option value="">Keep as is</option>
-                  {categoryGroups.map((g) => (
-                    <optgroup key={g.id} label={g.label}>
-                      {g.items.map((i) => <option key={i.label} value={i.label}>{i.label}</option>)}
-                    </optgroup>
-                  ))}
+                  <option value="women">Women</option>
+                  <option value="men">Men</option>
+                  <option value="unisex">Unisex</option>
                 </select>
-                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
-                  Sets the category to match, since the tree says where the label belongs.
-                </p>
-              </div>
-
-              {/* Style keywords */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={labelCls}>Style keywords</label>
-                  <div className="flex gap-1">
-                    {(["add", "replace"] as const).map((mode) => (
-                      <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
-                        className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
-                      >{mode}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {STYLE_KEYWORDS.map((k) => {
-                    const on = bulk.styleKeywords.includes(k);
-                    return (
-                      <button key={k} onClick={() => setBulk((b) => ({
-                        ...b,
-                        styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
-                      }))}
-                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
-                      >{styleLabel(k)}</button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Colour filters */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={labelCls}>Colour filters</label>
-                  <div className="flex gap-1">
-                    {(["add", "replace"] as const).map((mode) => (
-                      <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
-                        className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
-                      >{mode}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {colorGroups.map((g) => {
-                    const on = bulk.colorGroupIds.includes(g.id);
-                    return (
-                      <button key={g.id} onClick={() => setBulk((b) => ({
-                        ...b,
-                        colorGroupIds: on ? b.colorGroupIds.filter((x) => x !== g.id) : [...b.colorGroupIds, g.id],
-                      }))}
-                        className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
-                      >{g.name}</button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Names */}
-              <div>
-                <label className={labelCls}>Names</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
-                  <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
-                  <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
-                  <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder="Add after…" className={inputCls} />
-                </div>
-                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
-                  There is no &ldquo;set the same name&rdquo;: identical names across a selection destroy the ones they replace.
-                </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)]">
-              <span className="text-[11px] text-[var(--foreground-muted)]">
-                {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
-              </span>
-              <div className="flex items-center gap-3">
-                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className={btn("ghost")}>
-                  Cancel
-                </button>
-                <button
-                  onClick={applyBulkEdit}
-                  disabled={bulkSaving || !bulkChangeCount || !canWrite}
-                  className={btn("primary")}
-                >
-                  {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
-                </button>
+            {/* Subcategory — sets the category with it */}
+            <div>
+              <label className={labelCls}>Subcategory</label>
+              <select
+                value={bulk.subcategory}
+                onChange={(e) => setBulk((b) => ({ ...b, subcategory: e.target.value }))}
+                className={selectCls}
+              >
+                <option value="">Keep as is</option>
+                {categoryGroups.map((g) => (
+                  <optgroup key={g.id} label={g.label}>
+                    {g.items.map((i) => <option key={i.label} value={i.label}>{i.label}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
+                Sets the category to match, since the tree says where the label belongs.
+              </p>
+            </div>
+
+            {/* Style keywords */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Style keywords</label>
+                <div className="flex gap-1">
+                  {(["add", "replace"] as const).map((mode) => (
+                    <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
+                      className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                    >{mode}</button>
+                  ))}
+                </div>
               </div>
+              <div className="flex flex-wrap gap-1.5">
+                {STYLE_KEYWORDS.map((k) => {
+                  const on = bulk.styleKeywords.includes(k);
+                  return (
+                    <button key={k} onClick={() => setBulk((b) => ({
+                      ...b,
+                      styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
+                    }))}
+                      className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                    >{styleLabel(k)}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Colour filters */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Colour filters</label>
+                <div className="flex gap-1">
+                  {(["add", "replace"] as const).map((mode) => (
+                    <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
+                      className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                    >{mode}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {colorGroups.map((g) => {
+                  const on = bulk.colorGroupIds.includes(g.id);
+                  return (
+                    <button key={g.id} onClick={() => setBulk((b) => ({
+                      ...b,
+                      colorGroupIds: on ? b.colorGroupIds.filter((x) => x !== g.id) : [...b.colorGroupIds, g.id],
+                    }))}
+                      className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
+                    >{g.name}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Names */}
+            <div>
+              <label className={labelCls}>Names</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
+                <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
+                <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
+                <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder="Add after…" className={inputCls} />
+              </div>
+              <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
+                There is no &ldquo;set the same name&rdquo;: identical names across a selection destroy the ones they replace.
+              </p>
             </div>
           </div>
-        </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)]">
+            <span className="text-[11px] text-[var(--foreground-muted)]">
+              {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
+            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => { setBulkOpen(false); resetBulk(); }} className={btn("ghost")}>
+                Cancel
+              </button>
+              <button
+                onClick={applyBulkEdit}
+                disabled={bulkSaving || !bulkChangeCount || !canWrite}
+                className={btn("primary")}
+              >
+                {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       <DataTable
@@ -2547,719 +2544,718 @@ export default function AdminProductsPage() {
 
       {/* ── Add / Edit Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="border border-[var(--border)] rounded-2xl max-w-5xl w-full mx-4 max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
-            style={{ background: "var(--surface)" }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
-                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                  {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
-                </h2>
-                <button
-                  onClick={runSuggest}
-                  disabled={suggesting || !canWrite}
-                  title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
-                  className={btn("secondary")}
-                >
-                  {suggesting ? "Reading…" : "Suggest fields"}
-                </button>
-              </div>
-              <button onClick={closeModal} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
+        <Modal
+          onClose={closeModal}
+          label={editingProduct ? "Edit product" : "New product"}
+          panelClassName="rounded-2xl max-w-5xl w-full max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
+          closeOnScrim={false}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
+              </h2>
+              <button
+                onClick={runSuggest}
+                disabled={suggesting || !canWrite}
+                title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
+                className={btn("secondary")}
+              >
+                {suggesting ? "Reading…" : "Suggest fields"}
               </button>
             </div>
+            <button onClick={closeModal} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
 
-            {/* Suggestions — spans the modal, above both columns, because the
-                fields they land in live in different ones. */}
-            {suggestions && suggestions.length > 0 && (
-              <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--background)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                  <p className="text-[12px] text-[var(--foreground-subtle)]">
-                    From how the catalogue is filed
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <button onClick={applySuggestions} disabled={!chosen.size}
-                      className={btn("secondary")}>
-                      Fill {chosen.size || ""} selected
-                    </button>
-                    <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
-                      className={btn("ghost")}>
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {suggestions.map((s) => {
-                    const shown = Array.isArray(s.value) ? s.value.join(", ") : s.value;
-                    return (
-                      <label key={s.field} className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={chosen.has(s.field)}
-                          onChange={() => setChosen((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(s.field)) next.delete(s.field); else next.add(s.field);
-                            return next;
-                          })}
-                          className="mt-0.5 accent-[var(--foreground)]"
-                        />
-                        <span className="text-[12px] leading-relaxed">
-                          <span className="text-[var(--foreground-subtle)]">{({ category: "Category", subcategory: "Subcategory", gender: "Gender", colorGroups: "Color filters" } as const)[s.field]}</span>{" "}
-                          <span className="font-mono text-[var(--foreground)]">{shown}</span>
-                          {s.replaces && <span className="text-[var(--warn)]"> — replaces {s.replaces}</span>}
-                          {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
-                          {s.confidence === "low" && <span className="text-[var(--warn)]"> · unsure</span>}
-                          <span className="block text-[var(--foreground-subtle)]">{s.why}</span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="mt-2 text-[12px] text-[var(--foreground-subtle)]">
-                  Unsure ones start unticked. Filling a field changes nothing until you save.
+          {/* Suggestions — spans the modal, above both columns, because the
+              fields they land in live in different ones. */}
+          {suggestions && suggestions.length > 0 && (
+            <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--background)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                <p className="text-[12px] text-[var(--foreground-subtle)]">
+                  From how the catalogue is filed
                 </p>
+                <div className="flex items-center gap-3">
+                  <button onClick={applySuggestions} disabled={!chosen.size}
+                    className={btn("secondary")}>
+                    Fill {chosen.size || ""} selected
+                  </button>
+                  <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
+                    className={btn("ghost")}>
+                    Dismiss
+                  </button>
+                </div>
               </div>
-            )}
-
-            {/* Body — two-column */}
-            {/* One column on a phone (the whole body scrolls), two from md up
-                (each column scrolls on its own). The columns are scroll
-                boxes only from md: below it a scroll box shrinks its grid row
-                and the form would scroll inside a strip. */}
-            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] flex-1 min-h-0 overflow-y-auto divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
-
-              {/* ── Left: Images ── */}
-              <div className="flex flex-col gap-3 px-4 py-4 md:overflow-y-auto">
-                <p className="text-[13px] font-medium text-[var(--foreground)]">Images</p>
-                <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
-                <ImageList
-                  images={form.images}
-                  onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
-                />
-              </div>
-
-              {/* ── Right: Sections ── */}
-              <div className="flex flex-col divide-y divide-[var(--border)] md:overflow-y-auto">
-
-                {(() => {
-                  // Section header wired to the collapsed set.
-                  const sec = (id: string) => ({ open: !collapsed.has(id), onToggle: () => toggleSection(id) });
-
+              <div className="flex flex-col gap-1">
+                {suggestions.map((s) => {
+                  const shown = Array.isArray(s.value) ? s.value.join(", ") : s.value;
                   return (
-                    <>
-                      {/* ── Basic info (always open) ── */}
-                      <div className="px-4 py-4 flex flex-col gap-3">
-                        <p className="text-[13px] font-medium text-[var(--foreground)]">Basic info</p>
-                        <div>
-                          <label className={labelCls}>Name *</label>
-                          <input
-                            type="text"
-                            value={form.name}
-                            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                            placeholder="Product name"
-                            className={inputCls}
-                          />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="relative">
-                        <label className={labelCls}>Brand</label>
-                        <input
-                          ref={brandInputRef}
-                          type="text"
-                          value={form.brand}
-                          onChange={(e) => { setForm((f) => ({ ...f, brand: e.target.value })); setBrandDropdownOpen(true); }}
-                          onFocus={() => setBrandDropdownOpen(true)}
-                          placeholder="Type or pick brand…"
-                          className={inputCls}
-                          autoComplete="off"
-                        />
-                        {brandDropdownOpen && (
-                          <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] rounded-xl bg-[var(--surface)] max-h-48 overflow-y-auto shadow-lg">
-                            {(() => {
-                              const q = form.brand.toLowerCase().trim();
-                              const filtered = suggestedBrands.filter((b) => b.toLowerCase().includes(q));
-                              const exactMatch = suggestedBrands.some((b) => b.toLowerCase() === q);
-                              return (
-                                <>
-                                  {filtered.map((b) => (
-                                    <button key={b} type="button" onMouseDown={(e) => { e.preventDefault(); setForm((f) => ({ ...f, brand: b })); setBrandDropdownOpen(false); }} className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--background)] transition-colors ${form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{b}</button>
-                                  ))}
-                                  {form.brand.trim() && !exactMatch && (
-                                    <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--background)] flex items-center gap-2 transition-colors">
-                                      {addingBrand ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <span className="text-base leading-none">+</span>}
-                                      Add &ldquo;{form.brand.trim()}&rdquo; as new brand
-                                    </button>
-                                  )}
-                                  {filtered.length === 0 && !form.brand.trim() && <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>}
-                                </>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
+                    <label key={s.field} className="flex items-start gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={chosen.has(s.field)}
+                        onChange={() => setChosen((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(s.field)) next.delete(s.field); else next.add(s.field);
+                          return next;
+                        })}
+                        className="mt-0.5 accent-[var(--foreground)]"
+                      />
+                      <span className="text-[12px] leading-relaxed">
+                        <span className="text-[var(--foreground-subtle)]">{({ category: "Category", subcategory: "Subcategory", gender: "Gender", colorGroups: "Color filters" } as const)[s.field]}</span>{" "}
+                        <span className="font-mono text-[var(--foreground)]">{shown}</span>
+                        {s.replaces && <span className="text-[var(--warn)]"> — replaces {s.replaces}</span>}
+                        {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
+                        {s.confidence === "low" && <span className="text-[var(--warn)]"> · unsure</span>}
+                        <span className="block text-[var(--foreground-subtle)]">{s.why}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[12px] text-[var(--foreground-subtle)]">
+                Unsure ones start unticked. Filling a field changes nothing until you save.
+              </p>
+            </div>
+          )}
+
+          {/* Body — two-column */}
+          {/* One column on a phone (the whole body scrolls), two from md up
+              (each column scrolls on its own). The columns are scroll
+              boxes only from md: below it a scroll box shrinks its grid row
+              and the form would scroll inside a strip. */}
+          <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] flex-1 min-h-0 overflow-y-auto divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
+
+            {/* ── Left: Images ── */}
+            <div className="flex flex-col gap-3 px-4 py-4 md:overflow-y-auto">
+              <p className="text-[13px] font-medium text-[var(--foreground)]">Images</p>
+              <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
+              <ImageList
+                images={form.images}
+                onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
+              />
+            </div>
+
+            {/* ── Right: Sections ── */}
+            <div className="flex flex-col divide-y divide-[var(--border)] md:overflow-y-auto">
+
+              {(() => {
+                // Section header wired to the collapsed set.
+                const sec = (id: string) => ({ open: !collapsed.has(id), onToggle: () => toggleSection(id) });
+
+                return (
+                  <>
+                    {/* ── Basic info (always open) ── */}
+                    <div className="px-4 py-4 flex flex-col gap-3">
+                      <p className="text-[13px] font-medium text-[var(--foreground)]">Basic info</p>
                       <div>
-                        <label className={labelCls}>Gender</label>
-                        <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))} className={selectCls}>
-                          <option value="">Unspecified</option>
-                          <option value="women">Women</option>
-                          <option value="men">Men</option>
-                          <option value="unisex">Unisex</option>
-                        </select>
-                      </div>
+                        <label className={labelCls}>Name *</label>
+                        <input
+                          type="text"
+                          value={form.name}
+                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          placeholder="Product name"
+                          className={inputCls}
+                        />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative">
+                      <label className={labelCls}>Brand</label>
+                      <input
+                        ref={brandInputRef}
+                        type="text"
+                        value={form.brand}
+                        onChange={(e) => { setForm((f) => ({ ...f, brand: e.target.value })); setBrandDropdownOpen(true); }}
+                        onFocus={() => setBrandDropdownOpen(true)}
+                        placeholder="Type or pick brand…"
+                        className={inputCls}
+                        autoComplete="off"
+                      />
+                      {brandDropdownOpen && (
+                        <div ref={brandDropdownRef} className="absolute z-50 top-full left-0 right-0 mt-0.5 border border-[var(--border)] rounded-xl bg-[var(--surface)] max-h-48 overflow-y-auto shadow-lg">
+                          {(() => {
+                            const q = form.brand.toLowerCase().trim();
+                            const filtered = suggestedBrands.filter((b) => b.toLowerCase().includes(q));
+                            const exactMatch = suggestedBrands.some((b) => b.toLowerCase() === q);
+                            return (
+                              <>
+                                {filtered.map((b) => (
+                                  <button key={b} type="button" onMouseDown={(e) => { e.preventDefault(); setForm((f) => ({ ...f, brand: b })); setBrandDropdownOpen(false); }} className={`w-full text-left px-3 py-2 text-xs hover:bg-[var(--background)] transition-colors ${form.brand === b ? "text-[var(--foreground)] font-medium" : "text-[var(--foreground-muted)]"}`}>{b}</button>
+                                ))}
+                                {form.brand.trim() && !exactMatch && (
+                                  <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--background)] flex items-center gap-2 transition-colors">
+                                    {addingBrand ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <span className="text-base leading-none">+</span>}
+                                    Add &ldquo;{form.brand.trim()}&rdquo; as new brand
+                                  </button>
+                                )}
+                                {filtered.length === 0 && !form.brand.trim() && <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Gender</label>
+                      <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))} className={selectCls}>
+                        <option value="">Unspecified</option>
+                        <option value="women">Women</option>
+                        <option value="men">Men</option>
+                        <option value="unisex">Unisex</option>
+                      </select>
                     </div>
                   </div>
+                </div>
 
-                  {/* ── Category ── */}
-                  <div>
-                    <SecHead {...sec("category")} label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
-                    {!collapsed.has("category") && (
-                      <div className="px-4 pb-4 flex flex-col gap-2">
-                        {(() => {
-                          // One tree, the same one the catalog filters and the
-                          // breadcrumbs read. Picking a subcategory sets the stored
-                          // category too, so the two can never disagree.
-                          // Resolved from the subcategory, not the category —
-                          // a group added alongside an existing one can share
-                          // its category value, and only the label says which
-                          // of the two a piece is in.
-                          const activeGroup = groupForProduct(form.category, form.subcategory, categoryGroups);
-                          const pick = (label: string) =>
-                            setForm((f) => ({
-                              ...f,
-                              category: subcatToValue[label] as Category,
-                              subcategory: label,
-                            }));
-                          return (
-                            <>
-                              <div className="grid grid-cols-3 gap-1">
-                                {categoryGroups.map((g) => {
-                                  // Picking a group means picking its first
-                                  // subcategory, so an empty one has nothing to
-                                  // select until it gets one.
-                                  const first = g.items[0];
+                {/* ── Category ── */}
+                <div>
+                  <SecHead {...sec("category")} label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
+                  {!collapsed.has("category") && (
+                    <div className="px-4 pb-4 flex flex-col gap-2">
+                      {(() => {
+                        // One tree, the same one the catalog filters and the
+                        // breadcrumbs read. Picking a subcategory sets the stored
+                        // category too, so the two can never disagree.
+                        // Resolved from the subcategory, not the category —
+                        // a group added alongside an existing one can share
+                        // its category value, and only the label says which
+                        // of the two a piece is in.
+                        const activeGroup = groupForProduct(form.category, form.subcategory, categoryGroups);
+                        const pick = (label: string) =>
+                          setForm((f) => ({
+                            ...f,
+                            category: subcatToValue[label] as Category,
+                            subcategory: label,
+                          }));
+                        return (
+                          <>
+                            <div className="grid grid-cols-3 gap-1">
+                              {categoryGroups.map((g) => {
+                                // Picking a group means picking its first
+                                // subcategory, so an empty one has nothing to
+                                // select until it gets one.
+                                const first = g.items[0];
+                                return (
+                                  <button key={g.id} type="button"
+                                    disabled={!first}
+                                    title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
+                                    onClick={() => first && pick(first.label)}
+                                    className={`py-1.5 text-[12px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                  >{g.label}</button>
+                                );
+                              })}
+                            </div>
+
+                            {activeGroup ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {activeGroup.items.map((item) => (
+                                  <button key={item.label} type="button"
+                                    onClick={() => pick(item.label)}
+                                    className={`px-2.5 py-1.5 text-[11px] border rounded-full transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                  >{item.label}</button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[12px] text-[var(--foreground-subtle)]">
+                                Stored as <code className="font-mono">{form.category}</code>, which is not in the catalog&apos;s
+                                filter tree — pick a group above to make this piece filterable.
+                              </p>
+                            )}
+
+                            {activeGroup && !form.subcategory && (
+                              <p className="text-[12px] text-[var(--foreground-subtle)]">
+                                No subcategory yet — this piece answers to every {activeGroup.label} filter until you pick one.
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Sizes ── */}
+                <div>
+                  <SecHead {...sec("sizes")} label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
+                  {!collapsed.has("sizes") && (
+                    <div className="px-4 pb-4 flex flex-col gap-2">
+                      {(() => {
+                        // The subcategory's own chart wins: Belts and
+                        // Watches are both `accessories`, and only one of
+                        // them has sizes. The category's chart stays as the
+                        // fallback for pieces with no subcategory yet.
+                        const sub = categoryGroups
+                          .flatMap((g) => g.items)
+                          .find((i) => i.label === form.subcategory);
+                        const preset = sub?.sizes?.length
+                          ? sub.sizes
+                          : SIZE_PRESETS[form.category]?.sizes ?? [];
+                        const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
+                        const toggle = (size: string) => {
+                          const next = selected.includes(size) ? selected.filter((s) => s !== size) : [...selected, size];
+                          const sorted = [...next].sort((a, b) => {
+                            const ai = preset.indexOf(a), bi = preset.indexOf(b);
+                            if (ai === -1 && bi === -1) return 0;
+                            if (ai === -1) return 1;
+                            if (bi === -1) return -1;
+                            return ai - bi;
+                          });
+                          setForm((f) => ({ ...f, sizes: sorted.join(", ") }));
+                        };
+                        return (
+                          <>
+                            {preset.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {preset.map((size) => {
+                                  const active = selected.includes(size);
                                   return (
-                                    <button key={g.id} type="button"
-                                      disabled={!first}
-                                      title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
-                                      onClick={() => first && pick(first.label)}
-                                      className={`py-1.5 text-[12px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                    >{g.label}</button>
+                                    <button key={size} type="button" onClick={() => toggle(size)}
+                                      className={`min-w-[34px] px-2 py-1.5 text-[11px] border rounded-full transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                    >{size}</button>
                                   );
                                 })}
                               </div>
-
-                              {activeGroup ? (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {activeGroup.items.map((item) => (
-                                    <button key={item.label} type="button"
-                                      onClick={() => pick(item.label)}
-                                      className={`px-2.5 py-1.5 text-[11px] border rounded-full transition-colors ${form.subcategory === item.label ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                    >{item.label}</button>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-[12px] text-[var(--foreground-subtle)]">
-                                  Stored as <code className="font-mono">{form.category}</code>, which is not in the catalog&apos;s
-                                  filter tree — pick a group above to make this piece filterable.
-                                </p>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
+                              {selected.length > 0 && (
+                                <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className={`${btn("ghost")} shrink-0`}>Clear</button>
                               )}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
 
-                              {activeGroup && !form.subcategory && (
-                                <p className="text-[12px] text-[var(--foreground-subtle)]">
-                                  No subcategory yet — this piece answers to every {activeGroup.label} filter until you pick one.
-                                </p>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Sizes ── */}
-                  <div>
-                    <SecHead {...sec("sizes")} label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
-                    {!collapsed.has("sizes") && (
-                      <div className="px-4 pb-4 flex flex-col gap-2">
-                        {(() => {
-                          // The subcategory's own chart wins: Belts and
-                          // Watches are both `accessories`, and only one of
-                          // them has sizes. The category's chart stays as the
-                          // fallback for pieces with no subcategory yet.
-                          const sub = categoryGroups
-                            .flatMap((g) => g.items)
-                            .find((i) => i.label === form.subcategory);
-                          const preset = sub?.sizes?.length
-                            ? sub.sizes
-                            : SIZE_PRESETS[form.category]?.sizes ?? [];
-                          const selected = form.sizes.split(",").map((s) => s.trim()).filter(Boolean);
-                          const toggle = (size: string) => {
-                            const next = selected.includes(size) ? selected.filter((s) => s !== size) : [...selected, size];
-                            const sorted = [...next].sort((a, b) => {
-                              const ai = preset.indexOf(a), bi = preset.indexOf(b);
-                              if (ai === -1 && bi === -1) return 0;
-                              if (ai === -1) return 1;
-                              if (bi === -1) return -1;
-                              return ai - bi;
-                            });
-                            setForm((f) => ({ ...f, sizes: sorted.join(", ") }));
-                          };
-                          return (
-                            <>
-                              {preset.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {preset.map((size) => {
-                                    const active = selected.includes(size);
-                                    return (
-                                      <button key={size} type="button" onClick={() => toggle(size)}
-                                        className={`min-w-[34px] px-2 py-1.5 text-[11px] border rounded-full transition-colors text-center ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                                      >{size}</button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
-                                {selected.length > 0 && (
-                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className={`${btn("ghost")} shrink-0`}>Clear</button>
-                                )}
+                {/* ── Pricing ── */}
+                <div>
+                  <SecHead {...sec("pricing")} label="Pricing" />
+                  {!collapsed.has("pricing") && (
+                    <div className="px-4 pb-4 flex flex-col gap-3">
+                      {(() => {
+                        const retailerPrices = form.retailers.map(retailerUsd).filter((p) => p > 0);
+                        const isAutoCalc = retailerPrices.length > 0;
+                        const converted = [
+                          ...new Set(
+                            form.retailers
+                              .filter((r) => retailerUsd(r) > 0 && (r.currency || "USD").toUpperCase() !== "USD")
+                              .map((r) => r.currency.toUpperCase()),
+                          ),
+                        ];
+                        return (
+                          <>
+                            {isAutoCalc && (
+                              <p className="text-[12px] text-[var(--foreground-muted)]">
+                                Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
+                                {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
+                              </p>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className={labelCls}>Price min ($)</label>
+                                <input
+                                  type="number"
+                                  value={form.priceMin}
+                                  onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
+                                  placeholder="0"
+                                  min="0"
+                                  readOnly={isAutoCalc}
+                                  className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
+                                />
                               </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Pricing ── */}
-                  <div>
-                    <SecHead {...sec("pricing")} label="Pricing" />
-                    {!collapsed.has("pricing") && (
-                      <div className="px-4 pb-4 flex flex-col gap-3">
-                        {(() => {
-                          const retailerPrices = form.retailers.map(retailerUsd).filter((p) => p > 0);
-                          const isAutoCalc = retailerPrices.length > 0;
-                          const converted = [
-                            ...new Set(
-                              form.retailers
-                                .filter((r) => retailerUsd(r) > 0 && (r.currency || "USD").toUpperCase() !== "USD")
-                                .map((r) => r.currency.toUpperCase()),
-                            ),
-                          ];
-                          return (
-                            <>
-                              {isAutoCalc && (
-                                <p className="text-[12px] text-[var(--foreground-muted)]">
-                                  Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
-                                  {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
-                                </p>
-                              )}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                  <label className={labelCls}>Price min ($)</label>
-                                  <input
-                                    type="number"
-                                    value={form.priceMin}
-                                    onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
-                                    placeholder="0"
-                                    min="0"
-                                    readOnly={isAutoCalc}
-                                    className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
-                                  />
-                                </div>
-                                <div>
-                                  <label className={labelCls}>Price max ($)</label>
-                                  <input
-                                    type="number"
-                                    value={form.priceMax}
-                                    onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
-                                    placeholder="0"
-                                    min="0"
-                                    readOnly={isAutoCalc}
-                                    className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
-                                  />
-                                </div>
+                              <div>
+                                <label className={labelCls}>Price max ($)</label>
+                                <input
+                                  type="number"
+                                  value={form.priceMax}
+                                  onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
+                                  placeholder="0"
+                                  min="0"
+                                  readOnly={isAutoCalc}
+                                  className={`${inputCls} ${isAutoCalc ? "opacity-60 cursor-default" : ""}`}
+                                />
                               </div>
-                            </>
-                          );
-                        })()}
-                        {(() => {
-                          // The badge shows only in a product's first 7 days,
-                          // counted from when it was added — so on an older
-                          // piece the box can do nothing and says so.
-                          const createdMs = editingProduct?.createdAt ? new Date(editingProduct.createdAt).getTime() : NaN;
-                          const pastNewWindow = Number.isFinite(createdMs) && Date.now() - createdMs >= NEW_ARRIVAL_WINDOW_MS;
+                            </div>
+                          </>
+                        );
+                      })()}
+                      {(() => {
+                        // The badge shows only in a product's first 7 days,
+                        // counted from when it was added — so on an older
+                        // piece the box can do nothing and says so.
+                        const createdMs = editingProduct?.createdAt ? new Date(editingProduct.createdAt).getTime() : NaN;
+                        const pastNewWindow = Number.isFinite(createdMs) && Date.now() - createdMs >= NEW_ARRIVAL_WINDOW_MS;
+                        return (
+                          <div className="flex items-center gap-3">
+                            <input type="checkbox" id="isNew" checked={form.isNew && !pastNewWindow} disabled={pastNewWindow} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed" />
+                            <label htmlFor="isNew" className={`text-xs text-[var(--foreground-muted)] tracking-wide ${pastNewWindow ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                              New arrival{" "}
+                              <span className="text-[var(--foreground-subtle)]">
+                                {pastNewWindow
+                                  ? `(unavailable — added ${f.date(editingProduct?.createdAt)}, more than 7 days ago)`
+                                  : "(badge auto-hides 7 days after the product was added)"}
+                              </span>
+                            </label>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Details (collapsible) ── */}
+                <div>
+                  <SecHead {...sec("details")} label="Details" />
+                  {!collapsed.has("details") && (
+                    <div className="px-4 pb-4 flex flex-col gap-3">
+                      <div>
+                        <label className={labelCls}>Description</label>
+                        <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Material</label>
+                        <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Colors (collapsible) ── */}
+                <div>
+                  <SecHead {...sec("colors")} label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
+                  {!collapsed.has("colors") && (
+                    <div className="px-4 pb-4">
+                      <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder="Black, White, Camel" className={inputCls} />
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Color filter groups (collapsible, compact grid) ── */}
+                <div>
+                  <SecHead {...sec("color-groups")} label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
+                  {!collapsed.has("color-groups") && (
+                    <div className="px-4 pb-4">
+                      <div className="grid grid-cols-2 gap-1 mt-1">
+                        {colorGroups.map((cg) => {
+                          const active = form.colorGroupIds.includes(cg.id);
                           return (
-                            <div className="flex items-center gap-3">
-                              <input type="checkbox" id="isNew" checked={form.isNew && !pastNewWindow} disabled={pastNewWindow} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed" />
-                              <label htmlFor="isNew" className={`text-xs text-[var(--foreground-muted)] tracking-wide ${pastNewWindow ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                                New arrival{" "}
-                                <span className="text-[var(--foreground-subtle)]">
-                                  {pastNewWindow
-                                    ? `(unavailable — added ${f.date(editingProduct?.createdAt)}, more than 7 days ago)`
-                                    : "(badge auto-hides 7 days after the product was added)"}
-                                </span>
-                              </label>
+                            <button
+                              key={cg.id}
+                              type="button"
+                              onClick={() => setForm((f) => ({
+                                ...f,
+                                colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
+                              }))}
+                              className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[12px] transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                            >
+                              <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
+                                style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
+                              {cg.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Style keywords (collapsible) ── */}
+                <div>
+                  <SecHead {...sec("style")} label="Style keywords" />
+                  {!collapsed.has("style") && (
+                    <div className="px-4 pb-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {STYLE_KEYWORDS.map((kw) => (
+                          <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
+                            className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
+                          >{styleLabel(kw)}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Color variants (collapsible) ── */}
+                <div>
+                  <SecHead {...sec("variants")} label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
+                  {!collapsed.has("variants") && (
+                    <div className="px-4 pb-4 flex flex-col gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
+                        <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
+                        <span className="text-[12px] text-[var(--foreground-subtle)]">← swatch for this product</span>
+                      </div>
+                      {form.linkedProductIds.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                          {form.linkedProductIds.map((lid) => {
+                            const lp = products.find((x) => x.id === lid);
+                            if (!lp) return null;
+                            return (
+                              <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} loading="lazy" decoding="async" className="w-7 h-9 object-cover shrink-0" />}
+                                <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
+                                <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
+                                <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{f.money(lp.priceMin)}</span>
+                                <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className={`${BTN_ICON} shrink-0 ml-1`} aria-label="Remove">
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="relative">
+                        <input type="text" value={variantSearch} onChange={(e) => setVariantSearch(e.target.value)} placeholder="Search product to link…" className={`${inputCls} py-1.5`} />
+                        {variantSearch.trim().length >= 1 && (() => {
+                          const q = variantSearch.toLowerCase();
+                          const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
+                          if (matches.length === 0) return null;
+                          return (
+                            <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--surface)" }}>
+                              {matches.map((mp) => (
+                                <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--background)] transition-colors border-b border-[var(--border)] last:border-0">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} loading="lazy" decoding="async" className="w-6 h-8 object-cover shrink-0" />}
+                                  {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
+                                  <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
+                                  <span className="text-[12px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
+                                </button>
+                              ))}
                             </div>
                           );
                         })()}
                       </div>
-                    )}
-                  </div>
+                      {form.linkedProductIds.length > 0 && (
+                        <p className="text-[12px] text-[var(--foreground-subtle)]">
+                          {editingProduct?.variantGroupId
+                            ? <>Removing a product here unlinks it on save. The group keeps its <strong>primary</strong> — change it with Group variants.</>
+                            : <>A new group gets this product as its <strong>primary</strong> (catalog representative); an existing group keeps its own.</>}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  {/* ── Details (collapsible) ── */}
-                  <div>
-                    <SecHead {...sec("details")} label="Details" />
-                    {!collapsed.has("details") && (
-                      <div className="px-4 pb-4 flex flex-col gap-3">
-                        <div>
-                          <label className={labelCls}>Description</label>
-                          <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
-                        </div>
-                        <div>
-                          <label className={labelCls}>Material</label>
-                          <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                {/* ── Retailers (collapsible) ── */}
+                <div>
+                  <SecHead {...sec("retailers")} label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
+                  {!collapsed.has("retailers") && (
+                    <div className="px-4 pb-4">
+                      <RetailerList
+                        retailers={form.retailers}
+                        storeLibrary={storeLibrary}
+                        storeRules={storeRules}
+                        onChange={(r) => setForm((f) => withRetailerPrices({ ...f, retailers: r }))}
+                      />
+                    </div>
+                  )}
+                </div>
 
-                  {/* ── Colors (collapsible) ── */}
-                  <div>
-                    <SecHead {...sec("colors")} label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
-                    {!collapsed.has("colors") && (
-                      <div className="px-4 pb-4">
-                        <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder="Black, White, Camel" className={inputCls} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Color filter groups (collapsible, compact grid) ── */}
-                  <div>
-                    <SecHead {...sec("color-groups")} label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
-                    {!collapsed.has("color-groups") && (
-                      <div className="px-4 pb-4">
-                        <div className="grid grid-cols-2 gap-1 mt-1">
-                          {colorGroups.map((cg) => {
-                            const active = form.colorGroupIds.includes(cg.id);
-                            return (
-                              <button
-                                key={cg.id}
-                                type="button"
-                                onClick={() => setForm((f) => ({
-                                  ...f,
-                                  colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
-                                }))}
-                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[12px] transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
-                              >
-                                <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
-                                  style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
-                                {cg.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Style keywords (collapsible) ── */}
-                  <div>
-                    <SecHead {...sec("style")} label="Style keywords" />
-                    {!collapsed.has("style") && (
-                      <div className="px-4 pb-4">
-                        <div className="flex flex-wrap gap-1.5">
-                          {STYLE_KEYWORDS.map((kw) => (
-                            <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
-                              className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
-                            >{styleLabel(kw)}</button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Color variants (collapsible) ── */}
-                  <div>
-                    <SecHead {...sec("variants")} label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
-                    {!collapsed.has("variants") && (
-                      <div className="px-4 pb-4 flex flex-col gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
-                          <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
-                          <span className="text-[12px] text-[var(--foreground-subtle)]">← swatch for this product</span>
-                        </div>
-                        {form.linkedProductIds.length > 0 && (
-                          <div className="flex flex-col gap-1.5">
-                            {form.linkedProductIds.map((lid) => {
-                              const lp = products.find((x) => x.id === lid);
-                              if (!lp) return null;
-                              return (
-                                <div key={lid} className="flex items-center gap-2 border border-[var(--border)] px-2 py-1.5">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} loading="lazy" decoding="async" className="w-7 h-9 object-cover shrink-0" />}
-                                  <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
-                                  <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                                  <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{f.money(lp.priceMin)}</span>
-                                  <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className={`${BTN_ICON} shrink-0 ml-1`} aria-label="Remove">
-                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <div className="relative">
-                          <input type="text" value={variantSearch} onChange={(e) => setVariantSearch(e.target.value)} placeholder="Search product to link…" className={`${inputCls} py-1.5`} />
-                          {variantSearch.trim().length >= 1 && (() => {
-                            const q = variantSearch.toLowerCase();
-                            const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
-                            if (matches.length === 0) return null;
-                            return (
-                              <div className="absolute z-20 left-0 right-0 top-full border border-[var(--border)] rounded-xl shadow-lg mt-0.5 max-h-48 overflow-y-auto" style={{ background: "var(--surface)" }}>
-                                {matches.map((mp) => (
-                                  <button key={mp.id} type="button" onClick={() => { setForm((f) => ({ ...f, linkedProductIds: [...f.linkedProductIds, mp.id] })); setVariantSearch(""); }} className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[var(--background)] transition-colors border-b border-[var(--border)] last:border-0">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} loading="lazy" decoding="async" className="w-6 h-8 object-cover shrink-0" />}
-                                    {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
-                                    <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
-                                    <span className="text-[12px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        {form.linkedProductIds.length > 0 && (
-                          <p className="text-[12px] text-[var(--foreground-subtle)]">
-                            {editingProduct?.variantGroupId
-                              ? <>Removing a product here unlinks it on save. The group keeps its <strong>primary</strong> — change it with Group variants.</>
-                              : <>A new group gets this product as its <strong>primary</strong> (catalog representative); an existing group keeps its own.</>}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Retailers (collapsible) ── */}
-                  <div>
-                    <SecHead {...sec("retailers")} label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
-                    {!collapsed.has("retailers") && (
-                      <div className="px-4 pb-4">
-                        <RetailerList
-                          retailers={form.retailers}
-                          storeLibrary={storeLibrary}
-                          storeRules={storeRules}
-                          onChange={(r) => setForm((f) => withRetailerPrices({ ...f, retailers: r }))}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                </>
-              );
-            })()}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)] shrink-0">
-              <button
-                onClick={handleSave}
-                disabled={!form.name.trim() || saving || !canWrite}
-                className={`${btn("primary")} flex-1`}
-              >
-                {saving ? "Saving…" : editingProduct ? "Save changes" : "Add product"}
-              </button>
-              <button
-                onClick={closeModal}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
+              </>
+            );
+          })()}
             </div>
           </div>
-        </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)] shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={!form.name.trim() || saving || !canWrite}
+              className={`${btn("primary")} flex-1`}
+            >
+              {saving ? "Saving…" : editingProduct ? "Save changes" : "Add product"}
+            </button>
+            <button
+              onClick={closeModal}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* ── Crop Editor Modal ── */}
       {cropProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div
-            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-xl w-full mx-4 max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
-            style={{ background: "var(--surface)" }}
-          >
-            {/* Заголовок с кнопкой сброса */}
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
-              <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">{t("crop.title")}</h2>
-              <div className="flex items-center gap-3 ml-auto">
-                {cropProduct.cropData && canWrite && (
-                  <button
-                    onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
-                    className={btn("danger")}
-                  >
-                    {t("crop.remove")}
-                  </button>
-                )}
+        <Modal
+          onClose={() => setCropProduct(null)}
+          label={t("crop.title")}
+          panelClassName="rounded-2xl p-5 md:p-8 max-w-xl w-full max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
+          closeOnScrim={false}
+        >
+          {/* Заголовок с кнопкой сброса */}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
+            <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">{t("crop.title")}</h2>
+            <div className="flex items-center gap-3 ml-auto">
+              {cropProduct.cropData && canWrite && (
                 <button
-                  onClick={() => setCropProduct(null)}
-                  aria-label="Close"
-                  className={BTN_ICON}
+                  onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
+                  className={btn("danger")}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  </svg>
+                  {t("crop.remove")}
                 </button>
-              </div>
-            </div>
-
-            <ImageCropEditor
-              imageUrl={cropProduct.imageUrl}
-              productName={cropProduct.name}
-              initialCrop={cropProduct.cropData}
-              onSave={handleCropSave}
-              onCancel={() => setCropProduct(null)}
-              saving={cropSaving}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── Group Variants Modal ── */}
-      {groupModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="border border-[var(--border)] rounded-2xl p-5 md:p-8 max-w-lg w-full mx-4 max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
-            style={{ background: "var(--surface)" }}
-          >
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <div className="min-w-0">
-                <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                  {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
-                </h2>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                  Set a swatch color for each product and choose which is the catalog representative.
-                </p>
-              </div>
+              )}
               <button
-                onClick={() => setGroupModal({ open: false, entries: [] })}
+                onClick={() => setCropProduct(null)}
                 aria-label="Close"
-                className={`${BTN_ICON} shrink-0`}
+                className={BTN_ICON}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-3">
-              {groupModal.entries.map((entry) => {
-                const p = products.find((x) => x.id === entry.id);
-                if (!p) return null;
-                return (
-                  <div
-                    key={entry.id}
-                    className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${
-                      entry.isPrimary ? "border-[var(--foreground)]" : "border-[var(--border)]"
-                    }`}
-                  >
-                    {/* Thumb */}
-                    {p.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.name} loading="lazy" decoding="async" className="w-10 h-[52px] object-cover shrink-0" />
-                    )}
+          <ImageCropEditor
+            imageUrl={cropProduct.imageUrl}
+            productName={cropProduct.name}
+            initialCrop={cropProduct.cropData}
+            onSave={handleCropSave}
+            onCancel={() => setCropProduct(null)}
+            saving={cropSaving}
+          />
+        </Modal>
+      )}
 
-                    {/* Name + swatch */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand} · {f.money(p.priceMin)}</p>
+      {/* ── Group Variants Modal ── */}
+      {groupModal.open && (
+        <Modal
+          onClose={() => setGroupModal({ open: false, entries: [] })}
+          label="Group variants"
+          panelClassName="rounded-2xl p-5 md:p-8 max-w-lg w-full max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
+        >
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-light text-[var(--foreground)]">
+                {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
+              </h2>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                Set a swatch color for each product and choose which is the catalog representative.
+              </p>
+            </div>
+            <button
+              onClick={() => setGroupModal({ open: false, entries: [] })}
+              aria-label="Close"
+              className={`${BTN_ICON} shrink-0`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
 
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="color"
-                          value={entry.colorHex}
-                          onChange={(e) =>
-                            setGroupModal((prev) => ({
-                              ...prev,
-                              entries: prev.entries.map((en) =>
-                                en.id === entry.id ? { ...en, colorHex: e.target.value } : en
-                              ),
-                            }))
-                          }
-                          className="w-7 h-7 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
-                          title="Swatch color"
-                        />
-                        <input
-                          type="text"
-                          value={entry.colorHex}
-                          onChange={(e) =>
-                            setGroupModal((prev) => ({
-                              ...prev,
-                              entries: prev.entries.map((en) =>
-                                en.id === entry.id ? { ...en, colorHex: e.target.value } : en
-                              ),
-                            }))
-                          }
-                          maxLength={7}
-                          placeholder="#888888"
-                          className={`${inputCls} font-mono max-w-[100px] py-1`}
-                        />
-                      </div>
-                    </div>
+          <div className="flex flex-col gap-3">
+            {groupModal.entries.map((entry) => {
+              const p = products.find((x) => x.id === entry.id);
+              if (!p) return null;
+              return (
+                <div
+                  key={entry.id}
+                  className={`border rounded-xl p-3 flex items-center gap-3 transition-colors ${
+                    entry.isPrimary ? "border-[var(--foreground)]" : "border-[var(--border)]"
+                  }`}
+                >
+                  {/* Thumb */}
+                  {p.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.imageUrl} alt={p.name} loading="lazy" decoding="async" className="w-10 h-[52px] object-cover shrink-0" />
+                  )}
 
-                    {/* Primary toggle */}
-                    <div className="shrink-0 text-center">
-                      <button
-                        type="button"
-                        onClick={() =>
+                  {/* Name + swatch */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
+                    <p className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand} · {f.money(p.priceMin)}</p>
+
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="color"
+                        value={entry.colorHex}
+                        onChange={(e) =>
                           setGroupModal((prev) => ({
                             ...prev,
-                            entries: prev.entries.map((en) => ({
-                              ...en,
-                              isPrimary: en.id === entry.id,
-                            })),
+                            entries: prev.entries.map((en) =>
+                              en.id === entry.id ? { ...en, colorHex: e.target.value } : en
+                            ),
                           }))
                         }
-                        className={`text-[12px] font-medium px-2 py-1 border rounded-lg transition-colors ${
-                          entry.isPrimary
-                            ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-                            : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                        }`}
-                      >
-                        {entry.isPrimary ? "Primary" : "Set primary"}
-                      </button>
+                        className="w-7 h-7 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
+                        title="Swatch color"
+                      />
+                      <input
+                        type="text"
+                        value={entry.colorHex}
+                        onChange={(e) =>
+                          setGroupModal((prev) => ({
+                            ...prev,
+                            entries: prev.entries.map((en) =>
+                              en.id === entry.id ? { ...en, colorHex: e.target.value } : en
+                            ),
+                          }))
+                        }
+                        maxLength={7}
+                        placeholder="#888888"
+                        className={`${inputCls} font-mono max-w-[100px] py-1`}
+                      />
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            <p className="text-[12px] text-[var(--foreground-subtle)] mt-4">
-              The <strong>primary</strong> product is shown in the catalog. Others are accessible via the colour palette on the card.
-            </p>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleGroupSave}
-                disabled={grouping || !canWrite}
-                className={`${btn("primary")} flex-1`}
-              >
-                {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
-              </button>
-              <button
-                onClick={() => setGroupModal({ open: false, entries: [] })}
-                className={btn("ghost")}
-              >
-                Cancel
-              </button>
-            </div>
+                  {/* Primary toggle */}
+                  <div className="shrink-0 text-center">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGroupModal((prev) => ({
+                          ...prev,
+                          entries: prev.entries.map((en) => ({
+                            ...en,
+                            isPrimary: en.id === entry.id,
+                          })),
+                        }))
+                      }
+                      className={`text-[12px] font-medium px-2 py-1 border rounded-lg transition-colors ${
+                        entry.isPrimary
+                          ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
+                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      {entry.isPrimary ? "Primary" : "Set primary"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+
+          <p className="text-[12px] text-[var(--foreground-subtle)] mt-4">
+            The <strong>primary</strong> product is shown in the catalog. Others are accessible via the colour palette on the card.
+          </p>
+
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={handleGroupSave}
+              disabled={grouping || !canWrite}
+              className={`${btn("primary")} flex-1`}
+            >
+              {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
+            </button>
+            <button
+              onClick={() => setGroupModal({ open: false, entries: [] })}
+              className={btn("ghost")}
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { useOverlayPresence } from "@/lib/hooks/useOverlayPresence";
-import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { BTN_ICON } from "@/app/goo-studio/_ui/recipes";
 import { useT } from "@/app/goo-studio/_i18n";
+import { useDialog } from "./useDialog";
 
 /*
  * The admin's side panel (docs/ADMIN_DESIGN.md 5.10, GS4-5): the details of a
@@ -22,8 +22,6 @@ import { useT } from "@/app/goo-studio/_i18n";
  * page close it, Tab stays inside, and focus goes back to whatever opened it.
  * A ConfirmDialog or a menu opened from inside keeps its own Escape and focus.
  */
-
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function SidePanel({
   open,
@@ -46,52 +44,8 @@ export function SidePanel({
   const ov = useOverlayPresence(open);
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const onCloseRef = useRef(onClose);
-  useScrollLock(open);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    const opener = document.activeElement as HTMLElement | null;
-    // The first field, so a form can be typed into at once; else the ✕.
-    const first = bodyRef.current?.querySelector<HTMLElement>("input:not([disabled]), select:not([disabled]), textarea:not([disabled])");
-    (first ?? closeRef.current)?.focus();
-
-    // On window, so a dialog or a menu opened on top (they listen on the
-    // document and mark the key handled) answers its own Escape first.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
-      const panel = panelRef.current;
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCloseRef.current();
-        return;
-      }
-      // Tab is kept inside only while focus is inside: a dialog on top keeps its own.
-      if (e.key !== "Tab" || !panel || !panel.contains(document.activeElement)) return;
-      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
-      if (items.length === 0) return;
-      const firstItem = items[0];
-      const lastItem = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === firstItem) {
-        e.preventDefault();
-        lastItem.focus();
-      } else if (!e.shiftKey && document.activeElement === lastItem) {
-        e.preventDefault();
-        firstItem.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
-    };
-  }, [open]);
+  // Focus, Escape, Tab and the page's scroll, as every admin dialog (useDialog).
+  useDialog(open, onClose, panelRef);
 
   if (!ov.rendered) return null;
 
@@ -120,13 +74,13 @@ export function SidePanel({
             </h2>
             {subtitle && <p className="text-[12px] leading-[18px] text-[var(--foreground-muted)] truncate">{subtitle}</p>}
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} className={BTN_ICON} aria-label={t("common.close")} title={t("common.close")}>
+          <button type="button" onClick={onClose} className={BTN_ICON} aria-label={t("common.close")} title={t("common.close")}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </button>
         </header>
-        <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 md:px-6 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 md:px-6 py-5">
           {children}
         </div>
         {footer && (

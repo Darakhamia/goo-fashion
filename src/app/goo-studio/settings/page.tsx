@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { SUPPORTED_STORES, storeFaviconUrl } from "@/lib/stores";
-import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
@@ -13,6 +12,7 @@ import { Badge } from "@/components/admin/Badge";
 import { btn, BTN_ICON, INPUT } from "../_ui/recipes";
 import EmbeddingsCard from "./EmbeddingsCard";
 import { Spinner, LoadingLine } from "./recipes";
+import { Modal } from "@/components/admin/Modal";
 
 interface KeyStatus {
   configured: boolean;
@@ -235,98 +235,93 @@ function PickerModal({
   const [query, setQuery] = useState("");
   // The panel has a search field; a selection dragged past its edge must not
   // close it.
-  const backdrop = useBackdropDismiss(onClose);
 
   const q = query.trim().toLowerCase();
   const filtered = q ? items.filter((p) => `${p.name} ${p.sub}`.toLowerCase().includes(q)) : items;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" {...backdrop}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
-          <div className="min-w-0">
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</p>
-            <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-              {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className={`ml-auto ${btn("primary")}`}
-          >
-            Done
-          </button>
+    <Modal
+      onClose={onClose}
+      label={title}
+      panelClassName="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl overflow-hidden"
+    >
+      <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
+        <div className="min-w-0">
+          <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</p>
+          <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
+            {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
+          </p>
         </div>
+        <button
+          onClick={onClose}
+          className={`ml-auto ${btn("primary")}`}
+        >
+          Done
+        </button>
+      </div>
 
-        <div className="px-5 py-3 border-b border-[var(--border)] shrink-0">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className={`w-full ${INPUT}`}
-          />
-        </div>
+      <div className="px-5 py-3 border-b border-[var(--border)] shrink-0">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label={searchPlaceholder}
+          className={`w-full ${INPUT}`}
+        />
+      </div>
 
-        <div className="overflow-y-auto overscroll-contain p-4">
-          {items.length === 0 ? (
-            <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">{emptyText}</p>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {filtered.map((p) => {
-                const selected = selectedIds.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => onPick(p.id)}
-                    aria-pressed={selected}
-                    className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
-                      selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
-                    }`}
-                  >
-                    <div className="aspect-square bg-[var(--background)] flex items-center justify-center">
-                      {p.imageUrl ? (
-                        // The catalogue can be hundreds of store-hosted photos:
-                        // load only the ones scrolled into view.
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.imageUrl}
-                          alt={p.name}
-                          loading="lazy"
-                          decoding="async"
-                          className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"} ${padded ? "p-3" : ""}`}
-                        />
-                      ) : (
-                        <span className="text-[13px] font-semibold text-[var(--foreground-subtle)]">
-                          {noImageText ?? p.name.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    {selected && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--surface)] flex items-center justify-center">
-                        <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-                          <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+      <div className="overflow-y-auto overscroll-contain p-4">
+        {items.length === 0 ? (
+          <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-10">{emptyText}</p>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {filtered.map((p) => {
+              const selected = selectedIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => onPick(p.id)}
+                  aria-pressed={selected}
+                  className={`relative rounded-lg overflow-hidden border text-left transition-colors ${
+                    selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
+                  }`}
+                >
+                  <div className="aspect-square bg-[var(--background)] flex items-center justify-center">
+                    {p.imageUrl ? (
+                      // The catalogue can be hundreds of store-hosted photos:
+                      // load only the ones scrolled into view.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.imageUrl}
+                        alt={p.name}
+                        loading="lazy"
+                        decoding="async"
+                        className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"} ${padded ? "p-3" : ""}`}
+                      />
+                    ) : (
+                      <span className="text-[13px] font-semibold text-[var(--foreground-subtle)]">
+                        {noImageText ?? p.name.slice(0, 2).toUpperCase()}
                       </span>
                     )}
-                    <div className="px-2 py-1.5">
-                      <p className="text-[12px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[12px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  </div>
+                  {selected && (
+                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--surface)] flex items-center justify-center">
+                      <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                        <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                  )}
+                  <div className="px-2 py-1.5">
+                    <p className="text-[12px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
 

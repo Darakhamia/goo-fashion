@@ -125,6 +125,7 @@ function PromptCard({ item, onSave, onReset }: {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          aria-label={item.label}
           rows={8}
           spellCheck={false}
           className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-[11px] font-mono text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors resize-y leading-relaxed"
