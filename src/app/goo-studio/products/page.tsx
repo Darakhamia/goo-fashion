@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import type { ReactNode } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, styleLabel } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
@@ -10,7 +11,7 @@ import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { DataTable, EmptyState, Thumb, type Column } from "@/components/admin/DataTable";
 import { Badge } from "@/components/admin/Badge";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
-import { ActiveFilters, FilterBar, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
+import { ActiveFilters, FilterBar, FilterChips, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
@@ -18,7 +19,7 @@ import { storeFaviconUrl } from "@/lib/stores";
 import { bareHost, pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key } from "@/app/goo-studio/_i18n";
 import { Modal } from "@/components/admin/Modal";
 
@@ -114,6 +115,27 @@ const GENDERS: { value: string; label: Key }[] = [
 
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
+
+/** What each stored availability reads as; the value saved stays the English one. */
+const AVAILABILITY_LABEL: Record<(typeof AVAILABILITY_OPTIONS)[number], Key> = {
+  "in stock": "products.availability.inStock",
+  "low stock": "products.availability.lowStock",
+  "sold out": "products.availability.soldOut",
+};
+
+/**
+ * Example values shown as placeholders. They are not in the dictionary: they
+ * show the shape of the catalog's own data (a URL, size codes, colors and
+ * materials as the storefront prints them), which is English whatever
+ * language the admin is in.
+ */
+const EXAMPLE = {
+  url: "https://…",
+  storeUrl: "https://zara.com/product/…",
+  sizes: "XS, S, M, L, XL",
+  material: "100% Wool",
+  colors: "Black, White, Camel",
+};
 
 /** How long the "New" badge shows after a product is added (see db.ts isWithinLastWeek). */
 const NEW_ARRIVAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -233,21 +255,34 @@ interface GroupModalState {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
-const inputCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+// The shared field recipes (_ui/recipes.ts), full width by default.
+const inputCls = `${INPUT} w-full`;
 // Width is not part of the base: a select that sets its own (the store's
 // currency) would otherwise carry both w-full and its width, and w-full won —
 // the currency took the row and squeezed the store price to a few pixels.
-const selectBaseCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
+const selectBaseCls = SELECT;
 const selectCls = `${selectBaseCls} w-full`;
-const labelCls =
-  "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
+const labelCls = FIELD_LABEL;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function deriveColors(raw: string): string[] {
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * A dictionary message with inline marks: `<b>…</b>` becomes <strong>, and a
+ * `{name}` left unfilled becomes `code[name]` in code type. Messages are plain
+ * strings, so the few sentences that stress a word or name a setting carry the
+ * mark in the text, and each language puts it where its own word order needs.
+ */
+function rich(text: string, code: Record<string, string> = {}): ReactNode[] {
+  return text.split(/(<b>.*?<\/b>|\{\w+\})/).map((part, i) => {
+    if (part.startsWith("<b>")) return <strong key={i}>{part.slice(3, -4)}</strong>;
+    const name = /^\{(\w+)\}$/.exec(part)?.[1];
+    if (name && name in code) return <code key={i} className="font-mono">{code[name]}</code>;
+    return part;
+  });
 }
 
 /** A confirm body that keeps the line breaks it was written with. */
@@ -264,6 +299,7 @@ function ImageList({
    */
   onChange: (update: (imgs: string[]) => string[]) => void;
 }) {
+  const t = useT();
   /** The URL being copied to storage; its row shows a spinner meanwhile. */
   const [uploading, setUploading] = useState<string | null>(null);
   /**
@@ -293,7 +329,7 @@ function ImageList({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
-        throw new Error(data.error || `Upload failed (HTTP ${res.status})`);
+        throw new Error(data.error || t("products.image.uploadFailedHttp", { status: String(res.status) }));
       }
       stored.current.add(data.url);
       setUploadErrors((e) => {
@@ -311,7 +347,7 @@ function ImageList({
         });
       }
     } catch (e) {
-      const reason = e instanceof Error ? e.message : "Upload failed";
+      const reason = e instanceof Error ? e.message : t("products.image.uploadFailed");
       setUploadErrors((prev) => ({ ...prev, [url]: reason }));
     } finally {
       setUploading((u) => (u === url ? null : u));
@@ -329,7 +365,7 @@ function ImageList({
                 value={url}
                 onChange={(e) => setVal(i, e.target.value)}
                 onBlur={(e) => handleBlur(i, e.target.value)}
-                placeholder="https://…"
+                placeholder={EXAMPLE.url}
                 className={`${inputCls} ${uploading === url ? "opacity-50" : ""}`}
                 disabled={uploading === url}
               />
@@ -341,7 +377,7 @@ function ImageList({
             </div>
             {url && uploadErrors[url] && uploading !== url && (
               <p className="text-[12px] leading-snug text-[var(--err)]">
-                Still on the external site — not copied to storage. {uploadErrors[url]}
+                {t("products.image.notCopied", { error: uploadErrors[url] })}
               </p>
             )}
             {url && uploading !== url && (
@@ -349,7 +385,7 @@ function ImageList({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
-                  alt="preview"
+                  alt={t("products.image.previewAlt")}
                   className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
                 />
@@ -357,13 +393,13 @@ function ImageList({
             )}
           </div>
           {i === 0 && (
-            <span className="text-[11px] font-medium text-[var(--foreground-subtle)] mt-2.5 shrink-0">Main</span>
+            <span className="text-[11px] font-medium text-[var(--foreground-subtle)] mt-2.5 shrink-0">{t("products.image.main")}</span>
           )}
           {images.length > 1 && (
             <button
               type="button"
               onClick={() => removeRow(i)}
-              aria-label="Remove image"
+              aria-label={t("products.image.remove")}
               className={`${BTN_ICON} md:mt-0.5`}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -381,7 +417,7 @@ function ImageList({
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
-        Add image
+        {t("products.image.add")}
       </button>
     </div>
   );
@@ -401,6 +437,7 @@ function RetailerList({
   /** The Retailers page's rules, domain → store name, for naming a pasted link's store. */
   storeRules?: { domain: string; name: string }[];
 }) {
+  const t = useT();
   const add = () =>
     onChange([...retailers, { name: "", url: "", price: "", currency: "USD", availability: "in stock", isOfficial: false, rating: "", reviewCount: "" }]);
   const remove = (i: number) => onChange(retailers.filter((_, idx) => idx !== i));
@@ -436,19 +473,24 @@ function RetailerList({
       )}
       {retailers.map((r, i) => (
         <div key={i} className="border border-[var(--border)] rounded-xl p-3 flex flex-col gap-2 relative">
-          <button
-            type="button"
-            onClick={() => remove(i)}
-            aria-label="Remove retailer"
-            className="absolute top-0 right-0 w-10 h-10 md:top-2 md:right-2 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-              <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-          </button>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-8 md:pr-5">
+          {/* The wrapper is what sits in the corner: an `.absolute` button
+              itself is left out of the phone's 40px touch target (globals.css). */}
+          <div className="absolute top-0 right-0 md:top-1 md:right-1">
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              aria-label={t("products.store.remove")}
+              title={t("products.store.remove")}
+              className={BTN_ICON}
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pr-8">
             <div>
-              <label className={labelCls}>Store</label>
+              <label className={labelCls}>{t("products.store.name")}</label>
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--background)] overflow-hidden flex items-center justify-center">
                   {logoFor(r.name) ? (
@@ -465,13 +507,13 @@ function RetailerList({
                   list="retailer-store-library"
                   value={r.name}
                   onChange={(e) => set(i, { name: e.target.value })}
-                  placeholder="Pick or type a store…"
+                  placeholder={t("products.store.namePlaceholder")}
                   className={`${inputCls} flex-1`}
                 />
               </div>
             </div>
             <div>
-              <label className={labelCls}>Price</label>
+              <label className={labelCls}>{t("products.col.price")}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -484,7 +526,7 @@ function RetailerList({
                 <select
                   value={r.currency}
                   onChange={(e) => set(i, { currency: e.target.value })}
-                  aria-label="Currency of this store's price"
+                  aria-label={t("products.store.currency")}
                   className={`${selectBaseCls} w-[84px] shrink-0`}
                 >
                   {/* An imported store may price in a currency the switcher does
@@ -501,36 +543,36 @@ function RetailerList({
             </div>
           </div>
           <div>
-            <label className={labelCls}>Store URL</label>
+            <label className={labelCls}>{t("products.store.url")}</label>
             <input
               type="url"
               value={r.url}
               onChange={(e) => set(i, { url: e.target.value })}
               onBlur={() => tidyUrl(i)}
-              placeholder="https://zara.com/product/…"
+              placeholder={EXAMPLE.storeUrl}
               className={inputCls}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <label className={labelCls}>Availability</label>
+              <label className={labelCls}>{t("products.store.availability")}</label>
               <select
                 value={r.availability}
                 onChange={(e) => set(i, { availability: e.target.value as RetailerForm["availability"] })}
                 className={selectCls}
               >
                 {AVAILABILITY_OPTIONS.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a}>{t(AVAILABILITY_LABEL[a])}</option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelCls}>Rating <span className="font-normal">1–5</span></label>
+                <label className={labelCls}>{t("products.store.rating")} <span className="font-normal">1–5</span></label>
                 <input type="number" value={r.rating} onChange={(e) => set(i, { rating: e.target.value })} placeholder="4.5" min="1" max="5" step="0.1" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Reviews</label>
+                <label className={labelCls}>{t("products.store.reviews")}</label>
                 <input type="number" value={r.reviewCount} onChange={(e) => set(i, { reviewCount: e.target.value })} placeholder="1234" min="0" className={inputCls} />
               </div>
             </div>
@@ -544,7 +586,7 @@ function RetailerList({
               className="w-3.5 h-3.5 accent-[var(--foreground)]"
             />
             <label htmlFor={`official-${i}`} className="text-xs text-[var(--foreground-muted)] cursor-pointer">
-              Official store
+              {t("products.store.official")}
             </label>
           </div>
         </div>
@@ -557,7 +599,7 @@ function RetailerList({
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
-        Add retailer
+        {t("products.store.add")}
       </button>
     </div>
   );
@@ -739,12 +781,12 @@ export default function AdminProductsPage() {
       const res = await fetch("/api/products?raw=true");
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data)) {
-        throw new Error((data && typeof data === "object" && "error" in data && String(data.error)) || `Could not load products (HTTP ${res.status})`);
+        throw new Error((data && typeof data === "object" && "error" in data && String(data.error)) || t("products.load.failedHttp", { status: String(res.status) }));
       }
       setProducts(data);
       setLoadError(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Could not load products";
+      const message = e instanceof Error ? e.message : t("products.load.failed");
       setLoadError(message);
       toast.err(message);
     } finally {
@@ -757,7 +799,7 @@ export default function AdminProductsPage() {
     // refetch (GET is read-only).
     fetch("/api/products/seed")
       .then((r) => setDbConfigured(r.status !== 501))
-      .catch(() => toast.err("Could not check the database connection — reload the page."));
+      .catch(() => toast.err(t("products.db.checkFailed")));
     fetchProducts();
     fetch("/api/color-groups")
       .then((r) => r.json())
@@ -826,10 +868,10 @@ export default function AdminProductsPage() {
         );
       } else {
         const json = await res.json().catch(() => ({}));
-        toast.err(json.error || `Could not add the brand (HTTP ${res.status})`);
+        toast.err(json.error || t("products.brand.addFailedHttp", { status: String(res.status) }));
       }
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Could not add the brand");
+      toast.err(e instanceof Error ? e.message : t("products.brand.addFailed"));
     } finally {
       setAddingBrand(false);
     }
@@ -1048,6 +1090,8 @@ export default function AdminProductsPage() {
     setEditingProduct(null);
     setIsDuplicating(true);
     setForm(withRetailerPrices({
+      // Not from the dictionary: the suffix is saved as part of the name, and
+      // catalog names are English whatever language the admin is in.
       name: `${product.name} (Copy)`,
       brand: product.brand,
       category: product.category,
@@ -1115,7 +1159,7 @@ export default function AdminProductsPage() {
       });
       if (res.ok) return null;
       const err = await res.json().catch(() => ({}));
-      return (err.error as string) || `Variant update failed (HTTP ${res.status})`;
+      return (err.error as string) || t("products.save.variantsFailedHttp", { status: String(res.status) });
     };
 
     // Everyone else left the list: a group of one is no group.
@@ -1210,7 +1254,7 @@ export default function AdminProductsPage() {
       });
       const saved = await res.json().catch(() => null);
       if (!res.ok || !saved?.id) {
-        toast.err(saved?.error || `Failed to save (HTTP ${res.status})`);
+        toast.err(saved?.error || t("products.save.failedHttp", { status: String(res.status) }));
         return;
       }
       if (editingProduct) {
@@ -1230,17 +1274,17 @@ export default function AdminProductsPage() {
       try {
         variants = await syncVariants(saved.id);
       } catch (e) {
-        variants = { changed: true, error: e instanceof Error ? e.message : "network error" };
+        variants = { changed: true, error: e instanceof Error ? e.message : t("common.networkError") };
       }
-      if (variants.error) problems.push(`Saved, but the colour variants were not updated: ${variants.error}`);
+      if (variants.error) problems.push(t("products.save.variantsFailed", { error: variants.error }));
 
       if (problems.length) toast.err(problems.join(" · "));
-      else toast.ok(editingProduct ? "Product updated." : "Product added.");
+      else toast.ok(t(editingProduct ? "products.save.updated" : "products.save.added"));
 
       if (variants.changed) await fetchProducts();
       closeModal();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Failed to save");
+      toast.err(e instanceof Error ? e.message : t("products.save.failed"));
     } finally {
       setSaving(false);
     }
@@ -1248,13 +1292,13 @@ export default function AdminProductsPage() {
 
   const handleDelete = async (id: string) => {
     if (!canWrite) return;
-    if (!(await confirm({ title: "Delete this product?", confirmLabel: "Delete product", tone: "danger" }))) return;
+    if (!(await confirm({ title: t("products.delete.title"), confirmLabel: t("products.delete.action"), tone: "danger" }))) return;
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       if (!res.ok) {
         // 409 names the outfits that still use it; the row stays.
         const json = await res.json().catch(() => ({}));
-        toast.err(json.error || `Failed to delete (HTTP ${res.status})`);
+        toast.err(json.error || t("products.delete.failedHttp", { status: String(res.status) }));
         return;
       }
       setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -1264,9 +1308,9 @@ export default function AdminProductsPage() {
         next.delete(id);
         return next;
       });
-      toast.ok("Deleted.");
+      toast.ok(t("products.delete.done"));
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Failed to delete");
+      toast.err(e instanceof Error ? e.message : t("products.delete.failed"));
     }
   };
 
@@ -1296,6 +1340,12 @@ export default function AdminProductsPage() {
     namePrefix: "", nameSuffix: "", nameFind: "", nameReplace: "",
   });
 
+  /** A list field is either added to or replaced wholesale. */
+  const bulkModeOptions = [
+    { value: "add", label: t("products.bulkEdit.mode.add") },
+    { value: "replace", label: t("products.bulkEdit.mode.replace") },
+  ];
+
   const bulkChangeCount =
     (bulk.brand.trim() ? 1 : 0) +
     (bulk.gender ? 1 : 0) +
@@ -1320,22 +1370,29 @@ export default function AdminProductsPage() {
       (bulk.colorMode === "replace" ? set : add).colorGroupIds = bulk.colorGroupIds;
     }
 
+    const gender = GENDERS.find((g) => g.value === bulk.gender);
     const summary = [
-      bulk.brand.trim() && `brand → ${bulk.brand.trim()}`,
-      bulk.gender && `gender → ${bulk.gender}`,
-      bulk.subcategory && `subcategory → ${bulk.subcategory} (and its category)`,
-      bulk.styleKeywords.length && `${bulk.styleMode === "replace" ? "replace" : "add"} styles: ${bulk.styleKeywords.join(", ")}`,
-      bulk.colorGroupIds.length && `${bulk.colorMode === "replace" ? "replace" : "add"} ${bulk.colorGroupIds.length} colour filter(s)`,
-      bulk.nameFind && `rename: "${bulk.nameFind}" → "${bulk.nameReplace}"`,
-      bulk.namePrefix && `prefix "${bulk.namePrefix}"`,
-      bulk.nameSuffix && `suffix "${bulk.nameSuffix}"`,
+      bulk.brand.trim() && t("products.bulkEdit.sum.brand", { value: bulk.brand.trim() }),
+      bulk.gender && t("products.bulkEdit.sum.gender", { value: gender ? t(gender.label) : bulk.gender }),
+      bulk.subcategory && t("products.bulkEdit.sum.subcategory", { value: bulk.subcategory }),
+      bulk.styleKeywords.length &&
+        t(bulk.styleMode === "replace" ? "products.bulkEdit.sum.stylesReplace" : "products.bulkEdit.sum.stylesAdd", {
+          list: bulk.styleKeywords.join(", "),
+        }),
+      bulk.colorGroupIds.length &&
+        t(bulk.colorMode === "replace" ? "products.bulkEdit.sum.colorsReplace" : "products.bulkEdit.sum.colorsAdd", {
+          count: bulk.colorGroupIds.length,
+        }),
+      bulk.nameFind && t("products.bulkEdit.sum.rename", { find: bulk.nameFind, replace: bulk.nameReplace }),
+      bulk.namePrefix && t("products.bulkEdit.sum.prefix", { value: bulk.namePrefix }),
+      bulk.nameSuffix && t("products.bulkEdit.sum.suffix", { value: bulk.nameSuffix }),
     ].filter(Boolean).join("\n  ");
 
     if (
       !(await confirm({
-        title: `Apply these changes to ${ids.length} product${ids.length === 1 ? "" : "s"}?`,
-        body: `  ${summary}\n\nFields left blank are not touched.`,
-        confirmLabel: `Apply to ${ids.length} product${ids.length === 1 ? "" : "s"}`,
+        title: t("products.bulkEdit.confirmTitle", { count: ids.length }),
+        body: `  ${summary}\n\n${t("products.bulkEdit.confirmNote")}`,
+        confirmLabel: t("products.bulkEdit.confirmAction", { count: ids.length }),
         tone: "danger",
       }))
     ) return;
@@ -1358,19 +1415,19 @@ export default function AdminProductsPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.err(json.error ?? "Bulk edit failed."); return; }
+      if (!res.ok) { toast.err(json.error ?? t("products.bulkEdit.failed")); return; }
       const failed = (json.failures ?? []).length;
       (failed ? toast.err : toast.ok)(
         failed
-          ? `Updated ${json.updated} of ${json.requested} — ${failed} failed`
-          : `Updated ${json.updated} product${json.updated === 1 ? "" : "s"}`,
+          ? t("products.bulkEdit.partial", { updated: json.updated, requested: json.requested, failed })
+          : t("products.bulkEdit.done", { count: json.updated }),
       );
       setBulkOpen(false);
       resetBulk();
       setSelectedIds(new Set());
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Bulk edit failed.");
+      toast.err(e instanceof Error ? e.message : t("products.bulkEdit.failed"));
     } finally {
       setBulkSaving(false);
     }
@@ -1387,12 +1444,20 @@ export default function AdminProductsPage() {
     alsoSetsCategory?: string;
   }
 
+  /** Each suggested field by the name the form gives it. */
+  const suggestionLabel: Record<FieldSuggestion["field"], Key> = {
+    category: "products.f.category",
+    subcategory: "products.field.subcategory",
+    gender: "products.f.gender",
+    colorGroups: "products.field.colorGroups",
+  };
+
   const [suggesting, setSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<FieldSuggestion[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
 
   const runSuggest = async () => {
-    if (!form.name.trim()) { toast.err("Give it a name first — that is what the suggestions read."); return; }
+    if (!form.name.trim()) { toast.err(t("products.suggest.needName")); return; }
     setSuggesting(true);
     try {
       const res = await fetch("/api/admin/suggest-fields", {
@@ -1412,15 +1477,15 @@ export default function AdminProductsPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.err(json.error ?? "Could not suggest anything."); return; }
+      if (!res.ok) { toast.err(json.error ?? t("products.suggest.failed")); return; }
       const found = (json.suggestions ?? []) as FieldSuggestion[];
       setSuggestions(found);
       // Only the confident ones start ticked. A low-confidence field left
       // empty is obviously unfinished; one filled in wrongly is not.
       setChosen(new Set(found.filter((s) => s.confidence === "high").map((s) => s.field)));
-      if (!found.length) toast.ok("Nothing to suggest — either it is already filled in or the name says too little.");
+      if (!found.length) toast.ok(t("products.suggest.none"));
     } catch {
-      toast.err("Could not reach the server.");
+      toast.err(t("products.suggest.offline"));
     } finally {
       setSuggesting(false);
     }
@@ -1450,7 +1515,7 @@ export default function AdminProductsPage() {
       }
       return next;
     });
-    toast.ok(`Filled ${taking.length} field${taking.length === 1 ? "" : "s"} — nothing saved yet.`);
+    toast.ok(t("products.suggest.filled", { count: taking.length }));
     setSuggestions(null);
     setChosen(new Set());
   };
@@ -1464,7 +1529,7 @@ export default function AdminProductsPage() {
     try {
       const dryRes = await fetch("/api/admin/recategorize?scope=all", { cache: "no-store" });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { toast.err(dry.error || "Recategorize failed"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || t("products.fix.failed")); return; }
 
       // Products the classifier left alone, and why. Worth stating up front:
       // the whole worry about this button is that it overwrites hand-filed work,
@@ -1472,29 +1537,23 @@ export default function AdminProductsPage() {
       const guarded = (dry.skippedBreakdown ?? []) as { reason: string; explanation: string; count: number }[];
       const guardNote = guarded
         .filter((g) => g.count > 0)
-        .map((g) => `  ${g.count} left untouched — ${g.explanation}`)
+        .map((g) => `  ${t("products.fix.untouched", { count: g.count, reason: g.explanation })}`)
         .join("\n");
 
       if (!dry.wouldChange) {
-        toast.ok(
-          dry.protected
-            ? `Nothing to change · ${dry.protected} product${dry.protected === 1 ? "" : "s"} protected`
-            : "Nothing to recategorize — every product looks correct",
-        );
-        if (guardNote) toast.info(`No changes to make.\n\n${guardNote}`);
+        toast.ok(dry.protected ? t("products.fix.protected", { count: dry.protected }) : t("products.fix.allCorrect"));
+        if (guardNote) toast.info(`${t("products.fix.noChanges")}\n\n${guardNote}`);
         return;
       }
 
       const summary = Object.entries(dry.breakdown as Record<string, number>)
         .sort((a, b) => b[1] - a[1])
-        .map(([k, n]) => `  ${k}: ${n}`)
+        .map(([k, n]) => `  ${k}: ${f.number(n)}`)
         .join("\n");
       const ok = await confirm({
-        title: `Recategorize ${dry.wouldChange} of ${dry.scanned} products?`,
-        body:
-          `${summary}\n\n${guardNote ? `${guardNote}\n\n` : ""}` +
-          `Only products with no subcategory can be changed. This can be undone.`,
-        confirmLabel: `Recategorize ${dry.wouldChange} products`,
+        title: t("products.fix.confirmTitle", { changed: dry.wouldChange, count: dry.scanned }),
+        body: `${summary}\n\n${guardNote ? `${guardNote}\n\n` : ""}${t("products.fix.confirmBody")}`,
+        confirmLabel: t("products.fix.confirmAction", { count: dry.wouldChange }),
       });
       if (!ok) return;
 
@@ -1504,15 +1563,13 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ apply: true, scope: "all" }),
       });
       const applied = await applyRes.json();
-      if (!applyRes.ok) { toast.err(applied.error || "Apply failed"); return; }
+      if (!applyRes.ok) { toast.err(applied.error || t("products.applyFailed")); return; }
       (applied.undoable ? toast.ok : toast.err)(
-        applied.undoable
-          ? `Recategorized ${applied.applied} · use Undo to revert`
-          : `Recategorized ${applied.applied} — NOT recorded, so it cannot be undone`,
+        t(applied.undoable ? "products.fix.done" : "products.fix.notRecorded", { count: applied.applied }),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Recategorize failed");
+      toast.err(e instanceof Error ? e.message : t("products.fix.failed"));
     } finally {
       setRecategorizing(false);
     }
@@ -1522,9 +1579,9 @@ export default function AdminProductsPage() {
   const handleUndoRecategorize = async () => {
     if (
       !(await confirm({
-        title: "Undo the last category fix?",
-        body: "Products edited since that run are left as they are.",
-        confirmLabel: "Undo category fix",
+        title: t("products.fix.undoTitle"),
+        body: t("products.undo.since"),
+        confirmLabel: t("products.fix.undoAction"),
       }))
     ) return;
     setRecategorizing(true);
@@ -1535,15 +1592,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      if (!res.ok) { toast.err(json.error || t("products.undo.nothing")); return; }
       toast.ok(
         json.movedSince
-          ? `Restored ${json.restored} · ${json.movedSince} changed since and left alone`
-          : `Restored ${json.restored} product${json.restored === 1 ? "" : "s"}`,
+          ? t("products.undo.restoredSome", { restored: json.restored, changed: json.movedSince })
+          : t("products.undo.restored", { count: json.restored }),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Undo failed");
+      toast.err(e instanceof Error ? e.message : t("products.undo.failed"));
     } finally {
       setRecategorizing(false);
     }
@@ -1558,33 +1615,37 @@ export default function AdminProductsPage() {
     try {
       const dryRes = await fetch("/api/admin/restyle", { cache: "no-store" });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { toast.err(dry.error || "Style reset failed"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || t("products.styles.failed")); return; }
 
       const would = dry.wouldChange as { products: number; outfits: number };
       if (!would.products && !would.outfits) {
-        toast.ok("Nothing to change — every product already has only its basic styles");
+        toast.ok(t("products.styles.nothing"));
         return;
       }
 
       const after = Object.entries(dry.after as Record<string, number>)
-        .map(([style, n]) => `  ${style === "none" ? "no style" : style}: ${n}`)
+        .map(([style, n]) => `  ${style === "none" ? t("products.styles.none") : style}: ${f.number(n)}`)
         .join("\n");
       const removed = Object.entries(dry.removed as Record<string, number>)
         .sort((a, b) => b[1] - a[1])
-        .map(([style, n]) => `${style} ${n}`)
+        .map(([style, n]) => `${style} ${f.number(n)}`)
         .join(", ");
+      // Two clauses, each agreeing with its own number, so a language can
+      // join them in its own order.
+      const productsClause = t("products.styles.confirmProducts", { changed: would.products, count: dry.scanned.products });
       const ok = await confirm({
-        title:
-          `Reset styles on ${would.products} of ${dry.scanned.products} products` +
-          (would.outfits ? ` and clear them on ${would.outfits} outfits` : "") + `?`,
+        title: would.outfits
+          ? t("products.styles.confirmTitleBoth", {
+              products: productsClause,
+              outfits: t("products.styles.confirmOutfits", { count: would.outfits }),
+            })
+          : t("products.styles.confirmTitle", { products: productsClause }),
         body:
-          `Every old tag is removed. Products get only casual, minimal, classic, streetwear or sporty: ` +
-          `from their description first, and from the brand where the description says little ` +
-          `(Adidas sporty, Gucci classic). A product with neither is left without a style.\n\n` +
-          `Products per style after the reset:\n${after}\n\n` +
-          (removed ? `Tags removed: ${removed}\n\n` : "") +
-          `This can be undone.`,
-        confirmLabel: `Reset styles on ${would.products} products`,
+          `${t("products.styles.confirmBody")}\n\n` +
+          `${t("products.styles.perStyle")}\n${after}\n\n` +
+          (removed ? `${t("products.styles.removedTags", { list: removed })}\n\n` : "") +
+          t("products.canUndo"),
+        confirmLabel: t("products.styles.confirmAction", { count: would.products }),
         tone: "danger",
       });
       if (!ok) return;
@@ -1595,16 +1656,20 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ apply: true }),
       });
       const applied = await applyRes.json();
-      if (!applyRes.ok) { toast.err(applied.error || "Apply failed"); return; }
+      if (!applyRes.ok) { toast.err(applied.error || t("products.applyFailed")); return; }
       const failed = (applied.failures ?? []).length;
       (applied.undoable && !failed ? toast.ok : toast.err)(
         applied.undoable
-          ? `Reset styles on ${applied.applied}${failed ? ` · ${failed} failed` : ""} · use Undo styles to revert`
-          : `Reset styles on ${applied.applied} — NOT recorded, so it cannot be undone`,
+          ? [
+              t("products.styles.done", { count: applied.applied }),
+              ...(failed ? [t("products.failedCount", { count: failed })] : []),
+              t("products.styles.undoHint"),
+            ].join(" · ")
+          : t("products.styles.notRecorded", { count: applied.applied }),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Style reset failed");
+      toast.err(e instanceof Error ? e.message : t("products.styles.failed"));
     } finally {
       setRestyling(false);
     }
@@ -1614,9 +1679,9 @@ export default function AdminProductsPage() {
   const handleUndoResetStyles = async () => {
     if (
       !(await confirm({
-        title: "Undo the last style reset?",
-        body: "Products and outfits whose styles were edited since are left as they are.",
-        confirmLabel: "Undo style reset",
+        title: t("products.styles.undoTitle"),
+        body: t("products.styles.undoBody"),
+        confirmLabel: t("products.styles.undoAction"),
       }))
     ) return;
     setRestyling(true);
@@ -1627,15 +1692,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      if (!res.ok) { toast.err(json.error || t("products.undo.nothing")); return; }
       toast.ok(
         json.changedSince
-          ? `Restored ${json.restored} · ${json.changedSince} changed since and left alone`
-          : `Restored styles on ${json.restored}`,
+          ? t("products.undo.restoredSome", { restored: json.restored, changed: json.changedSince })
+          : t("products.styles.restored", { count: json.restored }),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Undo failed");
+      toast.err(e instanceof Error ? e.message : t("products.undo.failed"));
     } finally {
       setRestyling(false);
     }
@@ -1669,11 +1734,14 @@ export default function AdminProductsPage() {
       if (!chosenIds.length) {
         const progressRes = await fetch("/api/admin/product-bg-color", { cache: "no-store" });
         const p = await progressRes.json();
-        if (!progressRes.ok) { toast.err(p.error || "Could not read progress"); return; }
+        if (!progressRes.ok) { toast.err(p.error || t("products.bd.progressFailed")); return; }
         if (p.progress.total && !p.progress.unmeasured) {
           toast.ok(
-            `All ${p.progress.total} measured · ${p.progress.measured} have a backdrop, ` +
-            `${p.progress.declined} have none`,
+            t("products.bd.allMeasured", {
+              total: p.progress.total,
+              measured: p.progress.measured,
+              declined: p.progress.declined,
+            }),
           );
           return;
         }
@@ -1681,9 +1749,9 @@ export default function AdminProductsPage() {
 
       const dryRes = await post({ limit: BACKDROP_SAMPLE, ids: chosenIds });
       const dry = await dryRes.json();
-      if (!dryRes.ok) { toast.err(dry.error || "Sampling failed"); return; }
+      if (!dryRes.ok) { toast.err(dry.error || t("products.bd.failed")); return; }
 
-      if (!dry.scanned) { toast.ok("Nothing left to measure"); return; }
+      if (!dry.scanned) { toast.ok(t("products.bd.nothingLeft")); return; }
 
       const examples = (dry.measuredSample as { name: string; color: string }[])
         .slice(0, 6)
@@ -1698,25 +1766,25 @@ export default function AdminProductsPage() {
         }, {});
       const whyNotNote = Object.entries(whyNot)
         .sort((a, b) => b[1] - a[1])
-        .map(([reason, n]) => `  ${n} — ${reason}`)
+        .map(([reason, n]) => `  ${f.number(n)} — ${reason}`)
         .join("\n");
 
       const remaining = (dry.progress?.unmeasured ?? dry.scanned) as number;
       const ok = await confirm({
         title: chosenIds.length
-          ? `Save the backdrops of these ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} now?`
-          : `Save, and keep going until all ${remaining} unmeasured products are done?`,
+          ? t("products.bd.confirmSelected", { count: dry.scanned })
+          : t("products.bd.confirmAll", { count: remaining }),
         body:
-          `Measured ${dry.scanned} photo${dry.scanned === 1 ? "" : "s"} without saving:\n\n` +
-          `  ${dry.measured} have a single backdrop\n` +
-          `  ${dry.declined} have none — those keep the white box\n` +
-          (dry.failed ? `  ${dry.failed} could not be downloaded — will be retried later\n` : "") +
+          `${t("products.bd.measuredDry", { count: dry.scanned })}\n\n` +
+          `  ${t("products.bd.single", { count: dry.measured })}\n` +
+          `  ${t("products.bd.none", { count: dry.declined })}\n` +
+          (dry.failed ? `  ${t("products.bd.downloadFailed", { count: dry.failed })}\n` : "") +
           (examples ? `\n${examples}\n` : "") +
-          (whyNotNote ? `\nWhy the rest were declined:\n${whyNotNote}\n` : "") +
-          `\nThis can be undone.`,
+          (whyNotNote ? `\n${t("products.bd.whyDeclined")}\n${whyNotNote}\n` : "") +
+          `\n${t("products.canUndo")}`,
         confirmLabel: chosenIds.length
-          ? `Save ${dry.scanned} backdrop${dry.scanned === 1 ? "" : "s"}`
-          : `Save and measure all ${remaining}`,
+          ? t("products.bd.confirmSaveSelected", { count: dry.scanned })
+          : t("products.bd.confirmSaveAll", { count: remaining }),
       });
       if (!ok) return;
 
@@ -1749,7 +1817,7 @@ export default function AdminProductsPage() {
         });
         const round = await res.json().catch(() => ({}));
         if (!res.ok) {
-          roundError = round.error || `Apply failed (HTTP ${res.status})`;
+          roundError = round.error || t("products.applyFailedHttp", { status: String(res.status) });
           break;
         }
 
@@ -1769,24 +1837,24 @@ export default function AdminProductsPage() {
 
         if (chosenIds.length || left === undefined || left === 0 || applied === 0) break;
 
-        toast.ok(`${totalApplied} saved · ${left} left…`);
+        toast.ok(t("products.bd.progress", { saved: totalApplied, left }));
       }
 
       const failedWrites = totalWriteFailures > 0;
       (roundError || notRecorded || failedWrites ? toast.err : toast.ok)(
-        (roundError ? `Stopped: ${roundError} · ` : "") +
-        `${totalApplied} saved (${totalMeasured} with a backdrop, ${totalDeclined} without)` +
-        (totalFailed ? ` · ${totalFailed} to retry` : "") +
-        (failedWrites ? ` · ${totalWriteFailures} could not be saved: ${lastWriteError}` : "") +
-        (left === undefined ? "" : left ? ` · ${left} left, click again` : " · all done") +
+        (roundError ? `${t("products.bd.stopped", { error: roundError })} · ` : "") +
+        t("products.bd.summary", { saved: totalApplied, measured: totalMeasured, declined: totalDeclined }) +
+        (totalFailed ? ` · ${t("products.bd.toRetry", { count: totalFailed })}` : "") +
+        (failedWrites ? ` · ${t("products.bd.notSaved", { count: totalWriteFailures, error: lastWriteError })}` : "") +
+        (left === undefined ? "" : ` · ${left ? t("products.bd.leftClickAgain", { count: left }) : t("products.bd.allDone")}`) +
         // Worth saying: without renditions every photo came at full size, which
         // is the difference between a minute and an hour on a large catalogue.
-        (totalMeasured && !thumbnails ? " — full-size photos, no Storage renditions" : "") +
-        (notRecorded ? " — NOT recorded, cannot be undone" : ""),
+        (totalMeasured && !thumbnails ? ` — ${t("products.bd.fullSize")}` : "") +
+        (notRecorded ? ` — ${t("products.bd.notRecorded")}` : ""),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Sampling failed");
+      toast.err(e instanceof Error ? e.message : t("products.bd.failed"));
     } finally {
       setSampling(false);
     }
@@ -1796,9 +1864,9 @@ export default function AdminProductsPage() {
   const handleUndoBackdrops = async () => {
     if (
       !(await confirm({
-        title: "Undo the last photo-backdrop run?",
-        body: "Products changed since that run are left as they are.",
-        confirmLabel: "Undo backdrop run",
+        title: t("products.bd.undoTitle"),
+        body: t("products.undo.since"),
+        confirmLabel: t("products.bd.undoAction"),
       }))
     ) return;
     setSampling(true);
@@ -1809,15 +1877,15 @@ export default function AdminProductsPage() {
         body: JSON.stringify({ undo: true }),
       });
       const json = await res.json();
-      if (!res.ok) { toast.err(json.error || "Nothing to undo"); return; }
+      if (!res.ok) { toast.err(json.error || t("products.undo.nothing")); return; }
       toast.ok(
         json.changedSince
-          ? `Cleared ${json.restored} · ${json.changedSince} changed since and left alone`
-          : `Cleared ${json.restored} product${json.restored === 1 ? "" : "s"}`,
+          ? t("products.bd.clearedSome", { restored: json.restored, changed: json.changedSince })
+          : t("products.bd.cleared", { count: json.restored }),
       );
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Undo failed");
+      toast.err(e instanceof Error ? e.message : t("products.undo.failed"));
     } finally {
       setSampling(false);
     }
@@ -1944,15 +2012,15 @@ export default function AdminProductsPage() {
         // Includes a database without the variant columns: the message says
         // which columns to add.
         const err = await res.json().catch(() => ({}));
-        toast.err(err.error || `Failed to group products (HTTP ${res.status})`);
+        toast.err(err.error || t("products.group.failedHttp", { status: String(res.status) }));
         return;
       }
-      toast.ok(`${entries.length} products grouped as variants.`);
+      toast.ok(t("products.group.done", { count: entries.length }));
       setGroupModal({ open: false, entries: [] });
       setSelectedIds(new Set());
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Failed to group products");
+      toast.err(e instanceof Error ? e.message : t("products.group.failed"));
     } finally {
       setGrouping(false);
     }
@@ -1962,8 +2030,8 @@ export default function AdminProductsPage() {
     if (!canWrite) return;
     if (
       !(await confirm({
-        title: "Unlink all variants in this group?",
-        confirmLabel: "Unlink variants",
+        title: t("products.group.unlinkTitle"),
+        confirmLabel: t("products.group.unlinkAction"),
         tone: "danger",
       }))
     ) return;
@@ -1975,13 +2043,13 @@ export default function AdminProductsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.err(err.error || `Failed to unlink (HTTP ${res.status})`);
+        toast.err(err.error || t("products.group.unlinkFailedHttp", { status: String(res.status) }));
         return;
       }
-      toast.ok("Variants unlinked.");
+      toast.ok(t("products.group.unlinked"));
       await fetchProducts();
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Failed to unlink");
+      toast.err(e instanceof Error ? e.message : t("products.group.unlinkFailed"));
     }
   };
 
@@ -1997,9 +2065,9 @@ export default function AdminProductsPage() {
     const count = ids.length;
     if (
       !(await confirm({
-        title: `Delete ${count} selected product${count > 1 ? "s" : ""}?`,
-        body: "Products used in an outfit are kept.",
-        confirmLabel: `Delete ${count} product${count > 1 ? "s" : ""}`,
+        title: t("products.bulkDelete.title", { count }),
+        body: t("products.bulkDelete.body"),
+        confirmLabel: t("products.bulkDelete.action", { count }),
         tone: "danger",
       }))
     ) return;
@@ -2016,7 +2084,7 @@ export default function AdminProductsPage() {
             const json = await res.json().catch(() => ({}));
             failures.push({ id, error: (json.error as string) || `HTTP ${res.status}` });
           } catch (e) {
-            failures.push({ id, error: e instanceof Error ? e.message : "Network error" });
+            failures.push({ id, error: e instanceof Error ? e.message : t("common.networkError") });
           }
         }));
       }
@@ -2027,14 +2095,14 @@ export default function AdminProductsPage() {
         const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
         const shown = failures.slice(0, 3).map((f) => `${nameOf(f.id)}: ${f.error}`).join(" · ");
         toast.err(
-          `Deleted ${deleted.length} of ${count}. Not deleted — ${shown}` +
-          (failures.length > 3 ? ` (+${failures.length - 3} more, still selected)` : ""),
+          t("products.bulkDelete.partial", { deleted: deleted.length, total: count, list: shown }) +
+          (failures.length > 3 ? ` (${t("products.bulkDelete.more", { count: failures.length - 3 })})` : ""),
         );
       } else {
-        toast.ok(`Deleted ${count} product${count > 1 ? "s" : ""}.`);
+        toast.ok(t("products.bulkDelete.done", { count }));
       }
     } catch (e) {
-      toast.err(e instanceof Error ? e.message : "Bulk delete failed");
+      toast.err(e instanceof Error ? e.message : t("products.bulkDelete.failed"));
     } finally {
       setDeleting(false);
     }
@@ -2126,16 +2194,14 @@ export default function AdminProductsPage() {
               <span className="font-medium truncate" title={p.name}>
                 {p.name}
               </span>
-              {p.isNew && (
-                <span className="inline-block flex-shrink-0 h-[18px] px-1.5 rounded-full text-[11px] leading-[18px] font-medium bg-[var(--fg-overlay-08)]">
-                  {t("products.badge.new")}
-                </span>
-              )}
+              {p.isNew && <Badge>{t("products.badge.new")}</Badge>}
+              {/* The variant's own swatch as the dot, rather than Badge's
+                  `dot`, which takes the text color. */}
               {p.variantGroupId && (
-                <span className="inline-flex flex-shrink-0 items-center gap-1 h-[18px] px-1.5 rounded-full text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)]">
+                <Badge>
                   {t(p.isGroupPrimary ? "products.badge.primary" : "products.badge.variant")}
                   {p.colorHex && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.colorHex }} aria-hidden="true" />}
-                </span>
+                </Badge>
               )}
             </div>
             <div className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand}</div>
@@ -2162,7 +2228,7 @@ export default function AdminProductsPage() {
       header: t("products.col.stores"),
       align: "right",
       hide: "lg",
-      cell: (p) => <span className="text-[var(--foreground-muted)]">{p.retailers?.length ?? 0}</span>,
+      cell: (p) => <span className="text-[var(--foreground-muted)]">{f.number(p.retailers?.length ?? 0)}</span>,
     },
     {
       key: "added",
@@ -2181,9 +2247,8 @@ export default function AdminProductsPage() {
           every action that writes is disabled below it. */}
       {dbConfigured === false && (
         <div className="mb-4 rounded-xl bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)] px-4 py-3 text-xs">
-          <strong>Database not configured — nothing on this page can be saved.</strong>{" "}
-          Add <code className="font-mono">SUPABASE_URL</code> and{" "}
-          <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> to the environment and reload.
+          <strong>{t("products.db.title")}</strong>{" "}
+          {rich(t("products.db.hint"), { url: "SUPABASE_URL", key: "SUPABASE_SERVICE_ROLE_KEY" })}
         </div>
       )}
 
@@ -2307,19 +2372,19 @@ export default function AdminProductsPage() {
       {bulkOpen && (
         <Modal
           onClose={() => setBulkOpen(false)}
-          label="Edit fields"
+          label={t("products.bulk.edit")}
           panelClassName="w-full max-w-xl max-h-[90dvh] md:max-h-[85vh] overflow-y-auto rounded-2xl shadow-xl"
         >
           <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)]">
             <div className="min-w-0">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                Edit {selectedIds.size} product{selectedIds.size === 1 ? "" : "s"}
+                {t("products.bulkEdit.title", { count: selectedIds.size })}
               </h2>
               <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                Anything left blank is not touched.
+                {t("products.bulkEdit.hint")}
               </p>
             </div>
-            <button onClick={() => setBulkOpen(false)} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
+            <button onClick={() => setBulkOpen(false)} aria-label={t("common.close")} title={t("common.close")} className={`${BTN_ICON} shrink-0`}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
@@ -2330,12 +2395,12 @@ export default function AdminProductsPage() {
             {/* Brand + gender */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Brand</label>
+                <label className={labelCls}>{t("products.f.brand")}</label>
                 <input
                   list="bulk-brands"
                   value={bulk.brand}
                   onChange={(e) => setBulk((b) => ({ ...b, brand: e.target.value }))}
-                  placeholder="Leave blank to keep"
+                  placeholder={t("products.bulkEdit.keepBlank")}
                   className={inputCls}
                 />
                 <datalist id="bulk-brands">
@@ -2343,25 +2408,25 @@ export default function AdminProductsPage() {
                 </datalist>
               </div>
               <div>
-                <label className={labelCls}>Gender</label>
+                <label className={labelCls}>{t("products.f.gender")}</label>
                 <select value={bulk.gender} onChange={(e) => setBulk((b) => ({ ...b, gender: e.target.value }))} className={selectCls}>
-                  <option value="">Keep as is</option>
-                  <option value="women">Women</option>
-                  <option value="men">Men</option>
-                  <option value="unisex">Unisex</option>
+                  <option value="">{t("products.bulkEdit.keep")}</option>
+                  {GENDERS.map((g) => (
+                    <option key={g.value} value={g.value}>{t(g.label)}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
             {/* Subcategory — sets the category with it */}
             <div>
-              <label className={labelCls}>Subcategory</label>
+              <label className={labelCls}>{t("products.field.subcategory")}</label>
               <select
                 value={bulk.subcategory}
                 onChange={(e) => setBulk((b) => ({ ...b, subcategory: e.target.value }))}
                 className={selectCls}
               >
-                <option value="">Keep as is</option>
+                <option value="">{t("products.bulkEdit.keep")}</option>
                 {categoryGroups.map((g) => (
                   <optgroup key={g.id} label={g.label}>
                     {g.items.map((i) => <option key={i.label} value={i.label}>{i.label}</option>)}
@@ -2369,21 +2434,20 @@ export default function AdminProductsPage() {
                 ))}
               </select>
               <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
-                Sets the category to match, since the tree says where the label belongs.
+                {t("products.bulkEdit.subcategoryHint")}
               </p>
             </div>
 
             {/* Style keywords */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={labelCls}>Style keywords</label>
-                <div className="flex gap-1">
-                  {(["add", "replace"] as const).map((mode) => (
-                    <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
-                      className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
-                    >{mode}</button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <label className={labelCls}>{t("products.field.styles")}</label>
+                <FilterChips
+                  label={t("products.bulkEdit.modeFor", { field: t("products.field.styles") })}
+                  value={bulk.styleMode}
+                  options={bulkModeOptions}
+                  onChange={(v) => setBulk((b) => ({ ...b, styleMode: v as typeof b.styleMode }))}
+                />
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {STYLE_KEYWORDS.map((k) => {
@@ -2400,17 +2464,16 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            {/* Colour filters */}
+            {/* Color filters */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={labelCls}>Colour filters</label>
-                <div className="flex gap-1">
-                  {(["add", "replace"] as const).map((mode) => (
-                    <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
-                      className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
-                    >{mode}</button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <label className={labelCls}>{t("products.field.colorGroups")}</label>
+                <FilterChips
+                  label={t("products.bulkEdit.modeFor", { field: t("products.field.colorGroups") })}
+                  value={bulk.colorMode}
+                  options={bulkModeOptions}
+                  onChange={(v) => setBulk((b) => ({ ...b, colorMode: v as typeof b.colorMode }))}
+                />
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {colorGroups.map((g) => {
@@ -2429,33 +2492,33 @@ export default function AdminProductsPage() {
 
             {/* Names */}
             <div>
-              <label className={labelCls}>Names</label>
+              <label className={labelCls}>{t("products.field.names")}</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder="Find…" className={inputCls} />
-                <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder="Replace with…" className={inputCls} />
-                <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
-                <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder="Add after…" className={inputCls} />
+                <input value={bulk.nameFind} onChange={(e) => setBulk((b) => ({ ...b, nameFind: e.target.value }))} placeholder={t("products.bulkEdit.find")} className={inputCls} />
+                <input value={bulk.nameReplace} onChange={(e) => setBulk((b) => ({ ...b, nameReplace: e.target.value }))} placeholder={t("products.bulkEdit.replaceWith")} className={inputCls} />
+                <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder={t("products.bulkEdit.addBefore")} className={inputCls} />
+                <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder={t("products.bulkEdit.addAfter")} className={inputCls} />
               </div>
               <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
-                There is no &ldquo;set the same name&rdquo;: identical names across a selection destroy the ones they replace.
+                {t("products.bulkEdit.namesHint")}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-[var(--border)]">
             <span className="text-[11px] text-[var(--foreground-muted)]">
-              {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
+              {bulkChangeCount ? t("products.bulkEdit.willChange", { count: bulkChangeCount }) : t("products.bulkEdit.nothing")}
             </span>
             <div className="flex items-center gap-3">
               <button onClick={() => { setBulkOpen(false); resetBulk(); }} className={btn("ghost")}>
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={applyBulkEdit}
                 disabled={bulkSaving || !bulkChangeCount || !canWrite}
                 className={btn("primary")}
               >
-                {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
+                {bulkSaving ? t("products.bulkEdit.applying") : t("products.bulkEdit.apply", { count: selectedIds.size })}
               </button>
             </div>
           </div>
@@ -2544,7 +2607,7 @@ export default function AdminProductsPage() {
       {showModal && (
         <Modal
           onClose={closeModal}
-          label={editingProduct ? "Edit product" : "New product"}
+          label={t(editingProduct ? "products.editor.edit" : "products.editor.new")}
           panelClassName="rounded-2xl max-w-5xl w-full max-h-[90dvh] md:max-h-[94vh] flex flex-col overflow-hidden"
           closeOnScrim={false}
         >
@@ -2552,18 +2615,18 @@ export default function AdminProductsPage() {
           <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-4 border-b border-[var(--border)] shrink-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {editingProduct ? "Edit Product" : isDuplicating ? "Duplicate Product" : "Add Product"}
+                {t(editingProduct ? "products.editor.edit" : isDuplicating ? "products.editor.duplicate" : "products.add")}
               </h2>
               <button
                 onClick={runSuggest}
                 disabled={suggesting || !canWrite}
-                title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
+                title={t("products.suggest.title")}
                 className={btn("secondary")}
               >
-                {suggesting ? "Reading…" : "Suggest fields"}
+                {t(suggesting ? "products.suggest.reading" : "products.suggest.button")}
               </button>
             </div>
-            <button onClick={closeModal} aria-label="Close" className={`${BTN_ICON} shrink-0`}>
+            <button onClick={closeModal} aria-label={t("common.close")} title={t("common.close")} className={`${BTN_ICON} shrink-0`}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
@@ -2576,16 +2639,16 @@ export default function AdminProductsPage() {
             <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--background)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                 <p className="text-[12px] text-[var(--foreground-subtle)]">
-                  From how the catalogue is filed
+                  {t("products.suggest.source")}
                 </p>
                 <div className="flex items-center gap-3">
                   <button onClick={applySuggestions} disabled={!chosen.size}
                     className={btn("secondary")}>
-                    Fill {chosen.size || ""} selected
+                    {chosen.size ? t("products.suggest.fill", { count: chosen.size }) : t("products.suggest.fillNone")}
                   </button>
                   <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
                     className={btn("ghost")}>
-                    Dismiss
+                    {t("common.dismiss")}
                   </button>
                 </div>
               </div>
@@ -2605,11 +2668,11 @@ export default function AdminProductsPage() {
                         className="mt-0.5 accent-[var(--foreground)]"
                       />
                       <span className="text-[12px] leading-relaxed">
-                        <span className="text-[var(--foreground-subtle)]">{({ category: "Category", subcategory: "Subcategory", gender: "Gender", colorGroups: "Color filters" } as const)[s.field]}</span>{" "}
+                        <span className="text-[var(--foreground-subtle)]">{t(suggestionLabel[s.field])}</span>{" "}
                         <span className="font-mono text-[var(--foreground)]">{shown}</span>
-                        {s.replaces && <span className="text-[var(--warn)]"> — replaces {s.replaces}</span>}
-                        {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
-                        {s.confidence === "low" && <span className="text-[var(--warn)]"> · unsure</span>}
+                        {s.replaces && <span className="text-[var(--warn)]"> — {t("products.suggest.replaces", { value: s.replaces })}</span>}
+                        {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · {t("products.suggest.alsoSets", { value: s.alsoSetsCategory })}</span>}
+                        {s.confidence === "low" && <span className="text-[var(--warn)]"> · {t("products.suggest.unsure")}</span>}
                         <span className="block text-[var(--foreground-subtle)]">{s.why}</span>
                       </span>
                     </label>
@@ -2617,7 +2680,7 @@ export default function AdminProductsPage() {
                 })}
               </div>
               <p className="mt-2 text-[12px] text-[var(--foreground-subtle)]">
-                Unsure ones start unticked. Filling a field changes nothing until you save.
+                {t("products.suggest.footer")}
               </p>
             </div>
           )}
@@ -2631,8 +2694,8 @@ export default function AdminProductsPage() {
 
             {/* ── Left: Images ── */}
             <div className="flex flex-col gap-3 px-4 py-4 md:overflow-y-auto">
-              <p className="text-[13px] font-medium text-[var(--foreground)]">Images</p>
-              <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)]">{t("products.editor.images")}</p>
+              <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">{t("products.editor.imagesHint")}</p>
               <ImageList
                 images={form.images}
                 onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
@@ -2650,27 +2713,27 @@ export default function AdminProductsPage() {
                   <>
                     {/* ── Basic info (always open) ── */}
                     <div className="px-4 py-4 flex flex-col gap-3">
-                      <p className="text-[13px] font-medium text-[var(--foreground)]">Basic info</p>
+                      <p className="text-[13px] font-medium text-[var(--foreground)]">{t("products.editor.basic")}</p>
                       <div>
-                        <label className={labelCls}>Name *</label>
+                        <label className={labelCls}>{t("products.field.name")}</label>
                         <input
                           type="text"
                           value={form.name}
                           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                          placeholder="Product name"
+                          placeholder={t("products.field.namePlaceholder")}
                           className={inputCls}
                         />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="relative">
-                      <label className={labelCls}>Brand</label>
+                      <label className={labelCls}>{t("products.f.brand")}</label>
                       <input
                         ref={brandInputRef}
                         type="text"
                         value={form.brand}
                         onChange={(e) => { setForm((f) => ({ ...f, brand: e.target.value })); setBrandDropdownOpen(true); }}
                         onFocus={() => setBrandDropdownOpen(true)}
-                        placeholder="Type or pick brand…"
+                        placeholder={t("products.brand.placeholder")}
                         className={inputCls}
                         autoComplete="off"
                       />
@@ -2688,10 +2751,10 @@ export default function AdminProductsPage() {
                                 {form.brand.trim() && !exactMatch && (
                                   <button type="button" disabled={addingBrand} onMouseDown={(e) => { e.preventDefault(); addBrandInline(form.brand.trim()); }} className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] border-t border-[var(--border)] hover:bg-[var(--background)] flex items-center gap-2 transition-colors">
                                     {addingBrand ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <span className="text-base leading-none">+</span>}
-                                    Add &ldquo;{form.brand.trim()}&rdquo; as new brand
+                                    {t("products.brand.addNew", { name: form.brand.trim() })}
                                   </button>
                                 )}
-                                {filtered.length === 0 && !form.brand.trim() && <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">Start typing…</p>}
+                                {filtered.length === 0 && !form.brand.trim() && <p className="px-3 py-2 text-xs text-[var(--foreground-subtle)]">{t("products.brand.startTyping")}</p>}
                               </>
                             );
                           })()}
@@ -2699,12 +2762,12 @@ export default function AdminProductsPage() {
                       )}
                     </div>
                     <div>
-                      <label className={labelCls}>Gender</label>
+                      <label className={labelCls}>{t("products.f.gender")}</label>
                       <select value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as Gender | "" }))} className={selectCls}>
-                        <option value="">Unspecified</option>
-                        <option value="women">Women</option>
-                        <option value="men">Men</option>
-                        <option value="unisex">Unisex</option>
+                        <option value="">{t("products.field.genderUnset")}</option>
+                        {GENDERS.map((g) => (
+                          <option key={g.value} value={g.value}>{t(g.label)}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -2712,7 +2775,7 @@ export default function AdminProductsPage() {
 
                 {/* ── Category ── */}
                 <div>
-                  <SecHead {...sec("category")} label="Category" hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
+                  <SecHead {...sec("category")} label={t("products.f.category")} hint={`— ${categoryPath(form.category, form.subcategory, categoryGroups)}`} />
                   {!collapsed.has("category") && (
                     <div className="px-4 pb-4 flex flex-col gap-2">
                       {(() => {
@@ -2741,7 +2804,7 @@ export default function AdminProductsPage() {
                                 return (
                                   <button key={g.id} type="button"
                                     disabled={!first}
-                                    title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
+                                    title={first ? undefined : t("products.cat.emptyGroup", { group: g.label, section: t("nav.categories") })}
                                     onClick={() => first && pick(first.label)}
                                     className={`py-1.5 text-[12px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                   >{g.label}</button>
@@ -2760,14 +2823,13 @@ export default function AdminProductsPage() {
                               </div>
                             ) : (
                               <p className="text-[12px] text-[var(--foreground-subtle)]">
-                                Stored as <code className="font-mono">{form.category}</code>, which is not in the catalog&apos;s
-                                filter tree — pick a group above to make this piece filterable.
+                                {rich(t("products.cat.notInTree"), { category: form.category })}
                               </p>
                             )}
 
                             {activeGroup && !form.subcategory && (
                               <p className="text-[12px] text-[var(--foreground-subtle)]">
-                                No subcategory yet — this piece answers to every {activeGroup.label} filter until you pick one.
+                                {t("products.cat.noSubcategory", { group: activeGroup.label })}
                               </p>
                             )}
                           </>
@@ -2779,7 +2841,7 @@ export default function AdminProductsPage() {
 
                 {/* ── Sizes ── */}
                 <div>
-                  <SecHead {...sec("sizes")} label="Sizes" hint={form.sizes ? `— ${form.sizes}` : undefined} />
+                  <SecHead {...sec("sizes")} label={t("products.field.sizes")} hint={form.sizes ? `— ${form.sizes}` : undefined} />
                   {!collapsed.has("sizes") && (
                     <div className="px-4 pb-4 flex flex-col gap-2">
                       {(() => {
@@ -2820,9 +2882,9 @@ export default function AdminProductsPage() {
                               </div>
                             )}
                             <div className="flex items-center gap-2">
-                              <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
+                              <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder={EXAMPLE.sizes} className={`${inputCls} flex-1`} />
                               {selected.length > 0 && (
-                                <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className={`${btn("ghost")} shrink-0`}>Clear</button>
+                                <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className={`${btn("ghost")} shrink-0`}>{t("products.sizes.clear")}</button>
                               )}
                             </div>
                           </>
@@ -2834,7 +2896,7 @@ export default function AdminProductsPage() {
 
                 {/* ── Pricing ── */}
                 <div>
-                  <SecHead {...sec("pricing")} label="Pricing" />
+                  <SecHead {...sec("pricing")} label={t("products.field.pricing")} />
                   {!collapsed.has("pricing") && (
                     <div className="px-4 pb-4 flex flex-col gap-3">
                       {(() => {
@@ -2851,13 +2913,13 @@ export default function AdminProductsPage() {
                           <>
                             {isAutoCalc && (
                               <p className="text-[12px] text-[var(--foreground-muted)]">
-                                Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
-                                {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
+                                {t("products.price.auto", { count: retailerPrices.length })}
+                                {converted.length > 0 && ` · ${t("products.price.converted", { currencies: converted.join(", ") })}`}
                               </p>
                             )}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className={labelCls}>Price min ($)</label>
+                                <label className={labelCls}>{t("products.price.min")}</label>
                                 <input
                                   type="number"
                                   value={form.priceMin}
@@ -2869,7 +2931,7 @@ export default function AdminProductsPage() {
                                 />
                               </div>
                               <div>
-                                <label className={labelCls}>Price max ($)</label>
+                                <label className={labelCls}>{t("products.price.max")}</label>
                                 <input
                                   type="number"
                                   value={form.priceMax}
@@ -2894,11 +2956,11 @@ export default function AdminProductsPage() {
                           <div className="flex items-center gap-3">
                             <input type="checkbox" id="isNew" checked={form.isNew && !pastNewWindow} disabled={pastNewWindow} onChange={(e) => setForm((f) => ({ ...f, isNew: e.target.checked }))} className="w-3.5 h-3.5 accent-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed" />
                             <label htmlFor="isNew" className={`text-xs text-[var(--foreground-muted)] tracking-wide ${pastNewWindow ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                              New arrival{" "}
+                              {t("products.isNew.label")}{" "}
                               <span className="text-[var(--foreground-subtle)]">
                                 {pastNewWindow
-                                  ? `(unavailable — added ${f.date(editingProduct?.createdAt)}, more than 7 days ago)`
-                                  : "(badge auto-hides 7 days after the product was added)"}
+                                  ? t("products.isNew.expired", { date: f.date(editingProduct?.createdAt) })
+                                  : t("products.isNew.hint")}
                               </span>
                             </label>
                           </div>
@@ -2910,16 +2972,16 @@ export default function AdminProductsPage() {
 
                 {/* ── Details (collapsible) ── */}
                 <div>
-                  <SecHead {...sec("details")} label="Details" />
+                  <SecHead {...sec("details")} label={t("products.field.details")} />
                   {!collapsed.has("details") && (
                     <div className="px-4 pb-4 flex flex-col gap-3">
                       <div>
-                        <label className={labelCls}>Description</label>
-                        <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short product description…" rows={3} className={`${inputCls} resize-none`} />
+                        <label className={labelCls}>{t("products.field.description")}</label>
+                        <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder={t("products.field.descriptionPlaceholder")} rows={3} className={`${inputCls} resize-none`} />
                       </div>
                       <div>
-                        <label className={labelCls}>Material</label>
-                        <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder="100% Wool" className={inputCls} />
+                        <label className={labelCls}>{t("products.field.material")}</label>
+                        <input type="text" value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))} placeholder={EXAMPLE.material} className={inputCls} />
                       </div>
                     </div>
                   )}
@@ -2927,17 +2989,21 @@ export default function AdminProductsPage() {
 
                 {/* ── Colors (collapsible) ── */}
                 <div>
-                  <SecHead {...sec("colors")} label="Colors" hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
+                  <SecHead {...sec("colors")} label={t("products.field.colors")} hint={form.colorsRaw ? `— ${form.colorsRaw}` : undefined} />
                   {!collapsed.has("colors") && (
                     <div className="px-4 pb-4">
-                      <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder="Black, White, Camel" className={inputCls} />
+                      <input type="text" value={form.colorsRaw} onChange={(e) => setForm((f) => ({ ...f, colorsRaw: e.target.value }))} placeholder={EXAMPLE.colors} className={inputCls} />
                     </div>
                   )}
                 </div>
 
                 {/* ── Color filter groups (collapsible, compact grid) ── */}
                 <div>
-                  <SecHead {...sec("color-groups")} label="Color filters" hint={form.colorGroupIds.length ? `— ${form.colorGroupIds.length} selected` : undefined} />
+                  <SecHead
+                    {...sec("color-groups")}
+                    label={t("products.field.colorGroups")}
+                    hint={form.colorGroupIds.length ? `— ${t("products.colorGroups.selected", { count: form.colorGroupIds.length })}` : undefined}
+                  />
                   {!collapsed.has("color-groups") && (
                     <div className="px-4 pb-4">
                       <div className="grid grid-cols-2 gap-1 mt-1">
@@ -2966,7 +3032,7 @@ export default function AdminProductsPage() {
 
                 {/* ── Style keywords (collapsible) ── */}
                 <div>
-                  <SecHead {...sec("style")} label="Style keywords" />
+                  <SecHead {...sec("style")} label={t("products.field.styles")} />
                   {!collapsed.has("style") && (
                     <div className="px-4 pb-4">
                       <div className="flex flex-wrap gap-1.5">
@@ -2982,13 +3048,17 @@ export default function AdminProductsPage() {
 
                 {/* ── Color variants (collapsible) ── */}
                 <div>
-                  <SecHead {...sec("variants")} label="Color variants" hint={form.linkedProductIds.length ? `— ${form.linkedProductIds.length} linked` : undefined} />
+                  <SecHead
+                    {...sec("variants")}
+                    label={t("products.field.variants")}
+                    hint={form.linkedProductIds.length ? `— ${t("products.variants.linked", { count: form.linkedProductIds.length })}` : undefined}
+                  />
                   {!collapsed.has("variants") && (
                     <div className="px-4 pb-4 flex flex-col gap-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
+                        <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title={t("products.variants.swatchTitle")} />
                         <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
-                        <span className="text-[12px] text-[var(--foreground-subtle)]">← swatch for this product</span>
+                        <span className="text-[12px] text-[var(--foreground-subtle)]">{t("products.variants.swatchHint")}</span>
                       </div>
                       {form.linkedProductIds.length > 0 && (
                         <div className="flex flex-col gap-1.5">
@@ -3002,8 +3072,14 @@ export default function AdminProductsPage() {
                                 <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                 <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
                                 <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{f.money(lp.priceMin)}</span>
-                                <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className={`${BTN_ICON} shrink-0 ml-1`} aria-label="Remove">
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                                <button
+                                  type="button"
+                                  onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))}
+                                  className={`${BTN_ICON} shrink-0 ml-1`}
+                                  aria-label={t("products.variants.remove", { name: lp.name })}
+                                  title={t("products.variants.remove", { name: lp.name })}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                                 </button>
                               </div>
                             );
@@ -3011,7 +3087,7 @@ export default function AdminProductsPage() {
                         </div>
                       )}
                       <div className="relative">
-                        <input type="text" value={variantSearch} onChange={(e) => setVariantSearch(e.target.value)} placeholder="Search product to link…" className={`${inputCls} py-1.5`} />
+                        <input type="text" value={variantSearch} onChange={(e) => setVariantSearch(e.target.value)} placeholder={t("products.variants.search")} className={`${inputCls} py-1.5`} />
                         {variantSearch.trim().length >= 1 && (() => {
                           const q = variantSearch.toLowerCase();
                           const matches = products.filter((p) => p.id !== (editingProduct?.id ?? "") && !form.linkedProductIds.includes(p.id) && (p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q))).slice(0, 6);
@@ -3034,8 +3110,8 @@ export default function AdminProductsPage() {
                       {form.linkedProductIds.length > 0 && (
                         <p className="text-[12px] text-[var(--foreground-subtle)]">
                           {editingProduct?.variantGroupId
-                            ? <>Removing a product here unlinks it on save. The group keeps its <strong>primary</strong> — change it with Group variants.</>
-                            : <>A new group gets this product as its <strong>primary</strong> (catalog representative); an existing group keeps its own.</>}
+                            ? rich(t("products.variants.helpGrouped", { action: t("products.bulk.group") }))
+                            : rich(t("products.variants.helpNew"))}
                         </p>
                       )}
                     </div>
@@ -3044,7 +3120,11 @@ export default function AdminProductsPage() {
 
                 {/* ── Retailers (collapsible) ── */}
                 <div>
-                  <SecHead {...sec("retailers")} label="Where to buy" hint={form.retailers.length ? `— ${form.retailers.length} store${form.retailers.length > 1 ? "s" : ""}` : undefined} />
+                  <SecHead
+                    {...sec("retailers")}
+                    label={t("products.field.stores")}
+                    hint={form.retailers.length ? `— ${t("products.stores.count", { count: form.retailers.length })}` : undefined}
+                  />
                   {!collapsed.has("retailers") && (
                     <div className="px-4 pb-4">
                       <RetailerList
@@ -3070,13 +3150,13 @@ export default function AdminProductsPage() {
               disabled={!form.name.trim() || saving || !canWrite}
               className={`${btn("primary")} flex-1`}
             >
-              {saving ? "Saving…" : editingProduct ? "Save changes" : "Add product"}
+              {t(saving ? "common.saving" : editingProduct ? "products.editor.saveChanges" : "products.add")}
             </button>
             <button
               onClick={closeModal}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>
@@ -3090,7 +3170,7 @@ export default function AdminProductsPage() {
           panelClassName="rounded-2xl p-5 md:p-8 max-w-xl w-full max-h-[90dvh] md:max-h-[95vh] overflow-y-auto"
           closeOnScrim={false}
         >
-          {/* Заголовок с кнопкой сброса */}
+          {/* Title, with the button that removes the crop */}
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
             <h2 className="font-display text-xl font-light text-[var(--foreground)] min-w-0">{t("crop.title")}</h2>
             <div className="flex items-center gap-3 ml-auto">
@@ -3104,7 +3184,8 @@ export default function AdminProductsPage() {
               )}
               <button
                 onClick={() => setCropProduct(null)}
-                aria-label="Close"
+                aria-label={t("common.close")}
+                title={t("common.close")}
                 className={BTN_ICON}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -3129,21 +3210,22 @@ export default function AdminProductsPage() {
       {groupModal.open && (
         <Modal
           onClose={() => setGroupModal({ open: false, entries: [] })}
-          label="Group variants"
+          label={t("products.bulk.group")}
           panelClassName="rounded-2xl p-5 md:p-8 max-w-lg w-full max-h-[90dvh] md:max-h-[92vh] overflow-y-auto"
         >
           <div className="flex items-center justify-between gap-3 mb-5">
             <div className="min-w-0">
               <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-                {groupModal.existingGroupId ? "Edit variant group" : "Group as color variants"}
+                {t(groupModal.existingGroupId ? "products.group.titleEdit" : "products.group.titleNew")}
               </h2>
               <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                Set a swatch color for each product and choose which is the catalog representative.
+                {t("products.group.hint")}
               </p>
             </div>
             <button
               onClick={() => setGroupModal({ open: false, entries: [] })}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
               className={`${BTN_ICON} shrink-0`}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -3163,11 +3245,7 @@ export default function AdminProductsPage() {
                     entry.isPrimary ? "border-[var(--foreground)]" : "border-[var(--border)]"
                   }`}
                 >
-                  {/* Thumb */}
-                  {p.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imageUrl} alt={p.name} loading="lazy" decoding="async" className="w-10 h-[52px] object-cover shrink-0" />
-                  )}
+                  <Thumb src={p.imageUrl} bg={p.bgColor} />
 
                   {/* Name + swatch */}
                   <div className="flex-1 min-w-0">
@@ -3187,7 +3265,7 @@ export default function AdminProductsPage() {
                           }))
                         }
                         className="w-7 h-7 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0"
-                        title="Swatch color"
+                        title={t("products.group.swatch")}
                       />
                       <input
                         type="text"
@@ -3207,27 +3285,29 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  {/* Primary toggle */}
+                  {/* Primary: a state on the one that is, an action on the
+                      rest. Pressing the primary itself changed nothing, so it
+                      is a badge rather than a button. */}
                   <div className="shrink-0 text-center">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setGroupModal((prev) => ({
-                          ...prev,
-                          entries: prev.entries.map((en) => ({
-                            ...en,
-                            isPrimary: en.id === entry.id,
-                          })),
-                        }))
-                      }
-                      className={`text-[12px] font-medium px-2 py-1 border rounded-lg transition-colors ${
-                        entry.isPrimary
-                          ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-                          : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {entry.isPrimary ? "Primary" : "Set primary"}
-                    </button>
+                    {entry.isPrimary ? (
+                      <Badge tone="inverse">{t("products.badge.primary")}</Badge>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGroupModal((prev) => ({
+                            ...prev,
+                            entries: prev.entries.map((en) => ({
+                              ...en,
+                              isPrimary: en.id === entry.id,
+                            })),
+                          }))
+                        }
+                        className={btn("secondary", "sm")}
+                      >
+                        {t("products.group.setPrimary")}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -3235,7 +3315,7 @@ export default function AdminProductsPage() {
           </div>
 
           <p className="text-[12px] text-[var(--foreground-subtle)] mt-4">
-            The <strong>primary</strong> product is shown in the catalog. Others are accessible via the colour palette on the card.
+            {rich(t("products.group.help"))}
           </p>
 
           <div className="flex gap-3 mt-6">
@@ -3244,13 +3324,13 @@ export default function AdminProductsPage() {
               disabled={grouping || !canWrite}
               className={`${btn("primary")} flex-1`}
             >
-              {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
+              {t(grouping ? "common.saving" : groupModal.existingGroupId ? "products.group.update" : "products.group.create")}
             </button>
             <button
               onClick={() => setGroupModal({ open: false, entries: [] })}
               className={btn("ghost")}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </Modal>
