@@ -366,10 +366,11 @@ module.exports = {
       fullPage: false,
       after: async (page) => {
         // Row boxes by place, not by label: the label is in the admin's language.
-        const boxes = page.locator('tbody input[type="checkbox"]');
-        await boxes.first().waitFor({ timeout: 15000 });
-        await boxes.nth(0).check();
-        await boxes.nth(1).check();
+        // On a phone the photo is the box (GS4-11): the hidden input is clicked through it.
+        const boxes = page.locator('[data-row] input[type="checkbox"]');
+        await boxes.first().waitFor({ state: "attached", timeout: 15000 });
+        await boxes.nth(0).check({ force: true });
+        await boxes.nth(1).check({ force: true });
         await page.getByRole("toolbar").locator('button[aria-haspopup="menu"]').click();
         await page.waitForTimeout(300);
       },

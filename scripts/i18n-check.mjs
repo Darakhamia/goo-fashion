@@ -30,6 +30,10 @@ const TRANSLATED = [
   "src/components/admin/Toast.tsx",
   "src/components/admin/HelpToggle.tsx",
   "src/components/admin/ImageCropEditor.tsx",
+  "src/components/admin/DataTable.tsx",
+  "src/components/admin/FilterBar.tsx",
+  "src/components/admin/PageHeader.tsx",
+  "src/components/admin/SidePanel.tsx",
 ];
 
 /** Attributes that carry text a person reads or hears. */

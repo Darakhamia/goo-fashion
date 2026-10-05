@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
+import { btn, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { POPOVER_PANEL, usePopover } from "./Menu";
+import { SidePanel } from "./SidePanel";
 
 /*
  * Filters above a table (docs/ADMIN_DESIGN.md 5.7, GS4-4):
@@ -15,7 +18,90 @@ import { POPOVER_PANEL, usePopover } from "./Menu";
  * the choices (with a search box when there are many). What is active shows
  * again as removable chips under the row, so it is visible what narrowed the
  * list and each one goes with one click.
+ *
+ * On a phone (GS4-11) the row is the search and a "Filters · 2" button; the
+ * filters open in a bottom sheet, each one a native select, which a phone
+ * shows as its own picker:
+ *
+ *   <FilterBar search={<SearchField …/>} active={2} onClearAll={…} shown={412}>
+ *     <FilterMenu label="Category" …/> <FilterMenu label="Brand" …/>
+ *   </FilterBar>
  */
+
+/** The FilterMenus are inside the phone's filter sheet. */
+const InSheet = createContext(false);
+
+export function FilterBar({
+  search,
+  chips,
+  active,
+  onClearAll,
+  shown,
+  children,
+}: {
+  search: ReactNode;
+  /** A filter shown as chips (FilterChips): it stays in view on a phone. */
+  chips?: ReactNode;
+  /** How many filters are on: "Filters · 2". */
+  active: number;
+  onClearAll: () => void;
+  /** Rows the filters leave: "Show 412 results". */
+  shown: number;
+  /** The FilterMenus. */
+  children: ReactNode;
+}) {
+  const t = useT();
+  const phone = useMediaQuery("(width < 48rem)");
+  const [open, setOpen] = useState(false);
+
+  if (!phone) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {search}
+        {chips}
+        {children}
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">{search}</div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          className={`inline-flex flex-shrink-0 items-center h-10 px-3.5 rounded-lg border text-[13px] font-medium whitespace-nowrap bg-[var(--surface)] text-[var(--foreground)] ${
+            active ? "border-[var(--foreground)]" : "border-[var(--border-strong)]"
+          }`}
+        >
+          {active ? t("filter.filtersCount", { count: active }) : t("filter.filters")}
+        </button>
+      </div>
+      {chips}
+      <SidePanel
+        open={open}
+        onClose={() => setOpen(false)}
+        placement="bottom"
+        title={t("filter.filters")}
+        footer={
+          <>
+            <button type="button" onClick={onClearAll} disabled={!active} className={`${btn("ghost")} mr-auto`}>
+              {t("filter.clearAll")}
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className={btn("primary")}>
+              {t("filter.show", { count: shown })}
+            </button>
+          </>
+        }
+      >
+        <InSheet.Provider value={true}>
+          <div className="flex flex-col gap-4">{children}</div>
+        </InSheet.Provider>
+      </SidePanel>
+    </>
+  );
+}
 
 export function SearchField({
   value,
@@ -73,6 +159,7 @@ export function FilterMenu({
   align?: "start" | "end";
 }) {
   const t = useT();
+  const inSheet = useContext(InSheet);
   const { open, toggle, close, triggerRef, panelRef, panelId, style, portal } = usePopover(align);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -115,6 +202,25 @@ export function FilterMenu({
     onChange(v);
     close();
   };
+
+  // In the phone's filter sheet: a labelled native select.
+  if (inSheet) {
+    return (
+      <label className="block">
+        <span className={`block mb-1.5 text-[12px] font-medium ${active && tone === "warn" ? "text-[var(--warn)]" : "text-[var(--foreground-muted)]"}`}>
+          {label}
+        </span>
+        <select value={value} onChange={(e) => onChange(e.target.value)} className={`${SELECT} w-full`}>
+          {allLabel !== undefined && <option value="">{allLabel}</option>}
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.nested ? `\u2003${o.label}` : o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
 
   const border =
     variant === "ghost"

@@ -430,7 +430,7 @@ const pages = [
     fullPage: false,
     after: async (page) => {
       // The newest published post (Linen guide) — has SEO fields filled.
-      const row = page.locator("tr", { hasText: "Linen, done right" });
+      const row = page.locator("[data-row]", { hasText: "Linen, done right" });
       // On a phone the Edit icon is hidden and Edit heads the row's "…".
       const edit = row.getByRole("button", { name: /^Edit / });
       if (await edit.isVisible()) await edit.click();

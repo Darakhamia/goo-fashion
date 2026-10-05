@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useT } from "@/app/goo-studio/_i18n";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 /*
  * The admin's one table (docs/ADMIN_DESIGN.md 5.8, GS4-4).
@@ -23,6 +24,11 @@ import { useT } from "@/app/goo-studio/_i18n";
  * - `onRowClick` opens the row (Users: the side panel). The row's own buttons
  *   and boxes keep their clicks, and the same action stays a button in
  *   `actions` for the keyboard.
+ * - On a phone (below md) a table given `card` becomes a list of cards
+ *   (GS4-11, mockup "Phone · Products"): the 56px photo, the name on up to two
+ *   lines, one muted line under it, and the row's "…" on the right — nothing
+ *   to scroll sideways. A tap on the photo selects the row: the photo is the
+ *   checkbox, with a circle in its corner saying so.
  */
 
 export type Column<T> = {
@@ -61,6 +67,18 @@ export type Paging = {
   onPage: (page: number) => void;
   /** A remark next to "1–25 of 140"; the footer shows for it even on one page. */
   note?: ReactNode;
+};
+
+/** What a row shows as a card on a phone. */
+export type Card = {
+  /** The 56px picture: `<Thumb size="lg">`, an avatar. */
+  thumb?: ReactNode;
+  /** The name, on up to two lines. */
+  title: ReactNode;
+  /** One muted line: "Zara · $29.90–$32.29", "email · Basic". */
+  meta?: ReactNode;
+  /** A status that must not be missed, after the name: Draft, Banned. */
+  badge?: ReactNode;
 };
 
 const HIDE = { sm: "hidden sm:table-cell", md: "hidden md:table-cell", lg: "hidden lg:table-cell" } as const;
@@ -113,6 +131,7 @@ export function DataTable<T>({
   resetKey = "",
   paging,
   onRowClick,
+  card,
 }: {
   /** Names the table for screen readers. */
   label: string;
@@ -129,8 +148,11 @@ export function DataTable<T>({
   resetKey?: string;
   paging?: Paging;
   onRowClick?: (row: T) => void;
+  /** The row as a card on a phone; without it the phone gets the table. */
+  card?: (row: T) => Card;
 }) {
   const t = useT();
+  const phone = useMediaQuery("(width < 48rem)");
   const topRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
   const [lastKey, setLastKey] = useState(resetKey);
@@ -149,11 +171,152 @@ export function DataTable<T>({
   const Footer = paged ? "nav" : "div";
   const colCount = columns.length + (selection ? 1 : 0) + (actions ? 1 : 0);
 
+  // Clicks on the row's own controls, and inside a menu portalled out of it,
+  // are theirs.
+  const rowClick = (row: T) =>
+    onRowClick
+      ? (e: React.MouseEvent<HTMLElement>) => {
+          const target = e.target as HTMLElement;
+          if (!e.currentTarget.contains(target) || target.closest("button, a, input, label, select, textarea")) return;
+          onRowClick(row);
+        }
+      : undefined;
+
   const go = (p: number) => {
     if (paging) paging.onPage(p);
     else setPage(p);
     topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   };
+
+  const pager = footer && (
+    // A landmark only when there are pages to go to.
+    <Footer
+      aria-label={paged ? t("table.pages") : undefined}
+      className="flex flex-wrap items-center gap-1 min-h-12 px-4 py-2 border-t border-[var(--border)] text-[12px] text-[var(--foreground-muted)]"
+    >
+      <span className="tabular-nums mr-auto">
+        {t("table.range", { from: start + 1, to: start + shown.length, total })}
+        {paging?.note !== undefined && <> · {paging.note}</>}
+      </span>
+      {paged && (
+        <>
+          <button
+            type="button"
+            onClick={() => go(current - 1)}
+            disabled={current === 0}
+            aria-label={t("table.prev")}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ‹
+          </button>
+          {pageList(current, pageCount).map((p, i) =>
+            p === "gap" ? (
+              <span key={`gap-${i}`} className="px-1" aria-hidden="true">
+                …
+              </span>
+            ) : (
+              <button
+                key={p}
+                type="button"
+                onClick={() => go(p)}
+                aria-current={p === current ? "page" : undefined}
+                aria-label={t("table.page", { page: p + 1 })}
+                className={`min-w-7 h-7 px-1.5 rounded-lg tabular-nums ${
+                  p === current ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
+                }`}
+              >
+                {p + 1}
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            onClick={() => go(current + 1)}
+            disabled={current >= pageCount - 1}
+            aria-label={t("table.next")}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ›
+          </button>
+        </>
+      )}
+    </Footer>
+  );
+
+  if (phone && card) {
+    return (
+      <div ref={topRef} className="scroll-mt-4 rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
+        {loading ? (
+          <p className="px-4 py-12 text-center text-[13px] text-[var(--foreground-muted)]">{t("common.loading")}</p>
+        ) : rows.length === 0 ? (
+          (empty ?? <EmptyState text={t("table.empty")} />)
+        ) : (
+          <ul aria-label={label} className="text-[var(--foreground)]">
+            {shown.map((row, r) => {
+              const id = rowKey(row);
+              const c = card(row);
+              const isSelected = selection?.selected.has(id) ?? false;
+              const selectable = !!selection && (selection.canSelect?.(row) ?? true);
+              return (
+                <li
+                  key={id}
+                  data-row
+                  onClick={rowClick(row)}
+                  className={`flex items-center gap-3 min-h-[76px] py-2.5 pl-3 pr-1 ${r > 0 ? "border-t border-[var(--border)]" : ""} ${
+                    isSelected ? "bg-[var(--fg-overlay-05)]" : ""
+                  } ${onRowClick ? "cursor-pointer" : ""}`}
+                >
+                  {selectable ? (
+                    // The photo is the checkbox: a finger-sized target, and the
+                    // circle in its corner says it selects.
+                    <label className={`relative flex-shrink-0 cursor-pointer ${c.thumb ? "" : "flex items-center justify-center w-10 h-10"}`}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => selection.onToggle(id, false)}
+                        aria-label={t("table.selectRow", { name: selection.rowLabel(row) })}
+                        className="peer sr-only"
+                      />
+                      {c.thumb && (
+                        <span className="flex rounded-lg peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--foreground)]">
+                          {c.thumb}
+                        </span>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className={`${c.thumb ? "absolute -top-1 -left-1" : ""} flex items-center justify-center w-5 h-5 rounded-full border shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-colors ${
+                          isSelected
+                            ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
+                            : "border-[var(--border-strong)] bg-[var(--surface)] text-transparent"
+                        }`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                          <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    </label>
+                  ) : (
+                    c.thumb
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] leading-[19px] font-medium line-clamp-2 break-words">{c.title}</div>
+                    {(c.meta || c.badge) && (
+                      <div className="flex items-center gap-1.5 min-w-0 mt-0.5 text-[12px] leading-[17px] text-[var(--foreground-muted)]">
+                        {c.badge}
+                        <span className="truncate">{c.meta}</span>
+                      </div>
+                    )}
+                  </div>
+                  {actions && <div className="flex flex-shrink-0 items-center">{actions(row)}</div>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {pager}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -233,17 +396,8 @@ export function DataTable<T>({
               return (
                 <tr
                   key={id}
-                  onClick={
-                    onRowClick
-                      ? (e) => {
-                          // Clicks on the row's own controls, and inside a menu
-                          // portalled out of it, are theirs.
-                          const target = e.target as HTMLElement;
-                          if (!e.currentTarget.contains(target) || target.closest("button, a, input, label, select, textarea")) return;
-                          onRowClick(row);
-                        }
-                      : undefined
-                  }
+                  data-row
+                  onClick={rowClick(row)}
                   className={`group/row transition-colors ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"} ${
                     onRowClick ? "cursor-pointer" : ""
                   }`}
@@ -299,60 +453,7 @@ export function DataTable<T>({
         </tbody>
       </table>
 
-      {footer && (
-        // A landmark only when there are pages to go to.
-        <Footer
-          aria-label={paged ? t("table.pages") : undefined}
-          className="flex flex-wrap items-center gap-1 min-h-12 px-4 py-2 border-t border-[var(--border)] text-[12px] text-[var(--foreground-muted)]"
-        >
-          <span className="tabular-nums mr-auto">
-            {t("table.range", { from: start + 1, to: start + shown.length, total })}
-            {paging?.note !== undefined && <> · {paging.note}</>}
-          </span>
-          {paged && (
-            <>
-              <button
-                type="button"
-                onClick={() => go(current - 1)}
-                disabled={current === 0}
-                aria-label={t("table.prev")}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                ‹
-              </button>
-              {pageList(current, pageCount).map((p, i) =>
-                p === "gap" ? (
-                  <span key={`gap-${i}`} className="px-1" aria-hidden="true">
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => go(p)}
-                    aria-current={p === current ? "page" : undefined}
-                    aria-label={t("table.page", { page: p + 1 })}
-                    className={`min-w-7 h-7 px-1.5 rounded-lg tabular-nums ${
-                      p === current ? "bg-[var(--fg-overlay-08)] text-[var(--foreground)] font-medium" : "hover:text-[var(--foreground)]"
-                    }`}
-                  >
-                    {p + 1}
-                  </button>
-                )
-              )}
-              <button
-                type="button"
-                onClick={() => go(current + 1)}
-                disabled={current >= pageCount - 1}
-                aria-label={t("table.next")}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--border)] hover:text-[var(--foreground)] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                ›
-              </button>
-            </>
-          )}
-        </Footer>
-      )}
+      {pager}
     </div>
   );
 }
@@ -360,11 +461,22 @@ export function DataTable<T>({
 /**
  * A 40px photo for the first column (ADMIN_DESIGN 5.8): a product whole, on its
  * own backdrop; a look or a blog cover (`fit="cover"`) filling the square.
+ * `size="lg"` is the 56px one of a card on a phone.
  */
-export function Thumb({ src, bg, fit = "contain" }: { src?: string | null; bg?: string | null; fit?: "contain" | "cover" }) {
+export function Thumb({
+  src,
+  bg,
+  fit = "contain",
+  size = "md",
+}: {
+  src?: string | null;
+  bg?: string | null;
+  fit?: "contain" | "cover";
+  size?: "md" | "lg";
+}) {
   return (
     <span
-      className="w-10 h-10 flex-shrink-0 rounded-md overflow-hidden inline-flex items-center justify-center"
+      className={`${size === "lg" ? "w-14 h-14 rounded-lg" : "w-10 h-10 rounded-md"} flex-shrink-0 overflow-hidden inline-flex items-center justify-center`}
       style={{ background: bg || "var(--background)" }}
     >
       {src && (

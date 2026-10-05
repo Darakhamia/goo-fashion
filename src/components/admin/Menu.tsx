@@ -20,7 +20,11 @@ import { BTN_ICON, BTN_ICON_OUTLINE, BTN_ICON_SM } from "@/app/goo-studio/_ui/re
 
 export type PopoverAlign = "start" | "end";
 
-type Place = { top?: number; bottom?: number; left?: number; right?: number; maxHeight: number };
+type Place = { top?: number; bottom?: number; left?: number; right?: number; maxHeight: number; maxWidth: number };
+
+/** The panel's narrowest and widest (POPOVER_PANEL's min-w and max-w). */
+const PANEL_MIN = 200;
+const PANEL_MAX = 360;
 
 export function usePopover(align: PopoverAlign = "end") {
   const [open, setOpen] = useState(false);
@@ -42,7 +46,14 @@ export function usePopover(align: PopoverAlign = "end") {
     const below = window.innerHeight - r.bottom - 8;
     const above = r.top - 8;
     const up = below < 240 && above > below;
-    const side = align === "end" ? { right: Math.max(8, window.innerWidth - r.right) } : { left: Math.max(8, r.left) };
+    // Lined up with the trigger's edge on the asked side, unless the panel
+    // would not fit on the screen that way (a trigger near the other edge of
+    // a phone): then the other side. Never wider than the room it has.
+    const W = window.innerWidth;
+    const fromRight = align === "end" ? r.right - 8 >= PANEL_MIN : W - 8 - r.left < PANEL_MIN;
+    const side = fromRight
+      ? { right: Math.max(8, W - r.right), maxWidth: Math.min(PANEL_MAX, Math.max(8, r.right) - 8) }
+      : { left: Math.max(8, r.left), maxWidth: Math.min(PANEL_MAX, W - Math.max(8, r.left) - 8) };
     return {
       ...side,
       ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),

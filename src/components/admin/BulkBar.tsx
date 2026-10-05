@@ -39,7 +39,8 @@ export function BulkBar({ count, actions, onClear }: { count: number; actions: B
   const plain = actions.filter((a) => a.tone !== "danger");
   const danger = actions.filter((a) => a.tone === "danger");
   return (
-    <div className="sticky bottom-4 z-30 mt-4 flex justify-center pointer-events-none">
+    // data-bulk-bar: a page's pinned main action steps aside while it shows (PageHeader).
+    <div data-bulk-bar className="sticky bottom-4 z-30 mt-4 flex justify-center pointer-events-none">
       <div
         role="toolbar"
         aria-label={t("bulk.selected", { count })}

@@ -777,7 +777,8 @@ summary:not(.no-press):not([class*="active:scale"]):active {
 @starting-style {
   .ov-rise { opacity: 0; transform: translateY(calc(100% + 1rem)); }
 }
-.ov-rise.is-closing {
+.ov-rise.is-closing,
+.is-closing .ov-rise {
   opacity: 0;
   transform: translateY(calc(100% + 1rem));
   transition-duration: var(--dur-base);
@@ -808,6 +809,7 @@ summary:not(.no-press):not([class*="active:scale"]):active {
   .ov-panel.is-closing,
   .ov-pop.is-closing,
   .ov-rise.is-closing,
+  .is-closing .ov-rise,
   .is-closing .ov-slide {
     transform: none;
   }

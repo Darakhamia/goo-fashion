@@ -15,6 +15,7 @@ import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { SidePanel } from "@/components/admin/SidePanel";
 
 const PAGE_SIZE = 25;
@@ -189,10 +190,7 @@ function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
     return (
       <span className="inline-flex items-center gap-1.5">
         {name}
-        {/* From md: on a phone the column keeps to the plan's name. */}
-        <span className="hidden md:contents">
-          <Badge title={t("users.badge.manualHint")}>{t("users.badge.manual")}</Badge>
-        </span>
+        <Badge title={t("users.badge.manualHint")}>{t("users.badge.manual")}</Badge>
       </span>
     );
   }
@@ -206,28 +204,25 @@ function PlanCell({ u, t, f }: { u: UserRow; t: T; f: Format }) {
         : isOverdue(billed)
           ? { text: t("users.sub.overdue", { date: f.date(billed.currentPeriodEnd) }), tone: "text-[var(--warn)]" }
           : null;
-  // On a phone the column keeps to the plan's name, and the badge under the
-  // user's name carries the problem.
   return (
     <span className={problem?.tone}>
-      {billedName}
-      <span className="hidden md:inline">
-        {" "}
-        · {t("users.sub.perMonth", { amount: f.money(billed.amountUah, "UAH") })}
-        {problem && <> · {problem.text}</>}
-      </span>
+      {billedName} · {t("users.sub.perMonth", { amount: f.money(billed.amountUah, "UAH") })}
+      {problem && <> · {problem.text}</>}
     </span>
   );
 }
 
-function Avatar({ u }: { u: UserRow }) {
+/** 32px in the table, 40px on a phone's card. */
+function Avatar({ u, size = "md" }: { u: UserRow; size?: "md" | "lg" }) {
+  const box = size === "lg" ? "w-10 h-10" : "w-8 h-8";
   if (u.imageUrl) {
-    return <Image src={u.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />;
+    const px = size === "lg" ? 40 : 32;
+    return <Image src={u.imageUrl} alt="" width={px} height={px} className={`${box} rounded-full object-cover flex-shrink-0`} />;
   }
   return (
     <span
       aria-hidden="true"
-      className="w-8 h-8 flex-shrink-0 rounded-full inline-flex items-center justify-center text-[11px] font-semibold text-[var(--foreground)] bg-[var(--fg-overlay-08)]"
+      className={`${box} flex-shrink-0 rounded-full inline-flex items-center justify-center ${size === "lg" ? "text-[13px]" : "text-[11px]"} font-semibold text-[var(--foreground)] bg-[var(--fg-overlay-08)]`}
     >
       {initials(u.firstName, u.lastName, u.email)}
     </span>
@@ -541,18 +536,11 @@ export default function AdminUsersPage() {
                 <span className={`font-medium truncate ${named ? "" : "text-[var(--foreground-muted)]"}`} title={named ? name : undefined}>
                   {named ? name : t("users.noName")}
                 </span>
-                {/* Badges by the name from md; on a phone the name needs the
-                    room, and the state that needs action moves under it. */}
-                <span className="hidden md:contents">
-                  {(u.isSuperAdmin || u.isAdmin) && <Badge>{t(u.isSuperAdmin ? "users.badge.superAdmin" : "users.badge.team")}</Badge>}
-                  {statusBadge(u, t)}
-                </span>
+                {(u.isSuperAdmin || u.isAdmin) && <Badge>{t(u.isSuperAdmin ? "users.badge.superAdmin" : "users.badge.team")}</Badge>}
+                {statusBadge(u, t)}
               </div>
-              <div className="flex items-center gap-1.5 min-w-0 text-[12px] text-[var(--foreground-muted)]">
-                <span className="md:hidden contents">{statusBadge(u, t)}</span>
-                <span className="truncate" title={u.email ?? undefined}>
-                  {u.email ?? "—"}
-                </span>
+              <div className="text-[12px] text-[var(--foreground-muted)] truncate" title={u.email ?? undefined}>
+                {u.email ?? "—"}
               </div>
             </div>
           </div>
@@ -582,19 +570,17 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.users")}</h1>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
+      <PageHeader
+        title={t("nav.users")}
+        subtitle={
+          <>
             {subtitle.length ? subtitle.join(" · ") : "—"}
             {countsError ? <span className="text-[var(--err)]"> · {t("users.countsFailed", { error: countsError })}</span> : null}
             {subsError ? <span className="text-[var(--err)]"> · {t("users.subsFailed", { error: subsError })}</span> : null}
-          </p>
-        </div>
-        <button onClick={refresh} disabled={loading} className={btn("secondary")}>
-          {loading ? t("common.loading") : t("users.refresh")}
-        </button>
-      </div>
+          </>
+        }
+        actions={[{ key: "refresh", label: loading ? t("common.loading") : t("users.refresh"), onClick: refresh, disabled: loading }]}
+      />
 
       {/* Search, the plans as chips with their counts (they were six cards),
           and the state. Counted on the server across all users. */}
@@ -652,6 +638,17 @@ export default function AdminUsersPage() {
         // short says so even on one page, so the caveat is never hidden.
         paging={{ page, total, onPage: setPage, note: listPartial ? t("users.listPartial") : undefined }}
         onRowClick={(u) => setSelectedId(u.id)}
+        // On a phone: the name, and the state that needs action before the
+        // email and the plan.
+        card={(u) => {
+          const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+          return {
+            thumb: <Avatar u={u} size="lg" />,
+            title: name || <span className="text-[var(--foreground-muted)]">{t("users.noName")}</span>,
+            badge: statusBadge(u, t),
+            meta: `${u.email ?? "—"} · ${PLAN_LABEL[u.plan] ?? u.plan}`,
+          };
+        }}
         selection={{
           selected: new Set(selected.keys()),
           onToggle: (id) => toggleSelect(id),

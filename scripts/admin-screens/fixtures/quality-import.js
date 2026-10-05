@@ -655,7 +655,7 @@ module.exports = {
       name: "parser-recipes",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: "Site recipes", exact: true }).click();
+        await page.getByRole("button", { name: /^(Site recipes|Recipes)$/ }).click();
         await page.getByRole("button", { name: "Edit", exact: true }).nth(2).click();
         await page.mouse.move(1, 1);
       },
@@ -664,7 +664,7 @@ module.exports = {
       name: "parser-fetch",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: "Fetch & anti-bot", exact: true }).click();
+        await page.getByRole("button", { name: /^(Fetch & anti-bot|Anti-bot)$/ }).click();
         await page.mouse.move(1, 1);
       },
     },
@@ -673,7 +673,8 @@ module.exports = {
       url: "/goo-studio/parser",
       after: async (page) => {
         await page.getByPlaceholder("https://www.balenciaga.com/en-us/men/ready-to-wear").fill(CRAWL_URL);
-        await page.getByRole("button", { name: "Collect", exact: true }).click();
+        // On a phone the first tab is named "Collect" too; the run's button comes after it.
+        await page.getByRole("button", { name: "Collect", exact: true }).last().click();
         await page.getByText("Finished", { exact: true }).waitFor({ timeout: 30000 });
         await page.waitForLoadState("networkidle");
         await page.mouse.move(1, 1);

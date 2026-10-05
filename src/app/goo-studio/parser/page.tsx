@@ -175,23 +175,31 @@ export default function ParserPage() {
       <Header />
 
       {/* Tabs */}
-      {/* On a phone the four tabs scroll sideways rather than widen the page. */}
+      {/* On a phone the four tabs take their short names and fit the width
+          (GS4-11); the strip still scrolls rather than widen the page if a
+          screen is narrower yet. */}
       <div className="flex items-center gap-1 mt-6 mb-6 border-b border-[var(--border)] overflow-x-auto overflow-y-hidden no-scrollbar">
-        {([["collect", "Collect catalog"], ["parse", "Parse URL"], ["recipes", "Site recipes"], ["fetch", "Fetch & anti-bot"]] as [Tab, string][]).map(
-          ([key, label]) => (
-            <button
-              key={key}
-              onClick={() => { setTab(key); setHandoff(null); }}
-              className={`shrink-0 whitespace-nowrap px-4 py-2.5 text-[13px] font-medium transition-colors -mb-px border-b-2 ${
-                tab === key
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {label}
-            </button>
-          ),
-        )}
+        {(
+          [
+            ["collect", "Collect catalog", "Collect"],
+            ["parse", "Parse URL", "Parse URL"],
+            ["recipes", "Site recipes", "Recipes"],
+            ["fetch", "Fetch & anti-bot", "Anti-bot"],
+          ] as [Tab, string, string][]
+        ).map(([key, label, short]) => (
+          <button
+            key={key}
+            onClick={() => { setTab(key); setHandoff(null); }}
+            className={`shrink-0 whitespace-nowrap px-3 md:px-4 py-2.5 text-[13px] font-medium transition-colors -mb-px border-b-2 ${
+              tab === key
+                ? "border-[var(--foreground)] text-[var(--foreground)]"
+                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <span className="md:hidden">{short}</span>
+            <span className="hidden md:inline">{label}</span>
+          </button>
+        ))}
       </div>
 
       {loadError && <div className={`${errorBoxCls} mb-4`}>{loadError}</div>}

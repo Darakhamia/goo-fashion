@@ -230,7 +230,7 @@ export default function AdminAnalyticsPage() {
       {/* Sessions over fixed windows. A session ends after 30 min idle, so
           these count visits, not people. */}
       {data && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
           {[
             { label: "Sessions · 24h", value: data.sessionWindows.last24h, hint: "Last 24 hours" },
             { label: "Sessions · 7d",  value: data.sessionWindows.last7d,  hint: "Last 7 days" },
@@ -327,7 +327,7 @@ export default function AdminAnalyticsPage() {
       {/* Activity heatmap */}
       {data && (
         <Section title="Activity by hour (Kyiv time)">
-          <div className="rounded-xl border border-[var(--border)] p-4 overflow-x-auto" style={{ background: "var(--surface)" }}>
+          <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
             <HourHeatmap heatmap={data.heatmap} />
           </div>
         </Section>
@@ -481,14 +481,16 @@ function TopTable({
 // ── Hour-of-week heatmap ──────────────────────────────────────────────────────
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// The 24 hours fit the width of a phone too (GS4-11): smaller squares and an
+// hour label every six hours instead of three.
 function HourHeatmap({ heatmap }: { heatmap: number[][] }) {
   const max = Math.max(1, ...heatmap.flat());
   return (
-    <div className="min-w-[640px]">
-      <div className="grid gap-[3px]" style={{ gridTemplateColumns: "36px repeat(24, 1fr)" }}>
+    <div>
+      <div className="grid gap-[2px] md:gap-[3px]" style={{ gridTemplateColumns: "32px repeat(24, minmax(0, 1fr))" }}>
         <div />
         {Array.from({ length: 24 }).map((_, h) => (
-          <div key={h} className="text-center text-[11px] text-[var(--foreground-subtle)]">
+          <div key={h} className={`text-center text-[11px] text-[var(--foreground-subtle)] ${h % 6 ? "max-md:invisible" : ""}`}>
             {h % 3 === 0 ? h : ""}
           </div>
         ))}

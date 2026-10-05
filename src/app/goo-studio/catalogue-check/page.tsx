@@ -18,6 +18,7 @@ import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { useToast } from "@/components/admin/Toast";
 import { btn } from "@/app/goo-studio/_ui/recipes";
 import { useFormat } from "@/app/goo-studio/_i18n";
+import { DataTable, type Column } from "@/components/admin/DataTable";
 
 type Mode = "off" | "suggest" | "auto";
 
@@ -154,6 +155,7 @@ export default function CatalogueCheckPage() {
   const f = useFormat();
   const usd = (n: number) => f.money(n || 0);
   const when = f.dateTime;
+  const runKind = (r: Run) => (r.trigger === "auto" ? "After imports" : r.trigger === "brands" ? "Brands" : "Manual");
   const help = useHelp("catalogue-check");
   const runHelp = useHelp("catalogue-check-run");
   const fixedHelp = useHelp("catalogue-check-fixed");
@@ -328,6 +330,15 @@ export default function CatalogueCheckPage() {
   const checked = status ? status.counts.products - status.counts.unchecked : 0;
   const settingsChanged = !!draft && !!status && JSON.stringify(draft) !== JSON.stringify(status.settings);
 
+  const runColumns: Column<Run>[] = [
+    { key: "started", header: "Started", cell: (r) => when(r.startedAt) },
+    { key: "kind", header: "Kind", cell: (r) => <span className="text-[var(--foreground-muted)]">{runKind(r)}</span> },
+    { key: "model", header: "Model", grow: true, cell: (r) => <span className="block truncate text-[var(--foreground-muted)]">{r.model}</span> },
+    { key: "products", header: "Products", align: "right", cell: (r) => r.products },
+    { key: "fixed", header: "Fixed", align: "right", cell: (r) => r.applied },
+    { key: "suggested", header: "For you", align: "right", cell: (r) => r.suggested },
+    { key: "cost", header: "Cost", align: "right", cell: (r) => usd(r.costUsd) },
+  ];
   return (
     <div>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -613,45 +624,23 @@ export default function CatalogueCheckPage() {
       {status?.migrated && status.runs.length > 0 && (
         <section className="mb-5">
           <h2 className="text-sm text-[var(--foreground)] mb-3">Runs</h2>
-          <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
-            <table className="w-full min-w-[640px] text-xs">
-              <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                  {["Started", "Kind", "Model", "Products", "Fixed", "For you", "Cost", ""].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {status.runs.map((r) => (
-                  <tr key={r.id} className="border-b border-[var(--border)] last:border-b-0">
-                    <td className="px-4 py-3 text-[var(--foreground)] whitespace-nowrap">{when(r.startedAt)}</td>
-                    <td className="px-4 py-3 text-[var(--foreground-muted)]">
-                      {r.trigger === "auto" ? "After imports" : r.trigger === "brands" ? "Brands" : "Manual"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--foreground-muted)]">{r.model}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{r.products}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{r.applied}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{r.suggested}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{usd(r.costUsd)}</td>
-                    <td className="px-4 py-3 text-right">
-                      {r.applied > 0 && (
-                        <button
-                          onClick={() => undoRun(r)}
-                          disabled={busy !== null || !!job}
-                          className={btn("ghost", "sm")}
-                        >
-                          {busy === `run:${r.id}` ? "…" : "Undo run"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            label="Runs"
+            rows={status.runs}
+            rowKey={(r) => String(r.id)}
+            columns={runColumns}
+            card={(r) => ({
+              title: `${when(r.startedAt)} · ${runKind(r)}`,
+              meta: `${r.products} products · ${r.applied} fixed · ${r.suggested} for you · ${usd(r.costUsd)}`,
+            })}
+            actions={(r) =>
+              r.applied > 0 ? (
+                <button onClick={() => undoRun(r)} disabled={busy !== null || !!job} className={btn("ghost", "sm")}>
+                  {busy === `run:${r.id}` ? "…" : "Undo run"}
+                </button>
+              ) : null
+            }
+          />
         </section>
       )}
 

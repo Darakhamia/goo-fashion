@@ -21,6 +21,10 @@ import { useDialog } from "./useDialog";
  * bottom, on the right. It is a modal dialog: Escape and a click on the dimmed
  * page close it, Tab stays inside, and focus goes back to whatever opened it.
  * A ConfirmDialog or a menu opened from inside keeps its own Escape and focus.
+ *
+ * `placement="bottom"` is the phone's bottom sheet (GS4-11): the same parts,
+ * rising from the bottom edge, as tall as its content and at most 85% of the
+ * screen. The filters of a list open in one (FilterBar).
  */
 
 export function SidePanel({
@@ -29,6 +33,7 @@ export function SidePanel({
   title,
   subtitle,
   footer,
+  placement = "right",
   children,
 }: {
   open: boolean;
@@ -38,6 +43,7 @@ export function SidePanel({
   subtitle?: ReactNode;
   /** The buttons: Cancel (ghost) and the main one, right-aligned. A destructive one goes first, `mr-auto`. */
   footer?: ReactNode;
+  placement?: "right" | "bottom";
   children: ReactNode;
 }) {
   const t = useT();
@@ -48,10 +54,11 @@ export function SidePanel({
   useDialog(open, onClose, panelRef);
 
   if (!ov.rendered) return null;
+  const bottom = placement === "bottom";
 
   return (
     <div
-      className={ov.cls("ov-scrim fixed inset-0 z-[90] flex justify-end bg-black/60")}
+      className={ov.cls(`ov-scrim fixed inset-0 z-[90] flex bg-black/60 ${bottom ? "items-end" : "justify-end"}`)}
       onTransitionEnd={ov.onTransitionEnd}
       // Only a press that starts on the dimmed page closes it: a text
       // selection dragged out of a field ends here too.
@@ -64,7 +71,11 @@ export function SidePanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="ov-slide flex flex-col h-full w-full md:w-[480px] border-l border-[var(--border)] shadow-[-16px_0_40px_rgba(0,0,0,0.12)]"
+        className={
+          bottom
+            ? "ov-rise flex flex-col w-full max-h-[85dvh] rounded-t-2xl border-t border-[var(--border)] shadow-[0_-16px_40px_rgba(0,0,0,0.12)]"
+            : "ov-slide flex flex-col h-full w-full md:w-[480px] border-l border-[var(--border)] shadow-[-16px_0_40px_rgba(0,0,0,0.12)]"
+        }
         style={{ background: "var(--surface)" }}
       >
         <header className="flex items-center gap-3 min-h-16 pl-4 md:pl-6 pr-3 py-3 border-b border-[var(--border)]">

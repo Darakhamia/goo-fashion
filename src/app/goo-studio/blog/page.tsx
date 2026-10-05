@@ -15,6 +15,7 @@ import { ActiveFilters, FilterChips, FilterMenu, SearchField } from "@/component
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Badge } from "@/components/admin/Badge";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import { Modal } from "@/components/admin/Modal";
 
 interface BlogFormState {
@@ -425,38 +426,35 @@ export default function AdminBlogPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.blog")}</h1>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
-            {loading
-              ? t("common.loading")
-              : loadError
-                ? "—"
-                : [
-                    t("blog.summary.count", { count: posts.length }),
-                    t("blog.summary.published", { count: publishedCount }),
-                    t("blog.summary.drafts", { count: draftCount }),
-                  ].join(" · ")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={openAiModal} className={btn("secondary")}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M4 6C4 4.9 4.9 4 6 4C7.1 4 8 4.9 8 6C8 7.1 7.1 8 6 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-              <circle cx="6" cy="6" r="1" fill="currentColor" />
-            </svg>
-            {t("blog.aiDraft")}
-          </button>
-          <button onClick={openAddModal} className={btn("primary")}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            {t("blog.new")}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("nav.blog")}
+        subtitle={
+          loading
+            ? t("common.loading")
+            : loadError
+              ? "—"
+              : [
+                  t("blog.summary.count", { count: posts.length }),
+                  t("blog.summary.published", { count: publishedCount }),
+                  t("blog.summary.drafts", { count: draftCount }),
+                ].join(" · ")
+        }
+        actions={[
+          {
+            key: "ai",
+            label: t("blog.aiDraft"),
+            onClick: openAiModal,
+            icon: (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 6C4 4.9 4.9 4 6 4C7.1 4 8 4.9 8 6C8 7.1 7.1 8 6 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <circle cx="6" cy="6" r="1" fill="currentColor" />
+              </svg>
+            ),
+          },
+        ]}
+        primary={{ key: "new", label: t("blog.new"), icon: PLUS, onClick: openAddModal }}
+      />
 
       {/* Search, the state as chips with counts, the count and the sort. */}
       <div className="mb-4 flex flex-col gap-2.5">
@@ -502,6 +500,13 @@ export default function AdminBlogPage() {
         columns={columns}
         loading={loading}
         resetKey={[q, statusFilter, sortKey].join("|")}
+        // A draft says so; a published post is the usual state and shows its date.
+        card={(p) => ({
+          thumb: <Thumb src={p.coverImageUrl} fit="cover" size="lg" />,
+          title: p.title,
+          badge: p.isPublished ? undefined : <Badge dot>{t("blog.status.draft")}</Badge>,
+          meta: [p.category || `/${p.slug}`, ...(p.isPublished ? [f.date(p.publishedAt)] : [])].join(" · "),
+        })}
         actions={(post) => (
           <>
             <button
