@@ -13,6 +13,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { useToast } from "@/components/admin/Toast";
+import { btn } from "@/app/goo-studio/_ui/recipes";
 
 type Mode = "off" | "suggest" | "auto";
 
@@ -103,16 +107,6 @@ const FIELD_LABEL: Record<string, string> = {
   price: "Price",
 };
 
-const outline =
-  "px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
-// Padding stays out of the base so a compact call site does not stack a second px/py.
-const primaryBase =
-  "bg-[var(--foreground)] text-[var(--surface)] rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
-const primary = `${primaryBase} px-4 py-2`;
-// A row's own Apply: outlined, so the fill stays with "Apply all".
-const secondary =
-  "border border-[var(--border-strong)] text-[var(--foreground)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40";
-const ghost = "text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
 // Field base without a background, so the input and the select each set one.
 const fieldBase =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
@@ -162,16 +156,12 @@ export default function CatalogueCheckPage() {
   const [progress, setProgress] = useState({ checked: 0, applied: 0, suggested: 0, failed: 0, cost: 0, brands: 0 });
   const [lines, setLines] = useState<Line[]>([]);
   const [brandNotes, setBrandNotes] = useState<string[]>([]);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const stopRef = useRef(false);
-
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => setToast({ msg, type });
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const confirm = useConfirm();
+  const toast = useToast();
+  const help = useHelp("catalogue-check");
+  const runHelp = useHelp("catalogue-check-run");
+  const fixedHelp = useHelp("catalogue-check-fixed");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -213,10 +203,10 @@ export default function CatalogueCheckPage() {
     try {
       const json = await post({ action: "settings", ...draft });
       setDraft(json.settings);
-      showToast("Settings saved");
+      toast.ok("Settings saved");
       void load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not save.", "err");
+      toast.err(e instanceof Error ? e.message : "Could not save.");
     } finally {
       setSaving(false);
     }
@@ -225,9 +215,11 @@ export default function CatalogueCheckPage() {
   /** Walk the catalogue a step at a time until it is done or Stop is pressed. */
   const run = async (which: Job) => {
     if (which === "all" && status) {
-      const ok = confirm(
-        `Re-check all ${status.counts.products} products? Estimated cost about ${usd(status.estimate.allUsd)}. Fixes you undid or dismissed are not made again.`,
-      );
+      const ok = await confirm({
+        title: `Re-check all ${status.counts.products} products?`,
+        body: `Estimated cost about ${usd(status.estimate.allUsd)}. Fixes you undid or dismissed are not made again.`,
+        confirmLabel: `Re-check ${status.counts.products} products`,
+      });
       if (!ok) return;
     }
     stopRef.current = false;
@@ -281,9 +273,9 @@ export default function CatalogueCheckPage() {
         cursor = json.cursor;
         if (!cursor) break;
       }
-      showToast(stopRef.current ? "Stopped" : "Done");
+      toast.ok(stopRef.current ? "Stopped" : "Done");
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "The run stopped.", "err");
+      toast.err(e instanceof Error ? e.message : "The run stopped.");
     } finally {
       setJob(null);
       void load();
@@ -300,24 +292,34 @@ export default function CatalogueCheckPage() {
         : json.errors?.length
         ? json.errors[0]
         : `${verb} ${json.done}`;
-      showToast(msg, json.stale || json.errors?.length ? "err" : "ok");
+      if (json.stale || json.errors?.length) toast.err(msg);
+      else toast.ok(msg);
       void load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not save.", "err");
+      toast.err(e instanceof Error ? e.message : "Could not save.");
     } finally {
       setBusy(null);
     }
   };
 
   const undoRun = async (r: Run) => {
-    if (!confirm(`Undo the ${r.applied} fix${r.applied === 1 ? "" : "es"} this run made? Products edited since are left as they are.`)) return;
+    const fixes = `${r.applied} fix${r.applied === 1 ? "" : "es"}`;
+    if (
+      !(await confirm({
+        title: `Undo the ${fixes} this run made?`,
+        body: "Products edited since are left as they are.",
+        confirmLabel: `Undo ${fixes}`,
+        tone: "danger",
+      }))
+    )
+      return;
     setBusy(`run:${r.id}`);
     try {
       const json = await post({ action: "undo_run", runId: r.id });
-      showToast(json.stale ? `Undone ${json.done}; ${json.stale} changed since — left as they are` : `Undone ${json.done}`);
+      toast.ok(json.stale ? `Undone ${json.done}; ${json.stale} changed since — left as they are` : `Undone ${json.done}`);
       void load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not undo.", "err");
+      toast.err(e instanceof Error ? e.message : "Could not undo.");
     } finally {
       setBusy(null);
     }
@@ -335,14 +337,30 @@ export default function CatalogueCheckPage() {
     <div>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">AI check</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-light text-[var(--foreground)]">AI check</h1>
+            <HelpButton help={help} label="How AI check works" />
+          </div>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
             {status
               ? `${checked} of ${status.counts.products} products checked · ${status.counts.suggestions} waiting for you · ${usd(status.spend.totalThisMonth)} spent this month`
               : "Loading…"}
           </p>
+          {help.open && (
+            <div className="mt-3">
+              <HelpPanel help={help}>
+                <p>
+                  The model sees each product record as it is stored — name, brand, category, gender, colours, material, sizes, description,
+                  price and store links — next to the catalogue&apos;s brand spellings and category tree. It cannot write to the database: it
+                  answers, and the server writes only what the record itself backs. A brand must be named in the record or already be one of
+                  ours; a colour or a material must be named in its text; a name, description or size list can only lose words. Prices are
+                  never changed, only flagged.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
         </div>
-        <button onClick={() => load()} disabled={loading || !!job} className={outline}>
+        <button onClick={() => load()} disabled={loading || !!job} className={btn("secondary")}>
           {loading ? "Loading…" : "Refresh"}
         </button>
       </div>
@@ -382,22 +400,31 @@ export default function CatalogueCheckPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
         {/* Run */}
         <section className="rounded-xl border border-[var(--border)] p-4 md:p-5" style={{ background: "var(--surface)" }}>
-          <h2 className="text-sm text-[var(--foreground)]">Check the catalogue</h2>
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
-            New products are checked by themselves after every import. Here you run it over everything at once. A product is only
-            sent to the model again when it has changed since its last check.
-          </p>
+          <div className="flex items-center gap-1">
+            <h2 className="text-sm text-[var(--foreground)]">Check the catalogue</h2>
+            <HelpButton help={runHelp} label="How checking the catalogue works" />
+          </div>
+          {runHelp.open && (
+            <div className="mt-2">
+              <HelpPanel help={runHelp}>
+                <p>
+                  New products are checked by themselves after every import. Here you run it over everything at once. A product is only
+                  sent to the model again when it has changed since its last check.
+                </p>
+              </HelpPanel>
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={() => run("unchecked")} disabled={!ready || !!job || !status?.counts.unchecked} className={primary}>
+            <button onClick={() => run("unchecked")} disabled={!ready || !!job || !status?.counts.unchecked} className={btn("primary")}>
               Check unchecked ({status?.counts.unchecked ?? 0}) · ~{usd(status?.estimate.uncheckedUsd ?? 0)}
             </button>
-            <button onClick={() => run("brands")} disabled={!ready || !!job} className={outline} title="Find one brand spelled several ways and unify it">
+            <button onClick={() => run("brands")} disabled={!ready || !!job} className={btn("secondary")} title="Find one brand spelled several ways and unify it">
               Unify brand spellings
             </button>
-            <button onClick={() => run("changed")} disabled={!ready || !!job} className={outline} title="Products edited or re-collected since their last check">
+            <button onClick={() => run("changed")} disabled={!ready || !!job} className={btn("secondary")} title="Products edited or re-collected since their last check">
               Re-check changed
             </button>
-            <button onClick={() => run("all")} disabled={!ready || !!job} className={outline}>
+            <button onClick={() => run("all")} disabled={!ready || !!job} className={btn("secondary")}>
               Re-check everything · ~{usd(status?.estimate.allUsd ?? 0)}
             </button>
           </div>
@@ -416,7 +443,7 @@ export default function CatalogueCheckPage() {
                     onClick={() => {
                       stopRef.current = true;
                     }}
-                    className={ghost}
+                    className={btn("ghost")}
                   >
                     Stop
                   </button>
@@ -511,7 +538,7 @@ export default function CatalogueCheckPage() {
                 />
               </label>
               <div>
-                <button onClick={saveSettings} disabled={saving || !settingsChanged} className={primary}>
+                <button onClick={saveSettings} disabled={saving || !settingsChanged} className={btn("primary")}>
                   {saving ? "Saving…" : "Save settings"}
                 </button>
               </div>
@@ -528,13 +555,19 @@ export default function CatalogueCheckPage() {
             <span className="text-[12px] text-[var(--foreground-muted)]">{status.counts.suggestions}</span>
             {writableSuggestions.length > 1 && (
               <button
-                onClick={() => {
-                  if (confirm(`Apply all ${writableSuggestions.length} shown? Each is checked against the product first.`)) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: `Apply all ${writableSuggestions.length} suggestions shown?`,
+                      body: "Each is checked against the product first.",
+                      confirmLabel: `Apply ${writableSuggestions.length} fixes`,
+                    })
+                  ) {
                     void decide("all", writableSuggestions, "apply");
                   }
                 }}
                 disabled={busy !== null || !!job}
-                className={`ml-auto ${primaryBase} px-3 py-1.5`}
+                className={`${btn("primary")} ml-auto`}
               >
                 Apply all {writableSuggestions.length}
               </button>
@@ -556,11 +589,18 @@ export default function CatalogueCheckPage() {
       {status?.migrated && (
         <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--surface)" }}>
           <header className="px-5 py-3.5 border-b border-[var(--border)]">
-            <h2 className="text-sm text-[var(--foreground)]">Fixed by the check</h2>
-            <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-              The latest {status.applied.length} fixes. Undo puts the old value back if nobody edited the product since; an undone fix
-              is never made again.
-            </p>
+            <div className="flex items-center gap-1">
+              <h2 className="text-sm text-[var(--foreground)]">Fixed by the check</h2>
+              <HelpButton help={fixedHelp} label="How Undo works" />
+            </div>
+            <p className="text-[11px] text-[var(--foreground-muted)] mt-1">The latest {status.applied.length} fixes.</p>
+            {fixedHelp.open && (
+              <div className="mt-2">
+                <HelpPanel help={fixedHelp}>
+                  <p>Undo puts the old value back if nobody edited the product since; an undone fix is never made again.</p>
+                </HelpPanel>
+              </div>
+            )}
           </header>
           {appliedGroups.length === 0 ? (
             <p className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">No fixes yet.</p>
@@ -606,7 +646,7 @@ export default function CatalogueCheckPage() {
                         <button
                           onClick={() => undoRun(r)}
                           disabled={busy !== null || !!job}
-                          className={ghost}
+                          className={btn("ghost", "sm")}
                         >
                           {busy === `run:${r.id}` ? "…" : "Undo run"}
                         </button>
@@ -620,26 +660,6 @@ export default function CatalogueCheckPage() {
         </section>
       )}
 
-      <p className="mt-6 text-[11px] text-[var(--foreground-muted)] leading-relaxed max-w-3xl">
-        The model sees each product record as it is stored — name, brand, category, gender, colours, material, sizes, description,
-        price and store links — next to the catalogue&apos;s brand spellings and category tree. It cannot write to the database: it
-        answers, and the server writes only what the record itself backs. A brand must be named in the record or already be one of
-        ours; a colour or a material must be named in its text; a name, description or size list can only lose words. Prices are
-        never changed, only flagged.
-      </p>
-
-      {toast && (
-        <div
-          role={toast.type === "ok" ? "status" : "alert"}
-          className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
-            toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
-              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }
@@ -701,14 +721,14 @@ function FixRow({
               <button
                 onClick={() => onDecide(group.key, ids, "apply")}
                 disabled={isBusy || disabled}
-                className={secondary}
+                className={btn("secondary", "sm")}
               >
                 {isBusy ? "…" : many ? `Apply ${ids.length}` : "Apply"}
               </button>
             ) : (
               <Link
                 href={`/goo-studio/products?search=${encodeURIComponent(many ? f.beforeText : f.productName)}`}
-                className={ghost}
+                className={btn("ghost", "sm")}
               >
                 Edit by hand
               </Link>
@@ -717,7 +737,7 @@ function FixRow({
               onClick={() => onDecide(group.key, ids, "dismiss")}
               disabled={isBusy || disabled}
               title="This is wrong — never propose it again"
-              className={ghost}
+              className={btn("ghost", "sm")}
             >
               Dismiss
             </button>
@@ -727,7 +747,7 @@ function FixRow({
             onClick={() => onDecide(group.key, ids, "undo")}
             disabled={isBusy || disabled}
             title="Put the old value back"
-            className={ghost}
+            className={btn("ghost", "sm")}
           >
             {isBusy ? "…" : many ? `Undo ${ids.length}` : "Undo"}
           </button>
