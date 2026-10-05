@@ -100,7 +100,7 @@ function lookup(method, u) {
         // Hide Next dev overlay badge
         await page.addStyleTag({ content: "nextjs-portal{display:none!important}" + (pg.fullPage !== false ? ".h-dvh{height:auto!important;overflow:visible!important} main{overflow:visible!important}" : "") });
         const kept = errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e));
-        if (args.axe) {
+        if ("axe" in args) {
           await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
           const contrast = await page.evaluate(async () => {
             const res = await window.axe.run(document, { runOnly: ["color-contrast"] });

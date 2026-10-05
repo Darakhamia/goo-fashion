@@ -655,7 +655,7 @@ module.exports = {
       name: "parser-recipes",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: "Site Recipes", exact: true }).click();
+        await page.getByRole("button", { name: "Site recipes", exact: true }).click();
         await page.getByRole("button", { name: "Edit", exact: true }).nth(2).click();
         await page.mouse.move(1, 1);
       },
@@ -664,7 +664,7 @@ module.exports = {
       name: "parser-fetch",
       url: "/goo-studio/parser",
       after: async (page) => {
-        await page.getByRole("button", { name: "Fetch & Anti-bot", exact: true }).click();
+        await page.getByRole("button", { name: "Fetch & anti-bot", exact: true }).click();
         await page.mouse.move(1, 1);
       },
     },
