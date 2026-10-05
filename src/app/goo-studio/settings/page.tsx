@@ -87,6 +87,29 @@ interface SchemaReport {
   missingMigrations: string[];
 }
 
+function renderSchemaCheck(c: SchemaCheck) {
+  return (
+    <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
+      <span
+        className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+          c.present ? "bg-[var(--ok)]" : c.error ? "bg-[var(--err)]" : "bg-[var(--warn)]"
+        }`}
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p className="text-[11px] text-[var(--foreground)] font-mono">
+          {c.table}.{c.column}
+        </p>
+        {!c.present && (
+          <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
+            {c.error ? c.error : `${c.breaks} Run ${c.migration}.`}
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
 /** Both catalog loaders can fail; keep both messages rather than the last. */
 function appendMessage(prev: string, message: string): string {
   return prev ? `${prev} ${message}` : message;
@@ -786,31 +809,28 @@ export default function SettingsPage() {
                     : "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]"
                 }`}
               >
-                {schema.ok ? "All columns present" : `${schema.checks.filter((c) => !c.present).length} missing`}
+                {schema.ok
+                  ? `All ${schema.checks.length} columns present`
+                  : `${schema.checks.filter((c) => !c.present).length} missing`}
               </span>
 
-              <ul className="mt-3 space-y-2">
-                {schema.checks.map((c) => (
-                  <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
-                    <span
-                      className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                        c.present ? "bg-[var(--ok)]" : c.error ? "bg-[var(--err)]" : "bg-[var(--warn)]"
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-[11px] text-[var(--foreground)] font-mono">
-                        {c.table}.{c.column}
-                      </p>
-                      {!c.present && (
-                        <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
-                          {c.error ? c.error : `${c.breaks} Run ${c.migration}.`}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {/* What needs doing comes first; the columns that are fine fold
+                  away, so the card is one line when the database is complete. */}
+              {!schema.ok && (
+                <ul className="mt-3 space-y-2">
+                  {schema.checks.filter((c) => !c.present).map(renderSchemaCheck)}
+                </ul>
+              )}
+              {schema.checks.some((c) => c.present) && (
+                <details className="mt-3">
+                  <summary className="w-fit cursor-pointer py-2 md:py-0.5 text-[12px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                    Show {schema.checks.filter((c) => c.present).length} present columns
+                  </summary>
+                  <ul className="mt-2 space-y-2">
+                    {schema.checks.filter((c) => c.present).map(renderSchemaCheck)}
+                  </ul>
+                </details>
+              )}
 
               {schema.missingMigrations.length > 0 && (
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-3 leading-relaxed">
@@ -827,7 +847,7 @@ export default function SettingsPage() {
           {/* Re-check stays reachable after a failed check too — that is when
               it is needed. */}
           {(schema || schemaError) && (
-            <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${btn("primary")}`}>
+            <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${btn("secondary")}`}>
               {schemaLoading ? "Checking…" : "Re-check"}
             </button>
           )}
