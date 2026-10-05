@@ -6,6 +6,8 @@
 // --axe skips screenshots and runs axe-core on each page instead (needs axe-core
 // next to playwright-core, see README.md): colour contrast, or the rules given
 // with --axe-rules=color-contrast,button-name,aria-dialog-name,link-name.
+// --overflow skips screenshots and reports what scrolls sideways (GS4-11): a
+// page or box wider than the screen, and what sticks out past its right edge.
 // See README.md.
 const fs = require("fs");
 const os = require("os");
@@ -105,6 +107,37 @@ function lookup(method, u) {
         await page.goto(BASE + pg.url, { waitUntil: "networkidle", timeout: 180000 });
         await page.waitForTimeout(pg.wait ?? 1200);
         if (pg.after) { await pg.after(page); await page.waitForTimeout(800); }
+        if ("overflow" in args) {
+          const overflow = await page.evaluate(() => {
+            const W = window.innerWidth;
+            const name = (el) => {
+              const label = el.getAttribute("aria-label") || (el.textContent || "").trim().slice(0, 40);
+              return `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}.${String(el.className).split(" ").slice(0, 4).join(".")} "${label}"`;
+            };
+            const out = [];
+            // Anything that scrolls sideways: the page, or a box inside it.
+            const doc = document.scrollingElement;
+            if (doc.scrollWidth > W + 1) out.push(`page ${doc.scrollWidth}px wide`);
+            for (const el of document.querySelectorAll("body *")) {
+              const cs = getComputedStyle(el);
+              if (!/(auto|scroll)/.test(cs.overflowX) || el.scrollWidth <= el.clientWidth + 1 || !el.offsetParent) continue;
+              out.push(`scrolls sideways: ${el.scrollWidth}px in ${el.clientWidth}px — ${name(el)}`);
+            }
+            // What sticks out past the right edge (the outermost of each run).
+            for (const el of document.querySelectorAll("body *")) {
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0 || r.right <= W + 1) continue;
+              if (getComputedStyle(el).visibility === "hidden") continue;
+              const parent = el.parentElement && el.parentElement.getBoundingClientRect();
+              if (parent && parent.right > W + 1) continue;
+              out.push(`sticks out to ${Math.round(r.right)}px — ${name(el)}`);
+            }
+            return out;
+          });
+          report.push({ page: pg.name, theme, vp, overflow, unmatched: [...unmatched], errors: errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e)) });
+          await page.close();
+          continue;
+        }
         // Hide Next dev overlay badge
         await page.addStyleTag({ content: "nextjs-portal{display:none!important}" + (pg.fullPage !== false ? ".h-dvh{height:auto!important;min-height:100dvh!important;overflow:visible!important} main{overflow:visible!important}" : "") });
         const kept = errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e));
@@ -133,11 +166,14 @@ function lookup(method, u) {
   for (const r of report) {
     const verdict = r.fail
       ? "FAIL " + r.fail
+      : r.overflow
+        ? r.overflow.length ? `${r.overflow.length} sideways` : "fits"
       : r.contrast
         ? `${r.contrast.length} ${AXE_RULES.length === 1 && AXE_RULES[0] === "color-contrast" ? "contrast" : "axe"} violations`
         : "ok";
     console.log(`\n## ${r.page} [${r.theme}/${r.vp}] ${verdict}`);
     if (r.contrast && r.contrast.length) console.log("  " + r.contrast.slice(0, 10).join("\n  "));
+    if (r.overflow && r.overflow.length) console.log("  " + r.overflow.slice(0, 10).join("\n  "));
     if (r.unmatched.length) console.log("  unmatched:", r.unmatched.join(" | "));
     if (r.errors.length) console.log("  errors:", [...new Set(r.errors)].slice(0, 5).join(" || "));
   }

@@ -204,14 +204,20 @@ const pendingLooks = pendingDef.map((d, i) => ({
 }));
 
 /* ── Interaction helpers for extra screenshots ── */
+/* A row of a DataTable: a table row on a desktop, a card on a phone (GS4-11). */
+const ROW = "[data-row]";
+/* Its checkbox. On a phone the photo is the box and the input under it is
+   visually hidden, so the click goes through the photo: force skips the check
+   that the input itself is on top. */
+const tick = (box) => box.check({ force: true });
 const waitRows = async (page) => {
-  await page.waitForSelector('tbody tr button[aria-label^="Edit "]:not([disabled])', { state: "attached", timeout: 30000 });
+  await page.waitForSelector(`${ROW} button[aria-label^="Edit "]:not([disabled])`, { state: "attached", timeout: 30000 });
 };
 const openFirstEditor = async (page) => {
   await waitRows(page);
   // The row's Edit icon is labelled with the product's name ("Edit Athleticz …");
   // on a phone it is hidden and Edit is the first item of the row's "…".
-  const row = page.locator("tbody tr").first();
+  const row = page.locator(ROW).first();
   const edit = row.locator('button[aria-label^="Edit "]');
   if (await edit.isVisible()) await edit.click();
   else {
@@ -312,25 +318,28 @@ module.exports = {
       name: "products-bulk", url: "/goo-studio/products", fullPage: false,
       after: async (page) => {
         await waitRows(page);
-        const boxes = page.locator('tbody tr input[type="checkbox"]');
-        for (const i of [0, 1, 2]) await boxes.nth(i).check();
+        const boxes = page.locator(`${ROW} input[type="checkbox"]`);
+        for (const i of [0, 1, 2]) await tick(boxes.nth(i));
       },
     },
     // GS4-4: an open filter, the row's "…" and the header's maintenance menu.
+    // On a phone the filters are in a bottom sheet behind "Filters" (GS4-11).
     {
       name: "products-filter", url: "/goo-studio/products", fullPage: false,
       after: async (page) => {
         await waitRows(page);
-        await page.locator('button[aria-haspopup="menu"]', { hasText: "Brand" }).click();
-        await page.waitForTimeout(300);
+        const sheet = page.locator('button[aria-haspopup="dialog"]', { hasText: /^Filters/ });
+        if (await sheet.isVisible()) await sheet.click();
+        else await page.locator('button[aria-haspopup="menu"]', { hasText: "Brand" }).click();
+        await page.waitForTimeout(500);
       },
     },
     {
       name: "products-row-menu", url: "/goo-studio/products", fullPage: false,
       after: async (page) => {
         await waitRows(page);
-        await page.locator("tbody tr").nth(1).hover();
-        await page.locator("tbody tr").nth(1).locator('button[aria-haspopup="menu"]').click();
+        await page.locator(ROW).nth(1).hover();
+        await page.locator(ROW).nth(1).locator('button[aria-haspopup="menu"]').click();
         await page.waitForTimeout(300);
       },
     },
@@ -338,7 +347,9 @@ module.exports = {
       name: "products-maintenance", url: "/goo-studio/products", fullPage: false,
       after: async (page) => {
         await waitRows(page);
-        await page.getByRole("button", { name: "Catalog maintenance" }).click();
+        // On a phone the header's "…" holds Import and the maintenance runs together.
+        const menu = page.getByRole("button", { name: "Catalog maintenance" });
+        await menu.filter({ visible: true }).click();
         await page.waitForTimeout(300);
       },
     },
@@ -346,10 +357,10 @@ module.exports = {
       name: "outfits-bulk", url: "/goo-studio/outfits", fullPage: false,
       after: async (page) => {
         // Row boxes by place, not by label: the label is in the admin's language.
-        const boxes = page.locator('tbody input[type="checkbox"]');
-        await boxes.first().waitFor({ timeout: 15000 });
-        await boxes.nth(0).check();
-        await boxes.nth(1).check();
+        const boxes = page.locator(`${ROW} input[type="checkbox"]`);
+        await boxes.first().waitFor({ state: "attached", timeout: 15000 });
+        await tick(boxes.nth(0));
+        await tick(boxes.nth(1));
         await page.waitForTimeout(300);
       },
     },
@@ -395,11 +406,11 @@ module.exports = {
         await page.waitForTimeout(300);
       },
     },
-    // GS4-5: the rule form in the side panel, opened from a rule's Edit.
+    // GS4-5: the rule form in the side panel, opened by a click on the rule.
     {
       name: "retailers-rule", url: "/goo-studio/retailers", fullPage: false,
       after: async (page) => {
-        await page.locator("tbody tr").first().getByRole("button", { name: "Edit" }).click();
+        await page.locator(ROW).first().getByText("acnestudios.com", { exact: true }).click();
         await page.getByRole("dialog").waitFor();
         await page.waitForTimeout(600);
       },
