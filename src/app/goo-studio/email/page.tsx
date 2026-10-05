@@ -564,7 +564,7 @@ export default function AdminEmailPage() {
               !templatesError && (
                 <div className="px-4 py-8 text-center">
                   <p className="text-[11px] text-[var(--foreground-subtle)]">No templates yet.</p>
-                  <p className="text-[12px] text-[var(--foreground-subtle)] mt-1 opacity-60">
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
                     Fill in a subject + body above, then click + to save.
                   </p>
                 </div>

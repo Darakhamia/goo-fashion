@@ -455,7 +455,7 @@ export default function CSVImportPage() {
                 <label
                   key={m.name}
                   className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors border-b border-[var(--border)] last:border-0 ${
-                    isSelected ? "bg-[var(--fg-overlay-08)]" : "hover:bg-[var(--fg-overlay-05)]"
+                    isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"
                   }`}
                 >
                   <input
@@ -475,7 +475,7 @@ export default function CSVImportPage() {
                     <div className="h-1 rounded-full bg-[var(--border)] overflow-hidden">
                       <div className="h-full bg-[var(--foreground-muted)]" style={{ width: `${share}%` }} />
                     </div>
-                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5 text-right tabular-nums">{share}%</p>
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5 text-right tabular-nums">{share}%</p>
                   </div>
                 </label>
               );
@@ -715,7 +715,7 @@ export default function CSVImportPage() {
                       onClick={() => selectable && !importing && toggleRow(i)}
                       className={`border-b border-[var(--border)] last:border-0 transition-colors ${
                         selectable ? "cursor-pointer" : "opacity-40 cursor-default"
-                      } ${isSelected ? "bg-[var(--fg-overlay-08)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
+                      } ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
                     >
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
@@ -772,7 +772,7 @@ export default function CSVImportPage() {
                           </span>
                         ) : "—"}
                         {row.priceOriginal > row.price && (
-                          <span className="ml-1 text-[var(--foreground-subtle)] line-through">
+                          <span className="ml-1 text-[var(--foreground-muted)] line-through">
                             {row.priceOriginal}
                           </span>
                         )}

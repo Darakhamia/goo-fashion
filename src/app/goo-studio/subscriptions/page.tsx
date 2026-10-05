@@ -116,11 +116,13 @@ function Badge({ value, map }: { value: string; map: Record<string, string> }) {
 /** Like StatCard, but the number carries a verdict: green is fine, red is not. */
 function HealthCard({ label, value, bad, note }: { label: string; value: string; bad: boolean; note: string }) {
   return (
-    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-[var(--err-line)] bg-[var(--err-bg)]" : "border-[var(--border)]"}`}
-      style={bad ? undefined : { background: "var(--surface)" }}>
+    // A bad check is a panel with a red border and a red value, not a red
+    // fill: muted text on --err-bg falls under 4.5:1.
+    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-[var(--err-line)]" : "border-[var(--border)]"}`}
+      style={{ background: "var(--surface)" }}>
       <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
       <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-[var(--err)]" : "text-[var(--ok)]"}`}>{value}</p>
-      <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">{note}</p>
+      <p className="text-[12px] text-[var(--foreground-muted)] mt-1">{note}</p>
     </div>
   );
 }

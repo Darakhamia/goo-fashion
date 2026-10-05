@@ -97,16 +97,17 @@
      read, not only for placeholders.
    - Status colours are tokens here instead of raw emerald/amber/red: the -500
      text the admin used on its own tinted fill was 2:1 to 2.5:1 in the light
-     theme ("PRO", "SUPER ADMIN"). Light uses the 700 shades, dark the 400s.
+     theme ("PRO", "SUPER ADMIN"). Light uses the 700 shades (amber-800 for
+     warn: amber-700 on its own fill over the canvas was 4.2:1), dark the 400s.
      --*-line is the border of a status badge or banner. */
 .admin-theme-light {
   --foreground-subtle: #706E6A;
   --ok: #047857;
   --ok-bg: rgba(52, 211, 153, 0.14);
   --ok-line: rgba(4, 120, 87, 0.3);
-  --warn: #B45309;
+  --warn: #92400E;
   --warn-bg: rgba(251, 191, 36, 0.16);
-  --warn-line: rgba(180, 83, 9, 0.3);
+  --warn-line: rgba(146, 64, 14, 0.3);
   --err: #B91C1C;
   --err-bg: rgba(248, 113, 113, 0.14);
   --err-line: rgba(185, 28, 28, 0.3);
