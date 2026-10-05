@@ -407,7 +407,7 @@ const pages = [
     url: "/goo-studio/prompts",
     wait: 1800,
     after: async (page) => {
-      await page.getByRole("button", { name: /Image Gen/ }).click();
+      await page.getByRole("button", { name: /Image generation|Картинки/ }).click();
       await page.waitForTimeout(400);
       await unclip(page);
     },

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { CropData } from "@/lib/types";
 import { btn } from "@/app/goo-studio/_ui/recipes";
+import { useT } from "@/app/goo-studio/_i18n";
 
 interface Props {
   imageUrl: string;
@@ -50,6 +51,7 @@ export function ImageCropEditor({
   onCancel,
   saving = false,
 }: Props) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const [crop, setCrop] = useState<CropData>(initialCrop ?? DEFAULT_CROP);
 
@@ -170,7 +172,7 @@ export function ImageCropEditor({
       {/* Заголовок */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium text-[var(--foreground)]">Редактор кадрирования</h3>
+          <h3 className="text-sm font-medium text-[var(--foreground)]">{t("crop.editor")}</h3>
           <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">{productName}</p>
         </div>
         <button
@@ -178,7 +180,7 @@ export function ImageCropEditor({
           onClick={handleReset}
           className={btn("ghost")}
         >
-          Сбросить
+          {t("common.reset")}
         </button>
       </div>
 
@@ -186,15 +188,15 @@ export function ImageCropEditor({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[var(--foreground-subtle)]">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 border-2 border-white bg-transparent" />
-          Рамка — перетащи
+          {t("crop.legend.frame")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-full border-2 border-yellow-400 bg-yellow-400/30" />
-          Фокус — перетащи
+          {t("crop.legend.focus")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 bg-white opacity-80" />
-          Углы — масштаб
+          {t("crop.legend.corners")}
         </span>
       </div>
 
@@ -287,7 +289,7 @@ export function ImageCropEditor({
       <div className="flex items-start gap-4">
         {/* Предпросмотр в соотношении 3:4 */}
         <div className="flex flex-col gap-1 shrink-0">
-          <span className="text-[12px] text-[var(--foreground-subtle)]">Preview 3:4</span>
+          <span className="text-[12px] text-[var(--foreground-subtle)]">{t("crop.preview")}</span>
           {/* The same markup ProductCard's CroppedImage uses. */}
           <div
             className="relative overflow-hidden bg-[var(--background)] border border-[var(--border)]"
@@ -305,7 +307,7 @@ export function ImageCropEditor({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl}
-                alt="preview"
+                alt={t("crop.previewAlt")}
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ objectPosition: `${crop.focalX * 100}% ${crop.focalY * 100}%` }}
               />
@@ -319,8 +321,8 @@ export function ImageCropEditor({
           <span>Y: <b className="text-[var(--foreground)]">{Math.round(crop.y * 100)}%</b></span>
           <span>W: <b className="text-[var(--foreground)]">{Math.round(crop.width * 100)}%</b></span>
           <span>H: <b className="text-[var(--foreground)]">{Math.round(crop.height * 100)}%</b></span>
-          <span>FX: <b className="text-[var(--foreground)]">{Math.round(crop.focalX * 100)}%</b></span>
-          <span>FY: <b className="text-[var(--foreground)]">{Math.round(crop.focalY * 100)}%</b></span>
+          <span>{t("crop.focusX")}: <b className="text-[var(--foreground)]">{Math.round(crop.focalX * 100)}%</b></span>
+          <span>{t("crop.focusY")}: <b className="text-[var(--foreground)]">{Math.round(crop.focalY * 100)}%</b></span>
         </div>
       </div>
 
@@ -332,14 +334,14 @@ export function ImageCropEditor({
           disabled={saving}
           className={`${btn("primary")} flex-1`}
         >
-          {saving ? "Сохранение…" : "Сохранить кадрирование"}
+          {t(saving ? "common.saving" : "crop.save")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className={btn("ghost")}
         >
-          Отмена
+          {t("common.cancel")}
         </button>
       </div>
     </div>

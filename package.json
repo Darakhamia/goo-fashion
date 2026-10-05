@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
-    "lint": "eslint"
+    "lint": "eslint",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.0",

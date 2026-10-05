@@ -371,5 +371,17 @@ module.exports = {
         await page.getByText(/people\?/).waitFor({ timeout: 10000 });
       },
     },
+    {
+      // Account menu open: theme, language (GS4-8), Customize, back to site.
+      // Found by aria-controls, so the state works in either language.
+      name: "account-menu",
+      url: "/goo-studio",
+      fullPage: false,
+      after: async (page) => {
+        await page.locator('button[aria-controls="admin-account-menu"]').click();
+        await page.locator("#admin-account-menu").waitFor();
+        await page.waitForTimeout(300);
+      },
+    },
   ],
 };
