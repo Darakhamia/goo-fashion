@@ -211,39 +211,54 @@ const ROW = "[data-row]";
    that the input itself is on top. */
 const tick = (box) => box.check({ force: true });
 const waitRows = async (page) => {
-  await page.waitForSelector(`${ROW} button:is([aria-label^="Edit "], [aria-label^="Изменить "]):not([disabled])`, { state: "attached", timeout: 30000 });
+  await page.waitForSelector(`${ROW} :is(a, button):is([aria-label^="Edit "], [aria-label^="Изменить "])`, { state: "attached", timeout: 30000 });
 };
+/* The product page (GS6-1) replaced the editor modal: the row's Edit link, or
+   on a phone the first item of the row's "…", goes to /goo-studio/products/<id>. */
 const openFirstEditor = async (page) => {
   await waitRows(page);
-  // The row's Edit icon is labelled with the product's name ("Edit Athleticz …");
-  // on a phone it is hidden and Edit is the first item of the row's "…".
   const row = page.locator(ROW).first();
-  const edit = row.locator('button:is([aria-label^="Edit "], [aria-label^="Изменить "])');
+  const edit = row.locator(':is(a, button):is([aria-label^="Edit "], [aria-label^="Изменить "])');
   if (await edit.isVisible()) await edit.click();
   else {
     await row.locator('button[aria-haspopup="menu"]').click();
     await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
   }
-  await page.getByRole("heading", { name: /^(Edit product|Изменить товар)$/i }).waitFor();
+  await page.getByRole("heading", { name: /^(Basics|Основное)$/ }).waitFor({ timeout: 30000 });
+  await page.waitForTimeout(600);
+};
+/* A section of the product page at the top of the screen: #photos, #colors, #stores… */
+const scrollToSection = async (page, id) => {
+  await page.evaluate((id) => document.getElementById(id)?.scrollIntoView({ block: "start" }), id);
   await page.waitForTimeout(400);
 };
-const expandAll = async (page) => {
-  const heads = page.locator('div.fixed button[aria-expanded="false"]');
-  const n = await heads.count();
-  for (let i = 0; i < n; i++) await heads.first().click();
-};
-const expand = async (page, labels) => {
-  for (const label of labels) {
-    await page.locator('div.fixed button[aria-expanded="false"]', { hasText: label }).first().click();
-  }
-};
-// Section names in both languages: ["Pricing", "Цена"].
-const scrollModalTo = async (page, labels) => {
-  await page.evaluate((labels) => {
-    const btn = [...document.querySelectorAll('div.fixed button[aria-expanded]')].find((b) => labels.some((l) => b.textContent.trim().startsWith(l)));
-    if (btn) btn.scrollIntoView({ block: "start" });
-  }, labels);
-  await page.waitForTimeout(300);
+
+/* GET /api/admin/products/<id>: the product, its other colors, what AI check
+   holds about it and its history, as src/app/api/admin/products/[id] answers. */
+const productPage = ({ url }) => {
+  const id = decodeURIComponent(url.pathname.split("/").pop());
+  const product = products.find((p) => p.id === id);
+  if (!product) return { __status: 404, __body: { error: "Product not found" } };
+  const group = product.variantGroupId ? products.filter((p) => p.variantGroupId === product.variantGroupId && p.id !== id) : [];
+  return {
+    product,
+    group,
+    groupError: null,
+    quality: {
+      suggested: [
+        { id: 9101, runId: "r1", productId: id, productName: product.name, brand: product.brand, field: "name", beforeText: product.name, afterText: product.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase()), writable: true, reason: "The store wrote the name in capitals.", confidence: "medium", status: "suggested", source: "product", createdAt: "2026-10-04T09:12:00Z" },
+        { id: 9102, runId: "r1", productId: id, productName: product.name, brand: product.brand, field: "price", beforeText: "4 000 UAH read as $4 000", afterText: "", writable: false, reason: "Looks like hryvnia, not dollars.", confidence: "medium", status: "suggested", source: "product", createdAt: "2026-10-04T09:12:00Z" },
+      ],
+      applied: [
+        { id: 9001, runId: "r0", productId: id, productName: product.name, brand: product.brand, field: "colors", beforeText: "XS", afterText: "Ecru", writable: true, reason: "", confidence: "high", status: "applied", source: "product", createdAt: "2026-10-02T15:40:00Z" },
+      ],
+    },
+    history: [
+      { id: 3, action: "catalogue_check.fixed", by: null, at: "2026-10-04T09:12:00Z", metadata: {} },
+      { id: 2, action: "products.updated", by: "admin@example.com", at: "2026-10-03T11:05:00Z", metadata: {} },
+      { id: 1, action: "parser.collect_ingest", by: "admin@example.com", at: "2026-09-28T17:20:00Z", metadata: {} },
+    ],
+  };
 };
 
 /* The admin shell is h-dvh with <main> scrolling inside it, so Playwright's
@@ -268,6 +283,13 @@ module.exports = {
     // Products page
     "GET /api/products?raw=true": products,
     "GET /api/products/seed": { configured: true },
+    "GET /api/admin/products/*": productPage,
+    // Saving on the product page: the row as the API would return it.
+    "PUT /api/products/*": ({ url, body }) => {
+      const id = decodeURIComponent(url.pathname.split("/").pop());
+      return { ...products.find((p) => p.id === id), ...(body || {}), id };
+    },
+    "POST /api/products": ({ body }) => ({ ...(body || {}), id: "0aa26cb7-9999-4c1e-9f6a-999999999999", createdAt: "2026-10-05T12:00:00Z" }),
     "GET /api/color-groups": [
       { id: 1, name: "White", hexCode: "#ffffff", sortOrder: 1 }, { id: 2, name: "Multicolor", hexCode: "#multicolor", sortOrder: 2 },
       { id: 3, name: "Brown", hexCode: "#7a4f35", sortOrder: 3 }, { id: 4, name: "Pink", hexCode: "#e8698a", sortOrder: 4 },
@@ -302,18 +324,47 @@ module.exports = {
       ["products", "/goo-studio/products"], ["brands", "/goo-studio/brands"], ["retailers", "/goo-studio/retailers"],
       ["categories", "/goo-studio/categories"], ["outfits", "/goo-studio/outfits"],
     ].map(([name, url]) => ({ name, url, after: unclip })),
+    // GS6-1: the product page, opened from the list, and its sections.
     { name: "products-editor", url: "/goo-studio/products", fullPage: false, after: openFirstEditor },
     {
       name: "products-editor-2", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expand(page, [/Details|Подробности/, /Colors|Цвета/]); await scrollModalTo(page, ["Pricing", "Цена"]); },
+      after: async (page) => { await openFirstEditor(page); await scrollToSection(page, "photos"); },
     },
     {
       name: "products-editor-3", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, ["Colors", "Цвета"]); },
+      after: async (page) => { await openFirstEditor(page); await scrollToSection(page, "colors"); },
     },
     {
       name: "products-editor-4", url: "/goo-studio/products", fullPage: false,
-      after: async (page) => { await openFirstEditor(page); await expandAll(page); await scrollModalTo(page, ["Where to buy", "Где купить"]); },
+      after: async (page) => { await openFirstEditor(page); await scrollToSection(page, "stores"); },
+    },
+    {
+      name: "product-page", url: `/goo-studio/products/${P(0).id}`,
+      after: async (page) => { await page.getByRole("heading", { name: /^(Basics|Основное)$/ }).waitFor({ timeout: 30000 }); await unclip(page); },
+    },
+    {
+      name: "product-page-dirty", url: `/goo-studio/products/${P(0).id}`, fullPage: false,
+      after: async (page) => {
+        await page.getByRole("heading", { name: /^(Basics|Основное)$/ }).waitFor({ timeout: 30000 });
+        await page.getByRole("radio", { name: /^(Men|Мужское)$/ }).click();
+        await scrollToSection(page, "stores");
+        await page.locator("#stores input[type=number]").first().fill("31.5");
+        await page.waitForTimeout(500);
+      },
+    },
+    {
+      name: "product-page-saved", url: `/goo-studio/products/${P(0).id}`, fullPage: false,
+      after: async (page) => {
+        await page.getByRole("heading", { name: /^(Basics|Основное)$/ }).waitFor({ timeout: 30000 });
+        await page.getByRole("radio", { name: /^(Women|Женское)$/ }).click();
+        await page.getByRole("region", { name: /Save|Сохран/ }).getByRole("button", { name: /^(Save|Сохранить)$/ }).click();
+        await page.getByRole("status").filter({ hasText: /Product updated|Товар обновлён/ }).first().waitFor({ timeout: 15000 });
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: "product-page-new", url: "/goo-studio/products/new",
+      after: async (page) => { await page.getByRole("heading", { name: /^(Basics|Основное)$/ }).waitFor({ timeout: 30000 }); await unclip(page); },
     },
     {
       name: "products-bulk", url: "/goo-studio/products", fullPage: false,
