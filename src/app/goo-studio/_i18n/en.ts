@@ -374,6 +374,7 @@ export const en = {
 
   // ── Prompts ───────────────────────────────────────────────────────────────
   "prompts.subtitle": "Prompts for blog posts, AI-written emails and outfit images. Changes apply right away, without a redeploy.",
+  "prompts.tabs": "Prompt groups",
   "prompts.tab.content": "Content",
   "prompts.tab.image": "Image generation",
   "prompts.custom": "Custom",

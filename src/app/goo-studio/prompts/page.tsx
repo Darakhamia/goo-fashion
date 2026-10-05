@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
 import { useT, type Key, type T } from "@/app/goo-studio/_i18n";
 import { AdminPage } from "@/components/admin/AdminPage";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { Badge } from "@/components/admin/Badge";
+import { Tabs, tabPanel } from "@/components/admin/Tabs";
 
 interface PromptItem {
   key: string;
@@ -17,7 +20,9 @@ interface PromptItem {
   required: string[];
 }
 
-const CATEGORIES: { key: string; label: Key }[] = [
+type Category = "content" | "image";
+
+const CATEGORIES: { key: Category; label: Key }[] = [
   { key: "content", label: "prompts.tab.content" },
   { key: "image", label: "prompts.tab.image" },
 ];
@@ -101,11 +106,7 @@ function PromptCard({ item, onSave, onReset }: {
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               {item.label}
             </p>
-            {isModified && (
-              <span className="text-[11px] font-medium px-2 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none">
-                {t("prompts.custom")}
-              </span>
-            )}
+            {isModified && <Badge>{t("prompts.custom")}</Badge>}
           </div>
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
             {describe(t, item)}
@@ -181,7 +182,7 @@ export default function PromptsPage() {
   const [loading, setLoading] = useState(true);
   // Which failure, not its text: the message follows the admin language.
   const [loadErr, setLoadErr] = useState<"" | "load" | "network">("");
-  const [activeTab, setActiveTab] = useState("content");
+  const [activeTab, setActiveTab] = useState<Category>("content");
 
   useEffect(() => { load(); }, []);
 
@@ -226,60 +227,46 @@ export default function PromptsPage() {
 
   return (
     <AdminPage layout="form">
+      <PageHeader title={t("nav.prompts")} subtitle={t("prompts.subtitle")} />
+
+      {/* The count on a tab is how many of its prompts are custom. */}
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">
-          {t("nav.prompts")}
-        </h1>
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          {t("prompts.subtitle")}
-        </p>
+        <Tabs
+          label={t("prompts.tabs")}
+          idBase="prompts"
+          tabs={CATEGORIES.map((cat) => ({ key: cat.key, label: t(cat.label), count: customCount(cat.key) || undefined }))}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 border-b border-[var(--border)]">
-        {CATEGORIES.map((cat) => {
-          const count = customCount(cat.key);
-          return (
-            <button
-              key={cat.key}
-              onClick={() => setActiveTab(cat.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === cat.key
-                  ? "border-[var(--foreground)] text-[var(--foreground)]"
-                  : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {t(cat.label)}
-              {count > 0 && (
-                <span className="text-[11px] px-1.5 py-0.5 bg-[var(--background)] border border-[var(--border-strong)] text-[var(--foreground-muted)] rounded-full leading-none tabular-nums">
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div {...tabPanel("prompts", activeTab)}>
+        {loading && (
+          <div className="flex items-center gap-2 text-[var(--foreground-subtle)]">
+            <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+            <span className="text-[11px]">{t("common.loading")}</span>
+          </div>
+        )}
+        {loadErr && (
+          <div role="alert" className={`${BANNER.err} flex flex-wrap items-center justify-between gap-4`}>
+            {t(loadErr === "load" ? "prompts.loadFailed" : "common.networkError")}
+            <button onClick={load} className={btn("secondary")}>{t("common.retry")}</button>
+          </div>
+        )}
+
+        {!loading && !loadErr && (
+          <div className={`grid gap-4 ${activeTab === "image" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+            {activePrompts.map((item) => (
+              <PromptCard
+                key={item.key}
+                item={item}
+                onSave={handleSave}
+                onReset={handleReset}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {loading && (
-        <div className="flex items-center gap-2 text-[var(--foreground-subtle)]">
-          <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px]">{t("common.loading")}</span>
-        </div>
-      )}
-      {loadErr && <p className="text-[11px] text-[var(--err)]">{t(loadErr === "load" ? "prompts.loadFailed" : "common.networkError")}</p>}
-
-      {!loading && !loadErr && (
-        <div className={`grid gap-4 ${activeTab === "image" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
-          {activePrompts.map((item) => (
-            <PromptCard
-              key={item.key}
-              item={item}
-              onSave={handleSave}
-              onReset={handleReset}
-            />
-          ))}
-        </div>
-      )}
     </AdminPage>
   );
 }

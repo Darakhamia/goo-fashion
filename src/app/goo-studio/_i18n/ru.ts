@@ -368,6 +368,7 @@ export const ru: Partial<Record<Key, Message>> = {
 
   // ── Prompts ───────────────────────────────────────────────────────────────
   "prompts.subtitle": "Промты генерации постов блога, AI-писем и картинок образа. Изменения применяются сразу, без редеплоя.",
+  "prompts.tabs": "Группы промтов",
   "prompts.tab.content": "Контент",
   "prompts.tab.image": "Картинки",
   "prompts.custom": "Изменён",
