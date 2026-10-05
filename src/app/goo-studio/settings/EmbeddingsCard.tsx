@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { btn } from "../_ui/recipes";
-import { Spinner, LoadingLine } from "./recipes";
+import { useT } from "../_i18n";
+import { Spinner, LoadingLine, sayFailure, withSlots, type Failure } from "./recipes";
 import { FormSection } from "@/components/admin/FormSection";
 
 interface EmbeddingCoverage {
@@ -26,15 +27,16 @@ const EMBED_BATCH = 100;
  * progress and can be stopped between batches.
  */
 export default function EmbeddingsCard() {
+  const t = useT();
   const confirm = useConfirm();
   const help = useHelp("settings-embeddings");
   const [coverage, setCoverage] = useState<EmbeddingCoverage | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState<Failure>("");
 
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ processed: number; failed: number } | null>(null);
-  const [runError, setRunError] = useState("");
+  const [runError, setRunError] = useState<Failure>("");
   const [runDone, setRunDone] = useState(false);
   const [stopping, setStopping] = useState(false);
   const stopRequested = useRef(false);
@@ -58,12 +60,12 @@ export default function EmbeddingsCard() {
       const res = await fetch("/api/admin/embeddings", { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setLoadError(json?.error || `Could not load coverage (${res.status})`);
+        setLoadError(json?.error || { key: "settings.embed.loadFailed", vars: { status: res.status } });
         return;
       }
       setCoverage(json as EmbeddingCoverage);
     } catch {
-      setLoadError("Could not reach the server.");
+      setLoadError({ key: "settings.unreachable" });
     } finally {
       setLoading(false);
     }
@@ -73,12 +75,11 @@ export default function EmbeddingsCard() {
     if (!coverage) return;
     // A mass operation billed to the OpenAI key: say how much before starting.
     const batches = Math.ceil(coverage.missing / EMBED_BATCH);
-    const noun = `product${coverage.missing === 1 ? "" : "s"}`;
     if (
       !(await confirm({
-        title: `Embed ${coverage.missing} ${noun}?`,
-        body: `This sends ${batches} request${batches === 1 ? "" : "s"} to OpenAI, billed to the key above. You can stop between batches.`,
-        confirmLabel: `Embed ${coverage.missing} ${noun}`,
+        title: t("settings.embed.confirm", { count: coverage.missing }),
+        body: t("settings.embed.confirmBody", { count: batches }),
+        confirmLabel: t("settings.embed.confirmAction", { count: coverage.missing }),
       }))
     ) return;
     stopRequested.current = false;
@@ -98,7 +99,7 @@ export default function EmbeddingsCard() {
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setRunError(json?.error || `Backfill failed (${res.status})`);
+          setRunError(json?.error || { key: "settings.embed.backfillFailed", vars: { status: res.status } });
           break;
         }
         processed += Number(json.processed) || 0;
@@ -125,16 +126,16 @@ export default function EmbeddingsCard() {
         // A batch that embedded nothing would be picked again next time and
         // fail the same way — stop instead of looping on it.
         if (!json.processed) {
-          if (!json.firstError) setRunError("The last batch embedded nothing; stopped.");
+          if (!json.firstError) setRunError({ key: "settings.embed.emptyBatch" });
           break;
         }
         if (json.remaining == null) {
-          if (!json.firstError) setRunError("Could not tell how many products are left; stopped.");
+          if (!json.firstError) setRunError({ key: "settings.embed.unknownLeft" });
           break;
         }
       }
     } catch {
-      setRunError("Network error. The batches already finished are saved.");
+      setRunError({ key: "settings.embed.networkSaved" });
     } finally {
       setRunning(false);
       setStopping(false);
@@ -146,31 +147,29 @@ export default function EmbeddingsCard() {
   return (
     <FormSection
       id="embeddings"
-      title="Embeddings"
-      description="Vectors behind the stylist’s search by meaning. Imports don’t create them; a backfill here does."
-      extra={<HelpButton help={help} label="How embeddings work" />}
+      title={t("settings.embed.title")}
+      description={t("settings.embed.description")}
+      extra={<HelpButton help={help} label={t("settings.embed.helpLabel")} />}
     >
       {help.open && (
         <HelpPanel help={help}>
           <p>
-            Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
-            field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
-            chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
-            on; otherwise it uses keyword search. Uses the OpenAI key above.
+            {withSlots(t("settings.embed.help"), {
+              knn: <span className="font-mono">{"?knn=1"}</span>,
+              env: <code className="font-mono text-[11px]">{"STYLIST_SEMANTIC_SEARCH"}</code>,
+            })}
           </p>
         </HelpPanel>
       )}
 
       <div>
-        {loading && !coverage && <LoadingLine label="Checking coverage…" />}
-        {loadError && <p className="text-[11px] text-[var(--err)]">{loadError}</p>}
+        {loading && !coverage && <LoadingLine label={t("settings.embed.checking")} />}
+        {loadError && <p className="text-[11px] text-[var(--err)]">{sayFailure(loadError, t)}</p>}
 
         {coverage && (
           <>
-            <p className="text-[11px] text-[var(--foreground)]">
-              <span className="tabular-nums">{coverage.withEmbedding}</span> of{" "}
-              <span className="tabular-nums">{coverage.total}</span> products embedded ·{" "}
-              <span className="tabular-nums">{coverage.coverage}%</span>
+            <p className="text-[11px] text-[var(--foreground)] tabular-nums">
+              {t("settings.embed.coverage", { done: coverage.withEmbedding, count: coverage.total, pct: coverage.coverage })}
             </p>
             <div
               className="mt-2 h-1.5 rounded-full bg-[var(--background)] overflow-hidden"
@@ -178,30 +177,31 @@ export default function EmbeddingsCard() {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={coverage.coverage}
-              aria-label="Embedding coverage"
+              aria-label={t("settings.embed.coverageLabel")}
             >
               <div className="h-full bg-[var(--foreground)] transition-all" style={{ width: `${coverage.coverage}%` }} />
             </div>
             {coverage.missing > 0 && (
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-2">
-                <span className="tabular-nums">{coverage.missing}</span> without an embedding.
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-2 tabular-nums">
+                {t("settings.embed.missing", { count: coverage.missing })}
               </p>
             )}
           </>
         )}
 
         {progress && (running || progress.processed > 0 || progress.failed > 0) && (
-          <p className="text-[11px] text-[var(--foreground-muted)] mt-2">
-            This run: <span className="tabular-nums">{progress.processed}</span> embedded
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-2 tabular-nums">
+            {t("settings.embed.run", { count: progress.processed })}
             {progress.failed > 0 && (
               <>
-                {" "}· <span className="tabular-nums text-[var(--err)]">{progress.failed}</span> failed
+                {" · "}
+                <span className="text-[var(--err)]">{t("settings.embed.runFailed", { count: progress.failed })}</span>
               </>
             )}
           </p>
         )}
-        {runDone && <p className="text-[11px] text-[var(--ok)] mt-2">Every product has an embedding.</p>}
-        {runError && <p className="text-[11px] text-[var(--err)] mt-2">{runError}</p>}
+        {runDone && <p className="text-[11px] text-[var(--ok)] mt-2">{t("settings.embed.done")}</p>}
+        {runError && <p className="text-[11px] text-[var(--err)] mt-2">{sayFailure(runError, t)}</p>}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -211,7 +211,7 @@ export default function EmbeddingsCard() {
           className={btn("primary")}
         >
           {running && <Spinner />}
-          {running ? "Embedding…" : "Backfill missing"}
+          {running ? t("settings.embed.embedding") : t("settings.embed.backfill")}
         </button>
         {running ? (
           <button
@@ -219,11 +219,11 @@ export default function EmbeddingsCard() {
             disabled={stopping}
             className={btn("secondary")}
           >
-            {stopping ? "Stopping after this batch…" : "Stop after this batch"}
+            {stopping ? t("settings.embed.stopping") : t("settings.embed.stop")}
           </button>
         ) : (
           <button onClick={loadCoverage} disabled={loading} className={btn("secondary")}>
-            {loading ? "Checking…" : "Refresh"}
+            {loading ? t("settings.checking") : t("settings.embed.refresh")}
           </button>
         )}
       </div>

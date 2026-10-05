@@ -9,9 +9,11 @@ import { AdminPage, SectionNav, useScrollSpy } from "@/components/admin/AdminPag
 import { FormPanel, FormSection } from "@/components/admin/FormSection";
 import { SaveBar } from "@/components/admin/SaveBar";
 import { Badge } from "@/components/admin/Badge";
-import { btn, BTN_ICON, INPUT } from "../_ui/recipes";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { btn, BTN_ICON, FIELD_LABEL, INPUT } from "../_ui/recipes";
+import { useT, type Key, type T } from "../_i18n";
 import EmbeddingsCard from "./EmbeddingsCard";
-import { Spinner, LoadingLine } from "./recipes";
+import { Spinner, LoadingLine, sayFailure, withSlots, type Failure } from "./recipes";
 import { Modal } from "@/components/admin/Modal";
 
 interface KeyStatus {
@@ -34,11 +36,13 @@ interface PickerItem {
 
 type StepSource = "products" | "outfits";
 
-const STEP_META: { key: StepKey; n: string; title: string; hint: string; max: number; source: StepSource }[] = [
-  { key: "step1", n: "01", title: "Choose items", hint: "One product — the large reference card.", max: 1, source: "products" },
-  { key: "step2", n: "02", title: "Build your look", hint: "Up to 3 products scattered in the frame.", max: 3, source: "products" },
-  { key: "step3", n: "03", title: "Generate preview", hint: "One generated look shown on the preview card.", max: 1, source: "outfits" },
-  { key: "step4", n: "04", title: "Shop the look", hint: "Up to 3 products standing in the box.", max: 3, source: "products" },
+// Each step is named after its card in the homepage's "How it works"; title
+// and hint are dictionary keys, read at render.
+const STEP_META: { key: StepKey; n: string; title: Key; hint: Key; max: number; source: StepSource }[] = [
+  { key: "step1", n: "01", title: "settings.step.step1", hint: "settings.step.step1.hint", max: 1, source: "products" },
+  { key: "step2", n: "02", title: "settings.step.step2", hint: "settings.step.step2.hint", max: 3, source: "products" },
+  { key: "step3", n: "03", title: "settings.step.step3", hint: "settings.step.step3.hint", max: 1, source: "outfits" },
+  { key: "step4", n: "04", title: "settings.step.step4", hint: "settings.step.step4.hint", max: 3, source: "products" },
 ];
 
 const EMPTY_SHOWCASE: ShowcaseIds = { step1: [], step2: [], step3: [], step4: [] };
@@ -92,7 +96,7 @@ interface SchemaReport {
   missingMigrations: string[];
 }
 
-function renderSchemaCheck(c: SchemaCheck) {
+function renderSchemaCheck(c: SchemaCheck, t: T) {
   return (
     <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
       <span
@@ -107,7 +111,8 @@ function renderSchemaCheck(c: SchemaCheck) {
         </p>
         {!c.present && (
           <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
-            {c.error ? c.error : `${c.breaks} Run ${c.migration}.`}
+            {/* What breaks comes from the server, in English. */}
+            {c.error ? c.error : `${c.breaks} ${t("settings.schema.run", { migration: c.migration })}`}
           </p>
         )}
       </div>
@@ -115,21 +120,25 @@ function renderSchemaCheck(c: SchemaCheck) {
   );
 }
 
-/** Both catalog loaders can fail; keep both messages rather than the last. */
-function appendMessage(prev: string, message: string): string {
-  return prev ? `${prev} ${message}` : message;
-}
+// Occasions the Outfits screen names in the dictionary; anything else shows as it is.
+const OCCASION_KEY = new Map<string, Key>([
+  ["casual", "outfits.occasion.casual"],
+  ["work", "outfits.occasion.work"],
+  ["evening", "outfits.occasion.evening"],
+  ["sport", "outfits.occasion.sport"],
+  ["formal", "outfits.occasion.formal"],
+  ["weekend", "outfits.occasion.weekend"],
+]);
 
 /** A saved selection that did not load: say so, keep Save off, offer a retry. */
 function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const t = useT();
   return (
     <div>
       <p className="text-[11px] text-[var(--err)] leading-relaxed">{message}</p>
-      <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
-        Saving is off until the current selection loads, so the live homepage is not overwritten with an empty one.
-      </p>
+      <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">{t("settings.selection.saveOff")}</p>
       <button onClick={onRetry} className={`mt-3 ${btn("secondary")}`}>
-        Retry
+        {t("common.retry")}
       </button>
     </div>
   );
@@ -147,6 +156,7 @@ function SelectedThumb({
   fit: "contain" | "cover";
   onRemove: () => void;
 }) {
+  const t = useT();
   return (
     <div
       className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--background)] group"
@@ -163,7 +173,7 @@ function SelectedThumb({
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-[12px] text-[var(--foreground-subtle)] text-center px-1">
-          missing
+          {t("settings.thumb.missing")}
         </div>
       )}
       <button
@@ -171,7 +181,7 @@ function SelectedThumb({
         // Revealed on hover where there is a pointer; touch screens have no
         // hover, so there it is always shown, and large enough to tap.
         className="absolute top-0.5 right-0.5 w-6 h-6 md:w-4 md:h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
-        aria-label={`Remove ${item?.name ?? "item"}`}
+        aria-label={item?.name ? t("settings.thumb.remove", { name: item.name }) : t("settings.thumb.removeUnnamed")}
       >
         <svg width="7" height="7" viewBox="0 0 8 8" fill="none" aria-hidden="true">
           <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -196,10 +206,19 @@ function AddSlotButton({ label, onClick }: { label: string; onClick: () => void 
   );
 }
 
+type PickerNoun = "product" | "look" | "store";
+
+/** The hint line of a picker: choosing one item, or adding and removing several. */
+const PICK_HINT: Record<PickerNoun, { one: Key; many: Key }> = {
+  product: { one: "settings.picker.chooseProduct", many: "settings.picker.toggleProduct" },
+  look: { one: "settings.picker.chooseLook", many: "settings.picker.toggleLook" },
+  store: { one: "settings.picker.chooseStore", many: "settings.picker.toggleStore" },
+};
+
 interface PickerModalProps {
   title: string;
-  /** What one item is called in the hint line: "product", "look", "store". */
-  noun: string;
+  /** What one item is called in the hint line. */
+  noun: PickerNoun;
   items: PickerItem[];
   selectedIds: string[];
   max: number;
@@ -232,6 +251,7 @@ function PickerModal({
   padded = false,
   noImageText,
 }: PickerModalProps) {
+  const t = useT();
   const [query, setQuery] = useState("");
   // The panel has a search field; a selection dragged past its edge must not
   // close it.
@@ -249,14 +269,15 @@ function PickerModal({
         <div className="min-w-0">
           <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</p>
           <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
-            {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
+            {t("settings.picker.count", { selected: selectedIds.length, max })} ·{" "}
+            {t(max === 1 ? PICK_HINT[noun].one : PICK_HINT[noun].many)}
           </p>
         </div>
         <button
           onClick={onClose}
           className={`ml-auto ${btn("primary")}`}
         >
-          Done
+          {t("settings.picker.done")}
         </button>
       </div>
 
@@ -327,7 +348,11 @@ function PickerModal({
 
 const SECTION_IDS = ["schema", "showcase", "stylist", "openai", "embeddings"];
 
+/** The shape of an OpenAI project key, as the key field's example. */
+const KEY_PLACEHOLDER = "sk-proj-...";
+
 export default function SettingsPage() {
+  const t = useT();
   const confirm = useConfirm();
   const toast = useToast();
   const currentSection = useScrollSpy(SECTION_IDS);
@@ -339,48 +364,49 @@ export default function SettingsPage() {
 
   // ── OpenAI key state ──────────────────────────────────────────────────────
   const [status, setStatus] = useState<KeyStatus | null>(null);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState<Failure>("");
   const [unauthorized, setUnauthorized] = useState(false);
 
   const [inputKey, setInputKey] = useState("");
   const [showInput, setShowInput] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [saveError, setSaveError] = useState<Failure>("");
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"ok" | "fail" | null>(null);
-  const [testError, setTestError] = useState("");
+  const [testError, setTestError] = useState<Failure>("");
 
   const [clearing, setClearing] = useState(false);
-  const [clearError, setClearError] = useState("");
+  const [clearError, setClearError] = useState<Failure>("");
 
   // ── Catalog for previews and pickers ──────────────────────────────────────
   const [products, setProducts] = useState<PickerItem[]>([]);
   const [outfits, setOutfits] = useState<PickerItem[]>([]);
-  const [catalogError, setCatalogError] = useState("");
+  /** Both catalog loaders can fail; keep both messages rather than the last. */
+  const [catalogErrors, setCatalogErrors] = useState<Failure[]>([]);
 
   // ── Homepage showcase state ───────────────────────────────────────────────
   const [showcase, setShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
   /** What is live: the last loaded or saved copy, for the SaveBar to compare with. */
   const [savedShowcase, setSavedShowcase] = useState<ShowcaseIds>(EMPTY_SHOWCASE);
   const [showcaseLoad, setShowcaseLoad] = useState<LoadState>("loading");
-  const [showcaseLoadError, setShowcaseLoadError] = useState("");
+  const [showcaseLoadError, setShowcaseLoadError] = useState<Failure>("");
   const [pickerStep, setPickerStep] = useState<StepKey | null>(null);
-  const [showcaseError, setShowcaseError] = useState("");
+  const [showcaseError, setShowcaseError] = useState<Failure>("");
 
   // ── AI Stylist showcase state ─────────────────────────────────────────────
   const [stylist, setStylist] = useState<StylistIds>(EMPTY_STYLIST);
   const [savedStylist, setSavedStylist] = useState<StylistIds>(EMPTY_STYLIST);
   const [stylistLoad, setStylistLoad] = useState<LoadState>("loading");
-  const [stylistLoadError, setStylistLoadError] = useState("");
+  const [stylistLoadError, setStylistLoadError] = useState<Failure>("");
   const [stylistPicker, setStylistPicker] = useState<StylistPickerKind | null>(null);
-  const [stylistError, setStylistError] = useState("");
+  const [stylistError, setStylistError] = useState<Failure>("");
   /** The SaveBar's one save is running. */
   const [savingAll, setSavingAll] = useState(false);
 
   // ── Database schema state ─────────────────────────────────────────────────
   const [schema, setSchema] = useState<SchemaReport | null>(null);
-  const [schemaError, setSchemaError] = useState("");
+  const [schemaError, setSchemaError] = useState<Failure>("");
   const [schemaLoading, setSchemaLoading] = useState(false);
 
   useEffect(() => {
@@ -399,13 +425,13 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/schema-check", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) {
-        setSchemaError(json?.error || `Check failed (${res.status})`);
+        setSchemaError(json?.error || { key: "settings.schema.checkFailed", vars: { status: res.status } });
         setSchema(null);
       } else {
         setSchema(json as SchemaReport);
       }
     } catch {
-      setSchemaError("Could not reach the server.");
+      setSchemaError({ key: "settings.unreachable" });
       setSchema(null);
     } finally {
       setSchemaLoading(false);
@@ -421,7 +447,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/homepage-stylist", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setStylistLoadError(data?.error || `Could not load the saved stylist showcase (${res.status}).`);
+        setStylistLoadError(data?.error || { key: "settings.stylist.loadFailed", vars: { status: res.status } });
         setStylistLoad("error");
         return;
       }
@@ -457,7 +483,7 @@ export default function SettingsPage() {
       setSavedStylist(loaded);
       setStylistLoad("ready");
     } catch {
-      setStylistLoadError("Could not reach the server to load the saved stylist showcase.");
+      setStylistLoadError({ key: "settings.stylist.loadFailedNetwork" });
       setStylistLoad("error");
     }
   }
@@ -521,11 +547,11 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) { setStylistError(json.error ?? "Save failed"); return false; }
+      if (!res.ok) { setStylistError(json.error ?? { key: "settings.saveFailed" }); return false; }
       setSavedStylist(stylist);
       return true;
     } catch {
-      setStylistError("Network error. Try again.");
+      setStylistError({ key: "settings.networkRetry" });
       return false;
     }
   }
@@ -539,7 +565,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/homepage-showcase", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setShowcaseLoadError(data?.error || `Could not load the saved showcase (${res.status}).`);
+        setShowcaseLoadError(data?.error || { key: "settings.showcase.loadFailed", vars: { status: res.status } });
         setShowcaseLoad("error");
         return;
       }
@@ -553,7 +579,7 @@ export default function SettingsPage() {
       setSavedShowcase(loaded);
       setShowcaseLoad("ready");
     } catch {
-      setShowcaseLoadError("Could not reach the server to load the saved showcase.");
+      setShowcaseLoadError({ key: "settings.showcase.loadFailedNetwork" });
       setShowcaseLoad("error");
     }
   }
@@ -563,7 +589,10 @@ export default function SettingsPage() {
   async function loadProducts() {
     try {
       const res = await fetch("/api/products?raw=true");
-      if (!res.ok) { setCatalogError((prev) => appendMessage(prev, `Products did not load (${res.status}).`)); return; }
+      if (!res.ok) {
+        setCatalogErrors((prev) => [...prev, { key: "settings.catalog.productsFailed", vars: { status: res.status } }]);
+        return;
+      }
       const data = await res.json();
       if (Array.isArray(data)) {
         setProducts(
@@ -576,14 +605,17 @@ export default function SettingsPage() {
         );
       }
     } catch {
-      setCatalogError((prev) => appendMessage(prev, "Products did not load (network error)."));
+      setCatalogErrors((prev) => [...prev, { key: "settings.catalog.productsFailedNetwork" }]);
     }
   }
 
   async function loadOutfits() {
     try {
       const res = await fetch("/api/outfits");
-      if (!res.ok) { setCatalogError((prev) => appendMessage(prev, `Looks did not load (${res.status}).`)); return; }
+      if (!res.ok) {
+        setCatalogErrors((prev) => [...prev, { key: "settings.catalog.looksFailed", vars: { status: res.status } }]);
+        return;
+      }
       const data = await res.json();
       if (Array.isArray(data)) {
         setOutfits(
@@ -591,18 +623,25 @@ export default function SettingsPage() {
             id: o.id,
             name: o.name,
             imageUrl: o.imageUrl,
-            sub: o.occasion ?? "look",
+            sub: o.occasion ?? "",
           }))
         );
       }
     } catch {
-      setCatalogError((prev) => appendMessage(prev, "Looks did not load (network error)."));
+      setCatalogErrors((prev) => [...prev, { key: "settings.catalog.looksFailedNetwork" }]);
     }
   }
 
+  // Looks as the pickers show them: the occasion in the admin's language, or
+  // just "look" when there is none.
+  const lookItems = outfits.map((o) => {
+    const occasion = OCCASION_KEY.get(o.sub);
+    return { ...o, sub: occasion ? t(occasion) : o.sub || t("settings.picker.look") };
+  });
+
   // Which catalog backs a given step, and a lookup within it.
   const itemsForStep = (step: StepKey) =>
-    STEP_META.find((m) => m.key === step)!.source === "outfits" ? outfits : products;
+    STEP_META.find((m) => m.key === step)!.source === "outfits" ? lookItems : products;
   const lookupItem = (step: StepKey, id: string) => itemsForStep(step).find((p) => p.id === id);
 
   function toggleItem(step: StepKey, id: string) {
@@ -633,11 +672,11 @@ export default function SettingsPage() {
         body: JSON.stringify(showcase),
       });
       const json = await res.json();
-      if (!res.ok) { setShowcaseError(json.error ?? "Save failed"); return false; }
+      if (!res.ok) { setShowcaseError(json.error ?? { key: "settings.saveFailed" }); return false; }
       setSavedShowcase(showcase);
       return true;
     } catch {
-      setShowcaseError("Network error. Try again.");
+      setShowcaseError({ key: "settings.networkRetry" });
       return false;
     }
   }
@@ -650,10 +689,17 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/settings?key=openai_api_key", { cache: "no-store" });
       if (res.status === 401) { setUnauthorized(true); return; }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setLoadError(data?.error ? `Failed to load settings: ${data.error}` : "Failed to load settings."); return; }
+      if (!res.ok) {
+        setLoadError(
+          data?.error
+            ? { key: "settings.openai.loadFailedWith", vars: { error: String(data.error) } }
+            : { key: "settings.openai.loadFailed" }
+        );
+        return;
+      }
       setStatus(data as KeyStatus);
     } catch {
-      setLoadError("Network error loading settings.");
+      setLoadError({ key: "settings.openai.loadFailedNetwork" });
     }
   }
 
@@ -671,13 +717,13 @@ export default function SettingsPage() {
         body: JSON.stringify({ key: "openai_api_key", value }),
       });
       const json = await res.json();
-      if (!res.ok) { setSaveError(json.error ?? "Save failed."); return false; }
+      if (!res.ok) { setSaveError(json.error ?? { key: "settings.saveFailed" }); return false; }
       setStatus({ configured: true, source: "database", maskedKey: json.maskedKey });
       setInputKey("");
       setShowInput(false);
       return true;
     } catch {
-      setSaveError("Network error. Try again.");
+      setSaveError({ key: "settings.networkRetry" });
       return false;
     }
   }
@@ -691,10 +737,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/settings/test", { method: "POST" });
       const json = await res.json();
       setTestResult(json.ok ? "ok" : "fail");
-      if (!json.ok) setTestError(json.error ?? "Validation failed");
+      if (!json.ok) setTestError(json.error ?? { key: "settings.openai.testFailed" });
     } catch {
       setTestResult("fail");
-      setTestError("Network error");
+      setTestError({ key: "common.networkError" });
     } finally {
       setTesting(false);
     }
@@ -704,9 +750,9 @@ export default function SettingsPage() {
   async function clearKey() {
     if (
       !(await confirm({
-        title: "Remove the stored OpenAI API key?",
-        body: "Until a new key is added, these stop working: blog post generation, AI-written emails, AI extraction in the parser, bug reports, and the stylist's semantic search.",
-        confirmLabel: "Remove key",
+        title: t("settings.openai.clearConfirm"),
+        body: t("settings.openai.clearConfirmBody"),
+        confirmLabel: t("settings.openai.clearConfirmAction"),
         tone: "danger",
       }))
     ) return;
@@ -717,13 +763,13 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/settings?key=openai_api_key", { method: "DELETE" });
       if (!res.ok) {
         const json = await res.json();
-        setClearError(json.error ?? "Clear failed.");
+        setClearError(json.error ?? { key: "settings.openai.clearFailed" });
         return;
       }
       setStatus({ configured: false, source: null });
       setShowInput(false);
     } catch {
-      setClearError("Network error. Try again.");
+      setClearError({ key: "settings.networkRetry" });
     } finally {
       setClearing(false);
     }
@@ -734,13 +780,13 @@ export default function SettingsPage() {
   if (unauthorized) {
     return (
       <AdminPage layout="form">
-        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
-        <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
-          <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
-            Access denied. Your account is not in the admin allowlist.
-          </p>
+        <PageHeader title={t("nav.settings")} />
+        <div className="rounded-xl border border-[var(--border)] px-5 py-4">
+          <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">{t("settings.denied")}</p>
           <p className="text-[11px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
-            Add your Clerk user ID to the <code className="font-mono text-[11px]">ADMIN_USER_IDS</code> environment variable to gain access.
+            {withSlots(t("settings.deniedHint"), {
+              env: <code className="font-mono text-[11px]">{"ADMIN_USER_IDS"}</code>,
+            })}
           </p>
         </div>
       </AdminPage>
@@ -769,9 +815,9 @@ export default function SettingsPage() {
     if (keyDirty) results.push(await saveKey());
     setSavingAll(false);
     if (results.every(Boolean)) {
-      toast.ok(showcaseDirty || stylistDirty ? "Saved. The homepage shows it on its next load." : "Saved.");
+      toast.ok(showcaseDirty || stylistDirty ? t("settings.savedHomepage") : t("common.saved"));
     } else {
-      toast.err("Not everything was saved. The section that failed says why.");
+      toast.err(t("settings.savePartial"));
     }
   }
 
@@ -792,22 +838,19 @@ export default function SettingsPage() {
       layout="form"
       nav={
         <SectionNav
-          label="Settings sections"
+          label={t("settings.nav")}
           current={currentSection}
           items={[
-            { id: "schema", label: "Database", badge: missingColumns ? <Badge tone="warn">{missingColumns}</Badge> : undefined },
-            { id: "showcase", label: "Homepage showcase" },
-            { id: "stylist", label: "AI Stylist showcase" },
-            { id: "openai", label: "OpenAI key" },
-            { id: "embeddings", label: "Embeddings" },
+            { id: "schema", label: t("settings.nav.schema"), badge: missingColumns ? <Badge tone="warn">{missingColumns}</Badge> : undefined },
+            { id: "showcase", label: t("settings.showcase.title") },
+            { id: "stylist", label: t("settings.stylist.title") },
+            { id: "openai", label: t("settings.nav.openai") },
+            { id: "embeddings", label: t("settings.embed.title") },
           ]}
         />
       }
     >
-      <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Settings</h1>
-      <p className="text-[13px] text-[var(--foreground-muted)] mt-1 mb-6">
-        The database, the homepage showcases, the OpenAI key and embeddings.
-      </p>
+      <PageHeader title={t("nav.settings")} subtitle={t("settings.subtitle")} />
 
       <FormPanel>
         {/* ── Database schema ──
@@ -817,61 +860,53 @@ export default function SettingsPage() {
             database actually has. */}
         <FormSection
           id="schema"
-          title="Database schema"
-          description="Tables and columns the code relies on. A missing one quietly switches a feature off."
-          extra={<HelpButton help={schemaHelp} label="How the schema check works" />}
+          title={t("settings.schema.title")}
+          description={t("settings.schema.description")}
+          extra={<HelpButton help={schemaHelp} label={t("settings.schema.helpLabel")} />}
         >
           {schemaHelp.open && (
             <HelpPanel help={schemaHelp}>
-              <p>
-                Tables and optional columns the code relies on. A missing column is never an error — the row saves without it — so the feature it carries just stops working quietly.
-              </p>
+              <p>{t("settings.schema.help")}</p>
             </HelpPanel>
           )}
           <div>
-          {schemaLoading && !schema && <LoadingLine label="Checking…" />}
+          {schemaLoading && !schema && <LoadingLine label={t("settings.checking")} />}
 
-          {schemaError && <p className="text-[11px] text-[var(--err)]">{schemaError}</p>}
+          {schemaError && <p className="text-[11px] text-[var(--err)]">{sayFailure(schemaError, t)}</p>}
 
           {schema && (
             <>
-              <span
-                className={`inline-block px-2 py-1 rounded-lg text-[11px] font-medium border ${
-                  schema.ok
-                    ? "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
-                    : "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]"
-                }`}
-              >
+              <Badge tone={schema.ok ? "ok" : "warn"}>
                 {schema.ok
-                  ? `All ${schema.checks.length} columns present`
-                  : `${schema.checks.filter((c) => !c.present).length} missing`}
-              </span>
+                  ? t("settings.schema.allPresent", { count: schema.checks.length })
+                  : t("settings.schema.missing", { count: missingColumns })}
+              </Badge>
 
               {/* What needs doing comes first; the columns that are fine fold
                   away, so the card is one line when the database is complete. */}
               {!schema.ok && (
                 <ul className="mt-3 space-y-2">
-                  {schema.checks.filter((c) => !c.present).map(renderSchemaCheck)}
+                  {schema.checks.filter((c) => !c.present).map((c) => renderSchemaCheck(c, t))}
                 </ul>
               )}
               {schema.checks.some((c) => c.present) && (
                 <details className="mt-3">
                   <summary className="w-fit cursor-pointer py-2 md:py-0.5 text-[12px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-                    Show {schema.checks.filter((c) => c.present).length} present columns
+                    {t("settings.schema.showPresent", { count: schema.checks.filter((c) => c.present).length })}
                   </summary>
                   <ul className="mt-2 space-y-2">
-                    {schema.checks.filter((c) => c.present).map(renderSchemaCheck)}
+                    {schema.checks.filter((c) => c.present).map((c) => renderSchemaCheck(c, t))}
                   </ul>
                 </details>
               )}
 
               {schema.missingMigrations.length > 0 && (
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-3 leading-relaxed">
-                  Run, in order (numbered files are in <span className="font-mono">supabase/migrations/</span>,{" "}
-                  <span className="font-mono">supabase-schema.sql</span> is at the repo root):{" "}
-                  <span className="font-mono text-[var(--foreground)]">
-                    {schema.missingMigrations.join(", ")}
-                  </span>
+                  {withSlots(t("settings.schema.runInOrder"), {
+                    dir: <span className="font-mono">{"supabase/migrations/"}</span>,
+                    file: <span className="font-mono">{"supabase-schema.sql"}</span>,
+                    list: <span className="font-mono text-[var(--foreground)]">{schema.missingMigrations.join(", ")}</span>,
+                  })}
                 </p>
               )}
             </>
@@ -881,7 +916,7 @@ export default function SettingsPage() {
               it is needed. */}
           {(schema || schemaError) && (
             <button onClick={loadSchema} disabled={schemaLoading} className={`mt-4 ${btn("secondary")}`}>
-              {schemaLoading ? "Checking…" : "Re-check"}
+              {schemaLoading ? t("settings.checking") : t("settings.schema.recheck")}
             </button>
           )}
           </div>
@@ -890,34 +925,34 @@ export default function SettingsPage() {
         {/* ── Homepage showcase ── */}
         <FormSection
           id="showcase"
-          title="Homepage showcase"
-          description="The products in the four “How it works” cards. Empty slots show the default artwork."
-          extra={<HelpButton help={showcaseHelp} label="How the homepage showcase works" />}
+          title={t("settings.showcase.title")}
+          description={t("settings.showcase.description")}
+          extra={<HelpButton help={showcaseHelp} label={t("settings.showcase.helpLabel")} />}
         >
           {showcaseHelp.open && (
             <HelpPanel help={showcaseHelp}>
-              <p>
-                Pick which products appear in the four “How it works” cards on the homepage.
-                Empty slots fall back to the default artwork.
-              </p>
+              <p>{t("settings.showcase.help")}</p>
             </HelpPanel>
           )}
-          {catalogError && (
+          {catalogErrors.length > 0 && (
             <p className="text-[12px] text-[var(--err)] leading-relaxed">
-              {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
+              {t("settings.showcase.catalogNote", {
+                errors: catalogErrors.map((f) => sayFailure(f, t)).join(" "),
+                missing: t("settings.thumb.missing"),
+              })}
             </p>
           )}
           <div className="space-y-5">
-          {showcaseLoad === "loading" && <LoadingLine label="Loading the saved showcase…" />}
+          {showcaseLoad === "loading" && <LoadingLine label={t("settings.showcase.loading")} />}
           {showcaseLoad === "error" && (
-            <SelectionLoadFailed message={showcaseLoadError} onRetry={loadShowcase} />
+            <SelectionLoadFailed message={sayFailure(showcaseLoadError, t)} onRetry={loadShowcase} />
           )}
           {showcaseLoad === "ready" && STEP_META.map((meta) => (
             <div key={meta.key}>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                 <span className="font-mono text-[11px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
-                <span className="text-[12px] font-medium text-[var(--foreground)]">{meta.title}</span>
-                <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
+                <span className="text-[12px] font-medium text-[var(--foreground)]">{t(meta.title)}</span>
+                <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">{t(meta.hint)}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -933,7 +968,9 @@ export default function SettingsPage() {
 
                 {showcase[meta.key].length < meta.max && (
                   <AddSlotButton
-                    label={`Add product to ${meta.title}`}
+                    label={t(meta.source === "outfits" ? "settings.showcase.addLook" : "settings.showcase.addProduct", {
+                      step: t(meta.title),
+                    })}
                     onClick={() => setPickerStep(meta.key)}
                   />
                 )}
@@ -941,38 +978,34 @@ export default function SettingsPage() {
             </div>
           ))}
           </div>
-          {showcaseError && <p role="alert" className="text-[12px] text-[var(--err)]">{showcaseError}</p>}
+          {showcaseError && <p role="alert" className="text-[12px] text-[var(--err)]">{sayFailure(showcaseError, t)}</p>}
         </FormSection>
 
         {/* ── AI Stylist showcase ── */}
         <FormSection
           id="stylist"
-          title="AI Stylist showcase"
-          description="The “Your style. Found by AI.” section: two looks in the chat and one product with where to buy it."
-          extra={<HelpButton help={stylistHelp} label="How the AI Stylist showcase works" />}
+          title={t("settings.stylist.title")}
+          description={t("settings.stylist.description")}
+          extra={<HelpButton help={stylistHelp} label={t("settings.stylist.helpLabel")} />}
         >
           {stylistHelp.open && (
             <HelpPanel help={stylistHelp}>
-              <p>
-                Controls the “Your style. Found by AI.” section. Pick up to two looks shown as
-                cards in the chat preview, and one product featured below with its “Where to buy”
-                list. Empty slots fall back to the latest catalog items.
-              </p>
+              <p>{t("settings.stylist.help")}</p>
             </HelpPanel>
           )}
           <div className="space-y-5">
-          {stylistLoad === "loading" && <LoadingLine label="Loading the saved stylist showcase…" />}
+          {stylistLoad === "loading" && <LoadingLine label={t("settings.stylist.loading")} />}
           {stylistLoad === "error" && (
-            <SelectionLoadFailed message={stylistLoadError} onRetry={loadStylist} />
+            <SelectionLoadFailed message={sayFailure(stylistLoadError, t)} onRetry={loadStylist} />
           )}
           {stylistLoad === "ready" && (
             <>
               {/* Chat looks */}
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
-                  <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">{t("settings.stylist.chat")}</span>
                   <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
-                    Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
+                    {t("settings.stylist.chatHint", { count: MAX_CHAT_LOOKS })}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -980,13 +1013,13 @@ export default function SettingsPage() {
                     <SelectedThumb
                       key={id}
                       id={id}
-                      item={outfits.find((x) => x.id === id)}
+                      item={lookItems.find((x) => x.id === id)}
                       fit="cover"
                       onRemove={() => toggleChatOutfit(id)}
                     />
                   ))}
                   {stylist.chatOutfits.length < MAX_CHAT_LOOKS && (
-                    <AddSlotButton label="Add a chat look" onClick={() => setStylistPicker("chat")} />
+                    <AddSlotButton label={t("settings.stylist.addChat")} onClick={() => setStylistPicker("chat")} />
                   )}
                 </div>
               </div>
@@ -994,9 +1027,9 @@ export default function SettingsPage() {
               {/* Featured product */}
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
-                  <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">{t("settings.stylist.featured")}</span>
                   <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
-                    Shown bottom-left with its retailers.
+                    {t("settings.stylist.featuredHint")}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1008,7 +1041,7 @@ export default function SettingsPage() {
                       onRemove={() => setFeaturedProduct(stylist.featuredProduct!)}
                     />
                   ) : (
-                    <AddSlotButton label="Add the featured product" onClick={() => setStylistPicker("featured")} />
+                    <AddSlotButton label={t("settings.stylist.addFeatured")} onClick={() => setStylistPicker("featured")} />
                   )}
                 </div>
               </div>
@@ -1016,20 +1049,16 @@ export default function SettingsPage() {
               {/* Stores shown in "Where to buy" */}
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
-                  <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
-                  <HelpButton help={storesHelp} label="How extra stores work" />
+                  <span className="text-[12px] font-medium text-[var(--foreground)]">{t("settings.stylist.stores")}</span>
+                  <HelpButton help={storesHelp} label={t("settings.stylist.storesHelpLabel")} />
                   <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
-                    Up to {MAX_SHOWCASE_STORES}
+                    {t("settings.stylist.storesLimit", { count: MAX_SHOWCASE_STORES })}
                   </span>
                 </div>
                 {storesHelp.open && (
                   <div className="mb-3">
                     <HelpPanel help={storesHelp}>
-                      <p>
-                        The item’s own stores (and prices) always show automatically. Add extra stores here —
-                        the logo and store link are pulled from the library; set an optional price tag for each.
-                        Clicking a row opens that store’s link.
-                      </p>
+                      <p>{t("settings.stylist.storesHelp")}</p>
                     </HelpPanel>
                   </div>
                 )}
@@ -1068,16 +1097,16 @@ export default function SettingsPage() {
                             min="0"
                             value={price}
                             onChange={(e) => setShowcaseStorePrice(name, e.target.value)}
-                            placeholder="Price"
-                            aria-label={`Price at ${name}`}
+                            placeholder={t("settings.stylist.price")}
+                            aria-label={t("settings.stylist.priceAt", { store: name })}
                             className={`w-24 ${INPUT}`}
                           />
                         </div>
                         <button
                           onClick={() => removeShowcaseStore(name)}
                           className={`shrink-0 ${BTN_ICON}`}
-                          aria-label={`Remove ${name}`}
-                          title={`Remove ${name}`}
+                          aria-label={t("settings.thumb.remove", { name })}
+                          title={t("settings.thumb.remove", { name })}
                         >
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
                             <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -1089,13 +1118,13 @@ export default function SettingsPage() {
                   {stylist.extraStores.length < MAX_SHOWCASE_STORES && (
                     <button
                       onClick={() => setStylistPicker("stores")}
-                      className="self-start h-8 px-3 rounded-lg border border-dashed border-[var(--border-strong)] text-[11px] text-[var(--foreground-subtle)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
-                      aria-label="Add a store"
+                      className={`self-start ${btn("secondary")}`}
+                      aria-label={t("settings.stylist.addStore")}
                     >
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                       </svg>
-                      Add store
+                      {t("settings.stylist.addStore")}
                     </button>
                   )}
                 </div>
@@ -1103,35 +1132,31 @@ export default function SettingsPage() {
             </>
           )}
           </div>
-          {stylistError && <p role="alert" className="text-[12px] text-[var(--err)]">{stylistError}</p>}
+          {stylistError && <p role="alert" className="text-[12px] text-[var(--err)]">{sayFailure(stylistError, t)}</p>}
         </FormSection>
 
         {/* ── OpenAI key ── */}
         <FormSection
           id="openai"
-          title="OpenAI API key"
-          description="Shared by blog drafts, AI emails, the parser’s AI extraction and semantic search. Never sent to the browser."
-          extra={<HelpButton help={openaiHelp} label="What the OpenAI key is used for" />}
+          title={t("settings.openai.title")}
+          description={t("settings.openai.description")}
+          extra={<HelpButton help={openaiHelp} label={t("settings.openai.helpLabel")} />}
         >
           {openaiHelp.open && (
             <HelpPanel help={openaiHelp}>
-              <p>
-                Shared key for everything on the site that calls OpenAI: blog post generation, AI-written emails,
-                AI extraction in the parser, bug reports and the stylist&apos;s semantic search. The AI Stylist chat itself
-                runs on Replicate and does not use it. Stored server-side and never sent to the browser.
-              </p>
+              <p>{t("settings.openai.help")}</p>
             </HelpPanel>
           )}
           <div>
           {/* Loading */}
-          {status === null && !loadError && <LoadingLine label="Loading…" />}
+          {status === null && !loadError && <LoadingLine label={t("common.loading")} />}
 
           {/* Load error */}
           {loadError && (
             <div>
-              <p className="text-[11px] text-[var(--err)]">{loadError}</p>
+              <p className="text-[11px] text-[var(--err)]">{sayFailure(loadError, t)}</p>
               <button onClick={loadStatus} className={`mt-3 ${btn("secondary")}`}>
-                Retry
+                {t("common.retry")}
               </button>
             </div>
           )}
@@ -1142,13 +1167,10 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2 h-2 rounded-full bg-[var(--border-strong)]" />
                 <p className="text-[11px] font-medium text-[var(--foreground-muted)]">
-                  Not configured
+                  {t("settings.openai.notConfigured")}
                 </p>
               </div>
-              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-                Off until a key is added: blog post generation, AI-written emails, AI extraction in the parser,
-                bug reports and the stylist&apos;s semantic search.
-              </p>
+              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">{t("settings.openai.offList")}</p>
             </div>
           )}
 
@@ -1158,15 +1180,16 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
                 <p className="text-[11px] font-medium text-[var(--foreground)]">
-                  Configured
+                  {t("settings.openai.configured")}
                 </p>
               </div>
               {status.maskedKey && (
                 <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
               <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-                Key is set via the <code className="font-mono text-[11px]">OPENAI_API_KEY</code> environment variable.
-                To change it, update the environment variable and redeploy.
+                {withSlots(t("settings.openai.viaEnv"), {
+                  env: <code className="font-mono text-[11px]">{"OPENAI_API_KEY"}</code>,
+                })}
               </p>
             </div>
           )}
@@ -1177,15 +1200,13 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
                 <p className="text-[11px] font-medium text-[var(--foreground)]">
-                  Configured
+                  {t("settings.openai.configured")}
                 </p>
               </div>
               {status.maskedKey && (
                 <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
-              <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
-                Stored in database. Raw key is never returned to the browser.
-              </p>
+              <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">{t("settings.openai.inDb")}</p>
             </div>
           )}
 
@@ -1193,15 +1214,10 @@ export default function SettingsPage() {
           {editingKey && (
             <div>
               {status?.configured && (
-                <p className="text-[11px] text-[var(--foreground-muted)] mb-3">
-                  Enter a new key to replace the current one.
-                </p>
+                <p className="text-[11px] text-[var(--foreground-muted)] mb-3">{t("settings.openai.replaceHint")}</p>
               )}
-              <label
-                htmlFor="openai-key-input"
-                className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5"
-              >
-                {status?.configured ? "New API key" : "API key"}
+              <label htmlFor="openai-key-input" className={FIELD_LABEL}>
+                {status?.configured ? t("settings.openai.newKey") : t("settings.openai.key")}
               </label>
               <div className="relative">
                 <input
@@ -1209,7 +1225,7 @@ export default function SettingsPage() {
                   type={showRaw ? "text" : "password"}
                   value={inputKey}
                   onChange={(e) => { setInputKey(e.target.value); setSaveError(""); }}
-                  placeholder="sk-proj-..."
+                  placeholder={KEY_PLACEHOLDER}
                   spellCheck={false}
                   autoComplete="off"
                   className={`w-full pr-10 md:pr-9 font-mono ${INPUT}`}
@@ -1217,7 +1233,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowRaw((v) => !v)}
-                  aria-label={showRaw ? "Hide key" : "Show key"}
+                  aria-label={showRaw ? t("settings.openai.hideKey") : t("settings.openai.showKey")}
                   className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
                 >
                   {showRaw ? (
@@ -1235,7 +1251,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               {saveError && (
-                <p className="text-[11px] text-[var(--err)] mt-2">{saveError}</p>
+                <p className="text-[11px] text-[var(--err)] mt-2">{sayFailure(saveError, t)}</p>
               )}
             </div>
           )}
@@ -1246,7 +1262,7 @@ export default function SettingsPage() {
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                 <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Key is valid — OpenAI API responded successfully
+              {t("settings.openai.valid")}
             </div>
           )}
           {testResult === "fail" && (
@@ -1254,13 +1270,13 @@ export default function SettingsPage() {
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
                 <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
-              <span>{testError || "Key invalid or no quota"}</span>
+              <span>{testError ? sayFailure(testError, t) : t("settings.openai.invalid")}</span>
             </div>
           )}
 
           {/* Clear error */}
           {clearError && (
-            <p className="text-[11px] text-[var(--err)] mt-3">{clearError}</p>
+            <p className="text-[11px] text-[var(--err)] mt-3">{sayFailure(clearError, t)}</p>
           )}
           </div>
 
@@ -1273,7 +1289,7 @@ export default function SettingsPage() {
                 onClick={() => { setShowInput(false); setInputKey(""); setSaveError(""); }}
                 className={btn("ghost")}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             )}
 
@@ -1286,7 +1302,7 @@ export default function SettingsPage() {
                   className={btn("secondary")}
                 >
                   {testing && <Spinner />}
-                  {testing ? "Testing…" : "Test key"}
+                  {testing ? t("settings.openai.testing") : t("settings.openai.test")}
                 </button>
 
                 {/* Update key — only for database-stored keys */}
@@ -1295,7 +1311,7 @@ export default function SettingsPage() {
                     onClick={() => { setShowInput(true); setTestResult(null); }}
                     className={btn("secondary")}
                   >
-                    Update
+                    {t("settings.openai.update")}
                   </button>
                 )}
               </>
@@ -1308,7 +1324,7 @@ export default function SettingsPage() {
                 disabled={clearing}
                 className={`ml-auto ${btn("danger")}`}
               >
-                {clearing ? "Clearing…" : "Clear"}
+                {clearing ? t("settings.openai.clearing") : t("settings.openai.clear")}
               </button>
             )}
             </div>
@@ -1332,59 +1348,64 @@ export default function SettingsPage() {
         const isLooks = meta.source === "outfits";
         return (
           <PickerModal
-            title={`${meta.n} · ${meta.title}`}
+            title={`${meta.n} · ${t(meta.title)}`}
             noun={isLooks ? "look" : "product"}
             items={itemsForStep(pickerStep)}
             selectedIds={showcase[pickerStep]}
             max={meta.max}
             onPick={(id) => toggleItem(pickerStep, id)}
             onClose={() => setPickerStep(null)}
-            searchPlaceholder={isLooks ? "Search looks by name…" : "Search by name or brand…"}
-            emptyText={isLooks ? "No generated looks yet." : "No products found."}
+            searchPlaceholder={isLooks ? t("settings.picker.searchLooks") : t("settings.picker.searchProducts")}
+            emptyText={isLooks ? t("settings.picker.noLooks") : t("settings.picker.noProducts")}
           />
         );
       })()}
 
       {stylistPicker === "chat" && (
         <PickerModal
-          title="Chat looks"
+          title={t("settings.stylist.chat")}
           noun="look"
-          items={outfits}
+          items={lookItems}
           selectedIds={stylist.chatOutfits}
           max={MAX_CHAT_LOOKS}
           onPick={toggleChatOutfit}
           onClose={() => setStylistPicker(null)}
-          searchPlaceholder="Search looks by name…"
-          emptyText="No outfits yet."
+          searchPlaceholder={t("settings.picker.searchLooks")}
+          emptyText={t("settings.picker.noOutfits")}
           fit="cover"
         />
       )}
       {stylistPicker === "featured" && (
         <PickerModal
-          title="Featured product"
+          title={t("settings.stylist.featured")}
           noun="product"
           items={products}
           selectedIds={stylist.featuredProduct ? [stylist.featuredProduct] : []}
           max={1}
           onPick={setFeaturedProduct}
           onClose={() => setStylistPicker(null)}
-          searchPlaceholder="Search by name or brand…"
-          emptyText="No products found."
+          searchPlaceholder={t("settings.picker.searchProducts")}
+          emptyText={t("settings.picker.noProducts")}
         />
       )}
       {stylistPicker === "stores" && (
         <PickerModal
-          title="Stores (Where to buy)"
+          title={t("settings.picker.stores")}
           noun="store"
-          items={SUPPORTED_STORES.map((s) => ({ id: s.name, name: s.name, imageUrl: storeFaviconUrl(s.domain), sub: "store" }))}
+          items={SUPPORTED_STORES.map((s) => ({
+            id: s.name,
+            name: s.name,
+            imageUrl: storeFaviconUrl(s.domain),
+            sub: t("settings.picker.store"),
+          }))}
           selectedIds={stylist.extraStores.map((s) => s.name)}
           max={MAX_SHOWCASE_STORES}
           onPick={toggleShowcaseStore}
           onClose={() => setStylistPicker(null)}
-          searchPlaceholder="Search stores…"
-          emptyText="No stores available."
+          searchPlaceholder={t("settings.picker.searchStores")}
+          emptyText={t("settings.picker.noStores")}
           padded
-          noImageText="No logo"
+          noImageText={t("settings.picker.noLogo")}
         />
       )}
     </AdminPage>
