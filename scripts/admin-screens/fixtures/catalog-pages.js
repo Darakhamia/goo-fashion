@@ -205,11 +205,19 @@ const pendingLooks = pendingDef.map((d, i) => ({
 
 /* ── Interaction helpers for extra screenshots ── */
 const waitRows = async (page) => {
-  await page.waitForSelector('tbody tr button[aria-label="Edit"]:not([disabled])', { timeout: 30000 });
+  await page.waitForSelector('tbody tr button[aria-label^="Edit "]:not([disabled])', { state: "attached", timeout: 30000 });
 };
 const openFirstEditor = async (page) => {
   await waitRows(page);
-  await page.locator('tbody tr').first().locator('button[aria-label="Edit"]').click();
+  // The row's Edit icon is labelled with the product's name ("Edit Athleticz …");
+  // on a phone it is hidden and Edit is the first item of the row's "…".
+  const row = page.locator("tbody tr").first();
+  const edit = row.locator('button[aria-label^="Edit "]');
+  if (await edit.isVisible()) await edit.click();
+  else {
+    await row.locator('button[aria-haspopup="menu"]').click();
+    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  }
   await page.getByRole("heading", { name: "Edit Product" }).waitFor();
   await page.waitForTimeout(400);
 };
@@ -306,6 +314,32 @@ module.exports = {
         await waitRows(page);
         const boxes = page.locator('tbody tr input[type="checkbox"]');
         for (const i of [0, 1, 2]) await boxes.nth(i).check();
+      },
+    },
+    // GS4-4: an open filter, the row's "…" and the header's maintenance menu.
+    {
+      name: "products-filter", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        await waitRows(page);
+        await page.locator('button[aria-haspopup="menu"]', { hasText: "Brand" }).click();
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: "products-row-menu", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        await waitRows(page);
+        await page.locator("tbody tr").nth(1).hover();
+        await page.locator("tbody tr").nth(1).locator('button[aria-haspopup="menu"]').click();
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: "products-maintenance", url: "/goo-studio/products", fullPage: false,
+      after: async (page) => {
+        await waitRows(page);
+        await page.getByRole("button", { name: "Catalog maintenance" }).click();
+        await page.waitForTimeout(300);
       },
     },
     {
