@@ -30,7 +30,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { CrawlItemResult } from "@/lib/server/parser/types";
-import { BANNER, btn } from "../../_ui/recipes";
+import { BANNER, btn, PANEL } from "../../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
@@ -56,7 +56,6 @@ interface ExtMessage {
 
 /** Inline label that leads a row of facts (robots.txt, Looking for ours). */
 const labelCls = "text-[12px] font-medium text-[var(--foreground-muted)]";
-const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 const Spinner = () => (
   <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -376,7 +375,7 @@ export default function CollectPage() {
 
       <div className="space-y-5">
         {/* Connection */}
-        <div className={`${cardCls} px-5 py-4 flex items-center gap-3 flex-wrap`}>
+        <div className={`${PANEL} px-5 py-4 flex items-center gap-3 flex-wrap`}>
           <span
             aria-hidden="true"
             className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -407,7 +406,7 @@ export default function CollectPage() {
         </div>
 
         {/* What the run does with each page — set before starting it */}
-        <div className={`${cardCls} px-5 py-4 flex items-center gap-4 flex-wrap`}>
+        <div className={`${PANEL} px-5 py-4 flex items-center gap-4 flex-wrap`}>
           <div
             role="group"
             aria-label={t("collect.modes")}
@@ -440,7 +439,7 @@ export default function CollectPage() {
         </div>
 
         {!connected && (
-          <div className={`${cardCls} px-5 py-4 space-y-2`}>
+          <div className={`${PANEL} px-5 py-4 space-y-2`}>
             <h2 className="text-[13px] font-medium text-[var(--foreground)]">{t("collect.install.title")}</h2>
             <ol className="text-[12px] text-[var(--foreground-muted)] space-y-1 list-decimal pl-4">
               <li>{fill(t("collect.install.step1"), { page: strong(LITERAL.extensionsPage) })}</li>
@@ -463,7 +462,7 @@ export default function CollectPage() {
         )}
 
         {robots && (
-          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+          <div className={`${PANEL} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
             <span className={labelCls}>{LITERAL.robots}</span>
             <span className="text-[var(--foreground-muted)]">
               {robots.parsed ? t("collect.robots.read") : t("collect.robots.none")}
@@ -485,7 +484,7 @@ export default function CollectPage() {
         )}
 
         {linkSearch && (
-          <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
+          <div className={`${PANEL} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
             <span className={labelCls}>{t("collect.links.label")}</span>
             <span className="text-[var(--foreground-muted)] tabular-nums">
               {t("collect.links.matched", { count: linkSearch.matched, cards: linkSearch.cards })}
@@ -510,7 +509,7 @@ export default function CollectPage() {
 
         {/* Progress + outcomes */}
         {(running || results.length > 0) && (
-          <div className={`${cardCls} overflow-hidden`}>
+          <div className={`${PANEL} overflow-hidden`}>
             <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
               <div className="flex items-center gap-4 flex-wrap">
                 <p className="text-[13px] font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">

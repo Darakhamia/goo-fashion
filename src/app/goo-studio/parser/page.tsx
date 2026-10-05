@@ -22,7 +22,7 @@ import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { Badge, type BadgeTone } from "@/components/admin/Badge";
 import { FormPanel, FormSection } from "@/components/admin/FormSection";
 import { SaveBar } from "@/components/admin/SaveBar";
-import { BANNER, btn, BTN_ICON, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
+import { BANNER, btn, BTN_ICON, FIELD_LABEL, INPUT, PANEL, SELECT } from "../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
 import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
@@ -424,7 +424,7 @@ function CollectTab({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
+      <div className={`${PANEL} p-5 space-y-4`}>
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <label className="block text-[13px] font-medium text-[var(--foreground)] mb-1.5">{t("parser.crawl.urlLabel")}</label>
@@ -521,7 +521,7 @@ function CollectTab({
 
       {/* Progress */}
       {(running || results.length > 0) && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className={`${PANEL} overflow-hidden`}>
           <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
             <div className="flex items-center gap-4 flex-wrap">
               <p className="text-[13px] font-medium text-[var(--foreground)]">
@@ -894,7 +894,7 @@ function PastePagePanel({
   const ready = !!pasted && (!!pasted.url || !!urlHint);
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+    <div className={PANEL}>
       <button
         onClick={onToggle}
         aria-expanded={open}
@@ -1020,7 +1020,7 @@ function SingleProductEditor({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+    <div className={`${PANEL} overflow-hidden`}>
       <div className="px-5 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
         <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{t("parser.edit.title")}</p>
         {product.valid ? (
@@ -1200,7 +1200,7 @@ function ProductGrid({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+    <div className={`${PANEL} overflow-hidden`}>
       <div className="px-5 py-3 border-b border-[var(--border)] flex items-center gap-4 flex-wrap">
         <p className="text-[13px] font-medium text-[var(--foreground)]">
           {t("parser.grid.found", { count: products.length })} · {t("bulk.selected", { count: selected.size })}
@@ -1319,7 +1319,7 @@ function LinksPanel({
   const t = useT();
   const cap = Math.min(count, 24);
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 flex items-center gap-4 flex-wrap">
+    <div className={`${PANEL} px-5 py-4 flex items-center gap-4 flex-wrap`}>
       <div className="flex-1 min-w-[200px]">
         <p className="text-[12px] text-[var(--foreground)]">{t("parser.links.found", { count })}</p>
         <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
@@ -1460,7 +1460,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
           {items.map((c) => {
             const name = c.name || c.domain;
             return (
-              <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <div key={c.id} className={PANEL}>
                 {/* Row header */}
                 {/* Below md the domain takes a line of its own. */}
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3">

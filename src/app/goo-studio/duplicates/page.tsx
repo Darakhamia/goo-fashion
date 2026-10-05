@@ -28,7 +28,7 @@ import { AttentionList, type AttentionRow } from "@/components/admin/AttentionLi
 import { Badge } from "@/components/admin/Badge";
 import { Tabs, tabPanel } from "@/components/admin/Tabs";
 import { EmptyState, Thumb } from "@/components/admin/DataTable";
-import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, PANEL } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key, type T, type Vars } from "@/app/goo-studio/_i18n";
 
 type Reason = "gtin" | "mpn" | "name";
@@ -101,7 +101,6 @@ const REASON_KEY: Record<Reason, Key> = {
   name: "dupes.reason.name",
 };
 
-const PANEL = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 const H2 = "text-[15px] leading-[22px] font-medium text-[var(--foreground)]";
 const MUTED = "text-[12px] leading-[18px] text-[var(--foreground-muted)]";
 const FOOTER = "flex flex-wrap items-center justify-end gap-2 px-4 md:px-5 py-3 border-t border-[var(--border)]";

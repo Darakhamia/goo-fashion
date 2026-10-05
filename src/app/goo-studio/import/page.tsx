@@ -21,7 +21,7 @@ import { Badge } from "@/components/admin/Badge";
 import { DataTable, Thumb, type Column } from "@/components/admin/DataTable";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { BANNER, btn } from "../_ui/recipes";
+import { BANNER, btn, PANEL } from "../_ui/recipes";
 import { useFormat, useT, type Key } from "../_i18n";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
@@ -107,7 +107,6 @@ const Spinner = () => (
 );
 
 // Banners (DESIGN_SYSTEM.md §9, "Statuses, banners and toasts").
-const PANEL = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 export default function CSVImportPage() {
   const t = useT();

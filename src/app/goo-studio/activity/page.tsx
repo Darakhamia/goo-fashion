@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminAction } from "@/lib/server/audit";
-import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, PANEL } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Format, type Key, type T } from "@/app/goo-studio/_i18n";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { EmptyState } from "@/components/admin/DataTable";
@@ -338,7 +338,7 @@ export default function AdminActivityPage() {
         <PageHeader title={t("nav.activity")} subtitle={access === "checking" ? t("common.loading") : undefined} />
         {/* Access guard — non-super admins get a locked view. */}
         {access === "denied" && (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+          <div className={PANEL}>
             <EmptyState
               text={t("activity.denied")}
               icon={
@@ -441,11 +441,11 @@ export default function AdminActivityPage() {
 
       {entries.length === 0 ? (
         loading ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-12 text-center text-[13px] text-[var(--foreground-muted)]">
+          <div className={`${PANEL} px-4 py-12 text-center text-[13px] text-[var(--foreground-muted)]`}>
             {t("common.loading")}
           </div>
         ) : error === null ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+          <div className={PANEL}>
             <EmptyState
               text={filtered ? t("activity.empty.filtered") : t("activity.empty.none")}
               action={

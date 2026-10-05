@@ -27,7 +27,7 @@ import { Badge } from "@/components/admin/Badge";
 import { FilterChips } from "@/components/admin/FilterBar";
 import { RowMenu } from "@/components/admin/Menu";
 import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
-import { BANNER, btn, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, FIELD_LABEL, INPUT, PANEL, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useSetting, writeSetting } from "@/app/goo-studio/_ui/settings";
 import { useFormat, useT, type Key, type T, type Vars } from "@/app/goo-studio/_i18n";
 
@@ -144,7 +144,6 @@ const DECIDED: Record<"apply" | "dismiss" | "undo", Key> = {
   undo: "aicheck.decided.undo",
 };
 
-const PANEL = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 const H2 = "text-[15px] leading-[22px] font-medium text-[var(--foreground)]";
 const MUTED = "text-[12px] leading-[18px] text-[var(--foreground-muted)]";
 

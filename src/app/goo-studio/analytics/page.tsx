@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
 import { FilterChips } from "@/components/admin/FilterBar";
 import type { AnalyticsResponse, RangeOption } from "./types";
-import { BANNER } from "../_ui/recipes";
+import { BANNER, PANEL } from "../_ui/recipes";
 import { LOCALE, useFormat, useLang, useT, type Key, type Lang, type T } from "../_i18n";
 
 /*
@@ -113,7 +113,7 @@ function ChartPanel({
   children: ReactNode;
 }) {
   return (
-    <section className={`min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 md:p-5 ${className}`}>
+    <section className={`min-w-0 ${PANEL} p-4 md:p-5 ${className}`}>
       <div className="flex flex-wrap items-end gap-x-5 gap-y-2 mb-4">
         <div className="flex-[1_1_220px] min-w-0">
           <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</h2>
@@ -386,7 +386,7 @@ export default function AdminAnalyticsPage() {
         {/* Revenue lives on the Subscriptions page; one set of money figures. */}
         <Link
           href="/goo-studio/subscriptions"
-          className="flex items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 hover:border-[var(--border-strong)] transition-colors"
+          className={`flex items-center justify-between gap-4 ${PANEL} px-5 py-4 hover:border-[var(--border-strong)] transition-colors`}
         >
           <div>
             <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-1">{t("analytics.revenue.title")}</p>
@@ -398,7 +398,7 @@ export default function AdminAnalyticsPage() {
         {/* Activity heatmap */}
         {data && (
           <Section title={t("analytics.heatmap")}>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className={`${PANEL} p-4`}>
               <HourHeatmap heatmap={data.heatmap} />
             </div>
           </Section>
@@ -416,7 +416,7 @@ export default function AdminAnalyticsPage() {
                       : v.p75 != null ? ms(Math.round(v.p75)) : "—";
                   const rating = vitalRating(v.metric, v.p75);
                   return (
-                    <div key={v.metric} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <div key={v.metric} className={`${PANEL} p-4`}>
                       <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-2">{v.metric}</p>
                       <p className={`font-display text-2xl font-light ${RATING_COLOR[rating]}`}>{display}</p>
                       <p className={`text-[12px] mt-1 ${RATING_COLOR[rating]}`}>{t(RATING_LABEL[rating])}</p>
@@ -430,13 +430,13 @@ export default function AdminAnalyticsPage() {
         {/* Devices + Browsers + Countries */}
         <Section title={t("analytics.audience")}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 min-h-40">
+            <div className={`${PANEL} p-6 min-h-40`}>
               {loading ? <Skeleton h={36} /> : <DevicePie items={data?.devices ?? []} />}
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 min-h-40">
+            <div className={`${PANEL} p-6 min-h-40`}>
               {loading ? <Skeleton h={36} /> : <BrowserPie items={data?.browsers ?? []} />}
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 min-h-40">
+            <div className={`${PANEL} p-6 min-h-40`}>
               <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{t("analytics.countries")}</p>
               {loading ? <Skeleton h={24} /> : <CountriesChart items={data?.countries ?? []} />}
             </div>
@@ -445,7 +445,7 @@ export default function AdminAnalyticsPage() {
 
         {/* Funnel */}
         <Section title={t("analytics.funnel")}>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
+          <div className={`${PANEL} p-6`}>
             {loading ? <Skeleton h={24} /> : data && <FunnelChart funnel={data.funnel} />}
           </div>
         </Section>
@@ -487,7 +487,7 @@ export default function AdminAnalyticsPage() {
 
         {/* Events */}
         <Section title={t("analytics.events")}>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className={`${PANEL} p-4`}>
             {loading && <Skeleton h={24} />}
             {!loading && data?.events.length === 0 && (
               <div className="py-6 text-xs text-[var(--foreground-subtle)] text-center">{t("analytics.events.empty")}</div>
@@ -518,7 +518,7 @@ function RowList({
   return (
     <div>
       <h3 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</h3>
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+      <div className={`${PANEL} overflow-hidden`}>
         {loading && <div className="h-24 animate-pulse bg-[var(--background)]" />}
         {!loading && items.length === 0 && (
           <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">{empty ?? t("analytics.noDataYet")}</div>
@@ -552,7 +552,7 @@ function TopTable({
   return (
     <div>
       <h3 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</h3>
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+      <div className={`${PANEL} overflow-hidden`}>
         {loading && <div className="h-24 animate-pulse bg-[var(--background)]" />}
         {!loading && rows.length === 0 && (
           <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">{t("analytics.noDataYet")}</div>

@@ -24,7 +24,7 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useToast } from "@/components/admin/Toast";
-import { BANNER, btn } from "@/app/goo-studio/_ui/recipes";
+import { BANNER, btn, PANEL } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 interface Suspect {
@@ -375,7 +375,7 @@ export default function AdminAuditPage() {
       )}
 
       {report && total === 0 && !(showDismissed && report.dismissed > 0) && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
+        <div className={`${PANEL} px-6 py-16 text-center`}>
           <p className="text-sm text-[var(--foreground)]">{t("audit.empty.title")}</p>
           <p className="text-xs text-[var(--foreground-muted)] mt-2">{t("audit.empty.text")}</p>
         </div>
@@ -399,7 +399,7 @@ export default function AdminAuditPage() {
             }
             const open = all.filter((s) => !s.dismissed && !done.has(appliedKey(s)) && !hidden.has(claimKey(s))).length;
             return (
-              <section key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <section key={key} className={PANEL}>
                 <SectionHeader sectionKey={key} title={title} note={note}>
                   <span className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
                     {f.number(openTotal)}
