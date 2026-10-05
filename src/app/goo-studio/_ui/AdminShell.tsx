@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSetting, writeSetting } from "./settings";
 import { ConfirmProvider } from "@/components/admin/ConfirmDialog";
 import { ToastProvider } from "@/components/admin/Toast";
+import { PinnedActionSlot } from "@/components/admin/PageHeader";
 import { LANGS, setLang, useLang, useT, type Key } from "../_i18n";
 
 /** The wordmark: a name, not interface text, so it stays out of the dictionary. */
@@ -381,6 +382,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const accountRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  // Where a page's main action is pinned on a phone (PageHeader, GS4-11).
+  const [pinnedSlot, setPinnedSlot] = useState<HTMLDivElement | null>(null);
   const dragHref = useRef<string | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -870,7 +873,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <ToastProvider>
               {/* Every page stops at 1600px; a page picks its own layout inside
                   with AdminPage (GS4-5), never a root max-w-*. */}
-              <div className="max-w-[1600px]">{children}</div>
+              <PinnedActionSlot.Provider value={pinnedSlot}>
+                <div className="max-w-[1600px]">{children}</div>
+              </PinnedActionSlot.Provider>
+              {/* After the content and sticky to the bottom: the pinned button
+                  covers rows only while there are more below it to scroll to. */}
+              <div ref={setPinnedSlot} className="md:hidden sticky bottom-0 z-20 -mx-4" />
             </ToastProvider>
           </ConfirmProvider>
         </main>

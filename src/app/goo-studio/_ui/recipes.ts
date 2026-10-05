@@ -10,12 +10,14 @@
  */
 
 const BTN_BASE =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium whitespace-nowrap transition-[color,background-color,border-color,opacity] disabled:opacity-40 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-[color,background-color,border-color,opacity] disabled:opacity-40 disabled:cursor-not-allowed";
 
 const SIZE = {
-  md: "h-8 px-3",
+  md: "h-8 px-3 text-[13px]",
   /** Inside a table row. */
-  sm: "h-7 px-2.5",
+  sm: "h-7 px-2.5 text-[13px]",
+  /** The main action pinned to the bottom of a phone's screen (PageHeader). */
+  lg: "h-12 px-4 text-[15px]",
 } as const;
 
 const KIND = {

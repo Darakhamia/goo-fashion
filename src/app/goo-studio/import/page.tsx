@@ -17,6 +17,7 @@ import {
 } from "@/lib/csv-import";
 import type { Category } from "@/lib/types";
 import { btn } from "../_ui/recipes";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 
 const CATEGORIES: Category[] = [
   "outerwear","blazers","tops","shirts","knitwear","bottoms","jeans",
@@ -308,6 +309,56 @@ export default function CSVImportPage() {
   const soldOutCount = previewRows.filter(canRefreshOnly).length;
   const unusableCount = previewRows.length - validCount - soldOutCount;
   const displayRows = showAll ? previewRows : previewRows.slice(0, PREVIEW_LIMIT);
+  // A phone gets the preview as cards: the table is 900px wide (GS4-11).
+  const phone = useMediaQuery("(width < 48rem)");
+
+  // ── Preview row parts, shared by the table and the phone's cards ───────────
+  const previewImage = (row: CSVMappedRow) => (
+    <div className="relative w-10 h-14 flex-shrink-0">
+      {row.imageUrl
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={row.imageUrl} alt="" loading="lazy" className="w-10 h-14 object-cover rounded-lg bg-[var(--background)]" />
+        : <div className="w-10 h-14 rounded-lg bg-[var(--background)]" />}
+      {row.images && row.images.length > 1 && (
+        <span className="absolute -bottom-1 -right-1 text-[11px] leading-none bg-[var(--foreground)] text-[var(--surface)] px-1 py-0.5 rounded-full tabular-nums">
+          +{row.images.length - 1}
+        </span>
+      )}
+    </div>
+  );
+  const categorySelect = (row: CSVMappedRow, i: number) => (
+    <select
+      value={row.category}
+      disabled={importing}
+      aria-label="Category"
+      onChange={(e) => {
+        const category = e.target.value as Category;
+        setPreviewRows((prev) => {
+          const next = [...prev];
+          next[i] = { ...next[i], category };
+          return next;
+        });
+      }}
+      className="text-[12px] bg-transparent rounded-lg border border-transparent focus:border-[var(--foreground)] outline-none px-1 py-0.5 text-[var(--foreground-muted)] cursor-pointer"
+    >
+      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+    </select>
+  );
+  const statusChip = (row: CSVMappedRow) =>
+    row._valid ? (
+      <span className={`${chipCls} ${statusOk}`}>OK</span>
+    ) : isSelectable(row) ? (
+      <span
+        className={`${chipCls} ${statusWarn} cursor-help`}
+        title="Sold out: updates the stock of a product already in the catalogue, never creates one"
+      >
+        Sold out
+      </span>
+    ) : (
+      <span className={`${chipCls} ${statusNeutral} cursor-help first-letter:uppercase`} title={row._issues.join("; ")}>
+        {row._issues[0] ?? "Skip"}
+      </span>
+    );
 
   // ── Selected merchants stats ────────────────────────────────────────────────
   const selMerchantStats = merchants.filter((m) => selectedMerchants.has(m.name));
@@ -683,127 +734,128 @@ export default function CSVImportPage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-x-auto">
-            <table className="w-full text-xs min-w-[900px]">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--background)]">
-                  <th className="w-10 px-3 py-3"><span className="sr-only">Select</span></th>
-                  <th className={thCls}>Image</th>
-                  <th className={thCls}>Name</th>
-                  <th className={thCls}>Brand</th>
-                  <th className={thCls}>Category</th>
-                  <th className={thCls}>Gender</th>
-                  <th className={thCls}>Price</th>
-                  <th className={thCls}>Sizes</th>
-                  <th className={thCls}>Link</th>
-                  <th className={thCls}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayRows.map((row, i) => {
-                  const isSelected = selected.has(i);
-                  const selectable = isSelectable(row);
-                  const soldOut = !row._valid && selectable;
-                  return (
-                    <tr
-                      key={i}
-                      onClick={() => selectable && !importing && toggleRow(i)}
-                      className={`border-b border-[var(--border)] last:border-0 transition-colors ${
-                        selectable ? "cursor-pointer" : "opacity-40 cursor-default"
-                      } ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
-                    >
-                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          disabled={!selectable || importing}
-                          onChange={() => toggleRow(i)}
-                          aria-label={`Select ${row.name || "row"}`}
-                          className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer disabled:cursor-default"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="relative w-10 h-14">
-                          {row.imageUrl
-                            // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={row.imageUrl} alt="" loading="lazy" className="w-10 h-14 object-cover rounded-lg bg-[var(--background)]" />
-                            : <div className="w-10 h-14 rounded-lg bg-[var(--background)]" />}
-                          {row.images && row.images.length > 1 && (
-                            <span className="absolute -bottom-1 -right-1 text-[11px] leading-none bg-[var(--foreground)] text-[var(--surface)] px-1 py-0.5 rounded-full tabular-nums">
-                              +{row.images.length - 1}
+          {phone ? (
+            <ul aria-label="Preview" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+              {displayRows.map((row, i) => {
+                const isSelected = selected.has(i);
+                const selectable = isSelectable(row);
+                const price = row.price > 0 ? `${row.price} ${row.currency}` : "—";
+                return (
+                  <li
+                    key={i}
+                    // A tap on the card ticks it, as a click on a table row does;
+                    // the box and the category keep their own.
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("input, select, label")) return;
+                      if (selectable && !importing) toggleRow(i);
+                    }}
+                    className={`flex items-start gap-3 px-3 py-3 ${i > 0 ? "border-t border-[var(--border)]" : ""} ${
+                      selectable ? "cursor-pointer" : "opacity-40"
+                    } ${isSelected ? "bg-[var(--fg-overlay-05)]" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={!selectable || importing}
+                      onChange={() => toggleRow(i)}
+                      aria-label={`Select ${row.name || "row"}`}
+                      className="mt-5 w-4 h-4 flex-shrink-0 accent-[var(--foreground)] disabled:cursor-default"
+                    />
+                    {previewImage(row)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] leading-[19px] font-medium text-[var(--foreground)] line-clamp-2 break-words">{row.name || "—"}</p>
+                      <p className="text-[12px] leading-[17px] text-[var(--foreground-muted)] truncate">
+                        {[row.brand || "—", price, ...(row.gender ? [row.gender] : [])].join(" · ")}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        {statusChip(row)}
+                        {categorySelect(row, i)}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-x-auto">
+              <table className="w-full text-xs min-w-[900px]">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)]">
+                    <th className="w-10 px-3 py-3"><span className="sr-only">Select</span></th>
+                    <th className={thCls}>Image</th>
+                    <th className={thCls}>Name</th>
+                    <th className={thCls}>Brand</th>
+                    <th className={thCls}>Category</th>
+                    <th className={thCls}>Gender</th>
+                    <th className={thCls}>Price</th>
+                    <th className={thCls}>Sizes</th>
+                    <th className={thCls}>Link</th>
+                    <th className={thCls}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayRows.map((row, i) => {
+                    const isSelected = selected.has(i);
+                    const selectable = isSelectable(row);
+                    return (
+                      <tr
+                        key={i}
+                        onClick={() => selectable && !importing && toggleRow(i)}
+                        className={`border-b border-[var(--border)] last:border-0 transition-colors ${
+                          selectable ? "cursor-pointer" : "opacity-40 cursor-default"
+                        } ${isSelected ? "bg-[var(--fg-overlay-05)]" : "hover:bg-[var(--fg-overlay-05)]"}`}
+                      >
+                        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={!selectable || importing}
+                            onChange={() => toggleRow(i)}
+                            aria-label={`Select ${row.name || "row"}`}
+                            className="w-3.5 h-3.5 accent-[var(--foreground)] cursor-pointer disabled:cursor-default"
+                          />
+                        </td>
+                        <td className="px-4 py-2">{previewImage(row)}</td>
+                        <td className="px-4 py-2 max-w-[220px]">
+                          <p className="text-[var(--foreground)] leading-snug line-clamp-2">{row.name || "—"}</p>
+                        </td>
+                        <td className="px-4 py-2 text-[var(--foreground-muted)] whitespace-nowrap">{row.brand || "—"}</td>
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          {categorySelect(row, i)}
+                        </td>
+                        <td className="px-4 py-2 text-[var(--foreground-muted)] whitespace-nowrap text-[12px]">
+                          {row.gender ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap font-mono text-[12px]">
+                          {row.price > 0 ? (
+                            <span className="text-[var(--foreground)]">
+                              {row.price} <span className="text-[var(--foreground-muted)]">{row.currency}</span>
+                            </span>
+                          ) : "—"}
+                          {row.priceOriginal > row.price && (
+                            <span className="ml-1 text-[var(--foreground-muted)] line-through">
+                              {row.priceOriginal}
                             </span>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 max-w-[220px]">
-                        <p className="text-[var(--foreground)] leading-snug line-clamp-2">{row.name || "—"}</p>
-                      </td>
-                      <td className="px-4 py-2 text-[var(--foreground-muted)] whitespace-nowrap">{row.brand || "—"}</td>
-                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={row.category}
-                          disabled={importing}
-                          aria-label="Category"
-                          onChange={(e) => {
-                            const category = e.target.value as Category;
-                            setPreviewRows((prev) => {
-                              const next = [...prev];
-                              next[i] = { ...next[i], category };
-                              return next;
-                            });
-                          }}
-                          className="text-[12px] bg-transparent rounded-lg border border-transparent focus:border-[var(--foreground)] outline-none px-1 py-0.5 text-[var(--foreground-muted)] cursor-pointer"
-                        >
-                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-4 py-2 text-[var(--foreground-muted)] whitespace-nowrap text-[12px]">
-                        {row.gender ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap font-mono text-[12px]">
-                        {row.price > 0 ? (
-                          <span className="text-[var(--foreground)]">
-                            {row.price} <span className="text-[var(--foreground-muted)]">{row.currency}</span>
-                          </span>
-                        ) : "—"}
-                        {row.priceOriginal > row.price && (
-                          <span className="ml-1 text-[var(--foreground-muted)] line-through">
-                            {row.priceOriginal}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-[var(--foreground-muted)] text-[12px] max-w-[100px]">
-                        {row.sizes?.length
-                          ? <span className="truncate block">{row.sizes.slice(0, 4).join(", ")}{row.sizes.length > 4 ? "…" : ""}</span>
-                          : <span className="text-[var(--foreground-subtle)]">—</span>}
-                      </td>
-                      <td className="px-4 py-2">
-                        {/^https?:\/\//.test(row.referralUrl)
-                          ? <span className="text-[12px] text-[var(--ok)]">✓ link</span>
-                          : <span className="text-[12px] text-[var(--err)]">no link</span>}
-                      </td>
-                      <td className="px-4 py-2">
-                        {row._valid ? (
-                          <span className={`${chipCls} ${statusOk}`}>OK</span>
-                        ) : soldOut ? (
-                          <span
-                            className={`${chipCls} ${statusWarn} cursor-help`}
-                            title="Sold out: updates the stock of a product already in the catalogue, never creates one"
-                          >
-                            Sold out
-                          </span>
-                        ) : (
-                          <span className={`${chipCls} ${statusNeutral} cursor-help first-letter:uppercase`} title={row._issues.join("; ")}>
-                            {row._issues[0] ?? "Skip"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-4 py-2 text-[var(--foreground-muted)] text-[12px] max-w-[100px]">
+                          {row.sizes?.length
+                            ? <span className="truncate block">{row.sizes.slice(0, 4).join(", ")}{row.sizes.length > 4 ? "…" : ""}</span>
+                            : <span className="text-[var(--foreground-subtle)]">—</span>}
+                        </td>
+                        <td className="px-4 py-2">
+                          {/^https?:\/\//.test(row.referralUrl)
+                            ? <span className="text-[12px] text-[var(--ok)]">✓ link</span>
+                            : <span className="text-[12px] text-[var(--err)]">no link</span>}
+                        </td>
+                        <td className="px-4 py-2">{statusChip(row)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {previewRows.length > PREVIEW_LIMIT && !showAll && (
             <div className="text-center py-2">

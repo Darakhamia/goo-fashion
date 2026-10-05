@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useFormat } from "@/app/goo-studio/_i18n";
+import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
 
 // ── Types (mirror /api/admin/subscriptions) ───────────────────────────────────
 interface ByPlan { plan: string; count: number; mrrUah: number }
@@ -93,14 +94,11 @@ const EVENT_LABEL: Record<string, string> = {
   cron_misconfigured: "Cron broken",
 };
 
-/** Table header cell — admin recipe (DESIGN_SYSTEM.md §9). */
-const TH = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
-
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
   const cls = map[value] ?? NEUTRAL;
   const raw = value.replace(/_/g, " ");
   return (
-    <span className={`text-[11px] font-medium px-2 py-0.5 border rounded-full leading-none ${cls}`}>
+    <span className={`flex-shrink-0 text-[11px] font-medium px-2 py-0.5 border rounded-full leading-none ${cls}`}>
       {EVENT_LABEL[value] ?? raw.charAt(0).toUpperCase() + raw.slice(1)}
     </span>
   );
@@ -156,6 +154,81 @@ function ByPlanCard({ rows }: { rows: ByPlan[] }) {
 export default function SubscriptionsPage() {
   const f = useFormat();
   const uah = (n: number) => f.money(n, "UAH");
+
+  /** When the paid period ends, and what happens then; nothing before the first payment. */
+  const renewal = (s: SubItem) =>
+    !s.currentPeriodEnd
+      ? []
+      : [s.overdue ? `overdue — ${f.date(s.currentPeriodEnd)}` : s.autoRenew ? `renews ${f.date(s.currentPeriodEnd)}` : `ends ${f.date(s.currentPeriodEnd)}`];
+
+  const subColumns: Column<SubItem>[] = [
+    { key: "customer", header: "Customer", grow: true, cell: (s) => <span className="block truncate">{s.email}</span> },
+    { key: "plan", header: "Plan", cell: (s) => <span className="capitalize">{s.plan}</span> },
+    { key: "status", header: "Status", cell: (s) => <Badge value={s.status} map={STATUS_STYLE} /> },
+    { key: "price", header: "Price", align: "right", cell: (s) => `${uah(s.amountUah)}/mo` },
+    {
+      key: "card",
+      header: "Card",
+      hide: "lg",
+      // The token, not the masked number, is what renewal needs — report on
+      // that so a display-only gap doesn't read as broken.
+      cell: (s) =>
+        s.hasCardToken ? (
+          <span className="text-[var(--foreground-muted)]">{s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "saved"}</span>
+        ) : (
+          <span className="text-[var(--err)]">no card</span>
+        ),
+    },
+    {
+      key: "renewal",
+      header: "Next renewal",
+      cell: (s) => (
+        <span className="text-[var(--foreground-muted)]">
+          {s.overdue ? (
+            <span className="text-[var(--err)]" title="Paid period ended and the renewal has not gone through">
+              overdue — {f.date(s.currentPeriodEnd)}
+            </span>
+          ) : s.autoRenew ? (
+            f.date(s.currentPeriodEnd)
+          ) : (
+            <span className="text-[var(--foreground-subtle)]">ends {f.date(s.currentPeriodEnd)}</span>
+          )}
+          {s.failedCharges > 0 && (
+            <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
+              {s.failedCharges} failed
+            </span>
+          )}
+        </span>
+      ),
+    },
+  ];
+
+  const txColumns: Column<TxItem>[] = [
+    { key: "when", header: "When", cell: (t) => <span className="text-[var(--foreground-muted)]">{f.dateTime(t.createdAt)}</span> },
+    { key: "customer", header: "Customer", cell: (t) => t.email },
+    {
+      key: "event",
+      header: "Event",
+      cell: (t) => (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge value={t.eventType} map={EVENT_STYLE} />
+          {t.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">Renewal</span>}
+        </span>
+      ),
+    },
+    { key: "plan", header: "Plan", hide: "lg", cell: (t) => <span className="capitalize text-[var(--foreground-muted)]">{t.plan ?? "—"}</span> },
+    { key: "amount", header: "Amount", align: "right", cell: (t) => (t.amountUah != null ? uah(t.amountUah) : "—") },
+    {
+      key: "detail",
+      header: "Detail",
+      grow: true,
+      cell: (t) => (
+        <span className="block truncate text-[var(--foreground-subtle)]" title={t.detail ?? ""}>
+          {t.detail ?? t.status ?? "—"}
+        </span>
+      ),
+    },
+  ];
   const approxUsd = (n: number, rate: number) => `≈ ${f.money(Math.round(n / rate))}`;
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,57 +374,20 @@ export default function SubscriptionsPage() {
         <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Subscribers ({subscriptions.length})
         </p>
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                  <th className={TH}>Customer</th>
-                  <th className={TH}>Plan</th>
-                  <th className={TH}>Status</th>
-                  <th className={TH}>Price</th>
-                  <th className={TH}>Card</th>
-                  <th className={TH}>Next renewal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subscriptions.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--foreground-subtle)]">No subscribers yet.</td></tr>
-                ) : subscriptions.map((s) => (
-                  <tr key={s.userId} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)]">
-                    <td className="px-4 py-3 text-[var(--foreground)]">{s.email}</td>
-                    <td className="px-4 py-3 capitalize text-[var(--foreground)]">{s.plan}</td>
-                    <td className="px-4 py-3"><Badge value={s.status} map={STATUS_STYLE} /></td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{uah(s.amountUah)}/mo</td>
-                    <td className="px-4 py-3 text-[var(--foreground-muted)]">
-                      {/* The token, not the masked number, is what renewal needs —
-                          report on that so a display-only gap doesn't read as broken. */}
-                      {s.hasCardToken
-                        ? s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "saved"
-                        : <span className="text-[var(--err)]">no card</span>}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--foreground-muted)]">
-                      {s.overdue ? (
-                        <span className="text-[var(--err)]" title="Paid period ended and the renewal has not gone through">
-                          overdue — {f.date(s.currentPeriodEnd)}
-                        </span>
-                      ) : s.autoRenew ? (
-                        f.date(s.currentPeriodEnd)
-                      ) : (
-                        <span className="text-[var(--foreground-subtle)]">ends {f.date(s.currentPeriodEnd)}</span>
-                      )}
-                      {s.failedCharges > 0 && (
-                        <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
-                          {s.failedCharges} failed
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataTable
+          label="Subscribers"
+          rows={subscriptions}
+          rowKey={(s) => s.userId}
+          columns={subColumns}
+          // On a phone: who, the state when it is not the usual one, and what is
+          // charged next.
+          card={(s) => ({
+            title: s.email,
+            badge: s.status === "active" ? undefined : <Badge value={s.status} map={STATUS_STYLE} />,
+            meta: [`${s.plan.charAt(0).toUpperCase()}${s.plan.slice(1)}`, `${uah(s.amountUah)}/mo`, ...renewal(s)].join(" · "),
+          })}
+          empty={<EmptyState text="No subscribers yet." />}
+        />
       </section>
 
       {/* Transactions log */}
@@ -359,41 +395,18 @@ export default function SubscriptionsPage() {
         <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Transaction log ({transactions.length})
         </p>
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                  <th className={TH}>When</th>
-                  <th className={TH}>Customer</th>
-                  <th className={TH}>Event</th>
-                  <th className={TH}>Plan</th>
-                  <th className={TH}>Amount</th>
-                  <th className={TH}>Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--foreground-subtle)]">No transactions logged yet.</td></tr>
-                ) : transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)]">
-                    <td className="px-4 py-3 text-[var(--foreground-muted)] whitespace-nowrap">{f.dateTime(t.createdAt)}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{t.email}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Badge value={t.eventType} map={EVENT_STYLE} />
-                        {t.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">Renewal</span>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 capitalize text-[var(--foreground-muted)]">{t.plan ?? "—"}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{t.amountUah != null ? uah(t.amountUah) : "—"}</td>
-                    <td className="px-4 py-3 text-[var(--foreground-subtle)] max-w-[240px] truncate" title={t.detail ?? ""}>{t.detail ?? t.status ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataTable
+          label="Transaction log"
+          rows={transactions}
+          rowKey={(t) => String(t.id)}
+          columns={txColumns}
+          card={(t) => ({
+            title: t.email,
+            badge: <Badge value={t.eventType} map={EVENT_STYLE} />,
+            meta: [f.dateTime(t.createdAt), ...(t.amountUah != null ? [uah(t.amountUah)] : []), ...(t.detail ? [t.detail] : [])].join(" · "),
+          })}
+          empty={<EmptyState text="No transactions logged yet." />}
+        />
       </section>
     </div>
   );

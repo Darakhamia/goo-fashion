@@ -6,7 +6,11 @@ import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
 import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
 import { SidePanel } from "@/components/admin/SidePanel";
-import { btn } from "../_ui/recipes";
+import { DataTable, EmptyState, type Column } from "@/components/admin/DataTable";
+import { Badge } from "@/components/admin/Badge";
+import { RowMenu, type MenuItem } from "@/components/admin/Menu";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
+import { btn, BTN_ICON_SM } from "../_ui/recipes";
 
 type StoreGender = "" | "men" | "women" | "unisex";
 
@@ -65,9 +69,6 @@ const FIELD =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)]";
 const INPUT = `${FIELD} bg-transparent`;
 const SELECT = `${FIELD} bg-[var(--surface)]`;
-const TH =
-  "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
-
 function Favicon({ domain }: { domain: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -82,13 +83,22 @@ function Favicon({ domain }: { domain: string }) {
   );
 }
 
-function OfficialBadge() {
+/** The shop's icon in a 40px tile: the picture of a row's card on a phone. */
+function FaviconTile({ domain }: { domain: string }) {
   return (
-    <span className="inline-block px-2 py-0.5 rounded-lg text-[11px] font-medium bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]">
-      Official
+    <span className="w-10 h-10 flex-shrink-0 rounded-lg inline-flex items-center justify-center bg-[var(--background)]">
+      <Favicon domain={domain} />
     </span>
   );
 }
+
+const OFFICIAL = <Badge tone="ok">Official</Badge>;
+
+const PENCIL = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M11 2.5L13.5 5 6 12.5l-3 .5.5-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+  </svg>
+);
 
 export default function RetailersPage() {
   const [report, setReport] = useState<Report | null>(null);
@@ -270,28 +280,123 @@ export default function RetailersPage() {
   };
 
   const unruled = (report?.discovered ?? []).filter((d) => !d.ruledBy);
+  // A failed scan says nothing about a rule's products — Apply scans for itself.
+  const scanFailed = !!report?.discoverError;
+
+  const ruleItems = (rule: RetailerRule): MenuItem[] => {
+    const count = ruleProductCount(rule.domain);
+    return [
+      { label: "Edit", onSelect: () => startEdit(rule) },
+      {
+        label: busyDomain === rule.domain ? "Working…" : "Apply to existing",
+        hint: count
+          ? `Rewrite this name on the ${count} products already linking to ${rule.domain} or its subdomains`
+          : scanFailed
+            ? `Rewrite this name on the products already linking to ${rule.domain} or its subdomains`
+            : "No products in the catalogue link to this domain",
+        onSelect: () => void applyToExisting(rule),
+        disabled: busyDomain === rule.domain || (!count && !scanFailed),
+      },
+      { kind: "separator" },
+      { label: "Delete", onSelect: () => void remove(rule.domain), tone: "danger", disabled: busyDomain === rule.domain },
+    ];
+  };
+
+  const ruleColumns: Column<RetailerRule>[] = [
+    {
+      key: "domain",
+      header: "Domain",
+      cell: (rule) => (
+        <span className="flex items-center gap-2">
+          <Favicon domain={rule.domain} />
+          {rule.domain}
+        </span>
+      ),
+    },
+    {
+      key: "name",
+      header: "Name",
+      grow: true,
+      cell: (rule) => (
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="truncate">{rule.name}</span>
+            {rule.isOfficial && OFFICIAL}
+          </div>
+          {rule.defaultGender && (
+            <div className="text-[12px] text-[var(--foreground-muted)] truncate">Unmarked pieces: {GENDER_SHORT[rule.defaultGender]}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "count",
+      header: "In catalogue",
+      align: "right",
+      cell: (rule) => {
+        const count = ruleProductCount(rule.domain);
+        return <span className="text-[var(--foreground-muted)]">{scanFailed ? "?" : count || "—"}</span>;
+      },
+    },
+    {
+      key: "note",
+      header: "Note",
+      hide: "lg",
+      cell: (rule) => (
+        <span className="block max-w-[280px] truncate text-[var(--foreground-muted)]" title={rule.note || undefined}>
+          {rule.note || "—"}
+        </span>
+      ),
+    },
+  ];
+
+  const domainColumns: Column<DiscoveredDomain>[] = [
+    {
+      key: "domain",
+      header: "Domain",
+      cell: (d) => (
+        <span className="flex items-center gap-2">
+          <Favicon domain={d.domain} />
+          {d.domain}
+        </span>
+      ),
+    },
+    { key: "products", header: "Products", align: "right", cell: (d) => <span className="text-[var(--foreground-muted)]">{d.productCount}</span> },
+    {
+      key: "names",
+      header: "Currently named",
+      grow: true,
+      cell: (d) => (
+        <span className="block truncate text-[var(--foreground-muted)]" title={d.currentNames.join(", ") || undefined}>
+          {d.currentNames.join(", ") || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "official",
+      header: "Marked official",
+      align: "right",
+      hide: "lg",
+      cell: (d) => <span className="text-[var(--foreground-muted)]">{d.officialCount || "—"}</span>,
+    },
+  ];
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Retailers</h1>
-          <HelpButton help={help} label="How retailer rules work" />
-        </div>
-        <button
-          onClick={() => startNew()}
-          disabled={!!report?.tableMissing}
-          title={report?.tableMissing ? report.setupHint ?? "" : undefined}
-          className={btn("primary")}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          Add rule
-        </button>
-      </div>
+      <PageHeader
+        title="Retailers"
+        titleExtra={<HelpButton help={help} label="How retailer rules work" />}
+        primary={{
+          key: "add",
+          label: "Add rule",
+          icon: PLUS,
+          onClick: () => startNew(),
+          disabled: !!report?.tableMissing,
+          title: report?.tableMissing ? (report.setupHint ?? "") : undefined,
+        }}
+      />
       {help.open && (
-        <div className="mt-2">
+        <div className="-mt-4">
           <HelpPanel help={help}>
             <p>
               What a shop is called, and whether it is the brand&apos;s own store, kept once per domain.
@@ -440,87 +545,42 @@ export default function RetailersPage() {
       <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mt-8 mb-3">
         Rules {report && !(report.rulesError && !report.rules.length) ? `(${report.rules.length})` : ""}
       </p>
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
-        <table className="w-full">
-          <thead style={{ background: "var(--background)" }}>
-            <tr>
-              <th className={TH}>Domain</th>
-              <th className={TH}>Name</th>
-              <th className={TH}>In catalogue</th>
-              <th className={TH}>Note</th>
-              <th className={TH} />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && !report ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</td></tr>
-            ) : !report || (report.rulesError && !report.rules.length) ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                Could not load the rules.
-              </td></tr>
-            ) : !report.rules.length ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                No rules yet. Add one, or pick a domain from the list below.
-              </td></tr>
-            ) : (
-              report.rules.map((rule) => {
-                const count = ruleProductCount(rule.domain);
-                // A failed scan says nothing about this rule — Apply scans for itself.
-                const scanFailed = !!report.discoverError;
-                return (
-                  <tr key={rule.domain} className="border-b border-[var(--border)] last:border-b-0">
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-                        <Favicon domain={rule.domain} />
-                        {rule.domain}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-                        {rule.name}
-                        {rule.isOfficial && <OfficialBadge />}
-                      </span>
-                      {rule.defaultGender && (
-                        <span className="block text-[11px] text-[var(--foreground-muted)] mt-0.5">
-                          Unmarked pieces: {GENDER_SHORT[rule.defaultGender]}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-[var(--foreground-muted)]">
-                      {scanFailed ? "?" : count ? `${count}` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[13px] text-[var(--foreground-muted)]">{rule.note || "—"}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => startEdit(rule)} className={btn("secondary", "sm")}>Edit</button>
-                        <button
-                          onClick={() => applyToExisting(rule)}
-                          disabled={busyDomain === rule.domain || (!count && !scanFailed)}
-                          title={count
-                            ? `Rewrite this name on the ${count} products already linking to ${rule.domain} or its subdomains`
-                            : scanFailed
-                              ? `Rewrite this name on the products already linking to ${rule.domain} or its subdomains`
-                              : "No products in the catalogue link to this domain"}
-                          className={btn("secondary", "sm")}
-                        >
-                          {busyDomain === rule.domain ? "Working…" : "Apply to existing"}
-                        </button>
-                        <button
-                          onClick={() => remove(rule.domain)}
-                          disabled={busyDomain === rule.domain}
-                          className={btn("danger", "sm")}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        label="Rules"
+        rows={report?.rules ?? []}
+        rowKey={(r) => r.domain}
+        columns={ruleColumns}
+        loading={loading && !report}
+        onRowClick={startEdit}
+        card={(rule) => ({
+          thumb: <FaviconTile domain={rule.domain} />,
+          title: rule.domain,
+          badge: rule.isOfficial ? OFFICIAL : undefined,
+          meta: `${rule.name} · ${report?.discoverError ? "?" : ruleProductCount(rule.domain)} in catalogue`,
+        })}
+        actions={(rule) => (
+          <>
+            <button
+              onClick={() => startEdit(rule)}
+              className={`${BTN_ICON_SM} max-md:hidden`}
+              aria-label={`Edit ${rule.domain}`}
+              title={`Edit ${rule.domain}`}
+            >
+              {PENCIL}
+            </button>
+            <RowMenu size="sm" label={`More actions for ${rule.domain}`} items={ruleItems(rule)} />
+          </>
+        )}
+        empty={
+          !report || report.rulesError ? (
+            <p role="alert" className="px-4 py-12 text-center text-[13px] text-[var(--err)]">
+              Could not load the rules.
+            </p>
+          ) : (
+            <EmptyState text="No rules yet. Add one, or pick a domain from the list below." />
+          )
+        }
+      />
 
       {/* ── Domains the catalogue actually uses ── */}
       <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mt-8 mb-1">
@@ -540,58 +600,32 @@ export default function RetailersPage() {
         <p className="text-[11px] text-[var(--warn)] mb-3">{report.discoverError}</p>
       )}
 
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
-        <table className="w-full">
-          <thead style={{ background: "var(--background)" }}>
-            <tr>
-              <th className={TH}>Domain</th>
-              <th className={TH}>Products</th>
-              <th className={TH}>Currently named</th>
-              <th className={TH}>Marked official</th>
-              <th className={TH} />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && !report ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</td></tr>
-            ) : !report || report.discoverError ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                Could not load the catalogue&apos;s domains.
-              </td></tr>
-            ) : !unruled.length ? (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">
-                {report?.discovered.length ? "Every domain in the catalogue has a rule." : "No product links found."}
-              </td></tr>
-            ) : (
-              unruled.map((d) => (
-                <tr key={d.domain} className="border-b border-[var(--border)] last:border-b-0">
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-                      <Favicon domain={d.domain} />
-                      {d.domain}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[var(--foreground-muted)]">{d.productCount}</td>
-                  <td className="px-4 py-3 text-[13px] text-[var(--foreground-muted)]">
-                    {d.currentNames.join(", ") || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[var(--foreground-muted)]">
-                    {d.officialCount || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => startNew(d.domain, d.currentNames[0] ?? "")}
-                      className={btn("secondary", "sm")}
-                    >
-                      Add rule
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        label="Domains without a rule"
+        rows={report && !report.discoverError ? unruled : []}
+        rowKey={(d) => d.domain}
+        columns={domainColumns}
+        loading={loading && !report}
+        card={(d) => ({
+          thumb: <FaviconTile domain={d.domain} />,
+          title: d.domain,
+          meta: [`${d.productCount} products`, ...(d.currentNames.length ? [d.currentNames.join(", ")] : [])].join(" · "),
+        })}
+        actions={(d) => (
+          <button onClick={() => startNew(d.domain, d.currentNames[0] ?? "")} className={btn("secondary", "sm")}>
+            Add rule
+          </button>
+        )}
+        empty={
+          !report || report.discoverError ? (
+            <p role="alert" className="px-4 py-12 text-center text-[13px] text-[var(--err)]">
+              Could not load the catalogue&apos;s domains.
+            </p>
+          ) : (
+            <EmptyState text={report.discovered.length ? "Every domain in the catalogue has a rule." : "No product links found."} />
+          )
+        }
+      />
     </div>
   );
 }

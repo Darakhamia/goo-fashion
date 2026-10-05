@@ -11,8 +11,9 @@ import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
 import type { Key } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import type { Column } from "@/components/admin/DataTable";
-import { ActiveFilters, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { ActiveFilters, FilterBar, FilterMenu, SearchField } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
@@ -790,51 +791,40 @@ export default function AdminOutfitsPage() {
 
   return (
     <div>
-      {/* Header: what the open tab holds, and its actions. */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.outfits")}</h1>
-          <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
-            {adminTab === "pending"
-              ? loadingPending
-                ? t("common.loading")
-                : t("outfits.summary.pending", { count: pendingLooks.length })
-              : loading
-                ? t("common.loading")
-                : outfitsError
-                  ? "—"
-                  : [
-                      t("outfits.summary.count", { count: outfits.length }),
-                      t("outfits.summary.home", { count: featuredCount }),
-                      t("outfits.summary.ai", { count: aiCount }),
-                    ].join(" · ")}
-          </p>
-        </div>
-        {adminTab === "outfits" && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {cards.busy && (
-              <span role="status" className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
-                {cards.received ? t("cards.packingMb", { mb: (cards.received / (1024 * 1024)).toFixed(1) }) : t("cards.packing")}
-              </span>
-            )}
-            {/* The looks in the table — the ticked ones, or all of them — drawn as
-                pictures with the cards of their pieces, as one ZIP. */}
-            <button
-              onClick={() => void cards.download(exportIds)}
-              disabled={cards.busy || outfits.length === 0}
-              className={btn("secondary")}
-            >
-              {t("cards.download")}
-            </button>
-            <button onClick={openAddModal} className={btn("primary")}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              {t("outfits.add")}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Header: what the open tab holds, and its actions. The looks in the
+          table — the ticked ones, or all of them — download as pictures with
+          the cards of their pieces, as one ZIP. */}
+      <PageHeader
+        title={t("nav.outfits")}
+        subtitle={
+          adminTab === "pending"
+            ? loadingPending
+              ? t("common.loading")
+              : t("outfits.summary.pending", { count: pendingLooks.length })
+            : loading
+              ? t("common.loading")
+              : outfitsError
+                ? "—"
+                : [
+                    t("outfits.summary.count", { count: outfits.length }),
+                    t("outfits.summary.home", { count: featuredCount }),
+                    t("outfits.summary.ai", { count: aiCount }),
+                  ].join(" · ")
+        }
+        status={
+          adminTab === "outfits" && cards.busy
+            ? cards.received
+              ? t("cards.packingMb", { mb: (cards.received / (1024 * 1024)).toFixed(1) })
+              : t("cards.packing")
+            : undefined
+        }
+        actions={
+          adminTab === "outfits"
+            ? [{ key: "cards", label: t("cards.download"), onClick: () => void cards.download(exportIds), disabled: cards.busy || outfits.length === 0 }]
+            : []
+        }
+        primary={adminTab === "outfits" ? { key: "add", label: t("outfits.add"), icon: PLUS, onClick: openAddModal } : undefined}
+      />
 
       {/* The count shows on Pending even at zero: an empty queue is news too. */}
       <div className="mb-6">
@@ -1095,13 +1085,19 @@ export default function AdminOutfitsPage() {
           {/* Search and filters (FilterBar), the active ones as chips with the
               count, and the sort. */}
           <div className="mb-4 flex flex-col gap-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <SearchField
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder={t("outfits.search.placeholder")}
-                label={t("outfits.search.label")}
-              />
+            <FilterBar
+              search={
+                <SearchField
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder={t("outfits.search.placeholder")}
+                  label={t("outfits.search.label")}
+                />
+              }
+              active={activeFilters.length}
+              onClearAll={clearFilters}
+              shown={filteredOutfits.length}
+            >
               <FilterMenu
                 label={t("outfits.f.occasion")}
                 value={occasionFilter}
@@ -1126,7 +1122,7 @@ export default function AdminOutfitsPage() {
                 onChange={(v) => setHomeFilter(v as "on" | "off" | "")}
                 allLabel={t("filter.any")}
               />
-            </div>
+            </FilterBar>
             <ActiveFilters
               filters={activeFilters}
               onClearAll={clearFilters}
@@ -1159,6 +1155,15 @@ export default function AdminOutfitsPage() {
               someSelected,
               rowLabel: (o) => o.name,
             }}
+            card={(o) => ({
+              thumb: <Thumb src={o.imageUrl} fit="cover" size="lg" />,
+              title: o.name,
+              meta: [
+                t(OCCASION_KEY[o.occasion] ?? "outfits.occasion.casual"),
+                f.moneyRange(o.totalPriceMin, o.totalPriceMax),
+                ...(o.isHomepageFeatured ? [t("outfits.home.on")] : []),
+              ].join(" · "),
+            })}
             actions={(o) => (
               <>
                 <button

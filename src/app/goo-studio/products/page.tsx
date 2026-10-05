@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import Link from "next/link";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
 import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, styleLabel } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
@@ -9,7 +8,9 @@ import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { DataTable, EmptyState, Thumb, type Column } from "@/components/admin/DataTable";
-import { ActiveFilters, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
+import { Badge } from "@/components/admin/Badge";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
+import { ActiveFilters, FilterBar, FilterMenu, SearchField, type ActiveFilter } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu, type MenuItem } from "@/components/admin/Menu";
 import { CURRENCIES, useCurrency } from "@/lib/context/currency-context";
@@ -2125,14 +2126,13 @@ export default function AdminProductsPage() {
               <span className="font-medium truncate" title={p.name}>
                 {p.name}
               </span>
-              {/* Badges only from md: on a phone the name needs the room. */}
               {p.isNew && (
-                <span className="hidden md:inline-block flex-shrink-0 h-[18px] px-1.5 rounded-full text-[11px] leading-[18px] font-medium bg-[var(--fg-overlay-08)]">
+                <span className="inline-block flex-shrink-0 h-[18px] px-1.5 rounded-full text-[11px] leading-[18px] font-medium bg-[var(--fg-overlay-08)]">
                   {t("products.badge.new")}
                 </span>
               )}
               {p.variantGroupId && (
-                <span className="hidden md:inline-flex flex-shrink-0 items-center gap-1 h-[18px] px-1.5 rounded-full text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)]">
+                <span className="inline-flex flex-shrink-0 items-center gap-1 h-[18px] px-1.5 rounded-full text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)]">
                   {t(p.isGroupPrimary ? "products.badge.primary" : "products.badge.variant")}
                   {p.colorHex && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.colorHex }} aria-hidden="true" />}
                 </span>
@@ -2190,49 +2190,41 @@ export default function AdminProductsPage() {
       {/* Header: what there is, the one main action, and the rest under "…".
           The catalogue maintenance runs (GS1-12) live in that menu; each one
           still does its dry run and asks with the number it will touch. */}
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">{t("nav.products")}</h1>
-          {!loadError && !loading && (
-            <p className="text-[13px] text-[var(--foreground-muted)] mt-1">
-              {t("products.count", { count: products.length })} · {t("products.recent", { count: addedRecently })}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {maintenanceBusy && (
-            <span role="status" className="text-[12px] text-[var(--foreground-muted)] tabular-nums">
-              {maintenanceBusy}
-            </span>
-          )}
-          <Link href="/goo-studio/import" className={btn("secondary")}>
-            {t("products.import")}
-          </Link>
-          <button
-            onClick={openAddModal}
-            disabled={!canWrite}
-            title={canWrite ? undefined : t("products.needsDb")}
-            className={btn("primary")}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            {t("products.add")}
-          </button>
-          <RowMenu label={t("products.maintenance")} outline items={maintenanceItems} />
-        </div>
-      </div>
+      <PageHeader
+        title={t("nav.products")}
+        subtitle={
+          !loadError && !loading ? `${t("products.count", { count: products.length })} · ${t("products.recent", { count: addedRecently })}` : undefined
+        }
+        status={maintenanceBusy}
+        actions={[{ key: "import", label: t("products.import"), href: "/goo-studio/import" }]}
+        primary={{
+          key: "add",
+          label: t("products.add"),
+          icon: PLUS,
+          onClick: openAddModal,
+          disabled: !canWrite,
+          title: canWrite ? undefined : t("products.needsDb"),
+        }}
+        menu={maintenanceItems}
+        menuLabel={t("products.maintenance")}
+      />
 
       {/* Search and filters (FilterBar): one button per field, the active ones
           again as chips under the row, and the count. */}
       <div className="mb-4 flex flex-col gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchField
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder={t("products.search.placeholder")}
-            label={t("products.search.label")}
-          />
+        <FilterBar
+          search={
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder={t("products.search.placeholder")}
+              label={t("products.search.label")}
+            />
+          }
+          active={activeFilters.length}
+          onClearAll={clearFilters}
+          shown={filtered.length}
+        >
           <FilterMenu
             label={t("products.f.category")}
             value={categoryValue}
@@ -2287,7 +2279,7 @@ export default function AdminProductsPage() {
             allLabel={t("products.f.missingNone")}
             tone="warn"
           />
-        </div>
+        </FilterBar>
         {!loading && !loadError && (
           <ActiveFilters
             filters={activeFilters}
@@ -2484,6 +2476,12 @@ export default function AdminProductsPage() {
           rowLabel: (p) => p.name,
         }}
         columns={productColumns}
+        card={(p) => ({
+          thumb: <Thumb src={p.imageUrl} bg={p.bgColor} size="lg" />,
+          title: p.name,
+          badge: p.isNew ? <Badge>{t("products.badge.new")}</Badge> : undefined,
+          meta: `${p.brand} · ${f.moneyRange(p.priceMin, p.priceMax)}`,
+        })}
         actions={(product) => (
           <>
             <button
