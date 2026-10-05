@@ -1,28 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "@/components/ui/Image";
+import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import Image from "@/components/ui/Image";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { AttentionList, type AttentionRow } from "@/components/admin/AttentionList";
+import { KpiStrip, type Kpi } from "@/components/admin/KpiStrip";
+import { Badge } from "@/components/admin/Badge";
 import { btn } from "./_ui/recipes";
-import { useFormat } from "./_i18n";
+import { useFormat, useT, type Key, type T } from "./_i18n";
 
-type HealthItem = { ok: boolean; detail: string };
+/*
+ * The dashboard (docs/ADMIN_DESIGN.md §6, mockup "Dashboard", GS4-12):
+ * what needs a person first, then the key numbers, the services, and what
+ * happened lately — new customers and the catalogue's changes.
+ * Everything comes from GET /api/admin/stats.
+ */
 
-// Metrics are null when their query failed: the card shows "—" and no growth
-// pill instead of a zero that looks real.
+type ServiceKey = "supabase" | "clerk" | "openai" | "replicate" | "resend" | "monobank" | "cron";
+type Service = { key: ServiceKey; state: "ok" | "err" | "off"; code: string; ms?: number; at?: string; message?: string };
+
+type AttentionKey = "cron" | "migrations" | "overdue" | "noCard" | "failedCharges" | "embeddings" | "aiCheck" | "pendingLooks";
+type AttentionItem = { key: AttentionKey; tone: "err" | "warn"; count?: number; at?: string; href: string; fix?: string[] };
+
+type Count = number | null;
+
 interface StatsPayload {
   generatedAt: string;
-  summary: {
-    products: { total: number | null; thisMonth: number | null; growthPct: number | null };
-    outfits:  { total: number | null; growthPct: number | null; aiGenerated: number | null };
-    users:    { total: number | null; growthPct: number | null; activeWeek: number | null };
-    brands:   { total: number | null };
+  paymentsOff: boolean;
+  kpis: {
+    products: { total: Count; thisMonth: Count; pct: number | null };
+    outfits: { total: Count; ai: Count; pending: Count };
+    customers: { total: Count; team: Count; partial: boolean; thisMonth: Count; pct: number | null };
+    paying: { total: Count; mrrUah: Count };
+    brands: { total: Count; products: Count };
   };
+  attention: AttentionItem[];
+  services: Service[];
   recent: {
-    products: { id: string; name: string; brand?: string; image_url?: string; created_at: string }[];
-    outfits:  { id: string; name: string; image_url?: string; created_at: string }[];
-    signups:  {
+    customers: {
       id: string;
       firstName: string | null;
       lastName: string | null;
@@ -30,360 +47,320 @@ interface StatsPayload {
       imageUrl: string;
       createdAt: number;
       plan: string;
-    }[];
-  };
-  health: {
-    supabase:  HealthItem;
-    clerk:     HealthItem;
-    openai:    HealthItem;
-    replicate: HealthItem;
-    monobank:  HealthItem;
-    resend:    HealthItem;
+    }[] | null;
+    /** The super admin only; everyone else gets the newest outfits. */
+    activity: { id: number; action: string; name: string | null; count: number | null; who: string | null; at: string }[] | null;
+    outfits: { id: string; name: string; image_url: string | null; created_at: string }[] | null;
   };
 }
 
-const HEALTH_LABELS: Record<keyof StatsPayload["health"], string> = {
-  supabase:  "Supabase",
-  clerk:     "Clerk",
-  openai:    "OpenAI",
-  replicate: "Replicate",
-  monobank:  "Monobank",
-  resend:    "Resend",
+type Format = ReturnType<typeof useFormat>;
+
+/** The way to the section that fixes it, by item. */
+const ATTENTION_ACTION: Record<AttentionKey, Key> = {
+  cron: "attn.open.subscriptions",
+  migrations: "attn.open.settings",
+  overdue: "attn.open.subscriptions",
+  noCard: "attn.open.subscriptions",
+  failedCharges: "attn.open.subscriptions",
+  embeddings: "attn.open.settings",
+  aiCheck: "attn.review",
+  pendingLooks: "attn.review",
 };
 
-function fmtDelta(pct: number | null): { label: string; positive: boolean } | null {
-  if (pct === null) return null;
-  if (pct === 0) return { label: "Flat vs last month", positive: true };
-  const sign = pct > 0 ? "+" : "";
-  return { label: `${sign}${pct}% vs last month`, positive: pct >= 0 };
+function attentionRow(item: AttentionItem, t: T, f: Format): AttentionRow {
+  const vars = { count: item.count ?? 0 };
+  const title = item.key === "cron" ? t("attn.cron.title") : t(`attn.${item.key}.title` as Key, vars);
+  const text =
+    item.key === "cron"
+      ? item.at
+        ? t("attn.cron.stale", { when: f.when(item.at) })
+        : t("attn.cron.never")
+      : t(`attn.${item.key}.text` as Key, vars);
+  return { key: item.key, tone: item.tone, title, text, action: { label: t(ATTENTION_ACTION[item.key]), href: item.href }, fix: item.fix };
+}
+
+/** The state of a service in a few words: "182 ms", "Key rejected", "Ran 3h ago". */
+function serviceState(s: Service, t: T, f: Format): string {
+  switch (s.code) {
+    case "answered":
+      return s.ms !== undefined ? t("svc.answered", { ms: s.ms }) : t("svc.answered", { ms: "—" });
+    case "send_only":
+      return t("svc.sendOnly");
+    case "no_key":
+      return t("svc.noKey");
+    case "rejected":
+      return t("svc.rejected");
+    case "timeout":
+      return t("svc.timeout");
+    case "ran":
+      return t("svc.ran", { when: f.when(s.at) });
+    case "stale":
+      return t("svc.stale", { when: f.when(s.at) });
+    case "never_ran":
+      return t("svc.neverRan");
+    case "no_secret":
+      return t("svc.noSecret");
+    case "off":
+      return t("svc.off");
+    default:
+      return t("svc.error");
+  }
+}
+
+function ServiceChip({ s, t, f }: { s: Service; t: T; f: Format }) {
+  const dot = s.state === "ok" ? "bg-[var(--ok)]" : s.state === "err" ? "bg-[var(--err)]" : "bg-[var(--foreground-subtle)]";
+  return (
+    <li
+      title={s.state === "off" ? t("svc.offHint") : s.message}
+      className={`inline-flex items-center gap-2 h-8 px-3 rounded-full border bg-[var(--surface)] text-[13px] ${
+        s.state === "err" ? "border-[var(--err-line)]" : "border-[var(--border)]"
+      }`}
+    >
+      <span aria-hidden="true" className={`w-2 h-2 rounded-full ${dot}`} />
+      <span className="font-medium text-[var(--foreground)]">{t(`svc.name.${s.key}` as Key)}</span>
+      <span className={s.state === "err" ? "text-[var(--err)]" : "text-[var(--foreground-muted)]"}>{serviceState(s, t, f)}</span>
+    </li>
+  );
 }
 
 function initials(first: string | null, last: string | null, email: string | null): string {
-  const f = first?.[0] ?? "";
-  const l = last?.[0]  ?? "";
-  if (f || l) return `${f}${l}`.toUpperCase();
-  if (email)  return email.slice(0, 2).toUpperCase();
-  return "—";
+  const a = first?.[0] ?? "";
+  const b = last?.[0] ?? "";
+  if (a || b) return `${a}${b}`.toUpperCase();
+  return email ? email.slice(0, 2).toUpperCase() : "—";
 }
 
-const staggerContainer = {
-  animate: { transition: { staggerChildren: 0.06 } },
-};
-const fadeUp = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
+/** A panel with a title, a link to the section, and rows. */
+function Panel({ title, link, children }: { title: string; link: { label: string; href: string }; children: ReactNode }) {
+  return (
+    <section className="flex-[1_1_380px] min-w-0 rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
+      <div className="flex items-center gap-3 px-4 md:px-5 py-3.5 border-b border-[var(--border)]">
+        <h2 className="flex-1 text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</h2>
+        <Link
+          href={link.href}
+          className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+        >
+          {link.label}
+        </Link>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const ROW = "flex items-center gap-3 min-h-[52px] px-4 md:px-5 py-2";
 
 export default function AdminDashboardPage() {
+  const t = useT();
   const f = useFormat();
-  const fmtCount = f.number;
-  const fmtRelative = f.when;
   const [data, setData] = useState<StatsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  // Refresh asks the services again; an ordinary visit takes their last minute's answer.
+  const load = useCallback(async (fresh = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/stats", { cache: "no-store" });
+      const res = await fetch(`/api/admin/stats${fresh ? "?fresh=1" : ""}`, { cache: "no-store" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
       }
-      setData(await res.json());
+      const body = (await res.json()) as StatsPayload;
+      // A body without the dashboard's shape (a proxy's page, an old server) is an error, not a blank page.
+      if (!body?.kpis || !body.recent) throw new Error(t("dash.loadFailed"));
+      setData(body);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      setError(e instanceof Error ? e.message : t("dash.loadFailed"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const statCards = data ? (() => {
-    const { products, outfits, users, brands } = data.summary;
-    return [
-      {
-        label: "Products",
-        value: fmtCount(products.total),
-        delta: fmtDelta(products.growthPct),
-        sub: products.thisMonth === null ? "—" : `+${products.thisMonth} this month`,
-      },
-      {
-        label: "Outfits",
-        value: fmtCount(outfits.total),
-        delta: fmtDelta(outfits.growthPct),
-        sub: `${fmtCount(outfits.aiGenerated)} AI-generated`,
-      },
-      {
-        label: "Users",
-        value: fmtCount(users.total),
-        delta: fmtDelta(users.growthPct),
-        sub: `${fmtCount(users.activeWeek)} active this week`,
-      },
-      {
-        label: "Brands",
-        value: fmtCount(brands.total),
-        delta: null,
-        sub: products.total !== null && brands.total
-          ? `${Math.round(products.total / brands.total)} avg products/brand`
-          : "—",
-      },
-    ];
-  })() : [];
+  const header = (
+    <PageHeader
+      title={t("nav.dashboard")}
+      subtitle={data ? t("dash.updated", { when: f.when(data.generatedAt) }) : loading ? t("common.loading") : t("dash.loadFailed")}
+      actions={[
+        { key: "refresh", label: loading ? t("dash.refreshing") : t("dash.refresh"), onClick: () => void load(true), disabled: loading },
+      ]}
+    />
+  );
 
-  // First load failed: show the error with a retry instead of skeletons that
-  // look like an endless load.
+  // The first load failed: the error and a retry, not skeletons that look like an endless load.
   if (error && !data) {
     return (
       <div>
-        <div className="mb-8">
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">Live data could not be loaded.</p>
-        </div>
-        <div className="border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
+        {header}
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
           <span className="min-w-0 break-words">{error}</span>
-          <button
-            onClick={load}
-            className={`shrink-0 ${btn("secondary")}`}
-          >
-            Retry
+          <button onClick={() => void load(true)} className={`shrink-0 ${btn("secondary")}`}>
+            {t("common.retry")}
           </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
-        <div>
-          <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
-            {data ? `Last updated ${fmtRelative(data.generatedAt)}` : "Loading live data…"}
-          </p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className={btn("secondary")}
-        >
-          {loading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
+  const k = data?.kpis;
+  const num = (n: Count | undefined) => (n === null || n === undefined ? "—" : f.number(n));
+  const notes = (...parts: (string | null | false | undefined)[]) => parts.filter(Boolean).join(" · ") || undefined;
+  const growth = (g: { thisMonth: Count; pct: number | null } | undefined) =>
+    notes(
+      g?.thisMonth !== null && g?.thisMonth !== undefined && t("dash.note.thisMonth", { count: g.thisMonth }),
+      g?.pct !== null && g?.pct !== undefined && t("dash.note.pct", { pct: `${g.pct > 0 ? "+" : ""}${g.pct}%` })
+    );
+  const kpis: Kpi[] = [
+    { key: "products", label: t("dash.kpi.products"), value: num(k?.products.total), note: growth(k?.products), noteTitle: t("dash.note.pctHint") },
+    {
+      key: "outfits",
+      label: t("dash.kpi.outfits"),
+      value: num(k?.outfits.total),
+      note: notes(
+        !!k?.outfits.ai && t("dash.note.ai", { count: k.outfits.ai }),
+        !!k?.outfits.pending && t("dash.note.pending", { count: k.outfits.pending })
+      ),
+    },
+    {
+      key: "customers",
+      label: t("dash.kpi.customers"),
+      value: num(k?.customers.total),
+      note: notes(growth(k?.customers), k?.customers.total !== null && k?.customers.total !== undefined && t("dash.note.teamExcluded")),
+      noteTitle: t("dash.note.pctHint"),
+    },
+    {
+      key: "paying",
+      label: t("dash.kpi.paying"),
+      value: num(k?.paying.total),
+      note: notes(
+        k?.paying.mrrUah !== null && k?.paying.mrrUah !== undefined && t("dash.note.mrr", { amount: f.money(k.paying.mrrUah, "UAH") }),
+        data?.paymentsOff && t("dash.note.paymentsOff")
+      ),
+    },
+    {
+      key: "brands",
+      label: t("dash.kpi.brands"),
+      value: num(k?.brands.total),
+      note:
+        k?.brands.total && k.brands.products !== null
+          ? t("dash.note.perBrand", { count: Math.round(k.brands.products / k.brands.total) })
+          : undefined,
+    },
+  ];
 
-      {/* Error */}
+  const rows = (data?.attention ?? []).map((a) => attentionRow(a, t, f));
+  const activity = data?.recent.activity ?? null;
+
+  return (
+    <div className="flex flex-col gap-6 md:gap-8">
+      {header}
+
       {error && (
-        <div className="mb-6 border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3 rounded-xl">
+        <div role="alert" className="-mt-2 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[13px] text-[var(--err)]">
           {error}
         </div>
       )}
 
-      {/* Stat cards */}
-      <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-      >
-        {(loading && !data ? Array.from({ length: 4 }) : statCards).map((card, i) => {
-          const c = card as typeof statCards[number] | undefined;
-          return (
-            <motion.div
-              key={c?.label ?? i}
-              variants={fadeUp}
-              className="rounded-xl border border-[var(--border)] p-4 md:p-6 min-w-0 relative overflow-hidden"
-              style={{ background: "var(--surface)" }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
-                  {c?.label ?? "—"}
-                </span>
-              </div>
-              <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-3 break-words">
-                {c?.value ?? "—"}
-              </p>
-              {/* Delta pill */}
-              <div className="mb-1">
-                {!c ? (
-                  <span className="inline-block h-5 w-24 rounded-full bg-[var(--border)] animate-pulse" />
-                ) : c.delta ? (
-                  <span
-                    title="Month to date vs the same days of last month"
-                    className={`inline-flex items-center text-[11px] font-medium px-2 py-1 rounded-full ${
-                      c.delta.positive
-                        ? "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]"
-                        : "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]"
-                    }`}
-                  >
-                    {c.delta.label}
-                  </span>
-                ) : null}
-              </div>
-              <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-1">
-                {c?.sub ?? " "}
-              </p>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+      <AttentionList rows={rows} loading={!data} />
 
-      {/* Service health */}
-      <div className="mb-10">
-        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">System health</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {data && (Object.keys(HEALTH_LABELS) as (keyof StatsPayload["health"])[]).map((k) => {
-            const h = data.health[k];
-            return (
-              <div
-                key={k}
-                className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center gap-3 hover:border-[var(--border-strong)] transition-colors"
-                style={{ background: "var(--surface)" }}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    h.ok ? "bg-[var(--ok)]" : "bg-[var(--err)] animate-pulse"
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
-                  <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
-                </div>
-              </div>
-            );
-          })}
-          {!data && Object.keys(HEALTH_LABELS).map((k) => (
-            <div key={k} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--surface)" }} />
-          ))}
-        </div>
-      </div>
+      <KpiStrip label={t("dash.kpis")} items={kpis} />
 
-      {/* Recent signups + recent outfits */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-        {/* Signups */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent signups</h2>
-            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-              View all →
-            </Link>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
-            {data?.recent.signups.length === 0 && (
-              <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No signups yet</div>
-            )}
-            <div className="divide-y divide-[var(--border)]">
-              {data?.recent.signups.map((u) => (
-                <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--background)] transition-colors">
-                  {u.imageUrl ? (
-                    <Image src={u.imageUrl} alt="" width={28} height={28} className="rounded-full object-cover w-7 h-7 flex-shrink-0" />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] flex-shrink-0">
-                      {initials(u.firstName, u.lastName, u.email)}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{t("svc.title")}</h2>
+        {data ? (
+          <ul className="flex flex-wrap gap-2">
+            {data.services.map((s) => (
+              <ServiceChip key={s.key} s={s} t={t} f={f} />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-[var(--foreground-muted)]">{t("common.loading")}</p>
+        )}
+      </section>
+
+      <div className="flex flex-wrap gap-6">
+        <Panel title={t("dash.newCustomers")} link={{ label: t("dash.viewAll"), href: "/goo-studio/users" }}>
+          {!data ? (
+            <p className={`${ROW} text-[13px] text-[var(--foreground-muted)]`}>{t("common.loading")}</p>
+          ) : !data.recent.customers?.length ? (
+            <p className={`${ROW} text-[13px] text-[var(--foreground-muted)]`}>{data.recent.customers ? t("dash.noCustomers") : "—"}</p>
+          ) : (
+            <ul>
+              {data.recent.customers.map((u, i) => {
+                const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+                const paid = u.plan !== "free";
+                return (
+                  <li key={u.id} className={`${ROW} ${i ? "border-t border-[var(--border)]" : ""}`}>
+                    {u.imageUrl ? (
+                      <Image src={u.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <span aria-hidden="true" className="w-8 h-8 flex-shrink-0 rounded-full inline-flex items-center justify-center text-[11px] font-semibold text-[var(--foreground)] bg-[var(--fg-overlay-08)]">
+                        {initials(u.firstName, u.lastName, u.email)}
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] leading-[18px] font-medium text-[var(--foreground)] truncate">{name || u.email || u.id}</div>
+                      {name && <div className="text-[12px] leading-4 text-[var(--foreground-muted)] truncate">{u.email}</div>}
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-[var(--foreground)] truncate">
-                      {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id}
-                    </p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
-                  </div>
-                  <span className={`text-[11px] font-medium capitalize px-2 py-1 rounded-md ${
-                    u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--surface)]"
-                    : u.plan === "pro" ? "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]"
-                    : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
-                    : "border border-[var(--border)] text-[var(--foreground-muted)]"
-                  }`}>
-                    {u.plan}
-                  </span>
-                  <span className="text-[12px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
-                    {fmtRelative(u.createdAt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                    <Badge tone={paid ? "inverse" : "neutral"}>{t(`plan.${u.plan}` as Key)}</Badge>
+                    <span className="w-16 text-right text-[12px] text-[var(--foreground-muted)] tabular-nums whitespace-nowrap">{f.when(u.createdAt)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
 
-        {/* Recent outfits */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent outfits</h2>
-            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-              View all →
-            </Link>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
-            {data?.recent.outfits.length === 0 && (
-              <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No outfits yet</div>
-            )}
-            <div className="divide-y divide-[var(--border)]">
-              {data?.recent.outfits.map((o) => (
-                <div key={o.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--background)] transition-colors">
-                  <div className="relative w-10 h-12 bg-[var(--background)] overflow-hidden flex-shrink-0 rounded-lg">
-                    {o.image_url ? (
-                      <Image src={o.image_url} alt="" fill className="object-cover" sizes="40px" />
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-[var(--foreground)] truncate">{o.name}</p>
-                    <p className="text-[12px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Recent Products */}
-      <div className="mb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent products</h2>
-          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
-            View all →
-          </Link>
-        </div>
-
-        <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
-                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
-                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
-                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {data?.recent.products.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No products yet</td></tr>
-              )}
-              {data?.recent.products.map((p) => (
-                <tr key={p.id} className="hover:bg-[var(--background)] transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="relative w-8 h-10 overflow-hidden flex-shrink-0 rounded-md">
-                      {p.image_url ? (
-                        <Image src={p.image_url} alt={p.name} fill className="object-cover" sizes="32px" />
-                      ) : null}
+        {activity ? (
+          <Panel title={t("dash.activity")} link={{ label: t("dash.openActivity"), href: "/goo-studio/activity" }}>
+            {activity.length === 0 ? (
+              <p className={`${ROW} text-[13px] text-[var(--foreground-muted)]`}>{t("dash.noActivity")}</p>
+            ) : (
+              <ul>
+                {activity.map((e, i) => (
+                  <li key={e.id} className={`${ROW} ${i ? "border-t border-[var(--border)]" : ""}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] leading-[18px] font-medium text-[var(--foreground)] truncate">
+                        {t(`act.${e.action}` as Key)}
+                        {e.name && <span className="font-normal text-[var(--foreground-muted)]"> · {e.name}</span>}
+                      </div>
+                      <div className="text-[12px] leading-4 text-[var(--foreground-muted)] truncate">
+                        {notes(e.count !== null && f.number(e.count), e.who)}
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-[var(--foreground)]">{p.name}</span>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-sm text-[var(--foreground-muted)]">{p.brand ?? "—"}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-[var(--foreground-muted)]">{fmtRelative(p.created_at)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <span className="w-16 text-right text-[12px] text-[var(--foreground-muted)] tabular-nums whitespace-nowrap">{f.when(e.at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        ) : (
+          <Panel title={t("dash.newOutfits")} link={{ label: t("dash.viewAll"), href: "/goo-studio/outfits" }}>
+            {!data ? (
+              <p className={`${ROW} text-[13px] text-[var(--foreground-muted)]`}>{t("common.loading")}</p>
+            ) : !data.recent.outfits?.length ? (
+              <p className={`${ROW} text-[13px] text-[var(--foreground-muted)]`}>{data.recent.outfits ? t("dash.noOutfits") : "—"}</p>
+            ) : (
+              <ul>
+                {data.recent.outfits.map((o, i) => (
+                  <li key={o.id} className={`${ROW} ${i ? "border-t border-[var(--border)]" : ""}`}>
+                    <span className="relative w-8 h-10 flex-shrink-0 overflow-hidden rounded-md bg-[var(--background)]">
+                      {o.image_url && <Image src={o.image_url} alt="" fill className="object-cover" sizes="32px" />}
+                    </span>
+                    <div className="flex-1 min-w-0 text-[13px] leading-[18px] font-medium text-[var(--foreground)] truncate">{o.name}</div>
+                    <span className="w-16 text-right text-[12px] text-[var(--foreground-muted)] tabular-nums whitespace-nowrap">{f.when(o.created_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        )}
       </div>
     </div>
   );

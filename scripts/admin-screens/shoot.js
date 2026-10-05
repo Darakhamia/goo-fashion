@@ -49,9 +49,10 @@ const all = BASE_PAGES.map(([name, url]) => ({ name, url })).concat(pages);
 const only = args.only ? args.only.split(",") : null;
 const list = all.filter((p) => !only || only.includes(p.name));
 const themes = args.theme === "both" ? ["light", "dark"] : [args.theme || "light"];
-const vps = args.vp === "both" ? ["desktop", "mobile"] : [args.vp || "desktop"];
+const vps = args.vp === "both" ? ["desktop", "mobile"] : args.vp === "all" ? ["desktop", "mobile", "wide"] : [args.vp || "desktop"];
 const LANG = args.lang === "ru" ? "ru" : "en";
-const VIEWPORT = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
+// "wide" is a 27-inch monitor: the admin takes the whole window (CEO, 2026-10-05).
+const VIEWPORT = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 }, wide: { width: 2560, height: 1440 } };
 
 function svg(u) {
   const c = u.searchParams.get("c") || "#ddd";

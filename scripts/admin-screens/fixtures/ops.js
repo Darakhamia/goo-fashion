@@ -130,18 +130,6 @@ function userById({ url, method }) {
 const planCounts = USERS.reduce((acc, u) => ((acc[u.plan] = (acc[u.plan] || 0) + 1), acc), {});
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
-const zaraTees = [
-  ["#e8e4dc", "Ecru"], ["#1c1c1c", "Black"], ["#6b7a5e", "Khaki"],
-  ["#f5f5f4", "White"], ["#9ca3af", "Grey marl"], ["#2f3542", "Navy"],
-].map(([hex], i) => {
-  const id = `5d1c0e2a-${String(2000 + i)}-4b7f-8e3d-${String(400000000000 + i * 104729).slice(-12)}`;
-  return {
-    id, name: "ATHLETICZ OVERSIZED T-SHIRT", brand: "ZARA",
-    image_url: IMG(id, hex, "T-Shirts"),
-    created_at: iso(NOW - (25 + i * 3) * 60e3),
-  };
-});
-
 const outfitImg = (n, hex) => IMG("outfit-" + n, hex, "Outfit");
 const recentOutfits = [
   ["o-51b", "Outfit 51", "#3f3f46", 5 * H],
@@ -152,31 +140,81 @@ const recentOutfits = [
   ["o-47", "Outfit 47", "#57534e", 6 * D],
 ].map(([id, name, hex, ago]) => ({ id: "8f2b6c1e-" + id, name, image_url: outfitImg(id, hex), created_at: iso(NOW - ago) }));
 
+// GET /api/admin/stats (GS4-12): the state of prod in the review — renewals
+// never ran, 12 migrations missing (so AI check's table is absent too), one
+// overdue cardless subscription, 940 products without an embedding, four looks
+// to moderate. Payments on: the token is set, so the cron and billing count.
+const customers = USERS.filter((u) => !u.isAdmin);
 const stats = {
   generatedAt: iso(NOW - 20e3),
-  summary: {
-    products: { total: TOTAL_PRODUCTS, thisMonth: 659, growthPct: 1237 },
-    outfits: { total: 27, growthPct: 50, aiGenerated: 19 },
-    users: { total: USERS.length, growthPct: 100, activeWeek: 6 },
-    brands: { total: 72 },
+  paymentsOff: false,
+  kpis: {
+    products: { total: TOTAL_PRODUCTS, thisMonth: 659, pct: null },
+    outfits: { total: 27, ai: 19, pending: 4 },
+    customers: { total: customers.length, team: USERS.length - customers.length, partial: false, thisMonth: 2, pct: null },
+    paying: { total: 1, mrrUah: 399 },
+    brands: { total: 72, products: TOTAL_PRODUCTS },
   },
+  attention: [
+    {
+      key: "cron", tone: "err", href: "/goo-studio/subscriptions",
+      fix: [
+        "Coolify → the app → Scheduled Tasks: billing-renew, 0 9 * * *",
+        'curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"',
+        "CRON_SECRET set in the app's environment (BILLING.md)",
+      ],
+    },
+    {
+      key: "migrations", tone: "err", count: 12, href: "/goo-studio/settings#schema",
+      fix: [
+        "007_embeddings_openai_1536.sql", "009_user_looks_share.sql", "012_label_audit_dismissals.sql", "015_product_bg_color.sql",
+        "017_pending_look_details.sql", "018_retailer_domains.sql", "019_product_price_usd.sql", "019_product_source_price.sql",
+        "020_product_codes.sql", "021_color_groups.sql", "023_product_crop_data.sql", "025_catalogue_check.sql",
+      ].map((m) => `supabase/migrations/${m}`),
+    },
+    { key: "overdue", tone: "warn", count: 1, href: "/goo-studio/subscriptions" },
+    { key: "noCard", tone: "warn", count: 1, href: "/goo-studio/subscriptions" },
+    { key: "embeddings", tone: "warn", count: 940, href: "/goo-studio/settings#embeddings" },
+    { key: "pendingLooks", tone: "warn", count: 4, href: "/goo-studio/outfits" },
+  ],
+  services: [
+    { key: "supabase", state: "ok", code: "answered", ms: 86 },
+    { key: "clerk", state: "ok", code: "answered", ms: 214 },
+    { key: "openai", state: "ok", code: "answered", ms: 182 },
+    { key: "replicate", state: "ok", code: "answered", ms: 301 },
+    { key: "resend", state: "ok", code: "send_only" },
+    { key: "monobank", state: "ok", code: "answered", ms: 240 },
+    { key: "cron", state: "err", code: "never_ran" },
+  ],
   recent: {
-    products: zaraTees,
-    outfits: recentOutfits,
-    signups: USERS.slice(0, 6).map((u) => ({
+    customers: customers.slice(0, 5).map((u) => ({
       id: u.id, firstName: u.firstName, lastName: u.lastName, email: u.email,
       imageUrl: u.img ? avatar(u.id, u.img) : "", createdAt: u.createdAt, plan: u.plan,
     })),
+    // The harness signs in as the super admin, so the catalogue's log shows.
+    activity: [
+      { id: 905, action: "products.updated", name: "Athleticz oversized T-shirt", count: null, who: "maria.koval@example.com", at: iso(NOW - 5 * 60e3) },
+      { id: 904, action: "parser.collect_ingest", name: "zara.com", count: 48, who: "maria.koval@example.com", at: iso(NOW - 25 * 60e3) },
+      { id: 903, action: "import.csv", name: "Awin feed · Selfridges", count: 37, who: "admin@example.com", at: iso(NOW - 3 * H) },
+      { id: 902, action: "catalogue_check.applied", name: null, count: 7, who: "admin@example.com", at: iso(NOW - 26 * H) },
+      { id: 901, action: "products.deleted", name: "Moon Boot dog toy", count: null, who: "maria.koval@example.com", at: iso(NOW - 30 * H) },
+    ],
+    outfits: recentOutfits,
   },
-  health: {
-    supabase: { ok: true, detail: "Connected" },
-    clerk: { ok: true, detail: "Connected" },
-    openai: { ok: true, detail: "Key present (database)" },
-    replicate: { ok: true, detail: "Token present" },
-    // Green although renewals never ran — only the token is checked.
-    monobank: { ok: true, detail: "Token present" },
-    resend: { ok: true, detail: "Key present" },
-  },
+};
+
+// The same dashboard on a good day, and with payments switched off (no
+// MONOBANK_TOKEN): monobank and the cron grey "Off", no billing items.
+const statsHealthy = {
+  ...stats,
+  attention: [],
+  services: stats.services.map((s) => (s.key === "cron" ? { key: "cron", state: "ok", code: "ran", at: iso(NOW - 3 * H) } : s)),
+};
+const statsPaymentsOff = {
+  ...stats,
+  paymentsOff: true,
+  attention: stats.attention.filter((a) => !["cron", "overdue", "noCard", "failedCharges"].includes(a.key)),
+  services: stats.services.map((s) => (s.key === "cron" || s.key === "monobank" ? { key: s.key, state: "off", code: "off" } : s)),
 };
 
 // ── Subscriptions ────────────────────────────────────────────────────────────
@@ -349,6 +387,26 @@ module.exports = {
     "GET /api/admin/audit": audit,
   },
   pages: [
+    // GS4-12 Dashboard: "How to fix" open on the first item; the dashboard on a
+    // good day ("All good"); and with payments switched off.
+    {
+      name: "dashboard-fix", url: "/goo-studio", fullPage: false,
+      after: async (page) => {
+        // On a phone the rows are links and "How to fix" stays on a computer.
+        await page.getByText("Needs attention", { exact: true }).waitFor();
+        const fix = page.locator("section li button[aria-expanded]").first();
+        if (await fix.count()) await fix.click();
+        await page.waitForTimeout(300);
+      },
+    },
+    ...[["dashboard-healthy", statsHealthy], ["dashboard-payments-off", statsPaymentsOff]].map(([name, body]) => ({
+      name, url: "/goo-studio",
+      after: async (page) => {
+        await page.route("**/api/admin/stats*", (r) => r.fulfill({ json: body }));
+        await page.reload({ waitUntil: "networkidle" });
+        await page.waitForTimeout(800);
+      },
+    })),
     {
       name: "users-drawer",
       url: "/goo-studio/users",

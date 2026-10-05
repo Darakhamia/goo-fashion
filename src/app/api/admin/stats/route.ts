@@ -1,221 +1,282 @@
 import { NextResponse } from "next/server";
-import { clerkClient } from "@clerk/nextjs/server";
-import { requireAdmin } from "@/lib/server/admin-auth";
-import { getOpenAIKey } from "@/lib/server/get-openai-key";
-import { isMonobankConfigured } from "@/lib/server/monobank";
+import type { User } from "@clerk/nextjs/server";
+import { isSuperAdminId, requireAdmin } from "@/lib/server/admin-auth";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { envAdminIds, planOf, scanUsers } from "../users/user-list";
+import { paymentsOff, probeServices, type ServiceCheck } from "@/lib/server/system-health";
+import { readAllSubscriptions, summarizeBilling } from "@/lib/server/billing-health";
+import { checkSchemaCached } from "@/lib/server/schema-check";
+import { buildAttention } from "@/lib/server/attention";
+import { resolveAdminEmails, type AdminAction } from "@/lib/server/audit";
+import { withTimeout } from "@/lib/server/with-timeout";
 
-interface RecentRow {
-  id: string;
-  name: string;
-  created_at: string;
-  image_url?: string;
-  brand?: string;
-}
+export const dynamic = "force-dynamic";
 
-type HealthItem = { ok: boolean; detail: string };
+/*
+ * GET /api/admin/stats[?fresh=1] — everything the dashboard shows (GS4-12):
+ *
+ * - kpis: products, outfits, customers, paying, brands. Customers leave out the
+ *   team (ADMIN_USER_IDS, isAdmin, the super admin), growth is the absolute
+ *   number this month, and the percentage only comes with it once last month's
+ *   stretch had enough to compare with (GS1-4).
+ * - services: Supabase and Clerk by this request's own reads, the rest probed
+ *   (GS1-1, lib/server/system-health).
+ * - attention: what is broken or waits for a person (GS1-2, lib/server/attention).
+ * - recent: new customers; the catalogue's latest changes from the admin log,
+ *   for the super admin only (the log is theirs: /goo-studio/activity), and the
+ *   newest outfits for everyone else.
+ *
+ * A metric whose read failed is null — "—" on the page, never a zero that looks
+ * real. Every source has a time limit, so one that hangs costs the dashboard
+ * seconds, not the whole page.
+ */
 
-interface HealthReport {
-  supabase:  HealthItem;
-  clerk:     HealthItem;
-  openai:    HealthItem;
-  replicate: HealthItem;
-  monobank:  HealthItem;
-  resend:    HealthItem;
-}
+/** A source that does not answer in this time is shown as unknown. */
+const SOURCE_TIMEOUT_MS = 8_000;
+/** Below this many in last month's stretch, a percentage says more about chance than growth. */
+const PCT_MIN_BASE = 50;
 
-type ClerkUserLite = {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string | null;
-  imageUrl: string;
-  createdAt: number;
-  plan: string;
-};
+/** The admin log entries that change the catalogue: the dashboard's "Catalogue activity". */
+const CATALOGUE_ACTIONS: AdminAction[] = [
+  "parser.product_imported",
+  "parser.crawl_batch",
+  "parser.collect_ingest",
+  "import.csv",
+  "categories.updated",
+  "products.created",
+  "products.updated",
+  "products.deleted",
+  "products.bulk_deleted",
+  "products.bulk_edited",
+  "products.recategorized",
+  "products.recategorize_undone",
+  "products.styles_reset",
+  "products.styles_reset_undone",
+  "products.label_fixed",
+  "products.bg_color_sampled",
+  "products.bg_color_undone",
+  "products.duplicates_merged",
+  "products.colour_group_split",
+  "products.colourways_grouped",
+  "catalogue_check.fixed",
+  "catalogue_check.brands_unified",
+  "catalogue_check.applied",
+  "catalogue_check.undone",
+  "outfits.created",
+  "outfits.updated",
+  "outfits.deleted",
+  "looks.approved",
+  "looks.rejected",
+  "brands.created",
+  "brands.deleted",
+  "retailer_domain.saved",
+  "retailer_domain.deleted",
+  "retailer_domain.applied",
+];
 
-function daysAgo(n: number): Date {
-  return new Date(Date.now() - n * 86_400_000);
-}
-
-/** null when either side is unknown — the dashboard then shows no growth pill. */
-function growthPct(curr: number | null, prev: number | null): number | null {
-  if (curr === null || prev === null) return null;
-  if (prev === 0) return curr > 0 ? 100 : 0;
-  return Math.round(((curr - prev) / prev) * 100);
-}
+type Count = number | null;
 
 /** Count from a head/count query, or null when the query failed. */
-function countOf(q: { count: number | null; error: unknown }): number | null {
+function countOf(q: { count: number | null; error: unknown }): Count {
   return q.error ? null : (q.count ?? 0);
 }
 
-export async function GET() {
+/** Month to date, and the same elapsed stretch of last month (capped at its end). */
+function periods(now: Date) {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  // Comparing a partial month with a full one made every number read about
+  // −90% in the first days of a month.
+  const prevEnd = new Date(Math.min(prevMonthStart.getTime() + (now.getTime() - monthStart.getTime()), monthStart.getTime()));
+  return { monthStart, prevMonthStart, prevEnd };
+}
+
+function growth(thisMonth: Count, prev: Count): { thisMonth: Count; pct: number | null } {
+  if (thisMonth === null || prev === null || prev < PCT_MIN_BASE) return { thisMonth, pct: null };
+  return { thisMonth, pct: Math.round(((thisMonth - prev) / prev) * 100) };
+}
+
+type Recent = { id: string; name: string; image_url?: string | null; created_at: string };
+
+async function readCatalogue(now: Date) {
+  const { monthStart, prevMonthStart, prevEnd } = periods(now);
+  const sb = supabase!;
+  const head = { count: "exact" as const, head: true };
+  const started = Date.now();
+  const [
+    products,
+    productsThis,
+    productsPrev,
+    outfits,
+    outfitsAI,
+    brands,
+    pendingLooks,
+    withoutEmbedding,
+    aiSuggestions,
+    recentOutfits,
+  ] = await Promise.all([
+    sb.from("products").select("id", head),
+    sb.from("products").select("id", head).gte("created_at", monthStart.toISOString()),
+    sb.from("products").select("id", head).gte("created_at", prevMonthStart.toISOString()).lt("created_at", prevEnd.toISOString()),
+    sb.from("outfits").select("id", head),
+    sb.from("outfits").select("id", head).eq("is_ai_generated", true),
+    sb.from("brands").select("id", head),
+    sb.from("pending_looks").select("id", head).eq("status", "pending"),
+    // A missing column (migration 007) errors and reads null: the migrations
+    // item covers it, rather than "every product lacks an embedding".
+    sb.from("products").select("id", head).is("embedding", null),
+    sb.from("catalogue_check_fixes").select("id", head).eq("status", "suggested"),
+    sb.from("outfits").select("id,name,image_url,created_at").order("created_at", { ascending: false }).limit(5),
+  ]);
+  const error = products.error?.message ?? outfits.error?.message ?? null;
+  return {
+    ok: !error,
+    error,
+    ms: Date.now() - started,
+    products: countOf(products),
+    productsGrowth: growth(countOf(productsThis), countOf(productsPrev)),
+    outfits: countOf(outfits),
+    outfitsAI: countOf(outfitsAI),
+    brands: countOf(brands),
+    pendingLooks: countOf(pendingLooks),
+    withoutEmbedding: countOf(withoutEmbedding),
+    aiSuggestions: countOf(aiSuggestions),
+    recentOutfits: ((recentOutfits.data as Recent[] | null) ?? []).map((o) => ({ ...o, image_url: o.image_url ?? null })),
+  };
+}
+
+type CatalogueRead = Awaited<ReturnType<typeof readCatalogue>>;
+
+/** The team: env admins, admins granted in the Users panel, and the super admin. */
+function isTeam(u: User, envIds: Set<string>): boolean {
+  if (envIds.has(u.id) || isSuperAdminId(u.id)) return true;
+  return ((u.publicMetadata ?? {}) as { isAdmin?: boolean }).isAdmin === true;
+}
+
+async function readCustomers(now: Date) {
+  const { monthStart, prevMonthStart, prevEnd } = periods(now);
+  const started = Date.now();
+  const scan = await scanUsers();
+  const envIds = new Set(envAdminIds());
+  const customers = scan.users.filter((u) => !isTeam(u, envIds));
+  const team = scan.users.length - customers.length;
+  const inRange = (from: Date, to: Date) => customers.filter((u) => u.createdAt >= from.getTime() && u.createdAt < to.getTime()).length;
+  return {
+    ok: true,
+    ms: Date.now() - started,
+    // Users Clerk holds beyond the scan cap are counted as customers: the team is small.
+    total: scan.totalCount - team,
+    team,
+    partial: scan.truncated,
+    growth: growth(inRange(monthStart, new Date(now.getTime() + 1)), inRange(prevMonthStart, prevEnd)),
+    recent: customers.slice(0, 5).map((u) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.emailAddresses[0]?.emailAddress ?? null,
+      imageUrl: u.imageUrl,
+      createdAt: u.createdAt,
+      plan: planOf(u),
+    })),
+  };
+}
+
+type CustomersRead = Awaited<ReturnType<typeof readCustomers>>;
+
+/** The catalogue's latest changes from the admin log, newest first. */
+async function readActivity() {
+  const { data, error } = await supabase!
+    .from("admin_audit_log")
+    .select("id,admin_id,admin_email,action,target_id,metadata,created_at")
+    .in("action", CATALOGUE_ACTIONS)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (error) return null;
+  const rows = (data ?? []) as {
+    id: number;
+    admin_id: string;
+    admin_email: string | null;
+    action: string;
+    target_id: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+  }[];
+  const emails = await resolveAdminEmails(rows.filter((r) => !r.admin_email).map((r) => r.admin_id));
+  return rows.map((r) => {
+    const m = r.metadata ?? {};
+    const name = [m.name, m.title, m.domain, m.brand].find((v): v is string => typeof v === "string" && v.trim() !== "");
+    const count = [m.count, m.created, m.imported, m.applied, m.total].find((v): v is number => typeof v === "number");
+    return {
+      id: r.id,
+      action: r.action,
+      name: name ?? null,
+      count: count ?? null,
+      who: r.admin_email ?? emails.get(r.admin_id) ?? null,
+      at: r.created_at,
+    };
+  });
+}
+
+function sourceCheck(key: "supabase" | "clerk", read: { ok: boolean; ms: number; error?: string | null } | null): ServiceCheck {
+  if (!read) return { key, state: "err", code: "timeout" };
+  if (!read.ok) return { key, state: "err", code: "error", message: read.error ?? undefined };
+  return { key, state: "ok", code: "answered", ms: read.ms };
+}
+
+export async function GET(req: Request) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  // Growth compares equal stretches: month-to-date against the same elapsed
-  // time from the start of last month (capped at its end, e.g. 31 March →
-  // all of February). Comparing a partial month with a full one made every
-  // card read about −90% in the first days of a month.
-  const prevPeriodEnd = new Date(
-    Math.min(prevMonthStart.getTime() + (now.getTime() - monthStart.getTime()), monthStart.getTime())
-  );
-  const sevenDaysAgo = daysAgo(7);
+  const fresh = new URL(req.url).searchParams.get("fresh") === "1";
+  const db = isSupabaseConfigured && !!supabase;
+  const superAdmin = isSuperAdminId(admin.userId);
 
-  // ── Supabase counts ────────────────────────────────────────────────────────
-  // A metric whose query failed stays null ("—" on the dashboard) so an outage
-  // never reads as a real zero.
-  let productsTotal: number | null = null;
-  let productsThisMonth: number | null = null;
-  let productsPrevPeriod: number | null = null;
-  let outfitsTotal: number | null = null;
-  let outfitsThisMonth: number | null = null;
-  let outfitsPrevPeriod: number | null = null;
-  let outfitsAI: number | null = null;
-  let brandsTotal: number | null = null;
-  let recentProducts: RecentRow[] = [];
-  let recentOutfits: RecentRow[] = [];
-  let supabaseOk = false;
-  let supabaseDetail = "Not configured";
+  const [catalogue, customers, probes, subs, schema, activity] = await Promise.all([
+    db ? withTimeout<CatalogueRead | null>(readCatalogue(now), null, "dashboard catalogue", SOURCE_TIMEOUT_MS) : Promise.resolve(null),
+    withTimeout<CustomersRead | null>(readCustomers(now), null, "dashboard customers", SOURCE_TIMEOUT_MS),
+    probeServices(fresh),
+    db ? withTimeout(readAllSubscriptions(), null, "dashboard subscriptions", SOURCE_TIMEOUT_MS) : Promise.resolve(null),
+    db ? withTimeout(checkSchemaCached(fresh), null, "dashboard schema", SOURCE_TIMEOUT_MS) : Promise.resolve(null),
+    db && superAdmin ? withTimeout(readActivity(), null, "dashboard activity", SOURCE_TIMEOUT_MS) : Promise.resolve(null),
+  ]);
 
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const [
-        productsTotalQ,
-        productsThisQ,
-        productsPrevQ,
-        outfitsTotalQ,
-        outfitsThisQ,
-        outfitsPrevQ,
-        outfitsAIQ,
-        brandsQ,
-        recentProductsQ,
-        recentOutfitsQ,
-      ] = await Promise.all([
-        supabase.from("products").select("*", { count: "exact", head: true }),
-        supabase.from("products").select("*", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()),
-        supabase.from("products").select("*", { count: "exact", head: true }).gte("created_at", prevMonthStart.toISOString()).lt("created_at", prevPeriodEnd.toISOString()),
-        supabase.from("outfits").select("*", { count: "exact", head: true }),
-        supabase.from("outfits").select("*", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()),
-        supabase.from("outfits").select("*", { count: "exact", head: true }).gte("created_at", prevMonthStart.toISOString()).lt("created_at", prevPeriodEnd.toISOString()),
-        supabase.from("outfits").select("*", { count: "exact", head: true }).eq("is_ai_generated", true),
-        supabase.from("brands").select("*", { count: "exact", head: true }),
-        supabase.from("products").select("id,name,brand,image_url,created_at").order("created_at", { ascending: false }).limit(6),
-        supabase.from("outfits").select("id,name,image_url,created_at").order("created_at", { ascending: false }).limit(6),
-      ]);
+  const billing = subs && !subs.error ? summarizeBilling(subs.data, now.getTime()) : null;
 
-      productsTotal      = countOf(productsTotalQ);
-      productsThisMonth  = countOf(productsThisQ);
-      productsPrevPeriod = countOf(productsPrevQ);
-      outfitsTotal       = countOf(outfitsTotalQ);
-      outfitsThisMonth   = countOf(outfitsThisQ);
-      outfitsPrevPeriod  = countOf(outfitsPrevQ);
-      outfitsAI          = countOf(outfitsAIQ);
-      brandsTotal        = countOf(brandsQ);
-      recentProducts     = (recentProductsQ.data as RecentRow[] | null) ?? [];
-      recentOutfits      = (recentOutfitsQ.data as RecentRow[] | null)  ?? [];
+  const services: ServiceCheck[] = [
+    db ? sourceCheck("supabase", catalogue) : { key: "supabase", state: "err", code: "no_key" },
+    sourceCheck("clerk", customers),
+    ...probes,
+  ];
 
-      const firstError = [productsTotalQ, outfitsTotalQ].find((q) => q.error)?.error;
-      supabaseOk = !firstError;
-      supabaseDetail = firstError ? firstError.message || "Query error" : "Connected";
-    } catch (e) {
-      supabaseDetail = e instanceof Error ? e.message : "Unknown error";
-    }
-  }
-
-  // ── Clerk user stats ───────────────────────────────────────────────────────
-  let usersTotal: number | null = null;
-  let usersThisMonth: number | null = null;
-  let usersPrevPeriod: number | null = null;
-  let activeWeek: number | null = null;
-  let recentSignups: ClerkUserLite[] = [];
-  let clerkOk = false;
-  let clerkDetail = "Not configured";
-
-  try {
-    const cc = await clerkClient();
-    const [total, activeList, signupSample] = await Promise.all([
-      cc.users.getCount(),
-      cc.users.getUserList({ last_active_at_since: sevenDaysAgo.getTime(), limit: 1 }),
-      // Newest 200 users: feeds both "Recent signups" and the month deltas.
-      // Known limit: with more than 200 signups across this month and last,
-      // the sample no longer reaches back to the start of last month, so the
-      // previous period is undercounted and user growth reads too high.
-      cc.users.getUserList({ orderBy: "-created_at", limit: 200 }),
-    ]);
-    usersTotal  = total;
-    activeWeek  = activeList.totalCount ?? 0;
-    usersThisMonth = signupSample.data.filter((u) => u.createdAt >= monthStart.getTime()).length;
-    usersPrevPeriod = signupSample.data.filter(
-      (u) => u.createdAt >= prevMonthStart.getTime() && u.createdAt < prevPeriodEnd.getTime()
-    ).length;
-    recentSignups = signupSample.data.slice(0, 6).map((u) => {
-      const meta = (u.publicMetadata ?? {}) as { plan?: string };
-      return {
-        id: u.id,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u.emailAddresses[0]?.emailAddress ?? null,
-        imageUrl: u.imageUrl,
-        createdAt: u.createdAt,
-        plan: meta.plan ?? "free",
-      };
-    });
-    clerkOk = true;
-    clerkDetail = "Connected";
-  } catch (e) {
-    clerkDetail = e instanceof Error ? e.message : "Unknown error";
-  }
-
-  // ── Integrations ───────────────────────────────────────────────────────────
-  // OpenAI: the key may live in env or in the settings table (saved via
-  // Settings); every AI feature resolves it through getOpenAIKey().
-  let openai: HealthItem;
-  try {
-    const key = await getOpenAIKey();
-    const source = process.env.OPENAI_API_KEY?.trim() ? "env" : "database";
-    openai = key
-      ? { ok: true, detail: `Key present (${source})` }
-      : { ok: false, detail: "No key in env or Settings" };
-  } catch (e) {
-    openai = { ok: false, detail: e instanceof Error ? e.message : "Key lookup failed" };
-  }
-
-  const health: HealthReport = {
-    supabase: { ok: supabaseOk, detail: supabaseDetail },
-    clerk:    { ok: clerkOk,    detail: clerkDetail },
-    openai,
-    replicate:{
-      ok: Boolean(process.env.REPLICATE_API_TOKEN),
-      detail: process.env.REPLICATE_API_TOKEN ? "Token present" : "REPLICATE_API_TOKEN missing",
-    },
-    monobank: {
-      ok: isMonobankConfigured,
-      detail: isMonobankConfigured ? "Token present" : "MONOBANK_TOKEN missing",
-    },
-    resend: {
-      ok: Boolean(process.env.RESEND_API_KEY),
-      detail: process.env.RESEND_API_KEY ? "Key present" : "RESEND_API_KEY missing",
-    },
-  };
+  const attention = buildAttention({
+    services,
+    missingMigrations: schema ? schema.missingMigrations : null,
+    billing: paymentsOff || !billing ? null : billing,
+    withoutEmbedding: catalogue?.withoutEmbedding ?? null,
+    aiSuggestions: catalogue?.aiSuggestions ?? null,
+    pendingLooks: catalogue?.pendingLooks ?? null,
+  });
 
   return NextResponse.json({
     generatedAt: now.toISOString(),
-    summary: {
-      products: { total: productsTotal, thisMonth: productsThisMonth, growthPct: growthPct(productsThisMonth, productsPrevPeriod) },
-      outfits:  { total: outfitsTotal,  growthPct: growthPct(outfitsThisMonth, outfitsPrevPeriod), aiGenerated: outfitsAI },
-      users:    { total: usersTotal,    growthPct: growthPct(usersThisMonth,   usersPrevPeriod),   activeWeek },
-      brands:   { total: brandsTotal },
+    paymentsOff,
+    kpis: {
+      products: { total: catalogue?.products ?? null, ...(catalogue?.productsGrowth ?? { thisMonth: null, pct: null }) },
+      outfits: { total: catalogue?.outfits ?? null, ai: catalogue?.outfitsAI ?? null, pending: catalogue?.pendingLooks ?? null },
+      customers: customers
+        ? { total: customers.total, team: customers.team, partial: customers.partial, ...customers.growth }
+        : { total: null, team: null, partial: false, thisMonth: null, pct: null },
+      paying: billing ? { total: billing.active, mrrUah: Math.round(billing.mrrMinor / 100) } : { total: null, mrrUah: null },
+      brands: { total: catalogue?.brands ?? null, products: catalogue?.products ?? null },
     },
+    attention,
+    services,
     recent: {
-      products: recentProducts,
-      outfits:  recentOutfits,
-      signups:  recentSignups,
+      customers: customers?.recent ?? null,
+      // null for everyone but the super admin: the page shows the newest outfits instead.
+      activity,
+      outfits: catalogue?.recentOutfits ?? null,
     },
-    health,
   });
 }
