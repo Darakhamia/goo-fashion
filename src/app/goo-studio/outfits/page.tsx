@@ -7,18 +7,19 @@ import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabe
 import { useDownloadCards } from "@/components/admin/DownloadCardsButton";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/Toast";
-import { btn, BTN_ICON, BTN_ICON_SM } from "@/app/goo-studio/_ui/recipes";
+import { btn, BTN_ICON, BTN_ICON_SM, FIELD_LABEL, INPUT, SELECT } from "@/app/goo-studio/_ui/recipes";
 import { useFormat, useT } from "@/app/goo-studio/_i18n";
-import type { Key } from "@/app/goo-studio/_i18n";
+import type { Key, T, Vars } from "@/app/goo-studio/_i18n";
 import { DataTable, EmptyState, Thumb } from "@/components/admin/DataTable";
 import { PageHeader, PLUS } from "@/components/admin/PageHeader";
 import type { Column } from "@/components/admin/DataTable";
-import { ActiveFilters, FilterBar, FilterMenu, SearchField } from "@/components/admin/FilterBar";
+import { ActiveFilters, FilterBar, FilterChips, FilterMenu, SearchField } from "@/components/admin/FilterBar";
 import { BulkBar } from "@/components/admin/BulkBar";
 import { RowMenu } from "@/components/admin/Menu";
 import type { MenuItem } from "@/components/admin/Menu";
 import { Tabs, tabPanel } from "@/components/admin/Tabs";
 import { Modal } from "@/components/admin/Modal";
+import { Badge } from "@/components/admin/Badge";
 
 interface PendingLook {
   id: string;
@@ -61,17 +62,46 @@ interface OutfitFormState {
 
 const OCCASIONS: Occasion[] = ["casual", "work", "evening", "sport", "formal", "weekend"];
 const SEASONS: Season[] = ["all", "spring", "summer", "autumn", "winter"];
-const CATEGORIES: { value: Category | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "outerwear", label: "Outerwear" },
-  { value: "tops", label: "Tops" },
-  { value: "bottoms", label: "Bottoms" },
-  { value: "dresses", label: "Dresses" },
-  { value: "knitwear", label: "Knitwear" },
-  { value: "footwear", label: "Footwear" },
-  { value: "accessories", label: "Accessories" },
+const CATEGORIES: { value: Category | "all"; label: Key }[] = [
+  { value: "all", label: "filter.all" },
+  { value: "outerwear", label: "outfits.cat.outerwear" },
+  { value: "tops", label: "outfits.cat.tops" },
+  { value: "bottoms", label: "outfits.cat.bottoms" },
+  { value: "dresses", label: "outfits.cat.dresses" },
+  { value: "knitwear", label: "outfits.cat.knitwear" },
+  { value: "footwear", label: "outfits.cat.footwear" },
+  { value: "accessories", label: "outfits.cat.accessories" },
 ];
 const ROLES: OutfitRole[] = ["hero", "secondary", "accent"];
+const ROLE_KEY: Record<OutfitRole, Key> = {
+  hero: "outfits.role.hero",
+  secondary: "outfits.role.secondary",
+  accent: "outfits.role.accent",
+};
+
+/** How a submitted look was drawn, as its badge reads it. */
+const LOOK_STYLE_KEY: Record<string, Key> = {
+  flatlay: "outfits.style.flatlay",
+  tryon: "outfits.style.tryon",
+};
+
+/**
+ * What the approval endpoint names a look whose name box is left empty. It is
+ * the published name, not interface text, so it stays the same in every
+ * language (src/app/api/looks/approve/route.ts).
+ */
+const DEFAULT_LOOK_NAME = "Community Look";
+
+/**
+ * An error to show. The server's own words stay as they came; one of ours is
+ * kept as its dictionary key, so it follows a language switch without the
+ * loaders running again.
+ */
+type Failure = string | { key: Key; vars?: Vars };
+
+function sayFailure(f: Failure, t: T): string {
+  return typeof f === "string" ? f : t(f.key, f.vars);
+}
 
 const OCCASION_KEY: Record<Occasion, Key> = {
   casual: "outfits.occasion.casual",
@@ -117,11 +147,9 @@ const defaultForm: OutfitFormState = {
   isAIGenerated: false,
 };
 
-const inputCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
-const selectCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
-const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
+// The field recipes, full width in the editor's columns.
+const inputCls = `${INPUT} w-full`;
+const selectCls = `${SELECT} w-full`;
 
 export default function AdminOutfitsPage() {
   const t = useT();
@@ -134,7 +162,7 @@ export default function AdminOutfitsPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
   /** Why the list did not load — shown in place of the table's rows. */
-  const [outfitsError, setOutfitsError] = useState("");
+  const [outfitsError, setOutfitsError] = useState<Failure>("");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<OutfitFormState>(defaultForm);
@@ -162,7 +190,7 @@ export default function AdminOutfitsPage() {
   const [pendingLooks, setPendingLooks] = useState<PendingLook[]>([]);
   // True from the start: the queue loads with the page, not with its tab.
   const [loadingPending, setLoadingPending] = useState(true);
-  const [pendingError, setPendingError] = useState("");
+  const [pendingError, setPendingError] = useState<Failure>("");
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [selectedLook, setSelectedLook] = useState<PendingLook | null>(null);
   /** Why the last Approve or Reject failed, shown inside the review modal. */
@@ -220,13 +248,13 @@ export default function AdminOutfitsPage() {
       const res = await fetch("/api/outfits");
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data)) {
-        setOutfitsError(data?.error ?? `Outfits did not load (${res.status}).`);
+        setOutfitsError(data?.error ?? { key: "outfits.loadFailed", vars: { status: res.status } });
         return;
       }
       setOutfits(data);
       setOutfitsError("");
     } catch {
-      setOutfitsError("Outfits did not load (network error).");
+      setOutfitsError({ key: "outfits.loadFailedNetwork" });
     } finally {
       setLoading(false);
     }
@@ -241,7 +269,7 @@ export default function AdminOutfitsPage() {
       const res = await fetch("/api/looks/pending");
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data)) {
-        setPendingError(data?.error ?? `The queue did not load (${res.status}).`);
+        setPendingError(data?.error ?? { key: "outfits.pending.loadFailed", vars: { status: res.status } });
         return;
       }
       setPendingLooks(
@@ -249,7 +277,7 @@ export default function AdminOutfitsPage() {
       );
       setPendingError("");
     } catch {
-      setPendingError("The queue did not load (network error).");
+      setPendingError({ key: "outfits.pending.loadFailedNetwork" });
     } finally {
       setLoadingPending(false);
     }
@@ -282,7 +310,7 @@ export default function AdminOutfitsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setModerationError(err.error ?? `Approval failed (${res.status}).`);
+        setModerationError(err.error ?? t("outfits.review.approveFailed", { status: res.status }));
         // 404/409: someone else already approved or rejected it — bring the
         // queue and the table up to date behind the modal.
         if (res.status === 404 || res.status === 409) {
@@ -297,7 +325,7 @@ export default function AdminOutfitsPage() {
       // than make one up here.
       loadOutfits();
     } catch {
-      setModerationError("Approval failed (network error).");
+      setModerationError(t("outfits.review.approveFailedNetwork"));
     } finally {
       setApprovingId(null);
     }
@@ -305,9 +333,9 @@ export default function AdminOutfitsPage() {
 
   const handleRejectLook = async (id: string) => {
     if (!(await confirm({
-      title: "Reject this look?",
-      body: "It leaves the queue and will not be published.",
-      confirmLabel: "Reject look",
+      title: t("outfits.review.rejectTitle"),
+      body: t("outfits.review.rejectBody"),
+      confirmLabel: t("outfits.review.rejectAction"),
       tone: "danger",
     }))) return;
     setApprovingId(id);
@@ -320,13 +348,13 @@ export default function AdminOutfitsPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setModerationError(err.error ?? `Rejection failed (${res.status}).`);
+        setModerationError(err.error ?? t("outfits.review.rejectFailed", { status: res.status }));
         return;
       }
       setPendingLooks((prev) => prev.filter((l) => l.id !== id));
       setSelectedLook(null);
     } catch {
-      setModerationError("Rejection failed (network error).");
+      setModerationError(t("outfits.review.rejectFailedNetwork"));
     } finally {
       setApprovingId(null);
     }
@@ -389,12 +417,12 @@ export default function AdminOutfitsPage() {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) {
-        setUploadError(json.error ?? "Upload failed");
+        setUploadError(json.error ?? t("outfits.editor.uploadFailed"));
       } else {
         setForm((f) => ({ ...f, imageUrl: json.url }));
       }
     } catch {
-      setUploadError("Network error during upload");
+      setUploadError(t("outfits.editor.uploadNetwork"));
     } finally {
       setUploading(false);
     }
@@ -430,7 +458,7 @@ export default function AdminOutfitsPage() {
       // in the table once the database has it.
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setSaveError(err.error ?? `Failed to save (${res.status}).`);
+        setSaveError(err.error ?? t("outfits.editor.saveFailed", { status: res.status }));
         return;
       }
 
@@ -442,7 +470,7 @@ export default function AdminOutfitsPage() {
       }
       closeModal();
     } catch {
-      setSaveError("Network error — the outfit was not saved.");
+      setSaveError(t("outfits.editor.saveNetwork"));
     } finally {
       setSaving(false);
     }
@@ -596,10 +624,10 @@ export default function AdminOutfitsPage() {
         );
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.err(err.error ?? `Could not update the homepage flag (${res.status}).`);
+        toast.err(err.error ?? t("outfits.featureFailed", { status: res.status }));
       }
     } catch {
-      toast.err("Could not update the homepage flag (network error).");
+      toast.err(t("outfits.featureFailedNetwork"));
     } finally {
       setFeaturingId(null);
     }
@@ -621,10 +649,10 @@ export default function AdminOutfitsPage() {
         deselect([id]);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.err(err.error ?? `Failed to delete outfit (${res.status}).`);
+        toast.err(err.error ?? t("outfits.deleteFailed", { status: res.status }));
       }
     } catch {
-      toast.err("Failed to delete outfit (network error).");
+      toast.err(t("outfits.deleteFailedNetwork"));
     }
   };
 
@@ -847,8 +875,8 @@ export default function AdminOutfitsPage() {
       {adminTab === "pending" && (
         <div {...tabPanel("outfits", "pending")}>
           {pendingError && (
-            <div className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
-              <span>{pendingError}</span>
+            <div role="alert" className="mb-4 flex items-center justify-between rounded-lg border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-2.5 text-xs text-[var(--err)]">
+              <span>{sayFailure(pendingError, t)}</span>
               <button
                 onClick={() => {
                   setLoadingPending(true);
@@ -856,14 +884,14 @@ export default function AdminOutfitsPage() {
                 }}
                 className="ml-4 underline underline-offset-4 opacity-80 hover:opacity-100 transition-opacity"
               >
-                Retry
+                {t("common.retry")}
               </button>
             </div>
           )}
           {loadingPending ? (
-            <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">Loading…</p>
+            <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">{t("common.loading")}</p>
           ) : pendingError && pendingLooks.length === 0 ? null : pendingLooks.length === 0 ? (
-            <p className="text-xs text-[var(--foreground-subtle)] py-8 text-center">No looks awaiting review.</p>
+            <EmptyState text={t("outfits.pending.empty")} />
           ) : (
             <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
               {pendingLooks.map((look, idx) => (
@@ -877,16 +905,12 @@ export default function AdminOutfitsPage() {
                   {/* Thumbnail */}
                   <div className="w-12 h-16 shrink-0 overflow-hidden bg-[var(--background)] rounded-xl border border-[var(--border)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={look.generated_image} alt="Look" className="w-full h-full object-cover" />
+                    <img src={look.generated_image} alt={t("outfits.pending.lookAlt")} className="w-full h-full object-cover" />
                   </div>
                   {/* Meta */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      {look.generated_style && (
-                        <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
-                          {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On you" : "AI"}
-                        </span>
-                      )}
+                      {look.generated_style && <Badge>{t(LOOK_STYLE_KEY[look.generated_style] ?? "outfits.style.ai")}</Badge>}
                       {look.total_price != null && (
                         <span className="text-xs text-[var(--foreground)] font-medium">{f.money(look.total_price)}</span>
                       )}
@@ -898,11 +922,11 @@ export default function AdminOutfitsPage() {
                     )}
                     <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
                       {f.date(look.created_at)}
-                      {" · "}{look.pieces.length} pieces
+                      {" · "}{t("outfits.pending.pieces", { count: look.pieces.length })}
                     </p>
                   </div>
                   {/* Arrow */}
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[var(--foreground-subtle)]">
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true" className="shrink-0 text-[var(--foreground-subtle)]">
                     <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
@@ -916,16 +940,14 @@ export default function AdminOutfitsPage() {
       {selectedLook && (
         <Modal
           onClose={() => setSelectedLook(null)}
-          label="Review submitted look"
+          label={t("outfits.review.title")}
           panelClassName="w-full max-w-3xl max-h-[90dvh] flex flex-col rounded-2xl overflow-y-auto md:overflow-hidden"
         >
           {/* Modal header */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
               {selectedLook.generated_style && (
-                <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
-                  {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On you" : "AI"}
-                </span>
+                <Badge>{t(LOOK_STYLE_KEY[selectedLook.generated_style] ?? "outfits.style.ai")}</Badge>
               )}
               {selectedLook.total_price != null && (
                 <p className="text-sm font-medium text-[var(--foreground)]">{f.money(selectedLook.total_price)}</p>
@@ -938,10 +960,11 @@ export default function AdminOutfitsPage() {
             </div>
             <button
               onClick={() => setSelectedLook(null)}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
               className={BTN_ICON}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
             </button>
@@ -955,7 +978,7 @@ export default function AdminOutfitsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={selectedLook.generated_image}
-                alt="Generated look"
+                alt={t("outfits.review.imageAlt")}
                 className="w-full h-full object-cover object-top"
               />
             </div>
@@ -981,7 +1004,7 @@ export default function AdminOutfitsPage() {
                 </div>
               )) : (
                 <div className="flex items-center justify-center flex-1 py-12">
-                  <p className="text-xs text-[var(--foreground-subtle)]">No pieces</p>
+                  <p className="text-xs text-[var(--foreground-subtle)]">{t("outfits.review.noPieces")}</p>
                 </div>
               )}
             </div>
@@ -993,14 +1016,16 @@ export default function AdminOutfitsPage() {
               endpoint keeps its own fallback rather than publishing blanks. */}
           <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
             <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-              Publish as
+              {t("outfits.review.publishAs")}
             </p>
 
+            {/* The placeholder is the name an empty box publishes under. */}
             <input
               type="text"
               value={moderation.name}
               onChange={(e) => setModeration((m) => ({ ...m, name: e.target.value }))}
-              placeholder="Community Look"
+              placeholder={DEFAULT_LOOK_NAME}
+              aria-label={t("outfits.editor.name")}
               maxLength={120}
               className={`${inputCls} mb-3`}
             />
@@ -1008,7 +1033,8 @@ export default function AdminOutfitsPage() {
             <textarea
               value={moderation.description}
               onChange={(e) => setModeration((m) => ({ ...m, description: e.target.value }))}
-              placeholder="Description shown on the outfit page"
+              placeholder={t("outfits.review.description")}
+              aria-label={t("outfits.editor.description")}
               rows={3}
               maxLength={2000}
               className={`${inputCls} resize-none mb-3`}
@@ -1018,16 +1044,18 @@ export default function AdminOutfitsPage() {
               <select
                 value={moderation.occasion}
                 onChange={(e) => setModeration((m) => ({ ...m, occasion: e.target.value as Occasion }))}
-                className={`${selectCls} flex-1 capitalize`}
+                aria-label={t("outfits.f.occasion")}
+                className={`${selectCls} flex-1`}
               >
-                {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {OCCASIONS.map((o) => <option key={o} value={o}>{t(OCCASION_KEY[o])}</option>)}
               </select>
               <select
                 value={moderation.season}
                 onChange={(e) => setModeration((m) => ({ ...m, season: e.target.value as Season }))}
-                className={`${selectCls} flex-1 capitalize`}
+                aria-label={t("outfits.f.season")}
+                className={`${selectCls} flex-1`}
               >
-                {SEASONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                {SEASONS.map((o) => <option key={o} value={o}>{t(SEASON_KEY[o])}</option>)}
               </select>
             </div>
 
@@ -1065,14 +1093,14 @@ export default function AdminOutfitsPage() {
                 disabled={approvingId === selectedLook.id}
                 className={`${btn("primary")} flex-1`}
               >
-                {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
+                {approvingId === selectedLook.id ? t("outfits.review.approving") : t("outfits.review.approve")}
               </button>
               <button
                 onClick={() => handleRejectLook(selectedLook.id)}
                 disabled={approvingId === selectedLook.id}
                 className={`${btn("danger")} flex-1`}
               >
-                Reject
+                {t("outfits.review.reject")}
               </button>
             </div>
           </div>
@@ -1182,7 +1210,7 @@ export default function AdminOutfitsPage() {
             empty={
               outfitsError ? (
                 <div role="alert" className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-                  <p className="text-[13px] text-[var(--err)] break-words">{outfitsError}</p>
+                  <p className="text-[13px] text-[var(--err)] break-words">{sayFailure(outfitsError, t)}</p>
                   <button
                     onClick={() => {
                       setLoading(true);
@@ -1233,7 +1261,7 @@ export default function AdminOutfitsPage() {
       {showModal && (
         <Modal
           onClose={closeModal}
-          label={editingId ? "Edit outfit" : "New outfit"}
+          label={t(editingId ? "outfits.editor.edit" : "outfits.editor.new")}
           panelClassName="rounded-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto overscroll-contain lg:max-h-none lg:overflow-visible flex flex-col"
           scrimClassName="flex items-center lg:items-start justify-center overflow-y-auto p-4 lg:py-6"
           closeOnScrim={false}
@@ -1243,14 +1271,15 @@ export default function AdminOutfitsPage() {
           {/* Modal header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
             <h2 className="font-display text-xl font-light text-[var(--foreground)]">
-              {editingId ? "Edit Outfit" : "New Outfit"}
+              {t(editingId ? "outfits.editor.edit" : "outfits.editor.new")}
             </h2>
             <button
               onClick={closeModal}
-              aria-label="Close"
+              aria-label={t("common.close")}
+              title={t("common.close")}
               className={BTN_ICON}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
             </button>
@@ -1263,41 +1292,34 @@ export default function AdminOutfitsPage() {
             <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
               <div className="px-5 py-4 border-b border-[var(--border)]">
                 <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
-                  Products — select items for this outfit
+                  {t("outfits.editor.products")}
                 </p>
                 {/* Search */}
                 <input
                   type="search"
-                  placeholder="Search by name or brand..."
+                  placeholder={t("outfits.editor.search")}
+                  aria-label={t("outfits.editor.search")}
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   className={inputCls}
                 />
-                {/* Category filter */}
-                <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                  {CATEGORIES.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      onClick={() => setProductCategory(value)}
-                      aria-pressed={productCategory === value}
-                      className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
-                        productCategory === value
-                          ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
-                          : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                {/* Category filter: one of a few, as chips. */}
+                <div className="mt-2.5">
+                  <FilterChips
+                    label={t("products.f.category")}
+                    value={productCategory}
+                    options={CATEGORIES.map(({ value, label }) => ({ value, label: t(label) }))}
+                    onChange={(v) => setProductCategory(v as Category | "all")}
+                  />
                 </div>
               </div>
 
               {/* Product grid */}
               <div className="overflow-y-auto flex-1 p-4 max-h-[45dvh] lg:max-h-[420px]">
                 {loadingProducts ? (
-                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">Loading products...</p>
+                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">{t("outfits.editor.loadingProducts")}</p>
                 ) : filteredProducts.length === 0 ? (
-                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">No products found.</p>
+                  <p className="text-xs text-[var(--foreground-subtle)] text-center py-8">{t("outfits.editor.noProducts")}</p>
                 ) : (
                   <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1309,7 +1331,7 @@ export default function AdminOutfitsPage() {
                           key={product.id}
                           onClick={() => toggleItem(product)}
                           disabled={blocked}
-                          title={blocked ? `An outfit takes up to ${MAX_ITEMS} items` : undefined}
+                          title={blocked ? t("outfits.editor.itemLimit", { count: MAX_ITEMS }) : undefined}
                           className={`text-left rounded-xl overflow-hidden border transition-colors group relative disabled:opacity-40 disabled:cursor-not-allowed ${
                             isSelected
                               ? "border-[var(--foreground)] bg-[var(--background)]"
@@ -1329,7 +1351,7 @@ export default function AdminOutfitsPage() {
                             {isSelected && (
                               <div className="absolute inset-0 bg-[var(--fg-overlay-08)] flex items-center justify-center">
                                 <div className="w-6 h-6 rounded-full bg-[var(--foreground)] flex items-center justify-center">
-                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                                     <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--surface)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                   </svg>
                                 </div>
@@ -1348,7 +1370,7 @@ export default function AdminOutfitsPage() {
                   </div>
                   {filteredProducts.length > shownProducts.length && (
                     <p className="text-xs text-[var(--foreground-subtle)] text-center pt-4">
-                      Showing {shownProducts.length} of {filteredProducts.length} — refine the search or pick a category to find the rest.
+                      {t("outfits.editor.pickerLimit", { shown: shownProducts.length, total: filteredProducts.length })}
                     </p>
                   )}
                   </>
@@ -1362,12 +1384,12 @@ export default function AdminOutfitsPage() {
 
                 {/* Selected items */}
                 <div>
-                  <p className={labelCls}>
-                    Selected items ({selectedItems.length}/{MAX_ITEMS})
+                  <p className={FIELD_LABEL}>
+                    {t("outfits.editor.selected", { count: selectedItems.length, max: MAX_ITEMS })}
                   </p>
                   {selectedItems.length === 0 ? (
                     <p className="text-xs text-[var(--foreground-subtle)] border border-dashed border-[var(--border)] rounded-xl px-3 py-4 text-center">
-                      Click products on the left to add them
+                      {t("outfits.editor.selectedEmpty")}
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2">
@@ -1401,19 +1423,21 @@ export default function AdminOutfitsPage() {
                             <select
                               value={item.role}
                               onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
+                              aria-label={t("outfits.editor.roleFor", { name: item.product.name })}
                               className="text-[12px] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
                             >
                               {ROLES.map((r) => (
-                                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                                <option key={r} value={r}>{t(ROLE_KEY[r])}</option>
                               ))}
                             </select>
                             {/* Remove */}
                             <button
                               onClick={() => removeItem(item.product.id)}
-                              aria-label={`Remove ${item.product.name}`}
+                              aria-label={t("outfits.editor.remove", { name: item.product.name })}
+                              title={t("outfits.editor.remove", { name: item.product.name })}
                               className={`${BTN_ICON} shrink-0`}
                             >
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                                 <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                               </svg>
                             </button>
@@ -1457,7 +1481,7 @@ export default function AdminOutfitsPage() {
                       })}
                       {/* Price total */}
                       <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
-                        <span className="text-[12px] text-[var(--foreground-muted)]">Total</span>
+                        <span className="text-[12px] text-[var(--foreground-muted)]">{t("outfits.editor.total")}</span>
                         <span className="text-sm text-[var(--foreground)]">
                           {f.moneyRange(priceMin, priceMax)}
                         </span>
@@ -1468,12 +1492,12 @@ export default function AdminOutfitsPage() {
 
                 {/* Name */}
                 <div>
-                  <label className={labelCls}>Name *</label>
+                  <label className={FIELD_LABEL}>{t("outfits.editor.name")} *</label>
                   <input
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="Outfit name"
+                    placeholder={t("outfits.editor.namePlaceholder")}
                     className={inputCls}
                   />
                 </div>
@@ -1481,26 +1505,26 @@ export default function AdminOutfitsPage() {
                 {/* Occasion + Season */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Occasion</label>
+                    <label className={FIELD_LABEL}>{t("outfits.f.occasion")}</label>
                     <select
                       value={form.occasion}
                       onChange={(e) => setForm((f) => ({ ...f, occasion: e.target.value as Occasion }))}
                       className={selectCls}
                     >
                       {OCCASIONS.map((o) => (
-                        <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>
+                        <option key={o} value={o}>{t(OCCASION_KEY[o])}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>Season</label>
+                    <label className={FIELD_LABEL}>{t("outfits.f.season")}</label>
                     <select
                       value={form.season}
                       onChange={(e) => setForm((f) => ({ ...f, season: e.target.value as Season }))}
                       className={selectCls}
                     >
                       {SEASONS.map((s) => (
-                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                        <option key={s} value={s}>{t(SEASON_KEY[s])}</option>
                       ))}
                     </select>
                   </div>
@@ -1508,11 +1532,11 @@ export default function AdminOutfitsPage() {
 
                 {/* Description */}
                 <div>
-                  <label className={labelCls}>Description</label>
+                  <label className={FIELD_LABEL}>{t("outfits.editor.description")}</label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="Describe the outfit..."
+                    placeholder={t("outfits.editor.descriptionPlaceholder")}
                     rows={2}
                     className={`${inputCls} resize-none`}
                   />
@@ -1520,7 +1544,7 @@ export default function AdminOutfitsPage() {
 
                 {/* Style keywords */}
                 <div>
-                  <label className={labelCls}>Style keywords</label>
+                  <label className={FIELD_LABEL}>{t("outfits.editor.styles")}</label>
                   <div className="flex flex-wrap gap-1.5">
                     {STYLE_KEYWORDS.map((kw) => (
                       <button
@@ -1542,14 +1566,14 @@ export default function AdminOutfitsPage() {
 
                 {/* Cover image upload */}
                 <div>
-                  <label className={labelCls}>Cover image</label>
+                  <label className={FIELD_LABEL}>{t("outfits.editor.cover")}</label>
 
                   {/* Preview */}
                   {form.imageUrl ? (
                     <div className="relative mb-2 w-full aspect-[4/3] overflow-hidden rounded-xl bg-[var(--background)]">
                       <Image
                         src={form.imageUrl}
-                        alt="Cover preview"
+                        alt={t("outfits.editor.coverAlt")}
                         fill
                         className="object-cover"
                         sizes="400px"
@@ -1559,8 +1583,8 @@ export default function AdminOutfitsPage() {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
                         className="absolute top-2 right-2 w-10 h-10 md:w-6 md:h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors text-[13px] leading-none"
-                        title="Remove image"
-                        aria-label="Remove image"
+                        title={t("outfits.editor.removeImage")}
+                        aria-label={t("outfits.editor.removeImage")}
                       >
                         ×
                       </button>
@@ -1579,15 +1603,15 @@ export default function AdminOutfitsPage() {
                       />
                       <div className="flex flex-col items-center gap-1.5">
                         {uploading ? (
-                          <span className="text-xs text-[var(--foreground-muted)]">Uploading…</span>
+                          <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.uploading")}</span>
                         ) : (
                           <>
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--foreground-subtle)]">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="text-[var(--foreground-subtle)]">
                               <path d="M10 3V14M10 3L6.5 6.5M10 3L13.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                               <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                             </svg>
-                            <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
-                            <span className="text-[12px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
+                            <span className="text-xs text-[var(--foreground-muted)]">{t("outfits.editor.upload")}</span>
+                            <span className="text-[12px] text-[var(--foreground-subtle)]">{t("outfits.editor.uploadHint")}</span>
                           </>
                         )}
                       </div>
@@ -1603,7 +1627,8 @@ export default function AdminOutfitsPage() {
                     type="url"
                     value={form.imageUrl}
                     onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="Or paste image URL…"
+                    placeholder={t("outfits.editor.imageUrl")}
+                    aria-label={t("outfits.editor.imageUrl")}
                     className={inputCls}
                   />
                 </div>
@@ -1618,7 +1643,7 @@ export default function AdminOutfitsPage() {
                     className="w-3.5 h-3.5 accent-[var(--foreground)]"
                   />
                   <label htmlFor="isAIGenerated" className="text-xs text-[var(--foreground-muted)] tracking-wide cursor-pointer">
-                    AI generated outfit
+                    {t("outfits.editor.ai")}
                   </label>
                 </div>
 
@@ -1635,13 +1660,13 @@ export default function AdminOutfitsPage() {
                   disabled={!form.name.trim() || saving}
                   className={`${btn("primary")} flex-1`}
                 >
-                  {saving ? "Saving..." : editingId ? "Save changes" : "Create outfit"}
+                  {saving ? t("common.saving") : t(editingId ? "outfits.editor.save" : "outfits.editor.create")}
                 </button>
                 <button
                   onClick={closeModal}
                   className={btn("ghost")}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
