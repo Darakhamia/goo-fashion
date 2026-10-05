@@ -17,7 +17,8 @@ import { btn } from "@/app/goo-studio/_ui/recipes";
  *
  * ConfirmProvider sits inside the admin root in goo-studio/layout.tsx, so the
  * dialog takes the admin theme. One dialog at a time: asking again while one
- * is open answers the open one "no".
+ * is open answers the open one "no". Line breaks ("\n") in a string body are
+ * kept.
  */
 
 export type ConfirmOptions = {
@@ -142,7 +143,7 @@ function Dialog({
             {options.title}
           </h2>
           {options.body && (
-            <div id={bodyId} className="text-[13px] leading-5 text-[var(--foreground-muted)] break-words">
+            <div id={bodyId} className="text-[13px] leading-5 text-[var(--foreground-muted)] break-words whitespace-pre-line">
               {options.body}
             </div>
           )}
