@@ -42,10 +42,21 @@ const TRANSLATED = [
 /** Attributes that carry text a person reads or hears. */
 const TEXT_ATTRS = new Set(["placeholder", "title", "aria-label", "alt", "label"]);
 
-/** Keys of the object literal exported from a dictionary file. */
+/**
+ * Keys of the object literal exported from a dictionary file, including the
+ * ones it spreads in from the screen files it imports (`...productsEn` from
+ * "./screens/products.en").
+ */
 function dictKeys(file) {
   const src = ts.createSourceFile(file, fs.readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
   const keys = new Set();
+  // Imported names → the file they come from.
+  const imports = new Map();
+  for (const st of src.statements) {
+    if (!ts.isImportDeclaration(st) || !st.importClause?.namedBindings || !ts.isNamedImports(st.importClause.namedBindings)) continue;
+    const from = path.join(path.dirname(file), `${st.moduleSpecifier.text}.ts`);
+    for (const el of st.importClause.namedBindings.elements) imports.set(el.name.text, from);
+  }
   const visit = (node) => {
     if (ts.isVariableDeclaration(node) && node.initializer) {
       let init = node.initializer;
@@ -53,6 +64,9 @@ function dictKeys(file) {
       if (ts.isObjectLiteralExpression(init)) {
         for (const p of init.properties) {
           if (ts.isPropertyAssignment(p)) keys.add(p.name.text ?? p.name.getText(src));
+          else if (ts.isSpreadAssignment(p) && ts.isIdentifier(p.expression) && imports.has(p.expression.text)) {
+            for (const k of dictKeys(imports.get(p.expression.text))) keys.add(k);
+          }
         }
         return;
       }
