@@ -49,6 +49,14 @@ export const BTN_DANGER = btn("danger");
 export const BTN_ICON =
   "inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
+/** Icon-only with the secondary outline: the "…" next to a page's main action. */
+export const BTN_ICON_OUTLINE =
+  "inline-flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+/** The same, 28px, for a table row (ADMIN_DESIGN 5.3: h-7 in a row). */
+export const BTN_ICON_SM =
+  "inline-flex items-center justify-center w-7 h-7 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
 const FIELD_BASE =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 
