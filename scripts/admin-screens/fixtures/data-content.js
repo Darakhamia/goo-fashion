@@ -419,7 +419,7 @@ const pages = [
     fullPage: false,
     wait: 1800,
     after: async (page) => {
-      await page.locator("#showcase").getByRole("button", { name: /^Remove / }).first().click();
+      await page.locator("#showcase").getByRole("button", { name: /^(Remove|Убрать) / }).first().click();
       await page.getByRole("region", { name: /Save changes|Сохранение/ }).waitFor();
       await page.waitForTimeout(600);
     },
