@@ -275,6 +275,15 @@ export default function AdminAnalyticsPage() {
 
   const stylistDaily = data?.aiUsage.stylistDaily ?? [];
   const stylistMax = Math.max(0, ...stylistDaily.map((x) => x.count));
+  const stylistByDate = new Map(stylistDaily.map((x) => [x.date, x.count]));
+  // The period's days, from the traffic buckets. Over 24 hours the stylist is
+  // counted for today only, so today is the one slot.
+  const lastBucket = data?.timeseries.at(-1)?.bucket;
+  const stylistDays = !data
+    ? []
+    : data.range === "24h"
+      ? lastBucket ? [lastBucket.slice(0, 10)] : []
+      : data.timeseries.map((b) => b.bucket.slice(0, 10));
 
   return (
     <div>
@@ -344,21 +353,29 @@ export default function AdminAnalyticsPage() {
             {!loading && data && (stylistDaily.length === 0 ? (
               <p className="text-xs text-[var(--foreground-subtle)] text-center py-3">{t("analytics.ai.noUsage")}</p>
             ) : (
-              // Only the days with messages come back, so a bar is a day of use, not a calendar slot:
-              // narrow bars on a baseline, from md as tall as the traffic chart beside them.
-              <div className="flex items-end justify-center gap-1 h-40 md:h-[260px] border-b border-[var(--border)]">
-                {stylistDaily.map((d) => {
-                  const h = stylistMax > 0 ? Math.max(4, Math.round((d.count / stylistMax) * 100)) : 0;
-                  return (
-                    <div
-                      key={d.date}
-                      title={`${d.date}: ${f.number(d.count)}`}
-                      className="flex-1 max-w-6 bg-[var(--foreground)] opacity-70 hover:opacity-100 transition-opacity rounded-t-sm"
-                      style={{ height: `${h}%` }}
-                    />
-                  );
-                })}
-              </div>
+              // One slot per day of the period, the traffic chart's days: only days with messages
+              // come back, and two bars alone in the panel read as the whole week. From md the
+              // bars are as tall as the traffic chart beside them.
+              <>
+                <div className="flex items-end gap-px h-40 md:h-[260px] border-b border-[var(--border)]">
+                  {stylistDays.map((date) => {
+                    const count = stylistByDate.get(date) ?? 0;
+                    const h = count > 0 && stylistMax > 0 ? Math.max(4, Math.round((count / stylistMax) * 100)) : 0;
+                    return (
+                      <div key={date} title={`${date}: ${f.number(count)}`} className="flex-1 h-full flex items-end justify-center">
+                        <div
+                          className="w-full max-w-6 bg-[var(--foreground)] opacity-70 hover:opacity-100 transition-opacity rounded-t-sm"
+                          style={{ height: `${h}%` }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between mt-1.5 text-[11px] tabular-nums text-[var(--foreground-subtle)]">
+                  <span>{stylistDays[0]?.slice(5)}</span>
+                  {stylistDays.length > 1 && <span>{stylistDays[stylistDays.length - 1].slice(5)}</span>}
+                </div>
+              </>
             ))}
           </ChartPanel>
         </div>
