@@ -49,6 +49,17 @@ export type AttentionInput = {
   pendingLooks: number | null;
 };
 
+/**
+ * How to start the renewal cron: the task as BILLING.md "Renewal cron on
+ * Coolify" gives it. Shown under "How to fix" on the dashboard and on
+ * Subscriptions, so both say the same thing.
+ */
+export const CRON_FIX = [
+  "Coolify → the app → Scheduled Tasks: billing-renew, 0 9 * * *",
+  'curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"',
+  "CRON_SECRET set in the app's environment (BILLING.md)",
+];
+
 export function buildAttention(input: AttentionInput): AttentionItem[] {
   const items: AttentionItem[] = [];
 
@@ -59,12 +70,7 @@ export function buildAttention(input: AttentionInput): AttentionItem[] {
       tone: "err",
       at: cron.at,
       href: "/goo-studio/subscriptions",
-      // The task as BILLING.md "Renewal cron on Coolify" gives it.
-      fix: [
-        "Coolify → the app → Scheduled Tasks: billing-renew, 0 9 * * *",
-        'curl -fsS --max-time 300 -H "Authorization: Bearer $CRON_SECRET" "http://127.0.0.1:${PORT:-3000}/api/billing/cron/renew"',
-        "CRON_SECRET set in the app's environment (BILLING.md)",
-      ],
+      fix: CRON_FIX,
     });
   }
 
