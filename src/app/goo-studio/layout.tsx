@@ -181,18 +181,8 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
-  {
-    href: "/goo-studio/waitlist",
-    label: "Waitlist",
-    category: "users",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 4h10M2 7h7M2 10h8M2 13h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <circle cx="13" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-        <path d="M13 11v1.5l1 0.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
+  // Waitlist is an archive since the public form was removed (September
+  // 2026): it has no menu entry, the page stays at /goo-studio/waitlist.
   {
     href: "/goo-studio/email",
     label: "Email",
