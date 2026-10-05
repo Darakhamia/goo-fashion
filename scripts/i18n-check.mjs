@@ -33,6 +33,7 @@ const TRANSLATED = [
   "src/components/admin/ImageCropEditor.tsx",
   "src/components/admin/AttentionList.tsx",
   "src/components/admin/DataTable.tsx",
+  "src/components/admin/DownloadCardsButton.tsx",
   "src/components/admin/FilterBar.tsx",
   "src/components/admin/KpiStrip.tsx",
   "src/components/admin/PageHeader.tsx",
