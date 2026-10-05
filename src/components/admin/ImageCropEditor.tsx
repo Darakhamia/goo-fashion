@@ -175,14 +175,14 @@ export function ImageCropEditor({
         <button
           type="button"
           onClick={handleReset}
-          className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
+          className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
         >
           Сбросить
         </button>
       </div>
 
       {/* Легенда */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[var(--foreground-subtle)]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[var(--foreground-subtle)]">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 border-2 border-white bg-transparent" />
           Рамка — перетащи
@@ -200,7 +200,7 @@ export function ImageCropEditor({
       {/* Холст */}
       <div
         ref={containerRef}
-        className="relative select-none overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
+        className="relative select-none overflow-hidden bg-[var(--background)] border border-[var(--border)]"
         style={{ aspectRatio: String(canvasAspect(crop)) }}
       >
         {/* Изображение — так же, как его кладёт карточка */}
@@ -276,7 +276,7 @@ export function ImageCropEditor({
           onTouchStart={(e) => startDrag("focal", e)}
         >
           <div className="w-full h-full rounded-full border-2 border-yellow-400 bg-yellow-400/30" />
-          <div className="absolute inset-0 flex items-center justify-center text-yellow-400 text-[10px] font-bold leading-none">
+          <div className="absolute inset-0 flex items-center justify-center text-yellow-400 text-[11px] font-bold leading-none">
             +
           </div>
         </div>
@@ -286,10 +286,10 @@ export function ImageCropEditor({
       <div className="flex items-start gap-4">
         {/* Предпросмотр в соотношении 3:4 */}
         <div className="flex flex-col gap-1 shrink-0">
-          <span className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-[0.1em]">Preview 3:4</span>
+          <span className="text-[12px] text-[var(--foreground-subtle)]">Preview 3:4</span>
           {/* The same markup ProductCard's CroppedImage uses. */}
           <div
-            className="relative overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
+            className="relative overflow-hidden bg-[var(--background)] border border-[var(--border)]"
             style={{ width: 60, height: 80 }}
           >
             <div
@@ -329,14 +329,14 @@ export function ImageCropEditor({
           type="button"
           onClick={() => onSave(crop)}
           disabled={saving}
-          className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
+          className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 rounded-lg"
         >
           {saving ? "Сохранение…" : "Сохранить кадрирование"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+          className="border border-[var(--border)] rounded-lg px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
         >
           Отмена
         </button>

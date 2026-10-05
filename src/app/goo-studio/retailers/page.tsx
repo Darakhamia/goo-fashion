@@ -54,14 +54,22 @@ const GENDER_OPTIONS: { value: StoreGender; label: string }[] = [
 ];
 const GENDER_SHORT: Record<Exclude<StoreGender, "">, string> = { men: "Men", women: "Women", unisex: "Unisex" };
 
-const INPUT =
-  "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)]";
+// Field base without a background, so the input and the select each set one
+// (two bg utilities on one element leave the winner to stylesheet order).
+const FIELD =
+  "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)]";
+const INPUT = `${FIELD} bg-transparent`;
+const SELECT = `${FIELD} bg-[var(--surface)]`;
 const PRIMARY =
-  "bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40";
-const GHOST =
-  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[11px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
+  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40";
+// Hover colours stay out of the base so the danger variant does not stack a
+// second hover:text / hover:border on the same element.
+const GHOST_BASE =
+  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] disabled:opacity-40 transition-colors";
+const GHOST = `${GHOST_BASE} hover:text-[var(--foreground)] hover:border-[var(--foreground)]`;
+const GHOST_DANGER = `${GHOST_BASE} hover:text-[var(--err)] hover:border-[var(--err)]`;
 const TH =
-  "text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal";
+  "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
 function Favicon({ domain }: { domain: string }) {
   return (
@@ -79,7 +87,7 @@ function Favicon({ domain }: { domain: string }) {
 
 function OfficialBadge() {
   return (
-    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-emerald-400/15 text-emerald-500 border border-emerald-400/30">
+    <span className="inline-block px-2 py-0.5 rounded-lg text-[11px] font-medium bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]">
       Official
     </span>
   );
@@ -266,24 +274,24 @@ export default function RetailersPage() {
           top, naming the migration — rather than letting the admin fill the
           form in and meet a PostgREST schema-cache message on submit. */}
       {report?.tableMissing && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-6">
-          <p className="text-[13px] text-amber-500 leading-relaxed">{report.setupHint}</p>
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-6">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">{report.setupHint}</p>
         </div>
       )}
 
       {report?.rulesError && (
-        <p className="text-[11px] text-red-500 mt-6">{report.rulesError}</p>
+        <p className="text-[11px] text-[var(--err)] mt-6">{report.rulesError}</p>
       )}
 
       {/* ── Editor ── */}
-      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--background)] mt-6 p-5 scroll-mt-6">
-        <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
+      <div ref={editorRef} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mt-6 p-5 scroll-mt-6">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">
           {editingDomain ? `Edit ${editingDomain}` : "New rule"}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="rd-domain" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
+            <label htmlFor="rd-domain" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Domain
             </label>
             <input
@@ -296,7 +304,7 @@ export default function RetailersPage() {
             />
           </div>
           <div>
-            <label htmlFor="rd-name" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
+            <label htmlFor="rd-name" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Store name
             </label>
             <input
@@ -309,14 +317,14 @@ export default function RetailersPage() {
             />
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="rd-gender" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
+            <label htmlFor="rd-gender" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Pieces the page doesn&apos;t mark are for
             </label>
             <select
               id="rd-gender"
               value={draft.defaultGender}
               onChange={(e) => setDraft((d) => ({ ...d, defaultGender: e.target.value as StoreGender }))}
-              className={`${INPUT} bg-[var(--background)]`}
+              className={SELECT}
             >
               {GENDER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -329,7 +337,7 @@ export default function RetailersPage() {
             </p>
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="rd-note" className="block text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">
+            <label htmlFor="rd-note" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
               Note
             </label>
             <input
@@ -353,8 +361,8 @@ export default function RetailersPage() {
         </label>
 
         {existingRule && (
-          <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] text-amber-500 leading-relaxed">
+          <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-[var(--warn)] leading-relaxed">
               {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
               that rule&apos;s name, official flag, gender and note.
             </p>
@@ -362,7 +370,7 @@ export default function RetailersPage() {
           </div>
         )}
 
-        {formError && <p className="text-[11px] text-red-500 mt-3">{formError}</p>}
+        {formError && <p className="text-[11px] text-[var(--err)] mt-3">{formError}</p>}
 
         <div className="flex items-center gap-2 mt-4">
           <button
@@ -383,18 +391,18 @@ export default function RetailersPage() {
         <p className="text-[11px] text-[var(--foreground-muted)] mt-4">{applyResult}</p>
       )}
       {actionError && (
-        <p role="alert" className="text-[11px] text-red-500 mt-4">{actionError}</p>
+        <p role="alert" className="text-[11px] text-[var(--err)] mt-4">{actionError}</p>
       )}
 
-      {loadError && <p className="text-[11px] text-red-500 mt-6">{loadError}</p>}
+      {loadError && <p className="text-[11px] text-[var(--err)] mt-6">{loadError}</p>}
 
       {/* ── Rules ── */}
-      <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-8 mb-3">
+      <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mt-8 mb-3">
         Rules {report && !(report.rulesError && !report.rules.length) ? `(${report.rules.length})` : ""}
       </p>
       <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
         <table className="w-full">
-          <thead style={{ background: "var(--surface)" }}>
+          <thead style={{ background: "var(--background)" }}>
             <tr>
               <th className={TH}>Domain</th>
               <th className={TH}>Name</th>
@@ -460,7 +468,7 @@ export default function RetailersPage() {
                         <button
                           onClick={() => remove(rule.domain)}
                           disabled={busyDomain === rule.domain}
-                          className={`${GHOST} hover:text-red-500 hover:border-red-500`}
+                          className={GHOST_DANGER}
                         >
                           Delete
                         </button>
@@ -475,7 +483,7 @@ export default function RetailersPage() {
       </div>
 
       {/* ── Domains the catalogue actually uses ── */}
-      <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mt-8 mb-1">
+      <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mt-8 mb-1">
         Domains without a rule {report && !report.discoverError ? `(${unruled.length})` : ""}
       </p>
       <p className="text-[11px] text-[var(--foreground-muted)] mb-3 leading-relaxed">
@@ -489,12 +497,12 @@ export default function RetailersPage() {
       </p>
 
       {report?.discoverError && (
-        <p className="text-[11px] text-amber-500 mb-3">{report.discoverError}</p>
+        <p className="text-[11px] text-[var(--warn)] mb-3">{report.discoverError}</p>
       )}
 
       <div className="rounded-xl border border-[var(--border)] overflow-hidden overflow-x-auto">
         <table className="w-full">
-          <thead style={{ background: "var(--surface)" }}>
+          <thead style={{ background: "var(--background)" }}>
             <tr>
               <th className={TH}>Domain</th>
               <th className={TH}>Products</th>

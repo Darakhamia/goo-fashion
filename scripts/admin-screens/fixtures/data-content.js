@@ -271,9 +271,8 @@ const schemaReport = () => {
   };
 };
 
-// A real sk-proj key is 164 chars; the server keeps 8 + 4 and bullets the rest.
-const RAW_KEY_LEN = 164;
-const MASKED_KEY = "sk-proj-" + "•".repeat(RAW_KEY_LEN - 12) + "Xq7A";
+// Same shape as maskKey in api/admin/settings/route.ts: 8 + 8 dots + 4.
+const MASKED_KEY = "sk-proj-" + "•".repeat(8) + "Xq7A";
 
 // ── Prompts ──────────────────────────────────────────────────────────────────
 // Defaults are the real PROMPT_META from src/lib/server/prompt-defaults.ts.

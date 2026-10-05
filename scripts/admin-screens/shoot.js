@@ -1,7 +1,9 @@
 // Screenshots of every /goo-studio page with each /api call answered from fixtures.
 // Run setup.sh first (it starts the stubbed app on :3100), then:
 //   NODE_PATH=<work>/pw/node_modules node shoot.js [--only=products,users]
-//     [--theme=light|dark|both] [--vp=desktop|mobile|both] [--out=DIR]
+//     [--theme=light|dark|both] [--vp=desktop|mobile|both] [--out=DIR] [--axe]
+// --axe skips screenshots and runs the axe-core colour-contrast check on each
+// page instead (needs axe-core next to playwright-core, see README.md).
 // See README.md.
 const fs = require("fs");
 const os = require("os");
@@ -97,9 +99,19 @@ function lookup(method, u) {
         if (pg.after) { await pg.after(page); await page.waitForTimeout(800); }
         // Hide Next dev overlay badge
         await page.addStyleTag({ content: "nextjs-portal{display:none!important}" + (pg.fullPage !== false ? ".h-dvh{height:auto!important;overflow:visible!important} main{overflow:visible!important}" : "") });
-        const file = path.join(OUT, `${pg.name}--${theme}-${vp}.png`);
-        await page.screenshot({ path: file, fullPage: pg.fullPage !== false });
-        report.push({ page: pg.name, theme, vp, file, unmatched: [...unmatched], errors: errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e)) });
+        const kept = errors.filter((e) => !/Failed to load resource|favicon|posthog/i.test(e));
+        if ("axe" in args) {
+          await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
+          const contrast = await page.evaluate(async () => {
+            const res = await window.axe.run(document, { runOnly: ["color-contrast"] });
+            return res.violations.flatMap((v) => v.nodes.map((n) => `${(n.any[0] || {}).message} — ${n.html.slice(0, 120)}`));
+          });
+          report.push({ page: pg.name, theme, vp, contrast, unmatched: [...unmatched], errors: kept });
+        } else {
+          const file = path.join(OUT, `${pg.name}--${theme}-${vp}.png`);
+          await page.screenshot({ path: file, fullPage: pg.fullPage !== false });
+          report.push({ page: pg.name, theme, vp, file, unmatched: [...unmatched], errors: kept });
+        }
       } catch (e) {
         report.push({ page: pg.name, theme, vp, fail: e.message.slice(0, 300), unmatched: [...unmatched], errors });
       }
@@ -109,7 +121,9 @@ function lookup(method, u) {
   }
   await browser.close();
   for (const r of report) {
-    console.log(`\n## ${r.page} [${r.theme}/${r.vp}] ${r.fail ? "FAIL " + r.fail : "ok"}`);
+    const verdict = r.fail ? "FAIL " + r.fail : r.contrast ? `${r.contrast.length} contrast violations` : "ok";
+    console.log(`\n## ${r.page} [${r.theme}/${r.vp}] ${verdict}`);
+    if (r.contrast && r.contrast.length) console.log("  " + r.contrast.slice(0, 10).join("\n  "));
     if (r.unmatched.length) console.log("  unmatched:", r.unmatched.join(" | "));
     if (r.errors.length) console.log("  errors:", [...new Set(r.errors)].slice(0, 5).join(" || "));
   }

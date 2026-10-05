@@ -79,9 +79,12 @@ const REASON_LABEL: Record<Reason, string> = {
 };
 
 const GHOST =
-  "border border-[var(--border)] rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40";
+  "border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40";
 const PRIMARY =
-  "bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40";
+  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40";
+// A card's own action: outlined, so the fill stays with the screen's one main action.
+const SECONDARY =
+  "border border-[var(--border-strong)] text-[var(--foreground)] px-4 py-2 rounded-lg text-[13px] font-medium hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40";
 
 function money(amount: number, currency: string): string {
   if (!amount) return "—";
@@ -122,7 +125,7 @@ function GroupCard({
     });
 
   return (
-    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
       <header className="px-5 py-3.5 border-b border-[var(--border)] flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-sm text-[var(--foreground)] truncate">
@@ -146,7 +149,7 @@ function GroupCard({
               }`}
             >
               <div className="flex flex-col items-center gap-2 pt-1 shrink-0 w-14">
-                <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[12px] text-[var(--foreground-muted)]">
                   <input
                     type="radio"
                     name={`keep-${group.keepId}`}
@@ -165,7 +168,7 @@ function GroupCard({
                   Keep
                 </label>
                 {!keeping && (
-                  <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                  <label className="flex items-center gap-1.5 min-h-10 md:min-h-0 cursor-pointer text-[12px] text-[var(--foreground-muted)]">
                     <input
                       type="checkbox"
                       checked={included}
@@ -182,7 +185,7 @@ function GroupCard({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
               ) : (
-                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--background)" }} />
               )}
 
               <div className="min-w-0 flex-1">
@@ -195,7 +198,7 @@ function GroupCard({
                     {p.name}
                   </Link>
                   {keeping && (
-                    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-emerald-400/15 text-emerald-500 border border-emerald-400/30">
+                    <span className="inline-block px-2 py-0.5 rounded-lg text-[11px] font-medium bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]">
                       Kept
                     </span>
                   )}
@@ -219,7 +222,7 @@ function GroupCard({
                         s.name
                       )}
                       <span className="text-[var(--foreground-muted)]"> {money(s.price, s.currency)}</span>
-                      {s.isOfficial && <span className="text-[10px] tracking-[0.14em] uppercase text-emerald-500"> official</span>}
+                      {s.isOfficial && <span className="text-[11px] font-medium text-[var(--ok)]"> official</span>}
                     </li>
                   ))}
                 </ul>
@@ -275,7 +278,7 @@ function ColourwayCard({
   const first = proposal.products[0];
   const colours = [...new Set(proposal.products.map((p) => p.color || "no colour"))];
   return (
-    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
       <header className="px-5 py-3.5 border-b border-[var(--border)]">
         <h2 className="text-sm text-[var(--foreground)] truncate">
           {first.brand} · {first.name}
@@ -293,7 +296,7 @@ function ColourwayCard({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
               ) : (
-                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--background)" }} />
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -305,7 +308,7 @@ function ColourwayCard({
                     {p.name}
                   </Link>
                   {p.id === proposal.leadId && (
-                    <span className="inline-block px-2 py-0.5 rounded-lg text-[10px] tracking-[0.14em] uppercase bg-[var(--surface)] text-[var(--foreground-muted)] border border-[var(--border)]">
+                    <span className="inline-block px-2 py-0.5 rounded-lg text-[11px] font-medium bg-[var(--background)] text-[var(--foreground-muted)] border border-[var(--border)]">
                       Shown first
                     </span>
                   )}
@@ -334,7 +337,7 @@ function ColourwayCard({
           <button onClick={onDismiss} disabled={busy} title="Remember these cards as different models" className={GHOST}>
             Not one model
           </button>
-          <button onClick={onGroup} disabled={busy} className={PRIMARY}>
+          <button onClick={onGroup} disabled={busy} className={SECONDARY}>
             {busy ? "Working…" : "Group as colours"}
           </button>
         </div>
@@ -356,7 +359,7 @@ function MixedGroupCard({
   const [keep, setKeep] = useState(0);
   const count = group.families.reduce((n, f) => n + f.length, 0);
   return (
-    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+    <section className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
       <header className="px-5 py-3.5 border-b border-[var(--border)]">
         <h2 className="text-sm text-[var(--foreground)] truncate">
           {group.families[0][0]?.brand} · one colour group, {group.families.length} different models
@@ -366,7 +369,7 @@ function MixedGroupCard({
       <ul>
         {group.families.map((family, i) => (
           <li key={family[0].id} className="px-5 py-3 border-b border-[var(--border)] last:border-b-0 flex items-start gap-4">
-            <label className="flex items-center gap-1.5 cursor-pointer pt-1 shrink-0 w-14 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+            <label className="flex items-center gap-1.5 cursor-pointer pt-1 shrink-0 w-14 text-[12px] text-[var(--foreground-muted)]">
               <input
                 type="radio"
                 name={`family-${group.groupId}`}
@@ -384,7 +387,7 @@ function MixedGroupCard({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-contain bg-white border border-[var(--border)] shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--surface)" }} />
+                    <div className="w-10 h-10 rounded-lg border border-[var(--border)] shrink-0" style={{ background: "var(--background)" }} />
                   )}
                   <div className="min-w-0">
                     <Link href={`/product/${p.id}`} target="_blank" className="block text-[13px] text-[var(--foreground)] hover:underline underline-offset-2 truncate">
@@ -405,7 +408,7 @@ function MixedGroupCard({
           The kept model stays in the group. Each other model gets a group of its own, and a lone card
           leaves grouping. Nothing is deleted.
         </p>
-        <button onClick={() => onSplit(group.families[keep].map((p) => p.id))} disabled={busy} className={PRIMARY}>
+        <button onClick={() => onSplit(group.families[keep].map((p) => p.id))} disabled={busy} className={SECONDARY}>
           {busy ? "Working…" : "Split"}
         </button>
       </footer>
@@ -600,8 +603,8 @@ export default function DuplicatesPage() {
       </div>
 
       {report && !report.dismissalsAvailable && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 mb-6">
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 mb-6">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             &ldquo;Not the same item&rdquo; cannot be remembered until supabase/migrations/012_label_audit_dismissals.sql is run.
             Merging works without it.
           </p>
@@ -609,7 +612,7 @@ export default function DuplicatesPage() {
       )}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">{error}</div>
+        <div className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">{error}</div>
       )}
 
       {loading && !report && (
@@ -618,7 +621,7 @@ export default function DuplicatesPage() {
 
       {report && (report.mixedGroups?.length ?? 0) > 0 && (
         <div className="mb-10">
-          <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-1">
+          <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-1">
             Colour groups mixing different models ({report.mixedGroups!.length})
           </h2>
           <p className="text-[11px] text-[var(--foreground-muted)] mb-3 leading-relaxed max-w-2xl">
@@ -642,7 +645,7 @@ export default function DuplicatesPage() {
         <div className="mb-10">
           <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
             <div className="min-w-0 max-w-2xl">
-              <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-1">
+              <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-1">
                 One model&apos;s colours shown as separate cards ({report.colourways!.length})
               </h2>
               <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
@@ -674,13 +677,13 @@ export default function DuplicatesPage() {
       )}
 
       {report && ((report.mixedGroups?.length ?? 0) > 0 || (report.colourways?.length ?? 0) > 0) && (
-        <h2 className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] mb-4">
+        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">
           The same item held twice
         </h2>
       )}
 
       {report && report.groups.length === 0 && (
-        <div className="rounded-xl border border-[var(--border)] px-6 py-16 text-center" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] px-6 py-16 text-center" style={{ background: "var(--surface)" }}>
           <p className="text-sm text-[var(--foreground)]">No duplicates found.</p>
           <p className="text-xs text-[var(--foreground-muted)] mt-2">
             No two cards share a barcode, or the same model in the same colours from different stores.
@@ -714,8 +717,8 @@ export default function DuplicatesPage() {
           role="status"
           className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-              : "bg-[var(--background)] text-red-500 border-red-400/30"
+              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
+              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
           }`}
         >
           {toast.msg}

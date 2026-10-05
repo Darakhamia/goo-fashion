@@ -81,8 +81,6 @@ function initials(first: string | null, last: string | null, email: string | nul
   return "—";
 }
 
-const STAT_ACCENTS = ["bg-blue-500", "bg-purple-500", "bg-emerald-500", "bg-amber-500"];
-
 const staggerContainer = {
   animate: { transition: { staggerChildren: 0.06 } },
 };
@@ -156,11 +154,11 @@ export default function AdminDashboardPage() {
           <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Dashboard</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">Live data could not be loaded.</p>
         </div>
-        <div className="border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
           <span className="min-w-0 break-words">{error}</span>
           <button
             onClick={load}
-            className="shrink-0 text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+            className="shrink-0 text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
           >
             Retry
           </button>
@@ -182,7 +180,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
+          className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
@@ -190,7 +188,7 @@ export default function AdminDashboardPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3 rounded-xl">
+        <div className="mb-6 border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3 rounded-xl">
           {error}
         </div>
       )}
@@ -208,13 +206,11 @@ export default function AdminDashboardPage() {
             <motion.div
               key={c?.label ?? i}
               variants={fadeUp}
-              className="rounded-2xl border border-[var(--border)] p-4 md:p-6 min-w-0 relative overflow-hidden hover:border-[var(--foreground-muted)] hover:shadow-md transition-colors duration-200"
-              style={{ background: "var(--background)" }}
+              className="rounded-xl border border-[var(--border)] p-4 md:p-6 min-w-0 relative overflow-hidden"
+              style={{ background: "var(--surface)" }}
             >
-              {/* Color accent strip */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${STAT_ACCENTS[i]}`} />
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                   {c?.label ?? "—"}
                 </span>
               </div>
@@ -228,17 +224,17 @@ export default function AdminDashboardPage() {
                 ) : c.delta ? (
                   <span
                     title="Month to date vs the same days of last month"
-                    className={`inline-flex items-center text-[9px] tracking-[0.1em] uppercase font-medium px-2 py-1 rounded-full ${
+                    className={`inline-flex items-center text-[11px] font-medium px-2 py-1 rounded-full ${
                       c.delta.positive
-                        ? "bg-emerald-500/12 text-emerald-600 border border-emerald-500/20"
-                        : "bg-red-500/12 text-red-500 border border-red-500/20"
+                        ? "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]"
+                        : "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]"
                     }`}
                   >
                     {c.delta.label}
                   </span>
                 ) : null}
               </div>
-              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-1">
+              <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-1">
                 {c?.sub ?? " "}
               </p>
             </motion.div>
@@ -248,7 +244,7 @@ export default function AdminDashboardPage() {
 
       {/* Service health */}
       <div className="mb-10">
-        <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">System Health</h2>
+        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">System health</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {data && (Object.keys(HEALTH_LABELS) as (keyof StatsPayload["health"])[]).map((k) => {
             const h = data.health[k];
@@ -256,22 +252,22 @@ export default function AdminDashboardPage() {
               <div
                 key={k}
                 className="rounded-xl border border-[var(--border)] px-4 py-3 flex items-center gap-3 hover:border-[var(--border-strong)] transition-colors"
-                style={{ background: "var(--background)" }}
+                style={{ background: "var(--surface)" }}
               >
                 <span
                   className={`w-2 h-2 rounded-full shrink-0 ${
-                    h.ok ? "bg-emerald-500" : "bg-red-500 animate-pulse"
+                    h.ok ? "bg-[var(--ok)]" : "bg-[var(--err)] animate-pulse"
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
+                  <p className="text-[13px] font-medium text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
+                  <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
                 </div>
               </div>
             );
           })}
           {!data && Object.keys(HEALTH_LABELS).map((k) => (
-            <div key={k} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--background)" }} />
+            <div key={k} className="rounded-xl border border-[var(--border)] px-4 py-3 h-14 animate-pulse" style={{ background: "var(--surface)" }} />
           ))}
         </div>
       </div>
@@ -281,22 +277,22 @@ export default function AdminDashboardPage() {
         {/* Signups */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Signups</h2>
-            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent signups</h2>
+            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
-          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
             {data?.recent.signups.length === 0 && (
               <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No signups yet</div>
             )}
             <div className="divide-y divide-[var(--border)]">
               {data?.recent.signups.map((u) => (
-                <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors">
+                <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--background)] transition-colors">
                   {u.imageUrl ? (
                     <Image src={u.imageUrl} alt="" width={28} height={28} className="rounded-full object-cover w-7 h-7 flex-shrink-0" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--background)] bg-[var(--foreground-muted)] flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] flex-shrink-0">
                       {initials(u.firstName, u.lastName, u.email)}
                     </div>
                   )}
@@ -304,17 +300,17 @@ export default function AdminDashboardPage() {
                     <p className="text-xs text-[var(--foreground)] truncate">
                       {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id}
                     </p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
                   </div>
-                  <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-md ${
-                    u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : u.plan === "pro" ? "bg-amber-400/15 text-amber-600 border border-amber-400/30"
+                  <span className={`text-[11px] font-medium capitalize px-2 py-1 rounded-md ${
+                    u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--surface)]"
+                    : u.plan === "pro" ? "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]"
                     : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
                     : "border border-[var(--border)] text-[var(--foreground-muted)]"
                   }`}>
                     {u.plan}
                   </span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
+                  <span className="text-[12px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
                     {fmtRelative(u.createdAt)}
                   </span>
                 </div>
@@ -326,26 +322,26 @@ export default function AdminDashboardPage() {
         {/* Recent outfits */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Outfits</h2>
-            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent outfits</h2>
+            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
-          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
+          <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
             {data?.recent.outfits.length === 0 && (
               <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No outfits yet</div>
             )}
             <div className="divide-y divide-[var(--border)]">
               {data?.recent.outfits.map((o) => (
-                <div key={o.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface)] transition-colors">
-                  <div className="relative w-10 h-12 bg-[var(--surface)] overflow-hidden flex-shrink-0 rounded-lg">
+                <div key={o.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--background)] transition-colors">
+                  <div className="relative w-10 h-12 bg-[var(--background)] overflow-hidden flex-shrink-0 rounded-lg">
                     {o.image_url ? (
                       <Image src={o.image_url} alt="" fill className="object-cover" sizes="40px" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-[var(--foreground)] truncate">{o.name}</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
                   </div>
                 </div>
               ))}
@@ -357,20 +353,20 @@ export default function AdminDashboardPage() {
       {/* Recent Products */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Products</h2>
-          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+          <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent products</h2>
+          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
             View all →
           </Link>
         </div>
 
-        <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -378,7 +374,7 @@ export default function AdminDashboardPage() {
                 <tr><td colSpan={4} className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No products yet</td></tr>
               )}
               {data?.recent.products.map((p) => (
-                <tr key={p.id} className="hover:bg-[var(--surface)] transition-colors">
+                <tr key={p.id} className="hover:bg-[var(--background)] transition-colors">
                   <td className="px-4 py-3">
                     <div className="relative w-8 h-10 overflow-hidden flex-shrink-0 rounded-md">
                       {p.image_url ? (

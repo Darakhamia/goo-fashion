@@ -43,13 +43,14 @@ s = s.replace(anchor, anchor + '\n  turbopack: { resolveAlias: { "@clerk/nextjs"
 open(p, "w").write(s)
 EOF
 
-# 3. Dependencies: the app's, and playwright-core for shoot.js (it drives the
-#    preinstalled Chromium; set CHROMIUM_PATH if yours lives elsewhere).
+# 3. Dependencies: the app's, plus playwright-core for shoot.js (it drives the
+#    preinstalled Chromium; set CHROMIUM_PATH if yours lives elsewhere) and
+#    axe-core for its --axe contrast check.
 (cd "$APP" && if ! cmp -s package-lock.json node_modules/.admin-screens-lock 2>/dev/null; then
   npm ci --no-audit --no-fund --loglevel=error && cp package-lock.json node_modules/.admin-screens-lock
 fi)
 mkdir -p "$WORK/pw"
-[ -d "$WORK/pw/node_modules/playwright-core" ] || (cd "$WORK/pw" && npm init -y >/dev/null && npm i playwright-core@1.56 --no-audit --no-fund --loglevel=error)
+[ -d "$WORK/pw/node_modules/axe-core" ] || (cd "$WORK/pw" && npm init -y >/dev/null && npm i playwright-core@1.56 axe-core@4 --no-audit --no-fund --loglevel=error)
 
 # 4. Start the dev server and wait until it answers.
 : > "$WORK/dev.log"

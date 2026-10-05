@@ -9,10 +9,10 @@ interface WaitlistEntry {
 }
 
 // Admin status recipe (DESIGN_SYSTEM.md §9)
-const statusWarn = "bg-amber-400/15 text-amber-500 border border-amber-400/30";
-const statusErr  = "bg-red-400/15 text-red-500 border border-red-400/30";
+const statusWarn = "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]";
+const statusErr  = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]";
 
-const thCls = "text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal";
+const thCls = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
 export default function WaitlistPage() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
@@ -92,7 +92,7 @@ export default function WaitlistPage() {
           <button
             onClick={copyAll}
             disabled={entries.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="4" y="4" width="8" height="8" rx="1" />
@@ -103,7 +103,7 @@ export default function WaitlistPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2v4H8M2 12v-4h4" />
@@ -125,7 +125,7 @@ export default function WaitlistPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--background)" }}>
+      <div className="rounded-xl border border-[var(--border)] overflow-x-auto" style={{ background: "var(--surface)" }}>
         {loading ? (
           <div className="px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]">Loading…</div>
         ) : loadError ? (
@@ -139,7 +139,7 @@ export default function WaitlistPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+              <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                 <th className={thCls}>Email</th>
                 <th className={`${thCls} w-40`}>Signed up</th>
                 <th className="w-12" />
@@ -149,7 +149,7 @@ export default function WaitlistPage() {
               {entries.map((entry) => (
                 <tr
                   key={entry.id ?? entry.email}
-                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors"
+                  className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--background)] transition-colors"
                 >
                   <td className="px-4 py-3 text-[13px] text-[var(--foreground)] font-mono">{entry.email}</td>
                   <td className="px-4 py-3 text-[11px] text-[var(--foreground-muted)] whitespace-nowrap">
@@ -161,7 +161,7 @@ export default function WaitlistPage() {
                     <button
                       onClick={() => remove(entry.email)}
                       disabled={deleting === entry.email}
-                      className="flex items-center justify-center w-7 h-7 text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-40"
+                      className="flex items-center justify-center w-7 h-7 text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-40"
                       title="Remove"
                       aria-label={`Remove ${entry.email}`}
                     >
@@ -185,7 +185,7 @@ export default function WaitlistPage() {
       </div>
 
       {entries.length > 0 && (
-        <p className="mt-3 text-[10px] text-[var(--foreground-subtle)] tracking-wide text-right">
+        <p className="mt-3 text-[12px] text-[var(--foreground-subtle)] tracking-wide text-right">
           {entries.length} total · use &ldquo;Copy all&rdquo; to export to email tool
         </p>
       )}

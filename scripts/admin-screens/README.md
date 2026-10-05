@@ -28,6 +28,7 @@ NODE_PATH=/tmp/goo-admin-screens/pw/node_modules \
 - `--theme` — `light` | `dark` | `both`.
 - `--vp` — `desktop` | `mobile` | `both`.
 - `--out` — папка для снимков; по умолчанию `$TMPDIR/goo-admin-screens/shots`.
+- `--axe` — вместо снимков проверка контраста axe-core (`color-contrast`) на каждой странице. Печатает число нарушений и первые десять элементов. Так проверяется DoD GS4-1 из `docs/ADMIN_ROADMAP.md`.
 
 Имена файлов: `<страница>--<тема>-<экран>.png`.
 

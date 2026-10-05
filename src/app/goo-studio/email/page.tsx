@@ -44,12 +44,14 @@ const FORMAT_HELP: { input: string; output: string }[] = [
 ];
 
 const inputCls = "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]";
-const labelCls = "block text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)] mb-2";
+const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
+// Titles of the compose blocks (Audience, Subject, Body).
+const sectionCls = "block text-[13px] font-medium text-[var(--foreground)] mb-2";
 
 // Admin status recipe (DESIGN_SYSTEM.md §9)
-const statusOk   = "bg-emerald-400/15 text-emerald-500 border border-emerald-400/30";
-const statusWarn = "bg-amber-400/15 text-amber-500 border border-amber-400/30";
-const statusErr  = "bg-red-400/15 text-red-500 border border-red-400/30";
+const statusOk   = "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]";
+const statusWarn = "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]";
+const statusErr  = "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]";
 
 export default function AdminEmailPage() {
   const [status, setStatus] = useState<StatusData | null>(null);
@@ -280,10 +282,10 @@ export default function AdminEmailPage() {
           {!loadingStatus && status && (
             <div className={`rounded-xl flex items-start gap-4 px-5 py-4 text-xs ${
               status.configured
-                ? "border border-[var(--border)] bg-[var(--background)]"
+                ? "border border-[var(--border)] bg-[var(--surface)]"
                 : statusWarn
             }`}>
-              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${status.configured ? "bg-emerald-500" : "bg-amber-500"}`} />
+              <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${status.configured ? "bg-[var(--ok)]" : "bg-[var(--warn)]"}`} />
               <div className="flex-1 min-w-0">
                 {status.configured ? (
                   <p className="text-[var(--foreground-muted)]">
@@ -293,7 +295,7 @@ export default function AdminEmailPage() {
                 ) : (
                   <p>
                     <span className="font-medium">Resend not configured.</span>{" "}
-                    Add <code className="bg-[var(--surface)] px-1">RESEND_API_KEY</code> to your environment variables.
+                    Add <code className="bg-[var(--background)] px-1">RESEND_API_KEY</code> to your environment variables.
                   </p>
                 )}
               </div>
@@ -302,7 +304,7 @@ export default function AdminEmailPage() {
 
           {/* Audience selector */}
           <div>
-            <label className={labelCls}>Audience</label>
+            <label className={sectionCls}>Audience</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AUDIENCE_OPTIONS.map((opt) => {
                 const count = opt.value === "custom" ? null : status?.counts?.[opt.value];
@@ -312,12 +314,12 @@ export default function AdminEmailPage() {
                     onClick={() => { setAudience(opt.value); setResult(null); setSendError(""); }}
                     className={`text-left px-4 py-3 rounded-xl border transition-colors ${
                       audience === opt.value
-                        ? "border-[var(--foreground)] bg-[var(--surface)]"
-                        : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--background)]"
+                        ? "border-[var(--foreground)] bg-[var(--background)]"
+                        : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--surface)]"
                     }`}
                   >
                     <p className="text-xs font-medium text-[var(--foreground)] mb-0.5">{opt.label}</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)]">
+                    <p className="text-[12px] text-[var(--foreground-subtle)]">
                       {opt.desc ?? (count != null
                         ? `${count} recipient${count !== 1 ? "s" : ""}`
                         : loadingStatus ? "…" : "Count unavailable")}
@@ -343,7 +345,7 @@ export default function AdminEmailPage() {
                   className={`${inputCls} resize-none font-mono`}
                 />
                 {(customParsed.emails.length > 0 || customParsed.skipped > 0) && (
-                  <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">
+                  <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
                     {customParsed.emails.length} valid address{customParsed.emails.length !== 1 ? "es" : ""}
                     {customParsed.skipped > 0 && ` · ${customParsed.skipped} skipped (invalid or duplicate)`}
                   </p>
@@ -355,7 +357,7 @@ export default function AdminEmailPage() {
           {/* Compose */}
           <div className="space-y-4">
             <div>
-              <label className={labelCls}>Subject</label>
+              <label className={sectionCls}>Subject</label>
               <input
                 type="text"
                 value={subject}
@@ -367,12 +369,12 @@ export default function AdminEmailPage() {
 
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <label className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+                <label className="text-[13px] font-medium text-[var(--foreground)]">
                   Body
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
                   {/* The "?" guide says the same on phones, where this line does not fit. */}
-                  <span className="hidden sm:inline text-[10px] text-[var(--foreground-subtle)]">
+                  <span className="hidden sm:inline text-[12px] text-[var(--foreground-subtle)]">
                     Supports # h1 &nbsp;## h2 &nbsp;- lists &nbsp;**bold** &nbsp;*italic*
                   </span>
                   <button
@@ -381,14 +383,14 @@ export default function AdminEmailPage() {
                     aria-expanded={showFormatHelp}
                     aria-label="Formatting help"
                     title="Formatting help"
-                    className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[10px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                    className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[11px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
                   >
                     ?
                   </button>
                   <button
                     type="button"
                     onClick={() => { setAiWriteError(""); setShowAiModal(true); }}
-                    className="inline-flex items-center gap-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg text-[13px] font-medium border border-[var(--border)] px-2.5 py-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
                   >
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                       <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1" />
@@ -404,8 +406,8 @@ export default function AdminEmailPage() {
               {showFormatHelp && (
                 <div className="mb-2 rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]">
                   <div className="px-3 py-2 flex items-center justify-between">
-                    <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">Formatting</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)]">you type → the email shows</p>
+                    <p className="text-[13px] font-medium text-[var(--foreground)]">Formatting</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)]">You type → the email shows</p>
                   </div>
                   {FORMAT_HELP.map(({ input, output }) => (
                     <div key={input} className="grid grid-cols-[1fr_1fr] px-3 py-1.5 gap-4">
@@ -431,18 +433,18 @@ export default function AdminEmailPage() {
             <button
               onClick={() => setShowPreview((v) => !v)}
               disabled={!showPreview && (!subject.trim() || !body.trim())}
-              className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {showPreview ? "Hide preview" : "Show email preview"}
             </button>
 
             {showPreview && previewHtml && (
               <div className="mt-4 rounded-xl border border-[var(--border)] overflow-hidden">
-                <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--surface)] flex items-center gap-2">
+                <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--background)] flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
                   <span className="w-2.5 h-2.5 rounded-full bg-[var(--border-strong)]" />
-                  <span className="ml-2 text-[10px] text-[var(--foreground-subtle)]">Email preview</span>
+                  <span className="ml-2 text-[12px] text-[var(--foreground-subtle)]">Email preview</span>
                 </div>
                 <iframe
                   srcDoc={previewHtml}
@@ -459,7 +461,7 @@ export default function AdminEmailPage() {
             <button
               onClick={() => sendEmail(true)}
               disabled={!canSend || testSending || sending}
-              className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--foreground)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              className="rounded-lg text-[13px] font-medium text-[var(--foreground)] border border-[var(--border)] px-5 py-2.5 hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {testSending ? (
                 <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending test…</>
@@ -470,7 +472,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setConfirmSend(true)}
                 disabled={!canSend || testSending || sending || recipientCount === 0}
-                className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-lg text-[13px] font-medium text-[var(--surface)] bg-[var(--foreground)] px-5 py-2.5 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Send to {recipientCount > 0 ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""}` : "audience"}
               </button>
@@ -482,7 +484,7 @@ export default function AdminEmailPage() {
                 <button
                   onClick={() => sendEmail(false)}
                   disabled={sending}
-                  className="rounded-lg text-xs tracking-[0.12em] uppercase text-[var(--background)] bg-[var(--foreground)] px-4 py-2 hover:opacity-80 disabled:opacity-40 transition-opacity flex items-center gap-2"
+                  className="rounded-lg text-[13px] font-medium text-[var(--surface)] bg-[var(--foreground)] px-4 py-2 hover:opacity-80 disabled:opacity-40 transition-opacity flex items-center gap-2"
                 >
                   {sending ? (
                     <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Sending…</>
@@ -491,7 +493,7 @@ export default function AdminEmailPage() {
                 <button
                   onClick={() => setConfirmSend(false)}
                   disabled={sending}
-                  className="text-xs tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                  className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
                 >
                   Cancel
                 </button>
@@ -531,11 +533,11 @@ export default function AdminEmailPage() {
         </div>
 
         {/* ── Right: templates ── */}
-        <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-            <p className="text-[10px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">
+            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               Templates
-            </p>
+            </h2>
             <button
               onClick={() => { setTemplateName(""); setSaveTemplateError(""); setShowSaveModal(true); }}
               disabled={!subject.trim() || !body.trim()}
@@ -562,18 +564,18 @@ export default function AdminEmailPage() {
               !templatesError && (
                 <div className="px-4 py-8 text-center">
                   <p className="text-[11px] text-[var(--foreground-subtle)]">No templates yet.</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-1 opacity-60">
+                  <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
                     Fill in a subject + body above, then click + to save.
                   </p>
                 </div>
               )
             ) : (
               templates.map((t) => (
-                <div key={t.id} className="px-4 py-3 group hover:bg-[var(--surface)] transition-colors">
+                <div key={t.id} className="px-4 py-3 group hover:bg-[var(--background)] transition-colors">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-[var(--foreground)] truncate">{t.name}</p>
-                      <p className="text-[10px] text-[var(--foreground-muted)] truncate mt-0.5">{t.subject}</p>
+                      <p className="text-[12px] text-[var(--foreground-muted)] truncate mt-0.5">{t.subject}</p>
                     </div>
                     {/* Revealed on hover where there is a pointer; always shown on
                         touch screens, which have no hover, and while focused. */}
@@ -593,7 +595,7 @@ export default function AdminEmailPage() {
                         disabled={deletingId === t.id}
                         title="Delete template"
                         aria-label={`Delete template ${t.name}`}
-                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-red-500 transition-colors disabled:opacity-40"
+                        className="p-1 flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--err)] transition-colors disabled:opacity-40"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -616,7 +618,7 @@ export default function AdminEmailPage() {
             aria-modal="true"
             aria-label="Write with AI"
             className="rounded-2xl border border-[var(--border)] w-full max-w-md max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
@@ -633,7 +635,7 @@ export default function AdminEmailPage() {
             </div>
             <div className="px-5 py-4 space-y-3">
               {subject && (
-                <div className="text-[10px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+                <div className="text-[12px] text-[var(--foreground-subtle)] px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]">
                   Subject: <span className="text-[var(--foreground-muted)]">{subject}</span>
                 </div>
               )}
@@ -658,7 +660,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleAiWrite}
                 disabled={(!subject.trim() && !aiBrief.trim()) || aiWriting}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex items-center justify-center gap-2 rounded-lg"
               >
                 {aiWriting
                   ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Writing…</>
@@ -667,7 +669,7 @@ export default function AdminEmailPage() {
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiWriting}
-                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
+                className="border border-[var(--border)] px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
               >
                 Cancel
               </button>
@@ -684,7 +686,7 @@ export default function AdminEmailPage() {
             aria-modal="true"
             aria-label="Save template"
             className="rounded-2xl border border-[var(--border)] w-full max-w-sm max-h-[90dvh] overflow-y-auto"
-            style={{ background: "var(--background)" }}
+            style={{ background: "var(--surface)" }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="font-display text-lg font-light text-[var(--foreground)]">Save template</h2>
@@ -711,7 +713,7 @@ export default function AdminEmailPage() {
                   autoFocus
                 />
               </div>
-              <div className="text-[10px] text-[var(--foreground-subtle)] space-y-0.5">
+              <div className="text-[12px] text-[var(--foreground-subtle)] space-y-0.5">
                 <p><span className="text-[var(--foreground-muted)]">Subject:</span> {subject}</p>
                 <p><span className="text-[var(--foreground-muted)]">Body:</span> {body.slice(0, 60)}{body.length > 60 ? "…" : ""}</p>
               </div>
@@ -723,13 +725,13 @@ export default function AdminEmailPage() {
               <button
                 onClick={handleSaveTemplate}
                 disabled={!templateName.trim() || savingTemplate}
-                className="flex-1 bg-[var(--foreground)] text-[var(--background)] py-2.5 text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-2.5 text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity rounded-lg"
               >
                 {savingTemplate ? "Saving…" : "Save template"}
               </button>
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="border border-[var(--border)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors rounded-lg"
+                className="border border-[var(--border)] px-4 py-2.5 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
               >
                 Cancel
               </button>

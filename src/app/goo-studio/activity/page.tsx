@@ -111,9 +111,9 @@ const ACTION_TONES: Partial<Record<AdminAction, Tone>> = {
 };
 
 const TONE_CLASSES: Record<Tone, string> = {
-  danger: "bg-red-400/15 text-red-500 border-red-400/30",
-  warn:   "bg-amber-400/15 text-amber-500 border-amber-400/30",
-  ok:     "bg-emerald-400/15 text-emerald-500 border-emerald-400/30",
+  danger: "bg-[var(--err-bg)] text-[var(--err)] border-[var(--err-line)]",
+  warn:   "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]",
+  ok:     "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]",
 };
 
 const GROUP_LABELS: Record<string, string> = {
@@ -148,11 +148,17 @@ function isKnownAction(action: string): action is AdminAction {
 }
 
 const pillCls = (active: boolean) =>
-  `px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+  `px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
     active
-      ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
+      ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
   }`;
+
+/** "retailer_domain" → "Retailer domain" — a stored key as a badge reads it. */
+function sentenceCase(key: string) {
+  const t = key.replace(/_/g, " ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 function fmtRelative(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -176,18 +182,18 @@ function fmtFull(iso: string) {
 function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; action: string }) {
   if (action === "user.plan_changed") {
     return (
-      <span className="text-[10px] text-[var(--foreground-subtle)]">
+      <span className="text-[12px] text-[var(--foreground-subtle)]">
         {String(metadata.from ?? "?")} → {String(metadata.to ?? "?")}
       </span>
     );
   }
   if (action === "user.deleted" && metadata.target_email) {
-    return <span className="text-[10px] text-[var(--foreground-subtle)]">{String(metadata.target_email)}</span>;
+    return <span className="text-[12px] text-[var(--foreground-subtle)]">{String(metadata.target_email)}</span>;
   }
   if (action === "user.name_updated") {
     const parts = [metadata.firstName, metadata.lastName].filter(Boolean);
     if (parts.length) {
-      return <span className="text-[10px] text-[var(--foreground-subtle)]">{parts.join(" ")}</span>;
+      return <span className="text-[12px] text-[var(--foreground-subtle)]">{parts.join(" ")}</span>;
     }
   }
   // Whatever names the target, if the entry recorded one.
@@ -195,7 +201,7 @@ function MetaDetail({ metadata, action }: { metadata: Record<string, unknown>; a
     (v): v is string => typeof v === "string" && v.trim() !== "",
   );
   if (name) {
-    return <span className="text-[10px] text-[var(--foreground-subtle)] truncate max-w-[240px]">{name}</span>;
+    return <span className="text-[12px] text-[var(--foreground-subtle)] truncate max-w-[240px]">{name}</span>;
   }
   return null;
 }
@@ -307,8 +313,8 @@ export default function AdminActivityPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2.5 mb-1">
             <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Admin Activity</h1>
-            <span className="text-[9px] tracking-[0.16em] uppercase px-2 py-1 border rounded-full bg-amber-400/15 text-amber-500 border-amber-400/30">
-              Super Admin
+            <span className="text-[11px] font-medium px-2 py-1 border rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]">
+              Super admin
             </span>
           </div>
           <p className="text-xs text-[var(--foreground-muted)]">
@@ -318,7 +324,7 @@ export default function AdminActivityPage() {
         <button
           onClick={() => fetchPage(0)}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className="text-[13px] font-medium border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -345,7 +351,7 @@ export default function AdminActivityPage() {
           value={actionFilter}
           onChange={(e) => changeFilter(adminFilter, e.target.value)}
           aria-label="Filter by action"
-          className="rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
+          className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[220px]"
         >
           <option value="">All actions</option>
           {ACTION_GROUPS.map(([group, actions]) => (
@@ -359,13 +365,13 @@ export default function AdminActivityPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 text-red-500 text-xs px-4 py-3">
+        <div role="alert" className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] text-[var(--err)] text-xs px-4 py-3">
           {error}
         </div>
       )}
 
       {/* Timeline */}
-      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--background)]">
+      <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
         {loading && entries.length === 0 && (
           <div className="py-16 text-center text-xs text-[var(--foreground-subtle)]">Loading…</div>
         )}
@@ -387,7 +393,7 @@ export default function AdminActivityPage() {
           return (
             <div
               key={entry.id}
-              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--surface)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
+              className={`flex items-start gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-[var(--background)] transition-colors ${!isLast ? "border-b border-[var(--border)]" : ""}`}
             >
               {/* Icon column */}
               <div className="flex-shrink-0 mt-0.5">
@@ -397,12 +403,12 @@ export default function AdminActivityPage() {
               {/* Main info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border rounded-full ${colorCls}`}>
+                  <span className={`text-[11px] font-medium px-2 py-0.5 border rounded-full ${colorCls}`}>
                     {label}
                   </span>
                   {entry.target_type && (
-                    <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
-                      {entry.target_type}
+                    <span className="text-[11px] font-medium text-[var(--foreground-subtle)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
+                      {sentenceCase(entry.target_type)}
                     </span>
                   )}
                   <MetaDetail metadata={entry.metadata} action={entry.action} />
@@ -414,7 +420,7 @@ export default function AdminActivityPage() {
                   {entry.target_id && (
                     <>
                       <span className="text-[var(--border-strong)]">·</span>
-                      <span className="text-[10px] font-mono text-[var(--foreground-subtle)] truncate max-w-[180px]">
+                      <span className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate max-w-[180px]">
                         {entry.target_id}
                       </span>
                     </>
@@ -427,7 +433,7 @@ export default function AdminActivityPage() {
                 <p className="text-xs text-[var(--foreground-muted)]" title={fmtFull(entry.created_at)}>
                   {fmtRelative(entry.created_at)}
                 </p>
-                <p className="text-[9px] text-[var(--foreground-subtle)] mt-0.5">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">
                   {new Date(entry.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </p>
               </div>
@@ -441,7 +447,7 @@ export default function AdminActivityPage() {
           <button
             onClick={() => fetchPage(entries.length)}
             disabled={loading}
-            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors disabled:opacity-40"
+            className="rounded-lg border border-[var(--border)] px-4 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors disabled:opacity-40"
           >
             {loading ? "Loading…" : `Load more · ${entries.length.toLocaleString()} of ${total.toLocaleString()}`}
           </button>

@@ -794,74 +794,193 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 
 `src/app/goo-studio/**` — **отдельный диалект на том же токенном слое**, а не дрейф. Это сознательное решение, его надо уважать.
 
-Что общего: цвет только через те же CSS-переменные. Во всех 20 страницах админки (мёртвая `image-tools` удалена 2026-09-27) ноль `text-gray-*` / `bg-neutral-*` / `border-zinc-*` и ноль `dark:`.
+Целевой дизайн админки — `docs/ADMIN_DESIGN.md`, утверждён CEO 5 октября 2026 (развилки Р4, Р14–Р17 в `docs/ADMIN_ROADMAP.md`). **Этот раздел описывает то, что уже в коде.** Он переписан 2026-10-05 вместе с GS4-1 «Основа» и GS4-2 «Оболочка». Каждая следующая задача этапа 4 (компоненты, таблицы, формы, экраны) дописывает сюда свою часть. Чего здесь ещё нет, того в коде тоже нет, даже если оно есть на макетах.
+
+Что общего с сайтом: цвет только через CSS-переменные. Во всех 20 страницах админки ноль `text-gray-*` / `bg-neutral-*` / `border-zinc-*`, ноль `dark:` и с 2026-10-05 ноль сырых `emerald-*` / `amber-*` / `red-*`. Единственное исключение — жёлтая метка кадра в `ImageCropEditor`.
 
 ### Тема админки
 
 У админки своя тема, независимая от темы сайта на `<html>` (там по умолчанию тёмная).
 
-- Корень админки (`goo-studio/layout.tsx:686-687`) несёт класс `.admin-theme-light` или `.admin-theme-dark` (карта `THEME_CLASS`, `layout.tsx:259-262`).
-- Токены обеих тем объявлены в `globals.css` в тех же блоках, что и тема сайта: `:root, .admin-theme-light` (`:43-62`) и `.dark, .admin-theme-dark` (`:64-82`). Класс на корне переобъявляет **весь** набор, включая `--bg-overlay-*`, `--fg-overlay-*`, `--fg-on-dark-*`, поэтому любой элемент внутри админки берёт цвета из темы админки, а не из унаследованной темы сайта. Нативные контролы (выпадающие списки, date picker, скроллбары) следуют ей через `color-scheme` (`globals.css:86-91`).
-- Светлая тема админки работает и при тёмной теме сайта, и наоборот.
-- Выбор хранится в `localStorage` под ключом `goo-admin-theme` (`layout.tsx:11`) и читается через `useSyncExternalStore` (`layout.tsx:283-329`): сервер и гидратация рисуют умолчание, сохранённое значение применяется сразу после. Умолчание — светлая (`layout.tsx:363-364`). Переключатель — первая кнопка в нижнем блоке меню (`layout.tsx:573`).
-- Порталов (`createPortal`) в админке нет. Если появится модалка, смонтированная вне корня админки, она получит тему сайта, а не админки — класс темы придётся повесить и на неё.
+- **Класс на корне.** Корень админки (`goo-studio/layout.tsx:689`) несёт `.admin-theme-light` или `.admin-theme-dark` (карта `THEME_CLASS`, `layout.tsx:261-264`).
+- **Общий набор токенов.** Токены обеих тем объявлены в `globals.css` в тех же блоках, что и тема сайта: `:root, .admin-theme-light` (`:43-62`) и `.dark, .admin-theme-dark` (`:64-82`). Класс на корне переобъявляет **весь** набор, включая `--bg-overlay-*`, `--fg-overlay-*`, `--fg-on-dark-*`. Поэтому любой элемент внутри админки берёт цвета из темы админки, а не из унаследованной темы сайта. Нативные контролы (выпадающие списки, date picker, скроллбары) следуют ей через `color-scheme` (`globals.css:84-91`).
+- **Свой блок токенов.** Только в админке и только в ней: блок `globals.css:93-125` объявляет статусные токены и затемнённый `--foreground-subtle` (ниже). Публичный сайт этот блок не затрагивает.
+- **Независимость от сайта.** Светлая тема админки работает и при тёмной теме сайта, и наоборот.
+- **Хранение и переключатель.**
+  - Выбор хранится в `localStorage` под ключом `goo-admin-theme` (`layout.tsx:12`) и читается через `useSyncExternalStore` (`layout.tsx:302-350`).
+  - Сервер и гидратация рисуют умолчание, сохранённое значение применяется сразу после. Тёмную тему до первой отрисовки ставит `THEME_BOOT_SCRIPT`.
+  - Умолчание — светлая.
+  - Переключатель — пункт «Dark theme» / «Light theme» в меню аккаунта (`layout.tsx:820-831`).
+- **Порталы.** Порталов (`createPortal`) в админке нет. Если появится модалка, смонтированная вне корня админки, она получит тему сайта, а не админки — класс темы придётся повесить и на неё.
 
-Что отличается от публичного сайта:
+### Глубина и цвет (Р15, Р16)
 
-| Аспект | Публичный сайт | goo-studio |
+С 2026-10-05 глубина в админке та же, что на публичном сайте: **холст — `--background`, панели — `--surface`**. До этого было наоборот, и карточки выходили темнее фона в обеих темах.
+
+| Роль | Токен | Где |
 |---|---|---|
-| Фон холста | `--background` | `--surface` (корень и колонка контента, `layout.tsx:687,736`) |
-| Фон сайдбара, верхней панели, карточки | `--surface` у карточки | `--background` (`layout.tsx:694,740`, `analytics/page.tsx:58`) |
-| H1 | `text-4xl md:text-5xl font-black uppercase` | `font-display text-2xl font-light` — на всех 20 страницах (`goo-studio/page.tsx:156`, `products/page.tsx:1843`) |
-| Большие числа | — | `font-display text-3xl font-light` (`users/page.tsx:401`); в карточках дашборда и аналитики на телефоне `text-2xl md:text-3xl` (`goo-studio/page.tsx:221`, `analytics/page.tsx:64`) |
-| Компоненты | `ProductCard`, `.label`, `.img-zoom` | не используются вообще |
-| Движение | framer `whileInView` + spring | CSS `animate-spin` / `animate-pulse`; framer только в `layout.tsx` и `page.tsx` |
-| Статусы | нет токенов, нет рецепта | рецепт есть, см. ниже |
+| Холст: корень, меню, шапка, колонка контента | `--background` | `layout.tsx:689,741-745`, сайдбар `layout.tsx:695-700` |
+| Панель: карточка, таблица, модалка, drawer, тост, меню аккаунта | `--surface` + `border border-[var(--border)]` | `analytics/page.tsx:58`, drawer `layout.tsx:887-888` |
+| Активный пункт меню | `--surface` + `shadow-[0_0_0_1px_var(--border)]` | `layout.tsx:640` |
+| Наведение на строку или пункт на холсте | `--fg-overlay-05` | `layout.tsx:641`, `layout.tsx:721,756` |
+| Выбранная строка | `--fg-overlay-05` (выбор виден и по чекбоксу) | `import/page.tsx:458,718` |
+| Основной текст | `--foreground` | |
+| Всё, что читают: метаданные, даты, подписи | `--foreground-muted` | |
+| Плейсхолдер, выключенное | `--foreground-subtle` | |
 
-### Статусы и тосты — как в коде сейчас
+**`--foreground-subtle` в админке темнее, чем на сайте:** `#706E6A` в светлой теме, `#80807C` в тёмной (`globals.css:103,115`). Контраст:
 
-Три семантических цвета: `emerald` = ok, `amber` = предупреждение / привилегия (Super Admin, Pro), `red` = ошибка. В плашках оттенок `400` идёт на фон и рамку, `500` — на текст; точка состояния — сплошной `500`:
+| Где | Контраст |
+|---|---|
+| Белая панель | 5,09:1 |
+| Бежевый холст | 4,55:1 |
+| Тёмная панель `#141414` | 4,65:1 |
+
+Причина: в коде этот токен ещё стоит на датах, счётчиках и доказательствах, которые читают. Прежний `#A8A8A8` давал 2,4:1. По `ADMIN_DESIGN.md` 4.1 его место — только плейсхолдер и выключенное. Экраны переходят на `--foreground-muted` по мере GS4-12.
+
+**Статусные токены** (`globals.css:102-125`), только в `.admin-theme-*`:
+
+| Токен | Светлая | Тёмная | Для чего |
+|---|---|---|---|
+| `--ok` / `--ok-bg` / `--ok-line` | `#047857` / `rgba(52,211,153,.14)` / `rgba(4,120,87,.3)` | `#34D399` / `rgba(52,211,153,.12)` / `rgba(52,211,153,.3)` | текст / заливка / рамка |
+| `--warn` / `--warn-bg` / `--warn-line` | `#92400E` / `rgba(251,191,36,.16)` / `rgba(146,64,14,.3)` | `#FBBF24` / `rgba(251,191,36,.12)` / `rgba(251,191,36,.3)` | то же |
+| `--err` / `--err-bg` / `--err-line` | `#B91C1C` / `rgba(248,113,113,.14)` / `rgba(185,28,28,.3)` | `#F87171` / `rgba(248,113,113,.12)` / `rgba(248,113,113,.3)` | то же |
+
+- **Оттенки по темам.** В светлой теме текст — оттенок 700 (у `warn` — 800), в тёмной — 400. amber-700 на собственной заливке поверх бежевого холста давал 4,2:1. Прежний рецепт «текст `-500` на заливке `-400/15`» давал в светлой теме 2–2,5:1 («PRO», «SUPER ADMIN»).
+- **Смысл.** `ok` — успех и «подключено». `warn` — предупреждение и привилегия (Super admin, Pro). `err` — ошибка и опасное действие.
+
+**Кольцо фокуса** (`globals.css:127-136`): `outline: 2px solid var(--foreground); outline-offset: 2px` на `a`, `button`, `[role=switch|radio|tab]`, `summary`, `[tabindex]` по `:focus-visible`.
+- Правило в `@layer base`, поэтому поле, у которого свой фокус (`outline-none` + `focus:border-[var(--foreground)]`), его сохраняет.
+- Общее кольцо сайта из `globals.css:261` в админке перекрыто этим, более контрастным.
+
+### Типографика: один уровень капса (Р4)
+
+Решение CEO 2026-10-05.
+- **Капс — только у самых мелких служебных подписей:** ячейки шапки таблицы, подпись KPI над большим числом, подпись группы меню. Всё, что нажимают или читают, — обычным регистром.
+- **Пол шкалы в админке — 11px.** 8, 9 и 10px не используются: в `src/app/goo-studio/**` и `src/components/admin/**` их ноль, включая `fontSize` графиков.
+- **Капс в данных остаётся:** маски ключей, коды валют, имена файлов SQL, `.toUpperCase()` в коде. Вордмарк «GOO» в шапке меню — логотип, не подпись.
+
+| Роль | Рецепт | Пример |
+|---|---|---|
+| Заголовок страницы | `font-display text-2xl font-light text-[var(--foreground)]` — на всех 20 страницах | `goo-studio/page.tsx`, `analytics/page.tsx` |
+| Подзаголовок страницы | `text-xs` или `text-[13px] text-[var(--foreground-muted)] mt-1` | |
+| Заголовок секции или карточки | `text-[15px] leading-[22px] font-medium text-[var(--foreground)]`, без трекинга | «System health», «Recent signups»; модалка Customize `layout.tsx:935` |
+| **Служебная подпись — единственный капс** | `text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]` (+ `font-normal` в `<th>`) | шапки таблиц `subscriptions/page.tsx:104`, `waitlist/page.tsx:15`; подписи KPI на дашборде, в Users, Analytics; группы меню `layout.tsx:602` |
+| Кнопка, вкладка, пункт меню | `text-[13px] font-medium`, обычный регистр, без трекинга | `settings/recipes.tsx:4-7`, пункты меню `layout.tsx:638` |
+| Чип, фильтр-пилюля, сегмент | `text-[12px]`, обычный регистр | `analytics/page.tsx:23-28` |
+| Бейдж | `text-[11px] font-medium`, обычный регистр («Exact», «12 missing») | |
+| Подпись поля | `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5` | `parser/page.tsx:114`, `catalogue-check/page.tsx:121`, `blog/page.tsx:49` |
+| Вспомогательный и мета-текст | `text-[12px] text-[var(--foreground-muted)]` | |
+| Большое число | `font-display text-3xl font-light` (`text-2xl md:text-3xl` в карточках на телефоне) | `users/page.tsx:426` |
+
+**Слова-данные показываются через словари подписей, а не через капс.** Примеры:
+- `PLAN_LABEL` и `SUB_STATUS_LABEL` в `users/page.tsx` («Past due»);
+- `styleLabel()` в products и outfits;
+- `sentenceCase()` в activity;
+- `first-letter:uppercase` у причин пропуска в import.
+
+**Ещё не сведено.** Текст ячеек и абзацев пока живёт на `text-sm` / `text-xs`. Шкала `ADMIN_DESIGN.md` 4.2 (13px для текста, 12px для вторичной строки) приходит в таблицы с GS4-4 и в экраны с GS4-12.
+
+### Оболочка (Р17, GS4-2)
+
+- **Меню** — `<aside>` 240px (`w-60`), в свёрнутом виде — рейка 60px с иконками (`layout.tsx:695-700`).
+  - **Группы** (порядок `NAV_CATEGORIES`, `layout.tsx:22-31`): Overview, Catalog, Quality, Import, Content, Users, Data, System. Подпись группы — служебная (капс 11px).
+  - **Сворачивание групп.** Подпись группы — это кнопка `aria-expanded`, она сворачивает группу. Список свёрнутых хранится в `localStorage` под `goo-admin-nav-collapsed` рядом с порядком пунктов (`goo-admin-nav-order`). Свёрнутая группа продолжает показывать текущую страницу.
+  - **Пункт:** 32px (`md:h-8`), 13px medium, иконка 16px, `rounded-lg`.
+  - **Плотный режим.** На десктопе ниже 1024px высоты пункт — 28px и меньше отступ над группой (вариант `[@media(min-width:768px)_and_(max-height:1023px)]`). Так всё меню помещается на экране 1440×900.
+  - **Super admin.** Пункт, видимый только супер-админу (Activity), помечен замком `SuperAdminMark` с подсказкой и текстом для скринридера (`layout.tsx:382-392`). Прежний бейдж «SA» удалён.
+  - Нижнего блока у меню нет.
+- **Шапка** — `h-14` на холсте (`layout.tsx:743-746`).
+  - **Слева.** Крошка `nav aria-label="Breadcrumb"` (`layout.tsx:765`) — только на вложенных страницах из `SUBPAGE_TITLES` (`layout.tsx:285`): «Раздел / Страница». На телефоне вместо неё — имя раздела. Строк «Admin / …» внутри страниц больше нет.
+  - **Справа** — аватар 32px с инициалами и меню аккаунта (`layout.tsx:780-856`, `role="menu"`): имя, почта, бейдж Super admin, тема, «Customize menu», «Back to site». Закрывается по Escape (фокус возвращается на аватар) и по клику мимо.
+  - **Ещё нет:** поиска ⌘K (GS6-14) и колокольчика «Требует внимания» (GS1-2) из `ADMIN_DESIGN.md` 5.1.
+- **Логотип** — «GOO» и рядом `Studio` 12px muted (`layout.tsx:679`).
+
+### Статусы, баннеры и тосты — как в коде сейчас
 
 | Что | Рецепт | Где |
 |---|---|---|
-| Базовая тройка | `bg-X-400/15 text-X-500 border border-X-400/30` | константы `statusOk` / `statusWarn` / `statusErr` в `email/page.tsx:50-52`, `import/page.tsx:59-61`, `waitlist/page.tsx:12-13`; `TONE_CLASSES` в `activity/page.tsx:102-106` |
-| Баннер | `rounded-xl border border-X-400/30 bg-X-400/15 px-4 py-3` + текст `text-[13px] text-X-500 leading-relaxed` или `text-xs text-X-500` | `duplicates/page.tsx:364-365,374`, `audit/page.tsx:299,303`, `categories/page.tsx:45`, `brands/page.tsx:197`. `role="alert"` у баннера ошибки стоит не везде: есть в brands, activity, analytics (`activity/page.tsx:350`, `analytics/page.tsx:180`), нет в duplicates и audit |
-| Бейдж | базовая тройка + `text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 rounded-full` | `layout.tsx:554,787,949` (SA / Super Admin). Размер и радиус бейджей по админке гуляют: 9px `px-2 py-1` в users (`users/page.tsx:639-649`), `rounded-lg` в duplicates (`duplicates/page.tsx:176`), см. раздел 11 |
-| Точка состояния | `w-2 h-2 rounded-full bg-X-500` | `settings/page.tsx:1117`, `email/page.tsx:286` |
-| Тост | `fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border`; успех — инверсия `bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]`; ошибка — `bg-[var(--background)] text-red-500 border-red-400/30`. `role="status"` для успеха, `role="alert"` для ошибки (в duplicates — всегда `role="status"`); в brands ещё `md:max-w-md`; автоскрытие по таймеру 3–6 с | `duplicates/page.tsx:411-422`, `brands/page.tsx:335-346`, `audit/page.tsx:469-480`, `categories/page.tsx:611-622` |
-| Тост со статусной заливкой (второй вариант) | непрозрачная подложка `var(--background)` + внутри базовая тройка emerald/red, `text-sm`, кнопка закрытия `aria-label="Dismiss"`, `z-[100]`, `md:max-w-md` | только `products/page.tsx:3221-3250` |
+| Базовая тройка | `bg-[var(--X-bg)] text-[var(--X)] border border-[var(--X-line)]`, X — `ok` / `warn` / `err` | константы `statusOk` / `statusWarn` / `statusErr` в `email/page.tsx:52-54`, `import/page.tsx:59-61`, `waitlist/page.tsx:12-13` |
+| Баннер | `rounded-xl border border-[var(--X-line)] bg-[var(--X-bg)] px-4 py-3` + текст `text-xs text-[var(--X)]`; у баннера ошибки `role="alert"` | `catalogue-check/page.tsx:351`, `activity/page.tsx:368`, `parser/page.tsx:120` |
+| Бейдж | базовая тройка + `text-[11px] font-medium px-2 py-0.5 rounded-full`, обычный регистр | бейдж Super admin в меню аккаунта; радиусы ещё гуляют, см. раздел 11 |
+| Точка состояния | `w-2 h-2 rounded-full bg-[var(--X)]` | дашборд, «System health» |
+| Тост | `fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border`. Успех — инверсия `bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]` (`role="status"`). Ошибка — `bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]` (`role="alert"`) | `audit/page.tsx:516-525`, `categories/page.tsx:614`, `duplicates/page.tsx:718`, `brands/page.tsx:338`, `catalogue-check/page.tsx:634` |
+| Тост со статусной заливкой (второй вариант) | непрозрачная подложка + базовая тройка, кнопка закрытия, `z-[100]`, `md:max-w-md` | только `products/page.tsx:3381` |
 
-Два варианта тоста — расхождение, одного канона пока нет (раздел 11).
+Канон тоста выбран (Р14: `ADMIN_DESIGN.md` 5.12 — панель `--surface`, точка статуса, кнопка ✕, 5 с). В код он придёт компонентом `Toast` в GS4-3. До тех пор живут оба варианта из таблицы.
 
 ### Мобильная версия админки
 
-С 2026-09-26 (коммит `27ada17`) админка рассчитана на телефон; по описанию коммита каждая страница и модалка проверены на ширине 375px. Граница — `md` (768px), та же, что у сайта.
+С 2026-09-26 (коммит `27ada17`) админка рассчитана на телефон. По описанию коммита каждая страница и модалка проверены на ширине 375px. Граница — `md` (768px), та же, что у сайта.
 
-- **Сайдбар ниже `md` — drawer по рецепту 5.6.** Десктопный `<aside>` скрыт (`hidden md:flex`, `layout.tsx:690-691`). В верхней панели появляется кнопка-бургер `md:hidden w-10 h-10 rounded-lg` с `aria-label="Open menu"`, `aria-expanded`, `aria-controls` (`layout.tsx:743-756`). Drawer: `md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] max-w-[85vw]` на `var(--background)`, `role="dialog" aria-modal="true"`, spring `{ stiffness: 380, damping: 38, mass: 0.8 }` от `x: -280`; скрим `z-40 bg-black/60 backdrop-blur-sm` (`layout.tsx:809-855`). Закрывается по скриму, Escape, переходу на другую страницу и расширению окна за `md`; блокирует прокрутку фона (`useScrollLock`); фокус уходит на кнопку закрытия и возвращается на бургер (`layout.tsx:379-442`).
-- **Верхняя панель и поля страницы:** `h-14 md:h-16`, `px-4 md:px-8`; на телефоне крошка «Admin» скрыта, если за ней есть раздел (`layout.tsx:763`). `<main>` — `p-4 md:p-8` плюс `safe-area-inset-bottom` (`layout.tsx:739,806`).
-- **Цели касания 40px.** Ниже `md` у каждого `button`, `select` и текстового `input` `min-height: 40px`; у иконочной кнопки (с `aria-label`) ещё `min-width: 40px`. Правило в `@layer base` под `:where(.admin-theme-light, .admin-theme-dark)` (`globals.css:93-113`), поэтому утилита на элементе побеждает его: где контрол обязан остаться маленьким — **`min-h-0`** (и `min-w-0`). Исключены сами собой кнопки поверх картинки (`.absolute`) и переключатели (`[role="switch"]`). Ссылки, `label` и прочие элементы правило не покрывает — им высоту дают руками: `min-h-10 md:min-h-0` (`goo-studio/page.tsx:285`, `duplicates/page.tsx:127`). Иконочная кнопка, которой на десктопе нужен свой, меньший размер, пишет оба явно: `w-10 h-10 md:w-auto md:h-auto` (`layout.tsx:889,960`).
-- **Поля 16px.** Ниже `md` у `input`, `select`, `textarea` внутри админки `font-size: 16px`, иначе iOS Safari зумит страницу при фокусе и не отдаёт зум обратно. Правило вне слоёв (`globals.css:115-122`), чтобы перебить `text-xs` / `text-sm` на полях. Размер шрифта поля утилитой ниже `md` не задавай — он не применится.
-- **Hover-only элементы** (кнопки, проявляющиеся по наведению) дополняются `[@media(hover:none)]:opacity-100`, чтобы на тач-экране они были видны всегда, и `focus-visible:opacity-100` / `focus-within:opacity-100` для клавиатуры: `opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100` (`email/page.tsx:580`, `settings/page.tsx:142`).
-- **Таблицы прокручиваются в своём контейнере**, страница вбок не едет: обёртка `rounded-xl border border-[var(--border)] overflow-x-auto` (`products/page.tsx:2309`, `goo-studio/page.tsx:366`, `outfits/page.tsx:1010`) либо внутренний `<div className="overflow-x-auto">` в карточке с `overflow-hidden` (`users/page.tsx:538`, `subscriptions/page.tsx:305`). Второстепенные колонки прячутся `hidden md:table-cell` / `hidden lg:table-cell` (`blog/page.tsx:404-410`). Широкой таблице можно задать `min-w-[900px]` (`import/page.tsx:695`).
-- **Модалки:** панель `w-full` с отступом 16px от краёв экрана (`p-4` / `px-4` на скриме или `mx-4` на панели), `max-h-[90dvh]` и прокрутка внутри (`overflow-y-auto` или `flex flex-col` с прокручиваемым телом); на `md` высота может расти до `80–95vh` (`layout.tsx:866-877`, `blog/page.tsx:561-566`, `settings/page.tsx:213-218`, `products/page.tsx:2100-2102`).
-- **Формы и тулбары:** сетка формы на телефоне в одну колонку (`grid-cols-1 md:grid-cols-[220px_1fr]`, `products/page.tsx:2591`), тулбары переносятся (`flex flex-wrap`), тосты на телефоне во всю ширину (рецепт выше).
+- **Сайдбар ниже `md` — drawer по рецепту 5.6.**
+  - Десктопный `<aside>` скрыт (`hidden md:flex`, `layout.tsx:695-696`).
+  - **Бургер.** В шапке появляется кнопка `md:hidden w-10 h-10 rounded-lg` с `aria-label="Open menu"`, `aria-expanded`, `aria-controls` (`layout.tsx:749-760`).
+  - **Drawer:** `md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] max-w-[85vw]` на `var(--surface)`, `role="dialog" aria-modal="true"`. Появляется пружиной `{ stiffness: 380, damping: 38, mass: 0.8 }` от `x: -280`. Скрим — `z-40 bg-black/60 backdrop-blur-sm` (`layout.tsx:864-906`).
+  - **Поведение.** Закрывается по скриму, Escape, переходу на другую страницу и расширению окна за `md`. Блокирует прокрутку фона (`useScrollLock`, `layout.tsx:439`). Фокус уходит на кнопку закрытия и возвращается на бургер.
+- **Шапка и поля страницы.** Шапка — `h-14`, `px-4 md:px-8`. `<main>` — `p-4 md:p-8` плюс `safe-area-inset-bottom` (`layout.tsx:859`).
+- **Цели касания 40px.**
+  - Ниже `md` у каждого `button`, `select` и текстового `input` `min-height: 40px`; у иконочной кнопки (с `aria-label`) ещё `min-width: 40px`.
+  - Правило лежит в `@layer base` под `:where(.admin-theme-light, .admin-theme-dark)` (`globals.css:138-158`). Поэтому утилита на элементе его побеждает: где контрол обязан остаться маленьким — **`min-h-0`** (и `min-w-0`).
+  - Сами собой исключены кнопки поверх картинки (`.absolute`) и переключатели (`[role="switch"]`).
+  - Ссылки, `label` и прочие элементы правило не покрывает — им высоту дают руками: `min-h-10 md:min-h-0`.
+  - Иконочная кнопка, которой на десктопе нужен свой, меньший размер, пишет оба размера явно: `w-10 h-10 md:w-auto md:h-auto`.
+  - Кнопка-подпись группы меню — `min-h-8 md:min-h-0`: на телефоне 32px, чтобы восемь групп не раздували drawer.
+- **Поля 16px.** Ниже `md` у `input`, `select`, `textarea` внутри админки `font-size: 16px`, иначе iOS Safari зумит страницу при фокусе и не отдаёт зум обратно. Правило стоит вне слоёв (`globals.css:160-167`), чтобы перебить размер текста на полях. Размер шрифта поля утилитой ниже `md` не задавай — он не применится.
+- **Hover-only элементы** (кнопки, проявляющиеся по наведению) дополняются `[@media(hover:none)]:opacity-100`, чтобы на тач-экране они были видны всегда. Для клавиатуры — `focus-visible:opacity-100` / `focus-within:opacity-100`. Полная запись: `opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100`.
+- **Таблицы прокручиваются в своём контейнере**, страница вбок не едет.
+  - Обёртка — `rounded-xl border border-[var(--border)] overflow-x-auto`, либо внутренний `<div className="overflow-x-auto">` в карточке с `overflow-hidden`.
+  - Второстепенные колонки прячутся `hidden md:table-cell` / `hidden lg:table-cell`.
+  - Широкой таблице можно задать `min-w-[900px]`.
+  - Колонка действий в Products и Outfits на телефоне закреплена справа: `sticky right-0` на `--surface` с тенью-разделителем, с `md` — обычная (GS1-0). До GS4-11, где таблицы на телефоне станут списками карточек.
+- **Модалки.** Панель `w-full` с отступом 16px от краёв экрана, `max-h-[90dvh]` и прокрутка внутри. На `md` высота может расти до `80–95vh`.
+- **Формы и тулбары.** Сетка формы на телефоне в одну колонку (`grid-cols-1 md:grid-cols-[220px_1fr]`), тулбары переносятся (`flex flex-wrap`), тосты на телефоне во всю ширину.
 
 ### Правила для нового элемента в админке
 
-1. Цвет — те же токены. Никаких сырых палитр Tailwind, кроме трёх семантических статусов выше, и только в оттенках `400`/`500` из рецепта.
-2. Таблица: обёртка `rounded-xl border border-[var(--border)] overflow-x-auto` на `background: var(--background)`; строка шапки `border-b border-[var(--border)]` на `background: var(--surface)`; ячейки шапки `text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal` (`products/page.tsx:2309-2326`, `goo-studio/page.tsx:366-372`, `waitlist/page.tsx:15`).
-3. Инпут: `rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors`; у `select` вместо `bg-transparent` — `bg-[var(--background)]`. Подпись: `block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5` (`products/page.tsx:218-223`, `settings/recipes.tsx:8-9`).
-4. Primary-кнопка: `bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed` (`products/page.tsx:1914`, `settings/recipes.tsx:4-5`, `categories/page.tsx:43`).
-5. Контурная (второстепенная) кнопка: утверждённого рецепта нет, живут не меньше восьми форм (раздел 11, «Новые расхождения»). Чаще других — `px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40` (`settings/recipes.tsx:6-7`, `parser/page.tsx:79`, `import/page.tsx:52`). Какая форма станет каноном — решение CEO.
-6. Фильтр-пилюля: `px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full`, активная — `bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]` (`products/page.tsx:1947`, `analytics/page.tsx:23-27`).
-7. Переключатель: `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full` на `bg-[var(--foreground)]` / `bg-[var(--border)]`, бегунок `w-4 h-4 rounded-full bg-[var(--background)]` (`parser/page.tsx:522-533`).
-8. Заголовок страницы: `font-display text-2xl font-light text-[var(--foreground)]` + подзаголовок `text-xs text-[var(--foreground-muted)] mt-1` (`analytics/page.tsx:153-154`).
-9. Карточка: `rounded-xl border border-[var(--border)] p-4 md:p-5` на `background: var(--background)` (`analytics/page.tsx:58`).
-10. Иконки — инлайновый SVG, `strokeWidth="1.2"` (128 из 170 атрибутов `strokeWidth` в админке), 12-16px.
-11. Модалка: скрим `fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4`, панель `rounded-2xl border border-[var(--border)] w-full max-w-* max-h-[90dvh]` на `background: var(--background)`, `role="dialog" aria-modal="true"`, закрытие по скриму и Escape (`layout.tsx:866-877`).
-12. Пустое/загрузочное состояние таблицы — центрированный текст `px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]` (`products/page.tsx:2311`), не скелетон. Исключение — карточки с числами на дашборде и в аналитике: там пульсирующая плашка `animate-pulse` (`analytics/page.tsx:48`, `goo-studio/page.tsx:227`).
-13. Мобильные правила выше соблюдены: контрол не меньше 40px (или осознанный `min-h-0`), поле без своего размера шрифта ниже `md`, hover-only элемент с `[@media(hover:none)]:opacity-100`, таблица в `overflow-x-auto`, модалка `w-full` + `max-h-[90dvh]`.
-14. **Не использовать `dark:`-варианты Tailwind.** В проекте `dark:` срабатывает по системной теме ОС (раздел 8), а не по теме админки — это рассинхрон. Тема админки выражается только токенами.
+1. **Цвет — токены.** Статусы — только `--ok` / `--warn` / `--err` и их `-bg` / `-line`. Сырых палитр Tailwind (`emerald-*`, `amber-*`, `red-*` и любых других) в админке нет и не появляется.
+2. **Глубина.** Холст — `--background`, всё, что лежит на нём как панель, — `--surface` + `border border-[var(--border)]`. Наведение на холсте — `--fg-overlay-05`, а не `--surface` или `--background`: на своём же фоне наведения не видно.
+3. **Регистр.** Капс только у шапки таблицы, подписи KPI и группы меню, по рецепту служебной подписи. Ничего меньше 11px.
+4. **Таблица.**
+   - Обёртка `rounded-xl border border-[var(--border)] overflow-x-auto` на `--surface`.
+   - Строка шапки — `border-b border-[var(--border)]`.
+   - Ячейки шапки — `text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal` (`subscriptions/page.tsx:104`).
+   - Числа — справа (`text-right`).
+5. **Инпут и подпись.**
+   - Инпут: `rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors` (`settings/recipes.tsx:8-9`).
+   - У `select` вместо `bg-transparent` — фон панели. Две заливки на одном элементе не ставить: см. урок ниже.
+   - Подпись — `block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5`.
+6. **Primary-кнопка:** `bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed` (`settings/recipes.tsx:4-5`). Одна заливная кнопка на экран или блок. Действия в строках — контурные или ghost, не заливные (Audit, AI check, Duplicates).
+7. **Контурная (второстепенная) кнопка** сейчас: `px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40` (`settings/recipes.tsx:6-7`).
+   - Канон выбран (Р14, `ADMIN_DESIGN.md` 5.3): `h-8 px-3`, рамка `--border-strong`, текст `--foreground`, наведение `--fg-overlay-05`.
+   - В код он придёт рецептами в `src/app/goo-studio/_ui/recipes.ts` в GS4-3. Новый общий примитив кнопки не заводить (`CLAUDE.md`).
+8. **Ghost-кнопка** (Dismiss, Edit by hand, Undo, Rename): `text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)]`. Это настоящий `<button>` или `<a>`, а не `<span>`.
+9. **Фильтр-пилюля:** `px-2.5 py-1 text-[12px] border rounded-full transition-colors` (`analytics/page.tsx:23-28`).
+   - Активная — `bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]`.
+   - Неактивная — `border-[var(--border)] text-[var(--foreground-muted)]`.
+10. **Переключатель:** `button role="switch" aria-checked`, дорожка `w-9 h-5 rounded-full`, бегунок `w-4 h-4 rounded-full bg-[var(--surface)]` (`parser/page.tsx:580-590`).
+    - Включён — дорожка `bg-[var(--foreground)]`.
+    - Выключен — `bg-[var(--border-strong)]`. С `--border` выключенный переключатель на белой панели был не виден (GS1-0).
+11. **Заголовок страницы:** `font-display text-2xl font-light text-[var(--foreground)]` + подзаголовок muted.
+12. **Карточка:** `rounded-xl border border-[var(--border)] p-4 md:p-5` на `--surface` (`analytics/page.tsx:58`). Без тени и без декоративных цветных полос: глубина передаётся границей.
+13. **Иконки** — инлайновый SVG, 12–16px, `strokeWidth` 1.2–1.5 (1.2 — в 119 из 172 атрибутов). По `ADMIN_DESIGN.md` 4.5 в меню и кнопках действий целевое значение — 1.5.
+14. **Модалка.**
+    - Скрим — `fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4`.
+    - Панель — `rounded-2xl border border-[var(--border)] w-full max-w-* max-h-[90dvh]` на `--surface`, `role="dialog" aria-modal="true"`.
+    - Закрытие по скриму и Escape.
+15. **Пустое и загрузочное состояние таблицы** — центрированный текст `px-4 py-12 text-center text-sm text-[var(--foreground-subtle)]`, не скелетон. Исключение — карточки с числами на дашборде и в аналитике: там пульсирующая плашка `animate-pulse`.
+16. **Мобильные правила выше соблюдены:**
+    - контрол не меньше 40px (или осознанный `min-h-0`);
+    - поле без своего размера шрифта ниже `md`;
+    - hover-only элемент с `[@media(hover:none)]:opacity-100`;
+    - таблица в `overflow-x-auto`;
+    - модалка `w-full` + `max-h-[90dvh]`.
+17. **Не использовать `dark:`-варианты Tailwind.** В проекте `dark:` срабатывает по системной теме ОС (раздел 8), а не по теме админки — это рассинхрон. Тема админки выражается только токенами.
+18. **Одна утилита на свойство.** На одном элементе не должно быть двух утилит одного свойства: двух размеров текста, двух заливок, `w-full` и фиксированной ширины, `px-3` и `px-2`. Победит та, что позже в собранном CSS, а не та, что правее в строке.
+    - Так в GS1-0 поле цены схлопнулось до нуля и спрятало цену магазина.
+    - Если рецепт-константу нужно расширить на месте вызова, разбей её на базу и варианты (`selectBaseCls` в `products/page.tsx`, `fieldBase` в `blog/page.tsx`).
+
+**Как проверить.** Стенд `scripts/admin-screens` снимает все разделы в двух темах и на двух экранах. Флаг `--axe` вместо снимков проверяет контраст на каждой странице. На 2026-10-05: 21 раздел и 14 состояний (редакторы, drawer, модалки) в обеих темах — 0 нарушений контраста. Muted-текст на `--fg-overlay-08` и на заливке `--err-bg` не проходит 4,5:1. Поэтому выбранная строка — `--fg-overlay-05`, а карточка с ошибкой — панель с красной рамкой, а не красной заливкой (`subscriptions/page.tsx`, `HealthCard`).
 
 ---
 
@@ -872,8 +991,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 3. Элемент открыт **в обеих темах**. Ничего не пропало, ничего не инвертировалось.
 4. Радиус лежит на шкале: `rounded-lg` / `rounded-xl` / `rounded-2xl` / `rounded-full`. Не `rounded-md`, не `rounded-[10px]`.
 5. Поверхность — `bg-[var(--surface)] border border-[var(--border)]`, глубина границей, не тенью.
-6. Размер текста — bracket-px по шкале раздела 2; ничего меньше 10px.
-7. Uppercase-подпись — `tracking-[0.18em]` (или `0.14em` для навигации/CTA). Новых значений tracking не введено.
+6. Размер текста — bracket-px по шкале раздела 2; ничего меньше 10px. В админке — ничего меньше 11px (раздел 9).
+7. Uppercase-подпись — `tracking-[0.18em]` (или `0.14em` для навигации/CTA). Новых значений tracking не введено. В админке капс только у служебной подписи (шапка таблицы, подпись KPI, группа меню), `text-[11px] tracking-[0.12em]`; кнопки, чипы и бейджи — обычным регистром (раздел 9).
 8. Контейнер — `max-w-[1440px] mx-auto px-6 md:px-12` (или `max-w-[1280px]` на главной), с шагом `md:` для паддинга.
 9. Кнопка собрана из одного из четырёх рецептов 5.3 (в админке — из рецептов раздела 9), а не из нового общего примитива со своими вариантами (раздел 6).
 10. Карточка товара/образа — импортирован `ProductCard` / `OutfitCard`, а не переписана разметка.
@@ -897,6 +1016,8 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 - **✓ исправлено (до 2026-09)** — уже было исправлено к моменту, когда этот файл попал в репозиторий (2026-08-20).
 - **◐ частично** — часть строки исправлена, остаток описан.
 - **актуально** — расхождение в коде есть. У таких строк в первой колонке уже **текущие** номера строк (2026-09-26); у исправленных и удалённых — исходные, для истории.
+- **✓ исправлено (GS4-1, 2026-10-05)** — исправлено основой редизайна админки (`docs/ADMIN_ROADMAP.md`, этап 4): глубина, статусные токены, один уровень капса, пол 11px.
+- **решено CEO, внедряется в GS4-…** — развилка закрыта решением CEO 2026-10-05, код придёт с указанной задачей.
 - **✓ файл удалён (ревью 2026-09)** — файл был мёртв (его никто не импортировал; страницы `/coming-soon` и `goo-studio/image-tools` были недостижимы из интерфейса) и удалён 2026-09-27 с разрешения CEO (коммит `7898c3f`). Строка оставлена для истории.
 
 Сортировка внутри таблиц: high → medium → low.
@@ -954,7 +1075,7 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/blog/[slug]/page.tsx:99` | Чип категории на странице поста без `rounded-full` | Добавить `rounded-full` | ✓ исправлено (до 2026-09): `blog/[slug]/page.tsx:117` |
 | `src/app/blog/[slug]/page.tsx:165` | Карточки постов на странице поста — `gap-px` hairline без границ и радиуса | Привести к рецепту листинга | ✓ исправлено (до 2026-09): `gap-4` + `rounded-xl border` (`:183-193`, `:220-225`) |
 | `src/app/goo-studio/analytics/page.tsx:219` (и др.) | Внутри одного файла карточки одной семантики то `rounded-xl`, то без радиуса | `rounded-xl border border-[var(--border)]` | ✓ исправлено (ревью 2026-09) |
-| `src/app/goo-studio/users/page.tsx:152` | Три формы одного сегментированного фильтра в админке | Один рецепт пилюли (`products/page.tsx:1947`) | ◐ частично (ревью 2026-09): analytics и activity взяли рецепт products (`analytics/page.tsx:23-27`); users — `rounded-full`, но другой размер (9px, `tracking-[0.14em]`, `px-3 py-2.5`) |
+| `src/app/goo-studio/users/page.tsx:152` | Три формы одного сегментированного фильтра в админке | Один рецепт пилюли (`products/page.tsx:1947`) | ◐ частично (ревью 2026-09): analytics и activity взяли рецепт products (`analytics/page.tsx:23-27`); users — `rounded-full`, но другой размер (9px, `tracking-[0.14em]`, `px-3 py-2.5`). GS4-1 (2026-10-05) свёл размер текста к 12px без трекинга; остались `px-3 py-2.5` и активная без заливки (`users/page.tsx:178-182`). Сводится в `FilterBar` (GS4-4) |
 | `src/app/goo-studio/settings/page.tsx:428` (и `:403`) | Единственная страница админки, не использующая рецепт H1 | `font-display text-2xl font-light` | ✓ исправлено (ревью 2026-09): H1 по рецепту на всех 20 страницах |
 | `src/app/goo-studio/settings/page.tsx:512` (также `ImageCropEditor.tsx:308,315`) | Primary-кнопка админки без радиуса | Добавить `rounded-lg` | ✓ исправлено (ревью 2026-09): `PRIMARY_BTN` в `settings/recipes.tsx:4-5`, `ImageCropEditor.tsx:332,339` |
 | `src/app/goo-studio/settings/page.tsx:517` (и др.) | Успех выражен шкалой `green-*`, остальная админка — `emerald-*` | `emerald-*` | ✓ исправлено (ревью 2026-09): `green-*` в админке ноль |
@@ -1010,10 +1131,10 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | `src/app/privacy/page.tsx:401` | `font-mono` как типографический сигнал при том, что `--font-mono` разрешается в Inter Tight (~180 вхождений в `src/` — визуальный no-op) | Либо реальный моноширинный стек в `globals.css`, либо убрать класс | актуально (на `privacy` осталось одно вхождение) |
 | `src/app/goo-studio/analytics/page.tsx:159` | Тот же баннер ошибки со скруглением на одной странице админки и без — на соседней | Добавить `rounded-xl` | ✓ исправлено (ревью 2026-09): `analytics/page.tsx:180`, `goo-studio/page.tsx:159,193` |
 | `src/app/goo-studio/products/page.tsx:2507` (и `:3091`) | Непрозрачность скрима подбиралась по месту: `black/40`, `/50`, `/60`, `/70` и инлайновый `rgba(0,0,0,0.5)` | Один класс `bg-black/60` | ◐ частично (ревью 2026-09): 12 скримов админки на `bg-black/60`; две модалки products остались на `bg-black/50` |
-| `src/app/goo-studio/page.tsx:84` (и `:215`) | Декоративная четырёхцветная полоска (`blue/purple/emerald/amber`) на карточках дашборда, назначается по индексу массива; единственные синий и фиолетовый в админке | Убрать либо привязать к семантике | актуально (синий и фиолетовый из `activity/page.tsx` убраны при ревью 2026-09) |
+| `src/app/goo-studio/page.tsx:84` (и `:215`) | Декоративная четырёхцветная полоска (`blue/purple/emerald/amber`) на карточках дашборда, назначается по индексу массива; единственные синий и фиолетовый в админке | Убрать либо привязать к семантике | ✓ исправлено (GS4-1, 2026-10-05): полоска и `STAT_ACCENTS` удалены; синий и фиолетовый из `activity/page.tsx` убраны ещё при ревью 2026-09 |
 | `src/app/goo-studio/users/page.tsx:431` | Ячейка шапки таблицы отличается от рецепта (9px, `--foreground-subtle`, `font-medium`) | `text-[10px] … text-[var(--foreground-muted)] font-normal` | ✓ исправлено (ревью 2026-09): `users/page.tsx:564` |
 | `src/app/goo-studio/page.tsx:309` (также `:383`, `layout.tsx:677`) | Плашки админки разъехались по радиусам; `rounded-md` вне шкалы (раздел 4) | Свести плашки к `rounded-full`, `rounded-md` убрать | ◐ частично (ревью 2026-09): карта `planBadge` получила `rounded-full` (`users/page.tsx:68-73`), `rounded-md` ушёл из subscriptions; остались плашка плана на дашборде (`:309`), миниатюра (`:383`) и бейдж «Admin» в меню (`layout.tsx:677`); статус-бейдж в duplicates — `rounded-lg` (`duplicates/page.tsx:176`) |
-| `src/components/admin/ImageCropEditor.tsx:172` | Редактор кадрирования и его модалка на русском, вся остальная админка на английском | Привести к английскому | актуально; то же на странице Prompts (`prompts/page.tsx`) — ревью вынесло перевод отдельным вопросом к CEO |
+| `src/components/admin/ImageCropEditor.tsx:172` | Редактор кадрирования и его модалка на русском, вся остальная админка на английском | Привести к английскому | актуально; то же на странице Prompts (`prompts/page.tsx`). CEO 2026-10-05 решил: админка на английском и русском (Р5), строки уходят в словарь в GS4-8 |
 
 ### Новые расхождения (сверка 2026-09-26)
 
@@ -1022,12 +1143,12 @@ transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
 | Файл:строка | Что не так | Чем заменить | Важность |
 |---|---|---|---|
 | `src/app/globals.css:10` и `:29` | Токен `--ease-drawer` объявлен через самого себя: `--ease-drawer: var(--ease-drawer)` (и в `@theme inline`, и в `:root`; так же в собранном CSS). Циклическая переменная недействительна, поэтому `.animate-slide-up` (`:577`, нижние листы билдера `builder/page.tsx:2414,2804,2945`) и переход `.ov-rise` (`:719-723`, баннер cookies `CookieConsentBanner.tsx:38`) теряют анимацию входа: лист и баннер появляются рывком. Похоже на артефакт замены литералов токеном 2026-09-12. Найдено при сверке документа; стоит глазами проверить в браузере | Задать токену значение. До 2026-09-12 `.animate-slide-up` шёл на `cubic-bezier(0.32, 0.72, 0, 1)` — вероятно, это и есть задуманная «кривая Ionic/iOS» из комментария `globals.css:25` | ✓ исправлено (ревью 2026-09): токену задано `cubic-bezier(0.32, 0.72, 0, 1)` в обоих блоках |
-| `src/app/goo-studio/analytics/page.tsx:66` (также `:84`, `analytics/Charts.tsx:252`, `goo-studio/page.tsx:233`) | Текст успеха `text-emerald-600` вместо `text-emerald-500` из статус-рецепта админки; то же с `text-amber-600` (`goo-studio/page.tsx:311`, `products/page.tsx:2036,2571,2573`) и hover `text-red-600` / `-700` (`users/page.tsx:1139`, `products/page.tsx:3060`) | Оттенки рецепта: текст `-500`, фон и рамка `-400` | low |
-| `src/app/goo-studio/page.tsx:211` (и `:231-234`) | Карточки дашборда — `rounded-2xl` и `hover:shadow-md`, хотя карточка админки `rounded-xl`, а глубина передаётся границей; чип динамики — `bg-emerald-500/12 text-emerald-600 border-emerald-500/20` вместо базовой тройки. Ревью решило тень пока не трогать | Рецепт карточки и статус-бейджа раздела 9 | low |
-| `src/app/goo-studio/settings/recipes.tsx:6-7`, `parser/page.tsx:79-80`, `import/page.tsx:52`, `email/page.tsx:391,434,670`, `parser/collect/page.tsx:52-53`, `brands/page.tsx:17-18`, `retailers/page.tsx:61-62`, `duplicates/page.tsx:59-60`, `audit/page.tsx:291`, `users/page.tsx:460` (и `:467,483,702,709`), `products/page.tsx:1853` (и `:1863,1880,1892`), `products/page.tsx:2522`, `products/page.tsx:3037,3212`, `ImageCropEditor.tsx:339` | Контурная кнопка админки без канона: радиус у всех уже `rounded-lg`, но форм не меньше восьми, основные — `text-xs`/`0.12em`/`px-4 py-2` (settings, parser, import; в email с `px-5 py-2.5`); `11px`/`0.12em`/`px-4 py-2` (collect); `11px`/`0.08em`/`px-3 py-1.5` (brands, retailers); `11px`/`0.1em`/`px-3 py-2` (duplicates, audit); `9px`/`0.14em`/`px-3`–`px-4 py-2` (users); `text-xs`/`0.1em`/`px-3 py-2` (тулбар products); `10px`/`0.1em`/`px-3 py-1.5` (products, модалка; в email `10px`/`0.12em`/`px-2.5 py-1`); `text-xs`/`0.12em`/`px-4 py-2.5`–`px-5 py-3` с заливкой по hover (ImageCropEditor, products, email). Трекинги `0.08em` и `0.1em` вне шкалы раздела 2 | Выбрать одну форму (решение CEO) и завести её в §9 рядом с primary; кандидат — самая частая, `settings/recipes.tsx:6-7` | low |
-| `src/app/goo-studio/activity/page.tsx:298` (также `:388,392,418`) и по админке (`users/page.tsx:152-153,476,605-614`, `parser/page.tsx:474,505`, `audit/page.tsx:360,392`, `products/page.tsx:337,2176,2203`, `outfits/page.tsx:734,779,1150`, `goo-studio/page.tsx:231,309`) | Бейджи и подписи 9px с трекингом `0.16em` / `0.14em` / `0.12em` / `0.1em`; `0.1em` вне шкалы раздела 2 (при этом тот же `0.1em` стоит в канонической фильтр-пилюле админки, §9 п.6). Сам 9px в разделе 2 записан как «микро-подпись, чип», но там же пол шкалы назван 10px, а чеклист §10 п.6 требует «ничего меньше 10px» — документ противоречит сам себе. Ревью решило 9px не трогать | Решить, допустим ли 9px (CEO); tracking свести к `0.12` / `0.14` / `0.16` / `0.18em` | low |
-| `src/app/goo-studio/analytics/page.tsx:490` (и `prompts/page.tsx:224`) | Текст 8px — ниже любой трактовки шкалы (подписи часов на тепловой карте, бейдж на Prompts); `parser/page.tsx:189` — eyebrow 9px с `tracking-[0.22em]` | `text-[10px]` (или 9px, если CEO его разрешит), `tracking-[0.18em]` | low |
-| `src/app/goo-studio/products/page.tsx:3221-3250` | Второй рецепт тоста: статусная заливка на непрозрачной подложке, кнопка закрытия, `z-[100]`; на duplicates / brands / audit / categories — инверсная заливка без кнопки, `z-50` (раздел 9) | Выбрать один рецепт тоста админки | low |
+| `src/app/goo-studio/analytics/page.tsx:66` (также `:84`, `analytics/Charts.tsx:252`, `goo-studio/page.tsx:233`) | Текст успеха `text-emerald-600` вместо `text-emerald-500` из статус-рецепта админки; то же с `text-amber-600` (`goo-studio/page.tsx:311`, `products/page.tsx:2036,2571,2573`) и hover `text-red-600` / `-700` (`users/page.tsx:1139`, `products/page.tsx:3060`) | Оттенки рецепта: текст `-500`, фон и рамка `-400` | low · ✓ исправлено (GS4-1, 2026-10-05): статусы на токенах `--ok` / `--warn` / `--err` (раздел 9), сырых `emerald` / `amber` / `red` в админке ноль |
+| `src/app/goo-studio/page.tsx:211` (и `:231-234`) | Карточки дашборда — `rounded-2xl` и `hover:shadow-md`, хотя карточка админки `rounded-xl`, а глубина передаётся границей; чип динамики — `bg-emerald-500/12 text-emerald-600 border-emerald-500/20` вместо базовой тройки. Ревью решило тень пока не трогать | Рецепт карточки и статус-бейджа раздела 9 | low · ✓ исправлено (GS4-1, 2026-10-05): карточки `rounded-xl` без тени, чип динамики на токенах |
+| `src/app/goo-studio/settings/recipes.tsx:6-7`, `parser/page.tsx:79-80`, `import/page.tsx:52`, `email/page.tsx:391,434,670`, `parser/collect/page.tsx:52-53`, `brands/page.tsx:17-18`, `retailers/page.tsx:61-62`, `duplicates/page.tsx:59-60`, `audit/page.tsx:291`, `users/page.tsx:460` (и `:467,483,702,709`), `products/page.tsx:1853` (и `:1863,1880,1892`), `products/page.tsx:2522`, `products/page.tsx:3037,3212`, `ImageCropEditor.tsx:339` | Контурная кнопка админки без канона: радиус у всех уже `rounded-lg`, но форм не меньше восьми, основные — `text-xs`/`0.12em`/`px-4 py-2` (settings, parser, import; в email с `px-5 py-2.5`); `11px`/`0.12em`/`px-4 py-2` (collect); `11px`/`0.08em`/`px-3 py-1.5` (brands, retailers); `11px`/`0.1em`/`px-3 py-2` (duplicates, audit); `9px`/`0.14em`/`px-3`–`px-4 py-2` (users); `text-xs`/`0.1em`/`px-3 py-2` (тулбар products); `10px`/`0.1em`/`px-3 py-1.5` (products, модалка; в email `10px`/`0.12em`/`px-2.5 py-1`); `text-xs`/`0.12em`/`px-4 py-2.5`–`px-5 py-3` с заливкой по hover (ImageCropEditor, products, email). Трекинги `0.08em` и `0.1em` вне шкалы раздела 2 | Выбрать одну форму (решение CEO) и завести её в §9 рядом с primary; кандидат — самая частая, `settings/recipes.tsx:6-7` | low · ◐: регистр и трекинг сведены в GS4-1 (13px medium, без трекинга, `0.08em` и `0.1em` ушли); форма решена CEO 2026-10-05 (Р14, `ADMIN_DESIGN.md` 5.3), внедряется в GS4-3 |
+| `src/app/goo-studio/activity/page.tsx:298` (также `:388,392,418`) и по админке (`users/page.tsx:152-153,476,605-614`, `parser/page.tsx:474,505`, `audit/page.tsx:360,392`, `products/page.tsx:337,2176,2203`, `outfits/page.tsx:734,779,1150`, `goo-studio/page.tsx:231,309`) | Бейджи и подписи 9px с трекингом `0.16em` / `0.14em` / `0.12em` / `0.1em`; `0.1em` вне шкалы раздела 2 (при этом тот же `0.1em` стоит в канонической фильтр-пилюле админки, §9 п.6). Сам 9px в разделе 2 записан как «микро-подпись, чип», но там же пол шкалы назван 10px, а чеклист §10 п.6 требует «ничего меньше 10px» — документ противоречит сам себе. Ревью решило 9px не трогать | Решить, допустим ли 9px (CEO); tracking свести к `0.12` / `0.14` / `0.16` / `0.18em` | low · ✓ исправлено (GS4-1, 2026-10-05): CEO выбрал пол 11px и один уровень капса (Р4); в админке ноль текста меньше 11px, трекинг в квадратных скобках остался только `0.12em` у служебных подписей (и `0.2em` у вордмарка) |
+| `src/app/goo-studio/analytics/page.tsx:490` (и `prompts/page.tsx:224`) | Текст 8px — ниже любой трактовки шкалы (подписи часов на тепловой карте, бейдж на Prompts); `parser/page.tsx:189` — eyebrow 9px с `tracking-[0.22em]` | `text-[10px]` (или 9px, если CEO его разрешит), `tracking-[0.18em]` | low · ✓ исправлено (GS4-1, 2026-10-05): подписи тепловой карты 11px, бейдж Prompts и eyebrow Parser — обычным регистром 11–12px |
+| `src/app/goo-studio/products/page.tsx:3221-3250` | Второй рецепт тоста: статусная заливка на непрозрачной подложке, кнопка закрытия, `z-[100]`; на duplicates / brands / audit / categories — инверсная заливка без кнопки, `z-50` (раздел 9) | Выбрать один рецепт тоста админки | low · решено CEO 2026-10-05 (Р14, `ADMIN_DESIGN.md` 5.12), внедряется в GS4-3 |
 | `src/app/goo-studio/products/page.tsx:2100` (также `:2507,3048,3091`) | Четыре модалки products без `role="dialog"` / `aria-modal` (у остальных модалок админки они есть); у bulk-модалки `shadow-xl` (`:2102`); бейдж «New» в таблице без радиуса (`:2434`) | Рецепт модалки §9 п.11; бейдж `rounded-full` | low |
 | `src/app/goo-studio/users/page.tsx:1192-1208` (и `blog/page.tsx:801-813`) | Переключатель в users — вся строка-кнопка без `role="switch"` / `aria-checked`; в blog переключатель другого размера (`h-6 w-11` против `w-9 h-5` у `parser/page.tsx:522-533`) | Рецепт переключателя §9 п.7 | low |
 | `src/app/not-found.tsx:28` (также `error.tsx:41`, `MyLooksPanel.tsx:1049`, `HeroSection.tsx:59`, `builder/page.tsx:1676`, `StylistPersonalizationModal.tsx:92`) | Модификатор непрозрачности на переменной расползся: `border-[var(--foreground)]/20`, `hover:bg-[var(--foreground)]/5`, `bg-[var(--background)]/85`, `/80`, `bg-[var(--surface)]/50` — вопреки договорённости раздела 1 (на Tailwind v4 технически работает) | Предвычисленные `--bg-overlay-*` / `--fg-overlay-*` или `opacity-*` на элементе | low |

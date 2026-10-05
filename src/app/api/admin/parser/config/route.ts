@@ -25,10 +25,12 @@ import type {
 const PROVIDERS: FetchProvider[] = ["direct", "scrapingbee", "scraperapi", "zenrows", "custom"];
 const IMPERSONATE = ["chrome", "safari", "firefox", "edge"];
 
+// A fixed run of dots, as in api/admin/settings: one per hidden character
+// pushed an 80-character key past the screen on a phone.
 function maskKey(key: string): string {
   if (!key) return "";
   if (key.length <= 8) return "•".repeat(key.length);
-  return key.slice(0, 4) + "•".repeat(Math.max(4, key.length - 8)) + key.slice(-4);
+  return key.slice(0, 4) + "•".repeat(8) + key.slice(-4);
 }
 
 async function buildState() {

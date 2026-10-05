@@ -63,10 +63,10 @@ function fmtDateTime(iso: string) {
 }
 
 // Admin status recipe (DESIGN_SYSTEM.md §9): bg-X-400/15 text-X-500 border-X-400/30.
-const OK = "text-emerald-500 border-emerald-400/30 bg-emerald-400/15";
-const WARN = "text-amber-500 border-amber-400/30 bg-amber-400/15";
-const BAD = "text-red-500 border-red-400/30 bg-red-400/15";
-const NEUTRAL = "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--surface)]";
+const OK = "text-[var(--ok)] border-[var(--ok-line)] bg-[var(--ok-bg)]";
+const WARN = "text-[var(--warn)] border-[var(--warn-line)] bg-[var(--warn-bg)]";
+const BAD = "text-[var(--err)] border-[var(--err-line)] bg-[var(--err-bg)]";
+const NEUTRAL = "text-[var(--foreground-muted)] border-[var(--border)] bg-[var(--background)]";
 
 const STATUS_STYLE: Record<string, string> = {
   active: OK,
@@ -101,13 +101,14 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 /** Table header cell — admin recipe (DESIGN_SYSTEM.md §9). */
-const TH = "text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal";
+const TH = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
   const cls = map[value] ?? NEUTRAL;
+  const raw = value.replace(/_/g, " ");
   return (
-    <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border rounded-full leading-none ${cls}`}>
-      {EVENT_LABEL[value] ?? value.replace(/_/g, " ")}
+    <span className={`text-[11px] font-medium px-2 py-0.5 border rounded-full leading-none ${cls}`}>
+      {EVENT_LABEL[value] ?? raw.charAt(0).toUpperCase() + raw.slice(1)}
     </span>
   );
 }
@@ -115,21 +116,23 @@ function Badge({ value, map }: { value: string; map: Record<string, string> }) {
 /** Like StatCard, but the number carries a verdict: green is fine, red is not. */
 function HealthCard({ label, value, bad, note }: { label: string; value: string; bad: boolean; note: string }) {
   return (
-    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-red-400/30 bg-red-400/15" : "border-[var(--border)]"}`}
-      style={bad ? undefined : { background: "var(--background)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
-      <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-red-500" : "text-emerald-500"}`}>{value}</p>
-      <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">{note}</p>
+    // A bad check is a panel with a red border and a red value, not a red
+    // fill: muted text on --err-bg falls under 4.5:1.
+    <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-[var(--err-line)]" : "border-[var(--border)]"}`}
+      style={{ background: "var(--surface)" }}>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
+      <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-[var(--err)]" : "text-[var(--ok)]"}`}>{value}</p>
+      <p className="text-[12px] text-[var(--foreground-muted)] mt-1">{note}</p>
     </div>
   );
 }
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
+    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
       <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value}</p>
-      {sub && <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
+      {sub && <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -137,8 +140,8 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 /** Active subscribers and MRR per plan. */
 function ByPlanCard({ rows }: { rows: ByPlan[] }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--background)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
+    <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
       {rows.length === 0 ? (
         <p className="font-display text-3xl font-light text-[var(--foreground)]">—</p>
       ) : (
@@ -182,7 +185,7 @@ export default function SubscriptionsPage() {
     return <div className="text-sm text-[var(--foreground-muted)]">Loading subscriptions…</div>;
   }
   if (error || !data) {
-    return <div className="text-sm text-red-500">{error ?? "No data"}</div>;
+    return <div className="text-sm text-[var(--err)]">{error ?? "No data"}</div>;
   }
 
   const { summary, subscriptions, transactions } = data;
@@ -207,7 +210,7 @@ export default function SubscriptionsPage() {
 
       {/* Above the numbers on purpose: this is the one to see first. */}
       {cronStale && (
-        <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs text-amber-500 space-y-1.5">
+        <div role="alert" className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-xs text-[var(--warn)] space-y-1.5">
           <p className="font-medium">
             {summary.hoursSinceCronRun === null
               ? "The renewal cron has never run."
@@ -228,7 +231,7 @@ export default function SubscriptionsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total earned" value={uah(summary.earnedTotalUah)} sub={approxUsd(summary.earnedTotalUah, rate)} />
-        <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payments total`} />
+        <StatCard label="Earned this month" value={uah(summary.earnedThisMonthUah)} sub={`${summary.paymentsTotal} payment${summary.paymentsTotal === 1 ? "" : "s"} total`} />
         <StatCard label="MRR" value={uah(summary.mrrUah)} sub={approxUsd(summary.mrrUah, rate)} />
         <StatCard label="Active subscribers" value={summary.activeSubscriptions.toLocaleString()} sub={summary.autoRenewOff > 0 ? `${summary.autoRenewOff} won't renew` : "all auto-renew"} />
       </div>
@@ -241,7 +244,7 @@ export default function SubscriptionsPage() {
 
       {/* Billing health — the answer to "is billing working?" without opening SQL. */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Billing health
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -273,7 +276,7 @@ export default function SubscriptionsPage() {
       </section>
 
       {summary.activeWithoutCard > 0 && (
-        <div className="rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">
+        <div className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
           {summary.activeWithoutCard} active {summary.activeWithoutCard === 1 ? "subscription has" : "subscriptions have"} no
           saved card. The renewal sweep skips these, so they will never be charged again — they are
           paid plans running for free. The daily cron retries the card lookup; if the number does not
@@ -282,14 +285,14 @@ export default function SubscriptionsPage() {
       )}
 
       {summary.eventsError && (
-        <div className="rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 text-xs text-red-500">
+        <div className="rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-xs text-[var(--err)]">
           Could not read <code>billing_events</code>: {summary.eventsError}. Revenue totals, the cron
           heartbeat and the transaction log below are incomplete.
         </div>
       )}
 
       {!summary.eventsAvailable && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs text-amber-500">
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-xs text-[var(--warn)]">
           The <code>billing_events</code> table isn&apos;t set up yet — run
           <code className="mx-1">supabase-migration-billing-events.sql</code>. Revenue totals and the
           transaction log will populate once it exists and payments flow through.
@@ -298,14 +301,14 @@ export default function SubscriptionsPage() {
 
       {/* Subscribers table */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Subscribers ({subscriptions.length})
         </p>
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                   <th className={TH}>Customer</th>
                   <th className={TH}>Plan</th>
                   <th className={TH}>Status</th>
@@ -318,7 +321,7 @@ export default function SubscriptionsPage() {
                 {subscriptions.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--foreground-subtle)]">No subscribers yet.</td></tr>
                 ) : subscriptions.map((s) => (
-                  <tr key={s.userId} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface)]">
+                  <tr key={s.userId} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)]">
                     <td className="px-4 py-3 text-[var(--foreground)]">{s.email}</td>
                     <td className="px-4 py-3 capitalize text-[var(--foreground)]">{s.plan}</td>
                     <td className="px-4 py-3"><Badge value={s.status} map={STATUS_STYLE} /></td>
@@ -328,11 +331,11 @@ export default function SubscriptionsPage() {
                           report on that so a display-only gap doesn't read as broken. */}
                       {s.hasCardToken
                         ? s.maskedPan ? `•• ${s.maskedPan.slice(-4)}` : "saved"
-                        : <span className="text-red-500">no card</span>}
+                        : <span className="text-[var(--err)]">no card</span>}
                     </td>
                     <td className="px-4 py-3 text-[var(--foreground-muted)]">
                       {s.overdue ? (
-                        <span className="text-red-500" title="Paid period ended and the renewal has not gone through">
+                        <span className="text-[var(--err)]" title="Paid period ended and the renewal has not gone through">
                           overdue — {fmtDate(s.currentPeriodEnd)}
                         </span>
                       ) : s.autoRenew ? (
@@ -341,7 +344,7 @@ export default function SubscriptionsPage() {
                         <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>
                       )}
                       {s.failedCharges > 0 && (
-                        <span className="ml-2 text-[10px] text-amber-500" title="Consecutive failed charges; three downgrades to free">
+                        <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
                           {s.failedCharges} failed
                         </span>
                       )}
@@ -356,14 +359,14 @@ export default function SubscriptionsPage() {
 
       {/* Transactions log */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Transaction log ({transactions.length})
         </p>
-        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--background)" }}>
+        <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--border)]" style={{ background: "var(--surface)" }}>
+                <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                   <th className={TH}>When</th>
                   <th className={TH}>Customer</th>
                   <th className={TH}>Event</th>
@@ -376,13 +379,13 @@ export default function SubscriptionsPage() {
                 {transactions.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--foreground-subtle)]">No transactions logged yet.</td></tr>
                 ) : transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface)]">
+                  <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)]">
                     <td className="px-4 py-3 text-[var(--foreground-muted)] whitespace-nowrap">{fmtDateTime(t.createdAt)}</td>
                     <td className="px-4 py-3 text-[var(--foreground)]">{t.email}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5">
                         <Badge value={t.eventType} map={EVENT_STYLE} />
-                        {t.kind === "renewal" && <span className="text-[9px] text-[var(--foreground-subtle)] uppercase tracking-wide">renewal</span>}
+                        {t.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">Renewal</span>}
                       </span>
                     </td>
                     <td className="px-4 py-3 capitalize text-[var(--foreground-muted)]">{t.plan ?? "—"}</td>

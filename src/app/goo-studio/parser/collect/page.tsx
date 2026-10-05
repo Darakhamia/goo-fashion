@@ -47,11 +47,11 @@ interface ExtMessage {
 
 // ── goo-studio recipes (DESIGN_SYSTEM.md §9) ─────────────────────────────────
 
-const labelCls =
-  "block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] mb-1.5";
+/** Inline label that leads a row of facts (robots.txt, Looking for ours). */
+const labelCls = "text-[12px] font-medium text-[var(--foreground-muted)]";
 const btnGhost =
-  "px-4 py-2 text-[11px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
-const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--background)]";
+  "px-4 py-2 text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors rounded-lg";
+const cardCls = "rounded-xl border border-[var(--border)] bg-[var(--surface)]";
 
 const Spinner = () => (
   <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -363,10 +363,10 @@ export default function CollectPage() {
         <span
           aria-hidden="true"
           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            connected ? "bg-emerald-500" : "bg-[var(--foreground-subtle)]"
+            connected ? "bg-[var(--ok)]" : "bg-[var(--foreground-subtle)]"
           }`}
         />
-        <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)]">
+        <p className="text-[13px] font-medium text-[var(--foreground)]">
           {connected ? "Extension connected" : "Waiting for the extension"}
         </p>
         {store && (
@@ -394,7 +394,7 @@ export default function CollectPage() {
         <div
           role="group"
           aria-label="What this run does"
-          className="flex gap-0 bg-[var(--surface)] rounded-full p-1 border border-[var(--border)] w-fit"
+          className="flex gap-0 bg-[var(--background)] rounded-full p-1 border border-[var(--border)] w-fit"
         >
           {MODES.map((m) => {
             const active = linksOnly === m.linksOnly;
@@ -405,9 +405,9 @@ export default function CollectPage() {
                 aria-pressed={active}
                 disabled={running}
                 onClick={() => chooseMode(m.linksOnly)}
-                className={`shrink-0 px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-colors duration-200 disabled:opacity-40 ${
+                className={`shrink-0 px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40 ${
                   active
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
+                    ? "bg-[var(--foreground)] text-[var(--surface)]"
                     : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 }`}
               >
@@ -424,7 +424,7 @@ export default function CollectPage() {
 
       {!connected && (
         <div className={`${cardCls} px-5 py-4 space-y-2`}>
-          <p className={labelCls}>Install it once</p>
+          <h2 className="text-[13px] font-medium text-[var(--foreground)]">Install it once</h2>
           <ol className="text-[12px] text-[var(--foreground-muted)] space-y-1 list-decimal pl-4">
             <li>
               Open <span className="text-[var(--foreground)]">chrome://extensions</span> and turn on
@@ -445,14 +445,14 @@ export default function CollectPage() {
       )}
 
       {notice && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/15 px-5 py-3 text-[12px] text-amber-500">
+        <div className="rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-5 py-3 text-[12px] text-[var(--warn)]">
           {notice}
         </div>
       )}
 
       {robots && (
         <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-          <span className={labelCls + " mb-0"}>robots.txt</span>
+          <span className={labelCls}>robots.txt</span>
           <span className="text-[var(--foreground-muted)]">
             {robots.parsed ? "read" : "none published"}
           </span>
@@ -469,14 +469,14 @@ export default function CollectPage() {
             </span>
           </span>
           {robots.blocked > 0 && (
-            <span className="text-amber-500 tabular-nums">{robots.blocked} disallowed, skipped</span>
+            <span className="text-[var(--warn)] tabular-nums">{robots.blocked} disallowed, skipped</span>
           )}
         </div>
       )}
 
       {linkSearch && (
         <div className={`${cardCls} px-5 py-3 flex items-center gap-4 flex-wrap text-[11px]`}>
-          <span className={labelCls + " mb-0"}>Looking for ours</span>
+          <span className={labelCls}>Looking for ours</span>
           <span className="text-[var(--foreground-muted)]">
             <span className="text-[var(--foreground)] tabular-nums">{linkSearch.matched}</span> store
             pages name one of our {linkSearch.cards} cards
@@ -505,7 +505,7 @@ export default function CollectPage() {
         <div className={`${cardCls} overflow-hidden`}>
           <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
             <div className="flex items-center gap-4 flex-wrap">
-              <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">
+              <p className="text-[13px] font-medium text-[var(--foreground)] inline-flex items-center gap-1.5">
                 {running && <Spinner />}
                 {phase === "planning" && "Reading the store…"}
                 {phase === "collecting" && `Collecting ${done}/${planned || "…"}`}
@@ -515,9 +515,9 @@ export default function CollectPage() {
                 {phase === "idle" && "Ready"}
               </p>
               <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                <span className="text-emerald-500">{imported} new</span>
+                <span className="text-[var(--ok)]">{imported} new</span>
                 <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                {failed > 0 && <span className="text-amber-500">{failed} skipped</span>}
+                {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
                 {!running && results.length > 0 && (
                   <a
                     href="/goo-studio/products"
@@ -535,12 +535,12 @@ export default function CollectPage() {
               />
             </div>
             {photos > 0 && (
-              <p className="text-[10px] text-[var(--foreground-subtle)]">
+              <p className="text-[12px] text-[var(--foreground-subtle)]">
                 {photos} photo{photos === 1 ? "" : "s"} copied to our storage
               </p>
             )}
             {warnings.map((w) => (
-              <p key={w} className="rounded-lg border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-[12px] text-amber-500">
+              <p key={w} className="rounded-lg border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)]">
                 {w}
               </p>
             ))}
@@ -559,7 +559,7 @@ export default function CollectPage() {
                   </span>
                   {r.reason && (
                     <span
-                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
+                      className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
                       title={r.reason}
                     >
                       {r.reason}
@@ -567,7 +567,7 @@ export default function CollectPage() {
                   )}
                   {!r.reason && detailLine(r) && (
                     <span
-                      className="text-[10px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
+                      className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[480px] flex-shrink-0"
                       title={detailLine(r)}
                     >
                       {detailLine(r)}
@@ -638,15 +638,15 @@ function detailLine(r: CrawlItemResult): string {
 
 function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
   const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "new", cls: "text-emerald-500 bg-emerald-400/15 border-emerald-400/30" },
-    updated: { label: "upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
-    skipped: { label: "skip", cls: "text-amber-500 bg-amber-400/15 border-amber-400/30" },
-    failed: { label: "fail", cls: "text-red-500 bg-red-400/15 border-red-400/30" },
+    imported: { label: "New", cls: "text-[var(--ok)] bg-[var(--ok-bg)] border-[var(--ok-line)]" },
+    updated: { label: "Upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
+    skipped: { label: "Skip", cls: "text-[var(--warn)] bg-[var(--warn-bg)] border-[var(--warn-line)]" },
+    failed: { label: "Fail", cls: "text-[var(--err)] bg-[var(--err-bg)] border-[var(--err-line)]" },
   };
   const { label, cls } = map[status];
   return (
     <span
-      className={`text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}
+      className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}
     >
       {label}
     </span>

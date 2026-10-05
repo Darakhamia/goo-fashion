@@ -41,10 +41,10 @@ interface TreeResponse {
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const btnCls =
-  "shrink-0 bg-[var(--foreground)] text-[var(--background)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
-const warnBoxCls = "mb-6 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3";
+  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
+const warnBoxCls = "mb-6 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3";
 const ghostBtnCls =
-  "text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
+  "text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
 
 /** Sentinel option that swaps the picker for a free-text field. */
 const NEW_BUCKET = "\u0000new-bucket";
@@ -119,7 +119,7 @@ function BucketPicker({
 function CustomBucketNote({ value }: { value: string }) {
   if (!value || isBuiltInBucket(value)) return null;
   return (
-    <p className="basis-full text-[10px] text-amber-500 leading-relaxed">
+    <p className="basis-full text-[12px] text-[var(--warn)] leading-relaxed">
       <span className="font-mono">{value}</span> is a value of your own. Filters, breadcrumbs and the
       product editor handle it, but the code has no other knowledge of it: pieces stored under it
       stay out of the outfit builder, imports never classify into it on their own, and it has no
@@ -347,8 +347,8 @@ export default function AdminCategoriesPage() {
       </div>
 
       {loadError && (
-        <div className="mb-6 rounded-xl border border-red-400/30 bg-red-400/15 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-xs text-red-500 leading-relaxed">
+        <div className="mb-6 rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-xs text-[var(--err)] leading-relaxed">
             {loadError}
             {tree ? " What is shown may be out of date." : ""}
           </p>
@@ -360,7 +360,7 @@ export default function AdminCategoriesPage() {
 
       {noDatabase && (
         <div className={warnBoxCls}>
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             Supabase is not configured — this is the built-in tree, and it can&apos;t be edited from here.
           </p>
         </div>
@@ -368,8 +368,8 @@ export default function AdminCategoriesPage() {
 
       {tableMissing && (
         <div className={warnBoxCls}>
-          <p className="text-[13px] font-medium text-amber-500 mb-1">Category tables not found</p>
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+          <p className="text-[13px] font-medium text-[var(--warn)] mb-1">Category tables not found</p>
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             You&apos;re looking at the tree hardcoded in the app, which is read-only. Run{" "}
             <span className="font-mono">supabase/migrations/011_category_tree.sql</span>, then{" "}
             <span className="font-mono">013_subcategory_sizes.sql</span>, to move it into the database and make it
@@ -380,7 +380,7 @@ export default function AdminCategoriesPage() {
 
       {readFailed && (
         <div className={`${warnBoxCls} flex items-center justify-between gap-4`}>
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             Couldn&apos;t read the category tables, so this is the built-in tree, read-only
             {tree?.detail ? `: ${tree.detail}` : "."}
           </p>
@@ -392,7 +392,7 @@ export default function AdminCategoriesPage() {
 
       {tablesEmpty && (
         <div className={warnBoxCls}>
-          <p className="text-[13px] text-amber-500 leading-relaxed">
+          <p className="text-[13px] text-[var(--warn)] leading-relaxed">
             The tree is empty, so the storefront shows the built-in one until you add a group below.
           </p>
         </div>
@@ -414,7 +414,7 @@ export default function AdminCategoriesPage() {
             );
 
             return (
-              <section key={group.id} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--background)" }}>
+              <section key={group.id} className="rounded-xl border border-[var(--border)]" style={{ background: "var(--surface)" }}>
                 <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-[var(--border)]">
                   {editing === `group:${group.id}` ? (
                     <div className="flex flex-wrap items-center gap-2 flex-1">
@@ -435,10 +435,10 @@ export default function AdminCategoriesPage() {
                     <>
                       <div className="min-w-0">
                         <h2 className="text-sm text-[var(--foreground)]">{group.label}</h2>
-                        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 font-mono">
+                        <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5 font-mono">
                           ?category={group.id}
                           {unassigned > 0 && (
-                            <span className="ml-2 font-sans text-amber-500">
+                            <span className="ml-2 font-sans text-[var(--warn)]">
                               {unassigned} piece{unassigned === 1 ? "" : "s"} with no subcategory
                             </span>
                           )}
@@ -466,7 +466,7 @@ export default function AdminCategoriesPage() {
                     const n = counts?.byLabel[item.label] ?? 0;
                     const isEditing = item.id !== undefined && editing === `sub:${item.id}`;
                     return (
-                      <li key={item.label} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] transition-colors">
+                      <li key={item.label} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--background)] transition-colors">
                         {isEditing ? (
                           <div className="flex items-center gap-2 flex-1 flex-wrap">
                             <input
@@ -479,13 +479,13 @@ export default function AdminCategoriesPage() {
                               }}
                               className={`${inputCls} flex-1 min-w-[160px]`}
                             />
-                            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">stored as</span>
+                            <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Stored as</span>
                             <BucketPicker value={draftValue} known={knownBuckets} onChange={setDraftValue} />
                             <button onClick={() => saveSub(group.id, item)} disabled={busy} className={btnCls}>Save</button>
                             <button onClick={() => setEditing(null)} className={ghostBtnCls}>Cancel</button>
                             <CustomBucketNote value={draftValue} />
                             <div className="basis-full flex items-center gap-2 flex-wrap pt-1">
-                              <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">group</span>
+                              <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Group</span>
                               <select
                                 value={draftGroup}
                                 onChange={(e) => setDraftGroup(e.target.value)}
@@ -496,7 +496,7 @@ export default function AdminCategoriesPage() {
                                   <option key={g.id} value={g.id}>{g.label}</option>
                                 ))}
                               </select>
-                              <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">sizes</span>
+                              <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Sizes</span>
                               <input
                                 value={draftSizes}
                                 onChange={(e) => setDraftSizes(e.target.value)}
@@ -509,11 +509,11 @@ export default function AdminCategoriesPage() {
                         ) : (
                           <>
                             <span className="text-sm text-[var(--foreground)] flex-1 min-w-0 truncate">{item.label}</span>
-                            <span className="text-[10px] font-mono text-[var(--foreground-subtle)] shrink-0">{item.value}</span>
-                            <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0 hidden sm:inline" title={item.sizes?.join(", ")}>
+                            <span className="text-[12px] font-mono text-[var(--foreground-subtle)] shrink-0">{item.value}</span>
+                            <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0 hidden sm:inline" title={item.sizes?.join(", ")}>
                               {item.sizes?.length ? `sizes ×${item.sizes.length}` : "—"}
                             </span>
-                            <span className="text-[10px] text-[var(--foreground-muted)] tabular-nums w-16 text-right shrink-0">
+                            <span className="text-[11px] text-[var(--foreground-muted)] tabular-nums w-16 text-right shrink-0">
                               {n} piece{n === 1 ? "" : "s"}
                             </span>
                             {!readOnly && item.id !== undefined && (
@@ -546,7 +546,7 @@ export default function AdminCategoriesPage() {
                           placeholder="e.g. Loafers"
                           className={`${inputCls} flex-1 min-w-[160px]`}
                         />
-                        <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">stored as</span>
+                        <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Stored as</span>
                         <BucketPicker value={newValue} known={knownBuckets} onChange={setNewValue} />
                         <button onClick={() => addSub(group.id)} disabled={busy || !newLabel.trim() || !newValue} className={btnCls}>Add</button>
                         <button onClick={() => setAddingIn(null)} className={ghostBtnCls}>Cancel</button>
@@ -613,8 +613,8 @@ export default function AdminCategoriesPage() {
           role={toast.type === "ok" ? "status" : "alert"}
           className={`fixed bottom-4 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 px-4 py-3 text-xs tracking-wide rounded-xl border ${
             toast.type === "ok"
-              ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]"
-              : "bg-[var(--background)] text-red-500 border-red-400/30"
+              ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
+              : "bg-[var(--surface)] text-[var(--err)] border-[var(--err-line)]"
           }`}
         >
           {toast.msg}

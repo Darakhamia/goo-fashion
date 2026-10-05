@@ -93,7 +93,7 @@ function appendMessage(prev: string, message: string): string {
 function SelectionLoadFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div>
-      <p className="text-[11px] text-red-500 leading-relaxed">{message}</p>
+      <p className="text-[11px] text-[var(--err)] leading-relaxed">{message}</p>
       <p className="text-[11px] text-[var(--foreground-muted)] mt-1 leading-relaxed">
         Saving is off until the current selection loads, so the live homepage is not overwritten with an empty one.
       </p>
@@ -118,7 +118,7 @@ function SelectedThumb({
 }) {
   return (
     <div
-      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
+      className="relative w-14 h-14 rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--background)] group"
       title={item?.name ?? id}
     >
       {item?.imageUrl ? (
@@ -131,7 +131,7 @@ function SelectedThumb({
           className={`w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"}`}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-[10px] text-[var(--foreground-subtle)] text-center px-1">
+        <div className="w-full h-full flex items-center justify-center text-[12px] text-[var(--foreground-subtle)] text-center px-1">
           missing
         </div>
       )}
@@ -215,19 +215,19 @@ function PickerModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--background)] overflow-hidden"
+        className="w-full max-w-2xl max-h-[90dvh] md:max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 shrink-0">
           <div className="min-w-0">
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">{title}</p>
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{title}</p>
             <p className="text-[11px] text-[var(--foreground-subtle)] mt-0.5">
               {selectedIds.length}/{max} selected · click a {noun} to {max === 1 ? "choose" : "toggle"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto px-3 py-1.5 rounded-lg text-[11px] tracking-[0.12em] uppercase font-medium bg-[var(--foreground)] text-[var(--background)] hover:opacity-80 transition-opacity"
+            className="ml-auto px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 transition-opacity"
           >
             Done
           </button>
@@ -259,7 +259,7 @@ function PickerModal({
                       selected ? "border-[var(--foreground)]" : "border-[var(--border)] hover:border-[var(--foreground-muted)]"
                     }`}
                   >
-                    <div className="aspect-square bg-[var(--surface)] flex items-center justify-center">
+                    <div className="aspect-square bg-[var(--background)] flex items-center justify-center">
                       {p.imageUrl ? (
                         // The catalogue can be hundreds of store-hosted photos:
                         // load only the ones scrolled into view.
@@ -278,15 +278,15 @@ function PickerModal({
                       )}
                     </div>
                     {selected && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--background)] flex items-center justify-center">
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--foreground)] text-[var(--surface)] flex items-center justify-center">
                         <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                           <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
                     )}
                     <div className="px-2 py-1.5">
-                      <p className="text-[10px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[10px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
+                      <p className="text-[12px] font-medium text-[var(--foreground)] truncate">{p.name}</p>
+                      <p className="text-[12px] text-[var(--foreground-subtle)] truncate capitalize">{p.sub}</p>
                     </div>
                   </button>
                 );
@@ -711,7 +711,7 @@ export default function SettingsPage() {
             Access denied. Your account is not in the admin allowlist.
           </p>
           <p className="text-[11px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
-            Add your Clerk user ID to the <code className="font-mono text-[10px]">ADMIN_USER_IDS</code> environment variable to gain access.
+            Add your Clerk user ID to the <code className="font-mono text-[11px]">ADMIN_USER_IDS</code> environment variable to gain access.
           </p>
         </div>
       </div>
@@ -735,7 +735,7 @@ export default function SettingsPage() {
           drop an unknown column rather than lose the row — so a migration that
           was never run costs a feature silently. This says out loud what the
           database actually has. */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -743,7 +743,7 @@ export default function SettingsPage() {
               <path d="M2.25 3.5V10.5C2.25 11.6 4.38 12.5 7 12.5C9.62 12.5 11.75 11.6 11.75 10.5V3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               <path d="M2.25 7C2.25 8.1 4.38 9 7 9C9.62 9 11.75 8.1 11.75 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               Database schema
             </p>
           </div>
@@ -755,15 +755,15 @@ export default function SettingsPage() {
         <div className="px-5 py-4">
           {schemaLoading && !schema && <LoadingLine label="Checking…" />}
 
-          {schemaError && <p className="text-[11px] text-red-500">{schemaError}</p>}
+          {schemaError && <p className="text-[11px] text-[var(--err)]">{schemaError}</p>}
 
           {schema && (
             <>
               <span
-                className={`inline-block px-2 py-1 rounded-lg text-[10px] tracking-[0.18em] uppercase border ${
+                className={`inline-block px-2 py-1 rounded-lg text-[11px] font-medium border ${
                   schema.ok
-                    ? "bg-emerald-400/15 text-emerald-500 border-emerald-400/30"
-                    : "bg-amber-400/15 text-amber-500 border-amber-400/30"
+                    ? "bg-[var(--ok-bg)] text-[var(--ok)] border-[var(--ok-line)]"
+                    : "bg-[var(--warn-bg)] text-[var(--warn)] border-[var(--warn-line)]"
                 }`}
               >
                 {schema.ok ? "All columns present" : `${schema.checks.filter((c) => !c.present).length} missing`}
@@ -774,7 +774,7 @@ export default function SettingsPage() {
                   <li key={`${c.table}.${c.column}`} className="flex items-start gap-2">
                     <span
                       className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                        c.present ? "bg-emerald-500" : c.error ? "bg-red-500" : "bg-amber-500"
+                        c.present ? "bg-[var(--ok)]" : c.error ? "bg-[var(--err)]" : "bg-[var(--warn)]"
                       }`}
                       aria-hidden="true"
                     />
@@ -815,20 +815,20 @@ export default function SettingsPage() {
       </div>
 
       {catalogError && (
-        <p className="text-[11px] text-red-500 mb-4 leading-relaxed">
+        <p className="text-[11px] text-[var(--err)] mb-4 leading-relaxed">
           {catalogError} Previews below may read “missing” and the pickers may be empty; saved selections are not affected.
         </p>
       )}
 
       {/* ── Homepage showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <rect x="1.5" y="2" width="11" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
               <path d="M1.5 5H12.5" stroke="currentColor" strokeWidth="1.1" />
             </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               Homepage showcase
             </p>
           </div>
@@ -846,9 +846,9 @@ export default function SettingsPage() {
           {showcaseLoad === "ready" && STEP_META.map((meta) => (
             <div key={meta.key}>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
-                <span className="font-mono text-[10px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
+                <span className="font-mono text-[11px] text-[var(--foreground-subtle)] tabular-nums">{meta.n}</span>
                 <span className="text-[12px] font-medium text-[var(--foreground)]">{meta.title}</span>
-                <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
+                <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">{meta.hint}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -882,19 +882,19 @@ export default function SettingsPage() {
             {showcaseSaving && <Spinner />}
             {showcaseSaving ? "Saving…" : "Save showcase"}
           </button>
-          {showcaseOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
-          {showcaseError && <p className="text-[11px] text-red-500">{showcaseError}</p>}
+          {showcaseOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
+          {showcaseError && <p className="text-[11px] text-[var(--err)]">{showcaseError}</p>}
         </div>
       </div>
 
       {/* ── AI Stylist showcase ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] mb-6">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] mb-6">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <path d="M7 1.5l1.1 3 3.2.2-2.5 2 .8 3.1L7 8.3 4.4 9.8l.8-3.1-2.5-2 3.2-.2L7 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
             </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
               AI Stylist showcase
             </p>
           </div>
@@ -916,7 +916,7 @@ export default function SettingsPage() {
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Chat looks</span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                  <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
                     Up to {MAX_CHAT_LOOKS} outfits shown inside the chat.
                   </span>
                 </div>
@@ -940,7 +940,7 @@ export default function SettingsPage() {
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Featured product</span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                  <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
                     Shown bottom-left with its retailers.
                   </span>
                 </div>
@@ -962,11 +962,11 @@ export default function SettingsPage() {
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
                   <span className="text-[12px] font-medium text-[var(--foreground)]">Where to buy — extra stores</span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] ml-auto">
+                  <span className="text-[12px] text-[var(--foreground-subtle)] ml-auto">
                     Up to {MAX_SHOWCASE_STORES}
                   </span>
                 </div>
-                <p className="text-[10px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mb-3 leading-relaxed">
                   The item’s own stores (and prices) always show automatically. Add extra stores here —
                   the logo and store link are pulled from the library; set an optional price tag for each.
                   Clicking a row opens that store’s link.
@@ -980,7 +980,7 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={name}
-                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
                       >
                         <span className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] overflow-hidden flex items-center justify-center shrink-0">
                           {store ? (
@@ -993,7 +993,7 @@ export default function SettingsPage() {
                               className="w-full h-full object-contain p-1"
                             />
                           ) : (
-                            <span className="text-[10px] font-semibold text-[var(--foreground-subtle)]">
+                            <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
                               {name.slice(0, 2).toUpperCase()}
                             </span>
                           )}
@@ -1013,7 +1013,7 @@ export default function SettingsPage() {
                         </div>
                         <button
                           onClick={() => removeShowcaseStore(name)}
-                          className="w-5 h-5 rounded-full hover:bg-[var(--background)] text-[var(--foreground-subtle)] hover:text-red-500 flex items-center justify-center transition-colors shrink-0"
+                          className="w-5 h-5 rounded-full hover:bg-[var(--surface)] text-[var(--foreground-subtle)] hover:text-[var(--err)] flex items-center justify-center transition-colors shrink-0"
                           aria-label={`Remove ${name}`}
                         >
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
@@ -1050,13 +1050,13 @@ export default function SettingsPage() {
             {stylistSaving && <Spinner />}
             {stylistSaving ? "Saving…" : "Save stylist"}
           </button>
-          {stylistOk && <p className="text-[11px] text-emerald-500">Saved — changes go live on next homepage load.</p>}
-          {stylistError && <p className="text-[11px] text-red-500">{stylistError}</p>}
+          {stylistOk && <p className="text-[11px] text-[var(--ok)]">Saved — changes go live on next homepage load.</p>}
+          {stylistError && <p className="text-[11px] text-[var(--err)]">{stylistError}</p>}
         </div>
       </div>
 
       {/* ── OpenAI section ── */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)]">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
 
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border)]">
@@ -1067,8 +1067,8 @@ export default function SettingsPage() {
                 stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"
               />
             </svg>
-            <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
-              OpenAI API Key
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
+              OpenAI API key
             </p>
           </div>
           <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
@@ -1087,7 +1087,7 @@ export default function SettingsPage() {
           {/* Load error */}
           {loadError && (
             <div>
-              <p className="text-[11px] text-red-500">{loadError}</p>
+              <p className="text-[11px] text-[var(--err)]">{loadError}</p>
               <button onClick={loadStatus} className={`mt-3 ${SECONDARY_BTN}`}>
                 Retry
               </button>
@@ -1099,7 +1099,7 @@ export default function SettingsPage() {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2 h-2 rounded-full bg-[var(--border-strong)]" />
-                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+                <p className="text-[11px] font-medium text-[var(--foreground-muted)]">
                   Not configured
                 </p>
               </div>
@@ -1114,16 +1114,16 @@ export default function SettingsPage() {
           {status?.configured && status.source === "env" && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
+                <p className="text-[11px] font-medium text-[var(--foreground)]">
                   Configured
                 </p>
               </div>
               {status.maskedKey && (
-                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
               <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-                Key is set via the <code className="font-mono text-[10px]">OPENAI_API_KEY</code> environment variable.
+                Key is set via the <code className="font-mono text-[11px]">OPENAI_API_KEY</code> environment variable.
                 To change it, update the environment variable and redeploy.
               </p>
             </div>
@@ -1133,19 +1133,19 @@ export default function SettingsPage() {
           {status?.configured && status.source === "database" && !showInput && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-[var(--foreground)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--ok)]" />
+                <p className="text-[11px] font-medium text-[var(--foreground)]">
                   Configured
                 </p>
               </div>
               {status.maskedKey && (
-                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1">{status.maskedKey}</p>
+                <p className="font-mono text-[11px] text-[var(--foreground-muted)] mb-1 break-all">{status.maskedKey}</p>
               )}
               <p className="text-[11px] text-[var(--foreground-subtle)] mb-4">
                 Stored in database. Raw key is never returned to the browser.
               </p>
               {saveOk && (
-                <p className="text-[11px] text-emerald-500 mb-3">Key saved successfully.</p>
+                <p className="text-[11px] text-[var(--ok)] mb-3">Key saved successfully.</p>
               )}
             </div>
           )}
@@ -1160,9 +1160,9 @@ export default function SettingsPage() {
               )}
               <label
                 htmlFor="openai-key-input"
-                className="block text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-2"
+                className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5"
               >
-                {status?.configured ? "New API Key" : "API Key"}
+                {status?.configured ? "New API key" : "API key"}
               </label>
               <div className="relative">
                 <input
@@ -1196,14 +1196,14 @@ export default function SettingsPage() {
                 </button>
               </div>
               {saveError && (
-                <p className="text-[11px] text-red-500 mt-2">{saveError}</p>
+                <p className="text-[11px] text-[var(--err)] mt-2">{saveError}</p>
               )}
             </div>
           )}
 
           {/* Test result */}
           {testResult === "ok" && (
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-500">
+            <div className="mt-3 flex items-center gap-2 text-[11px] text-[var(--ok)]">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
                 <path d="M1.5 5.5L4.5 8.5L9.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -1211,7 +1211,7 @@ export default function SettingsPage() {
             </div>
           )}
           {testResult === "fail" && (
-            <div className="mt-3 flex items-start gap-2 text-[11px] text-red-500">
+            <div className="mt-3 flex items-start gap-2 text-[11px] text-[var(--err)]">
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
                 <path d="M1.5 1.5L9.5 9.5M9.5 1.5L1.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
@@ -1221,7 +1221,7 @@ export default function SettingsPage() {
 
           {/* Clear error */}
           {clearError && (
-            <p className="text-[11px] text-red-500 mt-3">{clearError}</p>
+            <p className="text-[11px] text-[var(--err)] mt-3">{clearError}</p>
           )}
         </div>
 
@@ -1237,7 +1237,7 @@ export default function SettingsPage() {
                 className={PRIMARY_BTN}
               >
                 {saving && <Spinner />}
-                {saving ? "Saving…" : "Save Key"}
+                {saving ? "Saving…" : "Save key"}
               </button>
             )}
 
@@ -1260,7 +1260,7 @@ export default function SettingsPage() {
                   className={SECONDARY_BTN}
                 >
                   {testing && <Spinner />}
-                  {testing ? "Testing…" : "Test Key"}
+                  {testing ? "Testing…" : "Test key"}
                 </button>
 
                 {/* Update key — only for database-stored keys */}
@@ -1280,7 +1280,7 @@ export default function SettingsPage() {
               <button
                 onClick={clearKey}
                 disabled={clearing}
-                className="ml-auto text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] hover:text-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ml-auto text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--err)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {clearing ? "Clearing…" : "Clear"}
               </button>
