@@ -13,9 +13,9 @@ const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)] w-full";
 const PRIMARY =
-  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
+  "shrink-0 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
 const GHOST =
-  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[11px] tracking-[0.08em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
+  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] disabled:opacity-40 transition-colors";
 
 const errorMessage = (e: unknown) => (e instanceof Error && e.message ? e.message : "Could not reach the server.");
 
@@ -204,7 +204,7 @@ export default function AdminBrandsPage() {
 
       {/* Add brand */}
       <div className="mb-8 rounded-xl border border-[var(--border)] p-5" style={{ background: "var(--surface)" }}>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Add brand</p>
+        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">Add brand</h2>
         <div className="flex gap-2">
           <input
             type="text"

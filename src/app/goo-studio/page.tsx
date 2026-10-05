@@ -158,7 +158,7 @@ export default function AdminDashboardPage() {
           <span className="min-w-0 break-words">{error}</span>
           <button
             onClick={load}
-            className="shrink-0 text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+            className="shrink-0 text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
           >
             Retry
           </button>
@@ -180,7 +180,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={load}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
+          className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50 rounded-lg"
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
@@ -210,7 +210,7 @@ export default function AdminDashboardPage() {
               style={{ background: "var(--surface)" }}
             >
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">
+                <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
                   {c?.label ?? "—"}
                 </span>
               </div>
@@ -224,7 +224,7 @@ export default function AdminDashboardPage() {
                 ) : c.delta ? (
                   <span
                     title="Month to date vs the same days of last month"
-                    className={`inline-flex items-center text-[9px] tracking-[0.1em] uppercase font-medium px-2 py-1 rounded-full ${
+                    className={`inline-flex items-center text-[11px] font-medium px-2 py-1 rounded-full ${
                       c.delta.positive
                         ? "bg-[var(--ok-bg)] text-[var(--ok)] border border-[var(--ok-line)]"
                         : "bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]"
@@ -234,7 +234,7 @@ export default function AdminDashboardPage() {
                   </span>
                 ) : null}
               </div>
-              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-1">
+              <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-1">
                 {c?.sub ?? " "}
               </p>
             </motion.div>
@@ -244,7 +244,7 @@ export default function AdminDashboardPage() {
 
       {/* Service health */}
       <div className="mb-10">
-        <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">System Health</h2>
+        <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">System health</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {data && (Object.keys(HEALTH_LABELS) as (keyof StatsPayload["health"])[]).map((k) => {
             const h = data.health[k];
@@ -260,8 +260,8 @@ export default function AdminDashboardPage() {
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
+                  <p className="text-[13px] font-medium text-[var(--foreground)]">{HEALTH_LABELS[k]}</p>
+                  <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{h.detail}</p>
                 </div>
               </div>
             );
@@ -277,8 +277,8 @@ export default function AdminDashboardPage() {
         {/* Signups */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Signups</h2>
-            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent signups</h2>
+            <Link href="/goo-studio/users" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -292,7 +292,7 @@ export default function AdminDashboardPage() {
                   {u.imageUrl ? (
                     <Image src={u.imageUrl} alt="" width={28} height={28} className="rounded-full object-cover w-7 h-7 flex-shrink-0" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] flex-shrink-0">
                       {initials(u.firstName, u.lastName, u.email)}
                     </div>
                   )}
@@ -300,9 +300,9 @@ export default function AdminDashboardPage() {
                     <p className="text-xs text-[var(--foreground)] truncate">
                       {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id}
                     </p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] truncate">{u.email}</p>
                   </div>
-                  <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-md ${
+                  <span className={`text-[11px] font-medium capitalize px-2 py-1 rounded-md ${
                     u.plan === "premium" ? "bg-[var(--foreground)] text-[var(--surface)]"
                     : u.plan === "pro" ? "bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]"
                     : u.plan === "basic" ? "border border-[var(--border-strong)] text-[var(--foreground)]"
@@ -310,7 +310,7 @@ export default function AdminDashboardPage() {
                   }`}>
                     {u.plan}
                   </span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
+                  <span className="text-[12px] text-[var(--foreground-subtle)] tabular-nums whitespace-nowrap">
                     {fmtRelative(u.createdAt)}
                   </span>
                 </div>
@@ -322,8 +322,8 @@ export default function AdminDashboardPage() {
         {/* Recent outfits */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Outfits</h2>
-            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+            <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent outfits</h2>
+            <Link href="/goo-studio/outfits" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
               View all →
             </Link>
           </div>
@@ -341,7 +341,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-[var(--foreground)] truncate">{o.name}</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)]">{fmtRelative(o.created_at)}</p>
                   </div>
                 </div>
               ))}
@@ -353,8 +353,8 @@ export default function AdminDashboardPage() {
       {/* Recent Products */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">Recent Products</h2>
-          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+          <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Recent products</h2>
+          <Link href="/goo-studio/products" className="inline-flex items-center min-h-10 md:min-h-0 text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
             View all →
           </Link>
         </div>
@@ -363,10 +363,10 @@ export default function AdminDashboardPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal w-14">Image</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Name</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">Brand</th>
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">

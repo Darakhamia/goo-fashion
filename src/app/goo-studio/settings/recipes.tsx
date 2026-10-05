@@ -2,9 +2,9 @@
 // (DESIGN_SYSTEM.md §9: primary/secondary button, input, loading line).
 
 export const PRIMARY_BTN =
-  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5";
+  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5";
 export const SECONDARY_BTN =
-  "px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5";
+  "px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5";
 export const INPUT =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 

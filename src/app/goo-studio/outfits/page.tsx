@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "@/components/ui/Image";
 import type { Outfit, Product, Occasion, StyleKeyword, Category } from "@/lib/types";
-import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords } from "@/lib/style-keywords";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, normalizeStyleKeywords, styleLabel } from "@/lib/style-keywords";
 import { DownloadCardButton, DownloadCardsButton } from "@/components/admin/DownloadCardsButton";
 import { useBackdropDismiss } from "@/lib/use-backdrop-dismiss";
 
@@ -81,7 +81,7 @@ const inputCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
 const selectCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
-const labelCls = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 export default function AdminOutfitsPage() {
   // A selection dragged out of the editor must not close it — see the hook.
@@ -644,12 +644,12 @@ export default function AdminOutfitsPage() {
             />
             <button
               onClick={openAddModal}
-              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+              className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
-              Add Outfit
+              Add outfit
             </button>
           </div>
         )}
@@ -664,7 +664,7 @@ export default function AdminOutfitsPage() {
               setAdminTab(t);
               if (t === "pending") loadPending();
             }}
-            className={`px-5 py-3 text-xs tracking-[0.12em] uppercase font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-5 py-3 text-[13px] font-medium border-b-2 -mb-px transition-colors ${
               adminTab === t
                 ? "border-[var(--foreground)] text-[var(--foreground)]"
                 : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -674,7 +674,7 @@ export default function AdminOutfitsPage() {
               <span className="flex items-center gap-2">
                 Pending
                 {pendingLooks.length > 0 && (
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--surface)] text-[9px]">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--foreground)] text-[var(--surface)] text-[11px]">
                     {pendingLooks.length}
                   </span>
                 )}
@@ -724,8 +724,8 @@ export default function AdminOutfitsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       {look.generated_style && (
-                        <span className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
-                          {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On You" : "AI"}
+                        <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
+                          {look.generated_style === "flatlay" ? "Flat lay" : look.generated_style === "tryon" ? "On you" : "AI"}
                         </span>
                       )}
                       {look.total_price != null && (
@@ -733,11 +733,11 @@ export default function AdminOutfitsPage() {
                       )}
                     </div>
                     {look.style_keywords.length > 0 && (
-                      <p className="text-[9px] font-mono tracking-[0.1em] uppercase text-[var(--foreground-subtle)] truncate">
+                      <p className="text-[12px] font-mono capitalize text-[var(--foreground-muted)] truncate">
                         {look.style_keywords.slice(0, 4).join(" · ")}
                       </p>
                     )}
-                    <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
                       {new Date(look.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                       {" · "}{look.pieces.length} pieces
                     </p>
@@ -770,15 +770,15 @@ export default function AdminOutfitsPage() {
             <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                 {selectedLook.generated_style && (
-                  <span className="font-mono text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
-                    {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On You" : "AI"}
+                  <span className="font-mono text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 rounded-full">
+                    {selectedLook.generated_style === "flatlay" ? "Flat lay" : selectedLook.generated_style === "tryon" ? "On you" : "AI"}
                   </span>
                 )}
                 {selectedLook.total_price != null && (
                   <p className="text-sm font-medium text-[var(--foreground)]">${selectedLook.total_price.toLocaleString()}</p>
                 )}
                 {selectedLook.style_keywords.length > 0 && (
-                  <p className="font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
+                  <p className="font-mono text-[12px] capitalize text-[var(--foreground-muted)]">
                     {selectedLook.style_keywords.slice(0, 3).join(" · ")}
                   </p>
                 )}
@@ -817,12 +817,12 @@ export default function AdminOutfitsPage() {
                         <img src={piece.imageUrl} alt={piece.name ?? piece.slot} className="w-full h-full object-contain p-1" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className="font-mono text-[10px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
+                          <span className="font-mono text-[11px] text-[var(--border-strong)]">{piece.slot[0].toUpperCase()}</span>
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-subtle)] mb-0.5 capitalize">{piece.slot}</p>
+                      <p className="font-mono text-[12px] text-[var(--foreground-muted)] mb-0.5 capitalize">{piece.slot}</p>
                       <p className="text-xs text-[var(--foreground)] truncate">{piece.name ?? "—"}</p>
                     </div>
                   </div>
@@ -839,7 +839,7 @@ export default function AdminOutfitsPage() {
                 exactly what the shopper wrote; empty means the approval
                 endpoint keeps its own fallback rather than publishing blanks. */}
             <div className="px-5 py-4 border-t border-[var(--border)] shrink-0 md:max-h-[38vh] md:overflow-y-auto">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-3">
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
                 Publish as
               </p>
 
@@ -886,13 +886,13 @@ export default function AdminOutfitsPage() {
                       key={kw}
                       onClick={() => toggleModerationStyle(kw)}
                       aria-pressed={on}
-                      className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+                      className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
                         on
                           ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                           : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                       }`}
                     >
-                      {kw}
+                      {styleLabel(kw)}
                     </button>
                   );
                 })}
@@ -910,14 +910,14 @@ export default function AdminOutfitsPage() {
                 <button
                   onClick={() => handleApproveLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 disabled:opacity-40 transition-opacity"
+                  className="flex-1 h-10 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] hover:opacity-80 disabled:opacity-40 transition-opacity"
                 >
                   {approvingId === selectedLook.id ? "Approving…" : "Approve — add to Outfits"}
                 </button>
                 <button
                   onClick={() => handleRejectLook(selectedLook.id)}
                   disabled={approvingId === selectedLook.id}
-                  className="flex-1 h-10 rounded-lg text-[10px] tracking-[0.16em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--err)] hover:text-[var(--err)] disabled:opacity-40 transition-colors"
+                  className="flex-1 h-10 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--err)] hover:text-[var(--err)] disabled:opacity-40 transition-colors"
                 >
                   Reject
                 </button>
@@ -986,7 +986,7 @@ export default function AdminOutfitsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleting}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--err)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--err)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path
@@ -1026,7 +1026,7 @@ export default function AdminOutfitsPage() {
               {["Image", "Name", "Occasion", "Season", "Items", "Price Range", "Keywords", "Homepage", "Actions"].map((h, i) => (
                 <th
                   key={h}
-                  className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
+                  className={`text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${
                     i === 8 ? " text-right sticky right-0 bg-[var(--surface)] md:static md:bg-transparent" : ""
                   }${i >= 3 && i <= 6 ? " hidden lg:table-cell" : ""}${i === 2 ? " hidden md:table-cell" : ""}`}
                 >
@@ -1103,13 +1103,13 @@ export default function AdminOutfitsPage() {
                   </td>
                   {/* Occasion */}
                   <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-muted)]">
+                    <span className="text-xs capitalize text-[var(--foreground-muted)]">
                       {outfit.occasion}
                     </span>
                   </td>
                   {/* Season */}
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-muted)]">
+                    <span className="text-xs capitalize text-[var(--foreground-muted)]">
                       {outfit.season}
                     </span>
                   </td>
@@ -1149,9 +1149,9 @@ export default function AdminOutfitsPage() {
                       {outfit.styleKeywords.slice(0, 2).map((kw) => (
                         <span
                           key={kw}
-                          className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 leading-none rounded-full"
+                          className="text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-subtle)] px-2 py-0.5 leading-none rounded-full"
                         >
-                          {kw}
+                          {styleLabel(kw)}
                         </span>
                       ))}
                     </div>
@@ -1255,7 +1255,7 @@ export default function AdminOutfitsPage() {
               {/* ── LEFT: Product picker ── */}
               <div className="lg:w-[55%] border-b lg:border-b-0 lg:border-r border-[var(--border)] flex flex-col">
                 <div className="px-5 py-4 border-b border-[var(--border)]">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--foreground-muted)] mb-3">
+                  <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">
                     Products — select items for this outfit
                   </p>
                   {/* Search */}
@@ -1273,7 +1273,7 @@ export default function AdminOutfitsPage() {
                         key={value}
                         onClick={() => setProductCategory(value)}
                         aria-pressed={productCategory === value}
-                        className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+                        className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
                           productCategory === value
                             ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                             : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -1331,9 +1331,9 @@ export default function AdminOutfitsPage() {
                             </div>
                             {/* Product info */}
                             <div className="p-2">
-                              <p className="text-[10px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
+                              <p className="text-[12px] text-[var(--foreground-muted)] truncate">{product.brand}</p>
                               <p className="text-xs text-[var(--foreground)] leading-snug line-clamp-2">{product.name}</p>
-                              <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">${product.priceMin}</p>
+                              <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">${product.priceMin}</p>
                             </div>
                           </button>
                         );
@@ -1388,16 +1388,16 @@ export default function AdminOutfitsPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-[var(--foreground)] truncate">{item.product.name}</p>
-                                <p className="text-[10px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
+                                <p className="text-[12px] text-[var(--foreground-muted)]">{item.product.brand} · ${item.product.priceMin}</p>
                               </div>
                               {/* Role */}
                               <select
                                 value={item.role}
                                 onChange={(e) => setRole(item.product.id, e.target.value as OutfitRole)}
-                                className="text-[10px] uppercase tracking-[0.08em] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
+                                className="text-[12px] rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] px-2 py-1 outline-none focus:border-[var(--foreground)]"
                               >
                                 {ROLES.map((r) => (
-                                  <option key={r} value={r}>{r}</option>
+                                  <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                                 ))}
                               </select>
                               {/* Remove */}
@@ -1437,12 +1437,12 @@ export default function AdminOutfitsPage() {
                                           sizes="24px"
                                         />
                                       ) : (
-                                        <span className="flex w-full h-full items-center justify-center text-[10px] leading-none text-[var(--foreground-subtle)] uppercase">{color[0]}</span>
+                                        <span className="flex w-full h-full items-center justify-center text-[11px] leading-none text-[var(--foreground-subtle)]">{color.charAt(0).toUpperCase()}</span>
                                       )}
                                     </button>
                                   );
                                 })}
-                                <span className="text-[10px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
+                                <span className="text-[12px] text-[var(--foreground-subtle)] capitalize ml-1">{activeColor}</span>
                               </div>
                             )}
                           </div>
@@ -1450,7 +1450,7 @@ export default function AdminOutfitsPage() {
                         })}
                         {/* Price total */}
                         <div className="flex justify-between items-center pt-1 border-t border-[var(--border)]">
-                          <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--foreground-muted)]">Total</span>
+                          <span className="text-[12px] text-[var(--foreground-muted)]">Total</span>
                           <span className="text-sm text-[var(--foreground)]">
                             ${priceMin}–${priceMax}
                           </span>
@@ -1521,13 +1521,13 @@ export default function AdminOutfitsPage() {
                           type="button"
                           onClick={() => toggleKeyword(kw)}
                           aria-pressed={form.styleKeywords.includes(kw)}
-                          className={`px-4 py-2 rounded-full border text-[11px] tracking-[0.12em] uppercase font-medium transition-colors duration-200 ${
+                          className={`px-4 py-2 rounded-full border text-[12px] font-medium transition-colors duration-200 ${
                             form.styleKeywords.includes(kw)
                               ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                               : "border-[var(--border-strong)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
                           }`}
                         >
-                          {kw}
+                          {styleLabel(kw)}
                         </button>
                       ))}
                     </div>
@@ -1580,7 +1580,7 @@ export default function AdminOutfitsPage() {
                                 <path d="M3 17H17" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                               </svg>
                               <span className="text-xs text-[var(--foreground-muted)]">Click to upload</span>
-                              <span className="text-[10px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
+                              <span className="text-[12px] text-[var(--foreground-subtle)]">PNG, JPG, WEBP, AVIF · max 10 MB</span>
                             </>
                           )}
                         </div>
@@ -1588,7 +1588,7 @@ export default function AdminOutfitsPage() {
                     )}
 
                     {uploadError && (
-                      <p className="text-[10px] text-[var(--err)] mb-1.5">{uploadError}</p>
+                      <p className="text-[12px] text-[var(--err)] mb-1.5">{uploadError}</p>
                     )}
 
                     {/* Manual URL fallback */}
@@ -1626,13 +1626,13 @@ export default function AdminOutfitsPage() {
                   <button
                     onClick={handleSave}
                     disabled={!form.name.trim() || saving}
-                    className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                    className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                   >
-                    {saving ? "Saving..." : editingId ? "Save Changes" : "Create Outfit"}
+                    {saving ? "Saving..." : editingId ? "Save changes" : "Create outfit"}
                   </button>
                   <button
                     onClick={closeModal}
-                    className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                    className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
                   >
                     Cancel
                   </button>

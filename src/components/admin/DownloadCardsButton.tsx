@@ -191,7 +191,7 @@ export function DownloadCardsButton({ kind, ids, count, disabled, title, onNotif
           ? `Download the ${count} selected cards as pictures`
           : "Download every card here as a picture, in one ZIP")
       }
-      className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
     >
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <path

@@ -101,13 +101,14 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 /** Table header cell — admin recipe (DESIGN_SYSTEM.md §9). */
-const TH = "text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal";
+const TH = "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
   const cls = map[value] ?? NEUTRAL;
+  const raw = value.replace(/_/g, " ");
   return (
-    <span className={`text-[9px] tracking-[0.12em] uppercase px-2 py-0.5 border rounded-full leading-none ${cls}`}>
-      {EVENT_LABEL[value] ?? value.replace(/_/g, " ")}
+    <span className={`text-[11px] font-medium px-2 py-0.5 border rounded-full leading-none ${cls}`}>
+      {EVENT_LABEL[value] ?? raw.charAt(0).toUpperCase() + raw.slice(1)}
     </span>
   );
 }
@@ -117,9 +118,9 @@ function HealthCard({ label, value, bad, note }: { label: string; value: string;
   return (
     <div className={`rounded-xl border px-4 py-3 min-w-0 ${bad ? "border-[var(--err-line)] bg-[var(--err-bg)]" : "border-[var(--border)]"}`}
       style={bad ? undefined : { background: "var(--surface)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1.5">{label}</p>
       <p className={`font-display text-2xl md:text-3xl font-light break-words ${bad ? "text-[var(--err)]" : "text-[var(--ok)]"}`}>{value}</p>
-      <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">{note}</p>
+      <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">{note}</p>
     </div>
   );
 }
@@ -127,9 +128,9 @@ function HealthCard({ label, value, bad, note }: { label: string; value: string;
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
       <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value}</p>
-      {sub && <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
+      {sub && <p className="text-[12px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -138,7 +139,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 function ByPlanCard({ rows }: { rows: ByPlan[] }) {
   return (
     <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">By plan</p>
       {rows.length === 0 ? (
         <p className="font-display text-3xl font-light text-[var(--foreground)]">—</p>
       ) : (
@@ -241,7 +242,7 @@ export default function SubscriptionsPage() {
 
       {/* Billing health — the answer to "is billing working?" without opening SQL. */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Billing health
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -298,7 +299,7 @@ export default function SubscriptionsPage() {
 
       {/* Subscribers table */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Subscribers ({subscriptions.length})
         </p>
         <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
@@ -341,7 +342,7 @@ export default function SubscriptionsPage() {
                         <span className="text-[var(--foreground-subtle)]">ends {fmtDate(s.currentPeriodEnd)}</span>
                       )}
                       {s.failedCharges > 0 && (
-                        <span className="ml-2 text-[10px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
+                        <span className="ml-2 text-[12px] text-[var(--warn)]" title="Consecutive failed charges; three downgrades to free">
                           {s.failedCharges} failed
                         </span>
                       )}
@@ -356,7 +357,7 @@ export default function SubscriptionsPage() {
 
       {/* Transactions log */}
       <section>
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">
           Transaction log ({transactions.length})
         </p>
         <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
@@ -382,7 +383,7 @@ export default function SubscriptionsPage() {
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5">
                         <Badge value={t.eventType} map={EVENT_STYLE} />
-                        {t.kind === "renewal" && <span className="text-[9px] text-[var(--foreground-subtle)] uppercase tracking-wide">renewal</span>}
+                        {t.kind === "renewal" && <span className="text-[12px] text-[var(--foreground-muted)]">Renewal</span>}
                       </span>
                     </td>
                     <td className="px-4 py-3 capitalize text-[var(--foreground-muted)]">{t.plan ?? "—"}</td>

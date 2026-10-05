@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { ColorGroup, Product, Category, StyleKeyword, Retailer, Gender, CropData } from "@/lib/types";
-import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS } from "@/lib/style-keywords";
+import { STYLE_KEYWORD_LIST as STYLE_KEYWORDS, styleLabel } from "@/lib/style-keywords";
 import { subcategoryToValue, groupForProduct, resolveSubcategory, type CategoryGroup } from "@/lib/categories";
 import { useCategoryTree } from "@/lib/hooks/useCategoryTree";
 import { ImageCropEditor } from "@/components/admin/ImageCropEditor";
@@ -92,8 +92,11 @@ const MISSING_FILTERS: { value: string; label: string; test: (p: Product) => boo
   { value: "image", label: "No image", test: (p) => !p.imageUrl?.trim() },
 ];
 
-const filterSelectCls =
-  "rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
+// Border and text colour are not part of the base: the "Missing" select swaps
+// both for the warning pair, and two of each on one element is a coin toss.
+const filterSelectBaseCls =
+  "rounded-full border bg-[var(--surface)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer max-w-[180px]";
+const filterSelectCls = `${filterSelectBaseCls} border-[var(--border)] text-[var(--foreground)]`;
 
 
 const AVAILABILITY_OPTIONS = ["in stock", "low stock", "sold out"] as const;
@@ -225,7 +228,7 @@ const selectBaseCls =
   "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-[var(--surface)] text-[var(--foreground)] transition-colors";
 const selectCls = `${selectBaseCls} w-full`;
 const labelCls =
-  "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+  "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -322,7 +325,7 @@ function ImageList({
               )}
             </div>
             {url && uploadErrors[url] && uploading !== url && (
-              <p className="text-[10px] leading-snug text-[var(--err)]">
+              <p className="text-[12px] leading-snug text-[var(--err)]">
                 Still on the external site — not copied to storage. {uploadErrors[url]}
               </p>
             )}
@@ -339,7 +342,7 @@ function ImageList({
             )}
           </div>
           {i === 0 && (
-            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] mt-2.5 shrink-0">Main</span>
+            <span className="text-[11px] font-medium text-[var(--foreground-subtle)] mt-2.5 shrink-0">Main</span>
           )}
           {images.length > 1 && (
             <button
@@ -358,7 +361,7 @@ function ImageList({
       <button
         type="button"
         onClick={addRow}
-        className="self-start text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5 mt-1"
+        className="self-start text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5 mt-1"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -437,7 +440,7 @@ function RetailerList({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={logoFor(r.name)!} alt={r.name} className="w-full h-full object-contain p-1" />
                   ) : (
-                    <span className="text-[9px] font-semibold text-[var(--foreground-subtle)]">
+                    <span className="text-[11px] font-semibold text-[var(--foreground-subtle)]">
                       {r.name.trim() ? r.name.slice(0, 2).toUpperCase() : "—"}
                     </span>
                   )}
@@ -508,7 +511,7 @@ function RetailerList({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelCls}>Rating <span className="normal-case tracking-normal">1–5</span></label>
+                <label className={labelCls}>Rating <span className="font-normal">1–5</span></label>
                 <input type="number" value={r.rating} onChange={(e) => set(i, { rating: e.target.value })} placeholder="4.5" min="1" max="5" step="0.1" className={inputCls} />
               </div>
               <div>
@@ -534,7 +537,7 @@ function RetailerList({
       <button
         type="button"
         onClick={add}
-        className="self-start text-[10px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
+        className="self-start text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1.5"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -573,8 +576,8 @@ function SecHead({ label, hint, open, onToggle }: { label: string; hint?: string
       className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--background)] transition-colors text-left"
     >
       <span className="flex items-center gap-2">
-        <span className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">{label}</span>
-        {hint && <span className="text-[9px] text-[var(--foreground-subtle)] normal-case tracking-normal font-normal">{hint}</span>}
+        <span className="text-[13px] font-medium text-[var(--foreground)]">{label}</span>
+        {hint && <span className="text-[12px] text-[var(--foreground-subtle)]">{hint}</span>}
       </span>
       <span className="text-[var(--foreground-subtle)]"><Chevron open={open} /></span>
     </button>
@@ -1970,7 +1973,7 @@ export default function AdminProductsPage() {
             onClick={handleRecategorize}
             disabled={recategorizing || !canWrite}
             title={canWrite ? "Re-classify products that have no subcategory. Anything filed by hand is left alone." : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {recategorizing ? "Sorting…" : "Fix categories"}
           </button>
@@ -1980,7 +1983,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoRecategorize}
             disabled={recategorizing || !canWrite}
             title={canWrite ? "Put back what the last category fix changed" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo fix
           </button>
@@ -1988,7 +1991,7 @@ export default function AdminProductsPage() {
             onClick={handleResetStyles}
             disabled={restyling || !canWrite}
             title={canWrite ? "Remove every style tag and give products only the five basic styles: from the description first, then the brand" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {restyling ? "Restyling…" : "Reset styles"}
           </button>
@@ -1996,7 +1999,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoResetStyles}
             disabled={restyling || !canWrite}
             title={canWrite ? "Put back the tags the last style reset replaced" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo styles
           </button>
@@ -2013,7 +2016,7 @@ export default function AdminProductsPage() {
                   : "Measure photo backdrops so cards pad with the photo's own colour"
                 : "Requires Supabase"
             }
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {sampling
               ? "Measuring…"
@@ -2025,7 +2028,7 @@ export default function AdminProductsPage() {
             onClick={handleUndoBackdrops}
             disabled={sampling || !canWrite}
             title={canWrite ? "Clear what the last backdrop run wrote" : "Requires Supabase"}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-xs tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Undo backdrops
           </button>
@@ -2047,12 +2050,12 @@ export default function AdminProductsPage() {
             onClick={openAddModal}
             disabled={!canWrite}
             title={canWrite ? undefined : "Requires Supabase"}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            Add Product
+            Add product
           </button>
         </div>
       </div>
@@ -2069,7 +2072,7 @@ export default function AdminProductsPage() {
 
         {/* Filter chips */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Filter:</span>
+          <span className="text-[12px] text-[var(--foreground-muted)] mr-1">Filter:</span>
 
           {/* Group chips, then the active group's subcategories — the same two
               levels the edit form and the catalog filters use. */}
@@ -2080,7 +2083,7 @@ export default function AdminProductsPage() {
                 setFilterGroup((prev) => (prev === g.id ? "" : g.id));
                 setFilterSubcategory("");
               }}
-              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+              className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
                 filterGroup === g.id
                   ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                   : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2096,7 +2099,7 @@ export default function AdminProductsPage() {
                 <button
                   key={item.label}
                   onClick={() => setFilterSubcategory((prev) => (prev === item.label ? "" : item.label))}
-                  className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+                  className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
                     filterSubcategory === item.label
                       ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2145,7 +2148,7 @@ export default function AdminProductsPage() {
           >
             <option value="">All styles</option>
             {STYLE_KEYWORDS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{styleLabel(s)}</option>
             ))}
           </select>
 
@@ -2169,7 +2172,7 @@ export default function AdminProductsPage() {
           <select
             value={filterMissing}
             onChange={(e) => setFilterMissing(e.target.value)}
-            className={`${filterSelectCls} ${filterMissing ? "border-[var(--warn-line)] text-[var(--warn)]" : ""}`}
+            className={`${filterSelectBaseCls} ${filterMissing ? "border-[var(--warn-line)] text-[var(--warn)]" : "border-[var(--border)] text-[var(--foreground)]"}`}
             title="Show only products missing a field"
           >
             <option value="">Missing: anything</option>
@@ -2184,7 +2187,7 @@ export default function AdminProductsPage() {
           {/* New chip */}
           <button
             onClick={() => setFilterNew((prev) => (prev === true ? null : true))}
-            className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+            className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
               filterNew === true
                 ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                 : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -2198,7 +2201,7 @@ export default function AdminProductsPage() {
 
           {/* Sort dropdown */}
           <label className="inline-flex items-center gap-1.5">
-            <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Sort:</span>
+            <span className="text-[12px] text-[var(--foreground-muted)]">Sort:</span>
             <select
               value={currentSortValue}
               onChange={(e) => {
@@ -2206,7 +2209,7 @@ export default function AdminProductsPage() {
                 setSortKey(key);
                 setSortDir(dir);
               }}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[10px] tracking-[0.1em] uppercase px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-[12px] px-2.5 py-1 outline-none focus:border-[var(--foreground)] transition-colors cursor-pointer"
             >
               {sortOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -2223,7 +2226,7 @@ export default function AdminProductsPage() {
                 setFilterMissing(""); setFilterNew(null);
                 setSortKey("createdAt"); setSortDir("desc");
               }}
-              className="ml-1 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
+              className="ml-1 text-[12px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] underline transition-colors"
             >
               Clear
             </button>
@@ -2297,7 +2300,7 @@ export default function AdminProductsPage() {
                     </optgroup>
                   ))}
                 </select>
-                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
                   Sets the category to match, since the tree says where the label belongs.
                 </p>
               </div>
@@ -2309,7 +2312,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, styleMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.styleMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2323,7 +2326,7 @@ export default function AdminProductsPage() {
                         styleKeywords: on ? b.styleKeywords.filter((x) => x !== k) : [...b.styleKeywords, k],
                       }))}
                         className={`px-2.5 py-1 text-[11px] border rounded-full transition-colors ${on ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)]"}`}
-                      >{k}</button>
+                      >{styleLabel(k)}</button>
                     );
                   })}
                 </div>
@@ -2336,7 +2339,7 @@ export default function AdminProductsPage() {
                   <div className="flex gap-1">
                     {(["add", "replace"] as const).map((mode) => (
                       <button key={mode} onClick={() => setBulk((b) => ({ ...b, colorMode: mode }))}
-                        className={`px-2 py-0.5 text-[9px] tracking-[0.1em] uppercase border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
+                        className={`px-2 py-0.5 text-[12px] capitalize border rounded-full transition-colors ${bulk.colorMode === mode ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)]"}`}
                       >{mode}</button>
                     ))}
                   </div>
@@ -2365,7 +2368,7 @@ export default function AdminProductsPage() {
                   <input value={bulk.namePrefix} onChange={(e) => setBulk((b) => ({ ...b, namePrefix: e.target.value }))} placeholder="Add before…" className={inputCls} />
                   <input value={bulk.nameSuffix} onChange={(e) => setBulk((b) => ({ ...b, nameSuffix: e.target.value }))} placeholder="Add after…" className={inputCls} />
                 </div>
-                <p className="text-[10px] text-[var(--foreground-subtle)] mt-1">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1">
                   There is no &ldquo;set the same name&rdquo;: identical names across a selection destroy the ones they replace.
                 </p>
               </div>
@@ -2376,13 +2379,13 @@ export default function AdminProductsPage() {
                 {bulkChangeCount ? `${bulkChangeCount} field${bulkChangeCount === 1 ? "" : "s"} will change` : "Nothing to change yet"}
               </span>
               <div className="flex items-center gap-3">
-                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className="text-xs tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                <button onClick={() => { setBulkOpen(false); resetBulk(); }} className="text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                   Cancel
                 </button>
                 <button
                   onClick={applyBulkEdit}
                   disabled={bulkSaving || !bulkChangeCount || !canWrite}
-                  className="bg-[var(--foreground)] text-[var(--surface)] px-5 py-2 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                  className="bg-[var(--foreground)] text-[var(--surface)] px-5 py-2 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
                 >
                   {bulkSaving ? "Applying…" : `Apply to ${selectedIds.size}`}
                 </button>
@@ -2402,7 +2405,7 @@ export default function AdminProductsPage() {
             <button
               onClick={openGroupModal}
               disabled={!canWrite}
-              className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <circle cx="3" cy="6" r="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -2415,7 +2418,7 @@ export default function AdminProductsPage() {
           <button
             onClick={() => setBulkOpen(true)}
             disabled={!canWrite}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-3 py-1.5 hover:bg-[var(--background)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M8.5 1.5l2 2-6 6-2.5.5.5-2.5 6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
@@ -2425,7 +2428,7 @@ export default function AdminProductsPage() {
           <button
             onClick={handleBulkDelete}
             disabled={deleting || !canWrite}
-            className="inline-flex items-center gap-1.5 text-xs tracking-[0.1em] uppercase border border-[var(--err-line)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium border border-[var(--err-line)] text-[var(--err)] px-3 py-1.5 hover:bg-[var(--err-bg)] transition-colors rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.3A1 1 0 003.7 11h4.6a1 1 0 001-.7L10 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2459,34 +2462,34 @@ export default function AdminProductsPage() {
                     title="Select all"
                   />
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal w-16">Image</th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                <th className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal w-16">Image</th>
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
                   <button onClick={() => toggleSort("name")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
                     Name <SortIcon dir={sortDirFor("name")} />
                   </button>
                 </th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden md:table-cell">
                   <button onClick={() => toggleSort("brand")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
                     Brand <SortIcon dir={sortDirFor("brand")} />
                   </button>
                 </th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
                   <button onClick={() => toggleSort("category")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
                     Category <SortIcon dir={sortDirFor("category")} />
                   </button>
                 </th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
                   <button onClick={() => toggleSort("priceMin")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
                     Price <SortIcon dir={sortDirFor("priceMin")} />
                   </button>
                 </th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
-                <th className="text-left px-2 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden sm:table-cell">New</th>
+                <th className="text-left px-2 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal hidden lg:table-cell">
                   <button onClick={() => toggleSort("createdAt")} className="group inline-flex items-center gap-0.5 hover:text-[var(--foreground)] transition-colors">
                     Added <SortIcon dir={sortDirFor("createdAt")} />
                   </button>
                 </th>
-                <th className="text-right px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--background)] md:static md:bg-transparent">Actions</th>
+                <th className="text-right px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal sticky right-0 bg-[var(--background)] md:static md:bg-transparent">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -2498,7 +2501,7 @@ export default function AdminProductsPage() {
                         <p className="text-[var(--err)] break-words">{loadError}</p>
                         <button
                           onClick={fetchProducts}
-                          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
+                          className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors rounded-lg"
                         >
                           Retry
                         </button>
@@ -2553,7 +2556,7 @@ export default function AdminProductsPage() {
                         <span className="text-sm text-[var(--foreground)]">{product.name}</span>
                         {product.variantGroupId && (
                           <span
-                            className="inline-flex items-center gap-1 text-[10px] tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] rounded-full px-1.5 py-0.5 leading-none"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] rounded-full px-1.5 py-0.5 leading-none"
                           >
                             {product.isGroupPrimary ? "Primary" : "Variant"}
                             {product.colorHex && (
@@ -2570,7 +2573,7 @@ export default function AdminProductsPage() {
                       <span className="text-sm text-[var(--foreground-muted)]">{product.brand}</span>
                     </td>
                     <td className="px-2 py-3 hidden lg:table-cell">
-                      <span className="text-xs tracking-[0.08em] uppercase text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory, categoryGroups)}</span>
+                      <span className="text-[12px] text-[var(--foreground-subtle)]">{categoryPath(product.category, product.subcategory, categoryGroups)}</span>
                     </td>
                     <td className="px-2 py-3">
                       <span className="text-sm text-[var(--foreground)]">
@@ -2579,7 +2582,7 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-2 py-3 hidden sm:table-cell">
                       {product.isNew ? (
-                        <span className="text-[9px] tracking-[0.14em] uppercase border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5">New</span>
+                        <span className="text-[11px] font-medium border border-[var(--foreground)] text-[var(--foreground)] px-1.5 py-0.5">New</span>
                       ) : (
                         <span className="text-[var(--foreground-subtle)]">—</span>
                       )}
@@ -2669,7 +2672,7 @@ export default function AdminProductsPage() {
                   onClick={runSuggest}
                   disabled={suggesting || !canWrite}
                   title="Work out category, subcategory, gender and colour filters from the name, using how the rest of the catalogue is filed"
-                  className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {suggesting ? "Reading…" : "Suggest fields"}
                 </button>
@@ -2686,16 +2689,16 @@ export default function AdminProductsPage() {
             {suggestions && suggestions.length > 0 && (
               <div className="shrink-0 border-b border-[var(--border)] px-4 md:px-6 py-3 bg-[var(--background)] max-h-[35dvh] overflow-y-auto md:max-h-none md:overflow-visible">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                  <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)]">
+                  <p className="text-[12px] text-[var(--foreground-subtle)]">
                     From how the catalogue is filed
                   </p>
                   <div className="flex items-center gap-3">
                     <button onClick={applySuggestions} disabled={!chosen.size}
-                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--foreground)] hover:text-[var(--surface)] transition-colors disabled:opacity-40">
+                      className="border border-[var(--foreground)] text-[var(--foreground)] rounded-lg px-3 py-1.5 text-[13px] font-medium hover:bg-[var(--foreground)] hover:text-[var(--surface)] transition-colors disabled:opacity-40">
                       Fill {chosen.size || ""} selected
                     </button>
                     <button onClick={() => { setSuggestions(null); setChosen(new Set()); }}
-                      className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
+                      className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors">
                       Dismiss
                     </button>
                   </div>
@@ -2715,19 +2718,19 @@ export default function AdminProductsPage() {
                           })}
                           className="mt-0.5 accent-[var(--foreground)]"
                         />
-                        <span className="text-[11px] leading-relaxed">
-                          <span className="tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">{s.field}</span>{" "}
+                        <span className="text-[12px] leading-relaxed">
+                          <span className="text-[var(--foreground-subtle)]">{({ category: "Category", subcategory: "Subcategory", gender: "Gender", colorGroups: "Color filters" } as const)[s.field]}</span>{" "}
                           <span className="font-mono text-[var(--foreground)]">{shown}</span>
                           {s.replaces && <span className="text-[var(--warn)]"> — replaces {s.replaces}</span>}
                           {s.alsoSetsCategory && <span className="text-[var(--foreground-muted)]"> · also sets category to {s.alsoSetsCategory}</span>}
                           {s.confidence === "low" && <span className="text-[var(--warn)]"> · unsure</span>}
-                          <span className="block text-[10px] text-[var(--foreground-subtle)]">{s.why}</span>
+                          <span className="block text-[var(--foreground-subtle)]">{s.why}</span>
                         </span>
                       </label>
                     );
                   })}
                 </div>
-                <p className="mt-2 text-[10px] text-[var(--foreground-subtle)]">
+                <p className="mt-2 text-[12px] text-[var(--foreground-subtle)]">
                   Unsure ones start unticked. Filling a field changes nothing until you save.
                 </p>
               </div>
@@ -2742,8 +2745,8 @@ export default function AdminProductsPage() {
 
               {/* ── Left: Images ── */}
               <div className="flex flex-col gap-3 px-4 py-4 md:overflow-y-auto">
-                <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Images</p>
-                <p className="text-[9px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
+                <p className="text-[13px] font-medium text-[var(--foreground)]">Images</p>
+                <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">First = main. Paste URL → copied to our storage; flagged if it can&apos;t be.</p>
                 <ImageList
                   images={form.images}
                   onChange={(update) => setForm((f) => ({ ...f, images: update(f.images) }))}
@@ -2761,7 +2764,7 @@ export default function AdminProductsPage() {
                     <>
                       {/* ── Basic info (always open) ── */}
                       <div className="px-4 py-4 flex flex-col gap-3">
-                        <p className="text-[9px] tracking-[0.18em] uppercase font-medium text-[var(--foreground-subtle)]">Basic info</p>
+                        <p className="text-[13px] font-medium text-[var(--foreground)]">Basic info</p>
                         <div>
                           <label className={labelCls}>Name *</label>
                           <input
@@ -2854,7 +2857,7 @@ export default function AdminProductsPage() {
                                       disabled={!first}
                                       title={first ? undefined : `${g.label} has no subcategories yet — add one under Categories.`}
                                       onClick={() => first && pick(first.label)}
-                                      className={`py-1.5 text-[10px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                      className={`py-1.5 text-[12px] border rounded-full transition-colors text-center leading-tight disabled:opacity-40 disabled:cursor-not-allowed ${activeGroup?.id === g.id ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                                     >{g.label}</button>
                                   );
                                 })}
@@ -2870,14 +2873,14 @@ export default function AdminProductsPage() {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-[10px] text-[var(--foreground-subtle)]">
+                                <p className="text-[12px] text-[var(--foreground-subtle)]">
                                   Stored as <code className="font-mono">{form.category}</code>, which is not in the catalog&apos;s
                                   filter tree — pick a group above to make this piece filterable.
                                 </p>
                               )}
 
                               {activeGroup && !form.subcategory && (
-                                <p className="text-[9px] text-[var(--foreground-subtle)]">
+                                <p className="text-[12px] text-[var(--foreground-subtle)]">
                                   No subcategory yet — this piece answers to every {activeGroup.label} filter until you pick one.
                                 </p>
                               )}
@@ -2933,7 +2936,7 @@ export default function AdminProductsPage() {
                               <div className="flex items-center gap-2">
                                 <input type="text" value={form.sizes} onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))} placeholder="XS, S, M, L, XL" className={`${inputCls} flex-1`} />
                                 {selected.length > 0 && (
-                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[9px] tracking-wide text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0">Clear</button>
+                                  <button type="button" onClick={() => setForm((f) => ({ ...f, sizes: "" }))} className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0">Clear</button>
                                 )}
                               </div>
                             </>
@@ -2961,14 +2964,14 @@ export default function AdminProductsPage() {
                           return (
                             <>
                               {isAutoCalc && (
-                                <p className="text-[10px] text-[var(--foreground-muted)] tracking-[0.08em]">
+                                <p className="text-[12px] text-[var(--foreground-muted)]">
                                   Auto-calculated from {retailerPrices.length} retailer{retailerPrices.length > 1 ? "s" : ""}
                                   {converted.length > 0 && ` · converted from ${converted.join(", ")} to USD`}
                                 </p>
                               )}
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className={labelCls}>Price Min ($)</label>
+                                  <label className={labelCls}>Price min ($)</label>
                                   <input
                                     type="number"
                                     value={form.priceMin}
@@ -2980,7 +2983,7 @@ export default function AdminProductsPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className={labelCls}>Price Max ($)</label>
+                                  <label className={labelCls}>Price max ($)</label>
                                   <input
                                     type="number"
                                     value={form.priceMax}
@@ -3062,7 +3065,7 @@ export default function AdminProductsPage() {
                                   ...f,
                                   colorGroupIds: active ? f.colorGroupIds.filter((id) => id !== cg.id) : [...f.colorGroupIds, cg.id],
                                 }))}
-                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[11px] tracking-[0.06em] uppercase transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
+                                className={`flex items-center gap-2 px-2.5 py-2 border rounded-full text-[12px] transition-colors text-left ${active ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
                               >
                                 <span className="w-3 h-3 rounded-full shrink-0 border border-black/10"
                                   style={{ background: cg.hexCode === "#multicolor" ? "conic-gradient(red,orange,yellow,green,blue,violet,red)" : cg.hexCode }} />
@@ -3083,8 +3086,8 @@ export default function AdminProductsPage() {
                         <div className="flex flex-wrap gap-1.5">
                           {STYLE_KEYWORDS.map((kw) => (
                             <button key={kw} type="button" onClick={() => toggleKeyword(kw)}
-                              className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
-                            >{kw}</button>
+                              className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${form.styleKeywords.includes(kw) ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"}`}
+                            >{styleLabel(kw)}</button>
                           ))}
                         </div>
                       </div>
@@ -3099,7 +3102,7 @@ export default function AdminProductsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <input type="color" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} className="w-8 h-8 border border-[var(--border)] cursor-pointer bg-transparent p-0.5 shrink-0" title="Swatch color for this product" />
                           <input type="text" value={form.variantColorHex} onChange={(e) => setForm((f) => ({ ...f, variantColorHex: e.target.value }))} placeholder="#888888" maxLength={7} className={`${inputCls} font-mono max-w-[110px] py-1.5`} />
-                          <span className="text-[10px] text-[var(--foreground-subtle)]">← swatch for this product</span>
+                          <span className="text-[12px] text-[var(--foreground-subtle)]">← swatch for this product</span>
                         </div>
                         {form.linkedProductIds.length > 0 && (
                           <div className="flex flex-col gap-1.5">
@@ -3112,7 +3115,7 @@ export default function AdminProductsPage() {
                                   {lp.imageUrl && <img src={lp.imageUrl} alt={lp.name} loading="lazy" decoding="async" className="w-7 h-9 object-cover shrink-0" />}
                                   <div className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: lp.colorHex ?? "#888888" }} />
                                   <span className="text-xs text-[var(--foreground)] flex-1 truncate">{lp.name}</span>
-                                  <span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
+                                  <span className="text-[12px] text-[var(--foreground-subtle)] shrink-0">{fmtPrice(lp.priceMin)}</span>
                                   <button type="button" onClick={() => setForm((f) => ({ ...f, linkedProductIds: f.linkedProductIds.filter((x) => x !== lid) }))} className="text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors shrink-0 ml-1" aria-label="Remove">
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                                   </button>
@@ -3135,7 +3138,7 @@ export default function AdminProductsPage() {
                                     {mp.imageUrl && <img src={mp.imageUrl} alt={mp.name} loading="lazy" decoding="async" className="w-6 h-8 object-cover shrink-0" />}
                                     {mp.colorHex && <span className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]" style={{ backgroundColor: mp.colorHex }} />}
                                     <span className="text-xs text-[var(--foreground)] flex-1 truncate">{mp.name}</span>
-                                    <span className="text-[10px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
+                                    <span className="text-[12px] text-[var(--foreground-muted)] shrink-0">{mp.brand}</span>
                                   </button>
                                 ))}
                               </div>
@@ -3143,7 +3146,7 @@ export default function AdminProductsPage() {
                           })()}
                         </div>
                         {form.linkedProductIds.length > 0 && (
-                          <p className="text-[10px] text-[var(--foreground-subtle)]">
+                          <p className="text-[12px] text-[var(--foreground-subtle)]">
                             {editingProduct?.variantGroupId
                               ? <>Removing a product here unlinks it on save. The group keeps its <strong>primary</strong> — change it with Group variants.</>
                               : <>A new group gets this product as its <strong>primary</strong> (catalog representative); an existing group keeps its own.</>}
@@ -3179,13 +3182,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || saving || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
-                {saving ? "Saving…" : editingProduct ? "Save Changes" : "Add Product"}
+                {saving ? "Saving…" : editingProduct ? "Save changes" : "Add product"}
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
               >
                 Cancel
               </button>
@@ -3208,7 +3211,7 @@ export default function AdminProductsPage() {
                 {cropProduct.cropData && canWrite && (
                   <button
                     onClick={() => { handleCropClear(cropProduct); setCropProduct(null); }}
-                    className="text-[10px] tracking-[0.1em] uppercase text-[var(--err)] hover:text-[var(--err)] underline transition-colors"
+                    className="text-[13px] font-medium text-[var(--err)] hover:text-[var(--err)] underline transition-colors"
                   >
                     Удалить кадрирование
                   </button>
@@ -3284,7 +3287,7 @@ export default function AdminProductsPage() {
                     {/* Name + swatch */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[var(--foreground)] truncate">{p.name}</p>
-                      <p className="text-[10px] text-[var(--foreground-muted)] truncate">{p.brand} · {fmtPrice(p.priceMin)}</p>
+                      <p className="text-[12px] text-[var(--foreground-muted)] truncate">{p.brand} · {fmtPrice(p.priceMin)}</p>
 
                       <div className="flex items-center gap-2 mt-2">
                         <input
@@ -3332,7 +3335,7 @@ export default function AdminProductsPage() {
                             })),
                           }))
                         }
-                        className={`text-[9px] tracking-[0.14em] uppercase px-2 py-1 border rounded-lg transition-colors ${
+                        className={`text-[12px] font-medium px-2 py-1 border rounded-lg transition-colors ${
                           entry.isPrimary
                             ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                             : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -3346,7 +3349,7 @@ export default function AdminProductsPage() {
               })}
             </div>
 
-            <p className="text-[10px] text-[var(--foreground-subtle)] mt-4">
+            <p className="text-[12px] text-[var(--foreground-subtle)] mt-4">
               The <strong>primary</strong> product is shown in the catalog. Others are accessible via the colour palette on the card.
             </p>
 
@@ -3354,13 +3357,13 @@ export default function AdminProductsPage() {
               <button
                 onClick={handleGroupSave}
                 disabled={grouping || !canWrite}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {grouping ? "Saving…" : groupModal.existingGroupId ? "Update group" : "Create group"}
               </button>
               <button
                 onClick={() => setGroupModal({ open: false, entries: [] })}
-                className="border border-[var(--border)] rounded-lg px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+                className="border border-[var(--border)] rounded-lg px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
               >
                 Cancel
               </button>

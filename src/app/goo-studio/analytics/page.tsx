@@ -21,7 +21,7 @@ const RANGES: { value: RangeOption; label: string }[] = [
 
 // Pill filter, the admin's one recipe (products page).
 const pillCls = (active: boolean) =>
-  `px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+  `px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
     active
       ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -56,18 +56,18 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
+      <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">{label}</p>
       {loading ? (
         <Skeleton h={8} />
       ) : (
         <>
           <p className="font-display text-2xl md:text-3xl font-light text-[var(--foreground)] mb-1 break-words">{value ?? "—"}</p>
           {delta && (
-            <p className={`text-[10px] tracking-wide ${delta.positive ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>
+            <p className={`text-[12px] ${delta.positive ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>
               {delta.label}
             </p>
           )}
-          {sub && <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">{sub}</p>}
+          {sub && <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{sub}</p>}
         </>
       )}
     </div>
@@ -101,7 +101,7 @@ function vitalRatingLabel(metric: string, value: number | null): string {
 function Section({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
     <section className={`mb-10 ${className}`}>
-      <h2 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-4">{title}</h2>
+      <h2 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-4">{title}</h2>
       {children}
     </section>
   );
@@ -190,7 +190,7 @@ export default function AdminAnalyticsPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="rounded-xl border border-[var(--border)] p-4 md:p-5 min-w-0" style={{ background: "var(--surface)" }}>
-          <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Online Now</p>
+          <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-3">Online now</p>
           {loading ? (
             <Skeleton h={8} />
           ) : (
@@ -202,7 +202,7 @@ export default function AdminAnalyticsPage() {
                 </span>
                 {fmtNumber(data?.summary.onlineNow)}
               </p>
-              <p className="text-[10px] text-[var(--foreground-subtle)] tracking-wide mt-0.5">Sessions active in last 5 min</p>
+              <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Sessions active in last 5 min</p>
             </>
           )}
         </div>
@@ -236,9 +236,9 @@ export default function AdminAnalyticsPage() {
             { label: "Sessions · 30d", value: data.sessionWindows.last30d, hint: "Last 30 days" },
           ].map((s) => (
             <div key={s.label} className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
-              <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">{s.label}</p>
+              <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">{s.label}</p>
               <p className="font-display text-xl font-light text-[var(--foreground)]">{fmtNumber(s.value)}</p>
-              <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{s.hint}</p>
+              <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{s.hint}</p>
             </div>
           ))}
         </div>
@@ -251,33 +251,33 @@ export default function AdminAnalyticsPage() {
         style={{ background: "var(--surface)" }}
       >
         <div>
-          <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-1">Revenue & Subscriptions</p>
+          <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-1">Revenue & subscriptions</p>
           <p className="text-xs text-[var(--foreground-subtle)]">MRR, plans, past-due and renewals are on the Subscriptions page.</p>
         </div>
-        <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground)] whitespace-nowrap">Open →</span>
+        <span className="text-[13px] font-medium text-[var(--foreground)] whitespace-nowrap">Open →</span>
       </Link>
 
       {/* AI usage */}
       {data && (
-        <Section title="AI Usage">
+        <Section title="AI usage">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
-              <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist Messages</p>
+              <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist messages</p>
               <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.aiUsage.stylistMessages)}</p>
               {data.aiUsage.stylistError ? (
-                <p className="text-[10px] text-[var(--err)] mt-0.5">Could not load: {data.aiUsage.stylistError}</p>
+                <p className="text-[12px] text-[var(--err)] mt-0.5">Could not load: {data.aiUsage.stylistError}</p>
               ) : (
-                <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">
                   {data.range === "24h" ? "signed-in users, today (UTC)" : `signed-in users, last ${days} days`}
                 </p>
               )}
             </div>
             <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
-              <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-1">Image Generations</p>
+              <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Image generations</p>
               {data.aiUsage.imageGenerationsTracked ? (
                 <>
                   <p className="font-display text-2xl font-light text-[var(--foreground)]">{fmtNumber(data.aiUsage.imageGenerations)}</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">
+                  <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">
                     {data.aiUsage.imageGenerationErrors > 0
                       ? `${fmtNumber(data.aiUsage.imageGenerationErrors)} failed`
                       : "no failures"}
@@ -286,12 +286,12 @@ export default function AdminAnalyticsPage() {
               ) : (
                 <>
                   <p className="font-display text-2xl font-light text-[var(--foreground-subtle)]">—</p>
-                  <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">not tracked yet</p>
+                  <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">not tracked yet</p>
                 </>
               )}
             </div>
             <div className="col-span-2 rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
-              <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">Stylist messages per day</p>
+              <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-2">Stylist messages per day</p>
               {data.aiUsage.stylistDaily.length === 0 ? (
                 <p className="text-xs text-[var(--foreground-subtle)] text-center py-3">No stylist usage yet</p>
               ) : (
@@ -316,7 +316,7 @@ export default function AdminAnalyticsPage() {
       )}
 
       {/* Traffic chart */}
-      <Section title="Traffic Over Time">
+      <Section title="Traffic over time">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
           {loading && <Skeleton h={65} />}
           {!loading && data && <TrafficChart data={data} />}
@@ -325,7 +325,7 @@ export default function AdminAnalyticsPage() {
 
       {/* Activity heatmap */}
       {data && (
-        <Section title="Activity by Hour (Kyiv time)">
+        <Section title="Activity by hour (Kyiv time)">
           <div className="rounded-xl border border-[var(--border)] p-4 overflow-x-auto" style={{ background: "var(--surface)" }}>
             <HourHeatmap heatmap={data.heatmap} />
           </div>
@@ -344,10 +344,10 @@ export default function AdminAnalyticsPage() {
                     : v.p75 != null ? fmtMs(Math.round(v.p75)) : "—";
                 return (
                   <div key={v.metric} className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
-                    <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{v.metric}</p>
+                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-2">{v.metric}</p>
                     <p className={`font-display text-2xl font-light ${vitalColor(v.metric, v.p75)}`}>{display}</p>
-                    <p className={`text-[10px] mt-1 ${vitalColor(v.metric, v.p75)}`}>{vitalRatingLabel(v.metric, v.p75)}</p>
-                    <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{fmtNumber(v.samples)} samples</p>
+                    <p className={`text-[12px] mt-1 ${vitalColor(v.metric, v.p75)}`}>{vitalRatingLabel(v.metric, v.p75)}</p>
+                    <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{fmtNumber(v.samples)} samples</p>
                   </div>
                 );
               })}
@@ -364,21 +364,21 @@ export default function AdminAnalyticsPage() {
             {loading ? <Skeleton h={36} /> : <BrowserPie items={data?.browsers ?? []} />}
           </div>
           <div className="rounded-xl border border-[var(--border)] p-6" style={{ background: "var(--surface)", minHeight: 160 }}>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Top Countries</p>
+            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">Top countries</p>
             {loading ? <Skeleton h={24} /> : <CountriesChart items={data?.countries ?? []} />}
           </div>
         </div>
       </Section>
 
       {/* Funnel */}
-      <Section title="Conversion Funnel (sessions)">
+      <Section title="Conversion funnel (sessions)">
         <div className="rounded-xl border border-[var(--border)] p-6" style={{ background: "var(--surface)" }}>
           {loading ? <Skeleton h={24} /> : data && <FunnelChart funnel={data.funnel} />}
         </div>
       </Section>
 
       {/* Top pages + products + outfits */}
-      <Section title="Top Content">
+      <Section title="Top content">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <TopTable title="Pages"    rows={data?.topPages.map((p) => ({ key: p.path, label: p.path, count: p.views, sub: p.avgLoadMs ? `${p.avgLoadMs} ms avg` : "" })) ?? []} loading={loading} />
           <TopTable title="Products" rows={data?.topProducts.map((p) => ({ key: p.key, label: p.name ?? p.key, count: p.count, sub: p.brand ?? "", img: p.imageUrl, href: `/product/${p.key}` })) ?? []} loading={loading} />
@@ -387,16 +387,16 @@ export default function AdminAnalyticsPage() {
       </Section>
 
       {/* Sources */}
-      <Section title="Traffic Sources & Search">
+      <Section title="Traffic sources & search">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <RowList title="Referrers"    items={data?.referrers ?? []}   loading={loading} />
-          <RowList title="UTM Sources"  items={data?.utmSources ?? []}  loading={loading} empty="No UTM-tagged traffic yet" />
-          <RowList title="Search Terms" items={data?.searchTerms ?? []} loading={loading} empty="No on-site searches yet" />
+          <RowList title="UTM sources"  items={data?.utmSources ?? []}  loading={loading} empty="No UTM-tagged traffic yet" />
+          <RowList title="Search terms" items={data?.searchTerms ?? []} loading={loading} empty="No on-site searches yet" />
         </div>
       </Section>
 
       {/* Events */}
-      <Section title="Event Breakdown">
+      <Section title="Event breakdown">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: "var(--surface)" }}>
           {loading && <Skeleton h={24} />}
           {!loading && data?.events.length === 0 && (
@@ -421,7 +421,7 @@ function RowList({
   const max = items.length ? Math.max(...items.map((i) => i.count)) : 0;
   return (
     <div>
-      <h3 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{title}</h3>
+      <h3 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</h3>
       <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
         {loading && <div className="h-24 animate-pulse bg-[var(--background)]" />}
         {!loading && items.length === 0 && <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">{empty}</div>}
@@ -451,7 +451,7 @@ function TopTable({
 }) {
   return (
     <div>
-      <h3 className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{title}</h3>
+      <h3 className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</h3>
       <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ background: "var(--surface)" }}>
         {loading && <div className="h-24 animate-pulse bg-[var(--background)]" />}
         {!loading && rows.length === 0 && <div className="px-4 py-6 text-xs text-[var(--foreground-subtle)] text-center">No data yet</div>}
@@ -467,7 +467,7 @@ function TopTable({
               ) : (
                 <span className="text-xs text-[var(--foreground)] truncate block">{r.label}</span>
               )}
-              {r.sub && <p className="text-[10px] text-[var(--foreground-subtle)]">{r.sub}</p>}
+              {r.sub && <p className="text-[12px] text-[var(--foreground-subtle)]">{r.sub}</p>}
             </div>
             <span className="text-xs text-[var(--foreground-muted)] tabular-nums">{r.count.toLocaleString()}</span>
           </div>
@@ -487,13 +487,13 @@ function HourHeatmap({ heatmap }: { heatmap: number[][] }) {
       <div className="grid gap-[3px]" style={{ gridTemplateColumns: "36px repeat(24, 1fr)" }}>
         <div />
         {Array.from({ length: 24 }).map((_, h) => (
-          <div key={h} className="text-center text-[8px] text-[var(--foreground-subtle)]">
+          <div key={h} className="text-center text-[11px] text-[var(--foreground-subtle)]">
             {h % 3 === 0 ? h : ""}
           </div>
         ))}
         {heatmap.map((row, d) => (
           <React.Fragment key={d}>
-            <div className="text-[9px] text-[var(--foreground-subtle)] flex items-center">{WEEKDAYS[d]}</div>
+            <div className="text-[11px] text-[var(--foreground-subtle)] flex items-center">{WEEKDAYS[d]}</div>
             {row.map((count, h) => (
               <div
                 key={h}

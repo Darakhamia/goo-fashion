@@ -104,13 +104,21 @@ const FIELD_LABEL: Record<string, string> = {
 };
 
 const outline =
-  "px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
-const primary =
-  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
-const small = "text-[10px] tracking-[0.1em] uppercase transition-colors disabled:opacity-40";
-const inputClass =
-  "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm bg-transparent text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
-const labelClass = "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+  "px-4 py-2 rounded-lg text-[13px] font-medium border border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+// Padding stays out of the base so a compact call site does not stack a second px/py.
+const primaryBase =
+  "bg-[var(--foreground)] text-[var(--surface)] rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed";
+const primary = `${primaryBase} px-4 py-2`;
+// A row's own Apply: outlined, so the fill stays with "Apply all".
+const secondary =
+  "border border-[var(--border-strong)] text-[var(--foreground)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40";
+const ghost = "text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40";
+// Field base without a background, so the input and the select each set one.
+const fieldBase =
+  "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
+const inputClass = `${fieldBase} bg-transparent`;
+const selectClass = `${fieldBase} bg-[var(--surface)]`;
+const labelClass = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 // Below a dime every figure gets three decimals, so a column of run costs
 // reads $0.010 / $0.005 instead of mixing $0.01 with $0.0052.
@@ -408,7 +416,7 @@ export default function CatalogueCheckPage() {
                     onClick={() => {
                       stopRef.current = true;
                     }}
-                    className={`${small} text-[var(--foreground-muted)] hover:text-[var(--foreground)]`}
+                    className={ghost}
                   >
                     Stop
                   </button>
@@ -447,7 +455,7 @@ export default function CatalogueCheckPage() {
                       role="radio"
                       aria-checked={draft.mode === m.id}
                       onClick={() => setDraft({ ...draft, mode: m.id })}
-                      className={`px-2.5 py-1 text-[10px] tracking-[0.1em] uppercase border rounded-full transition-colors ${
+                      className={`px-2.5 py-1 text-[12px] border rounded-full transition-colors ${
                         draft.mode === m.id
                           ? "bg-[var(--foreground)] text-[var(--surface)] border-[var(--foreground)]"
                           : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]"
@@ -465,7 +473,7 @@ export default function CatalogueCheckPage() {
                   <select
                     value={draft.model}
                     onChange={(e) => setDraft({ ...draft, model: e.target.value })}
-                    className={`${inputClass} bg-[var(--surface)]`}
+                    className={selectClass}
                   >
                     {status.models.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -517,7 +525,7 @@ export default function CatalogueCheckPage() {
         <section className="rounded-xl border border-[var(--border)] mb-5" style={{ background: "var(--surface)" }}>
           <header className="px-5 py-3.5 border-b border-[var(--border)] flex flex-wrap items-center gap-2">
             <h2 className="text-sm text-[var(--foreground)]">Waiting for you</h2>
-            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">{status.counts.suggestions}</span>
+            <span className="text-[12px] text-[var(--foreground-muted)]">{status.counts.suggestions}</span>
             {writableSuggestions.length > 1 && (
               <button
                 onClick={() => {
@@ -526,7 +534,7 @@ export default function CatalogueCheckPage() {
                   }
                 }}
                 disabled={busy !== null || !!job}
-                className={`ml-auto ${primary} px-3 py-1.5 text-[10px]`}
+                className={`ml-auto ${primaryBase} px-3 py-1.5`}
               >
                 Apply all {writableSuggestions.length}
               </button>
@@ -575,7 +583,7 @@ export default function CatalogueCheckPage() {
               <thead>
                 <tr className="border-b border-[var(--border)]" style={{ background: "var(--background)" }}>
                   {["Started", "Kind", "Model", "Products", "Fixed", "For you", "Cost", ""].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal">
+                    <th key={h} className="text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal">
                       {h}
                     </th>
                   ))}
@@ -598,7 +606,7 @@ export default function CatalogueCheckPage() {
                         <button
                           onClick={() => undoRun(r)}
                           disabled={busy !== null || !!job}
-                          className={`${small} text-[var(--foreground-subtle)] hover:text-[var(--foreground)]`}
+                          className={ghost}
                         >
                           {busy === `run:${r.id}` ? "…" : "Undo run"}
                         </button>
@@ -670,13 +678,13 @@ function FixRow({
             </Link>
           )}
           {f.confidence === "high" && kind === "suggestion" && (
-            <span className="text-[10px] tracking-[0.14em] uppercase px-1.5 py-0.5 rounded-full border border-[var(--border)] text-[var(--foreground-muted)]">
-              sure
+            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full border border-[var(--border)] text-[var(--foreground-muted)]">
+              Sure
             </span>
           )}
         </div>
         <p className="text-[11px] text-[var(--foreground-muted)] mt-1 break-words">
-          <span className="uppercase tracking-[0.1em] text-[var(--foreground-subtle)]">{FIELD_LABEL[f.field] ?? f.field}</span>{" "}
+          <span className="font-medium">{FIELD_LABEL[f.field] ?? f.field}</span>{" "}
           <span className="font-mono">{f.beforeText || "(none)"}</span>
           {f.writable && (
             <>
@@ -684,7 +692,7 @@ function FixRow({
             </>
           )}
         </p>
-        {f.reason && <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 leading-relaxed">{f.reason}</p>}
+        {f.reason && <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5 leading-relaxed">{f.reason}</p>}
       </div>
       <div className="shrink-0 pt-0.5 flex items-center gap-3">
         {kind === "suggestion" ? (
@@ -693,18 +701,23 @@ function FixRow({
               <button
                 onClick={() => onDecide(group.key, ids, "apply")}
                 disabled={isBusy || disabled}
-                className="bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
+                className={secondary}
               >
                 {isBusy ? "…" : many ? `Apply ${ids.length}` : "Apply"}
               </button>
             ) : (
-              <span className={`${small} text-[var(--foreground-subtle)]`}>Edit by hand</span>
+              <Link
+                href={`/goo-studio/products?search=${encodeURIComponent(many ? f.beforeText : f.productName)}`}
+                className={ghost}
+              >
+                Edit by hand
+              </Link>
             )}
             <button
               onClick={() => onDecide(group.key, ids, "dismiss")}
               disabled={isBusy || disabled}
               title="This is wrong — never propose it again"
-              className={`${small} text-[var(--foreground-subtle)] hover:text-[var(--foreground)]`}
+              className={ghost}
             >
               Dismiss
             </button>
@@ -714,7 +727,7 @@ function FixRow({
             onClick={() => onDecide(group.key, ids, "undo")}
             disabled={isBusy || disabled}
             title="Put the old value back"
-            className={`${small} text-[var(--foreground-subtle)] hover:text-[var(--foreground)]`}
+            className={ghost}
           >
             {isBusy ? "…" : many ? `Undo ${ids.length}` : "Undo"}
           </button>

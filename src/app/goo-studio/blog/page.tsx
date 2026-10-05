@@ -41,10 +41,12 @@ const defaultForm: BlogFormState = {
 /** Modes of the AI draft modal — a URL to rewrite, or a brief to announce. */
 type AiMode = "url" | "brief";
 
-const inputCls =
-  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full text-sm bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+/** The field without its text size, so a call site can pick one without a clash. */
+const fieldBase =
+  "rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 w-full bg-transparent text-[var(--foreground)] transition-colors placeholder:text-[var(--foreground-subtle)]";
+const inputCls = `${fieldBase} text-sm`;
 const labelCls =
-  "block text-[10px] uppercase tracking-[0.14em] text-[var(--foreground-muted)] mb-1.5";
+  "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
 
 /**
  * ISO timestamp → the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in
@@ -337,7 +339,7 @@ export default function AdminBlogPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={openAiModal}
-            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-colors hover:bg-[var(--background)] rounded-lg"
+            className="inline-flex items-center gap-2 border border-[var(--border)] text-[var(--foreground)] px-4 py-2.5 text-[13px] font-medium transition-colors hover:bg-[var(--background)] rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
@@ -348,7 +350,7 @@ export default function AdminBlogPage() {
           </button>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-xs tracking-[0.12em] uppercase transition-opacity hover:opacity-80 rounded-lg"
+            className="inline-flex items-center gap-2 bg-[var(--foreground)] text-[var(--surface)] px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-80 rounded-lg"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
@@ -403,9 +405,9 @@ export default function AdminBlogPage() {
                 (h, i) => (
                   <th
                     key={h}
-                    className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${
-                      i === 6 ? " text-right" : ""
-                    }${i === 3 || i === 5 ? " hidden lg:table-cell" : ""}${
+                    className={`${i === 6 ? "text-right" : "text-left"} px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${
+                      i === 3 || i === 5 ? " hidden lg:table-cell" : ""
+                    }${
                       i === 2 || i === 4 ? " hidden md:table-cell" : ""
                     }`}
                   >
@@ -464,7 +466,7 @@ export default function AdminBlogPage() {
                     {/* The Status column starts at md — below it, a draft is
                         marked here so a phone still tells it from a live post. */}
                     {!post.isPublished && (
-                      <span className="md:hidden block w-fit mt-1 text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 rounded-full border text-[var(--foreground-subtle)] border-[var(--border)]">
+                      <span className="md:hidden block w-fit mt-1 text-[11px] font-medium px-2 py-0.5 rounded-full border text-[var(--foreground-subtle)] border-[var(--border)]">
                         Draft
                       </span>
                     )}
@@ -476,16 +478,16 @@ export default function AdminBlogPage() {
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     {post.category ? (
-                      <span className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-medium text-[var(--foreground-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
                         {post.category}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                      <span className="text-[12px] text-[var(--foreground-subtle)]">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <span
-                      className={`text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 rounded-full border ${
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${
                         post.isPublished
                           ? "text-[var(--foreground)] border-[var(--foreground)]"
                           : "text-[var(--foreground-subtle)] border-[var(--border)]"
@@ -606,7 +608,7 @@ export default function AdminBlogPage() {
                     aria-selected={aiMode === t.id}
                     onClick={() => { setAiMode(t.id); setAiError(""); }}
                     disabled={aiLoading}
-                    className="px-5 py-2 text-[10px] tracking-[0.16em] uppercase font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
+                    className="px-5 py-2 text-[13px] font-medium rounded-full transition-colors duration-200 disabled:opacity-40"
                     style={
                       aiMode === t.id
                         ? { background: "var(--foreground)", color: "var(--surface)" }
@@ -645,7 +647,7 @@ export default function AdminBlogPage() {
                     autoFocus
                     disabled={aiLoading}
                   />
-                  <p className="mt-1.5 text-[10px] text-[var(--foreground-subtle)]">
+                  <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
                     A few lines is enough. The post can only claim what you write here — nothing is invented.
                   </p>
                 </div>
@@ -664,14 +666,14 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleAiGenerate}
                 disabled={!aiInputReady || aiLoading}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {aiLoading ? "Generating..." : "Generate post"}
               </button>
               <button
                 onClick={() => setShowAiModal(false)}
                 disabled={aiLoading}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 rounded-lg"
+                className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors disabled:opacity-40 rounded-lg"
               >
                 Cancel
               </button>
@@ -696,7 +698,7 @@ export default function AdminBlogPage() {
                 <h2 className="font-display text-xl font-light text-[var(--foreground)]">
                   {editingId ? "Edit Post" : "New Post"}
                 </h2>
-                <p className="text-[10px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mt-1 font-mono break-all">
+                <p className="text-[12px] text-[var(--foreground-subtle)] mt-1 font-mono break-all">
                   /blog/{previewSlug}
                 </p>
               </div>
@@ -726,7 +728,7 @@ export default function AdminBlogPage() {
                   value={form.title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="Post title"
-                  className={`${inputCls} text-base`}
+                  className={`${fieldBase} text-base`}
                   autoFocus
                 />
               </div>
@@ -757,7 +759,7 @@ export default function AdminBlogPage() {
               <div>
                 <label className={labelCls}>
                   Excerpt
-                  <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                  <span className="text-[var(--foreground-subtle)] font-normal ml-2">
                     (short summary)
                   </span>
                 </label>
@@ -774,7 +776,7 @@ export default function AdminBlogPage() {
               <div>
                 <label className={labelCls}>
                   Article body
-                  <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                  <span className="text-[var(--foreground-subtle)] font-normal ml-2">
                     — plain text works. HTML is supported too.
                   </span>
                 </label>
@@ -785,10 +787,10 @@ export default function AdminBlogPage() {
                     "Write your article here.\n\nLeave a blank line between paragraphs.\n\nFor headings or links, use HTML: <h2>Heading</h2> or <a href=\"...\">link</a>."
                   }
                   rows={14}
-                  className={`${inputCls} resize-y text-sm leading-relaxed`}
+                  className={`${inputCls} resize-y leading-relaxed`}
                 />
                 {form.body && (
-                  <p className="mt-1.5 text-[10px] text-[var(--foreground-subtle)]">
+                  <p className="mt-1.5 text-[12px] text-[var(--foreground-subtle)]">
                     ≈ {estimateReadTime(form.body)} read
                   </p>
                 )}
@@ -829,7 +831,7 @@ export default function AdminBlogPage() {
                 <button
                   type="button"
                   onClick={() => setShowAdvanced((v) => !v)}
-                  className="flex items-center gap-2 text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg
                     width="10"
@@ -847,7 +849,7 @@ export default function AdminBlogPage() {
                     <div className="md:col-span-2">
                       <label className={labelCls}>
                         Slug
-                        <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                        <span className="text-[var(--foreground-subtle)] font-normal ml-2">
                           {autoSlug ? "(auto from title)" : "(manual)"}
                         </span>
                       </label>
@@ -883,7 +885,7 @@ export default function AdminBlogPage() {
                     <div>
                       <label className={labelCls}>
                         Read time
-                        <span className="text-[var(--foreground-subtle)] normal-case ml-2">
+                        <span className="text-[var(--foreground-subtle)] font-normal ml-2">
                           {autoReadTime ? "(auto)" : "(manual)"}
                         </span>
                       </label>
@@ -925,7 +927,7 @@ export default function AdminBlogPage() {
                 <button
                   type="button"
                   onClick={() => setShowSeo((v) => !v)}
-                  className="flex items-center gap-2 text-[10px] tracking-[0.16em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  className="flex items-center gap-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <svg
                     width="10"
@@ -937,7 +939,7 @@ export default function AdminBlogPage() {
                     <path d="M3 2L7 5L3 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   SEO overrides
-                  <span className="text-[var(--foreground-subtle)] normal-case font-sans tracking-normal ml-1">
+                  <span className="text-[var(--foreground-subtle)] font-normal ml-1">
                     (optional)
                   </span>
                 </button>
@@ -964,7 +966,7 @@ export default function AdminBlogPage() {
                         rows={2}
                         className={`${inputCls} resize-y`}
                       />
-                      <p className="mt-1 text-[10px] text-[var(--foreground-subtle)]">
+                      <p className="mt-1 text-[12px] text-[var(--foreground-subtle)]">
                         {(form.metaDescription || form.excerpt).length} / 160
                       </p>
                     </div>
@@ -992,7 +994,7 @@ export default function AdminBlogPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.title.trim() || saving}
-                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-xs tracking-[0.14em] uppercase transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
+                className="flex-1 bg-[var(--foreground)] text-[var(--surface)] py-3 text-[13px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving
                   ? "Saving..."
@@ -1004,7 +1006,7 @@ export default function AdminBlogPage() {
               </button>
               <button
                 onClick={closeModal}
-                className="border border-[var(--border)] px-5 py-3 text-xs tracking-[0.12em] uppercase text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
+                className="border border-[var(--border)] px-5 py-3 text-[13px] font-medium text-[var(--foreground)] hover:bg-[var(--background)] transition-colors rounded-lg"
               >
                 Cancel
               </button>

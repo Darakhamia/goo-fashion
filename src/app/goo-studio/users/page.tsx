@@ -65,6 +65,13 @@ const PLAN_OPTIONS = ["free", "basic", "pro", "premium"] as const;
 const STATUS_OPTIONS = ["all", "active", "banned", "locked"] as const;
 type StatusFilter = (typeof STATUS_OPTIONS)[number];
 
+const PLAN_LABEL: Record<string, string> = {
+  free:    "Free",
+  basic:   "Basic",
+  pro:     "Pro",
+  premium: "Premium",
+};
+
 const planBadge: Record<string, string> = {
   free:    "rounded-full border border-[var(--border)] text-[var(--foreground-muted)]",
   basic:   "rounded-full border border-[var(--border-strong)] text-[var(--foreground)]",
@@ -150,6 +157,13 @@ function deleteSubscriptionWarning(s: UserSubscription | null | undefined): stri
     "Auto-renew is turned off before the account is deleted, so the saved card is not charged again.";
 }
 
+const SUB_STATUS_LABEL: Record<string, string> = {
+  active:   "Active",
+  pending:  "Pending",
+  past_due: "Past due",
+  canceled: "Canceled",
+};
+
 const subStatusBadge: Record<string, string> = {
   active:   "text-[var(--ok)]",
   pending:  "text-[var(--warn)]",
@@ -161,7 +175,7 @@ const inputCls =
   "bg-transparent border border-[var(--border)] rounded-lg focus:border-[var(--foreground)] outline-none px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
 
 const filterBtnCls = (active: boolean) =>
-  `text-[9px] tracking-[0.14em] uppercase px-3 py-2.5 border rounded-full transition-colors duration-200 capitalize ${
+  `text-[12px] px-3 py-2.5 border rounded-full transition-colors duration-200 capitalize ${
     active
       ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
       : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
@@ -390,7 +404,7 @@ export default function AdminUsersPage() {
         <button
           onClick={refresh}
           disabled={loading}
-          className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
+          className="text-[13px] font-medium border border-[var(--border)] rounded-lg hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] px-3 py-2 transition-colors disabled:opacity-50"
         >
           {loading ? "Loading…" : "Refresh"}
         </button>
@@ -408,9 +422,9 @@ export default function AdminUsersPage() {
           { label: "Banned",  value: counts?.banned,  note: "suspended" },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5">
-            <p className="text-[9px] tracking-[0.18em] uppercase text-[var(--foreground-subtle)] mb-2">{s.label}</p>
+            <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-2">{s.label}</p>
             <p className="font-display text-3xl font-light text-[var(--foreground)]">{s.value === undefined ? "—" : s.value.toLocaleString()}</p>
-            <p className="text-[10px] text-[var(--foreground-muted)] mt-1">
+            <p className="text-[12px] text-[var(--foreground-muted)] mt-1">
               {counts?.partial && s.label !== "Total" ? `of newest ${counts.scanned.toLocaleString()}` : s.note}
             </p>
           </div>
@@ -440,7 +454,7 @@ export default function AdminUsersPage() {
         </div>
         {/* Plan filter */}
         <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Plan</span>
+          <span className="text-[12px] font-medium text-[var(--foreground-muted)] mr-1">Plan</span>
           {(["all", ...PLAN_OPTIONS] as const).map((p) => (
             <button key={p} onClick={() => setPlanFilter(p)} className={filterBtnCls(planFilter === p)}>
               {p}
@@ -449,7 +463,7 @@ export default function AdminUsersPage() {
         </div>
         {/* Status filter */}
         <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mr-1">Status</span>
+          <span className="text-[12px] font-medium text-[var(--foreground-muted)] mr-1">Status</span>
           {STATUS_OPTIONS.map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)} className={filterBtnCls(statusFilter === s)}>
               {s}
@@ -468,30 +482,30 @@ export default function AdminUsersPage() {
           <button
             onClick={() => bulkBan(true)}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             Ban
           </button>
           <button
             onClick={() => bulkBan(false)}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             Unban
           </button>
           <div className="flex items-center gap-1.5">
-            <span className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)]">Plan</span>
+            <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Plan</span>
             <select
               value={bulkPlan}
               onChange={(e) => setBulkPlan(e.target.value as typeof PLAN_OPTIONS[number])}
-              className="text-[9px] tracking-[0.1em] uppercase bg-transparent border border-[var(--border)] rounded-lg px-2 py-2 text-[var(--foreground)] outline-none"
+              className="text-[13px] bg-transparent border border-[var(--border)] rounded-lg px-2 py-2 text-[var(--foreground)] outline-none"
             >
-              {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {PLAN_OPTIONS.map((p) => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
             </select>
             <button
               onClick={bulkSetPlan}
               disabled={bulkLoading}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
             >
               Apply
             </button>
@@ -500,13 +514,13 @@ export default function AdminUsersPage() {
           <button
             onClick={bulkDelete}
             disabled={bulkLoading}
-            className="text-[9px] tracking-[0.14em] uppercase border border-[var(--err-line)] rounded-lg px-3 py-2 text-[var(--err)] hover:bg-[var(--err-bg)] transition-colors disabled:opacity-40"
+            className="text-[13px] font-medium border border-[var(--err-line)] rounded-lg px-3 py-2 text-[var(--err)] hover:bg-[var(--err-bg)] transition-colors disabled:opacity-40"
           >
             Delete
           </button>
           <button
             onClick={() => setSelected(new Map())}
-            className="ml-auto text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
+            className="ml-auto text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors"
           >
             Clear
           </button>
@@ -530,7 +544,7 @@ export default function AdminUsersPage() {
             </p>
             <button
               onClick={() => setBulkResult(null)}
-              className="text-[9px] tracking-[0.14em] uppercase opacity-70 hover:opacity-100 transition-opacity"
+              className="text-[13px] opacity-70 hover:opacity-100 transition-opacity"
               aria-label="Dismiss"
             >
               ×
@@ -572,7 +586,7 @@ export default function AdminUsersPage() {
                   ["Status", ""],
                   ["", ""],
                 ] as const).map(([h, cls]) => (
-                  <th key={h} className={`text-left px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] font-normal${cls}`}>
+                  <th key={h} className={`text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal${cls}`}>
                     {h}
                   </th>
                 ))}
@@ -603,36 +617,36 @@ export default function AdminUsersPage() {
                         {u.imageUrl ? (
                           <Image src={u.imageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover shrink-0" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] shrink-0">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium text-[var(--surface)] bg-[var(--foreground-muted)] shrink-0">
                             {initials(u.firstName, u.lastName, u.email)}
                           </div>
                         )}
                         <div className="flex flex-col min-w-0">
                           <span className="text-xs font-medium text-[var(--foreground)] truncate">{label}</span>
                           {u.email && label !== u.email && (
-                            <span className="md:hidden text-[10px] text-[var(--foreground-subtle)] truncate">{u.email}</span>
+                            <span className="md:hidden text-[12px] text-[var(--foreground-subtle)] truncate">{u.email}</span>
                           )}
                           {isSuper ? (
-                            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--warn)]">Super Admin</span>
+                            <span className="text-[11px] font-medium text-[var(--warn)]">Super admin</span>
                           ) : u.isAdmin ? (
-                            <span className="text-[9px] tracking-[0.1em] uppercase text-[var(--ok)]">Admin</span>
+                            <span className="text-[11px] font-medium text-[var(--ok)]">Admin</span>
                           ) : null}
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] truncate max-w-[240px] hidden md:table-cell">{u.email ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-[9px] tracking-[0.1em] uppercase px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
-                        {u.plan}
+                      <span className={`text-[11px] font-medium px-2 py-1 ${planBadge[u.plan] ?? planBadge.free}`}>
+                        {PLAN_LABEL[u.plan] ?? u.plan}
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       {u.subscription ? (
                         <div className="flex flex-col gap-0.5">
-                          <span className={`text-[10px] tracking-[0.06em] uppercase ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                            {u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
+                          <span className={`text-[12px] ${subStatusBadge[u.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                            {SUB_STATUS_LABEL[u.subscription.status] ?? u.subscription.status.replace("_", " ")} · {u.subscription.amountUah} ₴/mo
                           </span>
-                          <span className="text-[10px] text-[var(--foreground-subtle)]">
+                          <span className="text-[12px] text-[var(--foreground-subtle)]">
                             {fmtDuration(u.subscription.startedAt)}
                             {u.subscription.currentPeriodEnd && u.subscription.status === "active"
                               ? ` · ${u.subscription.autoRenew ? "renews" : "ends"} ${fmtDate(Date.parse(u.subscription.currentPeriodEnd))}`
@@ -640,24 +654,24 @@ export default function AdminUsersPage() {
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[10px] text-[var(--foreground-subtle)]">—</span>
+                        <span className="text-[12px] text-[var(--foreground-subtle)]">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtDate(u.createdAt)}</td>
                     <td className="px-4 py-3 text-xs text-[var(--foreground-muted)] hidden md:table-cell">{fmtRelative(u.lastActiveAt ?? u.lastSignInAt)}</td>
                     <td className="px-4 py-3">
                       {u.banned ? (
-                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]">Banned</span>
+                        <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-[var(--err-bg)] text-[var(--err)] border border-[var(--err-line)]">Banned</span>
                       ) : u.locked ? (
-                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]">Locked</span>
+                        <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-[var(--warn-bg)] text-[var(--warn)] border border-[var(--warn-line)]">Locked</span>
                       ) : (
-                        <span className="text-[9px] tracking-[0.1em] uppercase px-2 py-1 rounded-full text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
+                        <span className="text-[11px] font-medium px-2 py-1 rounded-full text-[var(--foreground-muted)] border border-[var(--border)]">Active</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {isSuper ? (
                         <div className="flex justify-end">
-                          <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] rounded-full px-2 py-1">Protected</span>
+                          <span className="text-[11px] font-medium text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] rounded-full px-2 py-1">Protected</span>
                         </div>
                       ) : (
                         <div className="flex justify-end gap-2">
@@ -702,7 +716,7 @@ export default function AdminUsersPage() {
           capped, so the "newest users only" caveat is never hidden. */}
       {(totalPages > 1 || listPartial) && total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
-          <span className="text-[10px] text-[var(--foreground-muted)]">
+          <span className="text-[12px] text-[var(--foreground-muted)]">
             {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total.toLocaleString()}
             {listPartial ? " · filter covers the newest users only" : ""}
           </span>
@@ -710,14 +724,14 @@ export default function AdminUsersPage() {
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ← Prev
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="text-[9px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-[13px] font-medium border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next →
             </button>
@@ -912,7 +926,7 @@ function UserDrawer({
       >
         <div className="px-4 md:px-6 py-4 md:py-5 border-b border-[var(--border)] flex items-center justify-between gap-3 sticky top-0 z-10" style={{ background: "var(--surface)" }}>
           <div className="min-w-0">
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)]">User Detail</p>
+            <p className="text-[12px] text-[var(--foreground-muted)]">User detail</p>
             <h2 id="user-drawer-title" className="font-display text-lg font-light text-[var(--foreground)] truncate max-w-[280px]">{displayName}</h2>
           </div>
           <button
@@ -941,7 +955,7 @@ function UserDrawer({
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[var(--warn)] flex-shrink-0">
                   <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
-                <p className="text-[10px] tracking-[0.1em] uppercase text-[var(--warn)]">
+                <p className="text-[12px] text-[var(--warn)]">
                   Super admin — this account is protected and cannot be modified.
                 </p>
               </div>
@@ -956,7 +970,7 @@ function UserDrawer({
               )}
               <div className="min-w-0">
                 <p className="text-sm text-[var(--foreground)] truncate">{detail.email ?? "No email"}</p>
-                <p className="text-[10px] font-mono text-[var(--foreground-subtle)] truncate">{detail.id}</p>
+                <p className="text-[12px] font-mono text-[var(--foreground-subtle)] truncate">{detail.id}</p>
               </div>
             </div>
 
@@ -971,13 +985,13 @@ function UserDrawer({
 
             {/* Subscription (monobank billing ledger) */}
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Subscription</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Subscription</p>
               {detail.subscription ? (
                 <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
                   <div className="flex items-center justify-between px-4 py-3">
                     <span className="text-xs text-[var(--foreground)]"><span className="capitalize">{detail.subscription.plan}</span> · {detail.subscription.amountUah} ₴/mo</span>
-                    <span className={`text-[9px] tracking-[0.12em] uppercase ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
-                      {detail.subscription.status.replace("_", " ")}
+                    <span className={`text-[11px] font-medium ${subStatusBadge[detail.subscription.status] ?? "text-[var(--foreground-muted)]"}`}>
+                      {SUB_STATUS_LABEL[detail.subscription.status] ?? detail.subscription.status.replace("_", " ")}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 px-4 py-3 text-xs">
@@ -1002,7 +1016,7 @@ function UserDrawer({
 
             {/* Activity stats */}
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Activity</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Activity</p>
               {!stats ? (
                 <p className="text-xs text-[var(--foreground-subtle)] border border-[var(--border)] rounded-xl px-4 py-3">
                   Stats unavailable{statsError ? ` — ${statsError}` : ""}.
@@ -1011,14 +1025,14 @@ function UserDrawer({
                 <div className="grid grid-cols-2 gap-2">
                   {/* AI Stylist today */}
                   <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist today</p>
+                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist today</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">
                       {stats.stylistMsgToday}
                       <span className="text-xs text-[var(--foreground-subtle)] ml-1 font-sans">
                         / {stats.stylistLimitDay === null ? "∞" : stats.stylistLimitDay}
                       </span>
                     </p>
-                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
                       {stats.stylistRemaining === null
                         ? "Unlimited"
                         : `${stats.stylistRemaining} left`}
@@ -1027,23 +1041,23 @@ function UserDrawer({
 
                   {/* AI Stylist all-time */}
                   <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Stylist total</p>
+                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Stylist total</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.stylistMsgTotal}</p>
-                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">messages sent</p>
                   </div>
 
                   {/* Images generated */}
                   <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">AI images</p>
+                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">AI images</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.imagesGenerated}</p>
-                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">generated</p>
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">generated</p>
                   </div>
 
                   {/* Looks published */}
                   <div className="border border-[var(--border)] rounded-xl p-3">
-                    <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">Looks</p>
+                    <p className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] mb-1">Looks</p>
                     <p className="font-display text-xl font-light text-[var(--foreground)]">{stats.looksPublished}</p>
-                    <p className="text-[9px] text-[var(--foreground-muted)] mt-0.5">published</p>
+                    <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">published</p>
                   </div>
                 </div>
               )}
@@ -1054,14 +1068,14 @@ function UserDrawer({
                   <button
                     onClick={() => resetStylistUsage("today")}
                     disabled={resetting || stats.stylistMsgToday === 0}
-                    className="text-[10px] tracking-[0.1em] uppercase border border-[var(--border)] hover:border-[var(--foreground)] rounded-full px-3 py-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-[13px] font-medium border border-[var(--border)] hover:border-[var(--foreground)] rounded-full px-3 py-1.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {resetting ? "Resetting…" : "Reset today's limit"}
                   </button>
                   <button
                     onClick={() => resetStylistUsage("all")}
                     disabled={resetting}
-                    className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-[13px] font-medium text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Reset all-time
                   </button>
@@ -1070,28 +1084,28 @@ function UserDrawer({
             </div>
 
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Profile</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Profile</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">First name</span>
+                  <span className="text-[12px] font-medium text-[var(--foreground-muted)]">First name</span>
                   <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">Last name</span>
+                  <span className="text-[12px] font-medium text-[var(--foreground-muted)]">Last name</span>
                   <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
                 </label>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Plan</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Plan</p>
               <div className="flex flex-wrap gap-1.5">
                 {PLAN_OPTIONS.map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPlan(p)}
-                    className={`text-[10px] tracking-[0.14em] uppercase px-3 py-2 border rounded-lg transition-colors capitalize ${
+                    className={`text-[13px] font-medium px-3 py-2 border rounded-lg transition-colors capitalize ${
                       plan === p
                         ? "border-[var(--foreground)] text-[var(--foreground)] bg-[var(--fg-overlay-05)]"
                         : "border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"
@@ -1102,7 +1116,7 @@ function UserDrawer({
                 ))}
               </div>
               {liveSubscription(detail.subscription) && (
-                <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[10px] px-3 py-2">
+                <p className="mt-2 rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] text-[var(--warn)] text-[12px] px-3 py-2">
                   Active subscription ({describeSubscription(detail.subscription)}). {PLAN_BILLING_NOTE}
                   {renewsAutomatically(detail.subscription)
                     ? ` ${RENEWAL_NOTE}`
@@ -1112,7 +1126,7 @@ function UserDrawer({
             </div>
 
             <div>
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">Access</p>
+              <p className="text-[13px] font-medium text-[var(--foreground)] mb-3">Access</p>
               <div className="space-y-2">
                 {detail.adminViaEnv ? (
                   // ADMIN_USER_IDS grants access regardless of the metadata flag,
@@ -1120,9 +1134,9 @@ function UserDrawer({
                   <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
-                      <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
+                      <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Granted via env (ADMIN_USER_IDS). Remove the id there to revoke.</p>
                     </div>
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
+                    <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Via env</span>
                   </div>
                 ) : currentIsSuperAdmin ? (
                   <ToggleRow
@@ -1135,9 +1149,9 @@ function UserDrawer({
                   <div className="px-3 py-2.5 border border-[var(--border)] rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-[var(--foreground)]">Admin</p>
-                      <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
+                      <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">Only super admin can change this.</p>
                     </div>
-                    <span className="text-[9px] tracking-[0.12em] uppercase text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
+                    <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] rounded-full px-2 py-1">Enabled</span>
                   </div>
                 ) : null}
                 <ToggleRow label="Banned" description="Prevents the user from signing in." checked={banned} onChange={setBanned} danger />
@@ -1149,7 +1163,7 @@ function UserDrawer({
                 <button
                   onClick={del}
                   disabled={saving}
-                  className="text-[10px] tracking-[0.14em] uppercase text-[var(--err)] hover:text-[var(--err)] transition-colors disabled:opacity-50"
+                  className="text-[13px] font-medium text-[var(--err)] hover:text-[var(--err)] transition-colors disabled:opacity-50"
                 >
                   Delete user
                 </button>
@@ -1157,7 +1171,7 @@ function UserDrawer({
               <div className="flex gap-2 ml-auto">
                 <button
                   onClick={onClose}
-                  className="text-[10px] tracking-[0.14em] uppercase border border-[var(--border)] rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
+                  className="text-[13px] font-medium border border-[var(--border)] rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] px-4 py-2 transition-colors"
                 >
                   Cancel
                 </button>
@@ -1165,7 +1179,7 @@ function UserDrawer({
                   <button
                     onClick={save}
                     disabled={!hasChanges || saving}
-                    className="text-[10px] tracking-[0.14em] uppercase bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
+                    className="text-[13px] font-medium bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-40"
                   >
                     {saving ? "Saving…" : "Save changes"}
                   </button>
@@ -1182,7 +1196,7 @@ function UserDrawer({
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[9px] tracking-[0.14em] uppercase text-[var(--foreground-subtle)] mb-1">{label}</p>
+      <p className="text-[12px] text-[var(--foreground-muted)] mb-1">{label}</p>
       <p className="text-xs text-[var(--foreground)] truncate">{value}</p>
     </div>
   );
@@ -1209,7 +1223,7 @@ function ToggleRow({
     >
       <div>
         <p className={`text-xs ${danger && checked ? "text-[var(--err)]" : "text-[var(--foreground)]"}`}>{label}</p>
-        <p className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">{description}</p>
+        <p className="text-[12px] text-[var(--foreground-subtle)] mt-0.5">{description}</p>
       </div>
       <div className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
         checked ? (danger ? "bg-[var(--err)]" : "bg-[var(--foreground)]") : "bg-[var(--border)]"

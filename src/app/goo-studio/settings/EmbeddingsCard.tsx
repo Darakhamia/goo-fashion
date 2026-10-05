@@ -144,14 +144,14 @@ export default function EmbeddingsCard() {
             <circle cx="11" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.2" />
             <path d="M4.1 9.9L9.9 4.1M4.5 11H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
-          <p className="text-xs tracking-[0.12em] uppercase font-medium text-[var(--foreground)]">
+          <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">
             Embeddings
           </p>
         </div>
         <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
           Vectors behind the stylist&apos;s semantic search and the <span className="font-mono">?knn=1</span> mode of
           field mining. Imports don&apos;t create them, so new products stay without one until a backfill runs here. The
-          chat searches by meaning only when the server has <code className="font-mono text-[10px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
+          chat searches by meaning only when the server has <code className="font-mono text-[11px]">STYLIST_SEMANTIC_SEARCH</code>{" "}
           on; otherwise it uses keyword search. Uses the OpenAI key above.
         </p>
       </div>

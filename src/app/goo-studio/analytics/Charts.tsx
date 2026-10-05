@@ -44,9 +44,7 @@ const tooltipStyle = {
   },
   labelStyle: {
     color: "var(--foreground-muted)",
-    fontSize: 10,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.12em",
+    fontSize: 11,
   },
 };
 
@@ -74,8 +72,8 @@ export function TrafficChart({ data }: { data: AnalyticsResponse }) {
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="label" stroke="var(--foreground-subtle)" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
-          <YAxis stroke="var(--foreground-subtle)" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} allowDecimals={false} />
+          <XAxis dataKey="label" stroke="var(--foreground-subtle)" fontSize={11} tickLine={false} axisLine={{ stroke: "var(--border)" }} />
+          <YAxis stroke="var(--foreground-subtle)" fontSize={11} tickLine={false} axisLine={{ stroke: "var(--border)" }} allowDecimals={false} />
           <Tooltip {...tooltipStyle} />
           <Area type="monotone" dataKey="views" name="Views" stroke="var(--foreground)" strokeWidth={1.5} fill="url(#goo-views)" />
           <Area type="monotone" dataKey="sessions" name="Sessions" stroke="var(--foreground-muted)" strokeWidth={1.2} strokeDasharray="4 4" fill="url(#goo-sessions)" />
@@ -94,7 +92,7 @@ function SimplePie({ items, title }: { items: PieItem[]; title: string }) {
   if (total === 0) {
     return (
       <div className="flex flex-col h-full">
-        <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{title}</p>
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</p>
         <div className="flex-1 flex items-center justify-center text-xs text-[var(--foreground-subtle)]">No data</div>
       </div>
     );
@@ -108,7 +106,7 @@ function SimplePie({ items, title }: { items: PieItem[]; title: string }) {
 
   return (
     <div className="flex flex-col h-full">
-      <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--foreground-muted)] mb-3">{title}</p>
+      <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] mb-3">{title}</p>
       <div className="flex items-center gap-4">
         <div style={{ width: 100, height: 100, flexShrink: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -130,7 +128,7 @@ function SimplePie({ items, title }: { items: PieItem[]; title: string }) {
             <li key={d.name} className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
               <span className="text-[11px] text-[var(--foreground)] truncate">{d.name}</span>
-              <span className="text-[10px] text-[var(--foreground-muted)] tabular-nums ml-auto pl-2">{d.pct}%</span>
+              <span className="text-[11px] text-[var(--foreground-muted)] tabular-nums ml-auto pl-2">{d.pct}%</span>
             </li>
           ))}
         </ul>
@@ -242,7 +240,7 @@ export function FunnelChart({ funnel }: { funnel: AnalyticsResponse["funnel"] })
           <div key={step.step}>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-[var(--foreground-subtle)] w-4">{i + 1}</span>
+                <span className="text-[11px] font-mono text-[var(--foreground-subtle)] w-4">{i + 1}</span>
                 <span className={`text-xs ${step.tracked ? "text-[var(--foreground)]" : "text-[var(--foreground-subtle)]"}`}>{step.step}</span>
               </div>
               {step.tracked ? (
@@ -288,8 +286,8 @@ export function EventsBarChart({ events }: { events: AnalyticsResponse["events"]
     <div style={{ width: "100%", height: Math.max(160, data.length * 36) }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
-          <XAxis type="number" stroke="var(--foreground-subtle)" fontSize={10} tickLine={false} axisLine={{ stroke: "var(--border)" }} allowDecimals={false} />
-          <YAxis type="category" dataKey="name" width={120} stroke="var(--foreground-subtle)" fontSize={10} tickLine={false} axisLine={false} />
+          <XAxis type="number" stroke="var(--foreground-subtle)" fontSize={11} tickLine={false} axisLine={{ stroke: "var(--border)" }} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" width={120} stroke="var(--foreground-subtle)" fontSize={11} tickLine={false} axisLine={false} />
           <Tooltip {...tooltipStyle} />
           <Bar dataKey="count" name="Events" fill="var(--foreground)" radius={0} />
         </BarChart>

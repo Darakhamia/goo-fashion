@@ -308,7 +308,7 @@ export default function AdminAuditPage() {
             disabled={!report}
             aria-pressed={showDismissed}
             title="Suggestions you rejected. Shown so a dismissal can be undone."
-            className={`border rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase transition-colors disabled:opacity-40 ${
+            className={`border rounded-lg px-3 py-2 text-[13px] font-medium transition-colors disabled:opacity-40 ${
               showDismissed
                 ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--surface)]"
                 : "border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
@@ -319,7 +319,7 @@ export default function AdminAuditPage() {
           <button
             onClick={() => load()}
             disabled={loading}
-            className="border border-[var(--border)] rounded-lg px-3 py-2 text-[11px] tracking-[0.1em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
+            className="border border-[var(--border)] rounded-lg px-3 py-2 text-[13px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-40"
           >
             {loading ? "Checking…" : "Re-check"}
           </button>
@@ -384,20 +384,20 @@ export default function AdminAuditPage() {
                 <header className="px-5 py-3.5 border-b border-[var(--border)]">
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm text-[var(--foreground)]">{title}</h2>
-                    <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">
+                    <span className="text-[12px] text-[var(--foreground-muted)]">
                       {openTotal}
                       {showDismissed && dismissedTotal > 0 ? ` · ${dismissedTotal} dismissed` : ""}
                     </span>
                     {exact && (
-                      <span className="text-[9px] tracking-[0.1em] uppercase border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
-                        exact
+                      <span className="text-[11px] font-medium border border-[var(--border)] rounded-full px-2 py-0.5 text-[var(--foreground-muted)]">
+                        Exact
                       </span>
                     )}
                     {bulk && open > 0 && (
                       <button
                         onClick={() => applyAll(key, list)}
                         disabled={busyKey !== null}
-                        className="ml-auto shrink-0 whitespace-nowrap bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-[10px] tracking-[0.12em] uppercase hover:opacity-80 transition-opacity disabled:opacity-40"
+                        className="ml-auto shrink-0 whitespace-nowrap bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
                       >
                         {busyKey === `section:${key}` ? "Fixing…" : `Apply all ${open}`}
                       </button>
@@ -430,18 +430,18 @@ export default function AdminAuditPage() {
                               {s.name || "(no name)"}
                             </Link>
                             {s.agreement > 1 && (
-                              <span className="text-[9px] tracking-[0.1em] uppercase bg-[var(--foreground)] text-[var(--surface)] rounded-full px-1.5 py-0.5">
+                              <span className="text-[11px] font-medium bg-[var(--foreground)] text-[var(--surface)] rounded-full px-1.5 py-0.5">
                                 ×{s.agreement}
                               </span>
                             )}
                           </div>
                           <p className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                            <span className="uppercase tracking-[0.1em] text-[var(--foreground-subtle)]">{s.field}</span>{" "}
+                            <span className="font-medium">{s.field}</span>{" "}
                             <span className="font-mono">{s.stored || "(none)"}</span>
                             {canApply && <> → <span className="font-mono text-[var(--foreground)]">{s.suggested}</span></>}
                           </p>
                           {s.evidence.map((e, i) => (
-                            <p key={i} className="text-[10px] text-[var(--foreground-subtle)] mt-0.5 leading-relaxed">
+                            <p key={i} className="text-[12px] text-[var(--foreground-subtle)] mt-0.5 leading-relaxed">
                               {e}
                             </p>
                           ))}
@@ -449,9 +449,9 @@ export default function AdminAuditPage() {
 
                         <div className="shrink-0 pt-0.5 flex items-center gap-3">
                           {applied ? (
-                            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">Applied</span>
+                            <span className="text-[11px] font-medium text-[var(--foreground-muted)]">Applied</span>
                           ) : gone ? (
-                            <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-muted)]">
+                            <span className="text-[11px] font-medium text-[var(--foreground-muted)]">
                               {s.dismissed ? "Restored" : "Dismissed"}
                             </span>
                           ) : (
@@ -460,13 +460,18 @@ export default function AdminAuditPage() {
                                 <button
                                   onClick={() => apply(s)}
                                   disabled={busyKey === rowKey}
-                                  className="bg-[var(--foreground)] text-[var(--surface)] px-3 py-1.5 rounded-lg text-xs tracking-[0.12em] uppercase hover:opacity-80 disabled:opacity-40"
+                                  className="border border-[var(--border-strong)] text-[var(--foreground)] px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-[var(--fg-overlay-05)] transition-colors disabled:opacity-40"
                                 >
                                   {busyKey === rowKey ? "…" : "Apply"}
                                 </button>
                               )}
                               {!canApply && !s.dismissed && (
-                                <span className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)]">Edit by hand</span>
+                                <Link
+                                  href={`/goo-studio/products?search=${encodeURIComponent(s.name)}`}
+                                  className="text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                                >
+                                  Edit by hand
+                                </Link>
                               )}
                               <button
                                 onClick={() => (s.dismissed ? restore(s) : dismiss(s))}
@@ -476,7 +481,7 @@ export default function AdminAuditPage() {
                                     ? "Raise this again on future checks"
                                     : "This suggestion is wrong — stop raising it"
                                 }
-                                className="text-[10px] tracking-[0.1em] uppercase text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
+                                className="text-[13px] text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors disabled:opacity-40"
                               >
                                 {s.dismissed ? "Restore" : "Dismiss"}
                               </button>
