@@ -8,6 +8,7 @@ import { useScrollLock } from "@/lib/hooks/useScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ORDER_KEY = "goo-admin-nav-order";
+const NAV_COLLAPSED_KEY = "goo-admin-nav-collapsed";
 const ADMIN_THEME_KEY = "goo-admin-theme";
 
 type NavItem = {
@@ -366,6 +367,17 @@ function parseNavOrder(saved: string | null): string[] {
   }
 }
 
+/** Saved list of collapsed menu groups; unknown keys are ignored. */
+function parseCollapsedGroups(saved: string | null): string[] {
+  if (!saved) return [];
+  try {
+    const parsed: unknown = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Marks a menu item only super admins see (it was an unexplained "SA" badge). */
 function SuperAdminMark() {
   return (
@@ -397,6 +409,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const theme: "light" | "dark" = savedTheme === "dark" ? "dark" : "light";
   const savedNavOrder = useSetting(NAV_ORDER_KEY);
   const navOrder = useMemo(() => parseNavOrder(savedNavOrder), [savedNavOrder]);
+  const savedCollapsedGroups = useSetting(NAV_COLLAPSED_KEY);
+  const collapsedGroups = useMemo(() => parseCollapsedGroups(savedCollapsedGroups), [savedCollapsedGroups]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -544,19 +558,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const resetOrder = () => writeSetting(NAV_ORDER_KEY, null);
 
+  const toggleGroup = (key: string) => {
+    const next = collapsedGroups.includes(key)
+      ? collapsedGroups.filter((k) => k !== key)
+      : [...collapsedGroups, key];
+    writeSetting(NAV_COLLAPSED_KEY, next.length ? JSON.stringify(next) : null);
+  };
+
   /*
    * Menu and bottom controls, shared by the desktop sidebar and the phone
    * drawer. `compact` is the collapsed desktop rail (icons only); the drawer
    * is always expanded and passes `onNavigate` to close itself. Rows are
    * 40px+ tall below md for touch and keep their desktop padding from md up.
+   * A group label folds its group (saved in localStorage); a folded group
+   * still shows the page you are on. On desktop screens under 1024px tall rows
+   * drop from 32px to 28px so the whole menu fits a 1440×900 screen.
    */
   const renderMenu = (compact: boolean, onNavigate?: () => void) => (
     <nav aria-label="Admin sections" className="flex-1 pt-1 pb-4 flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain">
       {NAV_CATEGORIES.map((cat) => {
         const items = navItems.filter((i) => i.category === cat.key);
         if (items.length === 0) return null;
+        const folded = !compact && collapsedGroups.includes(cat.key);
+        const shown = folded ? items.filter((i) => i.href === activeItem?.href) : items;
+        const groupId = `admin-nav-group-${cat.key}`;
         return (
-          <div key={cat.key} className="mb-1">
+          <div key={cat.key}>
             <AnimatePresence initial={false}>
               {!compact && (
                 <motion.div
@@ -565,19 +592,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.1 }}
-                  className="px-5 pt-4 pb-1"
+                  className="px-2 pt-3.5 pb-1 [@media(min-width:768px)_and_(max-height:1023px)]:pt-2 [@media(min-width:768px)_and_(max-height:1023px)]:pb-0.5"
                 >
-                  <span className="text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)]">
-                    {cat.label}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(cat.key)}
+                    aria-expanded={!folded}
+                    aria-controls={groupId}
+                    className="group/fold w-full min-h-8 md:min-h-0 flex items-center gap-1.5 px-3 py-0.5 rounded-lg text-left text-[11px] leading-4 tracking-[0.12em] uppercase text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    <span className="flex-1">{cat.label}</span>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      fill="none"
+                      aria-hidden="true"
+                      className={`flex-shrink-0 transition-[transform,opacity] duration-150 ${
+                        folded ? "-rotate-90 opacity-100" : "opacity-0 group-hover/fold:opacity-100 group-focus-visible/fold:opacity-100 [@media(hover:none)]:opacity-100"
+                      }`}
+                    >
+                      <path d="M2.5 3.75L5 6.25l2.5-2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
             {compact && (
               <div className="mx-3 my-1 border-t border-[var(--border)]" />
             )}
-            <div className="flex flex-col gap-0.5 px-2">
-              {items.map((item) => {
+            <div id={groupId} className="flex flex-col gap-0.5 px-2">
+              {shown.map((item) => {
                 const isActive = activeItem?.href === item.href;
                 return (
                   <Link
@@ -589,7 +634,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     className={`flex items-center transition-colors rounded-lg ${
                       compact
                         ? "justify-center px-0 py-3 md:py-2"
-                        : "gap-2.5 px-3 py-2.5 md:py-0 md:h-8"
+                        : "gap-2.5 px-3 py-2.5 md:py-0 md:h-8 [@media(min-width:768px)_and_(max-height:1023px)]:h-7"
                     } text-[13px] font-medium ${
                       isActive
                         ? "text-[var(--foreground)] bg-[var(--surface)] shadow-[0_0_0_1px_var(--border)]"
@@ -673,7 +718,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={() => setCollapsed((c) => !c)}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--background)] ${
+            className={`flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors flex-shrink-0 rounded-lg hover:bg-[var(--fg-overlay-05)] ${
               collapsed ? "w-[60px] h-14" : "w-8 h-8 mr-2"
             }`}
           >
@@ -708,7 +753,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               aria-label="Open menu"
               aria-expanded={mobileNavOpen}
               aria-controls="admin-mobile-nav"
-              className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
+              className="md:hidden -ml-2 w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--fg-overlay-05)] transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M2 4H14M2 8H14M2 12H14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
