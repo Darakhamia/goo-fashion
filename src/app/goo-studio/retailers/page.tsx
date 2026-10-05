@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { storeFaviconUrl } from "@/lib/stores";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { btn } from "../_ui/recipes";
 
 type StoreGender = "" | "men" | "women" | "unisex";
 
@@ -60,14 +63,6 @@ const FIELD =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-sm text-[var(--foreground)]";
 const INPUT = `${FIELD} bg-transparent`;
 const SELECT = `${FIELD} bg-[var(--surface)]`;
-const PRIMARY =
-  "bg-[var(--foreground)] text-[var(--surface)] px-4 py-2 rounded-lg text-[13px] font-medium hover:opacity-80 disabled:opacity-40";
-// Hover colours stay out of the base so the danger variant does not stack a
-// second hover:text / hover:border on the same element.
-const GHOST_BASE =
-  "border border-[var(--border)] px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--foreground-muted)] disabled:opacity-40 transition-colors";
-const GHOST = `${GHOST_BASE} hover:text-[var(--foreground)] hover:border-[var(--foreground)]`;
-const GHOST_DANGER = `${GHOST_BASE} hover:text-[var(--err)] hover:border-[var(--err)]`;
 const TH =
   "text-left px-4 py-3 text-[11px] tracking-[0.12em] uppercase text-[var(--foreground-muted)] font-normal";
 
@@ -110,6 +105,10 @@ export default function RetailersPage() {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const confirm = useConfirm();
+  const help = useHelp("retailers");
+  const genderHelp = useHelp("retailers-gender");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -166,9 +165,12 @@ export default function RetailersPage() {
     : report?.rules.find((r) => r.domain === domainKey(draft.domain));
 
   const save = async () => {
-    if (existingRule && !confirm(
-      `${existingRule.domain} already has a rule ("${existingRule.name}"). Replace its name, official flag, gender and note?`,
-    )) return;
+    if (existingRule && !(await confirm({
+      title: `Replace the rule for ${existingRule.domain}?`,
+      body: `${existingRule.domain} already has a rule ("${existingRule.name}"). Saving replaces its name, official flag, gender and note.`,
+      confirmLabel: "Replace rule",
+      tone: "danger",
+    }))) return;
     setSaving(true);
     setFormError("");
     try {
@@ -193,7 +195,12 @@ export default function RetailersPage() {
   };
 
   const remove = async (domain: string) => {
-    if (!confirm(`Delete the rule for ${domain}? Products already imported keep the names they have.`)) return;
+    if (!(await confirm({
+      title: `Delete the rule for ${domain}?`,
+      body: "Products already imported keep the names they have.",
+      confirmLabel: "Delete rule",
+      tone: "danger",
+    }))) return;
     setBusyDomain(domain);
     setActionError("");
     try {
@@ -223,10 +230,12 @@ export default function RetailersPage() {
   const applyToExisting = async (rule: RetailerRule) => {
     const affected = ruleProductCount(rule.domain);
     const scope = affected ? `${affected} product${affected === 1 ? "" : "s"}` : "existing products";
-    if (!confirm(
-      `Rewrite the store name on ${scope} linking to ${rule.domain} to "${rule.name}"?\n\n` +
-      `This replaces names that were corrected by hand on individual products.`,
-    )) return;
+    if (!(await confirm({
+      title: `Rewrite the store name on ${scope} linking to ${rule.domain} to "${rule.name}"?`,
+      body: "This replaces names that were corrected by hand on individual products.",
+      confirmLabel: `Apply to ${scope}`,
+      tone: "danger",
+    }))) return;
 
     setBusyDomain(rule.domain);
     setApplyResult("");
@@ -263,12 +272,21 @@ export default function RetailersPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Retailers</h1>
-      <p className="text-xs text-[var(--foreground-muted)] mt-1 leading-relaxed">
-        What a shop is called, and whether it is the brand&apos;s own store, kept once per domain.
-        Without a rule both are guessed from the link — which is why imports arrive named after a
-        host and rarely marked official. Rules apply to every product imported afterwards.
-      </p>
+      <div className="flex items-center gap-2">
+        <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Retailers</h1>
+        <HelpButton help={help} label="How retailer rules work" />
+      </div>
+      {help.open && (
+        <div className="mt-2">
+          <HelpPanel help={help}>
+            <p>
+              What a shop is called, and whether it is the brand&apos;s own store, kept once per domain.
+              Without a rule both are guessed from the link — which is why imports arrive named after a
+              host and rarely marked official. Rules apply to every product imported afterwards.
+            </p>
+          </HelpPanel>
+        </div>
+      )}
 
       {/* The table is absent, so nothing can be saved yet. Said once, at the
           top, naming the migration — rather than letting the admin fill the
@@ -317,9 +335,12 @@ export default function RetailersPage() {
             />
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="rd-gender" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
-              Pieces the page doesn&apos;t mark are for
-            </label>
+            <div className="flex items-center gap-1 mb-1.5">
+              <label htmlFor="rd-gender" className="block text-[12px] font-medium text-[var(--foreground-muted)]">
+                Pieces the page doesn&apos;t mark are for
+              </label>
+              <HelpButton help={genderHelp} label="How the gender default works" />
+            </div>
             <select
               id="rd-gender"
               value={draft.defaultGender}
@@ -330,11 +351,17 @@ export default function RetailersPage() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-            <p className="text-[11px] text-[var(--foreground-muted)] mt-1.5 leading-relaxed">
-              Used only when a product&apos;s name, link and breadcrumbs say nothing about gender —
-              typically a store with &ldquo;All&rdquo; and &ldquo;Women&rdquo; and no &ldquo;Men&rdquo;.
-              Applies to new imports; products that already have a gender keep it.
-            </p>
+            {genderHelp.open && (
+              <div className="mt-1.5">
+                <HelpPanel help={genderHelp}>
+                  <p>
+                    Used only when a product&apos;s name, link and breadcrumbs say nothing about gender —
+                    typically a store with &ldquo;All&rdquo; and &ldquo;Women&rdquo; and no &ldquo;Men&rdquo;.
+                    Applies to new imports; products that already have a gender keep it.
+                  </p>
+                </HelpPanel>
+              </div>
+            )}
           </div>
           <div className="md:col-span-2">
             <label htmlFor="rd-note" className="block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5">
@@ -366,7 +393,7 @@ export default function RetailersPage() {
               {existingRule.domain} already has a rule (&ldquo;{existingRule.name}&rdquo;). Adding it again replaces
               that rule&apos;s name, official flag, gender and note.
             </p>
-            <button onClick={() => startEdit(existingRule)} className={GHOST}>Edit that rule</button>
+            <button onClick={() => startEdit(existingRule)} className={btn("secondary")}>Edit that rule</button>
           </div>
         )}
 
@@ -377,12 +404,12 @@ export default function RetailersPage() {
             onClick={save}
             disabled={saving || !!report?.tableMissing || !draft.domain.trim() || !draft.name.trim()}
             title={report?.tableMissing ? report.setupHint ?? "" : ""}
-            className={PRIMARY}
+            className={btn("primary")}
           >
             {saving ? "Saving…" : editingDomain ? "Save changes" : "Add rule"}
           </button>
           {(editingDomain || draft.domain || draft.name) && (
-            <button onClick={() => startNew()} className={GHOST}>Cancel</button>
+            <button onClick={() => startNew()} className={btn("ghost")}>Cancel</button>
           )}
         </div>
       </div>
@@ -452,7 +479,7 @@ export default function RetailersPage() {
                     <td className="px-4 py-3 text-[13px] text-[var(--foreground-muted)]">{rule.note || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => startEdit(rule)} className={GHOST}>Edit</button>
+                        <button onClick={() => startEdit(rule)} className={btn("secondary", "sm")}>Edit</button>
                         <button
                           onClick={() => applyToExisting(rule)}
                           disabled={busyDomain === rule.domain || (!count && !scanFailed)}
@@ -461,14 +488,14 @@ export default function RetailersPage() {
                             : scanFailed
                               ? `Rewrite this name on the products already linking to ${rule.domain} or its subdomains`
                               : "No products in the catalogue link to this domain"}
-                          className={GHOST}
+                          className={btn("secondary", "sm")}
                         >
                           {busyDomain === rule.domain ? "Working…" : "Apply to existing"}
                         </button>
                         <button
                           onClick={() => remove(rule.domain)}
                           disabled={busyDomain === rule.domain}
-                          className={GHOST_DANGER}
+                          className={btn("danger", "sm")}
                         >
                           Delete
                         </button>
@@ -541,7 +568,7 @@ export default function RetailersPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => { startNew(d.domain, d.currentNames[0] ?? ""); revealEditor(); }}
-                      className={GHOST}
+                      className={btn("secondary", "sm")}
                     >
                       Add rule
                     </button>
