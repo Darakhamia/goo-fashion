@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/email/page.tsx": {
-    "mtime": 1791207026.3092046,
-    "seen": 1791208491.8430812,
-    "ast_hash": "ce3061f68846e55d5df5c4231fbafed4",
+    "mtime": 1791209579.6302788,
+    "seen": 1791210145.32746,
+    "ast_hash": "6895b81637251c72d19b1890a9ebb6a0",
     "semantic_hash": ""
   },
   "src/app/goo-studio/layout.tsx": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/subscriptions/page.tsx": {
-    "mtime": 1791207212.7397964,
-    "seen": 1791208491.8430998,
-    "ast_hash": "2e33120d3752fa61fa4cee4abc6c6ba9",
+    "mtime": 1791209206.2953904,
+    "seen": 1791210145.328023,
+    "ast_hash": "6f6a03a1a7da11f336dcce0aa739f8e1",
     "semantic_hash": ""
   },
   "src/app/goo-studio/users/page.tsx": {
@@ -1346,9 +1346,9 @@
     "semantic_hash": ""
   },
   "PARSER.md": {
-    "mtime": 1791199674.7831855,
-    "seen": 1791204377.7780752,
-    "ast_hash": "0d263bb9809cfc67d7e4322b68fd1088",
+    "mtime": 1791208994.877376,
+    "seen": 1791210145.3378286,
+    "ast_hash": "d53595b0d9154736979c104a66ea11f6",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1556,9 +1556,9 @@
     "semantic_hash": ""
   },
   "src/app/goo-studio/import/page.tsx": {
-    "mtime": 1791207114.6475756,
-    "seen": 1791208491.8430827,
-    "ast_hash": "cf8e8509aea6356b851f75f7c1505c0c",
+    "mtime": 1791210042.8280041,
+    "seen": 1791210145.3274627,
+    "ast_hash": "d7be0fa2178aff723dd0b52400dbca50",
     "semantic_hash": ""
   },
   "src/app/goo-studio/parser/collect/page.tsx": {
@@ -2036,9 +2036,9 @@
     "semantic_hash": ""
   },
   "DESIGN_SYSTEM.md": {
-    "mtime": 1791208395.2627845,
-    "seen": 1791208491.8494148,
-    "ast_hash": "5071b7c91fc8dce7b6e5e62585a0fac5",
+    "mtime": 1791210089.8659241,
+    "seen": 1791210145.3377879,
+    "ast_hash": "19587f02e88e737a32a4ec9f80da2fb1",
     "semantic_hash": ""
   },
   "MIGRATION_RUNBOOK.md": {
@@ -2048,9 +2048,9 @@
     "semantic_hash": ""
   },
   "docs/ADMIN.md": {
-    "mtime": 1791207137.2252958,
-    "seen": 1791208491.8494833,
-    "ast_hash": "e01d4d390e03a843630386d1f460fe1b",
+    "mtime": 1791209022.611741,
+    "seen": 1791210145.33787,
+    "ast_hash": "40e5c50753c2a43447539e0a6e7c7e18",
     "semantic_hash": ""
   },
   "docs/CODE_REVIEW_2026-09.md": {
@@ -2252,9 +2252,9 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/fixtures/quality-import.js": {
-    "mtime": 1791206693.1640234,
-    "seen": 1791208491.839467,
-    "ast_hash": "787bf31b2c19d8a3deeba790aaa2f7f7",
+    "mtime": 1791208987.363246,
+    "seen": 1791210145.3210359,
+    "ast_hash": "3eea75059068485c5b969af855c028aa",
     "semantic_hash": ""
   },
   "scripts/admin-screens/setup.sh": {
@@ -2264,21 +2264,21 @@
     "semantic_hash": ""
   },
   "scripts/admin-screens/shoot.js": {
-    "mtime": 1791208006.5591724,
-    "seen": 1791208491.8394713,
-    "ast_hash": "e6d86cac1e87331ef3c0e49dc91466f2",
+    "mtime": 1791209098.5429964,
+    "seen": 1791210145.3210807,
+    "ast_hash": "2b8a1cefaec5c3395dd36d3bd5e4619d",
     "semantic_hash": ""
   },
   "docs/ADMIN_DESIGN.md": {
-    "mtime": 1791205053.0001893,
-    "seen": 1791208491.8494847,
-    "ast_hash": "e74dd5410137ea2f5b76b9c37c08804f",
+    "mtime": 1791210089.8670485,
+    "seen": 1791210145.3378727,
+    "ast_hash": "7a5bdbb8c12c9da59757c83deedc3e23",
     "semantic_hash": ""
   },
   "docs/ADMIN_ROADMAP.md": {
-    "mtime": 1791208427.324884,
-    "seen": 1791208491.849486,
-    "ast_hash": "8cbbede6c812b828db8b16f09eae356c",
+    "mtime": 1791210105.095519,
+    "seen": 1791210145.3378751,
+    "ast_hash": "8d946071e4762314e16394510e8e92a6",
     "semantic_hash": ""
   },
   "docs/ADMIN_UX_REVIEW_2026-10.md": {
