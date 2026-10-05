@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type {
   ParserFetchSettings,
@@ -15,9 +16,15 @@ import type { Category, Gender } from "@/lib/types";
 import { bookmarkletHref, readPastedPage } from "@/lib/parser-bookmarklet";
 import { pastedUrl } from "@/lib/url";
 import { useConfirm } from "@/components/admin/ConfirmDialog";
-import { btn, BTN_ICON } from "../_ui/recipes";
+import { useToast } from "@/components/admin/Toast";
+import { PageHeader, PLUS } from "@/components/admin/PageHeader";
+import { HelpButton, HelpPanel, useHelp } from "@/components/admin/HelpToggle";
+import { Badge, type BadgeTone } from "@/components/admin/Badge";
+import { FormPanel, FormSection } from "@/components/admin/FormSection";
+import { SaveBar } from "@/components/admin/SaveBar";
+import { btn, BTN_ICON, FIELD_LABEL, INPUT, SELECT } from "../_ui/recipes";
 import { AdminPage } from "@/components/admin/AdminPage";
-import { useFormat } from "@/app/goo-studio/_i18n";
+import { useFormat, useT, type Key, type T } from "@/app/goo-studio/_i18n";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -26,13 +33,27 @@ const CATEGORIES: Category[] = [
   "shorts", "skirts", "dresses", "jumpsuits", "swimwear", "footwear", "bags", "accessories",
 ];
 const GENDERS: Gender[] = ["women", "men", "unisex"];
-const PROVIDERS: { value: FetchProvider; label: string; hint: string }[] = [
-  { value: "direct", label: "Direct", hint: "Node fetch with browser headers. Works for soft targets only." },
-  { value: "scrapingbee", label: "ScrapingBee", hint: "Managed scraping API with JS render + proxies." },
-  { value: "scraperapi", label: "ScraperAPI", hint: "Managed scraping API with rotating proxies." },
-  { value: "zenrows", label: "ZenRows", hint: "Managed scraping API with anti-bot bypass." },
-  { value: "custom", label: "Custom endpoint", hint: "Your own curl_cffi / playwright service. Use {url}, {key}, {render}, {impersonate}, {timeout}." },
+/** Dictionary keys, not text: the names and hints read in the admin's language. */
+const PROVIDERS: { value: FetchProvider; label: Key; hint: Key }[] = [
+  { value: "direct", label: "parser.provider.direct", hint: "parser.provider.direct.hint" },
+  { value: "scrapingbee", label: "parser.provider.scrapingbee", hint: "parser.provider.scrapingbee.hint" },
+  { value: "scraperapi", label: "parser.provider.scraperapi", hint: "parser.provider.scraperapi.hint" },
+  { value: "zenrows", label: "parser.provider.zenrows", hint: "parser.provider.zenrows.hint" },
+  { value: "custom", label: "parser.provider.custom", hint: "parser.provider.custom.hint" },
 ];
+/**
+ * Example addresses and templates in the fields, and the name of the key's
+ * environment variable: data the admin copies as it is, the same in every
+ * language, so it stays out of the dictionary.
+ */
+const EXAMPLE = {
+  storeUrl: "https://www.balenciaga.com/en-us/men/ready-to-wear",
+  productUrl: "https://www.farfetch.com/shopping/men/...",
+  anyProductUrl: "https://www.store.com/product/…",
+  domain: "example.com",
+  endpoint: "https://my-scraper.fly.dev/fetch?token={key}&url={url}&render={render}&impersonate={impersonate}",
+  keyEnv: "PARSER_FETCH_API_KEY",
+} as const;
 const IMPERSONATE = ["chrome", "safari", "firefox", "edge"];
 const RULE_FIELDS: ParserRuleField[] = [
   "name", "brand", "price", "currency", "image", "sizes", "color", "material", "description",
@@ -76,7 +97,7 @@ interface ImportOutcome {
   /** The card this page joined as another store, when it did not make one. */
   mergedInto?: string;
   mergedBy?: "code" | "name";
-  /** Colours of the same piece it was grouped with. */
+  /** Colors of the same piece it was grouped with. */
   variantsLinked?: number;
   /** Why a new card was made rather than a store added. */
   linkNote?: string;
@@ -85,38 +106,46 @@ interface ImportOutcome {
 }
 
 /** The import's outcome in a few words. */
-function importHeadline(o: ImportOutcome): string {
-  if (o.mergedInto) return "Added as a store to an existing product";
-  return o.updated ? "Updated existing product" : "Product created";
+function importHeadline(o: ImportOutcome, t: T): string {
+  if (o.mergedInto) return t("parser.import.merged");
+  return o.updated ? t("parser.import.updated") : t("parser.import.created");
 }
 
-/** What else the admin should know: colours grouped, why a new card, the price. */
-function importDetails(o: ImportOutcome): string {
-  const colours = o.variantsLinked
-    ? `grouped with ${o.variantsLinked} other colour${o.variantsLinked === 1 ? "" : "s"}`
-    : "";
-  const how = o.mergedInto && o.mergedBy === "name" ? "recognised by name and colour" : "";
-  return [how, colours, o.linkNote ?? "", o.priceNote ?? ""].filter(Boolean).join(" · ");
+/** What else the admin should know: colors grouped, why a new card, the price. */
+function importDetails(o: ImportOutcome, t: T): string {
+  const colors = o.variantsLinked ? t("parser.import.groupedOther", { count: o.variantsLinked }) : "";
+  const how = o.mergedInto && o.mergedBy === "name" ? t("parser.import.byName") : "";
+  return [how, colors, o.linkNote ?? "", o.priceNote ?? ""].filter(Boolean).join(" · ");
 }
 
-/** A collected page's note beyond its status: the card it joined, the colours it was grouped with. */
-function crawlRowNote(r: CrawlItemResult): string {
-  const joined = r.linkNote ?? (r.merged ? "added as a store to an existing product" : "");
-  const colours = r.variantsLinked ? `grouped with ${r.variantsLinked} colour${r.variantsLinked === 1 ? "" : "s"}` : "";
-  return [joined, colours].filter(Boolean).join(" · ");
+/** A collected page's note beyond its status: the card it joined, the colors it was grouped with. */
+function crawlRowNote(r: CrawlItemResult, t: T): string {
+  const joined = r.linkNote ?? (r.merged ? t("parser.note.merged") : "");
+  const colors = r.variantsLinked ? t("parser.note.grouped", { count: r.variantsLinked }) : "";
+  return [joined, colors].filter(Boolean).join(" · ");
+}
+
+/**
+ * A message with {name} slots filled by elements, for the words inside a
+ * sentence that are set apart (a provider name, an environment variable).
+ * t() leaves a slot it has no value for as it is, so the slots survive it.
+ */
+function fill(text: string, parts: Record<string, ReactNode>): ReactNode[] {
+  return text
+    .split(/\{(\w+)\}/g)
+    .map((piece, i) => (i % 2 ? <Fragment key={i}>{parts[piece] ?? `{${piece}}`}</Fragment> : piece));
 }
 
 // ── Tiny styled primitives (goo-studio recipes, DESIGN_SYSTEM.md §9) ─────────
 
-/** The admin field without its size and fill, so variants never fight over them. */
+/** The admin field without its size and fill, for the one variant the recipes lack. */
 const fieldBase =
   "w-full rounded-lg border border-[var(--border)] focus:border-[var(--foreground)] outline-none px-3 py-2 text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] transition-colors";
-const inputCls = `${fieldBase} text-sm bg-transparent`;
+const inputCls = `${INPUT} w-full`;
 /** Regexes, endpoint templates, keys. */
 const monoInputCls = `${fieldBase} font-mono text-[11px] bg-transparent`;
-const selectCls = `${fieldBase} text-sm bg-[var(--surface)]`;
-const labelCls = "block text-[12px] font-medium text-[var(--foreground-muted)] mb-1.5";
-/** Status plaques: the admin's three semantic colours, always in this shape. */
+const selectCls = `${SELECT} w-full`;
+/** Status plaques: the admin's three semantic colors, always in this shape. */
 const errorBoxCls = "rounded-xl border border-[var(--err-line)] bg-[var(--err-bg)] px-4 py-3 text-[12px] text-[var(--err)] break-words";
 const warnBoxCls = "rounded-xl border border-[var(--warn-line)] bg-[var(--warn-bg)] px-4 py-3 text-[12px] text-[var(--warn)] break-words";
 /** Where the extension hands its pages to; install steps live there too. */
@@ -128,9 +157,11 @@ const Spinner = () => (
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ParserPage() {
+  const t = useT();
   const [tab, setTab] = useState<Tab>("collect");
   const [config, setConfig] = useState<ConfigState | null>(null);
-  const [loadError, setLoadError] = useState("");
+  /** A dictionary key, so the message follows a language switch. */
+  const [loadError, setLoadError] = useState<Key | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   /**
    * A URL handed from Collect to Parse URL when the store refused us.
@@ -148,10 +179,10 @@ export default function ParserPage() {
         const res = await fetch("/api/admin/parser/config");
         if (!active) return;
         if (res.status === 401) { setUnauthorized(true); return; }
-        if (!res.ok) { setLoadError("Failed to load parser config."); return; }
+        if (!res.ok) { setLoadError("parser.loadFailed"); return; }
         setConfig(await res.json());
       } catch {
-        if (active) setLoadError("Network error loading config.");
+        if (active) setLoadError("parser.loadNetwork");
       }
     })();
     return () => { active = false; };
@@ -161,9 +192,9 @@ export default function ParserPage() {
     return (
       <AdminPage layout="form">
         <Header />
-        <div className="mt-6 rounded-xl border border-[var(--border)] px-5 py-4">
+        <div className="rounded-xl border border-[var(--border)] px-5 py-4">
           <p className="text-[12px] text-[var(--foreground-muted)] leading-relaxed">
-            Access denied. Your account is not in the admin allowlist.
+            {t("parser.denied")}
           </p>
         </div>
       </AdminPage>
@@ -177,14 +208,15 @@ export default function ParserPage() {
       {/* Tabs */}
       {/* On a phone the four tabs take their short names and fit the width
           (GS4-11); the strip still scrolls rather than widen the page if a
-          screen is narrower yet. */}
-      <div className="flex items-center gap-1 mt-6 mb-6 border-b border-[var(--border)] overflow-x-auto overflow-y-hidden no-scrollbar">
+          screen is narrower yet. The shared Tabs has no short names, so the
+          strip stays its own. */}
+      <div className="flex items-center gap-1 mb-6 border-b border-[var(--border)] overflow-x-auto overflow-y-hidden no-scrollbar">
         {(
           [
-            ["collect", "Collect catalog", "Collect"],
-            ["parse", "Parse URL", "Parse URL"],
-            ["recipes", "Site recipes", "Recipes"],
-            ["fetch", "Fetch & anti-bot", "Anti-bot"],
+            ["collect", t("parser.tab.collect"), t("parser.tab.collectShort")],
+            ["parse", t("parser.tab.parse"), t("parser.tab.parseShort")],
+            ["recipes", t("parser.tab.recipes"), t("parser.tab.recipesShort")],
+            ["fetch", t("parser.tab.fetch"), t("parser.tab.fetchShort")],
           ] as [Tab, string, string][]
         ).map(([key, label, short]) => (
           <button
@@ -202,7 +234,7 @@ export default function ParserPage() {
         ))}
       </div>
 
-      {loadError && <div className={`${errorBoxCls} mb-4`}>{loadError}</div>}
+      {loadError && <div className={`${errorBoxCls} mb-4`}>{t(loadError)}</div>}
 
       {tab === "collect" && (
         <CollectTab
@@ -229,16 +261,25 @@ export default function ParserPage() {
   );
 }
 
+/** The page head: what the parser is for, and how it reads a page behind the "?". */
 function Header() {
+  const t = useT();
+  const help = useHelp("parser");
   return (
-    <div>
-      <h1 className="font-display text-2xl font-light text-[var(--foreground)]">Universal Parser</h1>
-      <p className="text-xs text-[var(--foreground-muted)] mt-1 tracking-wide">
-        Paste any store URL — a category page or a single product — and pull it into the catalog. Reads JSON-LD,
-        OpenGraph and microdata, falls back to AI for stores with no structured data, and copies every photo to our
-        own storage.
-      </p>
-    </div>
+    <>
+      <PageHeader
+        title={t("parser.title")}
+        titleExtra={<HelpButton help={help} label={t("parser.help.label")} />}
+        subtitle={t("parser.subtitle")}
+      />
+      {help.open && (
+        <div className="mb-6">
+          <HelpPanel help={help}>
+            <p>{t("parser.help.text")}</p>
+          </HelpPanel>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -277,9 +318,10 @@ function CollectTab({
   config: ConfigState | null;
   onPastePage: (url: string) => void;
 }) {
+  const t = useT();
   const [url, setUrl] = useState("");
   // Defaults that collect a small store in one press rather than its first
-  // screenful. The ceiling is the catalogue-sized one the route now allows;
+  // screenful. The ceiling is the catalog-sized one the route now allows;
   // the default stays modest because a run on a store with no structured data
   // spends a model call per product.
   const [limit, setLimit] = useState(100);
@@ -331,13 +373,13 @@ function CollectTab({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "Could not read that page");
+        setError(data.error ?? t("parser.crawl.readFailed"));
         setHint(data.hint ?? "");
         // A refusal is the one failure with a free way around it, so every
         // refusal gets the offer — not only the addresses `looksLikeProductPath`
-        // recognises. A store whose URL shape we have never seen is exactly the
+        // recognizes. A store whose URL shape we have never seen is exactly the
         // one where that test says "listing", and pasting its page is still the
-        // way in. What the paste route cannot do — collect a catalogue — the
+        // way in. What the paste route cannot do — collect a catalog — the
         // hint above says in the same breath.
         if (isRefusal(data)) setRefused(target);
         setPhase("idle");
@@ -348,7 +390,7 @@ function CollectTab({
       if (data.hint) setHint(data.hint);
       if (!urls.length) { setPhase("idle"); return; }
     } catch {
-      setError("Network error while reading the page");
+      setError(t("parser.crawl.readNetwork"));
       setPhase("idle");
       return;
     }
@@ -368,13 +410,13 @@ function CollectTab({
         else {
           setResults((prev) => [
             ...prev,
-            ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: data?.error ?? "Batch failed" })),
+            ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: data?.error ?? t("parser.crawl.batchFailed") })),
           ]);
         }
       } catch {
         setResults((prev) => [
           ...prev,
-          ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: "Network error" })),
+          ...slice.map((u): CrawlItemResult => ({ url: u, status: "failed", reason: t("common.networkError") })),
         ]);
       }
     }
@@ -388,33 +430,33 @@ function CollectTab({
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">
-            <label className="block text-[13px] font-medium text-[var(--foreground)] mb-1.5">Store URL — category, brand page or single product</label>
+            <label className="block text-[13px] font-medium text-[var(--foreground)] mb-1.5">{t("parser.crawl.urlLabel")}</label>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !running && start()}
-              placeholder="https://www.balenciaga.com/en-us/men/ready-to-wear"
+              placeholder={EXAMPLE.storeUrl}
               spellCheck={false}
               disabled={running}
               className={inputCls}
             />
           </div>
           {running ? (
-            <button onClick={() => { stopRef.current = true; }} className={btn("secondary")}>Stop</button>
+            <button onClick={() => { stopRef.current = true; }} className={btn("secondary")}>{t("parser.stop")}</button>
           ) : (
-            <button onClick={start} disabled={!url.trim()} className={btn("primary")}>Collect</button>
+            <button onClick={start} disabled={!url.trim()} className={btn("primary")}>{t("parser.crawl.collect")}</button>
           )}
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Field label="Max products">
+          <Field label={t("parser.crawl.maxProducts")}>
             <input
               type="number" min={1} max={2000} value={limit} disabled={running}
               onChange={(e) => setLimit(Math.max(1, Math.min(2000, Number(e.target.value) || 1)))}
               className={inputCls}
             />
           </Field>
-          <Field label="Listing pages">
+          <Field label={t("parser.crawl.listingPages")}>
             <input
               type="number" min={1} max={20} value={maxPages} disabled={running}
               onChange={(e) => setMaxPages(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
@@ -426,38 +468,37 @@ function CollectTab({
               on={useAi && !!config?.openai.configured}
               disabled={running || !config?.openai.configured}
               onChange={setUseAiOverride}
-              label={config?.openai.configured ? "Use AI for stores without structured data" : "AI unavailable — no OpenAI key"}
+              label={config?.openai.configured ? t("parser.crawl.useAi") : t("parser.crawl.aiUnavailable")}
             />
             <Toggle
               on={mirrorImages && !linksOnly}
               disabled={running || linksOnly}
               onChange={setMirrorOverride}
-              label="Copy photos to our storage"
+              label={t("parser.crawl.mirror")}
             />
             <Toggle
               on={linksOnly}
               disabled={running}
               onChange={setLinksOnly}
-              label="Links only — find the pieces we already have in this store and add its link to them; create nothing"
+              label={t("parser.crawl.linksOnly")}
             />
           </div>
         </div>
 
         <div className="rounded-lg border border-[var(--border)] px-4 py-3 flex items-center gap-3 flex-wrap">
           <p className="flex-1 min-w-[220px] text-[12px] text-[var(--foreground)] leading-relaxed">
-            Store blocks our server? Collect it with the browser extension.
+            {t("parser.crawl.extTitle")}
             <span className="block text-[11px] text-[var(--foreground-muted)]">
-              It opens the store&apos;s pages in your own Chrome, which the store does not refuse, and imports them
-              here. Install steps are on its page.
+              {t("parser.crawl.extText")}
             </span>
           </p>
-          <Link href={EXTENSION_PAGE} className={btn("secondary")}>Collect with the extension</Link>
+          <Link href={EXTENSION_PAGE} className={btn("secondary")}>{t("parser.extension")}</Link>
         </div>
 
         <p className="text-[12px] text-[var(--foreground-subtle)] leading-relaxed">
-          Fetch mode <span className="text-[var(--foreground-muted)]">{config?.fetchSettings.provider ?? "direct"}</span>.
-          Luxury sites block plain server requests. Second option after the extension: set a scraping provider and turn
-          on Render JS in the Fetch &amp; anti-bot tab. Re-running the same URL updates existing products instead of duplicating them.
+          {fill(t("parser.crawl.note", { tab: t("parser.tab.fetch") }), {
+            provider: <span className="text-[var(--foreground-muted)]">{config?.fetchSettings.provider ?? "direct"}</span>,
+          })}
         </p>
       </div>
 
@@ -468,10 +509,10 @@ function CollectTab({
           {refused && (
             <div className="pt-1.5 flex items-center gap-2 flex-wrap">
               <Link href={EXTENSION_PAGE} className={btn("secondary")}>
-                Collect with the extension
+                {t("parser.extension")}
               </Link>
               <button onClick={() => onPastePage(refused)} className={btn("secondary")}>
-                Paste page instead
+                {t("parser.crawl.pasteInstead")}
               </button>
             </div>
           )}
@@ -487,17 +528,17 @@ function CollectTab({
           <div className="px-5 py-3.5 border-b border-[var(--border)] space-y-2.5">
             <div className="flex items-center gap-4 flex-wrap">
               <p className="text-[13px] font-medium text-[var(--foreground)]">
-                {phase === "discovering" && "Reading the page…"}
-                {phase === "importing" && `Collecting ${done}/${discovered.length}`}
-                {phase === "done" && "Finished"}
-                {phase === "stopped" && "Stopped"}
+                {phase === "discovering" && t("parser.crawl.reading")}
+                {phase === "importing" && t("parser.run.collecting", { done, total: discovered.length })}
+                {phase === "done" && t("parser.run.finished")}
+                {phase === "stopped" && t("parser.run.stopped")}
               </p>
               <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] tabular-nums">
-                <span className="text-[var(--ok)]">{imported} new</span>
-                <span className="text-[var(--foreground-muted)]">{updated} updated</span>
-                {failed > 0 && <span className="text-[var(--warn)]">{failed} skipped</span>}
+                <span className="text-[var(--ok)]">{t("parser.count.new", { count: imported })}</span>
+                <span className="text-[var(--foreground-muted)]">{t("parser.count.updated", { count: updated })}</span>
+                {failed > 0 && <span className="text-[var(--warn)]">{t("parser.count.skipped", { count: failed })}</span>}
                 {(phase === "done" || phase === "stopped") && (
-                  <a href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">View products →</a>
+                  <a href="/goo-studio/products" className="underline hover:no-underline text-[var(--foreground)]">{t("parser.viewProducts")}</a>
                 )}
               </div>
             </div>
@@ -509,9 +550,9 @@ function CollectTab({
             </div>
             {(photos > 0 || aiUsed > 0) && (
               <p className="text-[12px] text-[var(--foreground-subtle)]">
-                {photos > 0 && `${photos} photo${photos === 1 ? "" : "s"} copied to our storage`}
+                {photos > 0 && t("parser.photosCopied", { count: photos })}
                 {photos > 0 && aiUsed > 0 && " · "}
-                {aiUsed > 0 && `${aiUsed} product${aiUsed === 1 ? "" : "s"} needed AI`}
+                {aiUsed > 0 && t("parser.crawl.neededAi", { count: aiUsed })}
               </p>
             )}
             {warnings.map((w) => <p key={w} className={warnBoxCls}>{w}</p>)}
@@ -521,29 +562,29 @@ function CollectTab({
             <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border)]">
               {results.map((r, i) => (
                 <div key={`${r.url}-${i}`} className="px-5 py-2.5 flex items-center gap-3 text-[11px]">
-                  <StatusPill status={r.status} />
+                  <StatusBadge status={r.status} />
                   <span className="text-[var(--foreground)] truncate flex-1 min-w-0">
                     {r.name || r.url.replace(/^https?:\/\/(www\.)?/, "")}
                   </span>
                   {r.usedAi && (
-                    <span className="text-[11px] font-medium text-[var(--foreground-subtle)] flex-shrink-0">AI</span>
+                    <span className="text-[11px] font-medium text-[var(--foreground-subtle)] flex-shrink-0">{t("parser.crawl.ai")}</span>
                   )}
                   {r.reason && (
                     <span className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[40%] md:max-w-[220px] flex-shrink-0" title={r.reason}>
                       {r.reason}
                     </span>
                   )}
-                  {!r.reason && crawlRowNote(r) && (
+                  {!r.reason && crawlRowNote(r, t) && (
                     <span
                       className="text-[11px] text-[var(--foreground-muted)] truncate max-w-[260px] flex-shrink-0"
-                      title={crawlRowNote(r)}
+                      title={crawlRowNote(r, t)}
                     >
-                      {crawlRowNote(r)}
+                      {crawlRowNote(r, t)}
                     </span>
                   )}
                   <a
                     href={r.url} target="_blank" rel="noreferrer"
-                    aria-label="Open the store page"
+                    aria-label={t("parser.crawl.openPage")}
                     className="inline-flex items-center justify-center min-w-10 min-h-10 md:min-w-0 md:min-h-0 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] flex-shrink-0"
                   >↗</a>
                 </div>
@@ -556,17 +597,20 @@ function CollectTab({
   );
 }
 
-function StatusPill({ status }: { status: CrawlItemResult["status"] }) {
-  const map: Record<CrawlItemResult["status"], { label: string; cls: string }> = {
-    imported: { label: "New", cls: "text-[var(--ok)] bg-[var(--ok-bg)] border-[var(--ok-line)]" },
-    updated: { label: "Upd", cls: "text-[var(--foreground-muted)] bg-[var(--fg-overlay-05)] border-[var(--border)]" },
-    skipped: { label: "Skip", cls: "text-[var(--warn)] bg-[var(--warn-bg)] border-[var(--warn-line)]" },
-    failed: { label: "Fail", cls: "text-[var(--err)] bg-[var(--err-bg)] border-[var(--err-line)]" },
-  };
-  const { label, cls } = map[status];
+const STATUS_BADGE: Record<CrawlItemResult["status"], { tone: BadgeTone; label: Key }> = {
+  imported: { tone: "ok", label: "parser.status.imported" },
+  updated: { tone: "neutral", label: "parser.status.updated" },
+  skipped: { tone: "warn", label: "parser.status.skipped" },
+  failed: { tone: "err", label: "parser.status.failed" },
+};
+
+/** A collected page's outcome. Its column keeps one width, so the names after it line up. */
+function StatusBadge({ status }: { status: CrawlItemResult["status"] }) {
+  const t = useT();
+  const { tone, label } = STATUS_BADGE[status];
   return (
-    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full border flex-shrink-0 w-10 text-center ${cls}`}>
-      {label}
+    <span className="w-[72px] flex-shrink-0">
+      <Badge tone={tone}>{t(label)}</Badge>
     </span>
   );
 }
@@ -617,6 +661,7 @@ function ParseTab({
   /** Open the paste panel on arrival — the refusal already said why. */
   openPaste?: boolean;
 }) {
+  const t = useT();
   const [url, setUrl] = useState(initialUrl);
   const [pasteOpen, setPasteOpen] = useState(openPaste);
   const [parsing, setParsing] = useState(false);
@@ -656,7 +701,7 @@ function ParseTab({
     // tracking — shown in the field, so the admin sees the link the card keeps.
     const target = pastedUrl(given);
     if (!target) {
-      setError("That is not a link to a page. Paste the product page's address, e.g. https://www.store.com/product/…");
+      setError(t("parser.parse.notALink", { example: EXAMPLE.anyProductUrl }));
       setHint("");
       return;
     }
@@ -667,7 +712,7 @@ function ParseTab({
       const data = await callParse(target, pasted?.html);
       setDiag(data.diagnostics ?? null);
       if (!data.ok) {
-        setError(data.error ?? "Parse failed");
+        setError(data.error ?? t("parser.parse.failed"));
         setHint(data.hint ?? "");
         setLinks(data.links ?? []);
         // `hint` is only ever filled by blockHint, so it having text means the
@@ -682,7 +727,7 @@ function ParseTab({
       setLinks(data.links ?? []);
       setSelected(selectValid(prods));
     } catch {
-      setError("Network error");
+      setError(t("common.networkError"));
     } finally {
       setParsing(false);
     }
@@ -710,7 +755,7 @@ function ParseTab({
     // Nothing parsed: say so and keep the links, so the admin is not left
     // looking at an empty screen with nothing to retry.
     if (!collected.length) {
-      setError(`None of the ${targets.length} links could be parsed.`);
+      setError(t("parser.parse.noneParsed", { count: targets.length }));
       setHint("");
       return;
     }
@@ -733,24 +778,26 @@ function ParseTab({
       {/* URL input */}
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <label className={labelCls}>Product URL</label>
+          <label className={FIELD_LABEL}>{t("parser.parse.urlLabel")}</label>
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !busy && runParse()}
-            placeholder="https://www.farfetch.com/shopping/men/..."
+            placeholder={EXAMPLE.productUrl}
             spellCheck={false}
             className={inputCls}
           />
         </div>
         <button onClick={() => runParse()} disabled={busy || !url.trim()} className={btn("primary")}>
-          {parsing && <Spinner />} {parsing ? "Fetching…" : "Parse"}
+          {parsing && <Spinner />} {parsing ? t("parser.parse.fetching") : t("parser.parse.parse")}
         </button>
       </div>
       <p className="text-[12px] text-[var(--foreground-subtle)] -mt-3">
-        Fetch mode: <span className="text-[var(--foreground-muted)] font-mono">{provider}</span>
+        {fill(t("parser.parse.fetchMode"), {
+          provider: <span className="text-[var(--foreground-muted)] font-mono">{provider}</span>,
+        })}
         {provider !== "direct" && !config?.key.configured && (
-          <span className="text-[var(--warn)]"> · no API key set (Fetch &amp; anti-bot tab)</span>
+          <span className="text-[var(--warn)]"> · {t("parser.parse.noKey", { tab: t("parser.tab.fetch") })}</span>
         )}
       </p>
 
@@ -769,7 +816,7 @@ function ParseTab({
           {hint && (
             <div className="pt-1.5">
               <Link href={EXTENSION_PAGE} className={btn("secondary")}>
-                Collect with the extension
+                {t("parser.extension")}
               </Link>
             </div>
           )}
@@ -781,11 +828,11 @@ function ParseTab({
       {linkResult && linkResult.ok > 0 && (
         linkResult.failed > 0 ? (
           <div className={warnBoxCls}>
-            Parsed {linkResult.ok} of {linkResult.total}, {linkResult.failed} failed.
+            {t("parser.parse.partial", { ok: linkResult.ok, total: linkResult.total, failed: linkResult.failed })}
           </div>
         ) : (
           <p className="text-[11px] text-[var(--foreground-muted)]">
-            Parsed {linkResult.ok} of {linkResult.total}.
+            {t("parser.parse.done", { ok: linkResult.ok, total: linkResult.total })}
           </p>
         )
       )}
@@ -835,6 +882,7 @@ function PastePagePanel({
   parsing: boolean;
   urlHint: string;
 }) {
+  const t = useT();
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
   // React refuses to render a `javascript:` href, so the bookmarklet is
@@ -845,7 +893,7 @@ function PastePagePanel({
   }, []);
 
   const pasted = readPastedPage(text);
-  const size = text ? `${Math.max(1, Math.round(text.length / 1024))} KB` : "";
+  const kb = Math.max(1, Math.round(text.length / 1024));
   const ready = !!pasted && (!!pasted.url || !!urlHint);
 
   return (
@@ -856,19 +904,17 @@ function PastePagePanel({
         className="w-full px-5 py-3 flex items-center justify-between gap-3 text-left"
       >
         <span className="text-[15px] leading-[22px] font-medium text-[var(--foreground)] shrink-0">
-          Paste page
+          {t("parser.paste.title")}
         </span>
         <span className="text-[12px] text-[var(--foreground-subtle)] text-right">
-          {open ? "Hide" : "For stores that refuse us — free, no provider"}
+          {open ? t("parser.hide") : t("parser.paste.teaser")}
         </span>
       </button>
 
       {open && (
         <div className="px-5 pb-5 space-y-4 border-t border-[var(--border)] pt-4">
           <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">
-            A store can block our server; it cannot block your browser. Open the product page
-            yourself, scroll the gallery so every photo loads, then click the bookmarklet — it
-            copies the page. Paste it below and parse it exactly as if we had fetched it.
+            {t("parser.paste.intro")}
           </p>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -876,12 +922,12 @@ function PastePagePanel({
               ref={dragRef}
               onClick={(e) => e.preventDefault()}
               className="px-3 py-1.5 text-[13px] font-medium border border-dashed border-[var(--border-strong)] text-[var(--foreground)] rounded-lg cursor-grab"
-              title="Drag me to your bookmarks bar"
+              title={t("parser.paste.dragTitle")}
             >
-              Goo: copy page
+              {t("parser.paste.bookmarklet")}
             </a>
             <span className="text-[12px] text-[var(--foreground-subtle)]">
-              ← drag to your bookmarks bar
+              {t("parser.paste.dragHint")}
             </span>
             <button
               onClick={async () => {
@@ -895,16 +941,16 @@ function PastePagePanel({
               }}
               className={btn("secondary")}
             >
-              {copied ? "Copied" : "Copy as text"}
+              {copied ? t("parser.paste.copied") : t("parser.paste.copy")}
             </button>
           </div>
 
           <div>
-            <label className={labelCls}>Page HTML</label>
+            <label className={FIELD_LABEL}>{t("parser.paste.htmlLabel")}</label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Click the bookmarklet on the product page, then paste here"
+              placeholder={t("parser.paste.placeholder")}
               spellCheck={false}
               rows={4}
               className={`${monoInputCls} resize-y`}
@@ -913,27 +959,26 @@ function PastePagePanel({
               <p className="text-[12px] text-[var(--foreground-subtle)] break-all">
                 {text
                   ? pasted?.url
-                    ? `${size} · ${pasted.url}`
-                    : `${size} · using the URL field above`
-                  : "Nothing pasted yet"}
+                    ? t("parser.paste.sizeUrl", { kb, url: pasted.url })
+                    : t("parser.paste.sizeField", { kb })
+                  : t("parser.paste.empty")}
               </p>
               <div className="flex items-center gap-2">
                 {text && (
-                  <button onClick={() => setText("")} className={btn("ghost")}>Clear</button>
+                  <button onClick={() => setText("")} className={btn("ghost")}>{t("parser.clear")}</button>
                 )}
                 <button
                   onClick={() => pasted && onParse(pasted)}
                   disabled={parsing || !ready}
                   className={btn("primary")}
                 >
-                  {parsing && <Spinner />} Parse pasted page
+                  {parsing && <Spinner />} {t("parser.paste.parse")}
                 </button>
               </div>
             </div>
             {text && !pasted?.url && !urlHint && (
               <p className="text-[12px] text-[var(--warn)] mt-1.5">
-                Fill the Product URL field above — pasted markup has no address of its own, and
-                the catalogue needs one to link to and to dedupe on.
+                {t("parser.paste.needUrl", { field: t("parser.parse.urlLabel") })}
               </p>
             )}
           </div>
@@ -952,6 +997,7 @@ function SingleProductEditor({
   product: ParsedProduct;
   onChange: (patch: Partial<ParsedProduct>) => void;
 }) {
+  const t = useT();
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<ImportOutcome | null>(null);
   const [error, setError] = useState("");
@@ -967,10 +1013,10 @@ function SingleProductEditor({
         body: JSON.stringify({ product, sourceUrl: product.sourceUrl }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) { setError(data.error ?? "Import failed"); return; }
+      if (!res.ok || !data.ok) { setError(data.error ?? t("parser.edit.importFailed")); return; }
       setImported(data as ImportOutcome);
     } catch {
-      setError("Network error");
+      setError(t("common.networkError"));
     } finally {
       setImporting(false);
     }
@@ -979,13 +1025,16 @@ function SingleProductEditor({
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Preview &amp; edit</p>
+        <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">{t("parser.edit.title")}</p>
         {product.valid ? (
-          <span className="text-[11px] font-medium text-[var(--ok)] bg-[var(--ok-bg)] border border-[var(--ok-line)] px-2 py-0.5 rounded-full">Ready</span>
+          <Badge tone="ok">{t("parser.edit.ready")}</Badge>
         ) : (
-          <span className="text-[11px] font-medium text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] px-2 py-0.5 rounded-full" title={product.issues.join("; ")}>
-            {product.issues.join(" · ")}
-          </span>
+          // The parser's own words, one badge each, so a long one wraps to a line of its own.
+          <div className="flex flex-wrap gap-1.5">
+            {product.issues.map((issue) => (
+              <Badge key={issue} tone="warn">{issue}</Badge>
+            ))}
+          </div>
         )}
       </div>
 
@@ -996,7 +1045,7 @@ function SingleProductEditor({
             {product.imageUrl
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
-              : <div className="w-full h-full grid place-items-center text-[12px] text-[var(--foreground-subtle)]">No image</div>}
+              : <div className="w-full h-full grid place-items-center text-[12px] text-[var(--foreground-subtle)]">{t("parser.noImage")}</div>}
           </div>
           {product.images.length > 1 && (
             <div className="mt-2 flex gap-1.5 flex-wrap">
@@ -1004,7 +1053,7 @@ function SingleProductEditor({
                 <button
                   key={img}
                   onClick={() => set("imageUrl", img)}
-                  aria-label={`Use image ${product.images.indexOf(img) + 1} as the main one`}
+                  aria-label={t("parser.edit.useImage", { n: product.images.indexOf(img) + 1 })}
                   aria-pressed={img === product.imageUrl}
                   className={`w-8 h-10 rounded-lg overflow-hidden border ${img === product.imageUrl ? "border-[var(--foreground)]" : "border-[var(--border)]"}`}
                 >
@@ -1014,55 +1063,55 @@ function SingleProductEditor({
               ))}
             </div>
           )}
-          <p className="text-[12px] text-[var(--foreground-subtle)] mt-1.5">{product.images.length} image(s)</p>
+          <p className="text-[12px] text-[var(--foreground-subtle)] mt-1.5">{t("parser.edit.images", { count: product.images.length })}</p>
         </div>
 
         {/* Fields */}
         <div className="space-y-3">
-          <Field label="Name">
+          <Field label={t("parser.f.name")}>
             <input className={inputCls} value={product.name} onChange={(e) => set("name", e.target.value)} />
           </Field>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="Brand">
+            <Field label={t("parser.f.brand")}>
               <input className={inputCls} value={product.brand} onChange={(e) => set("brand", e.target.value)} />
             </Field>
-            <Field label="Material">
+            <Field label={t("parser.f.material")}>
               <input className={inputCls} value={product.material} onChange={(e) => set("material", e.target.value)} />
             </Field>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Field label="Category">
+            <Field label={t("parser.f.category")}>
               <select className={selectCls} value={product.category} onChange={(e) => set("category", e.target.value as Category)}>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Gender">
+            <Field label={t("parser.f.gender")}>
               <select className={selectCls} value={product.gender ?? ""} onChange={(e) => set("gender", (e.target.value || undefined) as Gender | undefined)}>
                 <option value="">—</option>
                 {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </Field>
-            <Field label="Currency">
+            <Field label={t("parser.f.currency")}>
               <input className={inputCls} value={product.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} maxLength={3} />
             </Field>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="Price">
+            <Field label={t("parser.f.price")}>
               <input type="number" className={inputCls} value={product.price || ""} onChange={(e) => set("price", Number(e.target.value) || 0)} />
             </Field>
-            <Field label="Original price (was)">
+            <Field label={t("parser.f.priceOriginal")}>
               <input type="number" className={inputCls} value={product.priceOriginal || ""} onChange={(e) => set("priceOriginal", Number(e.target.value) || 0)} />
             </Field>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="Colors (comma-sep)">
+            <Field label={t("parser.f.colors")}>
               <input className={inputCls} value={product.colors.join(", ")} onChange={(e) => set("colors", splitList(e.target.value))} />
             </Field>
-            <Field label="Sizes (comma-sep)">
+            <Field label={t("parser.f.sizes")}>
               <input className={inputCls} value={product.sizes.join(", ")} onChange={(e) => set("sizes", splitList(e.target.value))} />
             </Field>
           </div>
-          <Field label="Description">
+          <Field label={t("parser.f.description")}>
             <textarea className={`${inputCls} h-20 resize-y`} value={product.description} onChange={(e) => set("description", e.target.value)} />
           </Field>
         </div>
@@ -1071,22 +1120,22 @@ function SingleProductEditor({
       {/* Footer */}
       <div className="px-5 py-3.5 border-t border-[var(--border)] flex items-center gap-3 flex-wrap">
         <button onClick={runImport} disabled={importing || !product.name} className={btn("primary")}>
-          {importing && <Spinner />} {importing ? "Importing…" : "Import product"}
+          {importing && <Spinner />} {importing ? t("parser.edit.importing") : t("parser.edit.import")}
         </button>
         {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
         {imported && (
           <span className="text-[12px] text-[var(--ok)] flex items-center gap-2 flex-wrap">
-            {importHeadline(imported)}
+            {importHeadline(imported, t)}
             {imported.productId && (
               <a href={`/product/${imported.productId}`} target="_blank" rel="noreferrer" className="underline hover:no-underline">
-                Open product →
+                {t("parser.openProduct")}
               </a>
             )}
-            <a href="/goo-studio/products" className="underline hover:no-underline">All products →</a>
+            <a href="/goo-studio/products" className="underline hover:no-underline">{t("parser.allProducts")}</a>
           </span>
         )}
-        {imported && importDetails(imported) && (
-          <p className="text-[11px] text-[var(--foreground-muted)] basis-full leading-relaxed">{importDetails(imported)}</p>
+        {imported && importDetails(imported, t) && (
+          <p className="text-[11px] text-[var(--foreground-muted)] basis-full leading-relaxed">{importDetails(imported, t)}</p>
         )}
         {typeof imported?.warning === "string" && <p className={`${warnBoxCls} basis-full`}>{imported.warning}</p>}
       </div>
@@ -1111,6 +1160,7 @@ function ProductGrid({
   onClear: () => void;
   setProductAt: (i: number, patch: Partial<ParsedProduct>) => void;
 }) {
+  const t = useT();
   const f = useFormat();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -1119,7 +1169,7 @@ function ProductGrid({
     failed: number;
     /** Pages that joined a card we already had, as another store. */
     joined: number;
-    /** Pages grouped with other colours of their piece. */
+    /** Pages grouped with other colors of their piece. */
     grouped: number;
     warnings: string[];
   } | null>(null);
@@ -1156,23 +1206,32 @@ function ProductGrid({
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--border)] flex items-center gap-4 flex-wrap">
         <p className="text-[13px] font-medium text-[var(--foreground)]">
-          {products.length} products found · {selected.size} selected
+          {t("parser.grid.found", { count: products.length })} · {t("bulk.selected", { count: selected.size })}
         </p>
-        <button onClick={onSelectAllValid} className={btn("ghost")}>Select valid</button>
-        <button onClick={onClear} className={btn("ghost")}>Clear</button>
+        <button onClick={onSelectAllValid} className={btn("ghost")}>{t("parser.grid.selectValid")}</button>
+        <button onClick={onClear} className={btn("ghost")}>{t("parser.clear")}</button>
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          {importing && <span className="text-[11px] text-[var(--foreground-muted)]">{progress.done}/{progress.total}…</span>}
+          {importing && (
+            <span className="text-[11px] text-[var(--foreground-muted)]">
+              {t("parser.grid.progress", { done: progress.done, total: progress.total })}
+            </span>
+          )}
           {result && (
             <span className="text-[11px] text-[var(--ok)]">
-              Imported {result.ok}
-              {result.joined ? ` · ${result.joined} added as stores to existing products` : ""}
-              {result.grouped ? ` · ${result.grouped} grouped with other colours` : ""}
-              {result.failed ? ` · ${result.failed} failed` : ""}
-              <a href="/goo-studio/products" className="underline hover:no-underline ml-2">View →</a>
+              {[
+                t("parser.grid.imported", { count: result.ok }),
+                result.joined ? t("parser.grid.joined", { count: result.joined }) : "",
+                result.grouped ? t("parser.grid.grouped", { count: result.grouped }) : "",
+                result.failed ? t("parser.grid.failed", { count: result.failed }) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              <a href="/goo-studio/products" className="underline hover:no-underline ml-2">{t("parser.grid.view")}</a>
             </span>
           )}
           <button onClick={importSelected} disabled={importing || !selected.size} className={btn("primary")}>
-            {importing && <Spinner />} Import {selected.size || ""} selected
+            {importing && <Spinner />}{" "}
+            {selected.size ? t("parser.grid.import", { count: selected.size }) : t("parser.grid.importNone")}
           </button>
         </div>
         {result?.warnings.map((w) => <p key={w} className={`${warnBoxCls} basis-full`}>{w}</p>)}
@@ -1191,7 +1250,7 @@ function ProductGrid({
                   {p.imageUrl
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full grid place-items-center text-[12px] text-[var(--foreground-subtle)]">No image</div>}
+                    : <div className="w-full h-full grid place-items-center text-[12px] text-[var(--foreground-subtle)]">{t("parser.noImage")}</div>}
                 </div>
                 <span className={`absolute top-2 left-2 w-4 h-4 rounded-full flex items-center justify-center border ${sel ? "bg-[var(--foreground)] border-[var(--foreground)]" : "bg-[var(--bg-overlay-90)] border-[var(--border-strong)]"}`}>
                   {sel && (
@@ -1199,8 +1258,10 @@ function ProductGrid({
                   )}
                 </span>
                 {!p.valid && (
-                  <span className="absolute top-2 right-2 text-[11px] font-medium text-[var(--warn)] bg-[var(--warn-bg)] border border-[var(--warn-line)] px-1.5 py-0.5 rounded-full" title={p.issues.join("; ")}>
-                    {p.issues[0]}
+                  // A badge keeps to one line, so the corner shows the issue's head
+                  // ("currency not stated") and the tooltip says the rest.
+                  <span className="absolute top-2 right-2">
+                    <Badge tone="warn" title={p.issues.join("; ")}>{p.issues[0].split(" — ")[0]}</Badge>
                   </span>
                 )}
               </button>
@@ -1233,7 +1294,7 @@ function ProductGrid({
                 </div>
                 {p.sourceUrl && (
                   <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="block text-[11px] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] truncate">
-                    Source ↗
+                    {t("parser.grid.source")}
                   </a>
                 )}
               </div>
@@ -1258,37 +1319,45 @@ function LinksPanel({
   progress: { done: number; total: number };
   onParseAll: () => void;
 }) {
+  const t = useT();
   const cap = Math.min(count, 24);
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 flex items-center gap-4 flex-wrap">
       <div className="flex-1 min-w-[200px]">
-        <p className="text-[12px] text-[var(--foreground)]">Looks like a listing — found {count} product link{count !== 1 ? "s" : ""}.</p>
+        <p className="text-[12px] text-[var(--foreground)]">{t("parser.links.found", { count })}</p>
         <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">
-          No full product data was embedded on this page. Parse each link to pull name, price and images, then select which to import.
+          {t("parser.links.text")}
         </p>
       </div>
       <button onClick={onParseAll} disabled={parsing} className={btn("primary")}>
-        {parsing ? <><Spinner /> Parsing {progress.done}/{progress.total}…</> : `Parse first ${cap}`}
+        {parsing ? (
+          <>
+            <Spinner /> {t("parser.links.parsing", { done: progress.done, total: progress.total })}
+          </>
+        ) : (
+          t("parser.links.parseFirst", { count: cap })
+        )}
       </button>
     </div>
   );
 }
 
 function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
+  const t = useT();
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5 text-[12px] text-[var(--foreground-muted)]">
-      <span>HTTP <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{diag.status || "—"}</span></span>
-      <span>HTML <span className="font-mono text-[var(--foreground)]">{(diag.htmlLength / 1024).toFixed(0)}kb</span></span>
-      <span>Via <span className="font-mono text-[var(--foreground)]">{diag.provider}</span></span>
-      <span>Recipe <span className="font-mono text-[var(--foreground)]">{diag.matchedConfig?.name ?? "none"}</span></span>
+      <span>{t("parser.diag.http")} <span className={`font-mono ${diag.status >= 200 && diag.status < 300 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}>{diag.status || "—"}</span></span>
+      <span>{t("parser.diag.html")} <span className="font-mono text-[var(--foreground)]">{t("parser.diag.kb", { kb: Math.round(diag.htmlLength / 1024) })}</span></span>
+      <span>{t("parser.diag.via")} <span className="font-mono text-[var(--foreground)]">{diag.provider}</span></span>
+      <span>{t("parser.diag.recipe")} <span className="font-mono text-[var(--foreground)]">{diag.matchedConfig?.name ?? t("parser.diag.none")}</span></span>
       {diag.strategies && diag.strategies.length > 0 && (
-        <span>Extracted via <span className="font-mono text-[var(--ok)]">{diag.strategies.join(", ")}</span></span>
+        <span>{t("parser.diag.extracted")} <span className="font-mono text-[var(--ok)]">{diag.strategies.join(", ")}</span></span>
       )}
       {diag.strategies && diag.strategies.length === 0 && (
-        <span className="text-[var(--warn)]">No structured data found — add a recipe regex</span>
+        <span className="text-[var(--warn)]">{t("parser.diag.noStructured")}</span>
       )}
       {diag.aiFields && diag.aiFields.length > 0 && (
-        <span>AI filled <span className="text-[var(--foreground)]">{diag.aiFields.join(", ")}</span></span>
+        <span>{t("parser.diag.aiFilled")} <span className="text-[var(--foreground)]">{diag.aiFields.join(", ")}</span></span>
       )}
       {diag.aiError && <span className="text-[var(--warn)]">{diag.aiError}</span>}
     </div>
@@ -1296,10 +1365,10 @@ function DiagnosticsBar({ diag }: { diag: Diagnostics }) {
 }
 
 /** A label and its one field. The label wraps the field, so it names it for screen readers and a click on it focuses it. */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className={labelCls}>{label}</span>
+      <span className={FIELD_LABEL}>{label}</span>
       {children}
     </label>
   );
@@ -1323,17 +1392,13 @@ function stableJson(v: unknown): string {
   );
 }
 
-function UnsavedNote() {
-  return <span className="text-[11px] text-[var(--warn)]">Unsaved changes</span>;
-}
-
 // ── Recipes tab ──────────────────────────────────────────────────────────────
 
 function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: ParserSiteConfig[]) => void }) {
+  const t = useT();
+  const toast = useToast();
   const [items, setItems] = useState<ParserSiteConfig[]>(config.siteConfigs);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const update = (id: string, patch: Partial<ParserSiteConfig>) =>
@@ -1352,7 +1417,7 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 
   const addRecipe = () => {
     const id = crypto.randomUUID();
-    setItems((arr) => [...arr, { id, name: "New site", domain: "", enabled: false }]);
+    setItems((arr) => [...arr, { id, name: t("parser.recipes.newName"), domain: "", enabled: false }]);
     setExpanded(id);
   };
 
@@ -1360,8 +1425,9 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
 
   const dirty = stableJson(items) !== stableJson(config.siteConfigs);
 
+  // The page's SaveBar saves and says how it went in a toast (DESIGN_SYSTEM.md §9).
   async function save() {
-    setSaving(true); setError(""); setSaved(false);
+    setSaving(true);
     try {
       const res = await fetch("/api/admin/parser/config", {
         method: "POST",
@@ -1369,131 +1435,138 @@ function RecipesTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Par
         body: JSON.stringify({ siteConfigs: items }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      if (!res.ok) { toast.err(data.error ?? t("parser.saveFailed")); return; }
       setItems(data.siteConfigs);
       onSaved(data.siteConfigs);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      toast.ok(t("common.saved"));
     } catch {
-      setError("Network error");
+      toast.err(t("common.networkError"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[11px] text-[var(--foreground-muted)]">
-          Recipes match by hostname. Overrides and regex rules apply on top of the generic JSON-LD/OpenGraph extractor.
-        </p>
-        <button onClick={addRecipe} className={btn("secondary")}>+ Add recipe</button>
-      </div>
+    <>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] text-[var(--foreground-muted)]">
+            {t("parser.recipes.intro")}
+          </p>
+          <button onClick={addRecipe} className={btn("secondary")}>
+            {PLUS}
+            {t("parser.recipes.add")}
+          </button>
+        </div>
 
-      <div className="space-y-2">
-        {items.map((c) => (
-          <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-            {/* Row header */}
-            {/* Below md the domain takes a line of its own. */}
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3">
-              <Toggle
-                on={c.enabled}
-                onChange={(v) => update(c.id, { enabled: v })}
-                ariaLabel={`Use the ${c.name || c.domain || "new"} recipe`}
-              />
-              <input
-                value={c.name}
-                onChange={(e) => update(c.id, { name: e.target.value })}
-                aria-label="Recipe name"
-                className="bg-transparent text-[13px] text-[var(--foreground)] outline-none flex-1 min-w-0 md:flex-none md:w-40 border-b border-transparent focus:border-[var(--border-strong)]"
-              />
-              <input
-                value={c.domain}
-                onChange={(e) => update(c.id, { domain: e.target.value })}
-                placeholder="example.com"
-                aria-label="Domain"
-                className="bg-transparent text-[12px] font-mono text-[var(--foreground-muted)] outline-none order-last basis-full md:order-none md:basis-auto flex-1 min-w-0 border-b border-transparent focus:border-[var(--border-strong)]"
-              />
-              <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className={btn("ghost", "sm")}>
-                {expanded === c.id ? "Hide" : "Edit"}
-              </button>
-              <button onClick={() => remove(c.id)} aria-label={`Delete the ${c.name || c.domain || "new"} recipe`} className={BTN_ICON} title="Delete">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-              </button>
-            </div>
-
-            {/* Expanded editor */}
-            {expanded === c.id && (
-              <div className="px-4 pb-4 pt-1 border-t border-[var(--border)] space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
-                  <Field label="Brand override">
-                    <input className={inputCls} value={c.brandOverride ?? ""} onChange={(e) => update(c.id, { brandOverride: e.target.value || undefined })} />
-                  </Field>
-                  <Field label="Category override">
-                    <select className={selectCls} value={c.categoryOverride ?? ""} onChange={(e) => update(c.id, { categoryOverride: (e.target.value || undefined) as Category | undefined })}>
-                      <option value="">—</option>
-                      {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Gender override">
-                    <select className={selectCls} value={c.genderOverride ?? ""} onChange={(e) => update(c.id, { genderOverride: (e.target.value || undefined) as Gender | undefined })}>
-                      <option value="">—</option>
-                      {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </Field>
+        <div className="space-y-2">
+          {items.map((c) => {
+            const name = c.name || c.domain;
+            return (
+              <div key={c.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                {/* Row header */}
+                {/* Below md the domain takes a line of its own. */}
+                <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                  <Toggle
+                    on={c.enabled}
+                    onChange={(v) => update(c.id, { enabled: v })}
+                    ariaLabel={name ? t("parser.recipes.useNamed", { name }) : t("parser.recipes.useNew")}
+                  />
+                  <input
+                    value={c.name}
+                    onChange={(e) => update(c.id, { name: e.target.value })}
+                    aria-label={t("parser.recipes.name")}
+                    className="bg-transparent text-[13px] text-[var(--foreground)] outline-none flex-1 min-w-0 md:flex-none md:w-40 border-b border-transparent focus:border-[var(--border-strong)]"
+                  />
+                  <input
+                    value={c.domain}
+                    onChange={(e) => update(c.id, { domain: e.target.value })}
+                    placeholder={EXAMPLE.domain}
+                    aria-label={t("parser.recipes.domain")}
+                    className="bg-transparent text-[12px] font-mono text-[var(--foreground-muted)] outline-none order-last basis-full md:order-none md:basis-auto flex-1 min-w-0 border-b border-transparent focus:border-[var(--border-strong)]"
+                  />
+                  <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className={btn("ghost", "sm")}>
+                    {expanded === c.id ? t("parser.hide") : t("parser.recipes.edit")}
+                  </button>
+                  <button
+                    onClick={() => remove(c.id)}
+                    aria-label={name ? t("parser.recipes.deleteNamed", { name }) : t("parser.recipes.deleteNew")}
+                    className={BTN_ICON}
+                    title={t("parser.recipes.delete")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                  </button>
                 </div>
 
-                <Field label="Notes">
-                  <input className={inputCls} value={c.notes ?? ""} onChange={(e) => update(c.id, { notes: e.target.value || undefined })} />
-                </Field>
+                {/* Expanded editor */}
+                {expanded === c.id && (
+                  <div className="px-4 pb-4 pt-1 border-t border-[var(--border)] space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
+                      <Field label={t("parser.recipes.brandOverride")}>
+                        <input className={inputCls} value={c.brandOverride ?? ""} onChange={(e) => update(c.id, { brandOverride: e.target.value || undefined })} />
+                      </Field>
+                      <Field label={t("parser.recipes.categoryOverride")}>
+                        <select className={selectCls} value={c.categoryOverride ?? ""} onChange={(e) => update(c.id, { categoryOverride: (e.target.value || undefined) as Category | undefined })}>
+                          <option value="">—</option>
+                          {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                      </Field>
+                      <Field label={t("parser.recipes.genderOverride")}>
+                        <select className={selectCls} value={c.genderOverride ?? ""} onChange={(e) => update(c.id, { genderOverride: (e.target.value || undefined) as Gender | undefined })}>
+                          <option value="">—</option>
+                          {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                      </Field>
+                    </div>
 
-                <div>
-                  <p className="text-[13px] font-medium text-[var(--foreground)] mb-2">
-                    Field regex overrides (1st capture group → value)
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {RULE_FIELDS.map((field) => (
-                      <div key={field} className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono text-[var(--foreground-muted)] w-20 flex-shrink-0">{field}</span>
-                        <input
-                          className={monoInputCls}
-                          placeholder="regex…"
-                          value={c.rules?.[field]?.regex ?? ""}
-                          onChange={(e) => updateRule(c.id, field, e.target.value)}
-                        />
+                    <Field label={t("parser.recipes.notes")}>
+                      <input className={inputCls} value={c.notes ?? ""} onChange={(e) => update(c.id, { notes: e.target.value || undefined })} />
+                    </Field>
+
+                    <div>
+                      <p className="text-[13px] font-medium text-[var(--foreground)] mb-2">
+                        {t("parser.recipes.rules")}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {RULE_FIELDS.map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-[var(--foreground-muted)] w-20 flex-shrink-0">{field}</span>
+                            <input
+                              className={monoInputCls}
+                              placeholder={t("parser.recipes.regex")}
+                              value={c.rules?.[field]?.regex ?? ""}
+                              onChange={(e) => updateRule(c.id, field, e.target.value)}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        <button onClick={save} disabled={saving} className={btn("primary")}>
-          {saving && <Spinner />} {saving ? "Saving…" : "Save recipes"}
-        </button>
-        {dirty && !saving && <UnsavedNote />}
-        {saved && <span className="text-[12px] text-[var(--ok)]">Saved</span>}
-        {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
-      </div>
-    </div>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={() => setItems(config.siteConfigs)} />
+    </>
   );
 }
 
 // ── Fetch & anti-bot tab ─────────────────────────────────────────────────────
 
 function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: ConfigState) => void }) {
+  const t = useT();
+  const toast = useToast();
   const confirm = useConfirm();
   const [settings, setSettings] = useState<ParserFetchSettings>(config.fetchSettings);
   const [ai, setAi] = useState<ParserAiSettings>(config.aiSettings);
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
+  /** Removing the stored key is a request of its own, not a save of the draft. */
+  const [clearing, setClearing] = useState(false);
 
   const set = <K extends keyof ParserFetchSettings>(k: K, v: ParserFetchSettings[K]) =>
     setSettings((s) => ({ ...s, [k]: v }));
@@ -1505,8 +1578,9 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
     stableJson(ai) !== stableJson(config.aiSettings) ||
     (!keyFromEnv && !!keyInput.trim());
 
+  // The page's SaveBar saves and says how it went in a toast (DESIGN_SYSTEM.md §9).
   async function save() {
-    setSaving(true); setError(""); setSaved(false);
+    setSaving(true);
     try {
       const payload: Record<string, unknown> = { fetchSettings: settings, aiSettings: ai };
       if (!keyFromEnv && keyInput.trim()) payload.fetchKey = keyInput.trim();
@@ -1516,31 +1590,36 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+      if (!res.ok) { toast.err(data.error ?? t("parser.saveFailed")); return; }
       onSaved(data);
       // The server clamps and trims what it stores; show that, so the draft
       // matches the saved state instead of reading as unsaved.
       setSettings(data.fetchSettings);
       setAi(data.aiSettings);
       setKeyInput("");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      toast.ok(t("common.saved"));
     } catch {
-      setError("Network error");
+      toast.err(t("common.networkError"));
     } finally {
       setSaving(false);
     }
   }
 
+  function discard() {
+    setSettings(config.fetchSettings);
+    setAi(config.aiSettings);
+    setKeyInput("");
+  }
+
   async function clearKey() {
     if (
       !(await confirm({
-        title: "Remove the stored fetch API key?",
-        confirmLabel: "Remove key",
+        title: t("parser.fetch.clearConfirm"),
+        confirmLabel: t("parser.fetch.clearAction"),
         tone: "danger",
       }))
     ) return;
-    setSaving(true); setError("");
+    setClearing(true);
     try {
       const res = await fetch("/api/admin/parser/config", {
         method: "POST",
@@ -1548,12 +1627,12 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
         body: JSON.stringify({ fetchKey: "" }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed"); return; }
+      if (!res.ok) { toast.err(data.error ?? t("parser.fetch.clearFailed")); return; }
       onSaved(data);
     } catch {
-      setError("Network error");
+      toast.err(t("common.networkError"));
     } finally {
-      setSaving(false);
+      setClearing(false);
     }
   }
 
@@ -1566,142 +1645,141 @@ function FetchTab({ config, onSaved }: { config: ConfigState; onSaved: (c: Confi
   const usesRenderJs = settings.provider !== "direct";
 
   return (
-    <div className="max-w-2xl space-y-5">
-      {/* Provider */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
-        <Field label="Fetch provider">
-          <select className={selectCls} value={settings.provider} onChange={(e) => set("provider", e.target.value as FetchProvider)}>
-            {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </Field>
-        <p className="text-[11px] text-[var(--foreground-muted)] -mt-1 leading-relaxed">{providerMeta.hint}</p>
-
-        {settings.provider === "custom" && (
-          <Field label="Custom endpoint template">
-            <input
-              className={monoInputCls}
-              placeholder="https://my-scraper.fly.dev/fetch?token={key}&url={url}&render={render}&impersonate={impersonate}"
-              value={settings.endpoint}
-              onChange={(e) => set("endpoint", e.target.value)}
-            />
+    <>
+      <FormPanel>
+        {/* Provider */}
+        <FormSection id="parser-fetch" title={t("parser.fetch.fetching")} description={t("parser.fetch.fetchingHint")}>
+          <Field label={t("parser.fetch.provider")}>
+            <select className={selectCls} value={settings.provider} onChange={(e) => set("provider", e.target.value as FetchProvider)}>
+              {PROVIDERS.map((p) => <option key={p.value} value={p.value}>{t(p.label)}</option>)}
+            </select>
           </Field>
-        )}
+          <p className="text-[11px] text-[var(--foreground-muted)] -mt-1 leading-relaxed">{t(providerMeta.hint)}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {usesImpersonate && (
-            <Field label="Impersonate">
-              <select className={selectCls} value={settings.impersonate} onChange={(e) => set("impersonate", e.target.value)}>
-                {IMPERSONATE.map((i) => <option key={i} value={i}>{i}</option>)}
+          {settings.provider === "custom" && (
+            <Field label={t("parser.fetch.endpoint")}>
+              <input
+                className={monoInputCls}
+                placeholder={EXAMPLE.endpoint}
+                value={settings.endpoint}
+                onChange={(e) => set("endpoint", e.target.value)}
+              />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {usesImpersonate && (
+              <Field label={t("parser.fetch.impersonate")}>
+                <select className={selectCls} value={settings.impersonate} onChange={(e) => set("impersonate", e.target.value)}>
+                  {IMPERSONATE.map((i) => <option key={i} value={i}>{i}</option>)}
+                </select>
+              </Field>
+            )}
+            <Field label={t("parser.fetch.timeout")}>
+              <input type="number" className={inputCls} value={settings.timeoutMs} onChange={(e) => set("timeoutMs", Number(e.target.value) || 20000)} />
+            </Field>
+          </div>
+
+          {usesRenderJs && (
+            <Toggle
+              on={settings.renderJs}
+              onChange={(v) => set("renderJs", v)}
+              label={t("parser.fetch.renderJs")}
+            />
+          )}
+        </FormSection>
+
+        {/* AI extraction + image storage */}
+        <FormSection
+          id="parser-ai"
+          title={t("parser.fetch.ai")}
+          extra={
+            config.openai.configured ? (
+              <Badge tone="ok">{t("parser.fetch.openaiFound")}</Badge>
+            ) : (
+              <Badge tone="warn">{t("parser.fetch.openaiMissing")}</Badge>
+            )
+          }
+        >
+          <Toggle
+            on={ai.enabled}
+            disabled={!config.openai.configured}
+            onChange={(v) => setAi((s) => ({ ...s, enabled: v }))}
+            label={t("parser.fetch.aiEnabled")}
+          />
+
+          {ai.enabled && (
+            <Field label={t("parser.fetch.aiMode")}>
+              <select className={selectCls} value={ai.mode} onChange={(e) => setAi((s) => ({ ...s, mode: e.target.value as ParserAiSettings["mode"] }))}>
+                <option value="auto">{t("parser.fetch.aiAuto")}</option>
+                <option value="always">{t("parser.fetch.aiAlways")}</option>
               </select>
             </Field>
           )}
-          <Field label="Timeout (ms)">
-            <input type="number" className={inputCls} value={settings.timeoutMs} onChange={(e) => set("timeoutMs", Number(e.target.value) || 20000)} />
-          </Field>
-        </div>
 
-        {usesRenderJs && (
           <Toggle
-            on={settings.renderJs}
-            onChange={(v) => set("renderJs", v)}
-            label="Render JS (headless browser — slower, needed for SPA stores)"
+            on={ai.downloadImages}
+            onChange={(v) => setAi((s) => ({ ...s, downloadImages: v }))}
+            label={t("parser.fetch.downloadImages")}
           />
-        )}
-      </div>
+          <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed -mt-1">
+            {t("parser.fetch.downloadHint")}
+          </p>
+        </FormSection>
 
-      {/* AI extraction + image storage */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">AI &amp; images</p>
-          {config.openai.configured ? (
-            <span className="text-[12px] text-[var(--ok)]">OpenAI key found</span>
-          ) : (
-            <span className="text-[12px] text-[var(--warn)]">No OpenAI key</span>
-          )}
-        </div>
-
-        <Toggle
-          on={ai.enabled}
-          disabled={!config.openai.configured}
-          onChange={(v) => setAi((s) => ({ ...s, enabled: v }))}
-          label="Read pages with AI when structured data is missing"
-        />
-
-        {ai.enabled && (
-          <Field label="When to call AI">
-            <select className={selectCls} value={ai.mode} onChange={(e) => setAi((s) => ({ ...s, mode: e.target.value as ParserAiSettings["mode"] }))}>
-              <option value="auto">Auto — only when name, price or images are missing (cheaper)</option>
-              <option value="always">Always — on every page (slower, costs more)</option>
-            </select>
-          </Field>
-        )}
-
-        <Toggle
-          on={ai.downloadImages}
-          onChange={(v) => setAi((s) => ({ ...s, downloadImages: v }))}
-          label="Copy product photos into our Supabase storage on import"
-        />
-        <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed -mt-1">
-          Photos are downloaded with browser headers, so retailer CDNs that block hotlinking still work. A photo that
-          fails to download keeps its original URL instead of disappearing.
-        </p>
-      </div>
-
-      {/* API key */}
-      {needsKey && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[15px] leading-[22px] font-medium text-[var(--foreground)]">Provider API key</p>
-            {config.key.configured ? (
-              <span className="text-[12px] text-[var(--ok)] break-all text-right">
-                {config.key.source === "env" ? "Set via env" : "Stored"} · {config.key.masked}
-              </span>
-            ) : (
-              <span className="text-[12px] text-[var(--warn)]">Not set</span>
-            )}
-          </div>
-          {keyFromEnv ? (
-            <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
-              Key is set via the <code className="font-mono text-[11px]">PARSER_FETCH_API_KEY</code> environment variable. Update it there to change.
-            </p>
-          ) : (
-            <>
-              <div className="relative">
-                <input
-                  type={showKey ? "text" : "password"}
-                  className={`${monoInputCls} pr-10 md:pr-9`}
-                  placeholder={config.key.configured ? "Enter a new key to replace" : "Paste API key"}
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button type="button" onClick={() => setShowKey((v) => !v)} aria-label={showKey ? "Hide key" : "Show key"} className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)]">
-                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                    <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
-                    <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                    {!showKey && <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />}
-                  </svg>
-                </button>
-              </div>
-              {config.key.configured && config.key.source === "database" && (
-                <button onClick={clearKey} className={btn("danger")}>
-                  Clear stored key
-                </button>
+        {/* API key */}
+        {needsKey && (
+          <FormSection id="parser-key" title={t("parser.fetch.key")}>
+            {/* A block around the badge, or the column would stretch it to full width. */}
+            <div>
+              {config.key.configured ? (
+                <Badge tone="ok">
+                  {config.key.source === "env"
+                    ? t("parser.fetch.keyEnv", { masked: config.key.masked })
+                    : t("parser.fetch.keyStored", { masked: config.key.masked })}
+                </Badge>
+              ) : (
+                <Badge tone="warn">{t("parser.fetch.keyNotSet")}</Badge>
               )}
-            </>
-          )}
-        </div>
-      )}
+            </div>
+            {keyFromEnv ? (
+              <p className="text-[11px] text-[var(--foreground-subtle)] leading-relaxed">
+                {fill(t("parser.fetch.keyEnvText"), {
+                  name: <code className="font-mono text-[11px]">{EXAMPLE.keyEnv}</code>,
+                })}
+              </p>
+            ) : (
+              <>
+                <div className="relative">
+                  <input
+                    type={showKey ? "text" : "password"}
+                    className={`${monoInputCls} pr-10 md:pr-9`}
+                    placeholder={config.key.configured ? t("parser.fetch.keyReplace") : t("parser.fetch.keyPaste")}
+                    value={keyInput}
+                    onChange={(e) => setKeyInput(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button type="button" onClick={() => setShowKey((v) => !v)} aria-label={showKey ? t("parser.fetch.hideKey") : t("parser.fetch.showKey")} className="absolute right-0 md:right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-auto md:h-auto flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground)]">
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                      <path d="M1 7C1 7 3 3 7 3C11 3 13 7 13 7C13 7 11 11 7 11C3 11 1 7 1 7Z" stroke="currentColor" strokeWidth="1.2" />
+                      <circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+                      {!showKey && <path d="M2 2L12 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />}
+                    </svg>
+                  </button>
+                </div>
+                {config.key.configured && config.key.source === "database" && (
+                  <button onClick={clearKey} disabled={clearing} className={`${btn("danger")} self-start`}>
+                    {t("parser.fetch.clearKey")}
+                  </button>
+                )}
+              </>
+            )}
+          </FormSection>
+        )}
+      </FormPanel>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button onClick={save} disabled={saving} className={btn("primary")}>
-          {saving && <Spinner />} {saving ? "Saving…" : "Save settings"}
-        </button>
-        {dirty && !saving && <UnsavedNote />}
-        {saved && <span className="text-[12px] text-[var(--ok)]">Saved</span>}
-        {error && <span className="text-[12px] text-[var(--err)]">{error}</span>}
-      </div>
-    </div>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={discard} disabled={clearing} />
+    </>
   );
 }
