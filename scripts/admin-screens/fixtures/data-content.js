@@ -436,7 +436,7 @@ const pages = [
       if (await edit.isVisible()) await edit.click();
       else {
         await row.locator('button[aria-haspopup="menu"]').click();
-        await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+        await page.getByRole("menuitem", { name: /^(Edit|Изменить)$/ }).click();
       }
       await page.getByRole("dialog").waitFor();
     },
